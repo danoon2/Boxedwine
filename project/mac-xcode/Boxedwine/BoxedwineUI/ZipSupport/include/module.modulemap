@@ -1,0 +1,5 @@
+module CBoxedwineZIP {
+    header "CBoxedwineZIP.h"
+    link "z"
+    export *
+}

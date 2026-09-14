@@ -1,0 +1,345 @@
+--- a/Combine.cpp
++++ b/Combine.cpp
+@@ -21,6 +21,10 @@
+ {
+     m_unsupported = false;
+     m_state = NULL;
++    m_color = CombineState();
++    m_alpha = CombineState();
++    m_detail_control[0] = m_detail_control[1] = m_detail_control[2] = m_detail_control[3] = 0;
++    m_detail_dirty = true;
+ }
+ 
+ CCombine::~CCombine()
+@@ -178,6 +182,8 @@
+ 
+ void CCombine::grTexCombine(GrChipID_t tmu, GrCombineFunction_t rgb_function, GrCombineFactor_t rgb_factor, GrCombineFunction_t alpha_function, GrCombineFactor_t alpha_factor, FxBool rgb_invert, FxBool alpha_invert)
+ {
++    if(tmu != GR_TMU0) return;
++    unsigned alpha_detail = 0;
+     bool   unsupported       = false;
+     FxBool color_tex_unit_on = FXTRUE;
+     FxBool alpha_tex_unit_on = FXTRUE;
+@@ -201,25 +207,40 @@
+     case GR_COMBINE_FUNCTION_ZERO:
+         alpha_tex_unit_on = FXFALSE;
+         break;
+-
+     case GR_COMBINE_FUNCTION_LOCAL:
+-        break;
+-
++    case GR_COMBINE_FUNCTION_LOCAL_ALPHA:
++        break;
++    case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL:
++    case GR_COMBINE_FUNCTION_SCALE_MINUS_LOCAL_ADD_LOCAL_ALPHA:
++        if(alpha_factor == GR_COMBINE_FACTOR_DETAIL_FACTOR)
++            alpha_detail = 1;
++        else if(alpha_factor == GR_COMBINE_FACTOR_ONE_MINUS_DETAIL_FACTOR)
++            alpha_detail = 2;
++        else
++            unsupported = true;
++        break;
+     default:
+         unsupported = true;
+         break;
+     }
+ 
+-    if(rgb_invert || alpha_invert)
++    if((alpha_detail || rgb_invert || alpha_invert) && !SupportsDetailShader())
+         unsupported = true;
+ 
+     if(m_unsupported != unsupported
+       || m_color.tex_unit_on != color_tex_unit_on
+-      || m_alpha.tex_unit_on != alpha_tex_unit_on)
++      || m_alpha.tex_unit_on != alpha_tex_unit_on
++      || m_alpha.tex_detail != alpha_detail
++      || m_color.tex_invert != rgb_invert
++      || m_alpha.tex_invert != alpha_invert)
+     {
+         m_unsupported = unsupported;
+         m_color.tex_unit_on = color_tex_unit_on;
+         m_alpha.tex_unit_on = alpha_tex_unit_on;
++        m_color.tex_detail = 0;
++        m_alpha.tex_detail = alpha_detail;
++        m_color.tex_invert = rgb_invert;
++        m_alpha.tex_invert = alpha_invert;
+ 
+         m_combine_dirty = true;
+ 
+@@ -228,13 +249,22 @@
+     }
+ }
+ 
++void CCombine::grTexDetailControl(GrChipID_t tmu, int bias, FxU8 scale, float maximum)
++{
++    if(tmu != GR_TMU0) return;
++    // The public Glide values are bias [-32,31], scale [0,7], maximum [0,1].
++    m_detail_control[0] = float(bias < -32 ? -32 : (bias > 31 ? 31 : bias));
++    m_detail_control[1] = float(1U << (scale & 7)) / 255.0f;
++    m_detail_control[2] = maximum < 0 ? 0 : (maximum > 1 ? 1 : maximum);
++}
++
+ void CCombine::PrepareCombine()
+ {
+     CAlpha::CombineAlteration alteration = m_glide->GetAlphaAlteration();
+ 
+     if(m_combine_dirty || m_alteration != alteration)
+     {
+-        FxU32                key  = Key(alteration);
++        uint64_t             key  = Key(alteration);
+         StateCache::iterator iter = m_cache.find(key);
+ 
+         if(iter == m_cache.end())
+@@ -271,6 +301,19 @@
+         m_state->SetConstColor(m_const_color);
+ 
+         m_const_dirty = false;
++    }
++    if(m_alpha.tex_detail && m_state)
++    {
++        float constants[8];
++        m_glide->DetailTexelScale(constants);
++        memcpy(constants + 4, m_detail_control, sizeof(m_detail_control));
++        if(m_detail_dirty || memcmp(constants, m_detail_constants, sizeof(constants)))
++        {
++            FlushPolygons();
++            m_device->SetPixelShaderConstantF(3, constants, 2);
++            memcpy(m_detail_constants, constants, sizeof(constants));
++            m_detail_dirty = false;
++        }
+     }
+ }
+ 
+--- a/Combine.h
++++ b/Combine.h
+@@ -15,6 +15,7 @@
+ 
+ 
+ #include <map>
++#include <stdint.h>
+ 
+ #include "sdk2_glide.h"
+ #include "Render.h"
+@@ -22,7 +23,7 @@
+ 
+ class CDevCombineState;
+ 
+-typedef std::map<FxU32, CDevCombineState *> StateCache;
++typedef std::map<uint64_t, CDevCombineState *> StateCache;
+ 
+ struct CombineState
+ {
+@@ -32,13 +33,17 @@
+     GrCombineOther_t    other;
+     FxBool              invert;
+     FxBool              tex_unit_on;
++    unsigned            tex_detail; // 0: local, 1: (1-detail)*local, 2: detail*local
++    FxBool              tex_invert;
+ 
+     bool                zero;
+     bool                one;
+ 
+-    FxU32 Key() // 1+1+2+2+4+5 = 15 bits
++    uint64_t Key() // Original 15 bits, plus detail mode and texture inversion.
+     {
+-        return ((FxU32) invert)
++        return (uint64_t(tex_detail) << 15)
++             | (uint64_t(tex_invert != FXFALSE) << 17)
++             | ((FxU32) invert)
+              | (((FxU32) tex_unit_on << 1))
+              | (((FxU32) other)      << (1+1))
+              | (((FxU32) local)      << (1+1+2))
+@@ -58,6 +63,9 @@
+     bool              m_delta0mode;
+     bool              m_const_dirty;
+     bool              m_unsupported;
++    float             m_detail_control[4];
++    float             m_detail_constants[8];
++    bool              m_detail_dirty;
+ 
+     CAlpha::CombineAlteration m_alteration;
+ 
+@@ -67,11 +75,11 @@
+     bool        m_tex_color_referenced;
+     bool        m_tex_alpha_referenced;
+ 
+-    FxU32 Key(CAlpha::CombineAlteration alt)
++    uint64_t Key(CAlpha::CombineAlteration alt)
+     {
+         return m_color.Key()
+-             | (m_alpha.Key() << 15)
+-             | (((FxU32) alt) << (15+15));
++             | (m_alpha.Key() << 18)
++             | (uint64_t(alt) << 36);
+     }
+ 
+     static bool OtherUsesTex(CombineState *s);
+@@ -90,6 +98,8 @@
+     void grConstantColorValue4(float a, float r, float g, float b);
+     void grTexCombine(GrChipID_t tmu, GrCombineFunction_t rgb_function, GrCombineFactor_t rgb_factor, GrCombineFunction_t alpha_function, GrCombineFactor_t alpha_factor, FxBool rgb_invert, FxBool alpha_invert);
+ 
++    void grTexDetailControl(GrChipID_t tmu, int bias, FxU8 scale, float maximum);
++
+     bool TextureNeeded();
+ 
+     void PrepareCombine();
+--- a/DevCombineStateShader.cpp
++++ b/DevCombineStateShader.cpp
+@@ -257,11 +257,11 @@
+     Replace(ps, "one",    "c1");
+ 
+     Replace(ps, "cc_a",   "c2.a");
+-    Replace(ps, "tex_a",  t->tex_unit_on ? "t0.a" : "c0.a");
++    Replace(ps, "tex_a",  (t->tex_unit_on || t->tex_invert) ? "t0.a" : "c0.a");
+     Replace(ps, "iter_a", "v0.a");
+ 
+     Replace(ps, "cc",   "c2");
+-    Replace(ps, "tex",  s->tex_unit_on ? "t0" : "c0");
++    Replace(ps, "tex",  (s->tex_unit_on || s->tex_invert) ? "t0" : "c0");
+     Replace(ps, "iter", "v0");
+ 
+     Replace(ps, "tmp_d", std::string("r1") + pfx);
+@@ -277,8 +277,8 @@
+                            CombineState *alpha,
+                            CAlpha::CombineAlteration alt)
+ {
+-    LPD3DXBUFFER shad;
+-    LPD3DXBUFFER err;
++    LPD3DXBUFFER shad = NULL;
++    LPD3DXBUFFER err = NULL;
+     
+     /* Generate a pixel shader that implements the
+     * color and alpha combine states */
+@@ -315,11 +315,59 @@
+         break;
+     }
+     
++    if((alpha->tex_detail || color->tex_invert || alpha->tex_invert)
++      && ps.find("t0") != std::string::npos)
++    {
++        // Keep the original framebuffer combine equations, substituting the
++        // texture unit's result for the raw sampled texel.
++        Replace(ps, "ps_1_1\n", "");
++        Replace(ps, "tex t0\n", "");
++        Replace(ps, "t0", "r2");
++        Replace(ps, "def c0, 0.0, 0.0, 0.0, 0.0\n", "");
++        Replace(ps, "def c1, 1.0, 1.0, 1.0, 1.0\n", "");
++        std::string prefix =
++            "ps_2_x\n"
++            "dcl t0.xy\n"
++            "dcl_2d s0\n"
++            "def c0, 0.0, 0.0, 0.0, 0.0\n"
++            "def c1, 1.0, 1.0, 1.0, 1.0\n"
++            "def c5, 0.5, 0.00000001, 0, 0\n"
++            "texld r2, t0, s0\n";
++        if(alpha->tex_detail)
++        {
++            // LOD = log2(max(length(ds/dx,dt/dx), length(ds/dy,dt/dy))).
++            prefix +=
++                "mul r3.xy, t0, c3\n"
++                "dsx r4.xy, r3\n"
++                "dsy r5.xy, r3\n"
++                "dp2add r4.x, r4, r4, c5.z\n"
++                "dp2add r5.x, r5, r5, c5.z\n"
++                "max r4.x, r4.x, r5.x\n"
++                "max r4.x, r4.x, c5.y\n"
++                "log r4.x, r4.x\n"
++                "mul r4.x, r4.x, c5.x\n"
++                "sub r4.x, c4.x, r4.x\n"
++                "mul r4.x, r4.x, c4.y\n"
++                "max r4.x, r4.x, c5.z\n"
++                "min r4.x, r4.x, c4.z\n";
++            if(alpha->tex_detail == 1)
++                prefix += "sub r4.x, c1.x, r4.x\n";
++            prefix += "mul r2.a, r2.a, r4.x\n";
++        }
++        if(!color->tex_unit_on) prefix += "mov r2.rgb, c0\n";
++        if(!alpha->tex_unit_on) prefix += "mov r2.a, c0\n";
++        if(color->tex_invert) prefix += "sub r2.rgb, c1, r2\n";
++        if(alpha->tex_invert) prefix += "sub r2.a, c1, r2\n";
++        if(ps.find("v0") != std::string::npos)
++            prefix.insert(prefix.find("dcl t0"), "dcl v0\n");
++        ps = prefix + ps + "mov oC0, r0\n";
++    }
++
+     Log::Printf("Pixel Shader:\n%s\n", ps.c_str());
+     
+     if(FAILED(D3DXAssembleShader(ps.c_str(), ps.size(), NULL, NULL, 0, &shad, &err)))
+     {
+-        Log::Printf("Shader: %s\n", err->GetBufferPointer());
++        if(err) Log::Printf("Shader: %s\n", err->GetBufferPointer());
+         shad = NULL;
+     }
+     
+@@ -329,7 +377,8 @@
+         m_shader = NULL;
+     }
+ 
+-    shad->Release();
++    if(shad) shad->Release();
++    if(err) err->Release();
+ 
+     return m_shader != NULL;
+ }
+@@ -352,5 +401,5 @@
+                   (float)color.b / 255.0f,
+                   (float)color.a / 255.0f};
+ 
+-    m_device->SetPixelShaderConstantF(2, cc,  4);
+-}
++    m_device->SetPixelShaderConstantF(2, cc, 1);
++}
+--- a/Device.h
++++ b/Device.h
+@@ -48,6 +48,13 @@
+     FxFloat                 m_xscale;
+     FxFloat                 m_yscale;
+     bool                    m_has_ps_1_1;
++    bool SupportsDetailShader() const
++    {
++        return m_caps.PixelShaderVersion >= D3DPS_VERSION(3, 0)
++            || (m_caps.PixelShaderVersion >= D3DPS_VERSION(2, 0)
++                && (m_caps.PS20Caps.Caps & D3DPS20CAPS_GRADIENTINSTRUCTIONS));
++    }
++
+     bool                    m_dynamic_tex;
+     bool         m_format_supported[NFMT];
+ 
+--- a/TMU.cpp
++++ b/TMU.cpp
+@@ -72,6 +72,14 @@
+     return CTexture(0, info).m_full_size;
+ }
+ 
++void CTMU::DetailTexelScale(float *constants)
++{
++    // Glide computes LOD in its 256-texel coordinate space, before mip selection.
++    constants[0] = m_source.m_defined ? m_source.m_ufactor * m_xscale : 256.0f;
++    constants[1] = m_source.m_defined ? m_source.m_vfactor * m_yscale : 256.0f;
++    constants[2] = constants[3] = 0;
++}
++
+ void CTMU::grTexSource(GrChipID_t tmu, FxU32 startAddress, FxU32 evenOdd, GrTexInfo *info)
+ {
+     CTexture source = CTexture(startAddress, info);
+--- a/TMU.h
++++ b/TMU.h
+@@ -64,6 +64,7 @@
+ 
+     void PrepareTexture();
+     bool TextureMayBeKeyed();
++    void DetailTexelScale(float *constants);
+     void FillVertex(CUSTOMVERTEX *dv, const GrVertex *gv);
+ 
+     LPDIRECT3DPIXELSHADER9 GetPalConvertShader(bool with_alpha);
+--- a/entry.cpp
++++ b/entry.cpp
+@@ -677,7 +677,7 @@
+ 
+ FX_ENTRY void FX_CALL grTexDetailControl(GrChipID_t tmu, int lod_bias, FxU8 detail_scale, float detail_max)
+ {
+-    Log::WarnOnce(ENOSUP_grTexDetailControl);
++    if(glide) glide->grTexDetailControl(tmu, lod_bias, detail_scale, detail_max);
+ }
+ 
+ 

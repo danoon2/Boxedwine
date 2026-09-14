@@ -35,10 +35,20 @@
 
 #ifndef __TEST
 int boxedmain(int argc, const char** argv);
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME) && defined(BOXEDWINE_DEVELOPMENT)
+extern "C" int MacPlatformWaitForDebugger(void);
+#endif
 
 int main(int argc, char** argv) {
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME) && defined(BOXEDWINE_DEVELOPMENT)
+    if (!MacPlatformWaitForDebugger()) { return 0; }
+#endif
     return boxedmain(argc, (const char**)argv);
 }
+#endif
+
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME)
+extern "C" void MacPlatformSetRuntimeDockIcon(void);
 #endif
 
 static KNativeScreenSDLPtr screen;
@@ -68,6 +78,9 @@ bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
         klog_fmt("SDL_Init Error: %s", SDL_GetError());
         return false;
     }
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME)
+    MacPlatformSetRuntimeDockIcon();
+#endif
     return true;
 }
 

@@ -1,0 +1,10 @@
+--- a/Render.cpp
++++ b/Render.cpp
+@@ -238,6 +238,7 @@
+ 
+ void CRender::grClipWindow(FxU32 minx, FxU32 miny, FxU32 maxx, FxU32 maxy)
+ {
++    FlushPolygons();
+     RECT rect = {(FxU32)(minx * m_xscale), (FxU32)(miny * m_yscale),
+         (FxU32)(maxx * m_xscale), (FxU32)(maxy * m_yscale)};
+ 

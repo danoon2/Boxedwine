@@ -1,0 +1,505 @@
+<XML>
+  <Wine>
+    <Name>Wine 11.0</Name>
+    <FileVersion>11</FileVersion>
+    <WineVersion>11.0</WineVersion>
+    <FileURL>http://boxedwine.org/v2/11/TinyCore15Wine11.0.zip</FileURL>
+    <FileSizeMB>150</FileSizeMB>
+  </Wine>
+  <Wine>
+    <Name>Wine 10.0</Name>
+    <FileVersion>5</FileVersion>
+    <WineVersion>10.0</WineVersion>
+    <FileURL>http://boxedwine.org/v2/5/TinyCore15Wine10.0.zip</FileURL>
+    <FileSizeMB>149</FileSizeMB>
+  </Wine>
+  <Wine>
+      <Name>Wine 9.0</Name>
+      <FileVersion>5</FileVersion>
+      <WineVersion>9.0</WineVersion>
+      <FileURL>http://boxedwine.org/v2/5/TinyCore15Wine9.0.zip</FileURL>
+      <FileSizeMB>146</FileSizeMB>
+  </Wine>
+  <Wine>
+      <Name>Wine 6.0</Name>
+      <FileVersion>2</FileVersion>
+      <WineVersion>6.0</WineVersion>
+      <FileURL>http://boxedwine.org/v2/2/TinyCore15Wine6.0.zip</FileURL>
+      <FileSizeMB>134</FileSizeMB>
+  </Wine>
+  <Wine>
+    <Name>Wine 5.0</Name>
+    <FileVersion>2</FileVersion>
+    <WineVersion>5.0</WineVersion>
+    <FileURL>http://boxedwine.org/v2/2/TinyCore15Wine5.0.zip</FileURL>
+    <FileSizeMB>129</FileSizeMB>
+  </Wine>
+  <Wine>
+    <Name>Wine 4.1</Name>
+    <FileVersion>2</FileVersion>
+    <WineVersion>4.1</WineVersion>
+    <FileURL>http://boxedwine.org/v2/2/TinyCore15Wine4.1.zip</FileURL>
+    <FileSizeMB>126</FileSizeMB>
+  </Wine>
+  <Wine>
+    <Name>Wine 3.1</Name>
+    <FileVersion>2</FileVersion>
+    <WineVersion>3.1</WineVersion>
+    <FileURL>http://boxedwine.org/v2/2/TinyCore15Wine3.1.zip</FileURL>
+    <FileSizeMB>113</FileSizeMB>
+  </Wine>
+  <Demo>
+        <Name>3D Mark 2001 SE (2002)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/3DMark2001SE.png</IconURL>
+        <FileSizeMB>40</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/3DMark2001SE.exe</FileURL>
+        <ShortcutExe>3DMark2001SE.exe</ShortcutExe>
+        <Help>Direct X 8.1\n\nMinimum Requirements:\n * x86 compatible processor, 500MHz\n * 128MB of RAM (256MB recommended)\n * Windows 98/SE/ME/2000/XP\n * DirectX 8.1 or later\n * A modern 3D accelerator with 32MB of memory</Help>
+        <Options>Debug</Options>
+    </Demo>
+    <Demo>
+        <Name>Abiword (2015)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/abiword.png</IconURL>
+        <FileSizeMB>3</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/abiword.zip</FileURL>
+        <ShortcutExe>ABIWORD.EXE</ShortcutExe>
+        <Help></Help>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Age of Empires demo (1997)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/empires.png</IconURL>
+        <FileSizeMB>24</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/MSAoE.exe</FileURL>
+        <ShortcutExe>empires.exe</ShortcutExe>
+        <Help>DirectX 5\n\nMinimum Requirements:\n * Pentium 90 processor or faster (P-133+ for 1024 x 768 resolution)\n * SVGA with 1 MB RAM\n * fast 2D graphics card (2 MB required for 1024 x 768)\n * 16 MB RAM\n * Win 95 or Win NT 4.0 with Service Pack 3</Help>
+        <InstallOptions>winxp,GDI</InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+      <Name>American McGee's Alice (2000)</Name>
+      <InstallType>Zip</InstallType>
+      <IconURL>http://www.boxedwine.org/demos/alice_demo.png</IconURL>
+      <FileSizeMB>79</FileSizeMB>
+      <FileURL>http://www.boxedwine.org/demos/alice_demo.zip</FileURL>
+      <ShortcutExe>alice.exe</ShortcutExe>
+      <Help>OpenGL\n\nMinimum Requirements:\n * 400 MHz AMD K6-2 or Intel Pentium II Processor\n * 64 MB RAM or higher\n * 4x CD-ROM/DVD ROM Drive or higher\n * 16 MB OpenGL Capable video card with DirectX 7 (or higher) compatible driver</Help>
+      <InstallOptions></InstallOptions>
+      <Options>macNativeGL</Options>
+    </Demo>
+    <Demo>
+        <Name>Bang! Bang! shareware (1990)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/bangbang.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/bangbang.zip</FileURL>
+        <ShortcutExe>BANGBANG.EXE</ShortcutExe>
+        <Help>16-bit/Windows 3.1</Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>BassTour Professional shareware (1998)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/basstour.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/basstour.zip</FileURL>
+        <InstallExe>SETUP.EXE</InstallExe>
+        <ShortcutExe>BTW.EXE</ShortcutExe>
+        <Help>16-bit/Windows 3.1\n\nMinimum Requirements:\n * Windows 95 or Windows 3.1 with Win32s\n * 8 MB of RAM\n\nWine 4 and Wine 5 crash when selecting a lake</Help>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Broken Sword demo (1996)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/Broken_Sword_demo.png</IconURL>
+        <FileSizeMB>113</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/Broken_Sword_demo.zip</FileURL>
+        <ShortcutExe>RUNSWORD.EXE</ShortcutExe>
+        <Help>DirectX 2\n\nMinimum Requirements:\n * Intel 486DX2 66 MHz\n * 8 MB Ram\n * SVGA 1 MB of VRAM\n\nWhen starting the game, the first screen is intentionally black for a few seconds while someone talks.  To skip this or credits, hit space bar.  This game crashes if using the GDI backend.</Help>
+        <InstallOptions></InstallOptions>
+    </Demo> 
+    <Demo>
+        <Name>Caesar 3 demo (1998)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/Caesar3.png</IconURL>
+        <FileSizeMB>24</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/caesar3.exe</FileURL>
+        <ShortcutExe>c3.exe</ShortcutExe>
+        <Help>DirectX 6\n\nMinimum Requirements:\n * Windows 95 or Windows 98\n * Intel Pentium 90 MHz\n * 16 MB RAM\n * 4X CD-ROM\n * VGA graphics and 256-color or higher resolution</Help>
+        <InstallOptions>Shows black screen if Boxedwine doesn't set the resolution to 800x600</InstallOptions>
+        <Options>resolution=800x600,GDI,DisableHideCursor</Options>
+    </Demo>
+    <Demo>
+        <Name>Castle of the Winds (1992)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/castle.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/castle.zip</FileURL>
+        <ShortcutExe>CASTLE1.EXE</ShortcutExe>
+        <Help>16-bit/Windows 3.1\n\nThis has some drawing issues when moving around that are fixed in Wine 7</Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Cinebench 11.5 (2010)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/Cinebench11.5.png</IconURL>
+        <FileSizeMB>138</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/CINEBENCH_R11.zip</FileURL>
+        <ShortcutExe>CINEBENCH Windows 32 Bit.exe</ShortcutExe>
+        <Help>OpenGL 2.0\n\nMinimum Requirements:\n * 1 GHz processor\n * 1 GB RAM\n * graphics card that supports OpenGL 2.0 and has at least 128 MB of graphics memory</Help>
+        <InstallOptions></InstallOptions>
+        <Options>macNativeGL</Options>
+    </Demo>
+    <Demo>
+        <Name>Cities In Motion demo (2011)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/cimdemo1021.png</IconURL>
+        <FileSizeMB>229</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/cimdemo1021.zip</FileURL>
+        <InstallExe>cim-demo-1-0-21.exe</InstallExe>
+        <ShortcutExe>Cities In Motion.exe</ShortcutExe>
+        <Help></Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Daytona USA demo (1996)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/daytona.png</IconURL>
+        <FileSizeMB>5</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/daytona.exe</FileURL>
+        <ShortcutExe>DAYTONAD.EXE</ShortcutExe>
+        <Help>DirectX 3\n\nMinimum Requirements:\n * Windows 95\n * Intel Pentium 75 MHz\n * 16 MB RAM\n * SVGA</Help>
+        <InstallOptions>wine=Wine 9.0</InstallOptions>
+        <Options>GDI,resolution=640x480</Options>
+    </Demo> 
+    <Demo>
+        <Name>Deadlock demo (1996)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/deadlock.png</IconURL>
+        <FileSizeMB>37</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/deadlock.zip</FileURL>
+        <InstallExe>SETUP.EXE</InstallExe>
+        <ShortcutExe>DEADLOCK.EXE</ShortcutExe>
+        <Help>None/GDI\n\nMinimum Requirements:\n * Windows 95/NT\n * 486 66 MHz\n * 8MB RAM</Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Descent 3 demo 2 (1998)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/descent3.png</IconURL>
+        <FileSizeMB>36</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/descent3.zip</FileURL>
+        <InstallExe>Setup.exe</InstallExe>
+        <ShortcutExe>Descent 3 Demo 2.exe</ShortcutExe>
+        <Help>DirectX 6.1 can use OpenGL, Direct3D or 3dfx\n\nMinimum Requirements:\n * Windows 95\n * Intel Pentium 200 MHz\n * 32 MB RAM\n * Video Card with 4 MB of VRAM DirectX 6.1 compatible\n\nCan use 3 different video options: D3D crashes, OpengGL is missing textures, and 3dfx works well.\n\nIf it crashes during video detection, just uncheck Direct3D and OpenGL.</Help>
+        <InstallOptions>3dfx</InstallOptions>
+        <Options></Options>
+    </Demo> 
+    <Demo>
+        <Name>Diablo II Shareware (2000)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/DiabloIIDemo.png</IconURL>
+        <FileSizeMB>131</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/DiabloIIDemo.EXE</FileURL>
+        <ShortcutExe>Diablo II.exe</ShortcutExe>
+        <Help>DirectX 6.1 can use DirectDraw, Direct3D or 3dfx\n\nMinimum Requirements:\n * Windows 2000, 95, 98, or NT 4.0 Service Pack 5\n * Pentium® 233 or equivalent\n * 32 MB RAM</Help>
+        <InstallOptions></InstallOptions>
+        <InstallOptions_Mac>wine=Wine 10.0</InstallOptions_Mac>
+        <Options></Options>
+    </Demo> 
+    <Demo>
+        <Name>Drowned God demo (1996)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/drowned.png</IconURL>
+        <FileSizeMB>26</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/drowned.zip</FileURL>
+        <ShortcutExe>DROWNGOD.EXE</ShortcutExe>
+        <Help>None/GDI\n\nMinimum Requirements:\n * Windows 95\n * 8 MB RAM</Help>
+        <InstallOptions></InstallOptions>
+        <Options>win98,16bpp</Options>
+    </Demo>  
+    <Demo>
+        <Name>F-16 Multirole Fighter demo (1998)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/F16.png</IconURL>
+        <FileSizeMB>22</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/F16.zip</FileURL>
+        <InstallExe>SETUP.EXE</InstallExe>
+        <ShortcutExe>F16.exe</ShortcutExe>
+        <Help>DirectX 5.0, can use Software or 3dfx\n\nMinimum Requirements:\n * Windows 95\n * Intel Pentium 120 MHz\n * 16MB RAM\n\nOften crashes when leaving mission</Help>
+        <InstallOptions></InstallOptions>
+        <InstallOptions_Mac>GDI</InstallOptions_Mac>
+        <Options></Options>
+    </Demo>  
+    <Demo>
+        <Name>F-22 Raptor demo (1997)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/F-22Raptor6.png</IconURL>
+        <FileSizeMB>10</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/F-22Raptor6.exe</FileURL>
+        <ShortcutExe>Raptor.exe</ShortcutExe>
+        <Help>DirectX 5.0\n\nMinimum Requirements:\n * Windows 95 or later\n * Intel Pentium 120 MHz\n * 16MB RAM * SVGA 256 Color</Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Free Colonization 1.2 (2024)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/freecol.png</IconURL>
+        <FileSizeMB>206</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/freecol.zip</FileURL>
+        <ShortcutExe>FreeCol.jar</ShortcutExe>
+        <Help></Help>
+        <InstallOptions>Java17</InstallOptions>
+        <Options>JavaArg=-Xmx768M</Options>
+    </Demo>
+    <Demo>
+        <Name>Fire Fight demo (1996)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/FireFight.png</IconURL>
+        <FileSizeMB>8</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/ffsw12.exe</FileURL>
+        <ShortcutExe>LOADER.EXE</ShortcutExe>
+        <Help>DirectX 2\n\nMinimum Requirements:\n * Windows 95 operating system\n * 60 MHz Pentium processor\n * 8 MB RAM\n\nInstaller hangs at exit on Mac with Wine 11</Help>
+        <InstallOptions></InstallOptions>
+        <InstallOptions_Mac>wine=Wine 10.0</InstallOptions_Mac>
+        <Options></Options>
+    </Demo>  
+    <Demo>
+        <Name>Full Tilt! Pinball Demo (1995)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/pinball.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/pinball.zip</FileURL>
+        <ShortcutExe>DEMO.EXE</ShortcutExe>
+        <Help>None/GDI\n\nMinimum Requirements:\n * Windows 95 operating system\n * Intel 486 33 MHz\n * 8 MB RAM</Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Half-Life: Uplink demo (1999)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/hldemo.png</IconURL>
+        <FileSizeMB>49</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/hluplink.exe</FileURL>
+        <ShortcutExe>hldemo.exe</ShortcutExe>
+        <Help>OpenGL 1.1 + DirectX 6, can use Software, OpenGL or Direct3D\n\nMinimum Requirements:\n * Windows 95, Windows 98 or Windows NT 4.0\n * Pentium 133+\n * 24 MB RAM\n * SVGA, high color (16-bit)\n\nSoftware mode crashes, but OpenGL and Direct3D works.  Wine 9 works well.  When using Wine 10, the main menu is black.  Hitting N, for a new game can work around it.</Help>
+        <InstallOptions>wine=Wine 9.0</InstallOptions>
+        <Options>macNativeGL</Options>
+    </Demo>
+    <Demo>
+        <Name>Java Solitaire (2007)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/java.png</IconURL>
+        <FileSizeMB>2</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/javasolitaire.zip</FileURL>
+        <ShortcutExe>JavaSolitaire.jar</ShortcutExe>
+        <Help>Source: https://sourceforge.net/projects/javaklondike/</Help>
+        <InstallOptions>Java8</InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>MDK Performance (1999)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/MDK.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/mdkperf.zip</FileURL>
+        <ShortcutExe>PERF_W95.EXE</ShortcutExe>
+        <Help></Help>
+        <InstallOptions></InstallOptions>
+        <Options>DDraw,resolution=640x480</Options>
+        <InstallOptions_Mac>wine=Wine 10.0</InstallOptions_Mac>
+    </Demo>
+    <Demo>
+        <Name>Mech Warrior 3 demo (1999)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/mech3demo.png</IconURL>
+        <FileSizeMB>35</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/MW3Demo.exe</FileURL>
+        <ShortcutExe>mech3demo.exe</ShortcutExe>
+        <Help>DirectX 6.0\n\nMinimum Requirements:\n * Windows 95 or Windows 98\n * 166MHz Pentium or faster\n * 32MB RAM\n * 16-bit 2MB video card\n * 2X CD-ROM\n * 240MB hard drive space\n * DirectX compatible sound card\n\nWine 9 crashes when quitting using OpenGL, this works with Vulkan.  Wine 10 works well</Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Motorhead 3Dfx demo (1998)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/motordemo.png</IconURL>
+        <FileSizeMB>10</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/motordemo_3dfx.exe</FileURL>
+        <ShortcutExe>motor.exe</ShortcutExe>
+        <Help>DirectX 5.0 3Dfx/OpenGL\n\nMinimum Requirements:\n * Windows 95\n * Intel 133 MHz Pentium\n * 24 MB Ram\n\nSound has some issues.</Help>
+        <InstallOptions>3dfx,win98</InstallOptions>
+        <InstallOptions_Mac>3dfx,win98,wine=Wine 10.0</InstallOptions_Mac>
+        <Options>resolution=640x480</Options>
+    </Demo>
+    <Demo>
+        <Name>Need for Speed: Hot Pursuit 2 demo (2002)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/NFSHP2Demo.png</IconURL>
+        <FileSizeMB>93</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/setup_US.exe</FileURL>
+        <ShortcutExe>NFSHP2Demo.exe</ShortcutExe>
+        <Help>DirectX 8.1\n\nMinimum Requirements:\n * Windows 98, ME, 2000 or XP\n * Intel Pentium III (or compatible) CPU running at 450Mhz or higher\n * 128 MB Ram\n * 16MB DirectX 8.1 compatible video card</Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>NetSurf 3.10 (2020)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/3.10-netsurf.png</IconURL>
+        <FileSizeMB>6</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/3.10-netsurf.exe</FileURL>
+        <ShortcutExe>NetSurf.exe</ShortcutExe>
+        <Help></Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Nitemare 3D (1994)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/nitemare3d.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/nitemare3d.zip</FileURL>
+        <InstallExe>N3WUNR.EXE</InstallExe>
+        <ShortcutExe>NITE3W.EXE</ShortcutExe>
+        <Help>16-bit/Windows 3.1</Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Norse By Norse West (1997)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/norse.png</IconURL>
+        <FileSizeMB>8</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/norse.zip</FileURL>
+        <ShortcutExe>NORSE95.EXE</ShortcutExe>
+        <Help>DirectX 3.0\n\nMinimum Requirements:\n * 486DX4 100\n\nUse CNC DDraw option to see it in full screen</Help>
+        <InstallOptions></InstallOptions>
+        <InstallOptions_Mac>wine=Wine 10.0</InstallOptions_Mac>
+        <Options>16bpp,DDraw</Options>
+    </Demo>
+    <Demo>
+        <Name>RollerCoaster Tycoon demo (1999)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/rct.png</IconURL>
+        <FileSizeMB>19</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/rct-edl.exe</FileURL>
+        <ShortcutExe>rct.exe</ShortcutExe>
+        <Help>DirectX 5\n\nMinimum Requirements:\n * Windows 95/98\n * Pentium 90\n * 16 MB RAM\n * 1 MB SVGA card\n\nCan crash at exit</Help>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Solitaire DotNet 2.0</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/SolitaireDotNet2.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/SolitaireDotNet2.zip</FileURL>
+        <ShortcutExe>Solitaire.exe</ShortcutExe>
+        <Help>Simple Game to show DotNet 2.0.  This will automatically install mono.</Help>
+        <Options></Options>
+        <InstallOptions>mono</InstallOptions>
+      </Demo>
+    <Demo>
+        <Name>Spherejongg (1995)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/sphjong3.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/sphjong3.zip</FileURL>
+        <ShortcutExe>SPHEJONG.EXE</ShortcutExe>
+        <Help>16-bit/Windows 3.1</Help>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>Thief demo (1998)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/thiefdemo.png</IconURL>
+        <FileSizeMB>45</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/thiefdemo.zip</FileURL>
+        <ShortcutExe>thiefd.exe</ShortcutExe>
+        <Help>DirectX 6\n\nMinimum Requirements:\n * Windows 95/98\n * Pentium 166MHz\n * 32 MB RAM\n * 1 MB SVGA card</Help>
+        <Options>winxp,cpuAffinity=1,macNativeGL</Options>
+    </Demo>
+    <Demo>
+        <Name>Tomb Raider 3 demo (1998)</Name>
+        <InstallType>Installer</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/tomb3.png</IconURL>
+        <FileSizeMB>10</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/tr3india.exe</FileURL>
+        <ShortcutExe>tomb3.exe</ShortcutExe>
+        <Help>DirectX 6.0\n\nMinimum Requirements:\n * Windows 95\n * Pentium 90MHz\n * 16 MB RAM\n * DirectX 6.0 video card\n\nWorks with Wine 10</Help>
+        <InstallOptions>win98</InstallOptions>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>vkQuake (1996)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/vkQuake.png</IconURL>
+        <FileSizeMB>11</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/vkQuake.zip</FileURL>
+        <ShortcutExe>vkQuake.exe</ShortcutExe>
+        <Help>This is the vulkan version of Quake 1 with the shareware pak file.  Wine 10 has a bug with using the mouse button to fire.</Help>
+        <InstallOptions>wine=Wine 9.0</InstallOptions>
+        <Options>ForceRelativeMouse,resolution=1280x720</Options>
+    </Demo>
+    <Demo>
+        <Name>WinRoids (1994)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/winroids.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/winroids.zip</FileURL>
+        <ShortcutExe>WINROIDS.EXE</ShortcutExe>
+        <Help>16-bit/Windows 3.1</Help>
+        <Options></Options>
+    </Demo>
+    <Demo>
+        <Name>WinTrek (1992)</Name>
+        <InstallType>Zip</InstallType>
+        <IconURL>http://www.boxedwine.org/demos/wintrek.png</IconURL>
+        <FileSizeMB>1</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/wintrek.zip</FileURL>
+        <ShortcutExe>WinTrek.exe</ShortcutExe>
+        <Help>16-bit/Windows 3.1</Help>
+        <Options></Options>
+    </Demo>
+    <Component>
+        <Name>Java 17 JRE</Name>
+        <OptionsName>Java17</OptionsName>
+        <JavaVersion>17</JavaVersion>
+        <InstallType>Zip</InstallType>
+        <FileSizeMB>37</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/java17jre.zip</FileURL>
+        <ShortcutExe></ShortcutExe>
+        <InstallOptions>AddPath=c:\java17jre\bin</InstallOptions>
+        <Options></Options>
+    </Component>
+    <Component>
+        <Name>Java 8 JRE</Name>
+        <OptionsName>Java8</OptionsName>
+        <JavaVersion>8</JavaVersion>
+        <InstallType>Zip</InstallType>
+        <FileSizeMB>55</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/java8jre.zip</FileURL>
+        <ShortcutExe></ShortcutExe>
+        <InstallOptions>AddPath=c:\java8jre\bin</InstallOptions>
+        <Options></Options>
+    </Component>
+    <Component>
+        <Name>nGlide (3Dfx Voodoo Glide wrapper)</Name>
+        <OptionsName>3dfx</OptionsName>
+        <InstallType>Installer</InstallType>
+        <FileSizeMB>3</FileSizeMB>
+        <FileURL>http://www.boxedwine.org/demos/nGlide210_setup.exe</FileURL>
+        <ShortcutExe></ShortcutExe>
+        <InstallOptions></InstallOptions>
+        <Options></Options>
+    </Component>
+</XML>

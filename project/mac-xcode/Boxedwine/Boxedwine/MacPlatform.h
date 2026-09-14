@@ -29,6 +29,11 @@
 void MacPlatformOpenFileLocation(const char* str);
 const char* MacPlatformGetResourcePath(const char* pName);
 void MacPlatormSetThreadPriority(void);
+#ifdef BOXEDWINE_NATIVE_RUNTIME
+int MacPlatformAcquireRuntimeProgramFolder(void);
+void MacPlatformReleaseRuntimeProgramFolder(void);
+void MacPlatformSetRuntimeDockIcon(void);
+#endif
 int MacPlatformLaunchAnotherInstance(void);
 int MacPlatformIsTaskRunning(void);
 int MacPlatformIsTaskFinishedLaunching(void);

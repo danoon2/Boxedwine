@@ -231,6 +231,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
 #ifndef BOXEDWINE_WASM_JIT
     {testJitDirectTargetInvalidation, "Test JIT direct target invalidation"},
+#ifdef BOXEDWINE_JIT_ARMV8
+    {testArmJitEntryInvalidatedBeforeDispatch, "Test ARM JIT entry invalidated before dispatch"},
+#endif
 #endif
 #ifdef BOXEDWINE_JIT_X64
     {testJitEntryCacheInvalidation, "Test JIT compiled-entry cache invalidation"},

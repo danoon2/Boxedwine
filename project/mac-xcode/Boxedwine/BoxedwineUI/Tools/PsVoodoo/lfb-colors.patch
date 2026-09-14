@@ -1,0 +1,442 @@
+--- a/BufAccess32Write.cpp
++++ b/BufAccess32Write.cpp
+@@ -1,206 +1,169 @@
+ /*****************************************************************
+- * BufAccess32Write.h
++ * BufAccess32Write.cpp
+  *
+- * This class provides write access to 32bpp frame buffers
+- *
++ * Write access to a 32bpp frame buffer through a Glide RGB565 LFB.
+  * Initial development by Paul Gardiner
+- *
+  * This software is released under the GNU Library or Lesser
+  * General Public License (LGPL)
+- *
+  ****************************************************************/
+-
++#include "BufAccess32Write.h"
+ #include "StdAfx.h"
+ #include "d3dx9.h"
+ #include "log.h"
+-#include "BufAccess32Write.h"
+ 
+-static FxU32 nextpow2(FxU32 v)
++static FxU32 nextpow2(FxU32 value)
+ {
+-    int s = 0;
+-
+-    v -= 1;
+-
+-    while(v)
+-    {
+-        v >>= 1;
+-        s += 1;
+-    }
+-
+-    v = 1;
+-
+-    while(s)
+-    {
+-        v <<= 1;
+-        s -= 1;
+-    }
+-
+-    return v;
++    FxU32 result = 1;
++    while (result < value)
++        result <<= 1;
++    return result;
+ }
+ 
+ CBufAccess32WriteCache::CBufAccess32WriteCache(CRender *render)
++    : m_render(render), m_readback(NULL), m_upload(NULL), m_width(0), m_height(0)
+ {
+-    m_render = render;
+-    m_tex    = NULL;
+-    m_shader = NULL;
+ }
+ 
+ CBufAccess32WriteCache::~CBufAccess32WriteCache()
+ {
+-    if(m_tex)
+-        m_tex->Release();
+-
+-    if(m_shader)
+-        m_shader->Release();
++    if (m_readback)
++        m_readback->Release();
++    if (m_upload)
++        m_upload->Release();
+ }
+ 
+-LPDIRECT3DTEXTURE9 CBufAccess32WriteCache::Get16Surface()
++bool CBufAccess32WriteCache::BeginWrite(LPDIRECT3DSURFACE9 surf)
+ {
+-    if(m_tex == NULL)
++    D3DSURFACE_DESC desc;
++    if (FAILED(surf->GetDesc(&desc)))
++        return false;
++    if (desc.Format != D3DFMT_X8R8G8B8 && desc.Format != D3DFMT_A8R8G8B8 &&
++        desc.Format != D3DFMT_R5G6B5)
++        return false;
++    if (!m_readback)
+     {
+-        bool dynamic = m_render->m_dynamic_tex;
++        if (FAILED(m_render->m_device->CreateOffscreenPlainSurface(
++                desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &m_readback, NULL)))
++            return false;
++        m_width = nextpow2(m_render->m_client_width);
++        m_height = nextpow2(m_render->m_client_height);
++        m_before.resize(m_width * m_height);
++        m_pixels.resize(m_width * m_height);
++        m_sample_x.resize(m_render->m_client_width);
++        for (FxU32 x = 0; x < m_render->m_client_width; ++x)
++            m_sample_x[x] = (x * desc.Width + desc.Width / 2) / m_render->m_client_width;
++    }
++    if (FAILED(m_render->m_device->GetRenderTargetData(surf, m_readback)))
++        return false;
++    D3DLOCKED_RECT rect;
++    if (FAILED(m_readback->LockRect(&rect, NULL, D3DLOCK_READONLY)))
++        return false;
++    // There is no unused RGB565 value that can mark an unwritten pixel. F-16
++    // uses the former cyan marker for text. Compare against a real snapshot.
++    for (FxU32 y = 0; y < m_render->m_client_height; ++y)
++    {
++        FxU32 sy = (y * desc.Height + desc.Height / 2) / m_render->m_client_height;
++        const FxU8 *row = (const FxU8 *)rect.pBits + sy * rect.Pitch;
++        FxU16 *before = m_before.data() + y * m_width;
++        if (desc.Format == D3DFMT_R5G6B5)
++            for (FxU32 x = 0; x < m_render->m_client_width; ++x)
++                before[x] = ((const FxU16 *)row)[m_sample_x[x]];
++        else if (desc.Width == m_render->m_client_width)
++            for (FxU32 x = 0; x < m_render->m_client_width; ++x)
++            {
++                FxU32 p = ((const FxU32 *)row)[x];
++                before[x] = ((p >> 8) & 0xf800) | ((p >> 5) & 0x07e0) | ((p >> 3) & 0x001f);
++            }
++        else
++            for (FxU32 x = 0; x < m_render->m_client_width; ++x)
++            {
++                FxU32 p = ((const FxU32 *)row)[m_sample_x[x]];
++                before[x] = ((p >> 8) & 0xf800) | ((p >> 5) & 0x07e0) | ((p >> 3) & 0x001f);
++            }
++        memcpy(m_pixels.data() + y * m_width, before, m_render->m_client_width * sizeof(FxU16));
++    }
++    m_readback->UnlockRect();
++    return true;
++}
+ 
+-        m_width  = nextpow2(m_render->m_client_width);
+-        m_height = nextpow2(m_render->m_client_height);
+-
+-        /* Use a dynamic texture if supported, otherwise
+-         * create in the managed pool. Either way its
+-         * lockable */
+-        if(FAILED(m_render->m_device->CreateTexture(
+-            m_width, m_height, 0,
+-            dynamic ? D3DUSAGE_DYNAMIC : 0,
+-            D3DFMT_R5G6B5,
+-            dynamic ? D3DPOOL_DEFAULT : D3DPOOL_MANAGED,
+-            &m_tex, NULL)))
+-        {
+-            Log::Warn(EFAILTEXCREATE);
+-        }
+-    }
+-    
+-    return m_tex;
++void CBufAccess32WriteCache::SetInfo(GrLfbInfo_t *info)
++{
++    info->lfbPtr = m_pixels.data();
++    info->strideInBytes = m_width * sizeof(FxU16);
++    info->writeMode = GR_LFBWRITEMODE_565;
+ }
+ 
+ void CBufAccess32WriteCache::Update32Surface(LPDIRECT3DSURFACE9 surf)
+ {
+-    if(m_tex)
++    bool changed = false;
++    for (FxU32 y = 0; y < m_render->m_client_height && !changed; ++y)
++        changed = memcmp(m_pixels.data() + y * m_width, m_before.data() + y * m_width,
++                         m_render->m_client_width * sizeof(FxU16)) != 0;
++    if (!changed)
++        return;
++    if (!m_upload)
+     {
+-        m_render->FlushScene();
+-        
+-        m_render->PushStateForRenderTexture();
+-        m_render->m_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+-        m_render->m_device->SetTexture(0, m_tex);
+-        m_render->m_device->SetRenderTarget(0, surf);
+-        m_render->m_device->SetPixelShader(GetBlueScreenShader());
+-        m_render->RenderRect((FxU32)(m_width * m_render->m_xscale), (FxU32)(m_height * m_render->m_yscale));
+-        m_render->FlushScene();
+-        m_render->ResetTarget();
+-        m_render->PopState();
++        bool dynamic = m_render->m_dynamic_tex;
++        if (FAILED(m_render->m_device->CreateTexture(
++                m_width, m_height, 1, dynamic ? D3DUSAGE_DYNAMIC : 0, D3DFMT_A8R8G8B8,
++                dynamic ? D3DPOOL_DEFAULT : D3DPOOL_MANAGED, &m_upload, NULL)))
++        {
++            Log::Warn(EFAILTEXCREATE);
++            return;
++        }
+     }
++    D3DLOCKED_RECT rect;
++    DWORD flags = D3DLOCK_NOSYSLOCK | (m_render->m_dynamic_tex ? D3DLOCK_DISCARD : 0);
++    if (FAILED(m_upload->LockRect(0, &rect, NULL, flags)))
++    {
++        Log::Warn(EFAILTEXLOCK);
++        return;
++    }
++    for (FxU32 y = 0; y < m_height; ++y)
++    {
++        FxU32 *out = (FxU32 *)((FxU8 *)rect.pBits + y * rect.Pitch);
++        memset(out, 0, m_width * sizeof(FxU32));
++        if (y >= m_render->m_client_height)
++            continue;
++        const FxU16 *before = m_before.data() + y * m_width;
++        const FxU16 *pixels = m_pixels.data() + y * m_width;
++        for (FxU32 x = 0; x < m_render->m_client_width; ++x)
++            if (pixels[x] != before[x])
++            {
++                FxU32 p = pixels[x], r = p >> 11, g = (p >> 5) & 63, b = p & 31;
++                r = (r << 3) | (r >> 2);
++                g = (g << 2) | (g >> 4);
++                b = (b << 3) | (b >> 2);
++                out[x] = 0xff000000 | (r << 16) | (g << 8) | b;
++            }
++    }
++    m_upload->UnlockRect(0);
++    // Alpha is a separate dirty mask, so every RGB565 color remains drawable.
++    // Untouched pixels retain the original 3D color precision and resolution.
++    m_render->FlushScene();
++    m_render->PushStateForRenderTexture();
++    m_render->m_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
++    m_render->m_device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATER);
++    m_render->m_device->SetRenderState(D3DRS_ALPHAREF, 0);
++    m_render->m_device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
++    m_render->m_device->SetRenderState(D3DRS_COLORWRITEENABLE, 0x7);
++    m_render->m_device->SetTexture(0, m_upload);
++    m_render->m_device->SetRenderTarget(0, surf);
++    m_render->m_device->SetPixelShader(m_render->GetCopyShader());
++    m_render->RenderRect((FxU32)(m_width * m_render->m_xscale),
++                         (FxU32)(m_height * m_render->m_yscale));
++    m_render->FlushScene();
++    m_render->ResetTarget();
++    m_render->PopState();
+ }
+ 
+-LPDIRECT3DPIXELSHADER9 CBufAccess32WriteCache::GetBlueScreenShader()
++CBufAccess32Write::CBufAccess32Write(CBufAccess32WriteCache *cache, LPDIRECT3DSURFACE9 surf)
++    : m_cache(cache), m_surf(surf), m_valid(cache->BeginWrite(surf))
+ {
+-    if(m_shader == NULL)
+-    {
+-        LPD3DXBUFFER shad;
+-        LPD3DXBUFFER err;
+-
+-        const char *code =
+-            "ps_1_1\n"
+-            "def c0, 0.0, 1.0, 1.0, 1.0\n"
+-            "def c1, 1.0, 1.0, 1.0, 0.0\n"
+-            "def c2, 0.498, 0.498, 0.498, 0.498\n"
+-            "tex t0\n"
+-            "sub_sat r0, t0, c0\n"
+-            "sub_sat r1, c0, t0\n"
+-            "add r0, r0, r1\n"           /* r0 = abs(t0 - c0) */
+-            "dp3_sat r1, r0, c1\n"       /* r1 = sum abs(t0 - c0) */
+-            "add_sat r0, r1, c2\n"       /* sum abs(t0 - c0) > 0 iff r0.a >= 0.5 */
+-            "cnd r0, r0.a, c0, c1\n"     /* r0.a = (sum abs(t0 - c0) > 0) ? 1.0 ; 0.0 */
+-            "mov r0.xyz, t0\n";
+-
+-        if(FAILED(D3DXAssembleShader(code, strlen(code), NULL, NULL, 0, &shad, &err)))
+-        {
+-            Log::Printf("Shader: %s\n", err->GetBufferPointer());
+-            return NULL;
+-        }
+-
+-        if(FAILED(m_render->m_device->CreatePixelShader((DWORD *)shad->GetBufferPointer(),
+-                                              &m_shader)))
+-        {
+-            Log::Warn(EFAIL_CREATEP8SHAD);
+-            shad->Release();
+-            return NULL;
+-        }
+-
+-        shad->Release();
+-    }
+-
+-    return m_shader;
+ }
+-
+-
+-
+-CBufAccess32Write::CBufAccess32Write(CBufAccess32WriteCache *cache,
+-                                     LPDIRECT3DSURFACE9      surf)
+-{
+-    LPDIRECT3DTEXTURE9 tex;
+-
+-    /* Record our cached stuff and the LFB surface that
+-     * must eventually be updated */
+-    m_cache = cache;
+-    m_surf  = surf;
+-    m_dummy = NULL;
+-
+-    /* Get the surface of the 16bit texture from the cache
+-     * and lock it */
+-    tex = m_cache->Get16Surface();
+-    
+-    if(tex)
+-    {
+-        tex->LockRect(0, &m_rect, NULL, D3DLOCK_DISCARD|D3DLOCK_NOSYSLOCK);
+-    }
+-    else
+-    {
+-        /* Create a dummy buffer to avoid bad access */
+-        m_dummy = new FxU8[m_cache->m_width*m_cache->m_height*2];
+-
+-        m_rect.pBits = m_dummy;
+-        m_rect.Pitch = m_cache->m_width*2;
+-    }
+-
+-    FxU32 x, y, *p;
+-
+-    p = (FxU32 *)m_rect.pBits;
+-
+-    for(y = 0; y < m_cache->m_height; y++)
+-    {
+-        for(x = 0; x < m_cache->m_width/2; x++)
+-            p[x] = 0x07FF07FF;
+-
+-        p += m_rect.Pitch/4;
+-    }
+-}
+-
+ CBufAccess32Write::~CBufAccess32Write()
+ {
+-    LPDIRECT3DTEXTURE9 tex;
+-
+-    /* Unlock the 16bit texture and blit it to the LFB surface */
+-    tex = m_cache->Get16Surface();
+-    
+-    if(tex)
+-        tex->UnlockRect(0);
+-
+-    m_cache->Update32Surface(m_surf);
+-
+-    delete m_dummy;
++    if (m_valid)
++        m_cache->Update32Surface(m_surf);
+ }
+-
+-void CBufAccess32Write::SetInfo(GrLfbInfo_t *info)
+-{
+-    /* Give out the details of the locked 16bit texture */
+-    info->lfbPtr        = m_rect.pBits;
+-    info->strideInBytes = m_rect.Pitch;
+-    info->writeMode     = GR_LFBWRITEMODE_565;
+-}
++void CBufAccess32Write::SetInfo(GrLfbInfo_t *info) { m_cache->SetInfo(info); }
+--- a/BufAccess32Write.h
++++ b/BufAccess32Write.h
+@@ -1,57 +1,47 @@
+ /*****************************************************************
+  * BufAccess32Write.h
+  *
+- * This class provides read access to 32bpp frame buffers
+- *
++ * Write access to a 32bpp frame buffer through a Glide RGB565 LFB.
+  * Initial development by Paul Gardiner
+- *
+  * This software is released under the GNU Library or Lesser
+  * General Public License (LGPL)
+- *
+  ****************************************************************/
+-
+ #ifndef BUFACCESS32WRITE_H
+ #define BUFACCESS32WRITE_H
+-
++#include "BufAccess.h"
+ #include "Render.h"
+-
+-#include "BufAccess.h"
++#include <vector>
+ 
+ class CBufAccess32WriteCache
+ {
+-private:
+-    CRender                *m_render;
+-    LPDIRECT3DTEXTURE9      m_tex;
+-    LPDIRECT3DPIXELSHADER9  m_shader;
++  private:
++    CRender *m_render;
++    LPDIRECT3DSURFACE9 m_readback;
++    LPDIRECT3DTEXTURE9 m_upload;
++    std::vector<FxU16> m_before;
++    std::vector<FxU16> m_pixels;
++    std::vector<FxU32> m_sample_x;
++    FxU32 m_width, m_height;
+ 
+-    LPDIRECT3DPIXELSHADER9 GetBlueScreenShader();
+-
+-public:
+-    FxU32                   m_width;
+-    FxU32                   m_height;
+-
++  public:
+     CBufAccess32WriteCache(CRender *render);
+     ~CBufAccess32WriteCache();
+-
+-    LPDIRECT3DTEXTURE9 Get16Surface();
+-    void               Update32Surface(LPDIRECT3DSURFACE9 surf);
++    bool BeginWrite(LPDIRECT3DSURFACE9 surf);
++    void SetInfo(GrLfbInfo_t *info);
++    void Update32Surface(LPDIRECT3DSURFACE9 surf);
+ };
+-
+ 
+ class CBufAccess32Write : public CBufAccess
+ {
+-private:
++  private:
+     CBufAccess32WriteCache *m_cache;
+-    LPDIRECT3DSURFACE9      m_surf;
+-    D3DLOCKED_RECT          m_rect;
+-    FxU8                   *m_dummy;
++    LPDIRECT3DSURFACE9 m_surf;
++    bool m_valid;
+ 
+-public:
+-    CBufAccess32Write(CBufAccess32WriteCache *cache,
+-                      LPDIRECT3DSURFACE9      surf);
++  public:
++    CBufAccess32Write(CBufAccess32WriteCache *cache, LPDIRECT3DSURFACE9 surf);
+     virtual ~CBufAccess32Write();
+-
++    bool IsValid() const { return m_valid; }
+     void SetInfo(GrLfbInfo_t *info);
+ };
+-
+-#endif /* BUFACCESS32WRITE_H */
++#endif
+--- a/LFBColor.cpp
++++ b/LFBColor.cpp
+@@ -112,7 +112,15 @@
+ 	if(m_access == NULL)
+     {
+ 		if(m_config->TrueColor() || m_client_width != m_win_width || m_client_height != m_win_height)
+-		    m_access = new CBufAccess32Write(m_32write_cache, GetBuffer());
++        {
++            CBufAccess32Write *access = new CBufAccess32Write(m_32write_cache, GetBuffer());
++            if(!access->IsValid())
++            {
++                delete access;
++                return FXFALSE;
++            }
++            m_access = access;
++        }
+ 		else
+ 		    m_access = new CBufAccess16Write(GetBuffer());
+     }

@@ -30,6 +30,11 @@
 #include <Windows.h>
 #endif
 
+#ifdef BOXEDWINE_NATIVE_RUNTIME
+extern "C" int MacPlatformAcquireRuntimeProgramFolder(void);
+extern "C" void MacPlatformReleaseRuntimeProgramFolder(void);
+#endif
+
 #ifndef __TEST
 
 U32 gensrc;
@@ -42,7 +47,21 @@ int boxedmain(int argc, const char **argv) {
     StartUpArgs startupArgs;                  
 
     klog("Starting ...");
-#if defined(__MACH__)
+#ifdef BOXEDWINE_NATIVE_RUNTIME
+    if (!MacPlatformAcquireRuntimeProgramFolder()) {
+        klog("Access to the selected program folder failed. Choose the file and folder again.");
+        return 2;
+    }
+    struct ProgramFolderAccess {
+        ~ProgramFolderAccess() { MacPlatformReleaseRuntimeProgramFolder(); }
+    } programFolderAccess;
+    // A bundled helper must receive a launch request; never open the legacy UI.
+    if (argc < 2) {
+        klog("Launch Boxedwine through BoxedwineUI, or provide a program and its arguments.");
+        return 2;
+    }
+#endif
+#if defined(__MACH__) && !defined(BOXEDWINE_NATIVE_RUNTIME)
     std::vector<BString> lines;
     std::vector<const char*> args;
     BString dataPath = KNativeSystem::getLocalDirectory();
@@ -101,12 +120,32 @@ int boxedmain(int argc, const char **argv) {
     }
 #endif
 
+#ifdef BOXEDWINE_NATIVE_RUNTIME
+    if (startupArgs.shouldStartUI()) {
+        klog("The native runtime requires a program to launch.");
+        return 2;
+    }
+#endif
     Platform::init();
     // currently to fake sound, we really need to play it and just silence it right before it goes to speaker, 
     // this way the timing of the callback to get the audio from wine are correct.  Without this timing, things can hange.
     if (!KNativeSystem::init(startupArgs.videoOption, true/* startupArgs.soundEnabled */)) {
         return 1;
     }
+#ifdef BOXEDWINE_NATIVE_RUNTIME
+    // The launcher owns stdin. Its disappearance closes the pipe, ensuring a
+    // crashed launcher cannot leave a running emulator behind. A quit command
+    // is handled by SDL on the runtime's main thread.
+    std::thread([]() {
+        char command[32];
+        while (fgets(command, sizeof(command), stdin)) {
+            if (!strcmp(command, "quit\n")) {
+                KNativeSystem::postQuit();
+            }
+        }
+        std::_Exit(0);
+    }).detach();
+#endif
 #ifndef BOXEDWINE_DISABLE_UI
     BoxedwineData::init(argc, argv);
 #endif

@@ -7157,6 +7157,11 @@ U8* JitArmV8CodeGen::createStartJITCode() {
     loadCacheFromCPU();
     If(JitWidth::b64, std::make_shared<JitReg>(regBranch, 0xff)); {
         compiler.blr(xBranch);
+    } StartElse(); {
+        // Invalidation can clear the entry after an interpreter tail call has
+        // selected this wrapper. nextOp may still be that chain's old head;
+        // refetch at the current EIP when returning to the run loop.
+        writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
     } EndIf();
     blockExit();
     return createDynamicExecutableMemory();

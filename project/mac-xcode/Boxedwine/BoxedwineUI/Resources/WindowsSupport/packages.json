@@ -1,0 +1,44 @@
+{
+  "https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip": {
+    "bytes": 167016911,
+    "fileVersion": "11",
+    "filesystemVersion": "11",
+    "sha256": "a3367c4e977dbbe0295ce3b4b102bf7b0baa1278ea121cefe6065d561b960452"
+  },
+  "https://boxedwine.org/v2/2/TinyCore15Wine3.1.zip": {
+    "bytes": 119229367,
+    "fileVersion": "2",
+    "filesystemVersion": "7",
+    "sha256": "09296bb395cc2b8a563fc7986f242531e485b2664bd282270eb03e12015ca693"
+  },
+  "https://boxedwine.org/v2/2/TinyCore15Wine4.1.zip": {
+    "bytes": 132820372,
+    "fileVersion": "2",
+    "filesystemVersion": "7",
+    "sha256": "d0b21f2666eb2f6a1b29cba5a73cd3ea523b186b980be4d579bceacd0ad799f2"
+  },
+  "https://boxedwine.org/v2/2/TinyCore15Wine5.0.zip": {
+    "bytes": 136107560,
+    "fileVersion": "2",
+    "filesystemVersion": "7",
+    "sha256": "efdee19c67b1adeebab87b0a149181e510c8a126800f754aa18c41786327f506"
+  },
+  "https://boxedwine.org/v2/2/TinyCore15Wine6.0.zip": {
+    "bytes": 141109447,
+    "fileVersion": "2",
+    "filesystemVersion": "2",
+    "sha256": "ef1aa2e7d350751e2b324a9aa27beb3c22c82a6207b1a02fa18dbb7ba5551efe"
+  },
+  "https://boxedwine.org/v2/5/TinyCore15Wine10.0.zip": {
+    "bytes": 156582181,
+    "fileVersion": "5",
+    "filesystemVersion": "5",
+    "sha256": "f0ed13eaf0c11bc95b229e2a747f04167c4e63445dc274d122758bd7e84b5572"
+  },
+  "https://boxedwine.org/v2/5/TinyCore15Wine9.0.zip": {
+    "bytes": 153742404,
+    "fileVersion": "5",
+    "filesystemVersion": "5",
+    "sha256": "1dbed7427341fdeee01bf6476d7795d136eeb4f11261ca769d35aa77f3eaba77"
+  }
+}
