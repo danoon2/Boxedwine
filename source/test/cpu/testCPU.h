@@ -70,6 +70,7 @@ void testFlagsAcrossIndirectJitBlockBoundary();
 void testJitOverlappingDirectJumpTarget();
 void testJitOpenGLCallStateAndInvalidation();
 void testJitOpenGLCallBoundaries();
+void testArmJitEntryInvalidatedBeforeDispatch();
 void testJitEntryCacheInvalidation();
 void testJitDirectTargetInvalidation();
 void testNativeJitRunCountWraps();

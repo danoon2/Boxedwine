@@ -840,6 +840,42 @@ void testJitDirectTargetInvalidation() {
 #endif
 }
 
+void testArmJitEntryInvalidatedBeforeDispatch() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    testNewInstruction(0);
+    CPU* cpu = testContext().cpu;
+    testPushCode8(0x43); // inc ebx: the interpreter-chain head must not run again
+    testPushCode8(0xb8); testPushCode32(0x12345678); // mov eax,0x12345678
+    testPushCode8(0xcd); testPushCode8(0x97); // TestEnd
+    DecodedOp* head = cpu->getOp(TEST_CODE_ADDRESS, 0);
+    DecodedOp* target = cpu->getOp(TEST_CODE_ADDRESS + 1, 0);
+    startNewJIT(cpu, TEST_CODE_ADDRESS + 1, target);
+    if (!target->pfnJitCode) {
+        testFail("ARM JIT entry invalidation setup did not compile");
+        return;
+    }
+    OpCallback enterJit = cpu->thread->process->startJITOp;
+    // Model invalidation after an interpreter tail call selected startJITOp,
+    // but before that wrapper loads the target's compiled entry.
+    cpu->memory->removeCodeBlock(TEST_CODE_ADDRESS + 1, target, false);
+    cpu->eip.u32 = 1;
+    cpu->reg[0].u32 = 0;
+    cpu->reg[3].u32 = 0;
+    cpu->nextOp = head;
+    enterJit(cpu, target);
+    if (cpu->eip.u32 != 1 || cpu->nextOp || cpu->reg[0].u32 || cpu->reg[3].u32) {
+        testFail("Invalidated ARM JIT entry must discard the old chain head and preserve guest state");
+        return;
+    }
+    do {
+        cpu->run();
+    } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+    if (cpu->reg[0].u32 != 0x12345678 || cpu->reg[3].u32 != 0 || cpu->eip.u32 != 6) {
+        testFail("Invalidated ARM JIT entry did not resume at the current instruction exactly once");
+    }
+#endif
+}
+
 void testJitEntryCacheInvalidation() {
 #ifdef BOXEDWINE_JIT_X64
     testNewInstruction(0);
