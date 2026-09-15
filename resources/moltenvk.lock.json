@@ -1,0 +1,10 @@
+{
+  "version": "1.4.2",
+  "sourceRevision": "db66022459ffb663aa2b50f6b018bc2e124f5edf",
+  "url": "https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-macos.tar",
+  "bytes": 59563008,
+  "sha256": "f95765a6229cb7b915990a2890ce12ebe36a730b021545d3d52ae69ce4c4024e",
+  "member": "MoltenVK/MoltenVK/dynamic/dylib/macOS/libMoltenVK.dylib",
+  "libraryBytes": 10925552,
+  "librarySHA256": "aef00b13bcc808adf15b85bef9ae67393d92be7ed5dfe41cad16fa809e4a4c5f"
+}

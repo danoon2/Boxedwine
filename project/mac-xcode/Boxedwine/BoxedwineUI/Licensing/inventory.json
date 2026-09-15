@@ -858,6 +858,6 @@
   "javaRemoval": {
     "date": "2026-09-14",
     "record": "java-removal.json",
-    "meaning": "Initial Java and 36-demo inspection evidence remains historical. The native app no longer provides Java; catalog 26R2-catalog-2 has 34 demos and awaits publication."
+    "meaning": "Initial Java and 36-demo inspection evidence remains historical. The native app no longer provides Java; catalog 26R2-catalog-2 has 34 demos, is published, and passed fresh-download verification."
   }
 }

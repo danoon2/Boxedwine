@@ -1,6 +1,6 @@
 # Native demo coverage
 
-Catalog release: `26R2-catalog-2` (prepared and cached locally; upload pending). This release includes **34 of the 38** entries in the original [26R2 catalog](https://www.boxedwine.org/v2/26R2/filesV2.xml). Java Solitaire and FreeCol are excluded following removal of dedicated Java support. Solitaire DotNet still needs Mono; 3DMark’s legacy `Debug` token still needs clarification.
+Catalog release: `26R2-catalog-2` (published and verified by fresh download). This release includes **34 of the 38** entries in the original [26R2 catalog](https://www.boxedwine.org/v2/26R2/filesV2.xml). Java Solitaire and FreeCol are excluded following removal of dedicated Java support. Solitaire DotNet still needs Mono; 3DMark’s legacy `Debug` token still needs clarification.
 
 ## Included entries
 

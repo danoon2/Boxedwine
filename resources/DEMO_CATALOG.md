@@ -10,7 +10,7 @@ The package contains `catalog.xml` and its referenced PNGs in one flat directory
 The XML's `release` matches the lock's `version`; `schemaVersion` describes the
 recipe format separately. The current pin, `26R2-catalog-2`, contains 34 recipes and icons. It removes
 Java Solitaire and FreeCol from the original 36-entry `26R2-catalog-1`.
-The new ZIP is prepared and cached locally; upload is pending. See the
+The uploaded ZIP was downloaded again and matched the pinned size and SHA-256; its 34 icons passed fresh-cache validation. See the
 [recipe schema](../project/mac-xcode/Boxedwine/BoxedwineUI/DEMO_CATALOG.md).
 
 `tools/demo_catalog.py` uses Python 3's standard library and is shared build

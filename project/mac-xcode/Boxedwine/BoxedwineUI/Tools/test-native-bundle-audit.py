@@ -44,6 +44,8 @@ class BundleAuditTests(unittest.TestCase):
         resources = cls.template / "Contents/Resources"
         resources.mkdir()
         (resources / "Boxedwine-LICENSE.txt").write_text("Test fixture only.\n")
+        module.run(sys.executable, str(Path(__file__).with_name("prepare-third-party-notices.py")),
+                   "--output", str(resources / "Licenses"))
 
     @classmethod
     def compile_library(cls, output, arch="arm64", minimum="13", install_name="@rpath/libFixture.dylib"):
@@ -74,6 +76,13 @@ class BundleAuditTests(unittest.TestCase):
         report = module.audit(self.app, signatures=False, require_demo_catalog=True)
         self.assertIn("Pinned demo catalog is missing", "\n".join(report["errors"]))
         self.assertIsNone(report["demoCatalog"])
+
+    def test_missing_or_altered_third_party_notices_fail(self):
+        notices = self.app / "Contents/Resources/Licenses/notices.json"
+        notices.write_text('{"schemaVersion": 1, "components": []}')
+        self.assertIn("Bundled third-party notices differ", self.errors())
+        notices.unlink()
+        self.assertIn("Third-party licenses:", self.errors())
 
     def test_an_incomplete_catalog_fails_even_a_local_audit(self):
         directory = self.app / "Contents/Resources/Demos"

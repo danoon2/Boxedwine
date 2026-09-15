@@ -143,6 +143,42 @@ The subsequent filesystem-11 integration replaces the Debug build’s included W
 
 ## September 14 Java removal
 
-Dedicated Java imports, preparation/downloads, JAR inspection/launching, VM settings and metadata have been removed. No Java compatibility layer is retained. Windows apps may still include runtime dependencies in their folders. Catalog `26R2-catalog-2` removes Java Solitaire and FreeCol; its 34 remaining recipes are unchanged. The ZIP is prepared and cached locally; upload and fresh-download verification remain pending.
+Dedicated Java imports, preparation/downloads, JAR inspection/launching, VM settings and metadata have been removed. No Java compatibility layer is retained. Windows apps may still include runtime dependencies in their folders. Catalog `26R2-catalog-2` removes Java Solitaire and FreeCol; its 34 remaining recipes are unchanged. The uploaded ZIP matched the pinned size and SHA-256 on a fresh download, and its catalog and 34 icons passed validation in a new cache.
 
 All 218 Swift tests in 26 suites passed, including direct-JAR rejection, EXE discovery with JAR data preserved, and rejection of Java demo fields. All 15 shared catalog tool tests passed. The Debug build passed its five-image bundle audit. UI checks in an isolated library covered Add App, the 34-demo list, Windows-folder import/program selection, and Advanced’s two argument fields. See [the change record](Licensing/java-removal.json).
+
+
+## Native third-party notices and MoltenVK refresh
+
+About Boxedwine and Help now open the offline native Third-Party Licenses viewer
+with 18 components, source links and selectable text. A plain-text copy and
+source records are included in the bundle. Build preparation verifies reviewed
+notice text and original library hashes; the final bundle audit verifies notices,
+source records and the re-signed libraries’ Mach-O identities. SDL/hidapi were
+matched byte for byte to the official SDL 2.0.14 release.
+
+The native engine now prepares the official public-API MoltenVK 1.4.2 artifact
+from `resources/moltenvk.lock.json` before linking. Direct Xcode and Jenkins builds
+use the same pin, with verified cache reuse and atomic installation. The archive
+and original library have independent byte-count and SHA-256 checks. Wine’s
+OpenGL default is unchanged. See [MoltenVK build notes](../../../../tools/moltenvk/README.md).
+
+Both Debug (with Wine) and Release (without Wine) builds passed their five-image
+bundle audits; 19 bundle regression tests and six downloader tests passed. A
+fresh-cache download succeeded. On Apple M4, the native Vulkan probe verified
+all 256 read-back pixels and SDL swapchain presentation.
+
+The Wine startup stall was traced to Xcode 26.5’s Debug libc++ tree-invariant
+checks repeatedly scanning the JIT address map. The emulator’s Debug target now
+uses `CLANG_CXX_STANDARD_LIBRARY_HARDENING=extensive`, retaining library safety
+checks, emulator assertions and unoptimized debugging without those internal
+scans. The rebuilt Debug app passed its five-image audit. The existing vkQuake
+installation launched from the regular UI with Wine 9 and MoltenVK 1.4.2 and
+visibly rendered its textured demo, then exited cleanly with code zero. The
+isolated Wine 11 OpenGL Direct3D9 probe
+also passed (51 frames, exit zero). The DXVK probe still could not create a
+device: the old MoltenVK 1.2.11 adapter lacks its required Vulkan 1.3 support,
+while 1.4.2 rejects requested device features. These checks establish vkQuake
+startup/rendering and the OpenGL smoke result, not general DXVK compatibility. Full guest graphics testing
+and the existing licensing release work remain open. Exact results are in
+[the native validation record](Licensing/native-validation.json).

@@ -21,6 +21,7 @@ fi
 resource_dir="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
 mkdir -p "$resource_dir"
 /usr/bin/ditto "$SRCROOT/../../../license.txt" "$resource_dir/Boxedwine-LICENSE.txt"
+/usr/bin/python3 "$SRCROOT/BoxedwineUI/Tools/prepare-third-party-notices.py" --output "$resource_dir/Licenses"
 package_check() {
     CLANG_MODULE_CACHE_PATH="$TARGET_TEMP_DIR/PackageCheckModules" \
     SWIFTPM_MODULECACHE_OVERRIDE="$TARGET_TEMP_DIR/PackageCheckModules" \

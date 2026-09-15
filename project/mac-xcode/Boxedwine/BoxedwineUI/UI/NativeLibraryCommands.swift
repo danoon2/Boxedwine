@@ -4,19 +4,114 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 private enum NativeSupport {
     static let issuesURL = URL(string: "https://github.com/danoon2/Boxedwine/issues")!
+    private static var aboutWindow: NSWindow?
+    private static var licensesWindow: NSWindow?
 
-    @MainActor static func showAbout() {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        let credits = NSMutableAttributedString(
-            string: "Having trouble with an app or game?\nReport an Issue on GitHub",
-            attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-                         .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph])
-        let link = (credits.string as NSString).range(of: "Report an Issue on GitHub")
-        credits.addAttribute(.link, value: issuesURL, range: link)
-        NSApplication.shared.orderFrontStandardAboutPanel(options: [.credits: credits])
+    static func showAbout() {
+        if aboutWindow == nil {
+            let window = NSWindow(contentViewController: NSHostingController(rootView: NativeAboutView()))
+            window.title = "About Boxedwine"
+            window.styleMask = [.titled, .closable]
+            window.isReleasedWhenClosed = false
+            window.center()
+            aboutWindow = window
+        }
+        aboutWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    static func showLicenses() {
+        if licensesWindow == nil {
+            do {
+                guard let url = Bundle.main.url(forResource: "notices", withExtension: "json", subdirectory: "Licenses") else {
+                    throw CocoaError(.fileNoSuchFile)
+                }
+                let document = try JSONDecoder().decode(NativeLicenseDocument.self, from: Data(contentsOf: url))
+                guard document.schemaVersion == 1, !document.components.isEmpty else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                let window = NSWindow(contentViewController: NSHostingController(rootView: NativeLicensesView(components: document.components)))
+                window.title = "Third-Party Licenses"
+                window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+                window.isReleasedWhenClosed = false
+                window.setContentSize(NSSize(width: 820, height: 580))
+                window.center()
+                licensesWindow = window
+            } catch {
+                NSLog("Unable to load bundled third-party licenses: %@", error.localizedDescription)
+                let alert = NSAlert()
+                alert.messageText = "Couldn’t open third-party licenses"
+                alert.informativeText = "The license resources are missing or unreadable. Reinstall Boxedwine, or report this issue on GitHub."
+                alert.runModal()
+                return
+            }
+        }
+        licensesWindow?.makeKeyAndOrderFront(nil)
+    }
+}
+
+private struct NativeAboutView: View {
+    private let info = Bundle.main.infoDictionary ?? [:]
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(nsImage: NSApplication.shared.applicationIconImage).resizable().frame(width: 80, height: 80)
+                .accessibilityHidden(true)
+            Text("Boxedwine").font(.title.bold())
+            Text("Version \(info["CFBundleShortVersionString"] as? String ?? "") (\(info["CFBundleVersion"] as? String ?? ""))")
+                .foregroundStyle(.secondary)
+            if let copyright = info["NSHumanReadableCopyright"] as? String {
+                Text(copyright).font(.footnote).foregroundStyle(.secondary)
+            }
+            VStack(spacing: 6) {
+                Text("Having trouble with an app or game?")
+                Link("Report an Issue on GitHub", destination: NativeSupport.issuesURL)
+            }.padding(.top, 8)
+            Button("Third-Party Licenses…") { NativeSupport.showLicenses() }
+        }.multilineTextAlignment(.center).textSelection(.enabled).padding(28).frame(width: 390)
+    }
+}
+
+private struct NativeLicenseDocument: Decodable {
+    let schemaVersion: Int
+    let components: [Component]
+
+    struct Component: Decodable, Identifiable {
+        let id, name, license, sourceDescription, text: String
+        let sourceURL: URL
+    }
+}
+
+private struct NativeLicensesView: View {
+    let components: [NativeLicenseDocument.Component]
+    @State private var selection: String? = "boxedwine"
+
+    var body: some View {
+        HSplitView {
+            List(components, selection: $selection) { component in
+                Text(component.name).tag(component.id)
+            }.listStyle(.sidebar).frame(minWidth: 190, idealWidth: 220, maxWidth: 280)
+                .accessibilityLabel("Software components")
+            if let component = components.first(where: { $0.id == selection }) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(component.name).font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                        Text(component.license).foregroundStyle(.secondary)
+                        Text(component.sourceDescription)
+                        Link("View Source", destination: component.sourceURL)
+                        Divider()
+                        Text(component.text).font(.system(size: 12, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }.textSelection(.enabled).padding(24)
+                }.id(component.id).frame(minWidth: 380, maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                Text("Select a component to read its license.")
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 380, maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }.frame(minWidth: 650, minHeight: 420)
     }
 }
 
@@ -94,6 +189,7 @@ struct NativeLibraryCommands: Commands {
         }
         CommandGroup(replacing: .help) {
             Button("Boxedwine Help") { openWindow(id: "native-help") }
+            Button("Third-Party Licenses…") { NativeSupport.showLicenses() }
             Link("Report an Issue on GitHub…", destination: NativeSupport.issuesURL)
             Divider()
             action("Try Windows Notepad", .notepad)

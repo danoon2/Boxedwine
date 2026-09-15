@@ -111,3 +111,40 @@ The local `psVoodoo` fork now replaces all five proprietary-worded headers with 
 The source change includes compile-time Win32 ABI checks and makes the build place its license and provenance documents beside the DLL. Validation found identical executable code, data, resources and all 369 export records compared with the preceding source built using the same toolchain; only build-identification metadata differs. The regression results and limitations are recorded in [Licensing/psvoodoo-header-validation.json](Licensing/psvoodoo-header-validation.json).
 
 This addresses the replacement headers' provenance, not historical distribution or overall Store clearance. The user committed the changes as `67fcb0a0eb1be9c5f77d04250ad715b2f481754b`; the source build pin now names that revision. A rebuilt DLL and matching source/license materials were assembled into a Wine 11 filesystem using a fresh download as the base, preserving six WebGL DLL updates that were already online. After the user's upload, a fresh download matched the tested archive byte for byte and passed native package validation. The app's download size and SHA-256 now pin this published archive. See [the filesystem update record](Licensing/psvoodoo-filesystem-update.json). Do not use the earlier private validation snapshot's commit as the production source pin.
+
+
+## September 14 follow-up: native notices and source records
+
+About Boxedwine and the Help menu now open a native, offline Third-Party Licenses
+window. The bundle includes selectable notices and source links for 18 components,
+plus `Licenses/Third-Party-Licenses.txt` for redistribution. The build reads the
+reviewed text from `Licensing/native-notices.json`; changed/missing notice text
+or mismatched original libraries fail preparation. The bundle audit verifies
+the generated resources, included source records and re-signed library identities.
+Full external license texts and their origins are retained under `Licensing/Notices`.
+
+The earlier native-component table describes the initial audit. Its SDL/hidapi
+binary-origin question is now resolved: both original framework binaries match
+the official SDL 2.0.14 DMG byte for byte. Their source is the exact official SDL
+2.0.14 source archive, including its nested hidapi source and Xcode build project.
+The archive served from the version-4 Mac dependencies URL contains a version-3
+marker; its actual binaries match the inspected local inputs. The fresh archive
+hash is recorded rather than treating this marker as a different build.
+
+With the maintainer's approval, the untraceable MoltenVK 1.2.11 input is replaced
+by the official **1.4.2** public-API macOS artifact. Native Xcode/Jenkins builds
+prepare the separately pinned archive before linking and embedding. Source is
+`db66022459ffb663aa2b50f6b018bc2e124f5edf`; the source tree pins SPIRV-Cross,
+SPIRV-Tools, SPIRV-Headers, Vulkan-Headers and cereal. Their notices are included.
+The public artifact supports arm64/x86_64 and macOS 12+, within this app's macOS 15
+floor. Wine's default OpenGL renderer is unchanged.
+
+[`Licensing/native-dependencies.json`](Licensing/native-dependencies.json) records
+10 source/binary archives, their hashes, the exact original framework hashes,
+build-recipe locations and limitations. Build-producer flags are not independently
+reproduced. The LLVM extraction's original revision remains unknown; the adapted
+code and the full LLVM exception are retained. Local source archives are under
+`tmp/native-licenses/downloads`; these records do not publish a corresponding-source
+release or establish Store eligibility. Wine/TinyCore and alternate filesystem
+source delivery, final Boxedwine source release, demo rights, contributor authority
+and the combined-license/Apple-terms review remain open.

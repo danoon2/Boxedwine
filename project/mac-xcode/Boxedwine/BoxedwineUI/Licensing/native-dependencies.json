@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-14",
+  "scope": "Native Mac dependencies; guest Wine filesystems remain a separate work item.",
+  "artifacts": [
+    {
+      "file": "maclib-4.zip",
+      "url": "https://boxedwine.org/v/depend/mac/4/maclib.zip",
+      "bytes": 66632222,
+      "sha256": "060d52bacf869e99111cbf16a98087acc2f3d0ee55013a84088e1b08845040d1"
+    },
+    {
+      "file": "SDL2-2.0.14.dmg",
+      "url": "https://www.libsdl.org/release/SDL2-2.0.14.dmg",
+      "bytes": 1717740,
+      "sha256": "05ee7538e4617e561333e7a85e5d9ef9813d3e5352e91c10e7f8912f86378793"
+    },
+    {
+      "file": "SDL2-2.0.14.tar.gz",
+      "url": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "bytes": 6089974,
+      "sha256": "d8215b571a581be1332d2106f8036fcb03d12a70bae01e20f424976d275432bc"
+    },
+    {
+      "file": "MoltenVK-macos-1.4.2.tar",
+      "url": "https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.2/MoltenVK-macos.tar",
+      "bytes": 59563008,
+      "sha256": "f95765a6229cb7b915990a2890ce12ebe36a730b021545d3d52ae69ce4c4024e"
+    },
+    {
+      "file": "MoltenVK-1.4.2.tar.gz",
+      "url": "https://codeload.github.com/KhronosGroup/MoltenVK/tar.gz/v1.4.2",
+      "bytes": 1260733,
+      "sha256": "6864db532f1dbbdb621a8d0ec13f24edae318fd9269dd3dd0cdff791334bb1cb"
+    },
+    {
+      "file": "SPIRV-Cross-1.4.2.tar.gz",
+      "url": "https://codeload.github.com/KhronosGroup/SPIRV-Cross/tar.gz/6c09849fe88c48eaed08413aa022aaa136a3a057",
+      "bytes": 2007157,
+      "sha256": "b81b9956289950570953738e666a031ca32ff64e4fc925eba89f227c42109518"
+    },
+    {
+      "file": "cereal-1.4.2.tar.gz",
+      "url": "https://codeload.github.com/USCiLab/cereal/tar.gz/a56bad8bbb770ee266e930c95d37fff2a5be7fea",
+      "bytes": 386830,
+      "sha256": "12e10fb541270632f6683286ce8c7e8c321fe4addb53fa91ed498b95c1758f93"
+    },
+    {
+      "file": "Vulkan-Headers-1.4.2.tar.gz",
+      "url": "https://codeload.github.com/KhronosGroup/Vulkan-Headers/tar.gz/e3b1eec08173d6b825cd3ac88c885a63b621504a",
+      "bytes": 3376893,
+      "sha256": "f492279345cbc10708b64fcd432b3ff6c8246a5837c4db2b649abba00cf82208"
+    },
+    {
+      "file": "SPIRV-Tools-1.4.2.tar.gz",
+      "url": "https://codeload.github.com/KhronosGroup/SPIRV-Tools/tar.gz/0d6fd73ca73830ccab5fa1f00ed5ed40124e2c55",
+      "bytes": 3527179,
+      "sha256": "20219c0962dffb0d7644bb3116a5923cfcf0526a569baa0b2a17343dd2fa6e5d"
+    },
+    {
+      "file": "SPIRV-Headers-1.4.2.tar.gz",
+      "url": "https://codeload.github.com/KhronosGroup/SPIRV-Headers/tar.gz/29981f65241605e08b0ede4cfeb999fe3b723c6a",
+      "bytes": 572275,
+      "sha256": "232899f1ad4104fb5bc377b94596c7621575eee62ad9a9e8f929b63a7dd8a7ad"
+    }
+  ],
+  "sdl": {
+    "version": "2.0.14",
+    "upstreamBinary": "SDL2-2.0.14.dmg",
+    "source": "SDL2-2.0.14.tar.gz",
+    "frameworkSHA256": "1b11de3d606e85fed9cad1f54bc2a833e99e6fc1e67fb2e748cdb666dbd0f681",
+    "hidapiSHA256": "91530ffddb401bbc72d40c97313c0da25c67db209753b6aec5c8556b59930e00",
+    "verification": "Both original input Mach-O binaries match the official distribution byte for byte. hidapi source is the revision bundled inside the exact SDL source archive, not an inferred standalone hidapi version. Xcode re-signs copies for distribution.",
+    "buildRecipe": "SDL source archive: Xcode/SDL/SDL.xcodeproj and Xcode/SDL/pkg-support. Original producer flags are not independently reproduced."
+  },
+  "macArchive": {
+    "urlVersion": 4,
+    "embeddedVersion": 3,
+    "verification": "Fresh archive download contains the same SDL/hidapi and former MoltenVK 1.2.11 binaries as the local inputs. Native builds now replace only MoltenVK from its separate project pin."
+  },
+  "moltenvk": {
+    "version": "1.4.2",
+    "sourceRevision": "db66022459ffb663aa2b50f6b018bc2e124f5edf",
+    "binary": "MoltenVK-macos-1.4.2.tar",
+    "source": "MoltenVK-1.4.2.tar.gz",
+    "librarySHA256": "aef00b13bcc808adf15b85bef9ae67393d92be7ed5dfe41cad16fa809e4a4c5f",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "minimumMacOS": "12.0",
+    "privateAPI": false,
+    "buildRecipe": "Upstream .github/workflows/CI.yml, fetchDependencies, Makefile and Xcode projects at the pinned source revision.",
+    "compiledDependencies": {
+      "SPIRV-Cross": "6c09849fe88c48eaed08413aa022aaa136a3a057",
+      "cereal": "a56bad8bbb770ee266e930c95d37fff2a5be7fea",
+      "Vulkan-Headers": "e3b1eec08173d6b825cd3ac88c885a63b621504a",
+      "SPIRV-Tools": "0d6fd73ca73830ccab5fa1f00ed5ed40124e2c55",
+      "SPIRV-Headers": "29981f65241605e08b0ede4cfeb999fe3b723c6a"
+    },
+    "verification": "Standard official macOS artifact. SPIR-V Tools symbols spvBinaryToText/spvContextCreate present. Cereal binary archives are included by MVKPipeline.mm. No local binary edits before signing.",
+    "previousLibrarySHA256": "e1f7bf5843e98e94f8bc7f4491fb2f9182a3c486f914e113889c3db4057ec12c"
+  },
+  "vendoredSource": {
+    "repository": "https://github.com/danoon2/Boxedwine",
+    "inspectionRevision": "58fe32f6a6db5955766ca06140a5ef36ba3ed9ca",
+    "meaning": "Inspection checkout only. Final release must retain the exact committed source and build inputs. Notices are read from the current vendored license/header files, with checked text fingerprints."
+  },
+  "limitations": [
+    "Not a legal clearance or complete Wine/filesystem inventory.",
+    "Exact LLVM helper extraction revision was not established; current adapted implementation is retained in Boxedwine and the full LLVM license/exception is included.",
+    "Final signed release source delivery, contributor permissions and Apple terms review remain separate.",
+    "Third-party archives are locally retained under tmp/native-licenses/downloads; this audit does not publish source archives or make a written source offer."
+  ],
+  "bundleUUIDs": {
+    "Contents/Frameworks/SDL2.framework/Versions/A/SDL2": {
+      "arm64": "669D8984-5088-364C-9A40-BDE8832C8C7F",
+      "x86_64": "F76D1DCE-E79F-3F3F-B875-A09B769E1441"
+    },
+    "Contents/Frameworks/SDL2.framework/Versions/A/Frameworks/hidapi.framework/Versions/A/hidapi": {
+      "arm64": "13178673-8B4A-3EB0-9205-8B3D5FD50A13",
+      "x86_64": "BAAC976E-A6DB-3107-8F5F-B779D6F51EC3"
+    },
+    "Contents/Frameworks/libMoltenVK.dylib": {
+      "arm64": "12DD3985-CB0F-3D18-A8D2-960940A8356A",
+      "x86_64": "C178CB05-A1CA-34F9-8ADD-7671DC15A86B"
+    }
+  }
+}

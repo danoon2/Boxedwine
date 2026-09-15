@@ -25,7 +25,7 @@ The interpretations and proposed questions below come from comparing those rules
 | Clipboard and networking | The SDL backend reads/writes the Mac text clipboard. Guest networking uses host-backed sockets under the inherited sandbox permissions. No per-game clipboard/network consent UI was found. See [knativescreenSDL.cpp](../../../../platform/sdl/knativescreenSDL.cpp), [knativesystem.cpp](../../../../platform/sdl/knativesystem.cpp), and [knativesocket.cpp](../../../../source/kernel/knativesocket.cpp). |
 | Catalog policy features | The catalog has names, descriptions, icons, download identities, and compatibility settings. The current model has no dedicated content-rating or universal-link fields. No associated-domains entitlement, incoming universal-link handler, age gate, or catalog-specific content-reporting flow was found. The Help menu's general GitHub issue link is not evidence that the catalog requirements are met. See [DemoCatalog.swift](Core/DemoCatalog.swift), [Info.plist](Info.plist), and [NativeLibraryCommands.swift](UI/NativeLibraryCommands.swift). |
 
-The revised catalog was checked using locally verified `26R2-catalog-2`; publication is pending. Its metadata remains outside Git by design. This inquiry does not establish permission to redistribute any particular entry.
+The revised catalog `26R2-catalog-2` is published and was verified by fresh download against the pinned byte count and SHA-256. Its metadata remains outside Git by design. This inquiry does not establish permission to redistribute any particular entry.
 
 ## Questions and decision record
 

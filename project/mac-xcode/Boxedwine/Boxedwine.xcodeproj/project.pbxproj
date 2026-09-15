@@ -1052,6 +1052,7 @@
 			"productName" = "Boxedwine";
 			"isa" = "PBXNativeTarget";
 			"buildPhases" = (
+				"BC0261000000000000000003",
 				"BC0261000000000000000001",
 				"0A92B7B2F821078392FA55D3",
 				"C47A2B39C38DA462A89788CF",
@@ -2548,6 +2549,8 @@
 			"isa" = "XCBuildConfiguration";
 			"name" = "Debug";
 			"buildSettings" = {
+				/* Debug tree-invariant checks scan the entire JIT address map on each mutation. */
+				"CLANG_CXX_STANDARD_LIBRARY_HARDENING" = "extensive";
 				"CODE_SIGN_ENTITLEMENTS" = "BoxedwineUI/Boxedwine-Development.entitlements";
 				"GENERATE_INFOPLIST_FILE" = "NO";
 				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
@@ -3469,6 +3472,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/BoxedwineUI/Tools/prepare-version-plist.py\" --header \"$SRCROOT/../../../include/boxedwine.h\" --output \"$DERIVED_FILE_DIR/Versioned-Info.plist\" --template \"$SRCROOT/BoxedwineUI/Info.plist\"\n";
+		};
+
+		BC0261000000000000000003 = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ("$(SRCROOT)/../../../resources/moltenvk.lock.json", "$(SRCROOT)/../../../tools/fetch_moltenvk.py");
+			name = "Prepare Pinned MoltenVK";
+			outputPaths = ("$(SRCROOT)/../../../lib/mac/vulkan/lib/libMoltenVK.dylib");
+			alwaysOutOfDate = 1;
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/../../../tools/fetch_moltenvk.py\"\n";
 		};
 
 	};

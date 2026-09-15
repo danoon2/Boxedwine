@@ -1,6 +1,6 @@
 {
   "date": "2026-09-14",
-  "status": "implemented-catalog-upload-pending",
+  "status": "implemented-published-verified",
   "catalog": {
     "bytes": 102656,
     "formatVersion": 1,
@@ -27,7 +27,7 @@
   "artifactPath": "tmp/java-removal/upload/catalog.zip",
   "metadataCompatibilityRetained": false,
   "emulatorJavaBlockingAdded": false,
-  "remaining": "User upload of catalog ZIP, followed by fresh download verification. Other licensing and App Store work remains separate.",
+  "remaining": "Other licensing and App Store work remains separate.",
   "validation": {
     "swiftTests": 218,
     "swiftSuites": 26,
@@ -41,6 +41,7 @@
       "Windows app-folder import completes and selects its EXE",
       "Advanced contains Boxedwine and app argument fields without Java settings"
     ],
-    "evidenceDirectory": "tmp/java-removal"
+    "evidenceDirectory": "tmp/java-removal",
+    "publishedCatalog": "Fresh HTTPS download matched exact byte count and SHA-256; imported and staged with required validation in a new cache."
   }
 }

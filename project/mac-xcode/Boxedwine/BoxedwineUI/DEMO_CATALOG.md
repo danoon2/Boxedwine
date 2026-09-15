@@ -6,7 +6,7 @@ This keeps catalog maintenance in a data file, rather than Swift source. The ori
 
 ## Current selection
 
-Shared release `26R2-catalog-2` contains **34 entries**: fifteen portable ZIPs and nineteen installers. Thirty-one use Wine 11.0 and three use Wine 9.0. Java Solitaire and FreeCol have been removed along with dedicated Java support. The new ZIP is verified in the local build cache and awaits upload; see [shared catalog publishing](../../../../resources/DEMO_CATALOG.md). See [Demo coverage](DEMO_COVERAGE.md) for recipe verification.
+Shared release `26R2-catalog-2` contains **34 entries**: fifteen portable ZIPs and nineteen installers. Thirty-one use Wine 11.0 and three use Wine 9.0. Java Solitaire and FreeCol have been removed along with dedicated Java support. The uploaded ZIP was downloaded again, matched the pin and passed fresh-cache validation; see [shared catalog publishing](../../../../resources/DEMO_CATALOG.md). See [Demo coverage](DEMO_COVERAGE.md) for recipe verification.
 
 The entries and artwork come from the existing [26R2 catalog](https://www.boxedwine.org/v2/26R2/filesV2.xml). Exact payload sizes and fingerprints are recorded in the bundled XML. Thirty-three PNG icons are bundled unchanged from the legacy URLs; Cities in Motion adds a PNG extracted from the installed demo executable because the legacy icon URL was unavailable. It uses the largest embedded representation (48×48) with its original alpha channel, bringing the bundled total to 34. This records their source, not a determination of redistribution rights.
 
@@ -94,4 +94,4 @@ The existing import journal covers transfer, extraction and the Wine copy. Norma
 
 ## Distribution
 
-This is a local preview feature. A bundled list does not settle App Store rules for downloaded guest software, redistribution permissions, or the separate Wine/support-package questions. The draft App Review inquiry in [Release preparation](RELEASE.md) explicitly includes the catalog. No catalog has been published and no review inquiry has been sent by this implementation.
+This is a local preview feature. A bundled list does not settle App Store rules for downloaded guest software, redistribution permissions, or the separate Wine/support-package questions. The draft App Review inquiry in [Release preparation](RELEASE.md) explicitly includes the catalog. The catalog is published; no review inquiry has been sent by this implementation.
