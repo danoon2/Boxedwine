@@ -1,10 +1,13 @@
 # Building Wine 11 test executables
 
-For the current graphics candidate, apply the production patches in
-[the v38 manifest](webgl-test-divergences-v38.json), then its one complete
-test adaptation. Do not stack older complete test patches. The existing
+The [v39 SSE DLL baseline](graphics-baseline-v39-candidate.json) retains the
+original v38 test executables to isolate DLL behavior. To reproduce those
+tests, apply the production patches in [the v38 manifest](webgl-test-divergences-v38.json),
+then its one complete test adaptation. Do not stack older complete test patches. The existing
 [patch-series guide](../d3dToWebGL/README.md) documents the order and validator.
-Examples below also describe the earlier public bundles.
+The v39 DLL build also emits SSE-compiled test executables; those are distinct
+inputs and are not the bundle used for this comparison. Examples below also
+describe the earlier public bundles.
 
 This guide describes the reusable process for building Wine 11 test suites as
 32-bit Windows PE executables on an x86-64 Ubuntu or Debian host.

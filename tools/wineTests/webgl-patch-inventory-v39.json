@@ -1,0 +1,1586 @@
+{
+  "schema_version": 1,
+  "manifest_id": "wine11-webgl-test-divergences-v39",
+  "manifest_sha256": "b21c73739fcf165e09759e88bfa639fbca7b06ef547c526b2eb5a0f6b21ef8ff",
+  "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+  "production_patches": [
+    {
+      "patch_id": "build-config",
+      "category": "build_and_configuration",
+      "filename": "webgl-build-config-against-wine-11.0.patch",
+      "sha256": "8306cec124c5837fc26a41e7930582635d5390b576efc0006e1a009e7adc80bf",
+      "files": [
+        "BOXEDWINE_WEBGL_BUILD.md",
+        "build-boxedwine-webgl-dlls.sh",
+        "dlls/wined3d/wined3d_main.c",
+        "dlls/wined3d/wined3d_private.h"
+      ]
+    },
+    {
+      "patch_id": "adapter-context-caps",
+      "category": "adapter_context_and_capabilities",
+      "filename": "webgl-adapter-context-caps-against-wine-11.0.patch",
+      "sha256": "ff7078f7b9c47c5f766b5d25099d180b49978742621322f7d9e326b548b71af9",
+      "files": [
+        "dlls/wined3d/adapter_gl.c",
+        "dlls/wined3d/context_gl.c",
+        "dlls/wined3d/directx.c",
+        "dlls/wined3d/wined3d_private.h"
+      ]
+    },
+    {
+      "patch_id": "shader-generation-glsl-es",
+      "category": "shader_generation_and_glsl_es",
+      "filename": "webgl-shader-generation-glsl-es-against-wine-11.0.patch",
+      "sha256": "f12d95f8660c9f42394a5ca9fd78564948ea5a77fa78653e9cdd42b88b78971f",
+      "files": [
+        "dlls/d3d8/d3d8_private.h",
+        "dlls/d3d8/shader.c",
+        "dlls/d3d8/vertexdeclaration.c",
+        "dlls/d3dx9_36/shader.c",
+        "dlls/wined3d/cs.c",
+        "dlls/wined3d/ffp_hlsl.c",
+        "dlls/wined3d/glsl_shader.c",
+        "dlls/wined3d/shader.c",
+        "dlls/wined3d/stateblock.c",
+        "dlls/wined3d/utils.c",
+        "dlls/wined3d/wined3d_private.h"
+      ]
+    },
+    {
+      "patch_id": "texture-formats-transfers",
+      "category": "texture_formats_transfers_and_readback",
+      "filename": "webgl-texture-formats-transfers-against-wine-11.0.patch",
+      "sha256": "54415bde32dbc6fbb7792d6f6cecbda06f916a0f245dde73e2ebe14a4a9f7314",
+      "files": [
+        "dlls/d3d9/d3d9_private.h",
+        "dlls/d3d9/device.c",
+        "dlls/d3d9/texture.c",
+        "dlls/ddraw/utils.c",
+        "dlls/wined3d/device.c",
+        "dlls/wined3d/surface.c",
+        "dlls/wined3d/texture.c",
+        "dlls/wined3d/texture_gl.c",
+        "dlls/wined3d/utils.c"
+      ]
+    },
+    {
+      "patch_id": "blitter-batching",
+      "category": "glsl_blitter_and_gpu_batching",
+      "filename": "webgl-blitter-batching-against-wine-11.0.patch",
+      "sha256": "7b49ced4bdd7b20dbdb5f4badf340cdd5b7b087109af2491d07570486a3dff23",
+      "files": [
+        "dlls/wined3d/context_gl.c",
+        "dlls/wined3d/cs.c",
+        "dlls/wined3d/glsl_shader.c",
+        "dlls/wined3d/surface.c",
+        "dlls/wined3d/swapchain.c",
+        "dlls/wined3d/wined3d_gl.h",
+        "include/wine/wined3d.h"
+      ]
+    },
+    {
+      "patch_id": "directdraw-runtime-presentation",
+      "category": "directdraw_runtime_presentation_overlays_and_legacy_d3d",
+      "filename": "webgl-directdraw-runtime-presentation-against-wine-11.0.patch",
+      "sha256": "34c71d7bfc927d8fccfba3ee9b6213fbc5a91dc1ecd0b75be785377d89463e4e",
+      "files": [
+        "dlls/ddraw/clipper.c",
+        "dlls/ddraw/ddraw.c",
+        "dlls/ddraw/ddraw_private.h",
+        "dlls/ddraw/device.c",
+        "dlls/ddraw/light.c",
+        "dlls/ddraw/main.c",
+        "dlls/ddraw/surface.c",
+        "dlls/ddraw/viewport.c",
+        "include/ddraw.h"
+      ]
+    },
+    {
+      "patch_id": "d3dx9-assets-compatibility",
+      "category": "d3dx9_assets_animation_mesh_and_compatibility",
+      "filename": "webgl-d3dx9-assets-compatibility-against-wine-11.0.patch",
+      "sha256": "345f7ccd04343497eef35fe00f92af86bb0104e08b051569df873ad17002687b",
+      "files": [
+        "dlls/d3dx9_24/d3dx9_24.spec",
+        "dlls/d3dx9_25/d3dx9_25.spec",
+        "dlls/d3dx9_26/d3dx9_26.spec",
+        "dlls/d3dx9_27/d3dx9_27.spec",
+        "dlls/d3dx9_28/d3dx9_28.spec",
+        "dlls/d3dx9_29/d3dx9_29.spec",
+        "dlls/d3dx9_30/d3dx9_30.spec",
+        "dlls/d3dx9_31/d3dx9_31.spec",
+        "dlls/d3dx9_32/d3dx9_32.spec",
+        "dlls/d3dx9_33/d3dx9_33.spec",
+        "dlls/d3dx9_34/d3dx9_34.spec",
+        "dlls/d3dx9_35/d3dx9_35.spec",
+        "dlls/d3dx9_36/animation.c",
+        "dlls/d3dx9_36/d3dx9_36.spec",
+        "dlls/d3dx9_36/d3dx9_private.h",
+        "dlls/d3dx9_36/effect.c",
+        "dlls/d3dx9_36/font.c",
+        "dlls/d3dx9_36/mesh.c",
+        "dlls/d3dx9_36/sprite.c",
+        "dlls/d3dx9_36/surface.c",
+        "dlls/d3dx9_36/xfile.c",
+        "dlls/d3dx9_37/d3dx9_37.spec",
+        "dlls/d3dx9_38/d3dx9_38.spec",
+        "dlls/d3dx9_39/d3dx9_39.spec",
+        "dlls/d3dx9_40/d3dx9_40.spec",
+        "dlls/d3dx9_41/d3dx9_41.spec",
+        "dlls/d3dx9_42/d3dx9_42.spec",
+        "dlls/d3dx9_43/d3dx9_43.spec"
+      ]
+    },
+    {
+      "patch_id": "d3dxof-parser-hardening",
+      "category": "d3dxof_parser_hardening",
+      "filename": "webgl-d3dxof-parser-hardening-against-wine-11.0.patch",
+      "sha256": "2fb69da8007362dd851e87af0ec165999480cd9cf7140f490c97fc74901a14c5",
+      "files": [
+        "dlls/d3dxof/d3dxof.c",
+        "dlls/d3dxof/d3dxof_private.h",
+        "dlls/d3dxof/parsing.c"
+      ]
+    },
+    {
+      "patch_id": "wined3d-draw-state-query",
+      "category": "wined3d_draw_state_queries_and_resources",
+      "filename": "webgl-wined3d-draw-state-query-against-wine-11.0.patch",
+      "sha256": "762d71a39f9c2bc1c2cc142469893944142cd9e1f693a5e20293fdd6a618a269",
+      "files": [
+        "dlls/wined3d/buffer.c",
+        "dlls/wined3d/context.c",
+        "dlls/wined3d/context_gl.c",
+        "dlls/wined3d/device.c",
+        "dlls/wined3d/ffp_gl.c",
+        "dlls/wined3d/glsl_shader.c",
+        "dlls/wined3d/query.c",
+        "dlls/wined3d/resource.c",
+        "dlls/wined3d/sampler.c",
+        "dlls/wined3d/texture_gl.c",
+        "dlls/wined3d/wined3d_private.h",
+        "include/wine/wined3d.h"
+      ]
+    },
+    {
+      "patch_id": "d3d8-d3d9-compatibility-diagnostics",
+      "category": "d3d8_d3d9_compatibility_and_diagnostics",
+      "filename": "webgl-d3d8-d3d9-compatibility-diagnostics-against-wine-11.0.patch",
+      "sha256": "3c88734adaa89b3a5a9660d2a790a4d2abe9f2d20144e8eda3a0d025cd6a8040",
+      "files": [
+        "dlls/d3d8/device.c",
+        "dlls/d3d9/d3d9_main.c",
+        "dlls/d3d9/directx.c"
+      ]
+    },
+    {
+      "patch_id": "graphics-correctness",
+      "category": "texture_conversion_and_capability_correctness",
+      "filename": "webgl-graphics-correctness-against-wine-11.0.patch",
+      "sha256": "3e10a98affb511ccf0be1855e19a79fa88b1b804cae949e8f0d3f85d98fe0c55",
+      "files": [
+        "dlls/wined3d/adapter_gl.c",
+        "dlls/wined3d/stateblock.c",
+        "dlls/wined3d/texture_gl.c"
+      ]
+    },
+    {
+      "patch_id": "clip-plane-state",
+      "category": "directdraw_cpu_clip_state",
+      "filename": "webgl-clip-plane-state-against-wine-11.0.patch",
+      "sha256": "632f956b176b8cf89eef8b19d977d9f8b3199cdf3d91ac80855ec0d99b3e7994",
+      "files": [
+        "dlls/ddraw/ddraw_private.h",
+        "dlls/ddraw/device.c"
+      ]
+    },
+    {
+      "patch_id": "zero-clip-capability",
+      "category": "d3d9_zero_capability_validation",
+      "filename": "webgl-zero-clip-capability-against-wine-11.0.patch",
+      "sha256": "74622ea431a33b12c5c41789a60b1307f1259d48d9758d6c45da04fc3a91cc04",
+      "files": [
+        "dlls/d3d9/device.c"
+      ]
+    },
+    {
+      "patch_id": "depth-range",
+      "category": "viewport_depth_range",
+      "filename": "webgl-depth-range-against-wine-11.0.patch",
+      "sha256": "f6f638506b83ab39dcf88e22bd8609a86de6ee649984fb76c08ac217de5730e8",
+      "files": [
+        "dlls/wined3d/ffp_gl.c"
+      ]
+    },
+    {
+      "patch_id": "depth-bias",
+      "category": "depth_bias_calibration",
+      "filename": "webgl-depth-bias-against-wine-11.0.patch",
+      "sha256": "1c16f8a84de87790529656003d2534dad76fa40a75b4e8def483e2fc78a9d3cd",
+      "files": [
+        "dlls/wined3d/utils.c"
+      ]
+    },
+    {
+      "patch_id": "depth-copy",
+      "category": "depth_stencil_copy_and_indexed_blend_capabilities",
+      "filename": "webgl-depth-copy-against-wine-11.0.patch",
+      "sha256": "c38a2e6ed0c289c47f5d297cb12b1e72f0558055da92350a1a902e98b1aeaa15",
+      "files": [
+        "dlls/wined3d/adapter_gl.c",
+        "dlls/wined3d/context_gl.c",
+        "dlls/wined3d/texture_gl.c",
+        "dlls/wined3d/wined3d_gl.h"
+      ]
+    },
+    {
+      "patch_id": "depth-readback",
+      "category": "depth_stencil_readback_and_system_memory_blits",
+      "filename": "webgl-depth-readback-against-wine-11.0.patch",
+      "sha256": "ecb9e242fb676108b44f0f408c747f858633853d172e92b0aee3060a8618a6bd",
+      "files": [
+        "dlls/wined3d/context_gl.c",
+        "dlls/wined3d/texture_gl.c",
+        "dlls/wined3d/wined3d_gl.h"
+      ]
+    },
+    {
+      "patch_id": "stencil-clear",
+      "category": "cpu_depth_stencil_clear",
+      "filename": "webgl-stencil-clear-against-wine-11.0.patch",
+      "sha256": "4251c56e5b2952b8950a25a2113012599f4655d53ad6a6f155e96bf3aacf1062",
+      "files": [
+        "dlls/wined3d/surface.c"
+      ]
+    },
+    {
+      "patch_id": "point-size-capability",
+      "category": "point_size_capability",
+      "filename": "webgl-point-size-capability-against-wine-11.0.patch",
+      "sha256": "ead6881c38db1b86986d0582751d370cc6746e5906e3b93dfc4a031d46386dcd",
+      "files": [
+        "dlls/wined3d/adapter_gl.c"
+      ]
+    },
+    {
+      "patch_id": "point-sprite-origin",
+      "category": "point_sprite_shader_coordinates",
+      "filename": "webgl-point-sprite-origin-against-wine-11.0.patch",
+      "sha256": "34a938ae3abf4133bb72bacb49ab13485f02a3274e6e0d577c04a215acef8640",
+      "files": [
+        "dlls/wined3d/glsl_shader.c"
+      ]
+    },
+    {
+      "patch_id": "context-state",
+      "category": "context_state_restoration",
+      "filename": "webgl-context-state-against-wine-11.0.patch",
+      "sha256": "4f06fd3485552c2f312bd5795a3cac3d821a0c51f634d79a2c77d9637ccd3589",
+      "files": [
+        "dlls/wined3d/context_gl.c"
+      ]
+    },
+    {
+      "patch_id": "presentation-state",
+      "category": "presentation_state_restoration",
+      "filename": "webgl-presentation-state-against-wine-11.0.patch",
+      "sha256": "6215c6f6322b4a36945c5b5b57846a40dee2ff425a161d162bb83a0e3b0dbb9d",
+      "files": [
+        "dlls/wined3d/context_gl.c",
+        "dlls/wined3d/swapchain.c",
+        "dlls/wined3d/texture.c"
+      ]
+    },
+    {
+      "patch_id": "self-blit",
+      "category": "overlapping_gpu_copies",
+      "filename": "webgl-self-blit-against-wine-11.0.patch",
+      "sha256": "04565baba115a6ed89ede91b3429d52748e8989a41a30a0a8c3c7ba97e07d56e",
+      "files": [
+        "dlls/wined3d/context_gl.c",
+        "dlls/wined3d/texture_gl.c"
+      ]
+    },
+    {
+      "patch_id": "alpha-test-outputs",
+      "category": "shader_generation_and_glsl_es",
+      "filename": "webgl-alpha-test-outputs-against-wine-11.0.patch",
+      "sha256": "ddbd92085f77c6f22f45d336d99b235019aaa56603d482f51a61bc808e7d8d52",
+      "files": [
+        "dlls/wined3d/glsl_shader.c"
+      ]
+    },
+    {
+      "patch_id": "context-backend-lifecycle",
+      "category": "wined3d_draw_state_queries_and_resources",
+      "filename": "webgl-context-backend-lifecycle-against-wine-11.0.patch",
+      "sha256": "be05e5b314e8f417b7f6618a4ad07737c5961e075582ee9bbba539460d90d317",
+      "files": [
+        "dlls/wined3d/context_gl.c"
+      ]
+    },
+    {
+      "patch_id": "multisample-color-copy",
+      "category": "wined3d_draw_state_queries_and_resources",
+      "filename": "webgl-multisample-color-copy-against-wine-11.0.patch",
+      "sha256": "f895b63c8669ebdfc63baf476cd4a99eb48c7a14e2bc9ef7ff524e3cb3a2edb2",
+      "files": [
+        "dlls/wined3d/texture_gl.c"
+      ]
+    },
+    {
+      "patch_id": "shared-context-owner",
+      "category": "wined3d_draw_state_queries_and_resources",
+      "filename": "webgl-shared-context-owner-against-wine-11.0.patch",
+      "sha256": "16fd47b1dfa359ccf2f4e027912f22bbdda2275b18e7a52a7f799d5d5e15993e",
+      "files": [
+        "dlls/wined3d/adapter_gl.c",
+        "dlls/wined3d/context_gl.c",
+        "dlls/wined3d/wined3d_gl.h"
+      ]
+    },
+    {
+      "patch_id": "d3dxof-object-limit",
+      "category": "d3dxof_parser_hardening",
+      "filename": "webgl-d3dxof-object-limit-against-wine-11.0.patch",
+      "sha256": "c9a8ca4614b581fc798d00fb2d779d635983ef718e29c3bf8c0e4e6a189f44ed",
+      "files": [
+        "dlls/d3dxof/d3dxof.c",
+        "dlls/d3dxof/d3dxof_private.h",
+        "dlls/d3dxof/parsing.c"
+      ]
+    },
+    {
+      "patch_id": "format-storage",
+      "category": "texture_formats_transfers_and_readback",
+      "filename": "webgl-format-storage-against-wine-11.0.patch",
+      "sha256": "360e9721f8471af4f5fbf170e3920c29107424e9dc1347425e062e57506c0263",
+      "files": [
+        "dlls/wined3d/texture_gl.c",
+        "dlls/wined3d/utils.c"
+      ]
+    },
+    {
+      "patch_id": "rgb10-transfers",
+      "category": "texture_formats_transfers_and_readback",
+      "filename": "webgl-rgb10-transfers-against-wine-11.0.patch",
+      "sha256": "324d037292eb76645186aa1d1a9e834b9774a77e2dd0194710ebf77f982c1ee8",
+      "files": [
+        "dlls/wined3d/texture_gl.c"
+      ]
+    },
+    {
+      "patch_id": "format-sample-policy",
+      "category": "adapter_context_and_capabilities",
+      "filename": "webgl-format-sample-policy-against-wine-11.0.patch",
+      "sha256": "5561ea57beb5fd9d8ed6a1efa3a2dd1bcdd3c2bcbf6364ffc90189edb46023a5",
+      "files": [
+        "dlls/wined3d/adapter_gl.c",
+        "dlls/wined3d/utils.c"
+      ]
+    },
+    {
+      "patch_id": "float-capabilities",
+      "category": "adapter_context_and_capabilities",
+      "filename": "webgl-float-capabilities-against-wine-11.0.patch",
+      "sha256": "2ce63bd95f2f22f46f51c897cfaf47a0da1bc3c11f75fcccdc7fbaa13477ecfb",
+      "files": [
+        "dlls/wined3d/adapter_gl.c",
+        "dlls/wined3d/utils.c",
+        "dlls/wined3d/wined3d_gl.h"
+      ]
+    },
+    {
+      "patch_id": "ffp-normal-texgen",
+      "category": "shader_generation_and_glsl_es",
+      "filename": "webgl-ffp-normal-texgen-against-wine-11.0.patch",
+      "sha256": "167c1e51d53ea5c85236e8c04ef7cbd62c5ad5b4a3e951697613b2af559ef509",
+      "files": [
+        "dlls/wined3d/ffp_hlsl.c"
+      ]
+    },
+    {
+      "patch_id": "vertex-fog",
+      "category": "shader_generation_and_glsl_es",
+      "filename": "webgl-vertex-fog-against-wine-11.0.patch",
+      "sha256": "deb4919046d5aed37bd8988077826a9132b01baaa23f88c10fb090a77f761198",
+      "files": [
+        "dlls/wined3d/ffp_hlsl.c",
+        "dlls/wined3d/glsl_shader.c"
+      ]
+    },
+    {
+      "patch_id": "d3dx-tangent-frame",
+      "category": "d3dx9_assets_animation_mesh_and_compatibility",
+      "filename": "webgl-d3dx-tangent-frame-against-wine-11.0.patch",
+      "sha256": "e8f5858b727f6ab875a70cd1f8d075613c05bf793184f161bef26aec6ec006c0",
+      "files": [
+        "dlls/d3dx9_36/mesh.c"
+      ]
+    },
+    {
+      "patch_id": "d3dx-state-lifecycle",
+      "category": "d3dx9_assets_animation_mesh_and_compatibility",
+      "filename": "webgl-d3dx-state-lifecycle-against-wine-11.0.patch",
+      "sha256": "de7a99d4f7587d769c679b4eecd07ec19ec6870495fcf21961c0969c2c56eb18",
+      "files": [
+        "dlls/d3dx9_36/effect.c",
+        "dlls/d3dx9_36/font.c",
+        "dlls/d3dx9_36/sprite.c"
+      ]
+    },
+    {
+      "patch_id": "d3dx-frame-sphere",
+      "category": "d3dx9_assets_animation_mesh_and_compatibility",
+      "filename": "webgl-d3dx-frame-sphere-against-wine-11.0.patch",
+      "sha256": "0d9ede275aa2e663c0ed4a546f91efd23ad1bdba7c8ebe83e9707e528eb370c2",
+      "files": [
+        "dlls/d3dx9_36/mesh.c"
+      ]
+    },
+    {
+      "patch_id": "generated-texcoords",
+      "category": "shader_generation_and_glsl_es",
+      "filename": "webgl-generated-texcoords-against-wine-11.0.patch",
+      "sha256": "ad8071df1c5582fedf66e2d2f2821f11c5b34128d21bf8b55ed8df55ce77fcbb",
+      "files": [
+        "dlls/wined3d/ffp_hlsl.c",
+        "dlls/wined3d/glsl_shader.c"
+      ]
+    },
+    {
+      "patch_id": "ffp-failure-recovery",
+      "category": "shader_generation_and_glsl_es",
+      "filename": "webgl-ffp-failure-recovery-against-wine-11.0.patch",
+      "sha256": "11e9652bba066b51f775a6766e035fa71d0ec71ee32e3a2ccf04e4acdfe70e1f",
+      "files": [
+        "dlls/wined3d/cs.c",
+        "dlls/wined3d/shader.c",
+        "dlls/wined3d/wined3d_private.h"
+      ]
+    },
+    {
+      "patch_id": "mapped-buffer-uploads",
+      "category": "buffer_streaming_and_synchronization",
+      "filename": "webgl-mapped-buffer-uploads-against-wine-11.0.patch",
+      "sha256": "e82762db9ac4a8d0cc940367cd36ed77c1fa88afb6e69b82d56384f3368ef30e",
+      "files": [
+        "dlls/wined3d/buffer.c"
+      ]
+    },
+    {
+      "patch_id": "glsl-program-failure",
+      "category": "shader_generation_and_glsl_es",
+      "filename": "webgl-glsl-program-failure-against-wine-11.0.patch",
+      "sha256": "f19f8cd2d75c0c8aa8f00554b80e092087f5655f23bb617f171db4eda746e238",
+      "files": [
+        "dlls/wined3d/context_gl.c",
+        "dlls/wined3d/glsl_shader.c",
+        "dlls/wined3d/wined3d_gl.h"
+      ]
+    },
+    {
+      "patch_id": "flat-shading-indices",
+      "category": "rasterization_and_draw_state",
+      "filename": "webgl-flat-shading-indices-against-wine-11.0.patch",
+      "sha256": "4dc58cbf63fe14aeb8b22c46f6c7f47e5cce99f1fb93b5ba1430d2943647f274",
+      "files": [
+        "dlls/wined3d/context_gl.c"
+      ]
+    },
+    {
+      "patch_id": "nonindexed-instance-streams",
+      "category": "buffer_streaming_and_synchronization",
+      "filename": "webgl-nonindexed-instance-streams-against-wine-11.0.patch",
+      "sha256": "a336e0caacb0dab388ae95859200357d9b9eedbbf6987a21923fc4d652ab0b16",
+      "files": [
+        "dlls/wined3d/context_gl.c"
+      ]
+    },
+    {
+      "patch_id": "legacy-specular-power",
+      "category": "fixed_function_lighting",
+      "filename": "webgl-legacy-specular-power-against-wine-11.0.patch",
+      "sha256": "32de53c932d479b73b5360c9f61b38c62fb6eb699d2c1bf7133f29d841786d1f",
+      "files": [
+        "dlls/wined3d/device.c"
+      ]
+    },
+    {
+      "patch_id": "blitter-failure",
+      "category": "shader_failure_handling",
+      "filename": "webgl-blitter-failure-against-wine-11.0.patch",
+      "sha256": "7258d0c2bcb33425763514aaa639abf7455873dc4fa8aa03b6ad2fa25afda33a",
+      "files": [
+        "dlls/wined3d/glsl_shader.c"
+      ]
+    },
+    {
+      "patch_id": "sample-mask",
+      "category": "multisample_rendering",
+      "filename": "webgl-sample-mask-against-wine-11.0.patch",
+      "sha256": "7cdcaaff1216e5f579df3f214db1bba74087106a3a516a65610b2d227c747671",
+      "files": [
+        "dlls/wined3d/adapter_gl.c",
+        "dlls/wined3d/directx.c",
+        "dlls/wined3d/ffp_gl.c",
+        "dlls/wined3d/glsl_shader.c",
+        "dlls/wined3d/texture.c",
+        "dlls/wined3d/wined3d_gl.h",
+        "dlls/wined3d/wined3d_private.h"
+      ]
+    },
+    {
+      "patch_id": "p8-copy",
+      "category": "palette_conversion",
+      "filename": "webgl-p8-copy-against-wine-11.0.patch",
+      "sha256": "025615d706ccc3345c65ca86a73f007d850e30681e0ff780005cec1714bb807f",
+      "files": [
+        "dlls/wined3d/glsl_shader.c"
+      ]
+    },
+    {
+      "patch_id": "frontbuffer-immediate",
+      "category": "directdraw_frontbuffer_presentation",
+      "filename": "webgl-frontbuffer-immediate-against-wine-11.0.patch",
+      "sha256": "e1989250fb92753a8b462e048e4423f6a7d78d611409681650be54095dc6824f",
+      "files": [
+        "dlls/ddraw/surface.c"
+      ]
+    },
+    {
+      "patch_id": "sse-build",
+      "category": "build_and_configuration",
+      "filename": "webgl-sse-build-against-wine-11.0.patch",
+      "sha256": "26378f504d246e1145cbea207c2c5547606624566f45659107889bbf1471c2ca",
+      "files": [
+        "build-boxedwine-webgl-dlls.sh"
+      ]
+    }
+  ],
+  "production_files": [
+    {
+      "path": "BOXEDWINE_WEBGL_BUILD.md",
+      "patches": [
+        "build-config"
+      ],
+      "categories": [
+        "build_and_configuration"
+      ]
+    },
+    {
+      "path": "build-boxedwine-webgl-dlls.sh",
+      "patches": [
+        "build-config",
+        "sse-build"
+      ],
+      "categories": [
+        "build_and_configuration"
+      ]
+    },
+    {
+      "path": "dlls/d3d8/d3d8_private.h",
+      "patches": [
+        "shader-generation-glsl-es"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es"
+      ]
+    },
+    {
+      "path": "dlls/d3d8/device.c",
+      "patches": [
+        "d3d8-d3d9-compatibility-diagnostics"
+      ],
+      "categories": [
+        "d3d8_d3d9_compatibility_and_diagnostics"
+      ]
+    },
+    {
+      "path": "dlls/d3d8/shader.c",
+      "patches": [
+        "shader-generation-glsl-es"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es"
+      ]
+    },
+    {
+      "path": "dlls/d3d8/vertexdeclaration.c",
+      "patches": [
+        "shader-generation-glsl-es"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es"
+      ]
+    },
+    {
+      "path": "dlls/d3d9/d3d9_main.c",
+      "patches": [
+        "d3d8-d3d9-compatibility-diagnostics"
+      ],
+      "categories": [
+        "d3d8_d3d9_compatibility_and_diagnostics"
+      ]
+    },
+    {
+      "path": "dlls/d3d9/d3d9_private.h",
+      "patches": [
+        "texture-formats-transfers"
+      ],
+      "categories": [
+        "texture_formats_transfers_and_readback"
+      ]
+    },
+    {
+      "path": "dlls/d3d9/device.c",
+      "patches": [
+        "texture-formats-transfers",
+        "zero-clip-capability"
+      ],
+      "categories": [
+        "texture_formats_transfers_and_readback",
+        "d3d9_zero_capability_validation"
+      ]
+    },
+    {
+      "path": "dlls/d3d9/directx.c",
+      "patches": [
+        "d3d8-d3d9-compatibility-diagnostics"
+      ],
+      "categories": [
+        "d3d8_d3d9_compatibility_and_diagnostics"
+      ]
+    },
+    {
+      "path": "dlls/d3d9/texture.c",
+      "patches": [
+        "texture-formats-transfers"
+      ],
+      "categories": [
+        "texture_formats_transfers_and_readback"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_24/d3dx9_24.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_25/d3dx9_25.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_26/d3dx9_26.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_27/d3dx9_27.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_28/d3dx9_28.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_29/d3dx9_29.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_30/d3dx9_30.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_31/d3dx9_31.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_32/d3dx9_32.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_33/d3dx9_33.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_34/d3dx9_34.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_35/d3dx9_35.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/animation.c",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/d3dx9_36.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/d3dx9_private.h",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/effect.c",
+      "patches": [
+        "d3dx9-assets-compatibility",
+        "d3dx-state-lifecycle"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/font.c",
+      "patches": [
+        "d3dx9-assets-compatibility",
+        "d3dx-state-lifecycle"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/mesh.c",
+      "patches": [
+        "d3dx9-assets-compatibility",
+        "d3dx-tangent-frame",
+        "d3dx-frame-sphere"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/shader.c",
+      "patches": [
+        "shader-generation-glsl-es"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/sprite.c",
+      "patches": [
+        "d3dx9-assets-compatibility",
+        "d3dx-state-lifecycle"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/surface.c",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_36/xfile.c",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_37/d3dx9_37.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_38/d3dx9_38.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_39/d3dx9_39.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_40/d3dx9_40.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_41/d3dx9_41.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_42/d3dx9_42.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dx9_43/d3dx9_43.spec",
+      "patches": [
+        "d3dx9-assets-compatibility"
+      ],
+      "categories": [
+        "d3dx9_assets_animation_mesh_and_compatibility"
+      ]
+    },
+    {
+      "path": "dlls/d3dxof/d3dxof.c",
+      "patches": [
+        "d3dxof-parser-hardening",
+        "d3dxof-object-limit"
+      ],
+      "categories": [
+        "d3dxof_parser_hardening"
+      ]
+    },
+    {
+      "path": "dlls/d3dxof/d3dxof_private.h",
+      "patches": [
+        "d3dxof-parser-hardening",
+        "d3dxof-object-limit"
+      ],
+      "categories": [
+        "d3dxof_parser_hardening"
+      ]
+    },
+    {
+      "path": "dlls/d3dxof/parsing.c",
+      "patches": [
+        "d3dxof-parser-hardening",
+        "d3dxof-object-limit"
+      ],
+      "categories": [
+        "d3dxof_parser_hardening"
+      ]
+    },
+    {
+      "path": "dlls/ddraw/clipper.c",
+      "patches": [
+        "directdraw-runtime-presentation"
+      ],
+      "categories": [
+        "directdraw_runtime_presentation_overlays_and_legacy_d3d"
+      ]
+    },
+    {
+      "path": "dlls/ddraw/ddraw.c",
+      "patches": [
+        "directdraw-runtime-presentation"
+      ],
+      "categories": [
+        "directdraw_runtime_presentation_overlays_and_legacy_d3d"
+      ]
+    },
+    {
+      "path": "dlls/ddraw/ddraw_private.h",
+      "patches": [
+        "directdraw-runtime-presentation",
+        "clip-plane-state"
+      ],
+      "categories": [
+        "directdraw_runtime_presentation_overlays_and_legacy_d3d",
+        "directdraw_cpu_clip_state"
+      ]
+    },
+    {
+      "path": "dlls/ddraw/device.c",
+      "patches": [
+        "directdraw-runtime-presentation",
+        "clip-plane-state"
+      ],
+      "categories": [
+        "directdraw_runtime_presentation_overlays_and_legacy_d3d",
+        "directdraw_cpu_clip_state"
+      ]
+    },
+    {
+      "path": "dlls/ddraw/light.c",
+      "patches": [
+        "directdraw-runtime-presentation"
+      ],
+      "categories": [
+        "directdraw_runtime_presentation_overlays_and_legacy_d3d"
+      ]
+    },
+    {
+      "path": "dlls/ddraw/main.c",
+      "patches": [
+        "directdraw-runtime-presentation"
+      ],
+      "categories": [
+        "directdraw_runtime_presentation_overlays_and_legacy_d3d"
+      ]
+    },
+    {
+      "path": "dlls/ddraw/surface.c",
+      "patches": [
+        "directdraw-runtime-presentation",
+        "frontbuffer-immediate"
+      ],
+      "categories": [
+        "directdraw_runtime_presentation_overlays_and_legacy_d3d",
+        "directdraw_frontbuffer_presentation"
+      ]
+    },
+    {
+      "path": "dlls/ddraw/utils.c",
+      "patches": [
+        "texture-formats-transfers"
+      ],
+      "categories": [
+        "texture_formats_transfers_and_readback"
+      ]
+    },
+    {
+      "path": "dlls/ddraw/viewport.c",
+      "patches": [
+        "directdraw-runtime-presentation"
+      ],
+      "categories": [
+        "directdraw_runtime_presentation_overlays_and_legacy_d3d"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/adapter_gl.c",
+      "patches": [
+        "adapter-context-caps",
+        "graphics-correctness",
+        "depth-copy",
+        "point-size-capability",
+        "shared-context-owner",
+        "format-sample-policy",
+        "float-capabilities",
+        "sample-mask"
+      ],
+      "categories": [
+        "adapter_context_and_capabilities",
+        "texture_conversion_and_capability_correctness",
+        "depth_stencil_copy_and_indexed_blend_capabilities",
+        "point_size_capability",
+        "wined3d_draw_state_queries_and_resources",
+        "multisample_rendering"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/buffer.c",
+      "patches": [
+        "wined3d-draw-state-query",
+        "mapped-buffer-uploads"
+      ],
+      "categories": [
+        "wined3d_draw_state_queries_and_resources",
+        "buffer_streaming_and_synchronization"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/context.c",
+      "patches": [
+        "wined3d-draw-state-query"
+      ],
+      "categories": [
+        "wined3d_draw_state_queries_and_resources"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/context_gl.c",
+      "patches": [
+        "adapter-context-caps",
+        "blitter-batching",
+        "wined3d-draw-state-query",
+        "depth-copy",
+        "depth-readback",
+        "context-state",
+        "presentation-state",
+        "self-blit",
+        "context-backend-lifecycle",
+        "shared-context-owner",
+        "glsl-program-failure",
+        "flat-shading-indices",
+        "nonindexed-instance-streams"
+      ],
+      "categories": [
+        "adapter_context_and_capabilities",
+        "glsl_blitter_and_gpu_batching",
+        "wined3d_draw_state_queries_and_resources",
+        "depth_stencil_copy_and_indexed_blend_capabilities",
+        "depth_stencil_readback_and_system_memory_blits",
+        "context_state_restoration",
+        "presentation_state_restoration",
+        "overlapping_gpu_copies",
+        "shader_generation_and_glsl_es",
+        "rasterization_and_draw_state",
+        "buffer_streaming_and_synchronization"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/cs.c",
+      "patches": [
+        "shader-generation-glsl-es",
+        "blitter-batching",
+        "ffp-failure-recovery"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es",
+        "glsl_blitter_and_gpu_batching"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/device.c",
+      "patches": [
+        "texture-formats-transfers",
+        "wined3d-draw-state-query",
+        "legacy-specular-power"
+      ],
+      "categories": [
+        "texture_formats_transfers_and_readback",
+        "wined3d_draw_state_queries_and_resources",
+        "fixed_function_lighting"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/directx.c",
+      "patches": [
+        "adapter-context-caps",
+        "sample-mask"
+      ],
+      "categories": [
+        "adapter_context_and_capabilities",
+        "multisample_rendering"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/ffp_gl.c",
+      "patches": [
+        "wined3d-draw-state-query",
+        "depth-range",
+        "sample-mask"
+      ],
+      "categories": [
+        "wined3d_draw_state_queries_and_resources",
+        "viewport_depth_range",
+        "multisample_rendering"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/ffp_hlsl.c",
+      "patches": [
+        "shader-generation-glsl-es",
+        "ffp-normal-texgen",
+        "vertex-fog",
+        "generated-texcoords"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/glsl_shader.c",
+      "patches": [
+        "shader-generation-glsl-es",
+        "blitter-batching",
+        "wined3d-draw-state-query",
+        "point-sprite-origin",
+        "alpha-test-outputs",
+        "vertex-fog",
+        "generated-texcoords",
+        "glsl-program-failure",
+        "blitter-failure",
+        "sample-mask",
+        "p8-copy"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es",
+        "glsl_blitter_and_gpu_batching",
+        "wined3d_draw_state_queries_and_resources",
+        "point_sprite_shader_coordinates",
+        "shader_failure_handling",
+        "multisample_rendering",
+        "palette_conversion"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/query.c",
+      "patches": [
+        "wined3d-draw-state-query"
+      ],
+      "categories": [
+        "wined3d_draw_state_queries_and_resources"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/resource.c",
+      "patches": [
+        "wined3d-draw-state-query"
+      ],
+      "categories": [
+        "wined3d_draw_state_queries_and_resources"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/sampler.c",
+      "patches": [
+        "wined3d-draw-state-query"
+      ],
+      "categories": [
+        "wined3d_draw_state_queries_and_resources"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/shader.c",
+      "patches": [
+        "shader-generation-glsl-es",
+        "ffp-failure-recovery"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/stateblock.c",
+      "patches": [
+        "shader-generation-glsl-es",
+        "graphics-correctness"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es",
+        "texture_conversion_and_capability_correctness"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/surface.c",
+      "patches": [
+        "texture-formats-transfers",
+        "blitter-batching",
+        "stencil-clear"
+      ],
+      "categories": [
+        "texture_formats_transfers_and_readback",
+        "glsl_blitter_and_gpu_batching",
+        "cpu_depth_stencil_clear"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/swapchain.c",
+      "patches": [
+        "blitter-batching",
+        "presentation-state"
+      ],
+      "categories": [
+        "glsl_blitter_and_gpu_batching",
+        "presentation_state_restoration"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/texture.c",
+      "patches": [
+        "texture-formats-transfers",
+        "presentation-state",
+        "sample-mask"
+      ],
+      "categories": [
+        "texture_formats_transfers_and_readback",
+        "presentation_state_restoration",
+        "multisample_rendering"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/texture_gl.c",
+      "patches": [
+        "texture-formats-transfers",
+        "wined3d-draw-state-query",
+        "graphics-correctness",
+        "depth-copy",
+        "depth-readback",
+        "self-blit",
+        "multisample-color-copy",
+        "format-storage",
+        "rgb10-transfers"
+      ],
+      "categories": [
+        "texture_formats_transfers_and_readback",
+        "wined3d_draw_state_queries_and_resources",
+        "texture_conversion_and_capability_correctness",
+        "depth_stencil_copy_and_indexed_blend_capabilities",
+        "depth_stencil_readback_and_system_memory_blits",
+        "overlapping_gpu_copies"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/utils.c",
+      "patches": [
+        "shader-generation-glsl-es",
+        "texture-formats-transfers",
+        "depth-bias",
+        "format-storage",
+        "format-sample-policy",
+        "float-capabilities"
+      ],
+      "categories": [
+        "shader_generation_and_glsl_es",
+        "texture_formats_transfers_and_readback",
+        "depth_bias_calibration",
+        "adapter_context_and_capabilities"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/wined3d_gl.h",
+      "patches": [
+        "blitter-batching",
+        "depth-copy",
+        "depth-readback",
+        "shared-context-owner",
+        "float-capabilities",
+        "glsl-program-failure",
+        "sample-mask"
+      ],
+      "categories": [
+        "glsl_blitter_and_gpu_batching",
+        "depth_stencil_copy_and_indexed_blend_capabilities",
+        "depth_stencil_readback_and_system_memory_blits",
+        "wined3d_draw_state_queries_and_resources",
+        "adapter_context_and_capabilities",
+        "shader_generation_and_glsl_es",
+        "multisample_rendering"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/wined3d_main.c",
+      "patches": [
+        "build-config"
+      ],
+      "categories": [
+        "build_and_configuration"
+      ]
+    },
+    {
+      "path": "dlls/wined3d/wined3d_private.h",
+      "patches": [
+        "build-config",
+        "adapter-context-caps",
+        "shader-generation-glsl-es",
+        "wined3d-draw-state-query",
+        "ffp-failure-recovery",
+        "sample-mask"
+      ],
+      "categories": [
+        "build_and_configuration",
+        "adapter_context_and_capabilities",
+        "shader_generation_and_glsl_es",
+        "wined3d_draw_state_queries_and_resources",
+        "multisample_rendering"
+      ]
+    },
+    {
+      "path": "include/ddraw.h",
+      "patches": [
+        "directdraw-runtime-presentation"
+      ],
+      "categories": [
+        "directdraw_runtime_presentation_overlays_and_legacy_d3d"
+      ]
+    },
+    {
+      "path": "include/wine/wined3d.h",
+      "patches": [
+        "blitter-batching",
+        "wined3d-draw-state-query"
+      ],
+      "categories": [
+        "glsl_blitter_and_gpu_batching",
+        "wined3d_draw_state_queries_and_resources"
+      ]
+    }
+  ],
+  "test_patch": {
+    "filename": "webgl-tests-p8-copy-against-wine-11.0.patch",
+    "sha256": "42eb6464449e262c2e3843b955f554037cfcf6f4c896418cf6a366d2cf3f217a",
+    "files": [
+      "dlls/d3d8/tests/device.c",
+      "dlls/d3d8/tests/visual.c",
+      "dlls/d3d9/tests/device.c",
+      "dlls/d3d9/tests/visual.c",
+      "dlls/d3dx9_36/tests/surface.c",
+      "dlls/ddraw/tests/ddraw1.c",
+      "dlls/ddraw/tests/ddraw2.c",
+      "dlls/ddraw/tests/ddraw4.c",
+      "dlls/ddraw/tests/ddraw7.c",
+      "dlls/ddraw/tests/visual.c"
+    ]
+  },
+  "counts": {
+    "production_patches": 49,
+    "production_files": 77,
+    "test_files": 10,
+    "modified_test_files": 10,
+    "skip_calls": 31,
+    "todo_calls": 39,
+    "unique_skip_rules": 15,
+    "unique_todo_rules": 14
+  },
+  "classified_rules": [
+    {
+      "category": "intentional_webgl_limit",
+      "rationale": "These tests require browser-window, display-mode, WebGL format, multisample, synchronization, memory-budget, or front-buffer capabilities that WebGL 2 intentionally does not expose.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"Could not get cursor position, skipping test.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"WebGL browser windowing does not support native foreground/topmost style transitions.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"WebGL buffer upload synchronisation does not expose desktop dynamic-map timing semantics.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop D3D8 multisample CopyRects semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not expose desktop GL scaled multisample resolves.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"User clip planes are not supported by this device.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve desktop mismatched multisample color/depth semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL does not preserve desktop multisampled front-buffer readback semantics.\\n\");",
+          "occurrences": 1
+        },
+        {
+          "marker": "skip(\"WebGL exposes a single browser-backed display mode.\\n\");",
+          "occurrences": 2
+        },
+        {
+          "marker": "skip(\"WebGL uses a fixed browser-backed display mode, skipping multi-object display mode restore test.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"WebGL uses a fixed memory budget and browser-backed GPU scheduling, skipping map synchronisation stress test.\\n\");",
+          "occurrences": 2
+        }
+      ],
+      "todo_rules": []
+    },
+    {
+      "category": "unimplemented_emulation",
+      "rationale": "These desktop Direct3D and legacy DirectDraw behaviors could be translated or emulated, but the current WebGL backend has no complete implementation.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"WebGL does not preserve desktop multisampled depth-stencil blit semantics.\\n\");",
+          "occurrences": 1
+        }
+      ],
+      "todo_rules": []
+    },
+    {
+      "category": "defect_to_fix",
+      "rationale": "These rules accept or avoid mismatches that should be fixed in the Wine-to-WebGL translation, BoxedWine emulation, or test-safety path.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"Skipping malformed clipper pointers after valid ownership checks.\\n\");",
+          "occurrences": 4
+        },
+        {
+          "marker": "skip(\"Skipping invalid output pointer test under WebGL.\\n\");",
+          "occurrences": 4
+        }
+      ],
+      "todo_rules": [
+        {
+          "marker": "todo_wine_if (!is_webgl() && tests[i].todo)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if(!is_webgl() && i == 0 && x_side == 0 && y_side == 1 && !is_win64 && !new_wow64)",
+          "occurrences": 1
+        },
+        {
+          "marker": "todo_wine_if(!is_webgl() && tests[i].vertexmode == D3DFOG_NONE) ok(color_match(color, tests[i].color_left, 1),",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if((tests[i].caps & DDSCAPS_VIDEOMEMORY && surface_desc.dwZBufferBitDepth != 16)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if((todo || (is_webgl() && i == 5)) && !compare_color(colour, expected, 1))",
+          "occurrences": 3
+        },
+        {
+          "marker": "todo_wine_if(i == 1 && (!is_webgl() || !compare_color(color, tests[i].color_left, 1)))",
+          "occurrences": 1
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && !activateapp_testdata.received)",
+          "occurrences": 12
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER) && (*color & 0x00ffffff) != 0x00ffffff)",
+          "occurrences": 3
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER) && *color != 0)",
+          "occurrences": 3
+        },
+        {
+          "marker": "todo_wine_if(is_webgl() && (tests[i].caps & DDSCAPS_ZBUFFER) && *color != tests[i].result)",
+          "occurrences": 2
+        },
+        {
+          "marker": "todo_wine_if(tests[i].todo && (!is_webgl() || !compare_color(color, tests[i].middle_color, 2)))",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "category": "intentional_webgl_limit",
+      "rationale": "The runtime format query reports D3DERR_NOTAVAILABLE. Run the complete original test whenever RGBA32F surface render targets are supported; unexpected query errors remain assertion failures.",
+      "skip_rules": [
+        {
+          "marker": "skip(\"D3DFMT_A32B32G32R32F render targets are unavailable.\\n\");",
+          "occurrences": 1
+        }
+      ],
+      "todo_rules": []
+    },
+    {
+      "category": "defect_to_fix",
+      "rationale": "Retain upstream fog TODO behavior only on native Wine, where the original unmuted test still has 120 pixel mismatches and 48 unexpected successes. All WebGL fog assertions are strict.",
+      "skip_rules": [],
+      "todo_rules": [
+        {
+          "marker": "todo_wine_if (!is_webgl() && ((fog_mode_tests[pixel_mode] != D3DFOG_NONE && (vs_mode == VS_MODE_FFP || (!ortho_fog && vs_mode == VS_MODE_RHW)))",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "category": "defect_to_fix",
+      "rationale": "The original P8 RGB copy TODO is retained only for upstream non-WebGL backends. Native controls qualify all four interfaces; the WebGL predicates are strict, preserving every expected pixel and native-only broken alternative.",
+      "skip_rules": [],
+      "todo_rules": [
+        {
+          "marker": "todo_wine_if(!is_webgl()) ok(compare_color(color, expected[x], 0)",
+          "occurrences": 4
+        }
+      ]
+    }
+  ]
+}

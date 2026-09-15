@@ -1,0 +1,24 @@
+--- a/dlls/ddraw/surface.c
++++ b/dlls/ddraw/surface.c
+@@ -2077,18 +2077,9 @@
+         hr = wined3d_device_context_clear_rendertarget_view(ddraw->immediate_context,
+                 ddraw_surface_get_rendertarget_view(dst_surface),
+                 dst_rect, wined3d_flags, NULL, colour.r, 0);
+-        if (SUCCEEDED(hr) && ddraw_webgl_enabled())
+-        {
+-            hr = wined3d_device_context_clear_sysmem_texture(ddraw->immediate_context,
+-                    ddraw_surface_get_default_texture(dst_surface, 0),
+-                    dst_surface->sub_resource_idx, dst_rect, wined3d_flags, &colour);
+-            if (SUCCEEDED(hr))
+-            {
+-                dst_surface->texture_location |= DDRAW_SURFACE_LOCATION_DEFAULT;
+-                if (dst_surface->draw_texture)
+-                    dst_surface->texture_location |= DDRAW_SURFACE_LOCATION_DRAW;
+-            }
+-        }
++        /* The GPU clear invalidates stale CPU locations. Keep that state and
++         * synchronize the default texture only when a later reader needs it. */
++
+ 
+         ddraw_profile_record(&depthfill_bucket, "ddraw_blt_depthfill", profile_start,
+                 profile_pixels, 0);

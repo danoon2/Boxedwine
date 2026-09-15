@@ -1,0 +1,12 @@
+diff --git a/build-boxedwine-webgl-dlls.sh b/build-boxedwine-webgl-dlls.sh
+--- a/build-boxedwine-webgl-dlls.sh
++++ b/build-boxedwine-webgl-dlls.sh
+@@ -112,7 +112,7 @@ echo "Configuring true Win32 DLL build..."
+         --disable-kernel32 \
+         --without-freetype \
+         --host=i686-w64-mingw32 \
+-        CFLAGS="-O3 -DWINE_NO_DEBUG_MSGS -DWINE_NOWINSOCK -DUSE_WIN32_OPENGL -DUSE_WIN32_VULKAN -ffile-prefix-map=$script_dir=/usr/src/wine" \
++        CFLAGS="-O3 -msse2 -march=pentium4 -mfpmath=sse -DWINE_NO_DEBUG_MSGS -DWINE_NOWINSOCK -DUSE_WIN32_OPENGL -DUSE_WIN32_VULKAN -ffile-prefix-map=$script_dir=/usr/src/wine" \
+         --with-wine-tools="$wine_tools_dir/" \
+         LDFLAGS=" -static-libgcc -Wl,--no-insert-timestamp"
+ )

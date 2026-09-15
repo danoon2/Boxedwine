@@ -1,0 +1,23 @@
+--- a/dlls/wined3d/surface.c
++++ b/dlls/wined3d/surface.c
+@@ -1973,7 +1973,19 @@
+     full_subresource = !memcmp(box, &level_box, sizeof(*box));
+ 
+     map_binding = texture->resource.map_binding;
+-    if (!wined3d_texture_load_location(texture, sub_resource_idx, context, map_binding))
++    if (wined3d_settings.webgl && full_subresource)
++    {
++        /* Every texel is replaced below, so there are no old pixels to preserve.
++         * Allocate the CPU location without reading the GPU texture back. */
++        if (!wined3d_texture_prepare_location(texture, sub_resource_idx, context, map_binding))
++        {
++            ERR("Failed to prepare the sub-resource in %s.\n", wined3d_debug_location(map_binding));
++            context_release(context);
++            return;
++        }
++        wined3d_texture_validate_location(texture, sub_resource_idx, map_binding);
++    }
++    else if (!wined3d_texture_load_location(texture, sub_resource_idx, context, map_binding))
+         ERR("Failed to load the sub-resource into %s.\n", wined3d_debug_location(map_binding));
+     wined3d_texture_invalidate_location(texture, sub_resource_idx, ~map_binding);
+     wined3d_texture_get_pitch(texture, level, &map.row_pitch, &map.slice_pitch);

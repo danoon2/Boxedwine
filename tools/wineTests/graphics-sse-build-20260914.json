@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-15T02:16:44.238583+00:00",
+  "passed": true,
+  "scope": "SSE build qualification with unchanged v38 Wine tests in ST JIT and MT JIT; game input/lifecycle checks and retained scene captures. No performance or other-browser claim.",
+  "build": {
+    "command": [
+      "/home/james/webgl/boxedwine-webgl-sse-20260914/wine-source/build-boxedwine-webgl-dlls.sh",
+      "--build-dir",
+      "/home/james/webgl/boxedwine-webgl-sse-20260914/wine-build",
+      "--jobs",
+      "8"
+    ],
+    "exit_code": 0,
+    "work": "/home/james/webgl/boxedwine-webgl-sse-20260914"
+  },
+  "cpu_flags": [
+    "-msse2",
+    "-march=pentium4",
+    "-mfpmath=sse"
+  ],
+  "filesystem": {
+    "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\TinyCore15Wine11.0.zip",
+    "bytes": 166981231,
+    "sha256": "b73584b90c5f610393f5bc9f5e422b8daf0c3a47d911ebe951cb333b52e5f49c"
+  },
+  "filesystem_validation": {
+    "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\packaging-validation.json",
+    "bytes": 5703,
+    "sha256": "0efc9d710f07770beb16e7420af836e9bc91176f67cffe7cdae47de68de5eded"
+  },
+  "abi_validation": {
+    "result": "ok",
+    "dlls": [
+      {
+        "dll": "d3d8.dll",
+        "imports_unchanged": true,
+        "exports_unchanged": true,
+        "named_exports": 5
+      },
+      {
+        "dll": "d3d9.dll",
+        "imports_unchanged": true,
+        "exports_unchanged": true,
+        "named_exports": 15
+      },
+      {
+        "dll": "d3dx9_36.dll",
+        "imports_unchanged": true,
+        "exports_unchanged": true,
+        "named_exports": 336
+      },
+      {
+        "dll": "d3dx9_43.dll",
+        "imports_unchanged": true,
+        "exports_unchanged": true,
+        "named_exports": 329
+      },
+      {
+        "dll": "d3dxof.dll",
+        "imports_unchanged": true,
+        "exports_unchanged": true,
+        "named_exports": 5
+      },
+      {
+        "dll": "ddraw.dll",
+        "imports_unchanged": true,
+        "exports_unchanged": true,
+        "named_exports": 28
+      },
+      {
+        "dll": "dxgi.dll",
+        "imports_unchanged": true,
+        "exports_unchanged": true,
+        "named_exports": 6
+      },
+      {
+        "dll": "wined3d.dll",
+        "imports_unchanged": true,
+        "exports_unchanged": true,
+        "named_exports": 371
+      }
+    ]
+  },
+  "matrix": {
+    "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\combined-matrix.json",
+    "bytes": 184873,
+    "sha256": "15f534c0b0bf6a33122ccae4fb790cdb14e854a8683a2bfa4c383aa934d1e68c"
+  },
+  "audit": {
+    "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\matrix-audit.json",
+    "bytes": 124105,
+    "sha256": "82b98124c82f3e7b8b1c46784e2cf741b55b0e6a668e993337c8312bdefab53f"
+  },
+  "original_policy_mismatch": {
+    "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\matrix\\matrix.json",
+    "bytes": 66324,
+    "sha256": "3b6bd5253ea92bf9071ed36ce38dcb400d3ed7220968b18c78a41794e9451d3b"
+  },
+  "math_controls": [
+    {
+      "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\math-x87-control\\matrix.json",
+      "bytes": 4004,
+      "sha256": "3f32f6ed4b19f2b6c72b1851abf5db8bc1167bee6f9b2b8b9a835d3dbbc2e4df"
+    },
+    {
+      "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\math-sse-control\\matrix.json",
+      "bytes": 7119,
+      "sha256": "aa4d52b2014f9334bf38571633df58663829dcc6e9f82ef59ab1f2681cb6f9f6"
+    }
+  ],
+  "removed_expected_failure": "D3DXQuaternionBaryCentric at math.c:1557; same 32509 assertions, 1 failure with x87, 0 with SSE in both JIT modes.",
+  "groups": 56,
+  "totals": {
+    "tests": 14924346,
+    "todo": 2260,
+    "failures": 0,
+    "skipped": 314
+  },
+  "runtime": {
+    "st-jit": {
+      "boxedwine.html": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d",
+      "boxedwine-shell.js": "1ae2a0e34ebda027f1f5a74ef196c57c6cd69dc3d5f277960906506437f892b3",
+      "boxedwine.js": "34c3bbd58951d2677d9cfd8fcd8f070480b7abb969a46fa591c97f8f46f124f0",
+      "boxedwine.wasm": "703ea86b574adfd82b277a77f83c529537ee4ef79fe9911cbdb906467fc8502e",
+      "boxedwine.css": "c27a76f8fae5fc3cb4b814167be531b321cf72d1b38f403329ebd65b06f64dbb"
+    },
+    "mt-jit": {
+      "boxedwine.html": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d",
+      "boxedwine-shell.js": "1ae2a0e34ebda027f1f5a74ef196c57c6cd69dc3d5f277960906506437f892b3",
+      "boxedwine.js": "43f1298164f2b5762ab2132d837217595d127fb9f428a3f94116557cfd12c4a5",
+      "boxedwine.wasm": "716ee1dd67c016d6971d9fd905d546fc4510d5d1e6862c897b8080ec3727cb69",
+      "boxedwine.css": "c27a76f8fae5fc3cb4b814167be531b321cf72d1b38f403329ebd65b06f64dbb"
+    }
+  },
+  "games": {
+    "started_at": "2026-09-15T02:05:32.025631+00:00",
+    "complete": true,
+    "passed": true,
+    "original_attempt": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\results.json",
+    "navigation_controls": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\pause-navigation-controls.json",
+    "runs": [
+      {
+        "name": "TombRaider3",
+        "mode": "st-jit",
+        "exit_code": 0,
+        "passed": true,
+        "report": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\runs\\TombRaider3-st-jit\\tomb-probe.json",
+        "problems": []
+      },
+      {
+        "name": "mw3",
+        "mode": "st-jit",
+        "exit_code": 0,
+        "passed": true,
+        "report": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\runs\\mw3-st-jit-pause2\\mech-probe.json",
+        "problems": []
+      },
+      {
+        "name": "TombRaider3",
+        "mode": "mt-jit",
+        "exit_code": 0,
+        "passed": true,
+        "report": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\runs\\TombRaider3-mt-jit\\tomb-probe.json",
+        "problems": []
+      },
+      {
+        "name": "mw3",
+        "mode": "mt-jit",
+        "exit_code": 0,
+        "passed": true,
+        "report": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\runs\\mw3-mt-jit-pause2\\mech-probe.json",
+        "problems": []
+      }
+    ],
+    "finished_at": "2026-09-15T02:15:24.012022+00:00"
+  },
+  "initial_game_navigation_attempt": {
+    "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\results.json",
+    "bytes": 470,
+    "sha256": "bc89cb63d42c2741377b703b8fcf30f75d4bd93efee9ec5e5dc665cb762a96a2"
+  },
+  "game_navigation_controls": {
+    "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\pause-navigation-controls.json",
+    "bytes": 2473,
+    "sha256": "ae333b278a719a0e3ac1601a492a93b5fee00cf7ee477d2f595e122b172f98d5"
+  },
+  "scene_review": {
+    "scope": "Visual smoke review of retained gameplay captures: terrain, sky, cockpit and HUD in MechWarrior; Lara, foliage and translucent ground shadow in Tomb Raider.",
+    "native_pixel_comparison": false,
+    "performance_measurement": false,
+    "images": [
+      {
+        "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\runs\\mw3-st-jit-pause2\\mission-ready-canvas.png",
+        "bytes": 627804,
+        "sha256": "db595e57918bb8c34deb72c9260ba4c0da706baa28a29a2ea663f1e7bedf36b7"
+      },
+      {
+        "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\runs\\mw3-mt-jit-pause2\\mission-ready-canvas.png",
+        "bytes": 626042,
+        "sha256": "a4584f583f10f8db280f5e04152f0c9bc90717aa9b0328198993f99ccccb3940"
+      },
+      {
+        "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\runs\\TombRaider3-st-jit\\resumed-presentation-canvas.png",
+        "bytes": 765543,
+        "sha256": "c4bcf24e763fe158a5642b99408fdfb68b89681bb94a8fdb81e264fddf93907f"
+      },
+      {
+        "path": "C:\\Boxedwine2\\tmp\\wine11-webgl-sse-20260914\\games\\runs\\TombRaider3-mt-jit\\resumed-presentation-canvas.png",
+        "bytes": 765427,
+        "sha256": "cbd9ef34523c21b2789a579fe5566bccf7a42f618ace37c34e550893602bd864"
+      }
+    ]
+  },
+  "packaging_unit_tests": {
+    "passed": true,
+    "tests": 11
+  },
+  "production_patches": 49,
+  "original_test_executables_unchanged": true,
+  "assertion_todo_and_skip_counts_unchanged": true
+}

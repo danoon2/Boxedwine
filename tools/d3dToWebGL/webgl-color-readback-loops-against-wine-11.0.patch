@@ -1,0 +1,58 @@
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -2390,6 +2390,47 @@
+             packed_rgb10 ? GL_UNSIGNED_INT_2_10_10_10_REV : GL_UNSIGNED_BYTE, rgba);
+     wined3d_texture_gl_profile_readpixels("texture_gl_webgl_rgba8_readpixels", profile_start,
+             width, height, format->id);
++    /* These common layouts use a dedicated row loop so each pixel does not
++     * repeat the format dispatch or load four separate byte components. */
++    if (format->id == WINED3DFMT_B5G6R5_UNORM)
++    {
++        for (y = 0; y < height; ++y)
++        {
++            const uint32_t *src_row = (const uint32_t *)(rgba + y * width * 4);
++            uint16_t *dst_row = (uint16_t *)(dst + y * row_pitch);
++
++            for (x = 0; x < width; ++x)
++            {
++                uint32_t v = src_row[x];
++                dst_row[x] = ((v & 0xf8) << 8) | ((v & 0xfc00) >> 5) | ((v >> 19) & 0x1f);
++            }
++        }
++        goto done;
++    }
++    if (format->id == WINED3DFMT_B8G8R8A8_UNORM || format->id == WINED3DFMT_B8G8R8A8_UNORM_SRGB
++            || format->id == WINED3DFMT_B8G8R8X8_UNORM || format->id == WINED3DFMT_B8G8R8X8_UNORM_SRGB)
++    {
++        for (y = 0; y < height; ++y)
++        {
++            const uint32_t *src_row = (const uint32_t *)(rgba + y * width * 4);
++            uint32_t *dst_row = (uint32_t *)(dst + y * row_pitch);
++
++            for (x = 0; x < width; ++x)
++            {
++                uint32_t v = src_row[x];
++                dst_row[x] = (v & 0xff00ff00) | ((v >> 16) & 0xff) | ((v & 0xff) << 16);
++            }
++        }
++        goto done;
++    }
++    if (format->id == WINED3DFMT_R8G8B8A8_UNORM || format->id == WINED3DFMT_R8G8B8A8_UNORM_SRGB
++            || format->id == WINED3DFMT_R8G8B8X8_UNORM)
++    {
++        for (y = 0; y < height; ++y)
++            memcpy(dst + y * row_pitch, rgba + y * width * 4, width * 4);
++        goto done;
++    }
++
+     for (y = 0; y < height; ++y)
+     {
+         uint8_t *dst_row = dst + y * row_pitch;
+@@ -2478,6 +2519,7 @@
+         }
+     }
+ 
++done:
+     free(rgba);
+     return true;
+ }

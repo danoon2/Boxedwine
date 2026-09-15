@@ -1,12 +1,12 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current series is pinned by
-[`webgl-test-divergences-v38.json`](../wineTests/webgl-test-divergences-v38.json).
-It contains 48 production patches and one separate, complete Wine graphics-test
-adaptation. The [v38 inventory](../wineTests/webgl-patch-inventory-v38.json)
+[`webgl-test-divergences-v39.json`](../wineTests/webgl-test-divergences-v39.json).
+It contains 49 production patches and one separate, complete Wine graphics-test
+adaptation. The [v39 inventory](../wineTests/webgl-patch-inventory-v39.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 37 retain earlier test selections for reproducing historical
+Versions 2 through 38 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 
@@ -133,6 +133,9 @@ The manifest appends these corrections after production patch 10, in order:
 46. `webgl-sample-mask-against-wine-11.0.patch`
 47. `webgl-p8-copy-against-wine-11.0.patch`
 48. `webgl-frontbuffer-immediate-against-wine-11.0.patch`
+49. `webgl-sse-build-against-wine-11.0.patch`
+    matches the main Wine build's `-msse2 -march=pentium4 -mfpmath=sse` flags
+    while retaining the existing PE32 build configuration and optimization level.
 
 ## Runtime controls
 
@@ -202,3 +205,18 @@ The Wine 11 Explorer startup-timeout patch under `tools/buildWine/patches/`
 is a separate base-filesystem fix selected by `wine_builds.json`.
 For deterministic PE32 output validation and filesystem packaging, see the
 existing [`tools/buildWine/README.md`](../buildWine/README.md).
+
+## MechWarrior 3 performance candidate
+
+`webgl-lazy-depth-clear-against-wine-11.0.patch` removes the eager CPU depth
+clear after DirectDraw has already cleared the GPU surface. The existing
+texture-location tracking defers synchronization until a CPU reader needs it.
+The candidate was tested on the September 14 SSE WebGL DLL filesystem with
+the standalone full-surface-clear and color-readback-loop patches. It is not
+part of the production manifest yet.
+
+Two alternating gameplay comparisons measured about 8.7% higher throughput,
+with one fewer readback per frame. The clean candidate passed 2,118 depth
+readback checks and 3,014 stencil checks, plus scheduler wake/idle checks.
+See [`docs/mechwarrior3-chrome-performance.md`](../../docs/mechwarrior3-chrome-performance.md)
+for the experiment identities, limitations, and subsequent search results.

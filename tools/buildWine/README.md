@@ -6,10 +6,34 @@ The current supported host environment is Debian or WSL running Debian/Ubuntu-st
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 
-### Current v38 candidate
+### Current SSE build (v39)
+
+[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) selects the
+[v39 patch series](../wineTests/webgl-test-divergences-v39.json): the v38
+graphics fixes plus the SSE build correction. The PE32 DLL build now uses
+`-msse2 -march=pentium4 -mfpmath=sse`, matching the CPU and floating-point
+flags in `wine_builds.json`. It retains its existing `-O3` optimization and
+MinGW/Win32 configuration.
+
+The [qualification record](../wineTests/graphics-sse-build-20260914.json)
+covers all 56 ST JIT / MT JIT Wine graphics groups: 14,924,346 checks and zero
+failures. SSE resolves the previous `D3DXQuaternionBaryCentric` failure at
+`math.c:1557`; assertion, TODO and skip counts are unchanged. The comparison
+uses the original v38 test executables; see [BUILD_TESTS.md](../wineTests/BUILD_TESTS.md).
+
+Build the current DLLs from a clean Wine checkout with:
+
+```bash
+python3 tools/buildWine/webgl_filesystem.py build \
+  --config tools/buildWine/webgl_filesystems_v11.json \
+  --work-dir /tmp/boxedwine-webgl-v39 \
+  --wine-repository /path/to/wine --jobs 8
+```
+
+### Previous v38 candidate
 
 [`webgl_filesystems_p8_copy.json`](webgl_filesystems_p8_copy.json) pins the
-current Wine 11 candidate, `TinyCore15Wine11.0-p8-presentation.zip`. It records
+previous Wine 11 candidate, `TinyCore15Wine11.0-p8-presentation.zip`. It records
 the Wine source commit, eight WebGL DLL identities, GL libraries and loader
 cache, and the exact full and base archive hashes. Its
 [v38 patch manifest](../wineTests/webgl-test-divergences-v38.json) selects
@@ -45,9 +69,12 @@ and its GL shims and loader cache are unchanged.
 ### v11 demo upload artifact
 
 [`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) pins the September 14
-`TinyCore15Wine11.0.zip` upload artifact. It combines the hosted September 13
-filesystem with the tested v38 WebGL DLLs, preserving the hosted Wine,
-CNC DDraw and Glide updates. Its GL/EGL/GLES libraries and base archive are
+`TinyCore15Wine11.0.zip` upload artifact. It combines the latest hosted
+filesystem downloaded September 14 with the tested SSE-built v39 WebGL DLLs.
+All 8,689 other archive entries and their metadata are preserved. The full
+graphics qualification above used the preceding filesystem; this refresh
+passes packaging and Jenkins profile validation with the same eight DLLs.
+Its GL/EGL/GLES libraries and base archive are
 unchanged. Demo scripts
 use this profile by default; see the [demo site instructions](../jenkins/instructions.md)
 for selecting a candidate filesystem. GDI is a per-demo launch setting;

@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "baseline_id": "wine11-webgl-v39-sse-candidate-20260914-quaternion-fixed",
+  "recorded_at": "2026-09-14",
+  "policy": "SSE DLL qualification with unchanged v38 test executables, assertions, TODOs and skips. Remove only the previous math.c:1557 quaternion failure after matched x87/SSE controls. Preserve the original old-policy mismatch record.",
+  "reference_inputs": {
+    "graphics_tests_archive": "wine_tests_graphics_p8_copy.zip",
+    "filesystem": "TinyCore15Wine11.0.zip",
+    "filesystem_sha256": "b73584b90c5f610393f5bc9f5e422b8daf0c3a47d911ebe951cb333b52e5f49c",
+    "boxedwine_wasm_sha256": "703ea86b574adfd82b277a77f83c529537ee4ef79fe9911cbdb906467fc8502e",
+    "webgl_test_divergence_manifest": "webgl-test-divergences-v39.json",
+    "webgl_test_divergence_manifest_sha256": "b21c73739fcf165e09759e88bfa639fbca7b06ef547c526b2eb5a0f6b21ef8ff",
+    "test_executable_sha256": {
+      "ddraw": "047fc7146b85af5cb509f1fc11febcd101f8fc7870d155a266591580124a2781",
+      "d3d8": "c64540bd8564e648b157cadaeffbb9775284a6f9095aa2092b565622a397ecfd",
+      "d3d9": "afb1e61bf6c29e852e5ff5cba4627c48206221742db664e9bd71fcd4c6ca50b2",
+      "d3dx9_43": "84472d36d279e6cc1870bc155c81ebe192aa804ff77564a3762dbb70a2b9ec64",
+      "d3dxof": "2de3c4efa3eb08a250aa72bb5317cd02108a0bef9a542a61e82fa2367a0593ed"
+    },
+    "graphics_tests_archive_sha256": "73649327741c1ca8c39e67eeedcefc5c962d8b6e8308288ed7446119386fe2d7"
+  },
+  "suites": {
+    "ddraw": {
+      "d3d": {
+        "tests": 2499,
+        "todo": 11,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "ddraw1": {
+        "tests": 23069,
+        "todo": 52,
+        "failures": 0,
+        "skipped": 6,
+        "failure_locations": []
+      },
+      "ddraw2": {
+        "tests": 25611,
+        "todo": 77,
+        "failures": 0,
+        "skipped": 8,
+        "failure_locations": []
+      },
+      "ddraw4": {
+        "tests": 28831,
+        "todo": 123,
+        "failures": 0,
+        "skipped": 9,
+        "failure_locations": []
+      },
+      "ddraw7": {
+        "tests": 33248,
+        "todo": 160,
+        "failures": 0,
+        "skipped": 9,
+        "failure_locations": []
+      },
+      "ddrawmodes": {
+        "tests": 113,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "dsurface": {
+        "tests": 1187,
+        "todo": 3,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "refcount": {
+        "tests": 96,
+        "todo": 10,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "visual": {
+        "tests": 279,
+        "todo": 1,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    },
+    "d3d8": {
+      "device": {
+        "tests": 54846,
+        "todo": 36,
+        "failures": 0,
+        "skipped": 13,
+        "failure_locations": []
+      },
+      "stateblock": {
+        "tests": 9283,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "visual": {
+        "tests": 142020,
+        "todo": 23,
+        "failures": 0,
+        "skipped": 11,
+        "failure_locations": []
+      }
+    },
+    "d3d9": {
+      "d3d9ex": {
+        "tests": 2104,
+        "todo": 77,
+        "failures": 0,
+        "skipped": 45,
+        "failure_locations": []
+      },
+      "device": {
+        "tests": 56770,
+        "todo": 127,
+        "failures": 0,
+        "skipped": 23,
+        "failure_locations": []
+      },
+      "stateblock": {
+        "tests": 14738,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "visual": {
+        "tests": 204429,
+        "todo": 53,
+        "failures": 0,
+        "skipped": 32,
+        "failure_locations": []
+      }
+    },
+    "d3dx9_43": {
+      "asm": {
+        "tests": 40,
+        "todo": 3,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "core": {
+        "tests": 1485,
+        "todo": 99,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "effect": {
+        "tests": 234068,
+        "todo": 60,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "line": {
+        "tests": 23,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "math": {
+        "tests": 32509,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "mesh": {
+        "tests": 132301,
+        "todo": 9,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "shader": {
+        "tests": 5734482,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "surface": {
+        "tests": 3396,
+        "todo": 128,
+        "failures": 0,
+        "skipped": 1,
+        "failure_locations": []
+      },
+      "texture": {
+        "tests": 461275,
+        "todo": 55,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "volume": {
+        "tests": 263237,
+        "todo": 23,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      },
+      "xfile": {
+        "tests": 42,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    },
+    "d3dxof": {
+      "d3dxof": {
+        "tests": 192,
+        "todo": 0,
+        "failures": 0,
+        "skipped": 0,
+        "failure_locations": []
+      }
+    }
+  },
+  "sse_candidate": {
+    "source_baseline": "graphics-baseline-v38-candidate.json",
+    "counts_unchanged": false,
+    "original_test_executables_unchanged": true,
+    "cpu_flags": [
+      "-msse2",
+      "-march=pentium4",
+      "-mfpmath=sse"
+    ],
+    "math_improvement": {
+      "function": "D3DXQuaternionBaryCentric",
+      "previous_failure": "math.c:1557",
+      "assertions_unchanged": 32509,
+      "failures_before": 1,
+      "failures_after": 0,
+      "description": "The same original test executable passes the existing quaternion expectation with SSE-built DLLs."
+    },
+    "runtime": {
+      "st-jit": {
+        "boxedwine.html": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d",
+        "boxedwine-shell.js": "1ae2a0e34ebda027f1f5a74ef196c57c6cd69dc3d5f277960906506437f892b3",
+        "boxedwine.js": "34c3bbd58951d2677d9cfd8fcd8f070480b7abb969a46fa591c97f8f46f124f0",
+        "boxedwine.wasm": "703ea86b574adfd82b277a77f83c529537ee4ef79fe9911cbdb906467fc8502e",
+        "boxedwine.css": "c27a76f8fae5fc3cb4b814167be531b321cf72d1b38f403329ebd65b06f64dbb"
+      },
+      "mt-jit": {
+        "boxedwine.html": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d",
+        "boxedwine-shell.js": "1ae2a0e34ebda027f1f5a74ef196c57c6cd69dc3d5f277960906506437f892b3",
+        "boxedwine.js": "43f1298164f2b5762ab2132d837217595d127fb9f428a3f94116557cfd12c4a5",
+        "boxedwine.wasm": "716ee1dd67c016d6971d9fd905d546fc4510d5d1e6862c897b8080ec3727cb69",
+        "boxedwine.css": "c27a76f8fae5fc3cb4b814167be531b321cf72d1b38f403329ebd65b06f64dbb"
+      }
+    },
+    "qualification_modes": [
+      "st-jit",
+      "mt-jit"
+    ],
+    "source_baseline_sha256": "0b76165782b69934b0026475e5129a14ec69011279b5841cfc017a0ba14af0e3"
+  }
+}

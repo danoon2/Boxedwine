@@ -6,10 +6,13 @@ D3DX9 and D3DXOF groups in an isolated Chrome profile with in-memory storage.
 Select the runtime mode and inputs explicitly; the CLI defaults retain the
 earlier published baseline and single-threaded non-JIT build.
 
-The current candidate uses [the v38 patch manifest](webgl-test-divergences-v38.json)
-and [reviewed v38 counts](graphics-baseline-v38-candidate.json). Build the Wine
-test executables using [BUILD_TESTS.md](BUILD_TESTS.md). Match their archive and
-filesystem to the baseline hashes; a matching filename is insufficient.
+The current candidate uses [the v39 patch manifest](webgl-test-divergences-v39.json)
+and [reviewed v39 counts](graphics-baseline-v39-candidate.json). Its SSE DLLs
+pass all 56 ST JIT / MT JIT groups with the original v38 test executables. The
+previous quaternion failure is resolved; assertion, TODO and skip counts are
+unchanged. See the [qualification record](graphics-sse-build-20260914.json)
+and [BUILD_TESTS.md](BUILD_TESTS.md). Match the archive and filesystem to the
+baseline hashes; a matching filename is insufficient.
 Use ST JIT and MT JIT for focused development runs.
 
 ## Run a Wine graphics group
@@ -23,8 +26,8 @@ python tools/wineTests/runWineTests.py `
   --graphics-build-dir C:/graphics/st-jit `
   --graphics-filesystem C:/graphics/TinyCore15Wine11.0.zip `
   --graphics-tests-archive C:/graphics/wine_tests_graphics.zip `
-  --graphics-baseline tools/wineTests/graphics-baseline-v38-candidate.json `
-  --webgl-test-divergences tools/wineTests/webgl-test-divergences-v38.json `
+  --graphics-baseline tools/wineTests/graphics-baseline-v39-candidate.json `
+  --webgl-test-divergences tools/wineTests/webgl-test-divergences-v39.json `
   --graphics-cleanup-wait-seconds 15
 ```
 

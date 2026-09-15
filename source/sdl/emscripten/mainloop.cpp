@@ -90,7 +90,23 @@ void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* t
 #else
 
 static U32 lastTitleUpdate = 0;
-static bool mainLoopTimingConfigured = false;
+static int mainLoopTimingMode = -1;
+
+static void updateMainLoopTiming(bool idle) {
+    int mode = EM_TIMING_SETTIMEOUT;
+#ifdef BOXEDWINE_WASM_JIT
+    // Keep yielding to the browser between slices without paying the nested
+    // timer delay while guest work is available. Sleeping guests still use a
+    // timer so they do not continuously post messages to the browser.
+    if (!idle) {
+        mode = EM_TIMING_SETIMMEDIATE;
+    }
+#endif
+    if (mode != mainLoopTimingMode) {
+        emscripten_set_main_loop_timing(mode, mode == EM_TIMING_SETTIMEOUT ? 1 : 0);
+        mainLoopTimingMode = mode;
+    }
+}
 
 static constexpr U32 MIPS_WINDOW = 20;
 static U32 mipsSamples[MIPS_WINDOW] = {};
@@ -125,11 +141,8 @@ bool isMainthread() {
 }
 
 void mainloop() {
-    if (!mainLoopTimingConfigured) {
-        emscripten_set_main_loop_timing(EM_TIMING_SETTIMEOUT, 1);
-        mainLoopTimingConfigured = true;
-    }
     U64 startTime = KSystem::getMicroCounter();
+    bool idle = false;
     U32 t;
     U32 count=0;
     BString mipsTitle;
@@ -177,6 +190,7 @@ void mainloop() {
 	    emscripten_set_window_title(mipsTitle.c_str());
         }
         if (!ran) {
+            idle = true;
             break;
         }
         U64 diff = KSystem::getMicroCounter() - startTime;
@@ -189,6 +203,7 @@ void mainloop() {
             break;
         }
     };
+    updateMainLoopTiming(idle);
 }
 
 #endif
