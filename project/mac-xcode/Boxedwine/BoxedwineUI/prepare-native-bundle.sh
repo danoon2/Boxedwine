@@ -36,6 +36,7 @@ if [ -f "$resource_dir/Demos/catalog.xml" ]; then
     package_check --catalog "$resource_dir/Demos/catalog.xml"
 fi
 package_check --wine-catalog "$SRCROOT/BoxedwineUI/Resources/WindowsSupport"
+rm -f "$resource_dir/WindowsSupport/java-packages.json"
 /usr/bin/ditto "$SRCROOT/BoxedwineUI/Resources/WindowsSupport" "$resource_dir/WindowsSupport"
 /usr/bin/ditto "$SRCROOT/BoxedwineUI/Resources/AppIcons" "$resource_dir/AppIcons"
 

@@ -18,10 +18,7 @@ enum DemoCatalogFixture {
         entry("timing", fields: "<CNCDDraw>true</CNCDDraw><CNCDDrawUncapped>true</CNCDDrawUncapped>") +
         entry("mode", fields: "<CNCDDraw>true</CNCDDraw><CNCDDrawFakeMode>320x240x16</CNCDDrawFakeMode><Glide>psVoodoo</Glide>") +
         "</XML>"
-    static let javaXML = "<XML schemaVersion=\"7\" release=\"test-1\">" +
-        entry("java8", program: "demo.jar", fields: "<JavaVersion>8</JavaVersion>") +
-        entry("java17", program: "demo.jar", fields: "<JavaVersion>17</JavaVersion><JavaArguments>-Xmx768M</JavaArguments>") +
-        "</XML>"
+
 }
 
 // Release asset checks are explicit, so a fresh checkout can run unit tests

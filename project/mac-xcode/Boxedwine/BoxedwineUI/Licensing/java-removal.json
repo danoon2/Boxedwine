@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-14",
+  "status": "implemented-catalog-upload-pending",
+  "catalog": {
+    "bytes": 102656,
+    "formatVersion": 1,
+    "sha256": "8ad7112224ca9e778f751e72423987d51309b792b8f8aabfa6b75c6e22b708c8",
+    "url": "https://boxedwine.org/catalogs/26R2-catalog-2/catalog.zip",
+    "version": "26R2-catalog-2"
+  },
+  "changes": {
+    "removed": [
+      {
+        "id": "freecol-1-2",
+        "name": "Free Colonization 1.2 (2024)",
+        "icon": "freecol.png"
+      },
+      {
+        "id": "java-solitaire",
+        "name": "Java Solitaire (2007)",
+        "icon": "java.png"
+      }
+    ],
+    "remaining": 34,
+    "remainingRecipesUnchanged": true
+  },
+  "artifactPath": "tmp/java-removal/upload/catalog.zip",
+  "metadataCompatibilityRetained": false,
+  "emulatorJavaBlockingAdded": false,
+  "remaining": "User upload of catalog ZIP, followed by fresh download verification. Other licensing and App Store work remains separate.",
+  "validation": {
+    "swiftTests": 218,
+    "swiftSuites": 26,
+    "catalogToolTests": 15,
+    "debugBuild": "passed",
+    "bundleAuditImages": 5,
+    "bundledCatalogEntries": 34,
+    "uiChecks": [
+      "Add App contains only Windows installer, installer folder, app folder and backup choices",
+      "Demos displays 34 entries",
+      "Windows app-folder import completes and selects its EXE",
+      "Advanced contains Boxedwine and app argument fields without Java settings"
+    ],
+    "evidenceDirectory": "tmp/java-removal"
+  }
+}

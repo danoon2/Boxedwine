@@ -1,10 +1,10 @@
 # Native demo coverage
 
-Catalog release: `26R2-native-preview-9`. This preview includes **36 of the 38** entries in the existing [26R2 catalog](https://www.boxedwine.org/v2/26R2/filesV2.xml). Solitaire DotNet still needs Mono; 3DMark’s legacy `Debug` token still needs clarification.
+Catalog release: `26R2-catalog-2` (prepared and cached locally; upload pending). This release includes **34 of the 38** entries in the original [26R2 catalog](https://www.boxedwine.org/v2/26R2/filesV2.xml). Java Solitaire and FreeCol are excluded following removal of dedicated Java support. Solitaire DotNet still needs Mono; 3DMark’s legacy `Debug` token still needs clarification.
 
 ## Included entries
 
-The original 32 actual payloads passed the native import pipeline: exact size and SHA-256, ZIP extraction/CRC/path checks where applicable, expected program or setup path, the assigned private validated Wine package (9.0, 10.0 or 11.0), and library save/reload. These checks used isolated temporary libraries and executed no guest programs. Successful import does not establish application compatibility. The two Java additions also passed native import, real JAR/dependency inspection, and full preparation of their actual Java packages; see [Java support](JAVA_SUPPORT.md).
+The original 32 actual payloads passed the native import pipeline: exact size and SHA-256, ZIP extraction/CRC/path checks where applicable, expected program or setup path, the assigned private validated Wine package (9.0, 10.0 or 11.0), and library save/reload. These checks used isolated temporary libraries and executed no guest programs. Successful import does not establish application compatibility.
 
 | Entry | Recipe | Wine | Native settings |
 | --- | --- | --- | --- |
@@ -26,10 +26,8 @@ The original 32 actual payloads passed the native import pipeline: exact size an
 | F-16 Multirole Fighter demo (1998) | Installer ZIP → `SETUP.EXE` | 11.0 | Preinstalled psVoodoo, WineD3D OpenGL |
 | F-22 Raptor demo (1997) | Single EXE installer | 11.0 | Default |
 | Fire Fight demo (1996) | Single EXE installer | 11.0 | Default |
-| Free Colonization 1.2 (2024) | Portable ZIP / JAR | 11.0 | Java 17, `-Xmx768M` |
 | Full Tilt! Pinball Demo (1995) | Portable ZIP | 11.0 | Default |
 | Half-Life: Uplink demo (1999) | Single EXE installer | 11.0 | GDI menus, native OpenGL through GLX; choose OpenGL in the game's Video modes |
-| Java Solitaire (2007) | Portable ZIP / JAR | 11.0 | Java 8 |
 | MDK Performance (1999) | Portable ZIP | 11.0 | Game resolution 640x480, CNC DDraw with automatic rendering, uncapped benchmark timing |
 | Mech Warrior 3 demo (1999) | Single EXE installer | 11.0 | Default |
 | Motorhead 3Dfx demo (1998) | Single EXE installer | 11.0 | Windows 98 before setup, preinstalled psVoodoo, WineD3D OpenGL, 640×480 game |
@@ -117,7 +115,7 @@ The bundled Alice recipe now seeds `UseEGL=false` in its private Windows environ
 
 ### Other checks
 
-The Java additions were checked in an isolated, signed and sandboxed Debug app. Java Solitaire reused the verified Java 8 download, rendered its card table and responded to a card draw. FreeCol prepared Java 17 and reached its intro, main menu and New Game setup during an explicit `-Xint` diagnostic run. Both closed with exit code 0. Ordinary Java 17 JVM startup stalled during this check and remains an [open bug](JAVA_SUPPORT.md#open-bug-java-17-startup-with-jit). The automatic interpreter-mode workaround has been removed; new launches use normal JVM defaults. These results do not establish extended gameplay or performance.
+Historical Java experiments ran Java Solitaire and FreeCol through Java 8/17. Dedicated Java support and both demo recipes were removed September 14; the earlier runtime results are preserved in Git history.
 
 Pinball and NetSurf were already checked through installation, launch and normal close in the signed native preview. The runtime checks for the earlier expansion are recorded below; they are short smoke checks, not extended gameplay or broad compatibility certification.
 
@@ -165,7 +163,7 @@ These entries are deliberately absent from the native catalog until their nonemp
 
 The `Debug` token on 3DMark needs clarification: the current legacy option dispatcher has no explicit handler for it. Caesar 3’s former prose in `InstallOptions` is now an explicit 800×600 setup resolution, with the explanation retained in Help. Its GDI environment is seeded before setup, and its game-only cursor setting is used on launch.
 
-Solitaire DotNet still requires Mono. Java Solitaire and FreeCol have native Java recipes.
+Solitaire DotNet still requires Mono. Java Solitaire and FreeCol are no longer included.
 
 Descent 3 and Motorhead now use the preinstalled psVoodoo DLL in the refreshed Wine 11 filesystem. [Glide support](GLIDE_SUPPORT.md) records the tested DLL, Motorhead results and the native-runtime integration and its verification limits.
 

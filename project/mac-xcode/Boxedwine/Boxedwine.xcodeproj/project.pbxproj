@@ -1840,10 +1840,6 @@
 		F8F8B03D258B4DE28F522B10 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B0F; };
 		F8F8B03D258B4DE28F522B0D = { isa = PBXFileReference; path = "Core/BoxedwineArguments.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		F8F8B03D258B4DE28F522B0E = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B0D; };
-		F8F8B03D258B4DE28F522B0B = { isa = PBXFileReference; path = "Core/JavaSupport.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
-		F8F8B03D258B4DE28F522B0C = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B0B; };
-		F8F8B03D258B4DE28F522B09 = { isa = PBXFileReference; path = "Core/JavaJar.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
-		F8F8B03D258B4DE28F522B0A = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B09; };
 		F8F8B03D258B4DE28F522B07 = { isa = PBXFileReference; path = "Core/SharedWine.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		F8F8B03D258B4DE28F522B08 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B07; };
 		F8F8B03D258B4DE28F522B05 = { isa = PBXFileReference; path = "Core/WineCatalog.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
@@ -2845,9 +2841,7 @@
 				"F8F8B03D258B4DE28F522B07",
 				"F8F8B03D258B4DE28F522B0F",
 				"E4CB65BF801940A59261A901",
-				"F8F8B03D258B4DE28F522B0B",
 				"F8F8B03D258B4DE28F522B0D",
-				"F8F8B03D258B4DE28F522B09",
 				"BF449A2EA947D286FEB7BDD9",
 				"02CBE464F34120CE26F79833",
 				"395953AD925BBAE7D185F0DF",
@@ -2890,9 +2884,7 @@
 				"F8F8B03D258B4DE28F522B08",
 				"F8F8B03D258B4DE28F522B10",
 				E4CB65BF801940A59261A902,
-				"F8F8B03D258B4DE28F522B0C",
 				"F8F8B03D258B4DE28F522B0E",
-				"F8F8B03D258B4DE28F522B0A",
 				"9F3F5FB170351DE4B2F6C664",
 				67093D2C3388DFD31745C70B,
 				F3CABEDACBBE41C99ABE2002,

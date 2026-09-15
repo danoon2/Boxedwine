@@ -66,7 +66,15 @@ tmp/native-ui-test/wine-refresh-shadow-20260912/.
 
 ### September 13 CNC DDraw refresh
 
-The current Wine 11 filesystem is 167,016,911 bytes, SHA-256
+The September 13 Wine 11 filesystem was 167,016,911 bytes, SHA-256
 `a3367c4e977dbbe0295ce3b4b102bf7b0baa1278ea121cefe6065d561b960452`. Wine, filesystem, and catalog file versions remain 11.0/11/11. Only `C:/ddraw/ddraw.dll` changed from the September 12 shadow-fix package. It matches the tested CNC OpenGL loader fix (343,552 bytes, SHA-256 `318406915f4d11b08321949026626253554d7ae780d9aa3541cbfe5dcedbddf2`). The psVoodoo DLL is unchanged. The Norse INI profile is not in this upload; see [Demo coverage](DEMO_COVERAGE.md).
 
 The rebuilt Debug app passed the five-image bundle audit and all 216 Swift tests. At the user’s request, 28 local Wine 11 apps now reference this shared package; the two Wine 9 apps are unchanged. Previous packages and the library metadata backup were retained. MDK rendered using its automatic renderer and uncapped settings, then exited with code 0. Norse rendered its menu with the shared DLL and existing private INI, then stopped through the native UI with exit code 0. Its identical temporary DLL was backed up and removed. Evidence: `tmp/native-ui-test/wine-refresh-cnc-20260913/`.
+
+### September 14 psVoodoo source and license refresh
+
+The current published Wine 11 filesystem is **167,173,559 bytes**, SHA-256 `08cf3f51db0b0d00d9895763cd51a13ee6eaddd0e0a7bfb1f93cdbf2463cb079`. Wine, filesystem ABI, and catalog FileVersion remain **11.0 / 11 / 11**. The package contains psVoodoo from commit `67fcb0a0eb1be9c5f77d04250ad715b2f481754b`, including its replacement Glide headers' license, matching source archive, and build records. It preserves the six WebGL DLL updates found in a fresh download before packaging.
+
+After the user's upload, a fresh download matched the tested ZIP byte for byte and passed native package validation: 8,697 entries, 617,728,979 expanded bytes. `packages.json` now pins it; the other six Wine entries, bundled XML, and demo catalog lock are unchanged. Existing apps retain their exact saved Wine packages. The five Glide regression probes passed against this identical archive before upload. See [the publication record](Licensing/psvoodoo-filesystem-update.json).
+
+All eight Wine catalog tests passed. The rebuilt Debug app includes the published ZIP and updated manifest, both verified against the source records, and passed the five-image bundle audit. This local build includes Wine explicitly; Jenkins' default remains a build without a bundled filesystem. Evidence: `tmp/wine11-psvoodoo-67fcb0a/published/`.

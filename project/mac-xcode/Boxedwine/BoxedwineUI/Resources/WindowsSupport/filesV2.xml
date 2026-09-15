@@ -249,17 +249,7 @@
         <InstallOptions></InstallOptions>
         <Options></Options>
     </Demo>
-    <Demo>
-        <Name>Free Colonization 1.2 (2024)</Name>
-        <InstallType>Zip</InstallType>
-        <IconURL>http://www.boxedwine.org/demos/freecol.png</IconURL>
-        <FileSizeMB>206</FileSizeMB>
-        <FileURL>http://www.boxedwine.org/demos/freecol.zip</FileURL>
-        <ShortcutExe>FreeCol.jar</ShortcutExe>
-        <Help></Help>
-        <InstallOptions>Java17</InstallOptions>
-        <Options>JavaArg=-Xmx768M</Options>
-    </Demo>
+
     <Demo>
         <Name>Fire Fight demo (1996)</Name>
         <InstallType>Installer</InstallType>
@@ -294,17 +284,7 @@
         <InstallOptions>wine=Wine 9.0</InstallOptions>
         <Options>macNativeGL</Options>
     </Demo>
-    <Demo>
-        <Name>Java Solitaire (2007)</Name>
-        <InstallType>Zip</InstallType>
-        <IconURL>http://www.boxedwine.org/demos/java.png</IconURL>
-        <FileSizeMB>2</FileSizeMB>
-        <FileURL>http://www.boxedwine.org/demos/javasolitaire.zip</FileURL>
-        <ShortcutExe>JavaSolitaire.jar</ShortcutExe>
-        <Help>Source: https://sourceforge.net/projects/javaklondike/</Help>
-        <InstallOptions>Java8</InstallOptions>
-        <Options></Options>
-    </Demo>
+
     <Demo>
         <Name>MDK Performance (1999)</Name>
         <InstallType>Zip</InstallType>
@@ -470,28 +450,8 @@
         <Help>16-bit/Windows 3.1</Help>
         <Options></Options>
     </Demo>
-    <Component>
-        <Name>Java 17 JRE</Name>
-        <OptionsName>Java17</OptionsName>
-        <JavaVersion>17</JavaVersion>
-        <InstallType>Zip</InstallType>
-        <FileSizeMB>37</FileSizeMB>
-        <FileURL>http://www.boxedwine.org/demos/java17jre.zip</FileURL>
-        <ShortcutExe></ShortcutExe>
-        <InstallOptions>AddPath=c:\java17jre\bin</InstallOptions>
-        <Options></Options>
-    </Component>
-    <Component>
-        <Name>Java 8 JRE</Name>
-        <OptionsName>Java8</OptionsName>
-        <JavaVersion>8</JavaVersion>
-        <InstallType>Zip</InstallType>
-        <FileSizeMB>55</FileSizeMB>
-        <FileURL>http://www.boxedwine.org/demos/java8jre.zip</FileURL>
-        <ShortcutExe></ShortcutExe>
-        <InstallOptions>AddPath=c:\java8jre\bin</InstallOptions>
-        <Options></Options>
-    </Component>
+
+
     <Component>
         <Name>nGlide (3Dfx Voodoo Glide wrapper)</Name>
         <OptionsName>3dfx</OptionsName>

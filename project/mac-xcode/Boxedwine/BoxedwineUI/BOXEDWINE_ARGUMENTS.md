@@ -1,6 +1,6 @@
 # Advanced Boxedwine arguments
 
-App Settings → Advanced has separate **Boxedwine arguments**, **App arguments**, and (for JARs) **Java arguments**. Each line is one argument; an option's value belongs on the next line. Blank lines in Boxedwine arguments are ignored, CRLF is accepted, and spaces within values stay intact without shell expansion or surrounding quotes. Supported Options provides the current list and an example.
+App Settings → Advanced has separate **Boxedwine arguments** and **App arguments**. Each line is one argument; an option's value belongs on the next line. Blank lines in Boxedwine arguments are ignored, CRLF is accepted, and spaces within values stay intact without shell expansion or surrounding quotes. Supported Options provides the current list and an example.
 
 For demos with typed launch options, Advanced also shows a selectable **Demo launch arguments** block above the editable Boxedwine arguments. It uses the same `DemoSettings.launchArguments` function as the actual launch, exposing color depth, CPU affinity, the DirectDraw override path, and cursor options for both existing and newly imported demos. The path follows the selected program; before a program is selected it displays `(program folder)`. The label explains that these defaults apply to app launches and that editable Boxedwine arguments can override matching values. Glide environment presets already appear in the editable field. Viewing or saving settings does not copy game-only options into installer launches or alter saved demo defaults.
 
@@ -16,7 +16,7 @@ The Name field uses the same inset border and focus outline. This keeps its righ
 WINEDEBUG=-all
 ```
 
-Boxedwine arguments apply to app and installer launches. They follow typed demo launch options so matching scalar values can override those defaults. Notepad and Java use the same rule. Java VM options remain before `-jar`, and app arguments remain after the executable or JAR. The launcher's separate Windows-version configuration commands keep their controlled settings.
+Boxedwine arguments apply to app and installer launches. They follow typed demo launch options so matching scalar values can override those defaults. Notepad uses the same rule. App arguments remain after the executable. The launcher's separate Windows-version configuration commands keep their controlled settings.
 
 ```
 Boxedwine [managed settings] [demo options] [Boxedwine arguments] \
@@ -40,3 +40,5 @@ The demo-argument visibility update passed seven focused existing tests covering
 The default suite passed 153 executed tests (155 total; two integrations remain opt-in). New checks cover missing/invalid values, unsupported and managed switches, literal spaces/shell characters in environment values, demo override ordering, independent program arguments, Notepad and installer launch placement, Java argument separation, legacy loading, rejected saves preserving the original document, and recovery/backup format enforcement and round trips. Debug and Release passed the eighteen-image packaging audits.
 
 In the isolated signed, sandboxed Debug app, entering `-cpuAffinity` without a value displayed an inline error and disabled Save; `-root` did the same with a managed-option explanation. Supported Options exposed the generated reference. The expanded form scrolled to all three argument fields while Save and Cancel remained visible. Saving `-nosound`, `-cpuAffinity`/`1`, and `-env`/`LABEL=two words` persisted format 9 and launched the Java 8 fixture. The runtime reported CPU affinity 1, while the Swing window and log showed the original VM property and three original app arguments with spaces preserved. It exited with code 0. The regular library's 151 file hashes and app metadata were unchanged; only the selected isolated fixture's settings, launch log and guest registry files changed among existing files. These checks do not establish compatibility of every supported flag with every game.
+
+September 14: dedicated Java support was removed. Advanced now contains only the Boxedwine and app argument fields; the Java fixture results above describe earlier builds.

@@ -66,7 +66,6 @@ struct Demo: Identifiable, Equatable, Sendable {
     let installExe: String?
     let wineVersion: String
     var settings: DemoSettings? = nil
-    var java: JavaSettings? = nil
     var glide: Glide? = nil
     // Installation-only choice: the generated private INI travels with the app's files.
     var cncDDrawRenderer: CNCDDrawRenderer? = nil
@@ -149,7 +148,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
             guard name == "Demo", attributes.isEmpty, demos.count < 256 else { fail(parser, "Expected a Demo entry."); return }
             fields = [:]
         case 2:
-            guard (allowed.contains(name) || ["2", "3", "4", "5", "6", "7"].contains(schema) && DemoSettings.catalogFields.contains(name) || ["3", "4", "5", "6", "7"].contains(schema) && ["JavaVersion", "JavaArguments"].contains(name) || ["4", "5", "6", "7"].contains(schema) && name == "Glide" || ["5", "6", "7"].contains(schema) && name == "CNCDDrawRenderer" || ["6", "7"].contains(schema) && name == "CNCDDrawUncapped" || schema == "7" && name == "CNCDDrawFakeMode"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
+            guard (allowed.contains(name) || ["2", "3", "4", "5", "6", "7"].contains(schema) && DemoSettings.catalogFields.contains(name) || ["4", "5", "6", "7"].contains(schema) && name == "Glide" || ["5", "6", "7"].contains(schema) && name == "CNCDDrawRenderer" || ["6", "7"].contains(schema) && name == "CNCDDrawUncapped" || schema == "7" && name == "CNCDDrawFakeMode"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
             fields[name] = ""
         default: fail(parser, "Nested recipe fields are unsupported."); return
         }
@@ -176,7 +175,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
         let id = field("ID"), name = field("Name"), hash = field("FileSHA256"), shortcut = field("ShortcutExe"), icon = field("Icon")
         guard DemoCatalog.validID(id), !demos.contains(where: { $0.id == id }), !name.isEmpty, name.utf8.count <= 256,
               DemoCatalog.validHash(hash), DemoCatalog.validRelativePath(shortcut), !shortcut.contains("/"),
-              (shortcut.lowercased().hasSuffix(".exe") || ["3", "4", "5", "6", "7"].contains(schema) && shortcut.lowercased().hasSuffix(".jar")),
+              shortcut.lowercased().hasSuffix(".exe"),
               (icon.isEmpty || (DemoCatalog.validRelativePath(icon) && !icon.contains("/") && icon.hasSuffix(".png"))),
               let url = URL(string: field("FileURL")), DemoCatalog.validDownloadURL(url),
               let bytes = Int64(field("FileSizeBytes")), bytes > 0, bytes <= 1024 * 1024 * 1024,
@@ -192,15 +191,9 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
         guard type != .portableZip || zip, zip || ["exe", "msi"].contains(url.pathExtension.lowercased()),
               type != .installer || !zip || (DemoCatalog.validRelativePath(installer) && ["exe", "msi"].contains((installer as NSString).pathExtension.lowercased())),
               (type == .installer && zip) || installer.isEmpty else { throw DemoError.catalog("Unsupported installation recipe for \(name).") }
-        var java: JavaSettings?
-        if shortcut.lowercased().hasSuffix(".jar") {
-            guard type == .portableZip, let version = Int(field("JavaVersion")), let choice = JavaChoice(rawValue: version), choice != .automatic else { throw DemoError.catalog("A Java demo needs a supported, tested Java version.") }
-            java = JavaSettings(choice: choice, arguments: field("JavaArguments").split(separator: "\n").map(String.init))
-            try java?.validate()
-        } else if !field("JavaVersion").isEmpty || !field("JavaArguments").isEmpty { throw DemoError.catalog("Java options require a JAR program.") }
         var glide: Demo.Glide?
         if fields["Glide"] != nil {
-            guard let choice = Demo.Glide(rawValue: field("Glide")), java == nil, field("WineVersion") == "11.0" else {
+            guard let choice = Demo.Glide(rawValue: field("Glide")), field("WineVersion") == "11.0" else {
                 throw DemoError.catalog("Glide demos require psVoodoo, an EXE program and Wine 11.0.")
             }
             glide = choice
@@ -228,7 +221,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
         return Demo(origin: DemoOrigin(id: id, catalogRelease: release, packageSHA256: hash, shortcutExe: shortcut),
                     name: name, summary: field("Summary"), help: field("Help").replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\t", with: "    "),
                     icon: icon, url: url, bytes: bytes, type: type, installExe: installer.isEmpty ? nil : installer, wineVersion: field("WineVersion"),
-                    settings: settings, java: java, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode)
+                    settings: settings, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode)
     }
 }
 

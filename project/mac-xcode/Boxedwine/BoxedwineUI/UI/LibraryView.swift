@@ -143,7 +143,7 @@ struct LibraryView: View {
                             VStack(spacing: 15) {
                                 Image(systemName: "macwindow.on.rectangle").font(.system(size: 42)).foregroundStyle(.secondary)
                                 Text(store.query.isEmpty ? "Bring your favorite app along." : "No matching apps").font(.title3.weight(.medium))
-                                Text(store.query.isEmpty ? "Drop a Windows installer, app folder, or Java app here.\nYou can test your app for free." : "Try a different name.")
+                                Text(store.query.isEmpty ? "Drop a Windows installer or app folder here.\nYou can test your app for free." : "Try a different name.")
                                     .multilineTextAlignment(.center).foregroundStyle(.secondary)
                                 Button("Add App…") { store.showAddApp = true }.buttonStyle(.borderedProminent)
                                     .disabled(!store.canEdit || store.importing)
@@ -255,7 +255,6 @@ struct LibraryView: View {
         .sheet(item: $store.notepadWineDownload, onDismiss: store.presentNextProgramChoice) { wine in
             NotepadDownloadView(store: store, wine: wine)
         }
-        .sheet(item: $store.javaSetup, onDismiss: store.presentNextProgramChoice) { plan in JavaSetupView(store: store, plan: plan) }
         .sheet(item: $store.editingApp, onDismiss: store.presentNextProgramChoice) { app in AppSettingsView(store: store, app: app) }
         .sheet(item: $store.choosingProgram, onDismiss: store.presentNextProgramChoice) { app in
             if let repository = store.repository {
@@ -454,7 +453,6 @@ struct AddAppView: View {
     }
     private var dropActionTitle: String {
         switch droppedKind {
-        case .javaFile: return "Add Java App"
         case .installerFile: return "Add and Run Installer"
         case .installerFolder: return "Choose Installer…"
         case .appFolder: return store.droppedAppSource?.isDirectory == true ? "Add App Folder" : "Choose App Folder…"
@@ -462,7 +460,6 @@ struct AddAppView: View {
     }
     private var dropExplanation: String {
         switch droppedKind {
-        case .javaFile: return "Copies this .jar app. Java is prepared automatically, with any download shown before setup. For companion libraries or data, drop the app’s folder instead."
         case .installerFile: return "Copies this setup file and opens the installer. If it needs supporting files, drop the installer’s whole folder instead."
         case .installerFolder: return "Copies this entire folder, including supporting files. Next, choose the installer inside it."
         case .appFolder:
@@ -524,13 +521,6 @@ struct AddAppView: View {
                     }.disabled(!store.canSelectWine(wineID))
                     Text("An app that is ready to run without a setup step. Copies its folder and supporting files.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                VStack(alignment: .leading, spacing: 6) {
-                    Button { choose(.javaFile) } label: {
-                        Label("Java App…", systemImage: "cup.and.saucer").frame(maxWidth: .infinity, alignment: .leading).padding(9)
-                    }.disabled(!store.canSelectWine(wineID))
-                    Text("A self-contained .jar app. Java is prepared automatically; any download is shown first.")
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
                 Divider()
                 VStack(alignment: .leading, spacing: 6) {
                     Button { store.chooseBackup() } label: {
@@ -560,7 +550,6 @@ struct AppSettingsView: View {
     @State var app: LibraryApp
     @State private var showProgramChooser = false
     @State private var argumentText = ""
-    @State private var javaArgumentText = ""
     @State private var boxedwineArgumentText = ""
     @State private var advancedExpanded = false
     @State private var showBoxedwineHelp = false
@@ -696,20 +685,8 @@ struct AppSettingsView: View {
                         Divider().padding(.vertical, 4)
                         Text("App arguments — one argument per line").font(.caption)
                         ArgumentTextEditor(text: $argumentText, label: "App arguments", height: 75)
-                        Text("Passed after the program or JAR name. These are for the app. Put each argument on its own line; spaces within a line are kept, so do not add surrounding quotes.")
+                        Text("Passed after the program name. These are for the app. Put each argument on its own line; spaces within a line are kept, so do not add surrounding quotes.")
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        if app.isJava {
-                            Picker("Java", selection: Binding(get: { app.javaChoice }, set: { value in
-                                if app.java == nil { app.java = JavaSettings() }
-                                app.java?.choice = value
-                            })) { ForEach(JavaChoice.allCases) { Text($0.title).tag($0) } }
-                            Text("Automatic selects Java from the app’s requirements. Override it only for compatibility problems.")
-                                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                            Text("Java arguments — one argument per line").font(.caption)
-                            ArgumentTextEditor(text: $javaArgumentText, label: "Java arguments", height: 60)
-                            Text("VM options such as -Xmx768M go before -jar. Boxedwine supplies -jar and the program path.")
-                                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }
                     }
                 }
             }
@@ -720,18 +697,12 @@ struct AppSettingsView: View {
                     app.boxedwineArguments = parsed.isEmpty ? nil : parsed
                     app.arguments = argumentText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
                     if argumentText.isEmpty { app.arguments = [] }
-                    if app.isJava {
-                        if app.java == nil { app.java = JavaSettings() }
-                        app.java?.arguments = javaArgumentText.isEmpty ? [] : javaArgumentText.components(separatedBy: "\n")
-                    }
                     store.save(app)
                 }.keyboardShortcut(.defaultAction).disabled(importingIcon || !store.canModify(app) || app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || boxedwineProblem != nil)
             }
         }.padding(28).frame(width: 540)
         .onAppear {
             argumentText = app.arguments.joined(separator: "\n")
-            if app.isJava && app.java == nil { app.java = JavaSettings() }
-            javaArgumentText = (app.java?.arguments ?? []).joined(separator: "\n")
             boxedwineArgumentText = (app.boxedwineArguments ?? []).joined(separator: "\n")
         }
         .sheet(isPresented: $showProgramChooser) {
@@ -739,11 +710,6 @@ struct AppSettingsView: View {
                 ProgramChooserView(repository: repository, app: app, saveTitle: "Use This Program") { chosen in
                     app.name = chosen.name
                     app.executable = chosen.executable
-                    if app.isJava && app.java == nil {
-                        let java = JavaSettings()
-                        app.java = java
-                        javaArgumentText = java.arguments.joined(separator: "\n")
-                    }
                     showProgramChooser = false
                 }
             }
@@ -916,25 +882,5 @@ struct NativeSettingsView: View {
                 Text("Boxedwine is free software under GPL version 2 or later.").font(.caption).foregroundStyle(.secondary)
             }
         }.padding(24).frame(width: 520)
-    }
-}
-
-struct JavaSetupView: View {
-    @ObservedObject var store: LibraryStore
-    let plan: PendingJavaSetup
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Prepare Java for \(plan.app.name)").font(.title2.weight(.semibold))
-            Text("\(plan.package.name) was selected for this app. Boxedwine will download \(ByteCountFormatter.string(fromByteCount: plan.package.reference.bytes, countStyle: .file)) and prepare it automatically.")
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Downloads are reused for other Java apps. This app keeps its own prepared Java package. You can change the Java choice in Advanced settings if needed.")
-                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            HStack {
-                Spacer()
-                Button("Not Now") { store.javaSetup = nil }.keyboardShortcut(.cancelAction)
-                Button(plan.launchWith == nil ? "Download and Prepare" : "Download and Open") { store.installJava(plan) }
-                    .keyboardShortcut(.defaultAction)
-            }
-        }.padding(28).frame(width: 480)
     }
 }

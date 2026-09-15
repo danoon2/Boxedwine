@@ -7,7 +7,6 @@ struct ImportProgressView: View {
     @ObservedObject var store: LibraryStore
     private func title(_ progress: ImportProgress) -> String {
         if progress.cancelled { return "Cancelling…" }
-        if store.transfer == .preparingJava { return "Preparing Java for \(store.importName)…" }
         if store.transfer == .organizingWine { return "Organizing Wine packages…" }
         switch progress.phase {
         case .preparing: return "Preparing \(store.importName)…"

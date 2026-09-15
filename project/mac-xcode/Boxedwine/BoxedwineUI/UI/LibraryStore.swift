@@ -15,7 +15,6 @@ final class DroppedAppSource {
     var allowedKinds: [LibraryStore.SourceKind] {
         if isDirectory { return [.appFolder, .installerFolder] }
         switch url.pathExtension.lowercased() {
-        case "jar": return [.javaFile]
         case "exe": return [.installerFile, .appFolder]
         default: return [.installerFile]
         }
@@ -24,15 +23,15 @@ final class DroppedAppSource {
     init(url: URL) throws {
         guard url.isFileURL else {
             throw NSError(domain: "AppDrop", code: 1, userInfo: [NSLocalizedDescriptionKey:
-                "Drop an app folder, a Windows installer (.exe or .msi), or a Java app (.jar) from Finder."])
+                "Drop an app folder or a Windows installer (.exe or .msi) from Finder."])
         }
         let scoped = url.startAccessingSecurityScopedResource()
         do {
             let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isPackageKey, .isSymbolicLinkKey])
             guard values.isSymbolicLink != true, values.isPackage != true,
-                  values.isDirectory == true || (values.isRegularFile == true && ["exe", "msi", "jar"].contains(url.pathExtension.lowercased())) else {
+                  values.isDirectory == true || (values.isRegularFile == true && ["exe", "msi"].contains(url.pathExtension.lowercased())) else {
                 throw NSError(domain: "AppDrop", code: 2, userInfo: [NSLocalizedDescriptionKey:
-                    "Drop an app folder, a Windows installer (.exe or .msi), or a Java app (.jar). Extract ZIP files first, and use Restore App Backup for Boxedwine backups."])
+                    "Drop an app folder or a Windows installer (.exe or .msi). Extract ZIP files first, and use Restore App Backup for Boxedwine backups."])
             }
             self.url = url
             self.isDirectory = values.isDirectory == true
@@ -85,10 +84,7 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var importProgress: ImportProgress?
     @Published private(set) var importName = ""
     @Published private(set) var importingRuntime = false
-    enum Transfer { case importing, backup, restoring, checkingRuntime, deleting, configuring, organizingWine, preparingJava }
-    @Published var javaSetup: PendingJavaSetup?
-    private var javaCatalog: JavaCatalog?
-    private var javaCatalogProblem: String?
+    enum Transfer { case importing, backup, restoring, checkingRuntime, deleting, configuring, organizingWine }
     @Published private(set) var transfer: Transfer = .importing
     @Published private(set) var backingUpID: UUID?
     private let wineConfiguration = WineConfiguration(executable: RuntimeSession.bundledExecutable())
@@ -132,7 +128,7 @@ final class LibraryStore: ObservableObject {
 
     var selectedApp: LibraryApp? { showingRemoved || showingRecovery || showingDemos ? nil : visibleApps.first { $0.id == selectedID } }
     var presentingLibrarySheet: Bool {
-        javaSetup != nil || showAddApp || editingApp != nil || choosingProgram != nil || choosingAnotherProgram != nil || errorMessage != nil || showingLaunchLog ||
+        showAddApp || editingApp != nil || choosingProgram != nil || choosingAnotherProgram != nil || errorMessage != nil || showingLaunchLog ||
         removalCandidate != nil || deletionCandidate != nil || recoveryCleanupCandidate != nil || wineTrialCandidate != nil || pendingWineTrial != nil || notepadWineDownload != nil
     }
     var hasRunningApps: Bool { !sessions.isEmpty || !launchPreparations.isEmpty }
@@ -157,10 +153,6 @@ final class LibraryStore: ObservableObject {
             repository = nil
             errorMessage = "The library could not be opened. Your saved library has not been changed.\n\n" + error.localizedDescription
         }
-        do {
-            guard let resources = Bundle.main.resourceURL?.appendingPathComponent("WindowsSupport") else { throw JavaError.missing }
-            javaCatalog = try JavaCatalog.load(xml: Data(contentsOf: resources.appendingPathComponent("filesV2.xml")), fingerprints: Data(contentsOf: resources.appendingPathComponent("java-packages.json")))
-        } catch { javaCatalogProblem = error.localizedDescription }
         do {
             guard let resources = Bundle.main.resourceURL?.appendingPathComponent("WindowsSupport") else { throw LibraryError.missingRuntime }
             wineVersions = try WineCatalog.load(xml: Data(contentsOf: resources.appendingPathComponent("filesV2.xml")),
@@ -432,7 +424,7 @@ final class LibraryStore: ObservableObject {
     }
     func hasRuntime(_ app: LibraryApp) -> Bool { app.savedWineVersion != nil || runtimeAvailable }
     func canLaunch(_ app: LibraryApp) -> Bool {
-        canEdit && javaSetup == nil && !importingRuntime && backingUpID != app.id && !isRunning(app) && !selectingDemoPrograms.contains(app.id) && hasRuntime(app)
+        canEdit && !importingRuntime && backingUpID != app.id && !isRunning(app) && !selectingDemoPrograms.contains(app.id) && hasRuntime(app)
     }
 
     func exportBackup(_ app: LibraryApp) {
@@ -610,7 +602,7 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    enum SourceKind { case appFolder, installerFile, installerFolder, javaFile }
+    enum SourceKind { case appFolder, installerFile, installerFolder }
 
     func receiveAppDrop(_ urls: [URL]) -> Bool {
         guard canDropApp, !urls.isEmpty else { return false }
@@ -653,9 +645,6 @@ final class LibraryStore: ObservableObject {
         let folder = kind == .appFolder || kind == .installerFolder
         let panel = NSOpenPanel()
         switch kind {
-        case .javaFile:
-            panel.title = "Add a Java App"
-            panel.message = "Choose a self-contained .jar app. Java will be selected automatically, with its download size shown before setup. For apps with companion libraries or data, use App Folder."
         case .appFolder:
             panel.title = "Add an App Folder"
             panel.message = "Choose the folder containing the app and its supporting files. Boxedwine will copy it."
@@ -670,8 +659,7 @@ final class LibraryStore: ObservableObject {
         panel.canChooseDirectories = folder
         panel.allowsMultipleSelection = false
         panel.directoryURL = initialDirectory
-        if kind == .javaFile { panel.allowedContentTypes = [UTType(filenameExtension: "jar") ?? .data] }
-        else if !folder { panel.allowedContentTypes = [UTType(filenameExtension: "exe") ?? .data, UTType(filenameExtension: "msi") ?? .data] }
+        if !folder { panel.allowedContentTypes = [UTType(filenameExtension: "exe") ?? .data, UTType(filenameExtension: "msi") ?? .data] }
         guard panel.runModal() == .OK, let source = panel.url else { return }
         importSource(source, kind: kind, windowsVersion: windowsVersion, wine: wine, allowDownload: allowDownload)
     }
@@ -728,7 +716,6 @@ final class LibraryStore: ObservableObject {
                     let selection = WineImportSelection(package: package)
                     return try await Task.detached {
                         switch kind {
-                        case .javaFile: return try repository.importJar(source, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
                         case .appFolder: return try repository.importFolder(source, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
                         case .installerFile: return try repository.importInstaller(source, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
                         case .installerFolder: return try repository.importInstallerFolder(source, installer: installer!, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
@@ -742,8 +729,7 @@ final class LibraryStore: ObservableObject {
                 imported = nil
                 revealApp(app.id)
                 finishImport()
-                if kind == .javaFile { prepareJavaApp(app) }
-                else if kind == .appFolder { chooseProgram(app) }
+                if kind == .appFolder { chooseProgram(app) }
                 else { launch(app, installing: true) }
             } catch {
                 // A completed copy is still private until library.json commits successfully.
@@ -874,7 +860,6 @@ final class LibraryStore: ObservableObject {
                 revealApp(app.id)
                 finishImport()
                 if app.installer != nil { launch(app, installing: true) }
-                else if app.isJava { prepareJavaApp(app) }
             } catch {
                 if let imported {
                     do { try await Task.detached { try repository.discardUncommittedImport(imported) }.value }
@@ -1086,7 +1071,6 @@ final class LibraryStore: ObservableObject {
             activity.removeValue(forKey: app.id)
             editingApp = nil
             choosingProgram = nil
-            if updated.isJava { prepareJavaApp(updated) }
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -1145,7 +1129,7 @@ final class LibraryStore: ObservableObject {
     }
 
     func presentNextProgramChoice() {
-        guard errorMessage == nil, javaSetup == nil, choosingProgram == nil, choosingAnotherProgram == nil, editingApp == nil, removalCandidate == nil, deletionCandidate == nil, recoveryCleanupCandidate == nil, wineTrialCandidate == nil, pendingWineTrial == nil, !importing, !showAddApp, !showingLaunchLog else { return }
+        guard errorMessage == nil, choosingProgram == nil, choosingAnotherProgram == nil, editingApp == nil, removalCandidate == nil, deletionCandidate == nil, recoveryCleanupCandidate == nil, wineTrialCandidate == nil, pendingWineTrial == nil, !importing, !showAddApp, !showingLaunchLog else { return }
         while !pendingProgramChoices.isEmpty {
             let id = pendingProgramChoices.removeFirst()
             if let app = apps.first(where: { $0.id == id }), !isRunning(app) {
@@ -1185,7 +1169,6 @@ final class LibraryStore: ObservableObject {
                             try commit(apps.map { $0.id == app.id ? selected : $0 })
                             activity[app.id] = "Ready to open"
                             revealApp(app.id)
-                            if selected.isJava { prepareJavaApp(selected) }
                         } else {
                             activity[app.id] = "Installer closed — choose the installed app"
                             chooseProgram(current)
@@ -1214,6 +1197,11 @@ final class LibraryStore: ObservableObject {
 
     func launch(_ app: LibraryApp, installing: Bool = false, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil) {
         guard canLaunch(app), apps.contains(app), let repository else { return }
+        if !app.isNotepad && !installing && alternateExecutable == nil && externalProgram == nil,
+           let executable = app.executable, (executable as NSString).pathExtension.lowercased() != "exe" {
+            reportLaunchFailure(app, error: LibraryError.missingExecutable)
+            return
+        }
         if app.savedWineVersion != nil {
             if let url = try? repository.savedRuntimeURL(for: app), let cached = savedPackages[url], cached.isCurrent,
                cached.info.wineVersion == app.savedWineVersion, app.winePackage?.matches(cached) ?? true {
@@ -1243,7 +1231,7 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    private func launchSession(_ app: LibraryApp, zip: URL, installing: Bool, javaReady: Bool = false, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil) {
+    private func launchSession(_ app: LibraryApp, zip: URL, installing: Bool, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil) {
         guard canLaunch(app), apps.contains(app), let repository else { return }
         if app.hasPendingWineSettings {
             guard !importing else { return }
@@ -1262,7 +1250,6 @@ final class LibraryStore: ObservableObject {
             }
             return
         }
-        if app.isJava && !installing && alternateExecutable == nil && externalProgram == nil && !javaReady { prepareJavaApp(app, launchWith: zip); return }
         launching.insert(app.id)
         launchProblems[app.id] = nil
         activity[app.id] = (externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Launching \($0)…" } ?? (installing ? "Launching installer…" : "Launching…")
@@ -1457,85 +1444,5 @@ private final class WineRuntimeChooser: NSObject {
         displayedStatus = statuses[wine.id] ?? .checking
         label.stringValue = displayedStatus.message(for: wine)
         button.isEnabled = displayedStatus != .checking
-    }
-}
-
-struct PendingJavaSetup: Identifiable {
-    let id = UUID()
-    let app: LibraryApp
-    let package: CatalogJava
-    let minimumVersion: Int
-    let requiresDownload: Bool
-    let launchWith: URL?
-}
-
-extension LibraryStore {
-    /// Inspect only owned files. Nothing is executed to determine a JAR's version.
-    func prepareJavaApp(_ app: LibraryApp, launchWith zip: URL? = nil) {
-        guard canModify(app), app.isJava, apps.contains(app), let repository else { return }
-        guard let catalog = javaCatalog else { errorMessage = javaCatalogProblem ?? "Java support is unavailable in this build."; return }
-        let control = beginImport(name: app.name, runtime: true, transfer: .preparingJava)
-        Task {
-            do {
-                let result = try await Task.detached { () -> (CatalogJava, Int, Bool, Bool) in
-                    try app.java?.validate()
-                    let source = try repository.confinedURL(app.executable!, beneath: repository.root(for: app))
-                    let info = try JavaJar.inspect(source, beneath: repository.root(for: app), control: control)
-                    let package = try catalog.select(minimum: info.minimumVersion, choice: app.javaChoice)
-                    let effective = try JavaJar.inspect(source, beneath: repository.root(for: app), javaVersion: package.id, control: control)
-                    guard effective.minimumVersion <= package.id else { throw JavaError.unsupported(effective.minimumVersion) }
-                    if let saved = app.java?.package, saved.version == package.id {
-                        _ = try repository.validatedJava(app, reference: saved, control: control)
-                        return (package, effective.minimumVersion, true, false)
-                    }
-                    let installed = FileManager.default.fileExists(atPath: try repository.javaDirectory(app, reference: package.reference).path)
-                    if installed { _ = try repository.validatedJava(app, reference: package.reference, control: control) }
-                    return (package, effective.minimumVersion, false, try !installed && repository.cachedJava(package.reference, control: control) == nil)
-                }.value
-                try control.checkCancellation()
-                finishImport()
-                guard canEdit, apps.contains(app) else { return }
-                if result.2 {
-                    if let zip { launchSession(app, zip: zip, installing: false, javaReady: true) }
-                    else { activity[app.id] = "Java \(result.0.id) ready"; revealApp(app.id) }
-                } else {
-                    let plan = PendingJavaSetup(app: app, package: result.0, minimumVersion: result.1, requiresDownload: result.3, launchWith: zip)
-                    if plan.requiresDownload { javaSetup = plan }
-                    else { installJava(plan) }
-                }
-            } catch {
-                finishImport()
-                if !(error is CancellationError) { reportLaunchFailure(app, error: error) }
-            }
-        }
-    }
-    func installJava(_ plan: PendingJavaSetup) {
-        guard canModify(plan.app), apps.contains(plan.app), let repository else { return }
-        javaSetup = nil
-        let control = beginImport(name: plan.app.name, runtime: true, transfer: .preparingJava)
-        Task {
-            do {
-                let ready = try await Task.detached {
-                    try await repository.prepareJava(plan.app, package: plan.package, allowDownload: plan.requiresDownload, control: control)
-                }.value
-                try control.beginFinishing()
-                guard apps.contains(plan.app) else { throw JavaError.changed }
-                try commit(apps.map { $0.id == ready.id ? ready : $0 })
-                finishImport()
-                activity[ready.id] = "Java \(plan.package.id) ready"
-                if plan.launchWith == nil { revealApp(ready.id) }
-                if canEdit, let zip = plan.launchWith { launchSession(ready, zip: zip, installing: false, javaReady: true) }
-            } catch {
-                finishImport()
-                if !(error is CancellationError) { reportLaunchFailure(plan.app, error: error) }
-            }
-        }
-    }
-}
-
-@MainActor extension LibraryStore {
-    func javaDownloadNote(for demo: Demo) -> String {
-        guard let choice = demo.java?.choice, let package = javaCatalog?.packages.first(where: { $0.id == choice.rawValue }) else { return "" }
-        return "Java \(package.id) is also required, with up to \(ByteCountFormatter.string(fromByteCount: package.reference.bytes, countStyle: .file)) to download. Availability is checked before Java setup."
     }
 }

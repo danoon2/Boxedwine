@@ -6,19 +6,21 @@ This keeps catalog maintenance in a data file, rather than Swift source. The ori
 
 ## Current selection
 
-Initial shared release `26R2-catalog-1` includes **36 entries**: seventeen portable ZIPs and nineteen installers. Thirty-three use Wine 11.0 and three use Wine 9.0. See [Demo coverage](DEMO_COVERAGE.md) for each recipe, verification evidence and the two remaining entries.
+Shared release `26R2-catalog-2` contains **34 entries**: fifteen portable ZIPs and nineteen installers. Thirty-one use Wine 11.0 and three use Wine 9.0. Java Solitaire and FreeCol have been removed along with dedicated Java support. The new ZIP is verified in the local build cache and awaits upload; see [shared catalog publishing](../../../../resources/DEMO_CATALOG.md). See [Demo coverage](DEMO_COVERAGE.md) for recipe verification.
 
-The entries and artwork come from the existing [26R2 catalog](https://www.boxedwine.org/v2/26R2/filesV2.xml). Exact payload sizes and fingerprints are recorded in the bundled XML. Thirty-five PNG icons are bundled unchanged from the legacy URLs; Cities in Motion adds a PNG extracted from the installed demo executable because the legacy icon URL was unavailable. It uses the largest embedded representation (48×48) with its original alpha channel, bringing the bundled total to 36. This records their source, not a determination of redistribution rights.
+The entries and artwork come from the existing [26R2 catalog](https://www.boxedwine.org/v2/26R2/filesV2.xml). Exact payload sizes and fingerprints are recorded in the bundled XML. Thirty-three PNG icons are bundled unchanged from the legacy URLs; Cities in Motion adds a PNG extracted from the installed demo executable because the legacy icon URL was unavailable. It uses the largest embedded representation (48×48) with its original alpha channel, bringing the bundled total to 34. This records their source, not a determination of redistribution rights.
 
 The current expansion translates fifteen legacy recipes with known native equivalents. Mac-specific legacy options override generic options when present. Windows versions are applied and verified with winecfg before setup; GDI values seed the private environment during import; launch-only display, cursor, CPU and graphics options are kept off the installer command. Caesar 3 starts both setup and game at 800×600, translating its former explanatory prose explicitly. Its GDI setting is prepared before setup too. Unknown legacy strings are never executed or silently discarded.
 
-Solitaire DotNet still needs Mono. 3DMark’s unexplained `Debug` option remains unresolved. Java Solitaire and FreeCol use [automatic Java setup](JAVA_SUPPORT.md), with tested Java 8/17 choices and FreeCol’s VM memory option. Catalog schema 3 adds typed `JavaVersion` and `JavaArguments` fields for these JAR recipes.
+Solitaire DotNet still needs Mono. 3DMark’s unexplained `Debug` option remains unresolved. Java recipes are no longer supported: `ShortcutExe` must name an EXE, and `JavaVersion` / `JavaArguments` are rejected.
 
 Descent 3 demo 2, Motorhead, and F-16 Multirole Fighter use schema 4’s `Glide` field, whose only supported value is `psVoodoo`. All three select Wine 11.0. Import verifies filesystem 11 and a preinstalled `C:/windows/system32/glide2x.dll` before fetching the demo, then saves `WINEDLLOVERRIDES=d3d9=b` and `WINE_D3D_CONFIG=renderer=gl` as ordinary Advanced Boxedwine arguments. These apply to setup and the game and remain editable. The DLL stays in the shared Wine ZIP; no separate Glide installer or per-app DLL copy is needed. Motorhead also applies Windows 98 through winecfg before setup and starts the game at 640×480. Descent’s help explains how to select 3dfx during video detection. F-16 explicitly disables the old GDI-only recipe setting: it detects the installed Glide wrapper, which needs WineD3D 3D support. Existing installations can use the same two Advanced environment options without reinstalling or replacing the DLL.
 
 The September 12 Wine 11 refresh is 167,063,262 bytes, SHA-256 `de809143d4481f5e6a0dfa1dca4e044fb8f401c0988a172d1c32ffd27649fc69`. Its preinstalled psVoodoo DLL includes the Descent 3 texture-memory query fix and the F-16 framebuffer, clipping, terrain-detail, and camera-turn shadow fixes. The packaged DLL is byte-identical to the final F-16-tested build. Catalog updates preserve installed apps' exact pins; this development library's sixteen apps using the previous Wine 11 build were explicitly migrated at the user's request. Schema 1–3 remain readable; schema 4 retains their fields. Glide presets reuse library/backup/recovery formats 9/5/6 through the existing Advanced argument support.
 
 The September 13 refresh is 167,016,911 bytes, SHA-256 `a3367c4e977dbbe0295ce3b4b102bf7b0baa1278ea121cefe6065d561b960452`. Only `C:/ddraw/ddraw.dll` changed: it now includes the CNC OpenGL loader fix. Catalog release 8 removes MDK’s GDI override while retaining uncapped timing. The shared download intentionally remains unchanged for game-specific settings. Catalog release 9 uses a 32-bit desktop for Norse and seeds `[NORSE95]` / `fake_mode=320x240x16` in its private `C:/ddraw/ddraw.ini` during installation. The installed development copy has its tested CNC configuration restored.
+
+The September 14 refresh pins the published Wine 11 package at **167,173,559 bytes**, SHA-256 `08cf3f51db0b0d00d9895763cd51a13ee6eaddd0e0a7bfb1f93cdbf2463cb079`. It includes psVoodoo's licensed header replacement with matching source and notices, and preserves the publisher's six WebGL DLL updates. Demo recipes and existing app pins are unchanged. See [Wine catalog verification](WINE_CATALOG.md#september-14-psvoodoo-source-and-license-refresh).
 
 **Runtime integration:** the native helper now has the filesystem-11 graphics ABI, and the Debug app includes the refreshed Wine 11 package. Its helper rendered Motorhead’s race in an isolated smoke check using the preinstalled DLL; the full earlier user playtest used the separate runtime. Descent 3's 3dfx startup fix was confirmed by the user in the regular native UI. Normal shutdown through the new helper and extended stability remain separate checks. See [Glide support](GLIDE_SUPPORT.md#native-filesystem-11-integration) for evidence and limits.
 
@@ -36,7 +38,7 @@ BOXEDWINE_TEST_DEMO_CATALOG="$PWD/tmp/catalog-edit" \
   swift test --package-path project/mac-xcode/Boxedwine/BoxedwineUI
 ```
 
-The current schema is `<XML schemaVersion="7" release="26R2-catalog-1">` containing one or more `<Demo>` entries. It accepts UTF-8 XML, at most 1 MiB and 256 entries, with no document type or external entities. Fields cannot be duplicated, and unknown fields/attributes are rejected.
+The current schema is `<XML schemaVersion="7" release="26R2-catalog-2">` containing one or more `<Demo>` entries. It accepts UTF-8 XML, at most 1 MiB and 256 entries, with no document type or external entities. Fields cannot be duplicated, and unknown fields/attributes are rejected.
 
 | Field | Meaning |
 | --- | --- |
@@ -50,7 +52,7 @@ The current schema is `<XML schemaVersion="7" release="26R2-catalog-1">` contain
 | `FileSHA256` | Required 64-character lowercase hexadecimal SHA-256 of the complete download. |
 | `InstallType` | Required `Zip` for a portable ZIP, or `Installer` for a standalone EXE/MSI or a ZIP containing setup media. |
 | `InstallExe` | Required only for an installer ZIP: relative EXE/MSI path within the extracted media. Omit for other recipes. |
-| `ShortcutExe` | Required program basename (EXE, or JAR for a Java recipe). Portable imports require exactly one match. After a normal installer exit, a unique case-insensitive match is selected and saved automatically; missing or ambiguous matches open the chooser. |
+| `ShortcutExe` | Required EXE program basename. Portable imports require exactly one match. After a normal installer exit, a unique case-insensitive match is selected and saved automatically; missing or ambiguous matches open the chooser. |
 | `WineVersion` | Required exact Wine version string from the validated support ZIP. |
 
 Schema 2 adds these optional typed fields. Schema 1 remains readable but cannot contain them. Duplicate fields, invalid enums/numbers, empty typed values, and unsupported values fail validation.

@@ -214,7 +214,6 @@ public extension PackageCheck {
     static func describeWineCatalog(_ directory: URL) throws -> String {
         let catalog = try WineCatalog.load(xml: Data(contentsOf: directory.appendingPathComponent("filesV2.xml")),
                                            fingerprints: Data(contentsOf: directory.appendingPathComponent("packages.json")))
-        _ = try JavaCatalog.load(xml: Data(contentsOf: directory.appendingPathComponent("filesV2.xml")), fingerprints: Data(contentsOf: directory.appendingPathComponent("java-packages.json")))
         return "Validated filesV2.xml Wine list: " + catalog.wines.map(\.name).joined(separator: ", ")
     }
     static func checkWineDownloads(catalog directory: URL, downloads: URL) throws -> String {

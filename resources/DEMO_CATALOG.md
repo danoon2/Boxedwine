@@ -8,8 +8,9 @@ URL. An unchanged pin makes no network request when its verified ZIP is cached.
 
 The package contains `catalog.xml` and its referenced PNGs in one flat directory.
 The XML's `release` matches the lock's `version`; `schemaVersion` describes the
-recipe format separately. The first shared release, `26R2-catalog-1`, preserves
-the 36 recipes and icons from native preview 9. See the
+recipe format separately. The current pin, `26R2-catalog-2`, contains 34 recipes and icons. It removes
+Java Solitaire and FreeCol from the original 36-entry `26R2-catalog-1`.
+The new ZIP is prepared and cached locally; upload is pending. See the
 [recipe schema](../project/mac-xcode/Boxedwine/BoxedwineUI/DEMO_CATALOG.md).
 
 `tools/demo_catalog.py` uses Python 3's standard library and is shared build
@@ -112,5 +113,4 @@ duplicates, unexpected files, malformed XML and missing icons, with size limits.
 Swift unit suite uses synthetic recipe fixtures and works on a fresh offline
 checkout. Setting `BOXEDWINE_TEST_DEMO_CATALOG` additionally checks the staged
 release's recipes against the Wine catalog and decodes every icon. Supplying a
-bad path fails those checks rather than silently skipping them. The opt-in real
-Java package tests also need this path alongside `BOXEDWINE_JAVA_REAL_DOWNLOADS`.
+bad path fails those checks rather than silently skipping them.

@@ -35,9 +35,6 @@ struct DemosView: View {
                                     Text(demo.summary).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                                     Text(downloadDescription(demo))
                                         .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                                    if demo.java != nil && store.installedDemo(demo) == nil && store.removedDemo(demo) == nil {
-                                        Text(store.javaDownloadNote(for: demo)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                                    }
                                 }
                                 Spacer(minLength: 0)
                             }

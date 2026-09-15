@@ -16,7 +16,6 @@ struct LibraryApp: Codable, Identifiable, Equatable, Sendable {
     var arguments: [String] = []
     var boxedwineArguments: [String]?
     var isNotepad = false
-    var java: JavaSettings?
     /// Nil uses the library default. Legacy entries without winePackage use a private ZIP.
     var savedWineVersion: String?
     var winePackage: WinePackageReference?
@@ -53,7 +52,6 @@ struct LibraryDocument: Codable, Sendable {
         if (apps + removedApps.map(\.app)).contains(where: { $0.demoSettings != nil }) { version = 5 }
         if (apps + removedApps.map(\.app)).contains(where: \.hasWindowsVersionPreference) { version = 6 }
         if (apps + removedApps.map(\.app)).contains(where: { $0.winePackage != nil }) { version = 7 }
-        if (apps + removedApps.map(\.app)).contains(where: \.hasJavaConfiguration) { version = 8 }
         if (apps + removedApps.map(\.app)).contains(where: \.hasBoxedwineArguments) { version = 9 }
         if (apps + removedApps.map(\.app)).contains(where: \.hasOpenGLBackendPreference) { version = 10 }
         if (apps + removedApps.map(\.app)).contains(where: \.hasWineRendererPreference) { version = 11 }
@@ -80,7 +78,7 @@ enum LibraryError: LocalizedError {
         case .missingRuntime: "Windows support is missing. Add a Boxedwine Wine package in Settings."
         case .unsupportedVersion(let version): "This library was saved by a newer version of Boxedwine (format \(version))."
         case .invalidInstaller: "Choose a Windows installer ending in .exe or .msi."
-        case .noProgramsInFolder: "This folder doesn’t contain a Windows program (.exe) or runnable Java app (.jar). Choose the folder containing the app and its supporting files."
+        case .noProgramsInFolder: "This folder doesn’t contain a Windows program (.exe). Choose the folder containing the app and its supporting files."
         }
     }
 }
@@ -141,10 +139,8 @@ struct LibraryRepository: Sendable {
                 try CustomAppIcon.validate(icon)
             }
             try app.demoSettings?.validate()
-            try app.java?.validate()
             try BoxedwineArguments.validate(app.boxedwineArguments ?? [])
             guard !app.hasBoxedwineArguments || document.version >= 9 else { throw BoxedwineArgumentError.invalid("These settings require library format 9.") }
-            guard !app.hasJavaConfiguration || document.version >= 8 else { throw JavaError.changed }
             if let executable = app.executable { _ = try confinedURL(executable, beneath: root(for: app)) }
             if let installer = app.installer { _ = try confinedURL(installer, beneath: appDirectory(app)) }
             if let reference = app.winePackage {
@@ -360,10 +356,7 @@ struct LibraryRepository: Sendable {
             guard canonicalURL.path.hasPrefix(appRoot.path + "/") else { throw LibraryError.invalidPath }
             let relative = String(canonicalURL.path.dropFirst(appRoot.path.count + 1))
             if relative.lowercased() == Self.driveC + "/windows" { files.skipDescendants(); continue }
-            let jar = values.isRegularFile == true && url.pathExtension.lowercased() == "jar"
-            let runnableJar = jar && ((try? JavaJar.runnable(url, control: control ?? ImportControl())) == true)
-            try control?.checkCancellation()
-            if values.isRegularFile == true && (url.pathExtension.lowercased() == "exe" || runnableJar) {
+            if values.isRegularFile == true && url.pathExtension.lowercased() == "exe" {
                 _ = try confinedURL(relative, beneath: appRoot)
                 result.append(relative)
             }
@@ -560,7 +553,8 @@ struct LaunchRequest: Sendable {
             if (installer as NSString).pathExtension.lowercased() == "msi" { result += ["start", "/wait", "/unix"] }
             return result + [guest]
         }
-        guard let executable = alternateExecutable ?? app.executable else { throw LibraryError.missingExecutable }
+        guard let executable = alternateExecutable ?? app.executable,
+              (executable as NSString).pathExtension.lowercased() == "exe" else { throw LibraryError.missingExecutable }
         let source = try repository.confinedURL(executable, beneath: repository.root(for: app))
         guard FileManager.default.fileExists(atPath: source.path) else { throw LibraryError.missingExecutable }
         if alternateExecutable != nil {
@@ -569,16 +563,6 @@ struct LaunchRequest: Sendable {
         let guest = "/" + executable
         if let settings = app.demoSettings { result += settings.launchArguments(workingDirectory: (guest as NSString).deletingLastPathComponent) }
         result += overrides
-        if app.isJava && alternateExecutable == nil {
-            try app.java?.validate()
-            guard let reference = app.java?.package else { throw JavaError.missing }
-            // The UI verifies the complete installation before starting a session.
-            let runtime = try repository.javaDirectory(app, reference: reference).appendingPathComponent("runtime")
-            _ = try RuntimePackage.Stamp.read(runtime.appendingPathComponent("bin/java.exe"))
-            return result + ["-mount", runtime.path, "/mnt/boxedwine-java", "-w", (guest as NSString).deletingLastPathComponent,
-                             "/bin/wine", "/mnt/boxedwine-java/bin/java.exe"] +
-                (app.java?.arguments ?? []) + ["-jar", ProgramCandidate(path: executable).windowsPath] + app.arguments
-        }
         return result + ["-w", (guest as NSString).deletingLastPathComponent, "/bin/wine", guest] + (alternateExecutable == nil ? app.arguments : [])
     }
 }

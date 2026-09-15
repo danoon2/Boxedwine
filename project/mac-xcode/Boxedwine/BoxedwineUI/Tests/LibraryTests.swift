@@ -41,6 +41,42 @@ struct LibraryTests {
         #expect(try repository.executables(for: app).count == 2)
     }
 
+    @Test func appFolderKeepsJarDataButOnlyOffersWindowsExecutables() throws {
+        let temporary = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let source = temporary.appendingPathComponent("source")
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        // A runnable manifest used to make this file a selectable program.
+        let jar = ZipFixture.archive([.init("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nMain-Class: example.Main\n\n")])
+        try jar.write(to: source.appendingPathComponent("app.jar"))
+        try Data("Windows wrapper".utf8).write(to: source.appendingPathComponent("app.exe"))
+        let repository = LibraryRepository(directory: temporary.appendingPathComponent("library"))
+        let app = try repository.importFolder(source, name: "Windows app")
+        #expect(try repository.executables(for: app) == [LibraryRepository.driveC + "/App/app.exe"])
+        #expect(app.executable == LibraryRepository.driveC + "/App/app.exe")
+        #expect(try Data(contentsOf: repository.root(for: app).appendingPathComponent(LibraryRepository.driveC + "/App/app.jar")) == jar)
+
+        var unsupported = app
+        unsupported.executable = LibraryRepository.driveC + "/App/app.jar"
+        #expect(throws: LibraryError.self) {
+            try LaunchRequest(app: unsupported, repository: repository, wineZip: temporary).arguments()
+        }
+    }
+
+    @Test func jarOnlyFolderIsRejectedWithoutLeavingAnImport() throws {
+        let temporary = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let source = temporary.appendingPathComponent("source")
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        let jar = ZipFixture.archive([.init("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nMain-Class: example.Main\n\n")])
+        try jar.write(to: source.appendingPathComponent("app.jar"))
+        let repository = LibraryRepository(directory: temporary.appendingPathComponent("library"))
+        #expect(throws: LibraryError.self) { try repository.importFolder(source, name: "Unsupported") }
+        #expect(try repository.load().isEmpty)
+        #expect(try repository.recoveryItems().isEmpty)
+        #expect(try Data(contentsOf: source.appendingPathComponent("app.jar")) == jar)
+    }
+
     @Test func folderWithoutProgramsLeavesNoPartialImport() throws {
         let temporary = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: temporary) }
@@ -147,20 +183,18 @@ struct LibraryTests {
         #expect(Array(normal.suffix(3)) == ["/" + app.executable!] + app.arguments)
     }
 
-    @Test func alternateExecutableDoesNotRequireTheMainAppsJavaRuntime() throws {
+    @Test func alternateExecutableDoesNotRequireTheMainProgram() throws {
         let temporary = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: temporary) }
         let repository = LibraryRepository(directory: temporary)
-        var app = LibraryApp(name: "Java app")
-        app.executable = LibraryRepository.driveC + "/App/main.jar"
-        app.java = JavaSettings()
+        var app = LibraryApp(name: "Windows app")
+        app.executable = LibraryRepository.driveC + "/App/main.exe"
         let utility = LibraryRepository.driveC + "/App/settings.exe"
         let url = try repository.confinedURL(utility, beneath: repository.root(for: app))
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data("program".utf8).write(to: url)
         let arguments = try LaunchRequest(app: app, repository: repository, wineZip: temporary.appendingPathComponent("wine.zip"), alternateExecutable: utility).arguments()
         #expect(Array(arguments.suffix(2)) == ["/bin/wine", "/" + utility])
-        #expect(!arguments.contains("-jar"))
         app.windowsVersion = .win98
         app.windowsVersionPending = true
         #expect(throws: WindowsCompatibilityError.self) {
@@ -215,15 +249,14 @@ struct LibraryTests {
         #expect(!program.folderBookmark.isEmpty)
     }
 
-    @Test func externalMSIUsesWineStartAndDoesNotNeedTheMainJavaRuntime() throws {
+    @Test func externalMSIUsesWineStartAndDoesNotNeedTheMainProgram() throws {
         let temporary = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: temporary) }
         let file = temporary.appendingPathComponent("Windows Support.MSI")
         try Data("installer".utf8).write(to: file)
         let program = try ExternalProgram(file: file, folder: temporary)
         let repository = LibraryRepository(directory: temporary.appendingPathComponent("library"))
-        var app = LibraryApp(name: "Java app", executable: LibraryRepository.driveC + "/main.jar")
-        app.java = JavaSettings()
+        var app = LibraryApp(name: "Windows app", executable: LibraryRepository.driveC + "/main.exe")
         app.arguments = ["saved arguments"]
         let request = LaunchRequest(app: app, repository: repository, wineZip: temporary, externalProgram: program)
         #expect(Array(try request.arguments().suffix(7)) == ["-w", "/home/username/boxedwine-program", "/bin/wine", "start", "/wait", "/unix", "/home/username/boxedwine-program/Windows Support.MSI"])
