@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "scope": "Native Mac application and Notepad artwork. Wine filesystems and catalog payloads have separate inventories.",
+  "scope": "Native Mac application, Notepad artwork, and project-level acknowledgments for Tiny Core Linux and Wine. This is not a package-by-package inventory of guest filesystems or catalog payloads.",
   "components": [
     {
       "id": "boxedwine",
@@ -12,6 +12,42 @@
         {
           "path": "license.txt",
           "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+        }
+      ]
+    },
+    {
+      "id": "tinycore",
+      "name": "Tiny Core Linux",
+      "license": "GPL-2.0; included software may have other licenses",
+      "sourceURL": "http://www.tinycorelinux.net/",
+      "sourceLinkTitle": "Visit Website",
+      "sourceDescription": "The lightweight Linux distribution used as the foundation for Boxedwine\u2019s Windows environment.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/TinyCore.txt",
+          "sha256": "c412e0b1ac202b010f41ec04a104c3f1cb01b9eed08575673f0bc86e84f194d6"
+        },
+        {
+          "path": "license.txt",
+          "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+        }
+      ]
+    },
+    {
+      "id": "wine",
+      "name": "Wine",
+      "license": "LGPL-2.1-or-later",
+      "sourceURL": "https://www.winehq.org/",
+      "sourceLinkTitle": "Visit Website",
+      "sourceDescription": "The compatibility layer that runs Windows apps inside Boxedwine. Wine is developed by the Wine project and its contributors.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Resources/AppIcons/Wine-LICENSE.txt",
+          "sha256": "ae025f125a5d639f0f7abe5146efa1e3d7453cc10b744b2910806fa3f46626ef"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Resources/AppIcons/COPYING.LIB",
+          "sha256": "e237fa56668030e928551ddd60f05df5fe957f75eab874bbd017e085ed722e7c"
         }
       ]
     },
@@ -379,6 +415,13 @@
       "sha256": "198eb53844d3b72197db44e2420b7bdff6139ba59cfb3248eb1a0797af3350e8",
       "sourceURL": "https://github.com/KhronosGroup/SPIRV-Tools/tree/0d6fd73ca73830ccab5fa1f00ed5ed40124e2c55",
       "archiveMember": "SPIRV-Tools-0d6fd73ca73830ccab5fa1f00ed5ed40124e2c55/source/disassemble.cpp (leading copyright notice)"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/TinyCore.txt",
+      "sha256": "c412e0b1ac202b010f41ec04a104c3f1cb01b9eed08575673f0bc86e84f194d6",
+      "sourceURL": "http://www.tinycorelinux.net/faq.html#license",
+      "archiveMember": null,
+      "description": "Boxedwine-authored project acknowledgment summarizing Tiny Core\u2019s own FAQ; not a copy of a distribution-wide license manifest."
     }
   ]
 }

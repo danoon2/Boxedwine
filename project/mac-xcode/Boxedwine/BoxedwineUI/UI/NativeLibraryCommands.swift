@@ -81,6 +81,7 @@ private struct NativeLicenseDocument: Decodable {
     struct Component: Decodable, Identifiable {
         let id, name, license, sourceDescription, text: String
         let sourceURL: URL
+        let sourceLinkTitle: String?
     }
 }
 
@@ -100,7 +101,7 @@ private struct NativeLicensesView: View {
                         Text(component.name).font(.title2.bold()).accessibilityAddTraits(.isHeader)
                         Text(component.license).foregroundStyle(.secondary)
                         Text(component.sourceDescription)
-                        Link("View Source", destination: component.sourceURL)
+                        Link(component.sourceLinkTitle ?? "View Source", destination: component.sourceURL)
                         Divider()
                         Text(component.text).font(.system(size: 12, design: .monospaced))
                             .frame(maxWidth: .infinity, alignment: .leading)

@@ -49,10 +49,16 @@ def document(root=ROOT, manifest=MANIFEST):
             if not text.strip() or hashlib.sha256(text.encode()).hexdigest() != notice["sha256"]:
                 raise ValueError("License text changed; review native-notices.json: " + notice["path"])
             parts.append(text.rstrip())
-        if not parts or not component["sourceURL"].startswith("https://"):
-            raise ValueError("Component needs notices and an HTTPS source URL")
+        # Tiny Core's official website is HTTP-only. This is a displayed link,
+        # not a download endpoint; keep HTTPS required for other source links.
+        source_url = component["sourceURL"]
+        if not parts or not (source_url.startswith("https://") or
+                             source_url == "http://www.tinycorelinux.net/"):
+            raise ValueError("Component needs notices and a supported project/source URL")
         components.append({key: component[key] for key in
                            ("id", "name", "license", "sourceURL", "sourceDescription")})
+        if "sourceLinkTitle" in component:
+            components[-1]["sourceLinkTitle"] = component["sourceLinkTitle"]
         components[-1]["text"] = "\n\n".join(parts)
     if not components:
         raise ValueError("Third-party notices are empty")
