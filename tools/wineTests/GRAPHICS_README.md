@@ -6,7 +6,7 @@ D3DX9 and D3DXOF groups in an isolated Chrome profile with in-memory storage.
 Select the runtime mode and inputs explicitly; the CLI defaults retain the
 earlier published baseline and single-threaded non-JIT build.
 
-The current candidate uses [the v39 patch manifest](webgl-test-divergences-v39.json)
+The latest full graphics qualification uses [the v39 patch manifest](webgl-test-divergences-v39.json)
 and [reviewed v39 counts](graphics-baseline-v39-candidate.json). Its SSE DLLs
 pass all 56 ST JIT / MT JIT groups with the original v38 test executables. The
 previous quaternion failure is resolved; assertion, TODO and skip counts are
@@ -14,6 +14,11 @@ unchanged. See the [qualification record](graphics-sse-build-20260914.json)
 and [BUILD_TESTS.md](BUILD_TESTS.md). Match the archive and filesystem to the
 baseline hashes; a matching filename is insufficient.
 Use ST JIT and MT JIT for focused development runs.
+
+The [v40 upload](../buildWine/webgl_filesystems_v11.json) adds three performance
+patches and retains the same Wine test policy. Its exact DLLs passed 5,132
+targeted depth/stencil checks; the full v39 matrix above has not been rerun
+against v40. See the [packaging record](graphics-performance-package-20260915.json).
 
 ## Run a Wine graphics group
 

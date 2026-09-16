@@ -6,29 +6,40 @@ The current supported host environment is Debian or WSL running Debian/Ubuntu-st
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 
-### Current SSE build (v39)
+### Current performance build (v40)
 
 [`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) selects the
-[v39 patch series](../wineTests/webgl-test-divergences-v39.json): the v38
-graphics fixes plus the SSE build correction. The PE32 DLL build now uses
+[v40 patch series](../wineTests/webgl-test-divergences-v40.json): the v39
+SSE build plus full-surface clear, color readback loop, and lazy CPU depth
+synchronization improvements. The PE32 DLL build retains
 `-msse2 -march=pentium4 -mfpmath=sse`, matching the CPU and floating-point
-flags in `wine_builds.json`. It retains its existing `-O3` optimization and
+flags in `wine_builds.json`, along with its existing `-O3` optimization and
 MinGW/Win32 configuration.
 
-The [qualification record](../wineTests/graphics-sse-build-20260914.json)
-covers all 56 ST JIT / MT JIT Wine graphics groups: 14,924,346 checks and zero
-failures. SSE resolves the previous `D3DXQuaternionBaryCentric` failure at
-`math.c:1557`; assertion, TODO and skip counts are unchanged. The comparison
-uses the original v38 test executables; see [BUILD_TESTS.md](../wineTests/BUILD_TESTS.md).
+The upload uses the exact clean DLLs tested in the
+[MechWarrior 3 investigation](../../docs/mechwarrior3-chrome-performance.md).
+They passed 2,118 depth and 3,014 stencil checks with zero failures or skips,
+plus scheduler wake/idle checks. The
+[packaging record](../wineTests/graphics-performance-package-20260915.json)
+distinguishes that targeted qualification from the full v39 matrix below.
+The full graphics matrix has not been rerun for v40.
 
 Build the current DLLs from a clean Wine checkout with:
 
 ```bash
 python3 tools/buildWine/webgl_filesystem.py build \
   --config tools/buildWine/webgl_filesystems_v11.json \
-  --work-dir /tmp/boxedwine-webgl-v39 \
+  --work-dir /tmp/boxedwine-webgl-v40 \
   --wine-repository /path/to/wine --jobs 8
 ```
+
+### Previous SSE qualification (v39)
+
+The [v39 qualification record](../wineTests/graphics-sse-build-20260914.json)
+covers all 56 ST JIT / MT JIT Wine graphics groups: 14,924,346 checks and zero
+failures. SSE resolves the previous `D3DXQuaternionBaryCentric` failure at
+`math.c:1557`; assertion, TODO and skip counts are unchanged. The comparison
+uses the original v38 test executables; see [BUILD_TESTS.md](../wineTests/BUILD_TESTS.md).
 
 ### Previous v38 candidate
 
@@ -68,14 +79,14 @@ and its GL shims and loader cache are unchanged.
 
 ### v11 demo upload artifact
 
-[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) pins the September 14
+[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) pins the September 15
 `TinyCore15Wine11.0.zip` upload artifact. It combines the latest hosted
-filesystem downloaded September 14 with the tested SSE-built v39 WebGL DLLs.
-All 8,689 other archive entries and their metadata are preserved. The full
-graphics qualification above used the preceding filesystem; this refresh
-passes packaging and Jenkins profile validation with the same eight DLLs.
-Its GL/EGL/GLES libraries and base archive are
-unchanged. Demo scripts
+filesystem downloaded September 15 with the tested performance `ddraw.dll`
+and `wined3d.dll`. All 8,695 other archive entries and their metadata are
+preserved, including the other six SSE WebGL DLLs. Every entry's contents
+match the clean root used for the targeted checks above. The archive passes
+CRC, PE32/import, GL library, loader cache, registry, and exact profile checks.
+Its GL/EGL/GLES libraries and base archive are unchanged. Demo scripts
 use this profile by default; see the [demo site instructions](../jenkins/instructions.md)
 for selecting a candidate filesystem. GDI is a per-demo launch setting;
 a separate GDI filesystem is not required.

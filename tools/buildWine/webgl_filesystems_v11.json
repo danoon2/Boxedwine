@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "manifest_id": "wine11-webgl-filesystems-v11-v39-sse-refresh-20260914",
+  "manifest_id": "wine11-webgl-filesystems-v11-v40-performance-20260915",
   "wine_version": "11.0",
-  "build_date": "2026-09-14",
+  "build_date": "2026-09-15",
   "source_date_epoch": 1768319767,
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
-    "path": "tools/wineTests/webgl-test-divergences-v39.json",
-    "sha256": "b21c73739fcf165e09759e88bfa639fbca7b06ef547c526b2eb5a0f6b21ef8ff"
+    "path": "tools/wineTests/webgl-test-divergences-v40.json",
+    "sha256": "610932caa4d9e35da56d6b57542e00e3e1a6e23957b8858c25279ef29d3442d5"
   },
   "webgl_directory": "home/username/.wine/drive_c/webgl",
   "dlls": {
@@ -48,8 +48,8 @@
       ]
     },
     "ddraw.dll": {
-      "size": 855244,
-      "sha256": "7dc1c0cc47810c39e36d8623039cc7c7e9f035bb58125410ce85b30903691706",
+      "size": 855284,
+      "sha256": "6a550645831956cc95baa2e4a4bb42d71696afe3cef60a2e292e8821db9caa64",
       "required_imports": [
         "wined3d.dll"
       ]
@@ -62,8 +62,8 @@
       ]
     },
     "wined3d.dll": {
-      "size": 3982822,
-      "sha256": "d60aec58f9255f85f1a83dc84f0e6208a09b6829538d1b34cf7123d83e204f8e",
+      "size": 3986918,
+      "sha256": "30867e25fc5cc520e9e7d4b2f029d8911eb8fad60ba898deca72ffe23ebf8b88",
       "required_imports": [
         "opengl32.dll"
       ]
@@ -106,8 +106,8 @@
     "full-v11": {
       "filename": "TinyCore15Wine11.0.zip",
       "filesystem_version": "11",
-      "size": 167150697,
-      "sha256": "325a93a29b40600865316f7b751265a57e8d24ffb2ff0c742362246aa33b4060",
+      "size": 167152522,
+      "sha256": "52eaea9b29603ea9275c72e45526ea0f760efe87a6718f86fa2fa1146c976230",
       "direct_draw_renderer": "opengl",
       "wine_renderer": "gl"
     },

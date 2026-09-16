@@ -1,12 +1,12 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current series is pinned by
-[`webgl-test-divergences-v39.json`](../wineTests/webgl-test-divergences-v39.json).
-It contains 49 production patches and one separate, complete Wine graphics-test
-adaptation. The [v39 inventory](../wineTests/webgl-patch-inventory-v39.json)
+[`webgl-test-divergences-v40.json`](../wineTests/webgl-test-divergences-v40.json).
+It contains 52 production patches and one separate, complete Wine graphics-test
+adaptation. The [v40 inventory](../wineTests/webgl-patch-inventory-v40.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 38 retain earlier build and test selections for reproducing historical
+Versions 2 through 39 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 
@@ -136,6 +136,12 @@ The manifest appends these corrections after production patch 10, in order:
 49. `webgl-sse-build-against-wine-11.0.patch`
     matches the main Wine build's `-msse2 -march=pentium4 -mfpmath=sse` flags
     while retaining the existing PE32 build configuration and optimization level.
+50. `webgl-full-surface-clear-against-wine-11.0.patch`
+    avoids reading old pixels before a complete CPU surface clear.
+51. `webgl-color-readback-loops-against-wine-11.0.patch`
+    uses dedicated conversion loops for common color readback formats.
+52. `webgl-lazy-depth-clear-against-wine-11.0.patch`
+    defers CPU depth synchronization after the GPU depth clear.
 
 ## Runtime controls
 
@@ -160,7 +166,7 @@ Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
 python3 tools/wineTests/webglTestDivergences.py \
-  --manifest tools/wineTests/webgl-test-divergences-v38.json
+  --manifest tools/wineTests/webgl-test-divergences-v40.json
 ```
 
 The validator checks patch hashes, forbids production changes to Wine test
@@ -182,7 +188,7 @@ import sys
 
 repo = Path.cwd()
 source = Path(sys.argv[1]).resolve()
-manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v38.json").read_text())
+manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v40.json").read_text())
 head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
 if head != manifest["wine_source_commit"]:
     raise SystemExit("Wine checkout is not at the pinned source commit")
@@ -206,17 +212,19 @@ is a separate base-filesystem fix selected by `wine_builds.json`.
 For deterministic PE32 output validation and filesystem packaging, see the
 existing [`tools/buildWine/README.md`](../buildWine/README.md).
 
-## MechWarrior 3 performance candidate
+## MechWarrior 3 performance updates
 
 `webgl-lazy-depth-clear-against-wine-11.0.patch` removes the eager CPU depth
 clear after DirectDraw has already cleared the GPU surface. The existing
 texture-location tracking defers synchronization until a CPU reader needs it.
-The candidate was tested on the September 14 SSE WebGL DLL filesystem with
-the standalone full-surface-clear and color-readback-loop patches. It is not
-part of the production manifest yet.
+The clean build was tested on the September 14 SSE WebGL DLL filesystem with
+the full-surface-clear and color-readback-loop patches. All three are included
+in v40 and the September 15 v11 upload package.
 
 Two alternating gameplay comparisons measured about 8.7% higher throughput,
 with one fewer readback per frame. The clean candidate passed 2,118 depth
 readback checks and 3,014 stencil checks, plus scheduler wake/idle checks.
 See [`docs/mechwarrior3-chrome-performance.md`](../../docs/mechwarrior3-chrome-performance.md)
 for the experiment identities, limitations, and subsequent search results.
+The full Wine graphics matrix remains qualified on v39; v40 adds the targeted
+checks above and packaging validation without changing Wine test policy.
