@@ -19,6 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
+
 
 MACH_MAGICS = {bytes.fromhex(x) for x in (
     "cffaedfe", "cefaedfe", "feedfacf", "feedface", "cafebabe", "bebafeca", "cafebabf", "bfbafeca"
@@ -65,12 +67,16 @@ def digest(path):
 
 def load_commands(path, arch):
     output = run("/usr/bin/otool", "-arch", arch, "-l", str(path)).decode()
-    result = {"dependencies": [], "rpaths": [], "minimumOS": None}
+    result = {"dependencies": [], "rpaths": [], "minimumOS": None, "uuid": None}
     for block in re.split(r"Load command \d+\n", output)[1:]:
         cmd = re.search(r"^\s*cmd (\S+)", block, re.M)
         if not cmd:
             continue
         cmd = cmd[1]
+        if cmd == "LC_UUID":
+            match = re.search(r"^\s*uuid (\S+)", block, re.M)
+            if match:
+                result["uuid"] = match[1].upper()
         if cmd in LOAD_COMMANDS or cmd == "LC_RPATH":
             field = "path" if cmd == "LC_RPATH" else "name"
             match = re.search(r"^\s*" + field + r" (.+) \(offset \d+\)", block, re.M)
@@ -297,6 +303,23 @@ def audit(app, configuration="Release", signatures=True, distribution=False, req
         report["notes"].append("No demo catalog included; connect and rebuild to include the pinned catalog.")
     if not (resources / "Boxedwine-LICENSE.txt").is_file():
         errors.append("Boxedwine license text is missing")
+    try:
+        spec = importlib.util.spec_from_file_location("third_party_notices", Path(__file__).with_name("prepare-third-party-notices.py"))
+        notices = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(notices)
+        report["thirdPartyLicenses"] = notices.audit(resources / "Licenses")
+        records = json.loads(notices.SOURCES.read_text())
+        # Signing changes whole-file hashes but preserves Mach-O UUIDs. Original
+        # build inputs are hash-checked during preparation; verify here that the
+        # re-signed libraries still identify those reviewed builds.
+        for relative, expected in records["bundleUUIDs"].items():
+            path = (app / relative).resolve()
+            if path in images:
+                actual = {arch: info["uuid"] for arch, info in images[path]["slices"].items()}
+                if actual != expected:
+                    errors.append("Native library differs from source record: " + relative)
+    except (OSError, ValueError, KeyError) as error:
+        errors.append("Third-party licenses: " + str(error))
     wine = resources / "WindowsSupport/wine.zip"
     report["includedWine"] = {"bytes": wine.stat().st_size, "sha256": digest(wine)} if wine.is_file() else None
     if not wine.is_file():

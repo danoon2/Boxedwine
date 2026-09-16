@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 REPOSITORY = "https://github.com/danoon2/psVoodoo.git"
-REVISION = "e83947c2f4d800831db0643ad589fba1c98b2457"
+REVISION = "67fcb0a0eb1be9c5f77d04250ad715b2f481754b"
 
 
 def main():

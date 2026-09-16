@@ -88,7 +88,7 @@ struct AppBackup {
             var savedApp = app
             savedApp.savedWineVersion = copiedPackage.info.wineVersion
             savedApp.winePackage = nil // Backups contain Wine; they never depend on another library’s reference.
-            let manifest = Manifest(format: savedApp.customIconPNG != nil ? 8 : savedApp.hasWineRendererPreference ? 7 : savedApp.hasOpenGLBackendPreference ? 6 : savedApp.hasBoxedwineArguments ? 5 : savedApp.hasJavaConfiguration ? 4 : savedApp.hasWindowsVersionPreference ? 3 : savedApp.demoSettings == nil ? 1 : 2, app: savedApp, wineVersion: copiedPackage.info.wineVersion,
+            let manifest = Manifest(format: savedApp.customIconPNG != nil ? 8 : savedApp.hasWineRendererPreference ? 7 : savedApp.hasOpenGLBackendPreference ? 6 : savedApp.hasBoxedwineArguments ? 5 : savedApp.hasWindowsVersionPreference ? 3 : savedApp.demoSettings == nil ? 1 : 2, app: savedApp, wineVersion: copiedPackage.info.wineVersion,
                                     entries: try inventory(application, control: control))
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -121,10 +121,8 @@ struct AppBackup {
         guard !manifest.app.hasWineRendererPreference || manifest.format >= 7 else { throw BackupError.changed }
         guard !manifest.app.hasOpenGLBackendPreference || manifest.format >= 6 else { throw BackupError.changed }
         try manifest.app.demoSettings?.validate()
-        try manifest.app.java?.validate()
         try BoxedwineArguments.validate(manifest.app.boxedwineArguments ?? [])
         guard !manifest.app.hasBoxedwineArguments || manifest.format >= 5 else { throw BackupError.changed }
-        guard !manifest.app.hasJavaConfiguration || manifest.format >= 4 else { throw BackupError.changed }
         guard manifest.entries.count <= 100_000, !manifest.app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               manifest.app.name.utf8.count <= 1024 else { throw BackupError.invalid("The app details are invalid.") }
         let application = source.appendingPathComponent("Application", isDirectory: true)

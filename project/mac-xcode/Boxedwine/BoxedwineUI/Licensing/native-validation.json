@@ -1,0 +1,63 @@
+{
+  "date": "2026-09-14",
+  "catalog": "26R2-catalog-2 fresh HTTPS download matched size/hash; 34 icons validated in a new cache",
+  "nativeComponents": 18,
+  "bundleAudits": {
+    "Debug": {
+      "errors": [],
+      "images": 5,
+      "architectures": [
+        "arm64"
+      ],
+      "licenses": {
+        "components": 18,
+        "manifestSHA256": "bfb0c528203410732d4cae80d8d070dc6eead2ef945ee05c2c67dabf16b7247e"
+      },
+      "includedWine": true
+    },
+    "Release": {
+      "errors": [],
+      "images": 5,
+      "architectures": [
+        "arm64"
+      ],
+      "licenses": {
+        "components": 18,
+        "manifestSHA256": "bfb0c528203410732d4cae80d8d070dc6eead2ef945ee05c2c67dabf16b7247e"
+      },
+      "includedWine": false
+    }
+  },
+  "bundleRegressionTests": 19,
+  "moltenvkDownloaderTests": 6,
+  "moltenvkFreshCacheDownload": "passed",
+  "nativeVulkanProbe": {
+    "gpu": "Apple M4",
+    "libraryVersion": "1.4.2",
+    "rgbaPixelsChecked": 256,
+    "result": "All pixels matched; SDL surface and swapchain presentation passed",
+    "scope": "GPU transfers and presentation; not shader compilation or guest Vulkan marshaling"
+  },
+  "wineSmokeTests": {
+    "result": "partial",
+    "startupFix": "Xcode 26.5 Debug libc++ internal tree-invariant checks dominated Wine startup. Setting the Boxedwine target CLANG_CXX_STANDARD_LIBRARY_HARDENING to extensive removes those scans while retaining standard-library safety checks, emulator assertions, and unoptimized debugging. Debug rebuild and five-image bundle audit passed.",
+    "vkQuake": {
+      "wineVersion": "9.0",
+      "moltenvkVersion": "1.4.2",
+      "result": "Launched from the regular native UI using the existing installation. Quake initialized and visibly rendered the textured demo scene, then shut down cleanly with exit code 0."
+    },
+    "wine11OpenGL": {
+      "result": "D3D9_API_PASS; 51 frames; exit 0",
+      "seconds": 33.68
+    },
+    "wine11DXVK": {
+      "result": "Device creation failed; not a passing graphics test despite probe exit 0.",
+      "moltenvk142": "DXVK selected Apple M4 but requested unsupported device features.",
+      "moltenvk1211Control": "DXVK rejected the Vulkan 1.2 adapter because it requires Vulkan 1.3. This probe did not work with the old library either."
+    },
+    "scope": "vkQuake demo rendering and a short Wine OpenGL API/presentation check; not extended gameplay or general DXVK compatibility. No app recipe, Wine selection, or installed game files were manually changed.",
+    "evidenceDirectory": "tmp/vkquake-regression"
+  },
+  "ui": "About window shows Boxedwine version and issue link; About button and Help menu open the native license viewer with selectable text and source links. Visually inspected in dark mode.",
+  "evidenceDirectory": "tmp/native-licenses"
+}

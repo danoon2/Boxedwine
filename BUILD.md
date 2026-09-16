@@ -40,6 +40,10 @@ Jenkins uses `project/mac-xcode/buildRelease.sh` to archive the native UI with i
 
 The native demo catalog and icons are downloaded at build time using the shared pin in `resources/demo-catalog.lock.json`. An exact verified cache works offline. Local Xcode builds warn and omit demos if the pinned package is unavailable; Jenkins fails instead. No catalog fallback is stored in Git. See [Shared demo catalog](resources/DEMO_CATALOG.md) for cache settings and publishing updates.
 
+The emulator’s Debug configuration uses `CLANG_CXX_STANDARD_LIBRARY_HARDENING=extensive`. Xcode 26.5 otherwise enables debug-mode checks that walk the whole JIT address map on each insertion or removal, making Wine startup appear stuck. Extensive mode retains standard-library safety checks without those internal invariant scans; emulator assertions, debug symbols, and unoptimized source-level debugging remain enabled.
+
+The native `Boxedwine` target also prepares the checksum-pinned public-API MoltenVK build before linking. It downloads only when the required library/cache is absent. See [MoltenVK build inputs and verification](tools/moltenvk/README.md).
+
 ## Linux
 
 You need to have GCC 12 or highter.  This means running Debian 12 or Ubuntu 23 or higher

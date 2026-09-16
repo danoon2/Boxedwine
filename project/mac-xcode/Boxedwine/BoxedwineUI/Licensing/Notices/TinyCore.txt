@@ -1,0 +1,11 @@
+Tiny Core Linux
+
+Boxedwine uses a filesystem based on Tiny Core Linux to provide the Linux
+environment in which Wine runs.
+
+Project website: http://www.tinycorelinux.net/
+License information: http://www.tinycorelinux.net/faq.html#license
+
+Tiny Core's FAQ identifies GPL version 2 as its license, including the project's
+custom code by Robert Shingledecker. Software included in the distribution may
+have its own stated license. The GPL version 2 text follows.

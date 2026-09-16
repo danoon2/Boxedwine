@@ -1,0 +1,132 @@
+{
+  "base": {
+    "url": "https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip",
+    "bytes": 167004093,
+    "sha256": "8bdf466e88abce7c5254a659b7d8d05ed79dda79d5a832ea10eb6b9b80f74c66",
+    "entries": 8681,
+    "matchesCurrentPin": false,
+    "glideSHA256": "55aee80ac08478f8d965cede9e07b011fa046ec02f84ebc18e78b1abaf44a939"
+  },
+  "output": {
+    "filename": "TinyCore15Wine11.0.zip",
+    "bytes": 167173559,
+    "sha256": "08cf3f51db0b0d00d9895763cd51a13ee6eaddd0e0a7bfb1f93cdbf2463cb079"
+  },
+  "psVoodooRevision": "67fcb0a0eb1be9c5f77d04250ad715b2f481754b",
+  "dllSHA256": "6c4453a3316a60d409290ea41f53c98fabd51ef655401e4d196e8a07e10c3a14",
+  "sourceArchive": {
+    "filename": "psVoodoo-67fcb0a0eb1be9c5f77d04250ad715b2f481754b.tar.gz",
+    "sha256": "4557b2b2643b0c373cbbff21462bf616f4bec22c26b9f6ffb5badba5fb026710",
+    "bytes": 107985
+  },
+  "added": [
+    "usr/local/share/doc/psvoodoo/NOTICE.md",
+    "usr/local/share/doc/psvoodoo/README.txt",
+    "usr/local/share/doc/psvoodoo/build.json",
+    "usr/local/share/doc/psvoodoo/docs/glide-headers.json",
+    "usr/local/share/doc/psvoodoo/docs/glide-headers.md",
+    "usr/local/share/doc/psvoodoo/licenses/GPL-2.0.txt",
+    "usr/local/share/doc/psvoodoo/licenses/Glide.txt",
+    "usr/local/share/doc/psvoodoo/licenses/LGPL-2.1.txt",
+    "usr/local/share/doc/psvoodoo/licenses/MIT.txt",
+    "usr/local/share/doc/psvoodoo/licenses/llvm-mingw/COPYING",
+    "usr/local/share/doc/psvoodoo/licenses/llvm-mingw/COPYING.MinGW-w64-runtime.txt",
+    "usr/local/share/doc/psvoodoo/licenses/llvm-mingw/COPYING.MinGW-w64.txt",
+    "usr/local/share/doc/psvoodoo/licenses/llvm-mingw/COPYING.winpthreads.txt",
+    "usr/local/share/doc/psvoodoo/licenses/llvm-mingw/COPYING.winstorecompat.txt",
+    "usr/local/share/doc/psvoodoo/licenses/llvm-mingw/LLVM-LICENSE.TXT",
+    "usr/local/share/doc/psvoodoo/psVoodoo-67fcb0a0eb1be9c5f77d04250ad715b2f481754b.tar.gz"
+  ],
+  "changed": [
+    "changes.txt",
+    "home/username/.wine/drive_c/windows/system32/glide2x.dll"
+  ],
+  "unchanged": 8679,
+  "date": "2026-09-14",
+  "status": "published-verified-pinned",
+  "wineVersion": "11.0",
+  "filesystemVersion": "11",
+  "uploadURL": "https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip",
+  "artifactPath": "tmp/wine11-psvoodoo-67fcb0a/upload/TinyCore15Wine11.0.zip",
+  "nativePackageValidation": "Validated Wine 11.0, filesystem 11: 8697 entries, 617728979 expanded bytes.",
+  "runtimeTests": {
+    "configuration": "Previously validated diagnostic runtime, WineD3D OpenGL, disposable prefix, DLL loaded from the output ZIP with no local override",
+    "results": [
+      {
+        "test": "glide-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "PASS_LOAD_ONLY",
+        "passed": true
+      },
+      {
+        "test": "lfb-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "LFB_COLORS_PASS mismatches=0",
+        "passed": true
+      },
+      {
+        "test": "clip-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "CLIP_ORDER_PASS mismatches=0",
+        "passed": true
+      },
+      {
+        "test": "detail-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "DETAIL_BLEND_PASS mismatches=0",
+        "passed": true
+      },
+      {
+        "test": "depth-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "W_DEPTH_BIAS_PASS panels=72 samples=648 mismatches=0",
+        "passed": true
+      }
+    ]
+  },
+  "changesPreservedFromFreshDownload": {
+    "added": [],
+    "removed": [],
+    "changed": [
+      "home/username/.wine/drive_c/webgl/d3d9.dll",
+      "home/username/.wine/drive_c/webgl/d3dx9_36.dll",
+      "home/username/.wine/drive_c/webgl/d3dx9_43.dll",
+      "home/username/.wine/drive_c/webgl/d3dxof.dll",
+      "home/username/.wine/drive_c/webgl/ddraw.dll",
+      "home/username/.wine/drive_c/webgl/wined3d.dll"
+    ]
+  },
+  "sourceBuildPinUpdated": true,
+  "appDownloadFingerprintUpdated": true,
+  "evidenceDirectory": "tmp/wine11-psvoodoo-67fcb0a",
+  "remaining": "Full filesystem licensing and App Store review remain separate.",
+  "publishedVerification": {
+    "url": "https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip",
+    "verifiedAtUTC": "2026-09-15T00:31:16+00:00",
+    "bytes": 167173559,
+    "sha256": "08cf3f51db0b0d00d9895763cd51a13ee6eaddd0e0a7bfb1f93cdbf2463cb079",
+    "matchesUploadArtifact": true,
+    "nativePackageValidation": "Validated Wine 11.0, filesystem 11: 8697 entries, 617728979 expanded bytes."
+  },
+  "appValidation": {
+    "wineCatalogTests": {
+      "tests": 8,
+      "suites": 1,
+      "passed": true
+    },
+    "debugBuild": "passed",
+    "bundleAudit": {
+      "images": 5,
+      "errors": []
+    },
+    "includedZIPMatchesPublished": true,
+    "bundledManifestMatchesSource": true,
+    "existingAppPinsChanged": false,
+    "evidenceDirectory": "tmp/wine11-psvoodoo-67fcb0a/published"
+  }
+}

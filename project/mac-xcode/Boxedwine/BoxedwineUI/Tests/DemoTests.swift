@@ -77,6 +77,15 @@ struct DemoTests {
         }
     }
 
+    @Test func catalogRejectsJarProgramsAndJavaRuntimeOptions() throws {
+        for recipe in [DemoCatalogFixture.entry("jar", program: "APP.JAR"),
+                       DemoCatalogFixture.entry("runtime", fields: "<JavaVersion>8</JavaVersion>"),
+                       DemoCatalogFixture.entry("arguments", fields: "<JavaArguments>-Xmx768M</JavaArguments>")] {
+            let xml = "<XML schemaVersion=\"7\" release=\"test-1\">" + recipe + "</XML>"
+            #expect(throws: DemoError.self) { try DemoCatalog.load(Data(xml.utf8)) }
+        }
+    }
+
     @Test func portableDemoPinsWineAndSurvivesRecoveryBackupAndRemoval() async throws {
         let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
         let data = payload, entry = demo(payload)

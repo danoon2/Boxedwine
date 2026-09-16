@@ -1052,6 +1052,7 @@
 			"productName" = "Boxedwine";
 			"isa" = "PBXNativeTarget";
 			"buildPhases" = (
+				"BC0261000000000000000003",
 				"BC0261000000000000000001",
 				"0A92B7B2F821078392FA55D3",
 				"C47A2B39C38DA462A89788CF",
@@ -1840,10 +1841,6 @@
 		F8F8B03D258B4DE28F522B10 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B0F; };
 		F8F8B03D258B4DE28F522B0D = { isa = PBXFileReference; path = "Core/BoxedwineArguments.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		F8F8B03D258B4DE28F522B0E = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B0D; };
-		F8F8B03D258B4DE28F522B0B = { isa = PBXFileReference; path = "Core/JavaSupport.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
-		F8F8B03D258B4DE28F522B0C = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B0B; };
-		F8F8B03D258B4DE28F522B09 = { isa = PBXFileReference; path = "Core/JavaJar.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
-		F8F8B03D258B4DE28F522B0A = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B09; };
 		F8F8B03D258B4DE28F522B07 = { isa = PBXFileReference; path = "Core/SharedWine.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		F8F8B03D258B4DE28F522B08 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B07; };
 		F8F8B03D258B4DE28F522B05 = { isa = PBXFileReference; path = "Core/WineCatalog.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
@@ -2552,6 +2549,8 @@
 			"isa" = "XCBuildConfiguration";
 			"name" = "Debug";
 			"buildSettings" = {
+				/* Debug tree-invariant checks scan the entire JIT address map on each mutation. */
+				"CLANG_CXX_STANDARD_LIBRARY_HARDENING" = "extensive";
 				"CODE_SIGN_ENTITLEMENTS" = "BoxedwineUI/Boxedwine-Development.entitlements";
 				"GENERATE_INFOPLIST_FILE" = "NO";
 				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
@@ -2845,9 +2844,7 @@
 				"F8F8B03D258B4DE28F522B07",
 				"F8F8B03D258B4DE28F522B0F",
 				"E4CB65BF801940A59261A901",
-				"F8F8B03D258B4DE28F522B0B",
 				"F8F8B03D258B4DE28F522B0D",
-				"F8F8B03D258B4DE28F522B09",
 				"BF449A2EA947D286FEB7BDD9",
 				"02CBE464F34120CE26F79833",
 				"395953AD925BBAE7D185F0DF",
@@ -2890,9 +2887,7 @@
 				"F8F8B03D258B4DE28F522B08",
 				"F8F8B03D258B4DE28F522B10",
 				E4CB65BF801940A59261A902,
-				"F8F8B03D258B4DE28F522B0C",
 				"F8F8B03D258B4DE28F522B0E",
-				"F8F8B03D258B4DE28F522B0A",
 				"9F3F5FB170351DE4B2F6C664",
 				67093D2C3388DFD31745C70B,
 				F3CABEDACBBE41C99ABE2002,
@@ -3477,6 +3472,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/BoxedwineUI/Tools/prepare-version-plist.py\" --header \"$SRCROOT/../../../include/boxedwine.h\" --output \"$DERIVED_FILE_DIR/Versioned-Info.plist\" --template \"$SRCROOT/BoxedwineUI/Info.plist\"\n";
+		};
+
+		BC0261000000000000000003 = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ("$(SRCROOT)/../../../resources/moltenvk.lock.json", "$(SRCROOT)/../../../tools/fetch_moltenvk.py");
+			name = "Prepare Pinned MoltenVK";
+			outputPaths = ("$(SRCROOT)/../../../lib/mac/vulkan/lib/libMoltenVK.dylib");
+			alwaysOutOfDate = 1;
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/../../../tools/fetch_moltenvk.py\"\n";
 		};
 
 	};

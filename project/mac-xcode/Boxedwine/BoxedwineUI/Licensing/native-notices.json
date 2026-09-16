@@ -1,0 +1,427 @@
+{
+  "schemaVersion": 1,
+  "scope": "Native Mac application, Notepad artwork, and project-level acknowledgments for Tiny Core Linux and Wine. This is not a package-by-package inventory of guest filesystems or catalog payloads.",
+  "components": [
+    {
+      "id": "boxedwine",
+      "name": "Boxedwine",
+      "license": "GPL-2.0-or-later",
+      "sourceURL": "https://github.com/danoon2/Boxedwine",
+      "sourceDescription": "Boxedwine source, including its native Mac UI and vendored libraries.",
+      "notices": [
+        {
+          "path": "license.txt",
+          "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+        }
+      ]
+    },
+    {
+      "id": "tinycore",
+      "name": "Tiny Core Linux",
+      "license": "GPL-2.0; included software may have other licenses",
+      "sourceURL": "http://www.tinycorelinux.net/",
+      "sourceLinkTitle": "Visit Website",
+      "sourceDescription": "The lightweight Linux distribution used as the foundation for Boxedwine\u2019s Windows environment.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/TinyCore.txt",
+          "sha256": "c412e0b1ac202b010f41ec04a104c3f1cb01b9eed08575673f0bc86e84f194d6"
+        },
+        {
+          "path": "license.txt",
+          "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+        }
+      ]
+    },
+    {
+      "id": "wine",
+      "name": "Wine",
+      "license": "LGPL-2.1-or-later",
+      "sourceURL": "https://www.winehq.org/",
+      "sourceLinkTitle": "Visit Website",
+      "sourceDescription": "The compatibility layer that runs Windows apps inside Boxedwine. Wine is developed by the Wine project and its contributors.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Resources/AppIcons/Wine-LICENSE.txt",
+          "sha256": "ae025f125a5d639f0f7abe5146efa1e3d7453cc10b744b2910806fa3f46626ef"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Resources/AppIcons/COPYING.LIB",
+          "sha256": "e237fa56668030e928551ddd60f05df5fe957f75eab874bbd017e085ed722e7c"
+        }
+      ]
+    },
+    {
+      "id": "sdl",
+      "name": "SDL 2.0.14",
+      "license": "zlib; additional notices",
+      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "sourceDescription": "The SDL framework and nested hidapi framework match the official SDL 2.0.14 Mac distribution.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL.txt",
+          "sha256": "7a771248ca372e2dff4887c921543699847ae44c56d7558692f5860237f1f914"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL-additional.txt",
+          "sha256": "9d3d6098d20d4f0fceae43563434f36471d1ffde11a3a3071d5a64cca6f917bc"
+        }
+      ]
+    },
+    {
+      "id": "yuv2rgb",
+      "name": "yuv2rgb (in SDL)",
+      "license": "BSD-3-Clause",
+      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "sourceDescription": "Color conversion code included with SDL.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL-yuv2rgb.txt",
+          "sha256": "f7d74004cc75778cae46c5f0139f244d67c07ef64cf51937e8272352197dcb18"
+        }
+      ]
+    },
+    {
+      "id": "hidapi",
+      "name": "hidapi (in SDL 2.0.14)",
+      "license": "BSD-style license",
+      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "sourceDescription": "This distribution uses the BSD-style option from hidapi\u2019s alternative licenses. Source is in SDL\u2019s src/hidapi directory.",
+      "notices": [
+        {
+          "path": "lib/sdl2/src/hidapi/LICENSE-bsd.txt",
+          "sha256": "30eb1bef29b46f8ba7ab8b416035dbd93cb034a45481dd97815b944284582cd2"
+        }
+      ]
+    },
+    {
+      "id": "moltenvk",
+      "name": "MoltenVK 1.4.2",
+      "license": "Apache-2.0",
+      "sourceURL": "https://github.com/KhronosGroup/MoltenVK/tree/db66022459ffb663aa2b50f6b018bc2e124f5edf",
+      "sourceDescription": "Copyright (c) 2015-2026 The Brenwill Workshop Ltd. Official public-API macOS release.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/Apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ]
+    },
+    {
+      "id": "spirv-cross",
+      "name": "SPIRV-Cross (in MoltenVK)",
+      "license": "Apache-2.0; Khronos Free Use",
+      "sourceURL": "https://github.com/KhronosGroup/SPIRV-Cross/tree/6c09849fe88c48eaed08413aa022aaa136a3a057",
+      "sourceDescription": "Shader translation and SPIR-V headers used by MoltenVK.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Cross-copyright.txt",
+          "sha256": "c3ad16e4ef13c3e34a446f66f1b6248595d01ab04d61e872e7b0ccd21a959481"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Cross.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/Khronos-Free-Use.txt",
+          "sha256": "fbeaca472f4f70e276dd1106ca5097435967a22ad6c1d8200aef7ad9f70aaf3f"
+        }
+      ]
+    },
+    {
+      "id": "spirv-headers",
+      "name": "SPIRV-Headers (in MoltenVK)",
+      "license": "MIT",
+      "sourceURL": "https://github.com/KhronosGroup/SPIRV-Headers/tree/29981f65241605e08b0ede4cfeb999fe3b723c6a",
+      "sourceDescription": "SPIR-V definitions used by the tools included in MoltenVK.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Headers.txt",
+          "sha256": "ea43b1de38a6f90c488800d66dec1ed671e68cda530266bc96951fb5b6307613"
+        }
+      ]
+    },
+    {
+      "id": "spirv-tools",
+      "name": "SPIRV-Tools (in MoltenVK)",
+      "license": "Apache-2.0",
+      "sourceURL": "https://github.com/KhronosGroup/SPIRV-Tools/tree/0d6fd73ca73830ccab5fa1f00ed5ed40124e2c55",
+      "sourceDescription": "SPIR-V validation, assembly and disassembly code in MoltenVK.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Tools-copyright.txt",
+          "sha256": "198eb53844d3b72197db44e2420b7bdff6139ba59cfb3248eb1a0797af3350e8"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Tools.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ]
+    },
+    {
+      "id": "cereal",
+      "name": "cereal (in MoltenVK)",
+      "license": "BSD-3-Clause",
+      "sourceURL": "https://github.com/USCiLab/cereal/tree/a56bad8bbb770ee266e930c95d37fff2a5be7fea",
+      "sourceDescription": "Serialization code used by MoltenVK.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/cereal.txt",
+          "sha256": "58604a126af6a671ea390ee3d5b3e42228aa59b2858fb7af1d5b20b31739ccbb"
+        }
+      ]
+    },
+    {
+      "id": "vulkan-headers",
+      "name": "Vulkan Headers",
+      "license": "Apache-2.0",
+      "sourceURL": "https://github.com/KhronosGroup/Vulkan-Headers/tree/e3b1eec08173d6b825cd3ac88c885a63b621504a",
+      "sourceDescription": "Copyright 2015-2026 The Khronos Group Inc. Includes the headers used by MoltenVK and the separately vendored headers in Boxedwine\u2019s source/vulkan/vk directory.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/Vulkan-Headers.txt",
+          "sha256": "95ad366d23fadf701d355bc45fb8b82ae2d700239471d35d41286ac3b08ff903"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/Apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ]
+    },
+    {
+      "id": "asmjit",
+      "name": "AsmJit 1.21.0",
+      "license": "zlib",
+      "sourceURL": "https://github.com/danoon2/Boxedwine/tree/58fe32f6a6db5955766ca06140a5ef36ba3ed9ca/lib/asmjit",
+      "sourceDescription": "Vendored source and local changes are included in lib/asmjit.",
+      "notices": [
+        {
+          "path": "lib/asmjit/LICENSE.md",
+          "sha256": "13870bd53bce53fb9a9bd72e72dcceeffc547c84d9a00d3d4833737a79651828"
+        }
+      ]
+    },
+    {
+      "id": "pugixml",
+      "name": "pugixml 1.10",
+      "license": "MIT",
+      "sourceURL": "https://github.com/danoon2/Boxedwine/tree/58fe32f6a6db5955766ca06140a5ef36ba3ed9ca/lib/pugixml",
+      "sourceDescription": "Vendored source and local changes are included in lib/pugixml.",
+      "notices": [
+        {
+          "path": "lib/pugixml/LICENSE.md",
+          "sha256": "9ddc2f8e3003601aff5a4d37f3caf3b6b60a729ebbc466bafd965cdf0883b12c"
+        }
+      ]
+    },
+    {
+      "id": "softfloat",
+      "name": "Berkeley SoftFloat 3e",
+      "license": "BSD-3-Clause",
+      "sourceURL": "https://github.com/danoon2/Boxedwine/tree/58fe32f6a6db5955766ca06140a5ef36ba3ed9ca/lib/softfloat",
+      "sourceDescription": "Vendored source and local changes are included in lib/softfloat.",
+      "notices": [
+        {
+          "path": "lib/softfloat/COPYING.txt",
+          "sha256": "145ea96b4a4a04a1a7738d2a2bf9e830f861971e69606187b018d9e8fc0b95c7"
+        }
+      ]
+    },
+    {
+      "id": "glew",
+      "name": "GLEW 2.1.0",
+      "license": "BSD-style; MIT-style notices",
+      "sourceURL": "https://github.com/danoon2/Boxedwine/tree/58fe32f6a6db5955766ca06140a5ef36ba3ed9ca/lib/glew",
+      "sourceDescription": "Source and headers are included in lib/glew. The Mesa-derived notices here relate to GLEW\u2019s headers.",
+      "notices": [
+        {
+          "path": "lib/glew/LICENSE.txt",
+          "sha256": "8991cd11befec7c6a63662700f03c0cc42e864b6e77c7e70b80297c951a7f0ff"
+        },
+        {
+          "path": "lib/glew/include/GL/glew.h",
+          "lines": [
+            1,
+            83
+          ],
+          "sha256": "7b720617f5c9a2a2b15dde348813ca8eaaafd07b5a10a516756d82bd9891cdcc"
+        }
+      ]
+    },
+    {
+      "id": "zlib-minizip",
+      "name": "zlib 1.2.11 and MiniZip 1.1",
+      "license": "zlib",
+      "sourceURL": "https://github.com/danoon2/Boxedwine/tree/58fe32f6a6db5955766ca06140a5ef36ba3ed9ca/lib/zlib",
+      "sourceDescription": "Source and local changes are included in lib/zlib and lib/zlib/contrib/minizip.",
+      "notices": [
+        {
+          "path": "lib/zlib/zlib.h",
+          "lines": [
+            1,
+            29
+          ],
+          "sha256": "5b305a8fcbfac28f3238dfe6db82016dbc72b986be3034e843648f89ffc2bfb5"
+        },
+        {
+          "path": "lib/zlib/contrib/minizip/zip.h",
+          "lines": [
+            1,
+            38
+          ],
+          "sha256": "32a8c97c095f096c949e57f8853a0ecea00ed166679ccf7a88686d117f252d80"
+        },
+        {
+          "path": "lib/zlib/contrib/minizip/unzip.h",
+          "lines": [
+            1,
+            41
+          ],
+          "sha256": "042b28c570d71c3bfecb38faeef5c6ff4b5efe618b799e826b7abbefb4f431b8"
+        },
+        {
+          "path": "lib/zlib/contrib/minizip/ioapi.h",
+          "lines": [
+            1,
+            19
+          ],
+          "sha256": "8cc09635a961697fe0d1478c541d2f2f71bc61929a9c4cdb1687a503d9b6db55"
+        }
+      ]
+    },
+    {
+      "id": "stb-image",
+      "name": "stb_image 2.25",
+      "license": "MIT (chosen alternative)",
+      "sourceURL": "https://github.com/danoon2/Boxedwine/tree/58fe32f6a6db5955766ca06140a5ef36ba3ed9ca/source/util/stb_image.h",
+      "sourceDescription": "Source is included in source/util/stb_image.h. Both original license alternatives are reproduced below.",
+      "notices": [
+        {
+          "path": "source/util/stb_image.h",
+          "lines": [
+            7620,
+            7660
+          ],
+          "sha256": "7587efcca32db8f95bf5860dea6dfa4be410ee723e1964db3689c8ddf2a2e4a9"
+        }
+      ]
+    },
+    {
+      "id": "llvm",
+      "name": "LLVM-derived ARM helpers",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "sourceURL": "https://github.com/danoon2/Boxedwine/tree/58fe32f6a6db5955766ca06140a5ef36ba3ed9ca/source/emulation/cpu/armv8/llvm_helper.cpp",
+      "sourceDescription": "Adapted helper code is included in source/emulation/cpu/armv8/llvm_helper.cpp. The original LLVM license and its exceptions follow.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/LLVM.txt",
+          "sha256": "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
+        }
+      ]
+    },
+    {
+      "id": "notepad",
+      "name": "Wine Notepad artwork",
+      "license": "LGPL-2.1-or-later",
+      "sourceURL": "https://gitlab.winehq.org/wine/wine/-/tree/wine-11.0/programs/notepad",
+      "sourceDescription": "The original icon and converted PNG are included in this app\u2019s AppIcons resources, with provenance and source information.",
+      "notices": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Resources/AppIcons/Wine-LICENSE.txt",
+          "sha256": "ae025f125a5d639f0f7abe5146efa1e3d7453cc10b744b2910806fa3f46626ef"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Resources/AppIcons/COPYING.LIB",
+          "sha256": "e237fa56668030e928551ddd60f05df5fe957f75eab874bbd017e085ed722e7c"
+        }
+      ]
+    }
+  ],
+  "externalNotices": [
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL.txt",
+      "sha256": "ae4df3759a726538607b84c00ab8f8a5567d9f38ad5397486eb9b5c5f626caef",
+      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "archiveMember": "SDL2-2.0.14/COPYING.txt"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL-yuv2rgb.txt",
+      "sha256": "f7d74004cc75778cae46c5f0139f244d67c07ef64cf51937e8272352197dcb18",
+      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "archiveMember": "SDL2-2.0.14/src/video/yuv2rgb/LICENSE"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL-additional.txt",
+      "sha256": "9d3d6098d20d4f0fceae43563434f36471d1ffde11a3a3071d5a64cca6f917bc",
+      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "archiveMember": "src/stdlib/SDL_qsort.c; src/libm/e_pow.c (copyright blocks)"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/Apache-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "sourceURL": "https://github.com/KhronosGroup/MoltenVK/tree/db66022459ffb663aa2b50f6b018bc2e124f5edf",
+      "archiveMember": "MoltenVK-1.4.2/LICENSE"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Cross.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "sourceURL": "https://github.com/KhronosGroup/SPIRV-Cross/tree/6c09849fe88c48eaed08413aa022aaa136a3a057",
+      "archiveMember": "SPIRV-Cross-6c09849fe88c48eaed08413aa022aaa136a3a057/LICENSE"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/Khronos-Free-Use.txt",
+      "sha256": "fbeaca472f4f70e276dd1106ca5097435967a22ad6c1d8200aef7ad9f70aaf3f",
+      "sourceURL": "https://github.com/KhronosGroup/SPIRV-Cross/tree/6c09849fe88c48eaed08413aa022aaa136a3a057",
+      "archiveMember": "SPIRV-Cross-6c09849fe88c48eaed08413aa022aaa136a3a057/LICENSES/LicenseRef-KhronosFreeUse.txt"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/cereal.txt",
+      "sha256": "58604a126af6a671ea390ee3d5b3e42228aa59b2858fb7af1d5b20b31739ccbb",
+      "sourceURL": "https://github.com/USCiLab/cereal/tree/a56bad8bbb770ee266e930c95d37fff2a5be7fea",
+      "archiveMember": "cereal-a56bad8bbb770ee266e930c95d37fff2a5be7fea/LICENSE"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/Vulkan-Headers.txt",
+      "sha256": "95ad366d23fadf701d355bc45fb8b82ae2d700239471d35d41286ac3b08ff903",
+      "sourceURL": "https://github.com/KhronosGroup/Vulkan-Headers/tree/e3b1eec08173d6b825cd3ac88c885a63b621504a",
+      "archiveMember": "Vulkan-Headers-e3b1eec08173d6b825cd3ac88c885a63b621504a/LICENSE.md"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/LLVM.txt",
+      "sha256": "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee",
+      "sourceURL": "https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-19.1.0/llvm/LICENSE.TXT",
+      "archiveMember": null
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Tools.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "sourceURL": "https://github.com/KhronosGroup/SPIRV-Tools/tree/0d6fd73ca73830ccab5fa1f00ed5ed40124e2c55",
+      "archiveMember": "SPIRV-Tools-0d6fd73ca73830ccab5fa1f00ed5ed40124e2c55/LICENSE"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Headers.txt",
+      "sha256": "ea43b1de38a6f90c488800d66dec1ed671e68cda530266bc96951fb5b6307613",
+      "sourceURL": "https://github.com/KhronosGroup/SPIRV-Headers/tree/29981f65241605e08b0ede4cfeb999fe3b723c6a",
+      "archiveMember": "SPIRV-Headers-29981f65241605e08b0ede4cfeb999fe3b723c6a/LICENSE"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Cross-copyright.txt",
+      "sha256": "c3ad16e4ef13c3e34a446f66f1b6248595d01ab04d61e872e7b0ccd21a959481",
+      "sourceURL": "https://github.com/KhronosGroup/SPIRV-Cross/tree/6c09849fe88c48eaed08413aa022aaa136a3a057",
+      "archiveMember": "SPIRV-Cross-6c09849fe88c48eaed08413aa022aaa136a3a057/spirv_cross.cpp (leading copyright notice)"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SPIRV-Tools-copyright.txt",
+      "sha256": "198eb53844d3b72197db44e2420b7bdff6139ba59cfb3248eb1a0797af3350e8",
+      "sourceURL": "https://github.com/KhronosGroup/SPIRV-Tools/tree/0d6fd73ca73830ccab5fa1f00ed5ed40124e2c55",
+      "archiveMember": "SPIRV-Tools-0d6fd73ca73830ccab5fa1f00ed5ed40124e2c55/source/disassemble.cpp (leading copyright notice)"
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/TinyCore.txt",
+      "sha256": "c412e0b1ac202b010f41ec04a104c3f1cb01b9eed08575673f0bc86e84f194d6",
+      "sourceURL": "http://www.tinycorelinux.net/faq.html#license",
+      "archiveMember": null,
+      "description": "Boxedwine-authored project acknowledgment summarizing Tiny Core\u2019s own FAQ; not a copy of a distribution-wide license manifest."
+    }
+  ]
+}

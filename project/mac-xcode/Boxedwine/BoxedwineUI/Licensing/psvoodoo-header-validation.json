@@ -1,0 +1,172 @@
+{
+  "date": "2026-09-14",
+  "status": "initial-validation-complete-followed-by-committed-filesystem-build",
+  "forkRepository": "https://github.com/danoon2/psVoodoo",
+  "baselineRevision": "e83947c2f4d800831db0643ad589fba1c98b2457",
+  "replacementHeaderProvenance": {
+    "schemaVersion": 1,
+    "repository": "https://github.com/sezero/glide",
+    "revision": "2f226f0f9225ce8ee83e6a4a7042981e719d19ee",
+    "license": "Glide",
+    "licensePath": "licenses/Glide.txt",
+    "upstreamLicensePath": "LICENSE",
+    "licenseSHA256": "a65ccd270f7b418cbe3afce7ca385560d4dc87adeff3c55dcd717c425c320161",
+    "files": [
+      {
+        "path": "sdk2_3dfx.h",
+        "upstreamPath": "swlibs/fxmisc/3dfx.h",
+        "upstreamSHA256": "c87f79f136ee989390e4f8f3abeb51451402914a6f37432359aeffb1ff1c1439",
+        "modifications": [
+          "Provide C-linkage stdcall DLL exports when psVoodoo defines CPPDLL."
+        ],
+        "sha256": "e4d7f45d12252f7c281c94930c18df45e8be071e4b2f961fd8ec3b66ec5d46ca"
+      },
+      {
+        "path": "sdk2_glide.h",
+        "upstreamPath": "glide2x/sst1/glide/src/glide.h",
+        "upstreamSHA256": "1c8c8b88376dd4788f1fd96006633df79a3e58dc072402a850736c3f04c0c13e",
+        "modifications": [
+          "Use the local sdk2_ filename for 3dfx.h.",
+          "Use the local sdk2_ filename for glidesys.h.",
+          "Use the local sdk2_ filename for sst1vid.h.",
+          "Use the local sdk2_ filename for glideutl.h.",
+          "Retain psVoodoo internal ARGB/ABGR 8888 texture format values."
+        ],
+        "sha256": "0157dd1c2c0cb902a1e095bc8afbb531b2f518cc8016046b562faf6fb83d7a92"
+      },
+      {
+        "path": "sdk2_glideutl.h",
+        "upstreamPath": "glide2x/sst1/glide/src/glideutl.h",
+        "upstreamSHA256": "5131919cbf730bcf58f82140ee4b3254940d65c80436e9ed04c00d137d31948d",
+        "modifications": [],
+        "sha256": "5131919cbf730bcf58f82140ee4b3254940d65c80436e9ed04c00d137d31948d"
+      },
+      {
+        "path": "sdk2_glidesys.h",
+        "upstreamPath": "glide2x/sst1/glide/src/glidesys.h",
+        "upstreamSHA256": "0923eb12297386e0802c09ea31ea2141aef762744a492ace8a6bd71de4e1b142",
+        "modifications": [],
+        "sha256": "0923eb12297386e0802c09ea31ea2141aef762744a492ace8a6bd71de4e1b142"
+      },
+      {
+        "path": "sdk2_sst1vid.h",
+        "upstreamPath": "glide2x/sst1/init/sst1vid.h",
+        "upstreamSHA256": "1bb373f0cc988152a22ee2ce378ad52d5a43d97fd8d9e85fec94ec4a6096b102",
+        "modifications": [],
+        "sha256": "1bb373f0cc988152a22ee2ce378ad52d5a43d97fd8d9e85fec94ec4a6096b102"
+      }
+    ]
+  },
+  "candidate": {
+    "privateValidationSnapshot": "0ddb7220e1ff52f980ff9a386ded5ce83924c90e",
+    "useSnapshotAsProductionPin": false,
+    "dllSHA256": "2a7a76fad8c639a7e448f8cd26989c09e5f2ef7da5fb2715e0017af0113902c4",
+    "dllBytes": 904192,
+    "compiler": "clang version 23.1.1 (https://github.com/llvm/llvm-project.git 6dfe1677ab8dffbc6ec13d53a1e0215d75147689)\nTarget: i686-w64-windows-gnu\nThread model: posix\nInstalledDir: /Users/james/Boxedwine/tmp/glide-redistribution-research/llvm-mingw-20260908-ucrt-macos-universal/bin\nConfiguration file: /Users/james/Boxedwine/tmp/glide-redistribution-research/llvm-mingw-20260908-ucrt-macos-universal/bin/i686-w64-windows-gnu.cfg\n",
+    "d3d9Only": true,
+    "finalCheckoutCodeMatchesTestedSources": true,
+    "subsequentChanges": "Only documentation and the test license text changed after compilation."
+  },
+  "binaryComparison": {
+    "method": "Two builds with the same LLVM-MinGW compiler and D3D9-only settings; PE sections and complete llvm-readobj export records compared.",
+    "identicalExportRecords": 369,
+    "identicalSections": [
+      ".text",
+      ".rdata",
+      ".data",
+      ".eh_fram",
+      ".gcc_exc",
+      ".tls",
+      ".rsrc",
+      ".reloc",
+      "/4",
+      "/67",
+      "/43",
+      "/55",
+      "/80",
+      "/18",
+      "/32"
+    ],
+    "differentSections": [
+      ".buildid"
+    ],
+    "baselineDLLSHA256": "f90cbd121d1f4c6d1c876d9c86fa2e2d8e46af7e57d1cbea19c575f9956b66c8"
+  },
+  "abiChecks": {
+    "file": "tests/header-abi.cpp",
+    "scope": "Win32 widths, structure sizes/offsets, constants and representative stdcall signatures",
+    "candidateModes": [
+      "MinGW consumer",
+      "CPPDLL"
+    ],
+    "baselineModes": [
+      "__MSC__ consumer",
+      "CPPDLL"
+    ],
+    "result": "passed"
+  },
+  "runtime": {
+    "path": "tmp/native-ui-test/f16-text/Diagnostic.app/Contents/Helpers/BoxedwineRuntime.app/Contents/MacOS/BoxedwineRuntime",
+    "sha256": "6a4c6c4235b64c19fe38e05ad876708b4d87f2e3905593107a71242b75c2944c",
+    "wineSHA256": "a3367c4e977dbbe0295ce3b4b102bf7b0baa1278ea121cefe6065d561b960452",
+    "backend": "WineD3D OpenGL",
+    "prefix": "Disposable copy of previously validated regression prefix",
+    "tests": [
+      {
+        "test": "glide-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "PASS_LOAD_ONLY",
+        "passed": true
+      },
+      {
+        "test": "lfb-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "LFB_COLORS_PASS mismatches=0",
+        "passed": true
+      },
+      {
+        "test": "clip-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "CLIP_ORDER_PASS mismatches=0",
+        "passed": true
+      },
+      {
+        "test": "detail-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "DETAIL_BLEND_PASS mismatches=0",
+        "passed": true
+      },
+      {
+        "test": "depth-probe",
+        "exit": 0,
+        "timedOut": false,
+        "expected": "W_DEPTH_BIAS_PASS panels=72 samples=648 mismatches=0",
+        "passed": true
+      }
+    ]
+  },
+  "limitations": [
+    "Initial sandboxed launch aborted before the guest; tests required normal Mac graphics access.",
+    "The first attempt with current Debug runtime and a fresh prefix timed out before the load-only check. The cause was not diagnosed in this header task.",
+    "Passing runs used the previously validated diagnostic runtime; no new game playthrough was performed.",
+    "Upstream trailing whitespace is preserved intentionally in imported headers and license text.",
+    "App Store terms, combined licenses and complete compiler-runtime/source distribution remain separate review items."
+  ],
+  "releaseFollowup": [
+    "Commit and publish reviewed source changes.",
+    "Update Boxedwine psVoodoo source pin to the resulting real fork revision.",
+    "Build and package matching source, notices and licenses with the DLL.",
+    "Update the filesystem and app package fingerprints only when that release is published."
+  ],
+  "localEvidence": "tmp/glide-header-review (ignored; retain release evidence independently)",
+  "committedFollowup": {
+    "revision": "67fcb0a0eb1be9c5f77d04250ad715b2f481754b",
+    "record": "psvoodoo-filesystem-update.json",
+    "status": "published-verified-pinned"
+  },
+  "releaseFollowupMeaning": "Checklist recorded after initial validation; completed by the committed and published filesystem update referenced below."
+}

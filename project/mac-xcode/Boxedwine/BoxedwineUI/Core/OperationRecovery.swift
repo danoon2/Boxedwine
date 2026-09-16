@@ -103,7 +103,6 @@ extension LibraryRepository {
               record.kind.isApp || record.app == nil && record.entries == nil else { throw RecoveryError.invalid }
         try record.winePackage?.validate()
         try record.app?.winePackage?.validate()
-        try record.app?.java?.validate()
         try BoxedwineArguments.validate(record.app?.boxedwineArguments ?? [])
         guard record.app?.hasBoxedwineArguments != true || record.version >= 6 else { throw RecoveryError.invalid }
         guard record.app?.hasOpenGLBackendPreference != true || record.version >= 7 else { throw RecoveryError.invalid }
@@ -112,7 +111,6 @@ extension LibraryRepository {
             guard record.version >= 9 else { throw RecoveryError.invalid }
             try CustomAppIcon.validate(icon)
         }
-        guard record.app?.hasJavaConfiguration != true || record.version >= 5 else { throw RecoveryError.invalid }
         guard record.winePackage == nil || record.kind == .runtime else { throw RecoveryError.invalid }
         guard record.winePackage == nil && record.app?.winePackage == nil || record.version >= 4 else { throw RecoveryError.invalid }
         return record
@@ -133,7 +131,6 @@ extension LibraryRepository {
         if app.demoSettings != nil { record.version = 2 }
         if app.hasWindowsVersionPreference { record.version = 3 }
         if app.winePackage != nil { record.version = 4 }
-        if app.hasJavaConfiguration { record.version = 5 }
         if app.hasBoxedwineArguments { record.version = 6 }
         if app.hasOpenGLBackendPreference { record.version = 7 }
         if app.hasWineRendererPreference { record.version = 8 }

@@ -21,6 +21,7 @@ fi
 resource_dir="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
 mkdir -p "$resource_dir"
 /usr/bin/ditto "$SRCROOT/../../../license.txt" "$resource_dir/Boxedwine-LICENSE.txt"
+/usr/bin/python3 "$SRCROOT/BoxedwineUI/Tools/prepare-third-party-notices.py" --output "$resource_dir/Licenses"
 package_check() {
     CLANG_MODULE_CACHE_PATH="$TARGET_TEMP_DIR/PackageCheckModules" \
     SWIFTPM_MODULECACHE_OVERRIDE="$TARGET_TEMP_DIR/PackageCheckModules" \
@@ -36,6 +37,7 @@ if [ -f "$resource_dir/Demos/catalog.xml" ]; then
     package_check --catalog "$resource_dir/Demos/catalog.xml"
 fi
 package_check --wine-catalog "$SRCROOT/BoxedwineUI/Resources/WindowsSupport"
+rm -f "$resource_dir/WindowsSupport/java-packages.json"
 /usr/bin/ditto "$SRCROOT/BoxedwineUI/Resources/WindowsSupport" "$resource_dir/WindowsSupport"
 /usr/bin/ditto "$SRCROOT/BoxedwineUI/Resources/AppIcons" "$resource_dir/AppIcons"
 

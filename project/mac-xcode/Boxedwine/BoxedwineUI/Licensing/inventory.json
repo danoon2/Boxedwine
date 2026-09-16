@@ -1,0 +1,863 @@
+{
+  "schemaVersion": 1,
+  "auditDate": "2026-09-14",
+  "status": "initial-inventory-not-license-clearance",
+  "repositoryRevision": "940cb6fe2c771c2275d57d4fbb5a8f77bfa7b167",
+  "repositoryRevisionMeaning": "Audit checkout; not established build provenance for the prebuilt artifacts.",
+  "scope": "Inspected local Release app, all nine pinned Wine/Java ZIPs, shared catalog, and selected source/build evidence. Not an exhaustive per-file SBOM.",
+  "hostBundle": {
+    "path": "project/mac-xcode/bin/Boxedwine.app",
+    "version": "26.1.0",
+    "build": "1",
+    "includedWine": false,
+    "localDependencyArchiveVersion": "3",
+    "fetchDependsRequestedVersion": "4",
+    "images": [
+      {
+        "path": "Contents/Frameworks/SDL2.framework/Versions/A/Frameworks/hidapi.framework/Versions/A/hidapi",
+        "sha256": "8edba9e499a6331db3d6ad87c871a3059142323b40d9261f2fc15d0c91a67c4d",
+        "architectures": [
+          "x86_64",
+          "arm64"
+        ]
+      },
+      {
+        "path": "Contents/Frameworks/SDL2.framework/Versions/A/SDL2",
+        "sha256": "2d53ff47300db995ab2825617ca0c0f20dd60c806ee5d94044d812c9274cb7cf",
+        "architectures": [
+          "x86_64",
+          "arm64"
+        ]
+      },
+      {
+        "path": "Contents/Frameworks/libMoltenVK.dylib",
+        "sha256": "80f46e103ee2c247a7c0beee0e228623730b559e4ce67fadf639fba197e30fa9",
+        "architectures": [
+          "x86_64",
+          "arm64"
+        ]
+      },
+      {
+        "path": "Contents/Helpers/BoxedwineEngine.app/Contents/MacOS/Boxedwine",
+        "sha256": "0de2e9b6ca63e7d9a00c23618ef00173e347515689f06ebcd0a7321ca55242c9",
+        "architectures": [
+          "arm64"
+        ]
+      },
+      {
+        "path": "Contents/MacOS/BoxedwineUI",
+        "sha256": "f0a9de20598072e870715a0878d811ac03c1356cb6ea8d5cf9b867a41a84b2e5",
+        "architectures": [
+          "arm64"
+        ]
+      }
+    ]
+  },
+  "hostComponents": [
+    {
+      "id": "boxedwine",
+      "licenseAssessment": "GPL-2.0-or-later",
+      "versionEvidence": "26.1.0 (26R2)",
+      "repoEvidence": [
+        {
+          "path": "license.txt",
+          "sha256": "32b1062f7da84967e7019d01ab805935caa7ab7321a7ced0e30ebe75e5df1670"
+        },
+        {
+          "path": "include/boxedwine.h",
+          "sha256": "e06dda0a61eb914fa889d360f290c310f22dfdfd8844647b845afe61aeb0485d"
+        }
+      ],
+      "note": "Host emulator and Swift UI; contributor authority and final distribution terms unresolved.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "sdl2",
+      "licenseAssessment": "Zlib",
+      "versionEvidence": "2.0.14",
+      "repoEvidence": [
+        {
+          "path": "lib/sdl2/COPYING.txt",
+          "sha256": "ae4df3759a726538607b84c00ab8f8a5567d9f38ad5397486eb9b5c5f626caef"
+        }
+      ],
+      "note": "Bundled framework license present; exact prebuilt source/build mapping pending.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "hidapi",
+      "licenseAssessment": "Permissive BSD-style OR original permissive OR GPL-3.0; alternatives",
+      "versionEvidence": null,
+      "repoEvidence": [
+        {
+          "path": "lib/sdl2/src/hidapi/LICENSE.txt",
+          "sha256": "7d3b087c34f35d4d538e3bcddd1ff8f66e92f9ef336881999482800ddf840913"
+        },
+        {
+          "path": "lib/sdl2/src/hidapi/LICENSE-bsd.txt",
+          "sha256": "30eb1bef29b46f8ba7ab8b416035dbd93cb034a45481dd97815b944284582cd2"
+        },
+        {
+          "path": "lib/sdl2/src/hidapi/LICENSE-orig.txt",
+          "sha256": "fb5436aa63d1b71a8dfbf74ecaf1a5b4e1ec4df7f80074d11fec99284f69ca5f"
+        }
+      ],
+      "note": "Framework contains all alternatives; use an applicable permissive alternative. Framework version 1.0 is not proof of upstream revision.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "moltenvk",
+      "licenseAssessment": "Apache-2.0 upstream; bundled third-party licenses to inventory",
+      "versionEvidence": null,
+      "repoEvidence": [],
+      "note": "Binary contains 1.2.11 version string; source revision, build inputs, and complete notices unverified.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "asmjit",
+      "licenseAssessment": "Zlib",
+      "versionEvidence": "1.21.0",
+      "repoEvidence": [
+        {
+          "path": "lib/asmjit/LICENSE.md",
+          "sha256": "13870bd53bce53fb9a9bd72e72dcceeffc547c84d9a00d3d4833737a79651828"
+        },
+        {
+          "path": "lib/asmjit/asmjit/core/api-config.h",
+          "sha256": "1d56117a57160fce59e0b093998ce03b886b20f7dbbebb9ee522c7914cf0929f"
+        }
+      ],
+      "note": "Vendored source referenced by arm64 compilation and linked objects; preserve local changes.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "glew",
+      "licenseAssessment": "BSD-style AND MIT-style notices; see full source",
+      "versionEvidence": "2.1.0",
+      "repoEvidence": [
+        {
+          "path": "lib/glew/LICENSE.txt",
+          "sha256": "38a38de1748714672193f12c6412489a00ff65a61e1bd2da9f360db990d156cf"
+        },
+        {
+          "path": "lib/glew/src/glew.cpp",
+          "sha256": "07cb72573ecb99c801d696bef7df0c54358fe86e016b46f7678ea8da64502bb9"
+        }
+      ],
+      "note": "Compile source has newer author credits than standalone license; preserve both. Mesa attribution here remains despite removal of host software Mesa.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "pugixml",
+      "licenseAssessment": "MIT",
+      "versionEvidence": "1.10",
+      "repoEvidence": [
+        {
+          "path": "lib/pugixml/LICENSE.md",
+          "sha256": "9ddc2f8e3003601aff5a4d37f3caf3b6b60a729ebbc466bafd965cdf0883b12c"
+        },
+        {
+          "path": "lib/pugixml/src/pugixml.hpp",
+          "sha256": "9f906d164bf9351c88beec4c208c419439c4f4b7eec12cd9c6e0492ec6fb914c"
+        }
+      ],
+      "note": "Vendored source and linked object.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "softfloat",
+      "licenseAssessment": "BSD-3-Clause",
+      "versionEvidence": "3e",
+      "repoEvidence": [
+        {
+          "path": "lib/softfloat/COPYING.txt",
+          "sha256": "145ea96b4a4a04a1a7738d2a2bf9e830f861971e69606187b018d9e8fc0b95c7"
+        }
+      ],
+      "note": "Vendored source and linked objects.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "zlib-minizip",
+      "licenseAssessment": "Zlib",
+      "versionEvidence": "zlib 1.2.11; MiniZip 1.1",
+      "repoEvidence": [
+        {
+          "path": "lib/zlib/zlib.h",
+          "sha256": "4ddc82b4af931ab55f44d977bde81bfbc4151b5dcdccc03142831a301b5ec3c8"
+        },
+        {
+          "path": "lib/zlib/contrib/minizip/zip.h",
+          "sha256": "96163fc140e4bf08752e014d20a1eac3f5adcdc408366f6d79c1895f2599cf08"
+        },
+        {
+          "path": "lib/zlib/contrib/minizip/unzip.h",
+          "sha256": "d8dc58fc0121b6a4b98f3028205bb253f956b1ddf791e9ced3cf44892502a01f"
+        }
+      ],
+      "note": "Runtime links vendored ZIP/compression objects; also uses Apple system libraries. Preserve contributor and modification notices.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "stb-image",
+      "licenseAssessment": "MIT OR Unlicense",
+      "versionEvidence": "2.25",
+      "repoEvidence": [
+        {
+          "path": "source/util/stb_image.h",
+          "sha256": "2a147ea6ae8b669a9b213e279dd0191b25cd6dab49b13da29238cfb4dcb6ae85"
+        },
+        {
+          "path": "source/util/stb_image.cpp",
+          "sha256": "1512399d8306ea994d228e46da69720cf2d02d908efabdf927c07040cd59816b"
+        }
+      ],
+      "note": "Vendored decoder linked into runtime; permissive MIT option available.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "llvm-copied-helpers",
+      "licenseAssessment": "Apache-2.0 WITH LLVM-exception",
+      "versionEvidence": null,
+      "repoEvidence": [
+        {
+          "path": "source/emulation/cpu/armv8/llvm_helper.cpp",
+          "sha256": "74e1155b93bb512da8212a3a11d064aa70325a352d502840b0007885f4de86c3"
+        }
+      ],
+      "note": "Copied helper code remains; exact originating revision and full exception text need inclusion/review. No host LLVM dylib ships.",
+      "releaseClearance": "pending"
+    },
+    {
+      "id": "wine-notepad-icon",
+      "licenseAssessment": "LGPL-2.1-or-later",
+      "versionEvidence": "wine-11.0",
+      "repoEvidence": [
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Resources/AppIcons/README.md",
+          "sha256": "36401e7f0259e89811a7217985d3fb59e4c2ea79c82395bb11060f1ca7c47f66"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Resources/AppIcons/Wine-LICENSE.txt",
+          "sha256": "ae025f125a5d639f0f7abe5146efa1e3d7453cc10b744b2910806fa3f46626ef"
+        },
+        {
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Resources/AppIcons/COPYING.LIB",
+          "sha256": "e237fa56668030e928551ddd60f05df5fe957f75eab874bbd017e085ed722e7c"
+        }
+      ],
+      "note": "Original ICO, converted PNG, provenance and license already bundled; review final notices/source delivery together.",
+      "releaseClearance": "pending"
+    }
+  ],
+  "guestPackages": [
+    {
+      "url": "https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip",
+      "bytes": 167016911,
+      "sha256": "a3367c4e977dbbe0295ce3b4b102bf7b0baa1278ea121cefe6065d561b960452",
+      "files": 8329,
+      "kind": "wine-filesystem",
+      "delivery": "proposed Store bundle and on-demand",
+      "versionEvidence": "TinyCore15Wine11.0",
+      "fileVersion": "11",
+      "filesystemVersion": "11",
+      "licenseAssessment": "Multiple independent licenses; Wine LGPL-2.1-or-later does not cover the entire filesystem",
+      "selectedArchiveEvidence": [
+        {
+          "member": "usr/local/share/doc/liberation-fonts-ttf/LICENSE",
+          "bytes": 4414,
+          "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+        },
+        {
+          "member": "usr/local/share/doc/p7zip-16.02/DOC/License.txt",
+          "bytes": 1886,
+          "sha256": "555806657dcf0f1e720b581c52643c195ec86ae3f00bd18cc66d2e0f88ffa210"
+        },
+        {
+          "member": "wineVersion.txt",
+          "bytes": 4,
+          "sha256": "56824d16dcb61c982fc31a731cf6f20594c0a3f1da2aff349ee804bf1c4544d1"
+        },
+        {
+          "member": "build.txt",
+          "bytes": 441,
+          "sha256": "4ca3a25b6b3b6ccb442f685c9a7078eca64f8dee7c4290c9c2216fc007b29fdd"
+        },
+        {
+          "member": "installed.txt",
+          "bytes": 849,
+          "sha256": "b804679335f881d80d06e3d06e9feddfbdb24c74e6831baee75813401d7b08c1"
+        },
+        {
+          "member": "recreateInstructions.txt",
+          "bytes": 906,
+          "sha256": "5c8101516c76d90736cb3b4bc954edbf736318c6c9067cc9ec2e2421c4ffbb23"
+        }
+      ],
+      "matchingSourceArchive": null,
+      "releaseClearance": "pending"
+    },
+    {
+      "url": "https://boxedwine.org/v2/2/TinyCore15Wine3.1.zip",
+      "bytes": 119229367,
+      "sha256": "09296bb395cc2b8a563fc7986f242531e485b2664bd282270eb03e12015ca693",
+      "files": 7639,
+      "kind": "wine-filesystem",
+      "delivery": "on-demand",
+      "versionEvidence": "TinyCore15Wine3.1",
+      "fileVersion": "2",
+      "filesystemVersion": "7",
+      "licenseAssessment": "Multiple independent licenses; Wine LGPL-2.1-or-later does not cover the entire filesystem",
+      "selectedArchiveEvidence": [
+        {
+          "member": "usr/local/share/doc/liberation-fonts-ttf/LICENSE",
+          "bytes": 4414,
+          "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+        },
+        {
+          "member": "usr/local/share/doc/p7zip-16.02/DOC/License.txt",
+          "bytes": 1886,
+          "sha256": "555806657dcf0f1e720b581c52643c195ec86ae3f00bd18cc66d2e0f88ffa210"
+        },
+        {
+          "member": "wineVersion.txt",
+          "bytes": 3,
+          "sha256": "35efc6ded4e13f29a8d86e4f33294be0f59fcaaf3a56b538f9e34e60e3ae4f44"
+        },
+        {
+          "member": "build.txt",
+          "bytes": 362,
+          "sha256": "049bf86d638f4505e39e83d93f10c5b852c0c80ba42a5a7f4905c09aa05d4229"
+        },
+        {
+          "member": "installed.txt",
+          "bytes": 849,
+          "sha256": "b804679335f881d80d06e3d06e9feddfbdb24c74e6831baee75813401d7b08c1"
+        },
+        {
+          "member": "recreateInstructions.txt",
+          "bytes": 872,
+          "sha256": "2e1b89a152e17d79a20e5d18e68b461e612d06b9aa154c03df9de6ea587f23d7"
+        }
+      ],
+      "matchingSourceArchive": null,
+      "releaseClearance": "pending"
+    },
+    {
+      "url": "https://boxedwine.org/v2/2/TinyCore15Wine4.1.zip",
+      "bytes": 132820372,
+      "sha256": "d0b21f2666eb2f6a1b29cba5a73cd3ea523b186b980be4d579bceacd0ad799f2",
+      "files": 7833,
+      "kind": "wine-filesystem",
+      "delivery": "on-demand",
+      "versionEvidence": "TinyCore15Wine4.1",
+      "fileVersion": "2",
+      "filesystemVersion": "7",
+      "licenseAssessment": "Multiple independent licenses; Wine LGPL-2.1-or-later does not cover the entire filesystem",
+      "selectedArchiveEvidence": [
+        {
+          "member": "usr/local/share/doc/liberation-fonts-ttf/LICENSE",
+          "bytes": 4414,
+          "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+        },
+        {
+          "member": "usr/local/share/doc/p7zip-16.02/DOC/License.txt",
+          "bytes": 1886,
+          "sha256": "555806657dcf0f1e720b581c52643c195ec86ae3f00bd18cc66d2e0f88ffa210"
+        },
+        {
+          "member": "wineVersion.txt",
+          "bytes": 3,
+          "sha256": "e979952da01e58fd4bfe9684a16ab22397e28f92ceed1c6bb16f93520a3e2134"
+        },
+        {
+          "member": "build.txt",
+          "bytes": 339,
+          "sha256": "a3f7267522a130b467add7737b5bdf5a54baeafe093172d0083e7f3c68317780"
+        },
+        {
+          "member": "installed.txt",
+          "bytes": 849,
+          "sha256": "b804679335f881d80d06e3d06e9feddfbdb24c74e6831baee75813401d7b08c1"
+        },
+        {
+          "member": "recreateInstructions.txt",
+          "bytes": 872,
+          "sha256": "2e1b89a152e17d79a20e5d18e68b461e612d06b9aa154c03df9de6ea587f23d7"
+        }
+      ],
+      "matchingSourceArchive": null,
+      "releaseClearance": "pending"
+    },
+    {
+      "url": "https://boxedwine.org/v2/2/TinyCore15Wine5.0.zip",
+      "bytes": 136107560,
+      "sha256": "efdee19c67b1adeebab87b0a149181e510c8a126800f754aa18c41786327f506",
+      "files": 7901,
+      "kind": "wine-filesystem",
+      "delivery": "on-demand",
+      "versionEvidence": "TinyCore15Wine5.0",
+      "fileVersion": "2",
+      "filesystemVersion": "7",
+      "licenseAssessment": "Multiple independent licenses; Wine LGPL-2.1-or-later does not cover the entire filesystem",
+      "selectedArchiveEvidence": [
+        {
+          "member": "usr/local/share/doc/liberation-fonts-ttf/LICENSE",
+          "bytes": 4414,
+          "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+        },
+        {
+          "member": "usr/local/share/doc/p7zip-16.02/DOC/License.txt",
+          "bytes": 1886,
+          "sha256": "555806657dcf0f1e720b581c52643c195ec86ae3f00bd18cc66d2e0f88ffa210"
+        },
+        {
+          "member": "wineVersion.txt",
+          "bytes": 3,
+          "sha256": "a19a1584344c1f3783bff51524a5a4b86f2cc09356c9dbfb6af9cd236e314362"
+        },
+        {
+          "member": "build.txt",
+          "bytes": 409,
+          "sha256": "a05b21c2fa916c3252eb5fa41b2042e70fea587f3b2e8de7a51eb472e713a76a"
+        },
+        {
+          "member": "installed.txt",
+          "bytes": 849,
+          "sha256": "b804679335f881d80d06e3d06e9feddfbdb24c74e6831baee75813401d7b08c1"
+        },
+        {
+          "member": "recreateInstructions.txt",
+          "bytes": 872,
+          "sha256": "2e1b89a152e17d79a20e5d18e68b461e612d06b9aa154c03df9de6ea587f23d7"
+        }
+      ],
+      "matchingSourceArchive": null,
+      "releaseClearance": "pending"
+    },
+    {
+      "url": "https://boxedwine.org/v2/2/TinyCore15Wine6.0.zip",
+      "bytes": 141109447,
+      "sha256": "ef1aa2e7d350751e2b324a9aa27beb3c22c82a6207b1a02fa18dbb7ba5551efe",
+      "files": 8343,
+      "kind": "wine-filesystem",
+      "delivery": "on-demand",
+      "versionEvidence": "TinyCore15Wine6.0",
+      "fileVersion": "2",
+      "filesystemVersion": "2",
+      "licenseAssessment": "Multiple independent licenses; Wine LGPL-2.1-or-later does not cover the entire filesystem",
+      "selectedArchiveEvidence": [
+        {
+          "member": "usr/local/share/doc/liberation-fonts-ttf/LICENSE",
+          "bytes": 4414,
+          "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+        },
+        {
+          "member": "usr/local/share/doc/p7zip-16.02/DOC/License.txt",
+          "bytes": 1886,
+          "sha256": "555806657dcf0f1e720b581c52643c195ec86ae3f00bd18cc66d2e0f88ffa210"
+        },
+        {
+          "member": "wineVersion.txt",
+          "bytes": 3,
+          "sha256": "8ab31b5afaea56114427e1f01b81d001b079a0f59539f6db3f099816ca794055"
+        },
+        {
+          "member": "build.txt",
+          "bytes": 397,
+          "sha256": "d5805ea97813c3bfea1091733bce03e025ae6725bca08b05347e217c494dc26e"
+        },
+        {
+          "member": "installed.txt",
+          "bytes": 849,
+          "sha256": "b804679335f881d80d06e3d06e9feddfbdb24c74e6831baee75813401d7b08c1"
+        },
+        {
+          "member": "recreateInstructions.txt",
+          "bytes": 872,
+          "sha256": "2e1b89a152e17d79a20e5d18e68b461e612d06b9aa154c03df9de6ea587f23d7"
+        }
+      ],
+      "matchingSourceArchive": null,
+      "releaseClearance": "pending"
+    },
+    {
+      "url": "https://boxedwine.org/v2/5/TinyCore15Wine10.0.zip",
+      "bytes": 156582181,
+      "sha256": "f0ed13eaf0c11bc95b229e2a747f04167c4e63445dc274d122758bd7e84b5572",
+      "files": 8148,
+      "kind": "wine-filesystem",
+      "delivery": "on-demand",
+      "versionEvidence": "TinyCore15Wine10.0",
+      "fileVersion": "5",
+      "filesystemVersion": "5",
+      "licenseAssessment": "Multiple independent licenses; Wine LGPL-2.1-or-later does not cover the entire filesystem",
+      "selectedArchiveEvidence": [
+        {
+          "member": "usr/local/share/doc/liberation-fonts-ttf/LICENSE",
+          "bytes": 4414,
+          "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+        },
+        {
+          "member": "usr/local/share/doc/p7zip-16.02/DOC/License.txt",
+          "bytes": 1886,
+          "sha256": "555806657dcf0f1e720b581c52643c195ec86ae3f00bd18cc66d2e0f88ffa210"
+        },
+        {
+          "member": "wineVersion.txt",
+          "bytes": 4,
+          "sha256": "f1e42019aecc858ffbcca7fddec511b761b474916fde37b1a6ff321a9b459330"
+        },
+        {
+          "member": "build.txt",
+          "bytes": 510,
+          "sha256": "939398a9b9207ff63700a15815781cfe6dfaa3face07e744bb2ac2619fd70a89"
+        },
+        {
+          "member": "installed.txt",
+          "bytes": 849,
+          "sha256": "b804679335f881d80d06e3d06e9feddfbdb24c74e6831baee75813401d7b08c1"
+        },
+        {
+          "member": "recreateInstructions.txt",
+          "bytes": 906,
+          "sha256": "5c8101516c76d90736cb3b4bc954edbf736318c6c9067cc9ec2e2421c4ffbb23"
+        }
+      ],
+      "matchingSourceArchive": null,
+      "releaseClearance": "pending"
+    },
+    {
+      "url": "https://boxedwine.org/v2/5/TinyCore15Wine9.0.zip",
+      "bytes": 153742404,
+      "sha256": "1dbed7427341fdeee01bf6476d7795d136eeb4f11261ca769d35aa77f3eaba77",
+      "files": 7996,
+      "kind": "wine-filesystem",
+      "delivery": "on-demand",
+      "versionEvidence": "TinyCore15Wine9.0",
+      "fileVersion": "5",
+      "filesystemVersion": "5",
+      "licenseAssessment": "Multiple independent licenses; Wine LGPL-2.1-or-later does not cover the entire filesystem",
+      "selectedArchiveEvidence": [
+        {
+          "member": "usr/local/share/doc/liberation-fonts-ttf/LICENSE",
+          "bytes": 4414,
+          "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+        },
+        {
+          "member": "usr/local/share/doc/p7zip-16.02/DOC/License.txt",
+          "bytes": 1886,
+          "sha256": "555806657dcf0f1e720b581c52643c195ec86ae3f00bd18cc66d2e0f88ffa210"
+        },
+        {
+          "member": "wineVersion.txt",
+          "bytes": 3,
+          "sha256": "b7edbb1d306a68faf170673ebef76f1dfef2045c0c190bdc1bb37837e37504a4"
+        },
+        {
+          "member": "build.txt",
+          "bytes": 521,
+          "sha256": "3dc31ba9b6d767519b655217fb90c7d4a9308725494306d5894c235407cf2a78"
+        },
+        {
+          "member": "installed.txt",
+          "bytes": 849,
+          "sha256": "b804679335f881d80d06e3d06e9feddfbdb24c74e6831baee75813401d7b08c1"
+        },
+        {
+          "member": "recreateInstructions.txt",
+          "bytes": 872,
+          "sha256": "2e1b89a152e17d79a20e5d18e68b461e612d06b9aa154c03df9de6ea587f23d7"
+        }
+      ],
+      "matchingSourceArchive": null,
+      "releaseClearance": "pending"
+    },
+    {
+      "url": "https://www.boxedwine.org/demos/java17jre.zip",
+      "bytes": 39289773,
+      "sha256": "7d0c21b3fe4198bdca1025d8d27cf312c992c6e5b4d8ecc12b2ef7ca2303dc2a",
+      "files": 316,
+      "kind": "java",
+      "delivery": "on-demand",
+      "versionEvidence": "Azul Zulu17.66+19-CA; 17.0.19+10-LTS; SOURCE git:fde93e399a55+",
+      "licenseAssessment": "GPL-2.0 with applicable Classpath/assembly exceptions and bundled third-party terms",
+      "selectedArchiveEvidence": [
+        {
+          "member": "legal/java.base/ADDITIONAL_LICENSE_INFO",
+          "bytes": 2114,
+          "sha256": "a69bce275ba7a3570af6579cb0f55682cd75fedfcd49e0e8e9022270c447c916"
+        },
+        {
+          "member": "legal/java.base/ASSEMBLY_EXCEPTION",
+          "bytes": 1522,
+          "sha256": "a44eb7b5caf5534c6ef536b21edb40b4d6babf91bf97d9d45596868618b2c6fb"
+        },
+        {
+          "member": "legal/java.base/LICENSE",
+          "bytes": 19274,
+          "sha256": "4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726"
+        },
+        {
+          "member": "release",
+          "bytes": 981,
+          "sha256": "9ab9b1288df9fb1dc234c2decc5dd156e5090a3c96c3f7f127b1024adaea0aed"
+        }
+      ],
+      "matchingSourceArchive": null,
+      "releaseClearance": "pending"
+    },
+    {
+      "url": "https://www.boxedwine.org/demos/java8jre.zip",
+      "bytes": 57937992,
+      "sha256": "49d383292739818e620bffe60c59a1e77aa3c48140a5be840d6b39e787866247",
+      "files": 284,
+      "kind": "java",
+      "delivery": "on-demand",
+      "versionEvidence": "OpenJDK 1.8.0_492-492-b09; vendor unconfirmed; SOURCE git:24fbffc3f77f",
+      "licenseAssessment": "GPL-2.0 with applicable Classpath/assembly exceptions and bundled third-party terms",
+      "selectedArchiveEvidence": [
+        {
+          "member": "LICENSE",
+          "bytes": 19274,
+          "sha256": "4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726"
+        },
+        {
+          "member": "THIRD_PARTY_README",
+          "bytes": 191545,
+          "sha256": "6c75c7e35be334a68c109944411f23f32bfaaf2283fc6f39068236d8c6ddc6a6"
+        },
+        {
+          "member": "release",
+          "bytes": 103,
+          "sha256": "09d3746bd09f1ce09b57843c44f6a0d856f0072e62e6d8fb5aee0f05f1a5da8b"
+        },
+        {
+          "member": "ASSEMBLY_EXCEPTION",
+          "bytes": 1522,
+          "sha256": "a44eb7b5caf5534c6ef536b21edb40b4d6babf91bf97d9d45596868618b2c6fb"
+        }
+      ],
+      "matchingSourceArchive": null,
+      "releaseClearance": "pending"
+    }
+  ],
+  "wine11CustomFiles": [
+    {
+      "path": "home/username/.wine/drive_c/ddraw/ddraw.dll",
+      "bytes": 343552,
+      "sha256": "318406915f4d11b08321949026626253554d7ae780d9aa3541cbfe5dcedbddf2"
+    },
+    {
+      "path": "home/username/.wine/drive_c/webgl/ddraw.dll",
+      "bytes": 867870,
+      "sha256": "59046d81fe044150d1e834604860f5f7f8ffc5c9224efc90ce8f40da044d3160"
+    },
+    {
+      "path": "home/username/.wine/drive_c/windows/system32/ddraw.dll",
+      "bytes": 4096,
+      "sha256": "5b62c6ccf8b42e6897ba53a52064126a19deec65d164a0c3cc94f13a6dd33534"
+    },
+    {
+      "path": "home/username/.wine/drive_c/windows/system32/glide2x.dll",
+      "bytes": 904192,
+      "sha256": "55aee80ac08478f8d965cede9e07b011fa046ec02f84ebc18e78b1abaf44a939"
+    },
+    {
+      "path": "opt/wine/lib/wine/i386-windows/ddraw.dll",
+      "bytes": 4096,
+      "sha256": "5b62c6ccf8b42e6897ba53a52064126a19deec65d164a0c3cc94f13a6dd33534"
+    }
+  ],
+  "guestSourceMappings": [
+    {
+      "component": "Wine 11",
+      "sourceRevision": "wine-11.0",
+      "repoEvidence": [
+        "tools/buildWine/patches/fixSetupApiFromCrashingDuringDllDetach.patch",
+        "tools/buildWine/patches/FAudio_opentdd_mac_crash.patch"
+      ],
+      "status": "ZIP build.txt records tag and these patches; complete matching build/source delivery pending"
+    },
+    {
+      "component": "psVoodoo",
+      "sourceRepository": "https://github.com/danoon2/psVoodoo",
+      "sourceRevision": "e83947c2f4d800831db0643ad589fba1c98b2457",
+      "binarySHA256": "55aee80ac08478f8d965cede9e07b011fa046ec02f84ebc18e78b1abaf44a939",
+      "status": "Original inspected package predates the header replacement. Committed revision 67fcb0a has been rebuilt, published with matching source and license materials, downloaded again, and pinned by the app. Combined licenses and complete filesystem source review remain open.",
+      "headerReplacement": {
+        "status": "published-verified-pinned",
+        "upstreamRevision": "2f226f0f9225ce8ee83e6a4a7042981e719d19ee",
+        "license": "Glide",
+        "record": "psvoodoo-header-validation.json",
+        "forkRevision": "67fcb0a0eb1be9c5f77d04250ad715b2f481754b",
+        "filesystemUpdate": "psvoodoo-filesystem-update.json"
+      }
+    },
+    {
+      "component": "CNC DDraw",
+      "sourceRepository": "https://github.com/FunkyFr3sh/cnc-ddraw",
+      "sourceRevision": "a902db06e9830a9feafda69da05c766a81722b9b",
+      "repoEvidence": [
+        "tools/cnc-ddraw/README.md",
+        "tools/cnc-ddraw/build.py",
+        "tools/cnc-ddraw/patches/0001-load-glGetIntegerv-from-opengl32.patch"
+      ],
+      "binarySHA256": "318406915f4d11b08321949026626253554d7ae780d9aa3541cbfe5dcedbddf2",
+      "status": "MIT; preserve full notices and verify source/build manifest; separate webgl/ddraw.dll remains unidentified"
+    },
+    {
+      "component": "DXVK",
+      "sourceRepository": "https://github.com/doitsujin/dxvk",
+      "sourceRevision": "v2.5.2 reported by ZIP version.txt",
+      "status": "Exact binary/build/notice mapping pending"
+    },
+    {
+      "component": "Boxedwine guest shims",
+      "repoEvidence": [
+        "tools/opengl/gl.c",
+        "tools/opengl/buildgl.sh",
+        "tools/vulkan/vk.c",
+        "tools/vulkan/buildvk.sh"
+      ],
+      "status": "Associate all shipped GL/EGL/GLES/Vulkan/X11 shim hashes with exact source revisions and build inputs"
+    }
+  ],
+  "wine11TinyCoreInstallationHistory": {
+    "archiveMember": "installed.txt",
+    "interpretation": "60 unique extension names, not authoritative shipped package inventory; recreation instructions remove some files. Base utilities are additional.",
+    "extensions": [
+      "libopus.tcz",
+      "libasound.tcz",
+      "libvorbis.tcz",
+      "libogg.tcz",
+      "libtheora.tcz",
+      "libffi.tcz",
+      "glib2.tcz",
+      "gstreamer.tcz",
+      "gst-plugins-base.tcz",
+      "liblzma.tcz",
+      "libxml2.tcz",
+      "libxslt.tcz",
+      "libzstd.tcz",
+      "libjpeg-turbo.tcz",
+      "libtiff.tcz",
+      "lcms2.tcz",
+      "ncursesw.tcz",
+      "libunistring.tcz",
+      "libidn2.tcz",
+      "libtasn1.tcz",
+      "p11-kit.tcz",
+      "gmp.tcz",
+      "nettle3.tcz",
+      "gnutls3.6.tcz",
+      "openssl-1.1.1.tcz",
+      "ca-certificates.tcz",
+      "curl.tcz",
+      "udev-lib.tcz",
+      "libusb.tcz",
+      "libltdl.tcz",
+      "libexif.tcz",
+      "libgphoto2.tcz",
+      "mpg123.tcz",
+      "attr.tcz",
+      "acl.tcz",
+      "popt.tcz",
+      "gcc_libs.tcz",
+      "expat2.tcz",
+      "cabextract.tcz",
+      "p7zip.tcz",
+      "libcap.tcz",
+      "coreutils.tcz",
+      "wget.tcz",
+      "git.tcz",
+      "libpng.tcz",
+      "freetype.tcz",
+      "fontconfig.tcz",
+      "libICE.tcz",
+      "libSM.tcz",
+      "openssh.tcz",
+      "liberation-fonts-ttf.tcz",
+      "openssl.tcz",
+      "krb5.tcz",
+      "dbus.tcz",
+      "libavahi.tcz",
+      "libcups.tcz",
+      "samba3-libs.tcz",
+      "samba3.tcz",
+      "flex.tcz",
+      "binutils.tcz"
+    ],
+    "baseAndAdditionalReview": [
+      "glibc",
+      "BusyBox",
+      "util-linux",
+      "e2fsprogs",
+      "GLU",
+      "Winetricks",
+      "GCC runtime libraries",
+      "LLVM-MinGW runtime code in guest DLLs"
+    ],
+    "packageVersionsAndSourcesVerified": false
+  },
+  "wine11Fonts": [
+    {
+      "family": "Wine replacement fonts",
+      "count": 6,
+      "licenseEvidence": "Embedded names identify LGPL-2.1-or-later; Tahoma also contains Bitstream Vera origin notices",
+      "matchingSource": "Wine tag and original font sources/build recipes to preserve"
+    },
+    {
+      "family": "Liberation",
+      "count": 12,
+      "version": "2.1.0 from representative font",
+      "licenseEvidence": "SIL OFL 1.1; license file present"
+    },
+    {
+      "family": "Font Awesome",
+      "count": 1,
+      "version": "4.6.3",
+      "licenseEvidence": "Official v4 font license SIL OFL 1.1; embedded copyright/license URL present",
+      "sourceURL": "https://fontawesome.com/v4/license/"
+    }
+  ],
+  "catalog": {
+    "lockPath": "resources/demo-catalog.lock.json",
+    "lock": {
+      "bytes": 124661,
+      "formatVersion": 1,
+      "sha256": "700724af3d60ef15cc594566324c66a0d2daa083a1475f0586c20477d9bf5cce",
+      "url": "https://boxedwine.org/catalogs/26R2-catalog-1/catalog.zip",
+      "version": "26R2-catalog-1"
+    },
+    "entries": 36,
+    "icons": 36,
+    "permissionsLedger": "demo-rights.csv",
+    "status": "No demo or artwork clearance recorded by this audit"
+  },
+  "ownership": {
+    "authorAliasesConfirmed": true,
+    "maintainerAliases": [
+      "James Bryant",
+      "James",
+      "james",
+      "danoon2",
+      "boxedwine"
+    ],
+    "confirmationDate": "2026-09-14",
+    "externalAgreementsStatus": "awaiting maintainer response",
+    "retainedContributorExample": "git blame of source/emulation/cpu/normal/normalCPU.cpp attributes 214 current lines to kevodwyer; attribution is not a legal ownership determination"
+  },
+  "evidenceLocation": "tmp/licensing-audit-20260914 (ignored local working evidence; release archives must retain their own evidence)",
+  "limitations": [
+    "Build dependency lists inspected were from the current arm64 Debug build, cross-checked with Release bundle images; repeat for final Store archive.",
+    "Source availability URLs are not promises that complete matching corresponding source has been obtained or distributed.",
+    "Filename scanning for notices misses embedded text and unusual filenames; absence from the scan is not proof of absence.",
+    "No game installers were executed, no user library changed, and no rights holder contacted."
+  ],
+  "javaRemoval": {
+    "date": "2026-09-14",
+    "record": "java-removal.json",
+    "meaning": "Initial Java and 36-demo inspection evidence remains historical. The native app no longer provides Java; catalog 26R2-catalog-2 has 34 demos, is published, and passed fresh-download verification."
+  }
+}
