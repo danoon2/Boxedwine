@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-15T16:33:28.857952+00:00",
+  "source_url": "https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip",
+  "source_sha256": "325a93a29b40600865316f7b751265a57e8d24ffb2ff0c742362246aa33b4060",
+  "tested_root_sha256": "edef1f8d33d30402cb615ed76f490a1281b01ff5895283f0114159e838d59253",
+  "archive": {
+    "filename": "TinyCore15Wine11.0.zip",
+    "size": 167152522,
+    "sha256": "52eaea9b29603ea9275c72e45526ea0f760efe87a6718f86fa2fa1146c976230"
+  },
+  "changed_entries": [
+    "home/username/.wine/drive_c/webgl/ddraw.dll",
+    "home/username/.wine/drive_c/webgl/wined3d.dll"
+  ],
+  "other_entries_and_metadata_preserved": 8695,
+  "all_entry_contents_match_tested_root": true,
+  "crc": "ok",
+  "patch_manifest": {
+    "path": "tools/wineTests/webgl-test-divergences-v40.json",
+    "sha256": "610932caa4d9e35da56d6b57542e00e3e1a6e23957b8858c25279ef29d3442d5"
+  },
+  "graphics_validation": {
+    "checks": 5132,
+    "failures": 0,
+    "skips": 0,
+    "record": "tmp/mech-sse-search-20260914/clean-depth-probes-verification.json",
+    "full_v40_graphics_matrix_rerun": false
+  },
+  "notes": "Uses the exact clean SSE DLLs already tested. The archive preserves the latest hosted contents and all metadata outside the two replaced DLLs.",
+  "filesystem_validation": {
+    "result": "ok",
+    "profile": "full-v11",
+    "record": "tmp/v11-performance-upload-20260915/filesystem-validation.json"
+  },
+  "jenkins_root_validation": "passed",
+  "source_replay": {
+    "passed": true,
+    "production_patches": 52,
+    "application": "git apply --check followed by git apply",
+    "tested_source_files_match": [
+      {
+        "path": "dlls/ddraw/surface.c",
+        "sha256": "c0e007d4b5265d6c49a3ca1b07788af0a63b99b97671c11272628b4744e0208e"
+      },
+      {
+        "path": "dlls/wined3d/surface.c",
+        "sha256": "d7c88def27c23034fe6045de72298e1c2d332e1d264e3c5ae399c8168b6ec98d"
+      },
+      {
+        "path": "dlls/wined3d/texture_gl.c",
+        "sha256": "40a4c7ca90a449c1dec4b6214a6f3a5adbd298ab8636f29e9cdd641efcae6495"
+      }
+    ],
+    "test_patch_unchanged_from_v39": true
+  },
+  "test_policy": "Unchanged v39 Wine test patch, classifications, expected counts, TODOs and skips."
+}
