@@ -48,9 +48,11 @@ EM_JS(void, boxedwinePresentSoftwareFrame, (const U32* pixels, int width, int he
     }
     var count = width * height;
     var rgba = new Uint8ClampedArray(count * 4);
-    var source = pixels >> 2;
+    var source = pixels >>> 2;
+    // Refresh the heap view once per frame, avoiding a memory-growth check per pixel.
+    var softwareHeap = HEAPU32;
     for (var i = 0, j = 0; i < count; ++i, j += 4) {
-        var pixel = HEAPU32[source + i];
+        var pixel = softwareHeap[source + i];
         rgba[j] = (pixel >> 16) & 0xff;
         rgba[j + 1] = (pixel >> 8) & 0xff;
         rgba[j + 2] = pixel & 0xff;
