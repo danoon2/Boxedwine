@@ -50,7 +50,7 @@ struct ProgramChooserView: View {
                         VStack(spacing: 10) {
                             Image(systemName: "app.dashed").font(.largeTitle).foregroundStyle(.secondary)
                             Text("No Windows programs found yet").font(.headline)
-                            Text(runOnce ? "Use Choose File to run a program or installer from your Mac." : "The installer may have been cancelled or stopped early. You can run it again from the library.")
+                            Text(runOnce ? "Use Choose File to run a program or installer from your Mac." : "The installer may have been cancelled or stopped early. Close this window and use Troubleshooting → Run Installer Again to finish setup.")
                                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity, minHeight: 190)
                     } else if matches.isEmpty {

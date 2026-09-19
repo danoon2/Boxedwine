@@ -16,19 +16,22 @@ struct LibraryView: View {
         var context = NativeLibraryActions()
         context.actions = [
             .find: { searchFocused = true },
-            .allApps: { store.showLibrary() }, .recent: { store.showLibrary(recent: true) },
-            .demos: { store.showDemos() }
+            .allApps: { store.showLibrary() }, .recent: { store.showLibrary(recent: true) }
         ]
+        #if !BOXEDWINE_APP_STORE
+        context.actions[.demos] = { store.showDemos() }
+        #endif
         context.removeTitle = store.removalActionTitle
         if store.showsRemovedApps { context.actions[.removed] = { store.showRemoved() } }
         if store.hasUnfinishedWork { context.actions[.recovery] = { store.showRecovery() } }
         if store.canEdit && !store.importing {
             context.actions[.add] = { store.showAddApp = true }
             context.actions[.restore] = { store.chooseBackup() }
-            if store.canTryNotepad { context.actions[.notepad] = { store.addNotepad() } }
+            if store.canTryBuiltIn(.minesweeper) { context.actions[.minesweeper] = { store.addBuiltIn(.minesweeper) } }
+            if store.canTryBuiltIn(.notepad) { context.actions[.notepad] = { store.addBuiltIn(.notepad) } }
         }
         if let app = store.selectedApp {
-            let needsProgram = app.executable == nil && !app.isNotepad
+            let needsProgram = app.executable == nil && !app.isBuiltIn
             context.openTitle = needsProgram ? "Choose Program…" : "Open App"
             if needsProgram ? store.canModify(app) : store.canLaunch(app) {
                 context.actions[.open] = { store.openApp(app) }
@@ -39,15 +42,33 @@ struct LibraryView: View {
             }
             if store.canModify(app) {
                 context.actions[.settings] = { store.editingApp = app }
-                context.actions[.wineTrial] = { store.wineTrialCandidate = app }
                 context.actions[.remove] = { store.requestRemoval(app) }
-                if !app.isNotepad { context.actions[.chooseProgram] = { store.chooseProgram(app) } }
-                if !app.isNotepad && store.canLaunch(app) { context.actions[.runAnotherProgram] = { store.chooseAnotherProgram(app) } }
+                if !app.isBuiltIn { context.actions[.chooseProgram] = { store.chooseProgram(app) } }
+                if !app.isBuiltIn && store.canLaunch(app) { context.actions[.runAnotherProgram] = { store.chooseAnotherProgram(app) } }
                 if store.hasRuntime(app) { context.actions[.backup] = { store.exportBackup(app) } }
             }
+            context.actions[.troubleshooting] = { store.troubleshootingApp = app }
             context.actions[.log] = { store.showingLaunchLog = true; logApp = app }
         }
         return context
+    }
+
+    private var emptyLibrary: some View {
+        VStack(spacing: 15) {
+            Image(systemName: "macwindow.on.rectangle").font(.system(size: 42)).foregroundStyle(.secondary)
+            Text(store.query.isEmpty ? "Bring your favorite app along." : "No matching apps").font(.title3.weight(.medium))
+            Text(store.query.isEmpty ? "Drop a Windows installer or app folder here." : "Try a different name.")
+                .multilineTextAlignment(.center).foregroundStyle(.secondary)
+            Button("Add App…") { store.showAddApp = true }.buttonStyle(.borderedProminent)
+                .disabled(!store.canEdit || store.importing)
+            if store.apps.isEmpty && store.query.isEmpty {
+                Button("Play Minesweeper") { store.addBuiltIn(.minesweeper) }.disabled(!store.canTryBuiltIn(.minesweeper))
+                #if !BOXEDWINE_APP_STORE
+                Button("Try a Demo") { store.showDemos() }
+                #endif
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     var body: some View {
@@ -78,169 +99,159 @@ struct LibraryView: View {
                     }
                 }
                 Section("Get Started") {
+                    #if !BOXEDWINE_APP_STORE
                     Button { store.showDemos() } label: { Label("Demos", systemImage: "gamecontroller") }
                         .listRowBackground(store.showingDemos ? Color.accentColor.opacity(0.16) : Color.clear)
                         .accessibilityAddTraits(store.showingDemos ? .isSelected : [])
-                    Button { store.addNotepad() } label: { Label("Try Notepad", systemImage: "note.text") }
-                        .disabled(!store.canTryNotepad)
+                    #endif
+                    Button { store.addBuiltIn(.minesweeper) } label: { Label("Play Minesweeper", systemImage: "gamecontroller") }
+                        .disabled(!store.canTryBuiltIn(.minesweeper))
+                    Button { store.addBuiltIn(.notepad) } label: { Label("Try Notepad", systemImage: "note.text") }
+                        .disabled(!store.canTryBuiltIn(.notepad))
                 }
             }
             .buttonStyle(.plain)
             .navigationSplitViewColumnWidth(min: 155, ideal: 175, max: 220)
         } detail: {
+            #if !BOXEDWINE_APP_STORE
             if store.showingDemos { DemosView(store: store) }
-            else if store.showingRecovery { OperationRecoveryView(store: store) }
-            else if store.showingRemoved { RemovedAppsView(store: store) } else {
-                HStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(store.recentOnly ? "Recently opened" : "Your Windows apps")
-                                .font(.largeTitle.weight(.semibold))
-                            Text("A new home for old favorites.")
-                                .foregroundStyle(.secondary)
-                        }
-                        if !store.runtimeAvailable && !(store.importing && store.transfer == .organizingWine) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "shippingbox").font(.title2)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(store.runtimeChecking ? "Checking Windows support…" : "Windows support needs attention").fontWeight(.medium)
-                                    Text(store.runtimeChecking ? "Apps using the library default will be ready after this check." : (store.runtimeProblem ?? "Choose a complete Boxedwine Wine package.")).font(.caption).foregroundStyle(.secondary).lineLimit(3)
-                                }
-                                Spacer()
-                                Button("Choose…") { store.chooseRuntime() }.disabled(!store.canEdit || store.importing || store.runtimeChecking || store.hasRunningApps)
+            #endif
+            if !store.showingDemos {
+                if store.showingRecovery { OperationRecoveryView(store: store) }
+                else if store.showingRemoved { RemovedAppsView(store: store) } else {
+                    HStack(spacing: 0) {
+                        VStack(alignment: .leading, spacing: 20) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(store.recentOnly ? "Recently opened" : "Your Windows apps")
+                                    .font(.largeTitle.weight(.semibold))
+                                Text("A new home for old favorites.")
+                                    .foregroundStyle(.secondary)
                             }
-                            .padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
-                        }
-                        if !store.importing && store.hasUnfinishedWork {
+                            if !store.runtimeAvailable && !(store.importing && store.transfer == .organizingWine) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "shippingbox").font(.title2)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(store.runtimeChecking ? "Checking Windows support…" : "Windows support needs attention").fontWeight(.medium)
+                                        Text(store.runtimeChecking ? "Apps using the library default will be ready after this check." : (store.runtimeProblem ?? LibraryError.missingRuntime.localizedDescription)).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                                    }
+                                    Spacer()
+                                    #if !BOXEDWINE_APP_STORE
+                                    Button("Choose…") { store.chooseRuntime() }.disabled(!store.canEdit || store.importing || store.runtimeChecking || store.hasRunningApps)
+                                    #endif
+                                }
+                                .padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                            }
+                            if !store.importing && store.hasUnfinishedWork {
+                                HStack {
+                                    Label("Unfinished file operations need review.", systemImage: "arrow.clockwise.circle")
+                                    Spacer()
+                                    Button("Review") { store.showRecovery() }
+                                }.font(.callout).padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                            }
+                            if store.hasUnfinishedDeletions {
+                                HStack {
+                                    Label("An app deletion needs attention.", systemImage: "exclamationmark.triangle")
+                                    Spacer()
+                                    Button("Review") { store.showRemoved() }
+                                }.font(.callout).padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                            }
+                            if store.importing { ImportProgressView(store: store) }
+                            ForEach(store.launchingApps) { app in
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack(alignment: .firstTextBaseline) {
+                                        Text("Launching \(app.name)…").fontWeight(.medium).lineLimit(2)
+                                        Spacer(minLength: 8)
+                                        Button("Stop") { store.stop(app) }.disabled(!store.canEdit)
+                                            .accessibilityLabel("Stop launching \(app.name)")
+                                    }
+                                    ProgressView().progressViewStyle(.linear)
+                                        .accessibilityLabel("Launching \(app.name)")
+                                }
+                                .padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                            }
+                            if store.visibleApps.isEmpty {
+                                emptyLibrary
+                            } else {
+                                LibraryAppsGrid(store: store)
+                            }
                             HStack {
-                                Label("Unfinished file operations need review.", systemImage: "arrow.clockwise.circle")
+                                Text("\(store.apps.count) \(store.apps.count == 1 ? "app" : "apps")")
                                 Spacer()
-                                Button("Review") { store.showRecovery() }
-                            }.font(.callout).padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                                Text("Drop files here to add an app")
+                            }.font(.caption).foregroundStyle(.secondary)
                         }
-                        if store.hasUnfinishedDeletions {
-                            HStack {
-                                Label("An app deletion needs attention.", systemImage: "exclamationmark.triangle")
-                                Spacer()
-                                Button("Review") { store.showRemoved() }
-                            }.font(.callout).padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
-                        }
-                        if store.importing { ImportProgressView(store: store) }
-                        ForEach(store.launchingApps) { app in
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text("Launching \(app.name)…").fontWeight(.medium).lineLimit(2)
-                                    Spacer(minLength: 8)
-                                    Button("Stop") { store.stop(app) }.disabled(!store.canEdit)
-                                        .accessibilityLabel("Stop launching \(app.name)")
-                                }
-                                ProgressView().progressViewStyle(.linear)
-                                    .accessibilityLabel("Launching \(app.name)")
+                        .padding(26).frame(minWidth: 350, maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .overlay {
+                            if appDropTargeted && store.canDropApp {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.accentColor.opacity(0.08))
+                                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.accentColor, lineWidth: 2))
+                                    .overlay {
+                                        Label("Drop to Add App", systemImage: "plus.circle.fill")
+                                            .font(.title3.weight(.semibold)).padding(20)
+                                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                                    }
+                                    .padding(12).allowsHitTesting(false)
                             }
-                            .padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
                         }
-                        if store.visibleApps.isEmpty {
-                            VStack(spacing: 15) {
-                                Image(systemName: "macwindow.on.rectangle").font(.system(size: 42)).foregroundStyle(.secondary)
-                                Text(store.query.isEmpty ? "Bring your favorite app along." : "No matching apps").font(.title3.weight(.medium))
-                                Text(store.query.isEmpty ? "Drop a Windows installer or app folder here.\nYou can test your app for free." : "Try a different name.")
-                                    .multilineTextAlignment(.center).foregroundStyle(.secondary)
-                                Button("Add App…") { store.showAddApp = true }.buttonStyle(.borderedProminent)
-                                    .disabled(!store.canEdit || store.importing)
-                                if store.apps.isEmpty && store.query.isEmpty { Button("Try a Demo") { store.showDemos() } }
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else {
-                            LibraryAppsGrid(store: store)
-                        }
-                        HStack {
-                            Text("\(store.apps.count) \(store.apps.count == 1 ? "app" : "apps")")
-                            Spacer()
-                            Text("Drop files here to add an app")
-                        }.font(.caption).foregroundStyle(.secondary)
-                    }
-                    .padding(26).frame(minWidth: 350, maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                    .overlay {
-                        if appDropTargeted && store.canDropApp {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.accentColor.opacity(0.08))
-                                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.accentColor, lineWidth: 2))
-                                .overlay {
-                                    Label("Drop to Add App", systemImage: "plus.circle.fill")
-                                        .font(.title3.weight(.semibold)).padding(20)
-                                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                                }
-                                .padding(12).allowsHitTesting(false)
-                        }
-                    }
-                    .dropDestination(for: URL.self) { urls, _ in
-                        appDropTargeted = false
-                        return store.receiveAppDrop(urls)
-                    } isTargeted: { appDropTargeted = $0 }
+                        .dropDestination(for: URL.self) { urls, _ in
+                            appDropTargeted = false
+                            return store.receiveAppDrop(urls)
+                        } isTargeted: { appDropTargeted = $0 }
 
-                    if let app = store.selectedApp {
-                        Divider()
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 18) {
-                                AppIcon(app: app, repository: store.repository, demoImage: store.defaultIconURL(for: app))
-                                    .id("\(app.id)-\(app.executable ?? "")-\(store.activity[app.id] ?? "")")
-                                Text(app.name).font(.title2.weight(.semibold))
-                                Text(app.isNotepad ? "Windows utility" : "Windows app").foregroundStyle(.secondary)
-                                Button {
-                                    if store.isRunning(app) { store.stop(app) } else { store.openApp(app) }
-                                } label: {
-                                    Label(store.isStopping(app) ? "Force Stop" : store.isRunning(app) ? "Stop App" : app.executable == nil && !app.isNotepad ? "Choose Program…" : "Open App",
-                                          systemImage: store.isRunning(app) ? "stop.fill" : "play.fill")
-                                        .frame(maxWidth: .infinity)
+                        if let app = store.selectedApp {
+                            Divider()
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 18) {
+                                    AppIcon(app: app, repository: store.repository, demoImage: store.defaultIconURL(for: app))
+                                        .id("\(app.id)-\(app.executable ?? "")-\(store.activity[app.id] ?? "")")
+                                    Text(app.name).font(.title2.weight(.semibold))
+                                    Text(app.isBuiltIn ? "Windows utility" : "Windows app").foregroundStyle(.secondary)
+                                    Button {
+                                        if store.isRunning(app) { store.stop(app) } else { store.openApp(app) }
+                                    } label: {
+                                        Label(store.isStopping(app) ? "Force Stop" : store.isRunning(app) ? "Stop App" : app.executable == nil && !app.isBuiltIn ? "Choose Program…" : "Open App",
+                                              systemImage: store.isRunning(app) ? "stop.fill" : "play.fill")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .buttonStyle(.borderedProminent).controlSize(.large)
+                                    .disabled(!store.canEdit || (!store.isRunning(app) && (store.importingRuntime || store.backingUpID == app.id || ((app.executable != nil || app.isBuiltIn) && !store.hasRuntime(app)))))
+                                    if let activity = store.activity[app.id] { Text(activity).font(.callout).foregroundStyle(.secondary) }
+                                    if let problem = store.launchProblems[app.id] {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Label("Launch needs attention", systemImage: "exclamationmark.triangle").font(.callout.weight(.medium))
+                                            Text(problem).font(.caption)
+                                            Button("Review Launch Log…") { store.showingLaunchLog = true; logApp = app }
+                                        }.padding(12).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                                    }
+                                    Divider()
+                                    LabeledContent("Display mode:", value: app.fullScreen ? "Full screen" : "Windowed")
+                                    LabeledContent("Resolution:", value: app.resolution)
+                                    Text(store.wineDescription(for: app)).font(.caption).foregroundStyle(.secondary)
+                                        .accessibilityLabel("Windows support, \(store.wineDescription(for: app))")
+                                    Text("Your settings and files stay with this app.").font(.caption).foregroundStyle(.secondary)
+                                    if !app.isBuiltIn {
+                                        Button("Run Another Program…") { store.chooseAnotherProgram(app) }
+                                            .disabled(!store.canModify(app) || !store.canLaunch(app))
+                                            .help("Run a configuration tool or another program for this app.")
+                                    }
+                                    Button("App Settings…") { store.editingApp = app }.disabled(!store.canModify(app))
+                                    Button("Troubleshooting…") { store.troubleshootingApp = app }
+                                    Divider()
+                                    AppStorageView(app: app, repository: store.repository, running: store.isRunning(app),
+                                                   revision: "\(store.storageRevision)-\(store.activity[app.id] ?? "")")
+                                    Button(store.removalActionTitle) { store.requestRemoval(app) }
+                                        .disabled(!store.canModify(app))
+                                        .help(store.removalActionHelp)
+                                    Text("Compatibility varies between Windows apps. Opening an app does not mean all of its features will work.")
+                                        .font(.caption).foregroundStyle(.secondary)
                                 }
-                                .buttonStyle(.borderedProminent).controlSize(.large)
-                                .disabled(!store.canEdit || (!store.isRunning(app) && (store.importingRuntime || store.backingUpID == app.id || ((app.executable != nil || app.isNotepad) && !store.hasRuntime(app)))))
-                                if let activity = store.activity[app.id] { Text(activity).font(.callout).foregroundStyle(.secondary) }
-                                if let problem = store.launchProblems[app.id] {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Label("Launch needs attention", systemImage: "exclamationmark.triangle").font(.callout.weight(.medium))
-                                        Text(problem).font(.caption)
-                                        Button("Review Launch Log…") { store.showingLaunchLog = true; logApp = app }
-                                    }.padding(12).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-                                }
-                                Divider()
-                                LabeledContent("Display mode:", value: app.fullScreen ? "Full screen" : "Windowed")
-                                LabeledContent("Resolution:", value: app.resolution)
-                                Text(store.wineDescription(for: app)).font(.caption).foregroundStyle(.secondary)
-                                    .accessibilityLabel("Windows support, \(store.wineDescription(for: app))")
-                                Text("Your settings and files stay with this app.").font(.caption).foregroundStyle(.secondary)
-                                if !app.isNotepad && app.executable != nil {
-                                    Button("Choose Program…") { store.chooseProgram(app) }.disabled(!store.canModify(app))
-                                }
-                                if !app.isNotepad {
-                                    Button("Run Another Program…") { store.chooseAnotherProgram(app) }
-                                        .disabled(!store.canModify(app) || !store.canLaunch(app))
-                                        .help("Run a configuration tool or another program for this app.")
-                                }
-                                Button("App Settings…") { store.editingApp = app }.disabled(!store.canModify(app))
-                                Button("Try Another Wine Version…") { store.wineTrialCandidate = app }.disabled(!store.canModify(app))
-                                if app.installer != nil {
-                                    Button("Run Installer Again…") { store.launch(app, installing: true) }
-                                        .disabled(!store.canLaunch(app))
-                                }
-                                Button("Back Up App…") { store.exportBackup(app) }
-                                    .disabled(!store.canModify(app) || !store.hasRuntime(app))
-                                    .help(store.isRunning(app) ? "Close this app before backing it up." : "Save this app’s files, settings, and Wine package.")
-                                Button("View Launch Log…") { store.showingLaunchLog = true; logApp = app }
-                                Divider()
-                                AppStorageView(app: app, repository: store.repository, running: store.isRunning(app),
-                                               revision: "\(store.storageRevision)-\(store.activity[app.id] ?? "")")
-                                Button(store.removalActionTitle) { store.requestRemoval(app) }
-                                    .disabled(!store.canModify(app))
-                                    .help(store.removalActionHelp)
-                                Text("Compatibility varies between Windows apps. Opening an app does not mean all of its features will work.")
-                                    .font(.caption).foregroundStyle(.secondary)
+                                .padding(24).frame(maxWidth: .infinity, alignment: .topLeading)
                             }
-                            .padding(24).frame(maxWidth: .infinity, alignment: .topLeading)
+                            .frame(width: 260).frame(maxHeight: .infinity)
+                            .background(.quaternary.opacity(0.35))
                         }
-                        .frame(width: 260).frame(maxHeight: .infinity)
-                        .background(.quaternary.opacity(0.35))
                     }
                 }
             }
@@ -252,10 +263,15 @@ struct LibraryView: View {
         .toolbar { ToolbarItem { Button { store.showAddApp = true } label: { Label("Add App", systemImage: "plus") }
             .disabled(!store.canEdit || store.importing) } }
         .sheet(isPresented: $store.showAddApp, onDismiss: store.addAppSheetDismissed) { AddAppView(store: store) }
-        .sheet(item: $store.notepadWineDownload, onDismiss: store.presentNextProgramChoice) { wine in
-            NotepadDownloadView(store: store, wine: wine)
+        #if !BOXEDWINE_APP_STORE
+        .sheet(item: $store.builtInWineDownload, onDismiss: store.presentNextProgramChoice) { download in
+            BuiltInDownloadView(store: store, download: download)
         }
-        .sheet(item: $store.editingApp, onDismiss: store.presentNextProgramChoice) { app in AppSettingsView(store: store, app: app) }
+        #endif
+        .sheet(item: $store.editingApp, onDismiss: store.settingsSheetDismissed) { app in AppSettingsView(store: store, app: app) }
+        .sheet(item: $store.troubleshootingApp, onDismiss: store.troubleshootingSheetDismissed) { app in
+            AppTroubleshootingView(store: store, app: app)
+        }
         .sheet(item: $store.choosingProgram, onDismiss: store.presentNextProgramChoice) { app in
             if let repository = store.repository {
                 ProgramChooserView(repository: repository, app: app, notice: store.programChoiceNotice(for: app), onSave: store.save)
@@ -269,11 +285,16 @@ struct LibraryView: View {
         .sheet(item: $store.recoveryCleanupCandidate, onDismiss: store.presentNextProgramChoice) { item in
             RecoveryCleanupView(store: store, item: item)
         }
+        #if !BOXEDWINE_APP_STORE
         .sheet(item: $store.wineTrialCandidate, onDismiss: store.wineTrialSheetDismissed) { app in
             WineTrialView(store: store, app: app)
         }
+        #endif
         .sheet(item: $store.deletionCandidate, onDismiss: store.deletionSheetDismissed) { candidate in
             DeleteAppView(store: store, candidate: candidate)
+        }
+        .sheet(item: $store.removedAppsDeletion, onDismiss: store.presentNextProgramChoice) { candidate in
+            DeleteRemovedAppsView(store: store, candidate: candidate)
         }
         .sheet(item: $logApp, onDismiss: { store.showingLaunchLog = false; store.presentNextProgramChoice() }) { app in LaunchLogView(store: store, app: app) }
         .confirmationDialog("Remove \(store.removalCandidate?.name ?? "this app") from the library?",
@@ -328,7 +349,7 @@ private struct LibraryAppsGrid: View {
 private struct LibraryAppCard: View {
     @ObservedObject var store: LibraryStore
     let app: LibraryApp
-    private var status: String { store.activity[app.id] ?? (app.executable != nil || app.isNotepad ? "Ready to open" : "Choose a program") }
+    private var status: String { store.activity[app.id] ?? (app.executable != nil || app.isBuiltIn ? "Ready to open" : "Choose a program") }
     var body: some View {
         Button { store.selectedID = app.id } label: {
             VStack(alignment: .leading, spacing: 12) {
@@ -350,7 +371,7 @@ private struct LibraryAppCard: View {
         .buttonStyle(.plain)
         .simultaneousGesture(TapGesture(count: 2).onEnded {
             store.selectedID = app.id
-            let needsProgram = app.executable == nil && !app.isNotepad
+            let needsProgram = app.executable == nil && !app.isBuiltIn
             guard !store.presentingLibrarySheet,
                   needsProgram ? store.canModify(app) : store.canLaunch(app) else { return }
             store.openApp(app)
@@ -361,12 +382,12 @@ private struct LibraryAppCard: View {
         .accessibilityHint("Select to see app actions. Double-click to open. Command O opens the selected app.")
         .contextMenu {
             Button("Open App") { store.openApp(app) }.disabled(!store.canLaunch(app))
-            if !app.isNotepad {
+            if !app.isBuiltIn {
                 Button("Run Another Program…") { store.chooseAnotherProgram(app) }
                     .disabled(!store.canModify(app) || !store.canLaunch(app))
             }
             Button("App Settings…") { store.editingApp = app }.disabled(!store.canModify(app))
-            Button("Try Another Wine Version…") { store.wineTrialCandidate = app }.disabled(!store.canModify(app))
+            Button("Troubleshooting…") { store.troubleshootingApp = app }
             Button("Back Up App…") { store.exportBackup(app) }
                 .disabled(!store.canModify(app) || !store.hasRuntime(app))
             Divider()
@@ -388,27 +409,29 @@ struct AppIcon: View {
         return try? repository.confinedURL(path, beneath: repository.root(for: app))
     }
     var body: some View {
-        ExecutableIcon(url: executableURL, symbol: app.isNotepad ? "note.text" : "macwindow", customPNG: app.customIconPNG, demoImage: demoImage)
+        ExecutableIcon(url: executableURL, symbol: app.wineProgram?.symbol ?? "macwindow", customPNG: app.customIconPNG, demoImage: demoImage)
     }
 }
 
-private struct NotepadDownloadView: View {
+#if !BOXEDWINE_APP_STORE
+private struct BuiltInDownloadView: View {
     @ObservedObject var store: LibraryStore
-    let wine: CatalogWine
+    let download: LibraryStore.BuiltInDownload
+    private var wine: CatalogWine { download.wine }
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Download Wine to try Notepad").font(.title2.weight(.semibold))
-            Text("Notepad needs \(wine.name). The download is \(ByteCountFormatter.string(fromByteCount: wine.bytes, countStyle: .file)).")
+            Text("Download Wine to try \(download.program.name)").font(.title2.weight(.semibold))
+            Text("\(download.program.name) needs \(wine.name). The download is \(ByteCountFormatter.string(fromByteCount: wine.bytes, countStyle: .file)).")
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Notepad will open when setup finishes. Other apps using this Wine package can share the download.")
+            Text("\(download.program.name) will open when setup finishes. Other apps using this Wine package can share the download.")
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Divider()
             HStack {
                 Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
-                Button("Download & Open") { store.downloadWineForNotepad(wine) }
+                Button("Download & Open") { store.downloadWineForBuiltIn(download) }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!store.canEdit || store.importing || store.runtimeChecking)
             }
@@ -416,11 +439,22 @@ private struct NotepadDownloadView: View {
     }
 }
 
+#endif
+
 struct CatalogWinePicker: View {
     @ObservedObject var store: LibraryStore
     @Binding var selectedID: String?
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
+            #if BOXEDWINE_APP_STORE
+            if let wine = store.defaultCatalogWine {
+                Text("Wine \(wine.wineVersion) is included with Boxedwine.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if store.wineDownloadStatus(wine) == .required {
+                    Text(WineCatalogError.downloadsUnavailable.localizedDescription).font(.caption).foregroundStyle(.red)
+                }
+            }
+            #else
             Picker("Wine version", selection: $selectedID) {
                 if store.wineVersions.isEmpty { Text("Wine list unavailable").tag(String?.none) }
                 ForEach(store.wineVersions) { Text($0.name).tag(Optional($0.id)) }
@@ -430,6 +464,7 @@ struct CatalogWinePicker: View {
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Text("This app stays pinned to this Wine package. Identical packages share storage.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
+            #endif
             if let problem = store.wineCatalogProblem {
                 Text(problem).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
@@ -558,7 +593,7 @@ struct AppSettingsView: View {
     @FocusState private var nameFocused: Bool
     @Environment(\.dismiss) private var dismiss
     private var demoArguments: [String] {
-        guard !app.isNotepad, let settings = app.demoSettings else { return [] }
+        guard !app.isBuiltIn, let settings = app.demoSettings else { return [] }
         let directory = app.executable.map { (("/" + $0) as NSString).deletingLastPathComponent } ?? "(program folder)"
         return settings.launchArguments(workingDirectory: directory)
     }
@@ -566,6 +601,17 @@ struct AppSettingsView: View {
         do { _ = try BoxedwineArguments.parse(boxedwineArgumentText); return nil }
         catch { return error.localizedDescription }
     }
+    private var settingsToSave: LibraryApp? {
+        guard let parsed = try? BoxedwineArguments.parse(boxedwineArgumentText) else { return nil }
+        var updated = app
+        updated.boxedwineArguments = parsed.isEmpty ? nil : parsed
+        updated.arguments = argumentText.isEmpty ? [] : argumentText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        return updated
+    }
+    private var canSave: Bool {
+        !importingIcon && store.canModify(app) && !app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && boxedwineProblem == nil
+    }
+    private var hasSettingsChanges: Bool { settingsToSave != store.apps.first { $0.id == app.id } }
     private func chooseIcon() {
         let panel = NSOpenPanel()
         panel.title = "Choose App Icon"
@@ -599,7 +645,7 @@ struct AppSettingsView: View {
                         .contentShape(RoundedRectangle(cornerRadius: 5))
                         .simultaneousGesture(TapGesture().onEnded { nameFocused = true })
                 }
-                if !app.isNotepad {
+                if !app.isBuiltIn {
                     LabeledContent("Program") {
                         HStack {
                             if let path = app.executable {
@@ -610,7 +656,7 @@ struct AppSettingsView: View {
                                 Text("No program selected").foregroundStyle(.secondary)
                             }
                             Spacer(minLength: 8)
-                            Button("Change…") { showProgramChooser = true }.fixedSize()
+                            Button("Choose Program…") { showProgramChooser = true }.fixedSize()
                         }
                     }
                 }
@@ -691,14 +737,17 @@ struct AppSettingsView: View {
                 }
             }
             }.frame(height: advancedExpanded ? 550 : 255)
-            HStack { Spacer(); Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+            HStack {
+                Button(hasSettingsChanges ? "Save and Back Up…" : "Back Up App…") {
+                    if let updated = settingsToSave { store.saveAndBackUp(updated) }
+                }
+                .disabled(!canSave || !store.hasRuntime(app))
+                .help("Save these settings, then back up this app’s Windows files, settings, and Wine package.")
+                Spacer()
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Save") {
-                    guard let parsed = try? BoxedwineArguments.parse(boxedwineArgumentText) else { return }
-                    app.boxedwineArguments = parsed.isEmpty ? nil : parsed
-                    app.arguments = argumentText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-                    if argumentText.isEmpty { app.arguments = [] }
-                    store.save(app)
-                }.keyboardShortcut(.defaultAction).disabled(importingIcon || !store.canModify(app) || app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || boxedwineProblem != nil)
+                    if let updated = settingsToSave { store.save(updated) }
+                }.keyboardShortcut(.defaultAction).disabled(!canSave)
             }
         }.padding(28).frame(width: 540)
         .onAppear {
@@ -714,6 +763,121 @@ struct AppSettingsView: View {
                 }
             }
         }
+    }
+}
+
+struct AppTroubleshootingView: View {
+    @ObservedObject var store: LibraryStore
+    let app: LibraryApp
+    @State private var showLaunchLog = false
+    @Environment(\.dismiss) private var dismiss
+
+    private func topic<Content: View>(_ title: String, @ViewBuilder content: @escaping () -> Content) -> some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 10, content: content)
+                .font(.callout).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 8)
+                .textSelection(.enabled)
+        } label: {
+            Text(title).font(.callout.weight(.medium))
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Troubleshooting").font(.title2.weight(.semibold))
+                Text(app.name).foregroundStyle(.secondary)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Close the game before changing its settings. Try one change at a time, save, and reopen the game. If it does not help, put that setting back before trying another change.")
+                        .font(.callout).foregroundStyle(.secondary)
+                    GroupBox("Things to try") {
+                        VStack(alignment: .leading, spacing: 14) {
+                            topic("The game or installer will not start") {
+                                if !app.isBuiltIn {
+                                    Text("In App Settings, use Choose Program to check that Program points to the game itself, rather than its installer or uninstaller.")
+                                    Text("Use Run Another Program in the library to open the game’s own setup or graphics configuration tool.")
+                                }
+                                Text("Check the game’s Windows requirements. In App Settings → Windows version, try Windows 98 for older games designed for Windows 95 or 98, or Windows XP for games that require it.")
+                                Text("The Windows version applies to both the game and its installer. If setup needs a particular version, choose it before running the installer again. When adding a new app, you can choose the Windows version before starting installation.")
+                            }
+                            Divider()
+                            topic("A black screen or the wrong window size") {
+                                Text("Some games start with a blank screen while loading. Give the game a little time before assuming it has stopped.")
+                                Text("In App Settings → Window size, match the resolution selected in the game. Older games often start at 640×480 or 800×600. Try turning off Open in full screen while testing.")
+                                Text("If menus appear but the game itself does not, check the graphics tips below and the game’s own graphics configuration tool.")
+                            }
+                            Divider()
+                            topic("Missing 2D graphics, broken menus, or wrong colors") {
+                                Text("In App Settings → Advanced → Wine renderer, try GDI (compatibility). It can help older 2D games that use DirectDraw when the normal renderer shows a black screen, draws menus incorrectly, or displays the wrong colors.")
+                                Text("GDI disables Direct3D acceleration, so games that need Direct3D may stop working. Games with their own OpenGL renderer can still use it. If GDI does not help, restore the previous Wine renderer setting.")
+                            }
+                            Divider()
+                            topic("OpenGL errors or missing 3D graphics") {
+                                Text("In App Settings → Advanced → OpenGL backend, try GLX. If GLX is already selected, try EGL. Save and reopen the game after each change.")
+                                Text("This changes how Wine connects to OpenGL. It is separate from Wine renderer. For Direct3D games, set Wine renderer to Use Wine’s default or OpenGL; GDI disables Direct3D acceleration.")
+                                if !app.isBuiltIn {
+                                    Text("If the game has a graphics setup program, open it with Run Another Program. Try the game’s Direct3D or OpenGL option if its 3dfx/Glide mode does not work.")
+                                }
+                            }
+                            Divider()
+                            topic("Slow gameplay") {
+                                Text("Lower the resolution and graphics detail in the game’s own settings. Match Boxedwine’s Window size to the game’s resolution. Close other demanding Mac apps while testing.")
+                                Text("Boxedwine emulates an x86 PC, which adds work even on a fast Mac. Some games will remain too demanding or have compatibility problems; a different display setting cannot fix every issue.")
+                            }
+                            #if !BOXEDWINE_APP_STORE
+                            Divider()
+                            topic("Try a different Wine version") {
+                                Text("Create a separate test copy with another Wine package. Compatibility can change between Wine releases; a newer version is not always better for every game.")
+                                Text("Your original app and saves stay available. Changes in the test copy do not sync back. Wine’s version is separate from the Windows version the game sees.")
+                                Button("Try Another Wine Version…") { store.tryWineFromTroubleshooting(app) }
+                                    .disabled(!store.canModify(app))
+                            }
+                            #endif
+                        }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                    }
+                    if app.installer != nil {
+                        GroupBox("Installation") {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("If setup did not finish, run the saved installer again. It uses this app’s existing Windows files. You can back up the app first in App Settings.")
+                                    .font(.callout).foregroundStyle(.secondary)
+                                Button("Run Installer Again…") { store.runInstallerFromTroubleshooting(app) }
+                                    .disabled(!store.canLaunch(app))
+                                if store.isRunning(app) {
+                                    Text("Close the app before running the installer again.").font(.caption).foregroundStyle(.secondary)
+                                }
+                            }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                        }
+                    }
+                    GroupBox("Launch logs") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("See output from the latest or previous launch, or save a log to share when asking for help. Warnings do not always mean that the app failed.")
+                                .font(.callout).foregroundStyle(.secondary)
+                            Button("View Launch Log…") { showLaunchLog = true }
+                        }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                    }
+                    GroupBox("More help") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Link("Look Up a Game in Wine AppDB", destination: URL(string: "https://appdb.winehq.org/")!)
+                            Text("Look for reports for the same game version. Wine AppDB can suggest useful settings, but a game working in Wine does not guarantee it will work in Boxedwine.")
+                                .font(.callout).foregroundStyle(.secondary)
+                            Link("Get Help or Report an Issue on GitHub", destination: NativeSupport.issuesURL)
+                            Text("Include the game’s name and version, your Mac model and macOS version, what happened, and the settings you tried. A screenshot and launch log can help. Review logs before sharing them; they may contain file paths or personal app output.")
+                                .font(.callout).foregroundStyle(.secondary)
+                        }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                    }
+                }.padding(.trailing, 6)
+            }.frame(height: 440)
+            HStack {
+                Spacer()
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24).frame(width: 600)
+        .sheet(isPresented: $showLaunchLog) { LaunchLogView(store: store, app: app) }
     }
 }
 
@@ -797,8 +961,10 @@ struct LaunchLogView: View {
             }
             DisclosureGroup("If your app isn’t working") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("For apps with several programs, use Choose Program to check the selected .exe. You can also try a different window size in App Settings.")
-                    Text("Try Another Wine Version creates a separate copy, preserving the original app and saves. Changes in the test copy do not sync back.")
+                    Text("In App Settings, use Choose Program to check the selected .exe. You can also try a different window size there.")
+#if !BOXEDWINE_APP_STORE
+                    Text("In Troubleshooting, expand Try a different Wine version to make a separate test copy, preserving the original app and saves. Changes in the test copy do not sync back.")
+#endif
                     Text("Warnings in a log do not always mean the app failed. An exit code describes the Boxedwine runtime; it does not confirm compatibility.")
                 }.font(.callout).foregroundStyle(.secondary).padding(.top, 6)
             }
@@ -860,17 +1026,21 @@ struct NativeSettingsView: View {
                         .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             } else {
-                Text(store.runtimeProblem ?? "Add a Boxedwine Wine filesystem package to run Windows apps.")
+                Text(store.runtimeProblem ?? LibraryError.missingRuntime.localizedDescription)
                     .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             HStack {
+#if !BOXEDWINE_APP_STORE
                 Button("Choose Wine Version…") { store.chooseRuntime() }
+#endif
                 Button("Check Again") { store.refreshRuntime() }
             }.disabled(busy)
             Text("Wine packages are shared and cleaned up automatically. Each app keeps its own Windows files, settings, and saves.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            #if !BOXEDWINE_APP_STORE
             Text("Changing Windows support applies to apps using the library default. Apps pinned to a Wine package keep it. Close running Windows apps first.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            #endif
             if store.importing { ImportProgressView(store: store) }
             Text("Package checks do not guarantee compatibility with a Windows app.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

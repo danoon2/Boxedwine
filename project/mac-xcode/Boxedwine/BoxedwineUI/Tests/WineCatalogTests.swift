@@ -94,11 +94,17 @@ struct WineCatalogTests {
                 Issue.record("Changed local Wine must not start an import"); return false
             }
             Issue.record("A missing local package should require a retry")
-        } catch WineCatalogError.localPackageChanged { }
-        catch { Issue.record("Unexpected error: \(error)") }
+        } catch {
+            #if BOXEDWINE_APP_STORE
+            guard case WineCatalogError.downloadsUnavailable = error else { Issue.record("Unexpected error: \(error)"); return }
+            #else
+            guard case WineCatalogError.localPackageChanged = error else { Issue.record("Unexpected error: \(error)"); return }
+            #endif
+        }
         #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == before)
     }
 
+    #if !BOXEDWINE_APP_STORE
     @Test func anotherBuildWithTheSameWineVersionDownloadsTheExactReleasePackage() async throws {
         let root = try temporary(); defer { try? FileManager.default.removeItem(at: root) }
         let local = root.appendingPathComponent("local.zip")
@@ -153,5 +159,20 @@ struct WineCatalogTests {
         #expect(try Data(contentsOf: repository.savedRuntimeURL(for: app)) == data)
         #expect(try repository.recoverApp(app.id, control: ImportControl()) == app)
         #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).allSatisfy { !$0.hasPrefix("boxedwine-wine-") })
+    }    #else
+    @Test(arguments: [true, false])
+    func appStoreNeverDownloadsMissingWine(allowDownload: Bool) async throws {
+        let root = try temporary(); defer { try? FileManager.default.removeItem(at: root) }
+        let downloader = Download { _, _, _ in Issue.record("Store build invoked a downloader"); throw CancellationError() }
+        do {
+            _ = try await CatalogWineProvider.withPackage(wine(), candidates: [], control: ImportControl(),
+                allowDownload: allowDownload, downloader: downloader, temporaryDirectory: root) { _ in
+                Issue.record("Missing Wine must not start an import"); return false
+            }
+            Issue.record("Missing bundled Wine was accepted")
+        } catch WineCatalogError.downloadsUnavailable { }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty)
     }
+    #endif
+
 }

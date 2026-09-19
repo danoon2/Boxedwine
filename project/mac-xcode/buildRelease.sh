@@ -28,7 +28,7 @@ xcodebuild archive -workspace Boxedwine.xcworkspace \
     -configuration Release -scheme BoxedwineUI \
     -destination 'generic/platform=macOS' \
     -archivePath "$project_dir/bin/native-release.xcarchive" \
-    BOXEDWINE_WINE_ZIP= BOXEDWINE_REQUIRE_DEMO_CATALOG=YES
+    BOXEDWINE_BUILD_VARIANT=BOXEDWINE_DIRECT BOXEDWINE_WINE_ZIP= BOXEDWINE_REQUIRE_DEMO_CATALOG=YES
 
 /usr/bin/ditto "bin/native-release.xcarchive/Products/Applications/Boxedwine.app" bin/Boxedwine.app
 if [ -e bin/Boxedwine.app/Contents/Resources/WindowsSupport/wine.zip ]; then

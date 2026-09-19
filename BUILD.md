@@ -67,3 +67,71 @@ Follow instructions for installing Emscripten on: https://emscripten.org/docs/ge
 To build, in the terminal go to the source directory and in, project/emscripten, you need to type
 
 make release
+
+### Mac App Store edition
+
+`project/mac-xcode/buildAppStore.sh [--skip-dependencies] /absolute/path/TinyCore15Wine11.0.zip TEAMID`
+archives the native UI with `BOXEDWINE_BUILD_VARIANT=BOXEDWINE_APP_STORE`.
+This becomes a Swift compilation condition: the launcher has no demo installer,
+URLSession downloader, demo browser, or Wine download/version-switching UI.
+Wine 11 and Wine's Minesweeper are included; adding apps requires no download.
+The supplied Wine ZIP must match the exact branch pin in `Resources/WindowsSupport`.
+The bundle phase skips fetching the demo catalog and strips any catalog left by
+an earlier build. It includes only Wine 11's pin and a privacy manifest with no
+collected-data declarations. Windows programs still have network access.
+
+To test this edition locally with ad-hoc signing, run:
+
+```sh
+./project/mac-xcode/buildNative.sh --configuration Release /absolute/path/TinyCore15Wine11.0.zip BOXEDWINE_BUILD_VARIANT=BOXEDWINE_APP_STORE
+```
+
+Debug, Sandbox, and ordinary Release builds default to `BOXEDWINE_DIRECT`.
+`buildRelease.sh` explicitly selects that variant for Jenkins, keeps the complete
+Wine list and demo catalog, and omits the Wine ZIP so users download it as needed.
+`audit-native-bundle.py --app-store` verifies the Store edition's bundled package,
+catalog absence, privacy declarations, and absence of URLSession imports in the
+launcher. The bundle preparation step removes quarantine attributes from the
+assembled app before signing; the Store audit rejects any that remain, including
+on nested resources and directories. The public privacy policy source is
+`project/mac-xcode/privacy.html`;
+its updated edition-specific wording must be uploaded when changing distribution.
+
+### Optional App Store tips
+
+The Store edition includes **Boxedwine → Support Boxedwine…**. Tips use StoreKit 2
+consumable purchases and never unlock features. The direct/Jenkins edition does
+not include the purchase code or support window. Product names and prices come
+from Apple; missing products or an unavailable connection leave the app usable.
+There is no developer payment server or stored purchase history. The transaction
+listener starts with the library and finishes only verified tip transactions,
+including interrupted purchases and later Ask to Buy approvals.
+
+Configure these consumables in App Store Connect, with United States as the
+base region and Apple's comparable prices elsewhere:
+
+| Product ID | Display name | US price |
+| --- | --- | --- |
+| `org.boxedwine.app.tip.small` | Small Tip | $2.99 |
+| `org.boxedwine.app.tip.medium` | Medium Tip | $4.99 |
+| `org.boxedwine.app.tip.large` | Large Tip | $9.99 |
+
+Description: **Optional one-time tip. All features remain free.** Add a screenshot
+of the support window for review. The first purchases must be submitted with an
+app version; they also require an active Paid Apps agreement and the account's
+banking/tax setup. The app remains free in Pricing and Availability.
+
+Run purchase-state tests with:
+
+```sh
+swift test --package-path project/mac-xcode/Boxedwine/BoxedwineUI -Xswiftc -DBOXEDWINE_APP_STORE --filter TipStoreTests
+```
+
+For local StoreKit testing, build the Store edition and choose
+`BoxedwineUI/Tests/Fixtures/BoxedwineTips.storekit` under the Xcode scheme's
+**Run → Options → StoreKit Configuration**. Run from Xcode to activate Apple's
+local test environment. The fixture is not bundled in distribution builds.
+Check a successful tip, a second tip of the same amount, cancellation, declined
+payment, Ask to Buy approval, and an interrupted purchase. Switch the scheme's
+StoreKit Configuration back to **None** for App Store sandbox/TestFlight testing.
+No restore button is needed for consumable tips because there is no entitlement.

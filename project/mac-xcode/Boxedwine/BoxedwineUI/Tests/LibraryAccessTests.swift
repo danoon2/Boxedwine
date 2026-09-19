@@ -9,7 +9,7 @@ struct LibraryAccessTests {
     @Test func developmentUsesPackagedLibraryOrExplicitAbsoluteOverride() throws {
         let home = URL(fileURLWithPath: "/Users/Developer", isDirectory: true)
         let directory = try LibraryRepository.developmentDirectory(home: home, override: nil)
-        #expect(directory.path == "/Users/Developer/Library/Containers/org.boxedwine.native/Data/Library/Application Support/BoxedwineNative")
+        #expect(directory.path == "/Users/Developer/Library/Containers/org.boxedwine.app/Data/Library/Application Support/BoxedwineNative")
         #expect(try LibraryRepository.developmentDirectory(home: home, override: "/tmp/Debug Library").path == "/tmp/Debug Library")
         for path in ["", "relative/path", "~/Library", "/tmp/bad\0path"] {
             #expect(throws: LibraryError.self) { try LibraryRepository.developmentDirectory(home: home, override: path) }

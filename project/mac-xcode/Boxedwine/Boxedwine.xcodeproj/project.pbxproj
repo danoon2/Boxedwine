@@ -256,6 +256,8 @@
 		B0C0D0010000000000000003 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
 		B0C0D0010000000000000005 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
 		E33AE60414B5982E105E80B9 = { isa = PBXBuildFile; fileRef = B10826AECCAA0D8805FF8E66; };
+		B70915130000000000000002 = { isa = PBXBuildFile; fileRef = B70915130000000000000001; };
+		B70915130000000000000004 = { isa = PBXBuildFile; fileRef = B70915130000000000000003; };
 		7F40DDE09A1C456F9B942CC1 /* Runtime AppIcon in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -506,6 +508,9 @@
 		B0C0D0010000000000000001 /* macOpenGL.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = macOpenGL.mm; path = ../../../platform/mac/macOpenGL.mm; sourceTree = "<group>"; };
 		B0C0D0010000000000000002 /* macOpenGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = macOpenGL.h; path = ../../../platform/mac/macOpenGL.h; sourceTree = "<group>"; };
 		B10826AECCAA0D8805FF8E66 = { isa = PBXFileReference; path = "UI/NativeLibraryCommands.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		B70915130000000000000001 = { isa = PBXFileReference; path = "Core/TipStore.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		B70915130000000000000003 = { isa = PBXFileReference; path = "UI/SupportView.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		B70915130000000000000005 = { isa = PBXFileReference; path = "Tests/Fixtures/BoxedwineTips.storekit"; lastKnownFileType = text; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -2575,7 +2580,7 @@
 				"ONLY_ACTIVE_ARCH" = "NO";
 				"CLANG_ENABLE_MODULES" = "YES";
 				"CLANG_CXX_LANGUAGE_STANDARD" = "c++20";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native.runtime";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.app.runtime";
 				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
 				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
 				"WRAPPER_NAME" = "BoxedwineEngine.app";
@@ -2642,7 +2647,7 @@
 				"ONLY_ACTIVE_ARCH" = "NO";
 				"CLANG_ENABLE_MODULES" = "YES";
 				"CLANG_CXX_LANGUAGE_STANDARD" = "c++20";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native.runtime";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.app.runtime";
 				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
 				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
 				"WRAPPER_NAME" = "BoxedwineEngine.app";
@@ -2829,11 +2834,25 @@
 			"lastKnownFileType" = "text.plist.entitlements";
 			"sourceTree" = "<group>";
 		};
+		EDB75AB7F6CA4F41A6B2C701 = {
+			isa = PBXFileReference;
+			path = "Resources/PrivacyInfo.xcprivacy";
+			lastKnownFileType = text.xml;
+			sourceTree = "<group>";
+		};
+		EDB75AB7F6CA4F41A6B2C702 = {
+			isa = PBXBuildFile;
+			fileRef = EDB75AB7F6CA4F41A6B2C701;
+		};
 		017D1786C656098FAD23FF45 = {
 			"path" = "BoxedwineUI";
 			"isa" = "PBXGroup";
 			"sourceTree" = "<group>";
 			"children" = (
+				EDB75AB7F6CA4F41A6B2C701,
+				B70915130000000000000001,
+				B70915130000000000000003,
+				B70915130000000000000005,
 				"B10826AECCAA0D8805FF8E66",
 				"3A45E3663FD06F16C527FCBB",
 				"D73844CF228208DB3DBB44B6",
@@ -2878,6 +2897,8 @@
 			"buildActionMask" = "2147483647";
 			"files" = (
 				E33AE60414B5982E105E80B9,
+				B70915130000000000000002,
+				B70915130000000000000004,
 				"BA63040F14BFBDA9F713D402",
 				"68A46DBE4C3A6111AF3456CE",
 				"3F5D11DB9BC9AAD3CE2E3ED4",
@@ -2921,6 +2942,7 @@
 			"isa" = "PBXResourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				EDB75AB7F6CA4F41A6B2C702,
 				"4942E2BB1E7E3608541C8326",
 			);
 			"runOnlyForDeploymentPostprocessing" = "0";
@@ -3024,7 +3046,7 @@
 				"SWIFT_INCLUDE_PATHS" = "$(SRCROOT)/BoxedwineUI/ZipSupport/include";
 				"INFOPLIST_KEY_NSPrincipalClass" = "NSApplication";
 				"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.utilities";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.app";
 				"EXECUTABLE_NAME" = "BoxedwineUI";
 				"CURRENT_PROJECT_VERSION" = "1";
 				"ONLY_ACTIVE_ARCH" = "NO";
@@ -3048,7 +3070,8 @@
 				"ENABLE_HARDENED_RUNTIME" = "YES";
 				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
 				"GENERATE_INFOPLIST_FILE" = "NO";
-				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited) BOXEDWINE_DEVELOPMENT";
+				"BOXEDWINE_BUILD_VARIANT" = "BOXEDWINE_DIRECT";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited) BOXEDWINE_DEVELOPMENT $(BOXEDWINE_BUILD_VARIANT)";
 			};
 		};
 		0B262351910CF72FD8DA38D9 = {
@@ -3060,7 +3083,7 @@
 				"CODE_SIGN_INJECT_BASE_ENTITLEMENTS" = "NO";
 				"SWIFT_INCLUDE_PATHS" = "$(SRCROOT)/BoxedwineUI/ZipSupport/include";
 				"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.utilities";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.app";
 				"EXECUTABLE_NAME" = "BoxedwineUI";
 				"CURRENT_PROJECT_VERSION" = "1";
 				"ONLY_ACTIVE_ARCH" = "NO";
@@ -3084,7 +3107,8 @@
 				"ENABLE_HARDENED_RUNTIME" = "YES";
 				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
 				"INFOPLIST_KEY_NSPrincipalClass" = "NSApplication";
-				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited)";
+				"BOXEDWINE_BUILD_VARIANT" = "BOXEDWINE_DIRECT";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited) $(BOXEDWINE_BUILD_VARIANT)";
 			};
 		};
 		1D6FF872B3D34449A4676DB3 = {
@@ -3226,7 +3250,7 @@
 				"SWIFT_INCLUDE_PATHS" = "$(SRCROOT)/BoxedwineUI/ZipSupport/include";
 				"INFOPLIST_KEY_NSPrincipalClass" = "NSApplication";
 				"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.utilities";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.app";
 				"EXECUTABLE_NAME" = "BoxedwineUI";
 				"CURRENT_PROJECT_VERSION" = "1";
 				"ONLY_ACTIVE_ARCH" = "NO";
@@ -3250,7 +3274,8 @@
 				"ENABLE_HARDENED_RUNTIME" = "YES";
 				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
 				"GENERATE_INFOPLIST_FILE" = "NO";
-				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited)";
+				"BOXEDWINE_BUILD_VARIANT" = "BOXEDWINE_DIRECT";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "$(inherited) $(BOXEDWINE_BUILD_VARIANT)";
 			};
 		};
 		C5398A2945B450D8CA261D2F = {
@@ -3279,7 +3304,7 @@
 				"ONLY_ACTIVE_ARCH" = "NO";
 				"CLANG_ENABLE_MODULES" = "YES";
 				"CLANG_CXX_LANGUAGE_STANDARD" = "c++20";
-				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.native.runtime";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.boxedwine.app.runtime";
 				"INFOPLIST_FILE" = "$(DERIVED_FILE_DIR)/Versioned-Info.plist";
 				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
 				"WRAPPER_NAME" = "BoxedwineEngine.app";

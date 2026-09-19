@@ -16,3 +16,11 @@ https://github.com/wine-mirror/wine/blob/wine-11.0/programs/notepad/notepad.ico
 The PNG was extracted from `opt/wine/lib/wine/i386-windows/notepad.exe` in
 filesystem-11 `TinyCore15Wine11.0.zip` (SHA-256
 `a3367c4e977dbbe0295ce3b4b102bf7b0baa1278ea121cefe6065d561b960452`).
+
+`winemine.ico` and `winemine.png` come from Wine 11.0’s Minesweeper executable
+(`opt/wine/lib/wine/i386-windows/winemine.exe`) in filesystem-11
+`TinyCore15Wine11.0.zip`, SHA-256
+`52eaea9b29603ea9275c72e45526ea0f760efe87a6718f86fa2fa1146c976230`.
+Boxedwine extracted the ICO and converted its largest image to a 128×128 PNG
+using the launcher's WindowsIcon reader on 2026-09-15. The same Wine copyright
+and LGPL-2.1-or-later notices above apply. No game artwork was changed.

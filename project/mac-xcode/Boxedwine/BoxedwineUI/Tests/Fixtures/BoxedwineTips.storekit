@@ -1,0 +1,36 @@
+{
+  "identifier" : "40E115E5-67FD-4802-A740-BBB235D6D2B5",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "1",
+      "localizations" : [{"description" : "Optional one-time tip. All features remain free.", "displayName" : "Small Tip", "locale" : "en_US"}],
+      "productID" : "org.boxedwine.app.tip.small",
+      "referenceName" : "Small Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "2",
+      "localizations" : [{"description" : "Optional one-time tip. All features remain free.", "displayName" : "Medium Tip", "locale" : "en_US"}],
+      "productID" : "org.boxedwine.app.tip.medium",
+      "referenceName" : "Medium Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "3",
+      "localizations" : [{"description" : "Optional one-time tip. All features remain free.", "displayName" : "Large Tip", "locale" : "en_US"}],
+      "productID" : "org.boxedwine.app.tip.large",
+      "referenceName" : "Large Tip",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {"_failTransactionsEnabled" : false, "_locale" : "en_US", "_storefront" : "USA"},
+  "subscriptionGroups" : [],
+  "version" : {"major" : 3, "minor" : 0}
+}

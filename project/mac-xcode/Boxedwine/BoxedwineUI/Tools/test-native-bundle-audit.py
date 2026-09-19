@@ -43,6 +43,7 @@ class BundleAuditTests(unittest.TestCase):
                        "-o", str(root / "Contents/MacOS" / name))
         resources = cls.template / "Contents/Resources"
         resources.mkdir()
+        shutil.copy2(Path(__file__).resolve().parents[1] / "Resources/PrivacyInfo.xcprivacy", resources)
         (resources / "Boxedwine-LICENSE.txt").write_text("Test fixture only.\n")
         module.run(sys.executable, str(Path(__file__).with_name("prepare-third-party-notices.py")),
                    "--output", str(resources / "Licenses"))
@@ -77,12 +78,43 @@ class BundleAuditTests(unittest.TestCase):
         self.assertIn("Pinned demo catalog is missing", "\n".join(report["errors"]))
         self.assertIsNone(report["demoCatalog"])
 
+    def test_quarantine_on_resources_directories_and_links_is_rejected(self):
+        resource = self.app / "Contents/Resources/packages.json"
+        resource.write_text("{}\n")
+        link = resource.with_name("package-link")
+        link.symlink_to(resource.name)
+        paths = [self.app, resource.parent, resource, link]
+        for path in paths:
+            module.run("/usr/bin/xattr", "-s", "-w", "com.apple.quarantine", "0081;0;BundleAudit;", str(path))
+        report = module.audit(self.app, signatures=False, app_store=True)
+        self.assertEqual(set(report["quarantinedPaths"]), {str(p.relative_to(self.app)) for p in paths})
+        self.assertIn("App Store bundle contains com.apple.quarantine: Contents/Resources/packages.json",
+                      "\n".join(report["errors"]))
+        # The audit is read-only. Cleanup removes only this attribute and can be
+        # repeated on an already clean app without changing resource contents.
+        self.assertEqual(set(module.quarantined_paths(self.app)), set(paths))
+        module.run("/usr/bin/xattr", "-w", "org.boxedwine.audit", "keep", str(resource))
+        for _ in range(2):
+            module.run("/usr/bin/xattr", "-r", "-s", "-d", "com.apple.quarantine", str(self.app))
+            self.assertEqual(module.quarantined_paths(self.app), [])
+        self.assertEqual(module.run("/usr/bin/xattr", "-p", "org.boxedwine.audit", str(resource)).strip(), b"keep")
+        self.assertEqual(resource.read_text(), "{}\n")
+
     def test_missing_or_altered_third_party_notices_fail(self):
         notices = self.app / "Contents/Resources/Licenses/notices.json"
         notices.write_text('{"schemaVersion": 1, "components": []}')
         self.assertIn("Bundled third-party notices differ", self.errors())
         notices.unlink()
         self.assertIn("Third-party licenses:", self.errors())
+
+    def test_missing_or_altered_privacy_manifest_fails(self):
+        privacy = self.app / "Contents/Resources/PrivacyInfo.xcprivacy"
+        privacy.write_bytes(plistlib.dumps({"NSPrivacyTracking": True}))
+        self.assertIn("Bundled privacy manifest differs", self.errors())
+        privacy.write_bytes(b"invalid plist")
+        self.assertIn("Privacy manifest:", self.errors())
+        privacy.unlink()
+        self.assertIn("Privacy manifest:", self.errors())
 
     def test_an_incomplete_catalog_fails_even_a_local_audit(self):
         directory = self.app / "Contents/Resources/Demos"

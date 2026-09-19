@@ -10,6 +10,6 @@ let package = Package(
         .target(name: "CBoxedwineZIP", path: "ZipSupport", publicHeadersPath: "include", linkerSettings: [.linkedLibrary("z")]),
         .target(name: "BoxedwineLibrary", dependencies: ["CBoxedwineZIP"], path: "Core"),
         .executableTarget(name: "BoxedwinePackageCheck", dependencies: ["BoxedwineLibrary"], path: "Tools/PackageCheck"),
-        .testTarget(name: "BoxedwineLibraryTests", dependencies: ["BoxedwineLibrary"], path: "Tests")
+        .testTarget(name: "BoxedwineLibraryTests", dependencies: ["BoxedwineLibrary"], path: "Tests", exclude: ["Fixtures"])
     ]
 )

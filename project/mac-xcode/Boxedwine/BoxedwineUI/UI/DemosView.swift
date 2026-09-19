@@ -1,3 +1,4 @@
+#if !BOXEDWINE_APP_STORE
 // Copyright (C) 2026 The Boxedwine Team
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -86,3 +87,5 @@ struct DemosView: View {
         } else { Image(systemName: "gamecontroller").font(.system(size: 38)).foregroundStyle(.secondary) }
     }
 }
+
+#endif

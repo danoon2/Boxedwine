@@ -3,6 +3,8 @@
 
 import Foundation
 
+#if !BOXEDWINE_APP_STORE
+
 protocol DemoDownloading: Sendable {
     func fetch(_ demo: Demo, to destination: URL, control: ImportControl) async throws
 }
@@ -103,3 +105,5 @@ private final class PackageDownloadOperation: NSObject, URLSessionDownloadDelega
         session.finishTasksAndInvalidate(); self.session = nil
     }
 }
+
+#endif

@@ -65,6 +65,14 @@ def digest(path):
     return sha.hexdigest()
 
 
+def quarantined_paths(app):
+    # xattr is supplied by macOS; Python's os.listxattr is not available there.
+    # -r includes directories and the bundle root; -s does not follow symlinks.
+    suffix = ": com.apple.quarantine"
+    listing = run("/usr/bin/xattr", "-r", "-s", str(app)).decode()
+    return [Path(line[:-len(suffix)]) for line in listing.splitlines() if line.endswith(suffix)]
+
+
 def load_commands(path, arch):
     output = run("/usr/bin/otool", "-arch", arch, "-l", str(path)).decode()
     result = {"dependencies": [], "rpaths": [], "minimumOS": None, "uuid": None}
@@ -155,7 +163,7 @@ def entitlement_errors(configuration, launcher, runtime):
     return errors
 
 
-def audit(app, configuration="Release", signatures=True, distribution=False, require_demo_catalog=False):
+def audit(app, configuration="Release", signatures=True, distribution=False, require_demo_catalog=False, app_store=False):
     if distribution and (not signatures or configuration != "Release"):
         raise ValueError("Distribution checks require Release and signature verification")
     app = app.resolve(strict=True)
@@ -289,8 +297,51 @@ def audit(app, configuration="Release", signatures=True, distribution=False, req
                 walk(path, roots[1], arch, runtime_paths)
 
     resources = app / "Contents/Resources"
+    spec = importlib.util.spec_from_file_location("distribution_resources", Path(__file__).with_name("prepare-distribution-resources.py"))
+    editions = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(editions)
+    variant = editions.DIRECT
+    try:
+        variant = plistlib.loads((resources / "Distribution.plist").read_bytes())["variant"]
+        if variant not in (editions.DIRECT, editions.STORE):
+            errors.append("Unknown packaged build variant")
+    except (OSError, ValueError, KeyError):
+        if app_store:
+            errors.append("App Store distribution marker is missing")
+    store = variant == editions.STORE
+    report["variant"] = variant
+    if app_store or store:
+        report["quarantinedPaths"] = [label(path) for path in quarantined_paths(app)]
+        errors.extend("App Store bundle contains com.apple.quarantine: " + path
+                      for path in report["quarantinedPaths"])
+    if app_store and not store:
+        errors.append("Expected an App Store build with downloads compiled out")
+    try:
+        privacy = plistlib.loads((resources / "PrivacyInfo.xcprivacy").read_bytes())
+        if privacy != editions.privacy(variant):
+            errors.append("Bundled privacy manifest differs from the project declarations")
+        report["privacy"] = privacy
+    except (OSError, ValueError, plistlib.InvalidFileException) as error:
+        errors.append("Privacy manifest: " + str(error))
+    if store:
+        if (resources / "Demos").exists():
+            errors.append("App Store build must not contain the download demo catalog")
+        if require_demo_catalog:
+            errors.append("App Store build cannot require the download demo catalog")
+        try:
+            editions.verify_store_wine(resources / "WindowsSupport/wine.zip")
+            xml, pins = editions.store_catalog()
+            if (resources / "WindowsSupport/filesV2.xml").read_bytes() != xml or json.loads((resources / "WindowsSupport/packages.json").read_text()) != pins:
+                errors.append("App Store Wine list must contain only the pinned bundled package")
+            # Check the executable as well as the resource marker. Foundation's
+            # downloader imports must not survive the Store compilation.
+            symbols = run("/usr/bin/nm", "-u", str(roots[0]))
+            if b"NSURLSession" in symbols:
+                errors.append("App Store launcher still imports URLSession download APIs")
+        except (OSError, ValueError, KeyError) as error:
+            errors.append("App Store resources: " + str(error))
     report["demoCatalog"] = None
-    if require_demo_catalog or distribution or (resources / "Demos").exists():
+    if not store and (require_demo_catalog or distribution or (resources / "Demos").exists()):
         try:
             tool = Path(__file__).resolve().parents[5] / "tools/demo_catalog.py"
             spec = importlib.util.spec_from_file_location("demo_catalog", tool)
@@ -299,7 +350,7 @@ def audit(app, configuration="Release", signatures=True, distribution=False, req
             report["demoCatalog"] = catalog.audit_staged(resources / "Demos", catalog.read_pin(catalog.DEFAULT_LOCK))
         except (OSError, ValueError) as error:
             errors.append("Demo catalog: " + str(error))
-    else:
+    elif not store:
         report["notes"].append("No demo catalog included; connect and rebuild to include the pinned catalog.")
     if not (resources / "Boxedwine-LICENSE.txt").is_file():
         errors.append("Boxedwine license text is missing")
@@ -368,6 +419,7 @@ def main():
     parser.add_argument("--configuration", choices=("Debug", "Sandbox", "Release"), default="Release")
     parser.add_argument("--skip-signatures", action="store_true", help="inspect an unsigned development fixture")
     parser.add_argument("--distribution", action="store_true", help="require Developer ID, matching signing teams, and secure timestamps for every embedded image")
+    parser.add_argument("--app-store", action="store_true", help="require bundled Wine, no launcher downloads/demo catalog, and no quarantine attributes")
     parser.add_argument("--require-demo-catalog", action="store_true", help="require the exact project catalog in this build")
     parser.add_argument("--json", type=Path, help="write the complete inventory to this file outside the app")
     args = parser.parse_args()
@@ -376,7 +428,7 @@ def main():
     if args.json and within(args.json.resolve(), args.app.resolve()):
         parser.error("The report must be outside the app; this audit never edits its input bundle")
     try:
-        report = audit(args.app, args.configuration, not args.skip_signatures, args.distribution, args.require_demo_catalog)
+        report = audit(args.app, args.configuration, not args.skip_signatures, args.distribution, args.require_demo_catalog, args.app_store)
     except (OSError, ValueError, plistlib.InvalidFileException) as error:
         print(f"error: Native bundle audit failed: {error}", file=sys.stderr)
         return 1
