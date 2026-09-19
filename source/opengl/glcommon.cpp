@@ -1794,7 +1794,7 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
         } else if (cfg->glPixelFormat->pf.iPixelType == K_PFD_TYPE_COLORINDEX) {
             memory->writed(ARG4, GLX_COLOR_INDEX_BIT);
         } else {
-            kpanic_fmt("gl_common_XGetFBConfigAttrib unhandled GLX_RENDER_TYPE %x", cfg->glPixelFormat->pf.iPixelType);
+            kpanic_fmt("gl_common_XGetFBConfigAttrib unhandled GLX_RENDER_TYPE %hhx", cfg->glPixelFormat->pf.iPixelType);
         }
         break;
     case GLX_BUFFER_SIZE:

@@ -1,3 +1,4 @@
+#if !BOXEDWINE_APP_STORE
 // Copyright (C) 2026 The Boxedwine Team
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -500,3 +501,5 @@ private final class DemoHTTPFixture: URLProtocol, @unchecked Sendable {
     }
     override func stopLoading() { }
 }
+
+#endif

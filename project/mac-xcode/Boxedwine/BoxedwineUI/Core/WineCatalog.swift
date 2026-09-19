@@ -4,9 +4,10 @@
 import Foundation
 
 enum WineCatalogError: LocalizedError {
-    case invalid(String), download(String), mismatch, localPackageChanged
+    case invalid(String), download(String), mismatch, localPackageChanged, downloadsUnavailable
     var errorDescription: String? {
         switch self {
+        case .downloadsUnavailable: "Windows support is included with the App Store version of Boxedwine. Reinstall Boxedwine if its included files are missing or damaged."
         case .invalid(let reason): "The included Wine list cannot be used. \(reason)"
         case .download(let reason): "Wine could not be downloaded. \(reason)"
         case .mismatch: "The Wine package does not match this release’s list. Nothing was installed. Try again later."
@@ -154,9 +155,13 @@ protocol WineDownloading: Sendable {
 
 struct WineDownloader: WineDownloading {
     func fetch(_ wine: CatalogWine, to destination: URL, control: ImportControl) async throws {
+        #if BOXEDWINE_APP_STORE
+        throw WineCatalogError.downloadsUnavailable
+        #else
         do { try await PackageDownloader().fetch(wine.url, bytes: wine.bytes, to: destination, control: control) }
         catch DemoError.download(let reason) { throw WineCatalogError.download(reason) }
         catch DemoError.checksum { throw WineCatalogError.mismatch }
+        #endif
     }
 }
 
@@ -191,6 +196,9 @@ enum CatalogWineProvider {
             return try await body(package)
         }
         try control.checkCancellation()
+        #if BOXEDWINE_APP_STORE
+        throw WineCatalogError.downloadsUnavailable
+        #else
         guard allowDownload else { throw WineCatalogError.localPackageChanged }
         let staging = temporaryDirectory.appendingPathComponent("boxedwine-wine-" + UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
@@ -207,6 +215,7 @@ enum CatalogWineProvider {
         }.value
         try control.checkCancellation()
         return try await body(package)
+        #endif
     }
 }
 

@@ -24,7 +24,16 @@ void internal_kpanic(BString msg);
 
 void kpanic(const char* msg);
 
+#ifdef __clang__
+// Clang supports printf checking on template parameter packs as an extension.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgcc-compat"
+#endif
+
 template <class... Args>
+#ifdef __clang__
+__attribute__((format(printf, 1, 2)))
+#endif
 #ifdef BOXEDWINE_MSVC
 __declspec(noreturn)
 #endif
@@ -39,6 +48,9 @@ void kpanic_fmt(const char* format, Args&&... args) {
 void kwarn(const char* msg);
 
 template <class... Args>
+#ifdef __clang__
+__attribute__((format(printf, 1, 2)))
+#endif
 void kwarn_fmt(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
@@ -51,6 +63,9 @@ void klog(const char* msg);
 void klog_nonewline(const char* msg);
 
 template <class... Args>
+#ifdef __clang__
+__attribute__((format(printf, 1, 2)))
+#endif
 void klog_fmt(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
@@ -60,6 +75,9 @@ void klog_fmt(const char* format, Args&&... args) {
 }
 
 template <class... Args>
+#ifdef __clang__
+__attribute__((format(printf, 1, 2)))
+#endif
 void klog_nonewline_fmt(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
@@ -68,6 +86,9 @@ void klog_nonewline_fmt(const char* format, Args&&... args) {
 }
 
 template <class... Args>
+#ifdef __clang__
+__attribute__((format(printf, 1, 2)))
+#endif
 void kdebug(const char* format, Args&&... args) {
 #ifdef _DEBUG
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
@@ -77,4 +98,9 @@ void kdebug(const char* format, Args&&... args) {
 	internal_log(msg, stderr);
 #endif
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
 #endif

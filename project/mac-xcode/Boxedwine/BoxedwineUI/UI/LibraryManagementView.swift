@@ -8,6 +8,7 @@ struct ImportProgressView: View {
     private func title(_ progress: ImportProgress) -> String {
         if progress.cancelled { return "Cancelling…" }
         if store.transfer == .organizingWine { return "Organizing Wine packages…" }
+        if let batch = progress.deletionBatch { return "Deleting \(batch.appName)…" }
         switch progress.phase {
         case .preparing: return "Preparing \(store.importName)…"
         case .downloading: return "Downloading \(store.importName)…"
@@ -33,7 +34,12 @@ struct ImportProgressView: View {
                         Button("Cancel") { store.cancelImport() }.disabled(!progress.canCancel)
                     }
                 }
-                if ([.copying, .downloading, .verifyingDownload, .validating, .verifyingWine].contains(progress.phase) && progress.totalBytes > 0) && !progress.cancelled {
+                if let batch = progress.deletionBatch {
+                    ProgressView(value: Double(batch.completed), total: Double(batch.total))
+                        .accessibilityLabel("Removed apps deleted")
+                    Text("\(batch.completed) of \(batch.total) apps deleted. Deletion cannot be cancelled.")
+                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                } else if ([.copying, .downloading, .verifyingDownload, .validating, .verifyingWine].contains(progress.phase) && progress.totalBytes > 0) && !progress.cancelled {
                     ProgressView(value: Double(progress.copiedBytes), total: Double(max(1, progress.totalBytes)))
                         .accessibilityLabel("File progress")
                     Text(progress.phase == .validating ? "\(progress.copiedBytes) of \(progress.totalBytes) files checked" : "\(ByteCountFormatter.string(fromByteCount: progress.copiedBytes, countStyle: .file)) of \(ByteCountFormatter.string(fromByteCount: progress.totalBytes, countStyle: .file))")
@@ -41,7 +47,7 @@ struct ImportProgressView: View {
                 } else {
                     ProgressView().progressViewStyle(.linear).accessibilityLabel(title(progress))
                 }
-                if store.transfer == .deleting {
+                if store.transfer == .deleting && progress.deletionBatch == nil {
                     Text("\(progress.copiedBytes) items deleted. Deletion cannot be cancelled.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -61,9 +67,17 @@ struct RemovedAppsView: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Removed apps").font(.largeTitle.weight(.semibold))
-                Text("Restore an app with its settings and saved files.").foregroundStyle(.secondary)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Removed apps").font(.largeTitle.weight(.semibold))
+                    Text("Restore an app with its settings and saved files.").foregroundStyle(.secondary)
+                }
+                Spacer()
+                if !store.removedApps.isEmpty {
+                    Button("Delete All…", role: .destructive) { store.requestDeleteAllRemovedApps() }
+                        .disabled(!store.canDeleteAllRemovedApps)
+                        .help("Permanently delete all removed apps and their files.")
+                }
             }
             if store.importing { ImportProgressView(store: store) }
             if matches.isEmpty {
@@ -210,6 +224,39 @@ struct DeleteAppView: View {
                 }
                 Button("Delete Permanently", role: .destructive) { store.deletePermanently(candidate) }
                     .disabled(!store.canEdit || store.importing)
+            }
+        }.padding(28).frame(width: 440)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct RemovedAppsDeletion: Identifiable, Equatable, Sendable {
+    let id = UUID()
+    let apps: [RemovedApp]
+}
+
+struct DeleteRemovedAppsView: View {
+    @ObservedObject var store: LibraryStore
+    let candidate: RemovedAppsDeletion
+    @Environment(\.dismiss) private var dismiss
+    private var count: Int { candidate.apps.count }
+    private var appCount: String { "\(count) \(count == 1 ? "app" : "apps")" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Label("Delete all removed apps permanently?", systemImage: "trash")
+                .font(.title2.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+            Text("This permanently deletes \(appCount) and \(count == 1 ? "its" : "their") files, including saved games. This can’t be undone.")
+            if !store.query.isEmpty {
+                Text("This includes removed apps hidden by your search.").foregroundStyle(.secondary)
+            }
+            Text("Apps in All Apps and exported backups are kept.").foregroundStyle(.secondary)
+            Divider()
+            HStack {
+                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("Delete \(count) \(count == 1 ? "App" : "Apps")", role: .destructive) { store.deleteAllRemovedApps(candidate) }
+                    .disabled(!store.canDeleteAllRemovedApps)
             }
         }.padding(28).frame(width: 440)
         .fixedSize(horizontal: false, vertical: true)

@@ -164,8 +164,9 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         this->freq = std::min(memory->readd(IOCTL_ARG1), dspMaxOutputFreq);
         if (oldFreq != this->freq) {
 #else
+        U32 prevFreq = this->freq;
 		this->freq = memory->readd(IOCTL_ARG1);
-        if (freq != this->freq) {
+        if (prevFreq != this->freq) {
 #endif
             this->audio->closeAudio();
         }

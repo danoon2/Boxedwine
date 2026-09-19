@@ -50,7 +50,7 @@ struct ProgramChooserView: View {
                         VStack(spacing: 10) {
                             Image(systemName: "app.dashed").font(.largeTitle).foregroundStyle(.secondary)
                             Text("No Windows programs found yet").font(.headline)
-                            Text(runOnce ? "Use Choose File to run a program or installer from your Mac." : "The installer may have been cancelled or stopped early. You can run it again from the library.")
+                            Text(runOnce ? "Use Choose File to run a program or installer from your Mac." : "The installer may have been cancelled or stopped early. Close this window and use Troubleshooting → Run Installer Again to finish setup.")
                                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity, minHeight: 190)
                     } else if matches.isEmpty {
@@ -116,7 +116,7 @@ struct ProgramChooserView: View {
             } catch { loadError = "The program list could not be read. " + error.localizedDescription }
             loading = false
         }
-        .onChange(of: selectedPath) { path in
+        .onChange(of: selectedPath) { _, path in
             // Replace an installer filename with the chosen app name, while keeping
             // names the user already gave to portable apps or configured entries.
             if !runOnce, app.executable == nil, app.installer != nil,
@@ -127,7 +127,7 @@ struct ProgramChooserView: View {
                 suggestedName = candidate.name
             }
         }
-        .onChange(of: query) { value in
+        .onChange(of: query) { _, value in
             if !value.isEmpty && programs.isEmpty && !tools.isEmpty { showTools = true }
         }
     }

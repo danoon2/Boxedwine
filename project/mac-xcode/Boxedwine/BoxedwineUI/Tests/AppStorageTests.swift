@@ -196,6 +196,77 @@ struct AppStorageTests {
         #expect(try Data(contentsOf: library) == removedLibrary)
         #expect(try AppBackup.inventory(f.repository.appDirectory(f.app), control: ImportControl()) == before)
     }
+    @Test func batchDeletionUsesOnlyConfirmedRemovedAppsAndPreservesActiveApps() throws {
+        let f = try fixture()
+        defer { try? FileManager.default.removeItem(at: f.base) }
+        let second = LibraryApp(name: "Second removed app")
+        let later = LibraryApp(name: "Removed after confirmation")
+        for app in [second, later] { try f.repository.prepare(app) }
+        try f.repository.save([f.app, f.other, second, later])
+        _ = try f.repository.remove(f.app.id)
+        _ = try f.repository.remove(second.id)
+        let confirmed = try f.repository.loadDocument().removedApps.map(\.id)
+        _ = try f.repository.remove(later.id)
+        let control = ImportControl()
+        let result = try f.repository.deleteRemovedAppsPermanently(confirmed, control: control)
+        #expect(result.apps == [f.other])
+        #expect(result.removedApps.map(\.id) == [later.id])
+        #expect(FileManager.default.fileExists(atPath: f.repository.appDirectory(later).path))
+        #expect(!FileManager.default.fileExists(atPath: f.repository.appDirectory(f.app).path))
+        #expect(!FileManager.default.fileExists(atPath: f.repository.appDirectory(second).path))
+        #expect(try String(contentsOf: f.repository.root(for: f.other).appendingPathComponent(".save"), encoding: .utf8) == "other save")
+        #expect(try String(contentsOf: f.base.appendingPathComponent("backup"), encoding: .utf8) == "exported backup")
+        #expect(control.progress.deletionBatch?.completed == 2)
+        #expect(control.progress.deletionBatch?.total == 2)
+        #expect(!control.progress.canCancel)
+    }
+
+    @Test func batchDeletionValidatesEntireSelectionBeforeRemovingAnything() throws {
+        let f = try fixture()
+        defer { try? FileManager.default.removeItem(at: f.base) }
+        _ = try f.repository.remove(f.app.id)
+        let before = try AppBackup.inventory(f.repository.appDirectory(f.app), control: ImportControl())
+        for ids in [[f.app.id, f.other.id], [f.app.id, UUID()], [f.app.id, f.app.id]] {
+            #expect(throws: StorageError.self) { try f.repository.deleteRemovedAppsPermanently(ids) }
+        }
+        let cancelled = ImportControl()
+        cancelled.cancel()
+        #expect(throws: CancellationError.self) { try f.repository.deleteRemovedAppsPermanently([f.app.id], control: cancelled) }
+        let empty = try f.repository.deleteRemovedAppsPermanently([])
+        #expect(empty.apps == [f.other] && empty.removedApps.map(\.id) == [f.app.id])
+        #expect(empty.removedApps[0].deletionStartedAt == nil)
+        #expect(try AppBackup.inventory(f.repository.appDirectory(f.app), control: ImportControl()) == before)
+    }
+
+    @Test func batchDeletionStopsOnFailureAndCanRetryRemainingApps() throws {
+        let f = try fixture()
+        defer { try? FileManager.default.removeItem(at: f.base) }
+        let first = LibraryApp(name: "Delete first")
+        let last = LibraryApp(name: "Delete last")
+        for app in [first, last] { try f.repository.prepare(app) }
+        try f.repository.save([f.app, f.other, first, last])
+        for app in [first, f.app, last] { _ = try f.repository.remove(app.id) }
+        let locked = f.repository.root(for: f.app)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+        let control = ImportControl()
+        #expect(throws: (any Error).self) {
+            try f.repository.deleteRemovedAppsPermanently([first.id, f.app.id, last.id], control: control)
+        }
+        let pending = try f.repository.loadDocument()
+        #expect(pending.apps == [f.other])
+        #expect(!pending.removedApps.contains { $0.id == first.id })
+        #expect(pending.removedApps.first { $0.id == f.app.id }?.deletionStartedAt != nil)
+        #expect(pending.removedApps.first { $0.id == last.id }?.deletionStartedAt == nil)
+        #expect(FileManager.default.fileExists(atPath: f.repository.appDirectory(last).path))
+        #expect(control.progress.deletionBatch?.completed == 1)
+        #expect(control.progress.deletionBatch?.total == 3)
+        #expect(control.progress.deletionBatch?.appName == f.app.name)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path)
+        let complete = try f.repository.deleteRemovedAppsPermanently(pending.removedApps.map(\.id))
+        #expect(complete.apps == [f.other] && complete.removedApps.isEmpty)
+    }
+
     @Test func largeDirectoryTreesAreFullyCountedAndDeletedWithoutLeakingDescriptors() throws {
         let f = try fixture()
         defer { try? FileManager.default.removeItem(at: f.base) }

@@ -1060,7 +1060,7 @@ void JitSSE::dynamic_fxrstor(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_FCOS(DecodedOp* op) {
-    if (1) {
+    if (/* DISABLES CODE */ (1)) {
         JitCodeGen::dynamic_FCOS(op);
     } else {
         RegPtr cos = getTmpReg();
@@ -1084,7 +1084,7 @@ void JitSSE::dynamic_FCOS(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_FSIN(DecodedOp* op) {
-    if (1) {
+    if (/* DISABLES CODE */ (1)) {
         JitCodeGen::dynamic_FSIN(op);
     } else {
         RegPtr cos = getTmpReg();

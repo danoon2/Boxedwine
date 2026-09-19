@@ -465,24 +465,6 @@ void runD8RegisterArith(bool big, int group, U32 expectedBits, const F32ArithCas
     }
 }
 
-void runFSTFloat(bool big, bool pop, float value, const char* name) {
-    constexpr U32 DST = MEM_BASE + 0x180;
-    U32 expectedBits = bitsOf(value);
-
-    begin(big);
-    writeExpected32(0, expectedBits);
-    fninit();
-    writeF32(MEM_BASE, value);
-    memory->writed(addressOf(DST), FLOAT_GUARD);
-    fldF32(MEM_BASE, big);
-    fstF32(DST, pop, big);
-    runTestCPU();
-    assertFloatCloseExpected(readF32(DST), 0, name);
-    if (cpu->fpu.GetTop() != (pop ? 0 : 7)) {
-        failed("%s fst stack", name);
-    }
-}
-
 void runFSTFloatBits(bool big, bool pop, U32 value, const char* name) {
     constexpr U32 DST = MEM_BASE + 0x180;
 
@@ -532,23 +514,6 @@ void runD9StackOps(bool big, const char* name) {
     assertFloatCloseExpected(readF32(OUT0), 0, name);
     assertFloatCloseExpected(readF32(OUT1), 1, name);
     assertFloatCloseExpected(readF32(OUT2), 2, name);
-}
-
-void runD9Unary(bool big, U8 sub, float input, float expected, const char* name) {
-    constexpr U32 OUT = MEM_BASE + 0x220;
-    U32 expectedBits = bitsOf(expected);
-
-    begin(big);
-    writeExpected32(0, expectedBits);
-    fninit();
-    writeF32(MEM_BASE, input);
-    fldF32(MEM_BASE, big);
-    pushCode8(0xd9);
-    pushCode8(modRM(false, 4, sub));
-    fstTopF32(OUT, big);
-
-    runTestCPU();
-    assertFloatCloseExpected(readF32(OUT), 0, name);
 }
 
 void runD9UnaryBits(bool big, U8 sub, U32 input, U32 expected, const char* name) {

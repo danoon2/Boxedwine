@@ -5,7 +5,13 @@ import Foundation
 
 struct ImportProgress: Sendable, Equatable {
     enum Phase: Sendable { case preparing, copying, checking, validating, verifyingWine, verifyingBackup, deleting, finishing, downloading, verifyingDownload, extracting, configuring }
+    struct DeletionBatch: Sendable, Equatable {
+        let completed: Int
+        let total: Int
+        let appName: String
+    }
     var phase: Phase = .preparing
+    var deletionBatch: DeletionBatch?
     var copiedBytes: Int64 = 0
     var totalBytes: Int64 = 0
     var fileName = ""
@@ -30,6 +36,9 @@ final class ImportControl: @unchecked Sendable {
             state.totalBytes = total
             state.fileName = file
         }
+    }
+    func updateDeletionBatch(completed: Int, total: Int, appName: String) {
+        lock.withLock { state.deletionBatch = .init(completed: completed, total: total, appName: appName) }
     }
     /// Commit and cancellation are mutually exclusive, including at the end of a copy.
     func beginFinishing() throws {

@@ -66,7 +66,16 @@ static U32 syscallMask = 0;
 static U32 syscallMask = 0;
 #endif
 
+#ifdef __clang__
+// Clang supports printf checking on template parameter packs as an extension.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgcc-compat"
+#endif
+
 template<typename ... Args>
+#ifdef __clang__
+__attribute__((format(printf, 3, 4)))
+#endif
 void sysLog(U32 type, CPU* cpu, const char* msg, Args ... args) {
     if (type & syscallMask) {
         std::printf(msg, args ...);
@@ -74,12 +83,19 @@ void sysLog(U32 type, CPU* cpu, const char* msg, Args ... args) {
 }
 
 template<typename ... Args>
+#ifdef __clang__
+__attribute__((format(printf, 3, 4)))
+#endif
 void sysLog1(U32 type, CPU* cpu, const char* msg, Args ... args) {
     if (type & syscallMask) {
         printf("%.4X/%.4X %s ", cpu->thread->process->id, cpu->thread->id, cpu->thread->process->name.c_str());
         std::printf(msg, args ...);
     }
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 void sysLog1_nofmt(U32 type, CPU* cpu, const char* msg) {
     if (type & syscallMask) {
@@ -945,7 +961,7 @@ static U32 syscall_setitimer(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_iopl(CPU* cpu, U32 eipCount) {    
     U32 result = 0;
-    SYS_LOG1(SYSCALL_SIGNAL, cpu, "iopl: level=%1 result=%d(0x%X) IGNORED\n", ARG1, result, result);
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "iopl: level=%d result=%d(0x%X) IGNORED\n", ARG1, result, result);
     return result;
 }
 
@@ -1258,7 +1274,7 @@ static U32 syscall_rt_sigaction(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_rt_sigprocmask(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_SIGNAL, cpu, "rt_sigprocmask: how=%d set=%X(%X) oset=%X", ARG1, ARG2, ARG2?(ARG4==4?cpu->memory->readd(ARG2):cpu->memory->readq(ARG2)):0, ARG3);
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "rt_sigprocmask: how=%d set=%X(%llX) oset=%X", ARG1, ARG2, ARG2?(ARG4==4?cpu->memory->readd(ARG2):cpu->memory->readq(ARG2)):0, ARG3);
     U32 result = cpu->thread->sigprocmask(ARG1, ARG2, ARG3, ARG4);
     EAX = result;
     cpu->eip.u32+=eipCount;
@@ -1710,7 +1726,7 @@ static U32 syscall_futex_time64(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_sched_setaffinity(CPU* cpu, U32 eipCount) {    
     U32 result = 0;
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_setaffinity: pid=%d cpusetsize=d cpu_set_t=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sched_setaffinity: pid=%d cpusetsize=%d cpu_set_t=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
     return result;
 }
 

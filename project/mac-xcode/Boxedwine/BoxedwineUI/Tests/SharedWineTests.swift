@@ -192,6 +192,26 @@ struct SharedWineTests {
         #expect(request.suffix(2) == ["/bin/wine", "notepad"])
     }
 
+    @Test func minesweeperPersistsItsIdentityAndLaunchesFromSharedWine() throws {
+        let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
+        let package = try f.repository.validateWine(f.wine)
+        var app = try f.repository.createBuiltInProgram(.minesweeper, wine: WineImportSelection(package: package))
+        _ = try f.repository.recoverApp(app.id, control: ImportControl())
+        app.name = "My Minesweeper"
+        app.arguments = ["example argument"]
+        try f.repository.save([app])
+        let saved = try #require(f.repository.load().first)
+        #expect(saved.wineProgram == .minesweeper && saved.isBuiltIn && !saved.isNotepad)
+        #expect(saved.executable == nil && saved.winePackage != nil)
+        #expect(try f.repository.loadDocument().version == 13)
+        let args = try LaunchRequest(app: saved, repository: f.repository, wineZip: f.repository.savedRuntimeURL(for: saved)).arguments()
+        #expect(args.suffix(3) == ["/bin/wine", "winemine", "example argument"])
+        let backup = f.base.appendingPathComponent("Minesweeper.boxedwineapp")
+        try AppBackup.export(saved, repository: f.repository, runtime: f.repository.savedRuntimeURL(for: saved), to: backup)
+        let restored = try AppBackup.restore(backup, repository: f.repository)
+        #expect(restored.wineProgram == .minesweeper && restored.winePackage == saved.winePackage)
+    }
+
     @Test func migrationNeverClaimsPackagesThroughLinkedAppDirectories() throws {
         let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
         let app = try f.legacy("Linked")

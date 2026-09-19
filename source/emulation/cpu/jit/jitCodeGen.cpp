@@ -780,7 +780,7 @@ void JitCodeGen::compile(DecodedOp* op) {
 void JitCodeGen::postCompile(DecodedOp* op) {
     this->currentEip += op->len;
     if (getIfJumpSize()) {
-        kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
+        kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %hu", op->inst);
     }
 }
 
@@ -907,8 +907,8 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
 
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
     bool allowStartJit = true;
-    bool executePendingNormally = false;
 #ifdef BOXEDWINE_WASM_JIT
+    bool executePendingNormally = false;
     if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
 #ifdef BOXEDWINE_MULTI_THREADED
         executePendingNormally = true;

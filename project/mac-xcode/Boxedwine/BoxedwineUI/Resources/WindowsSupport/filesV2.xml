@@ -4,7 +4,7 @@
     <FileVersion>11</FileVersion>
     <WineVersion>11.0</WineVersion>
     <FileURL>http://boxedwine.org/v2/11/TinyCore15Wine11.0.zip</FileURL>
-    <FileSizeMB>150</FileSizeMB>
+    <FileSizeMB>159</FileSizeMB>
   </Wine>
   <Wine>
     <Name>Wine 10.0</Name>

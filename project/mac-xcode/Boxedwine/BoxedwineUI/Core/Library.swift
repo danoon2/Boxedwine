@@ -4,6 +4,13 @@
 import Foundation
 import Darwin
 
+enum WineBuiltInProgram: String, Codable, Sendable {
+    case notepad, minesweeper
+    var name: String { self == .notepad ? "Notepad" : "Minesweeper" }
+    var command: String { self == .notepad ? "notepad" : "winemine" }
+    var symbol: String { self == .notepad ? "note.text" : "gamecontroller" }
+}
+
 struct LibraryApp: Codable, Identifiable, Equatable, Sendable {
     var id = UUID()
     var name: String
@@ -16,6 +23,9 @@ struct LibraryApp: Codable, Identifiable, Equatable, Sendable {
     var arguments: [String] = []
     var boxedwineArguments: [String]?
     var isNotepad = false
+    var builtInProgram: WineBuiltInProgram?
+    var wineProgram: WineBuiltInProgram? { builtInProgram ?? (isNotepad ? .notepad : nil) }
+    var isBuiltIn: Bool { wineProgram != nil }
     /// Nil uses the library default. Legacy entries without winePackage use a private ZIP.
     var savedWineVersion: String?
     var winePackage: WinePackageReference?
@@ -56,13 +66,14 @@ struct LibraryDocument: Codable, Sendable {
         if (apps + removedApps.map(\.app)).contains(where: \.hasOpenGLBackendPreference) { version = 10 }
         if (apps + removedApps.map(\.app)).contains(where: \.hasWineRendererPreference) { version = 11 }
         if (apps + removedApps.map(\.app)).contains(where: { $0.customIconPNG != nil }) { version = 12 }
+        if (apps + removedApps.map(\.app)).contains(where: { $0.builtInProgram != nil }) { version = 13 }
     }
 
     private enum CodingKeys: String, CodingKey { case version, apps, removedApps }
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         version = try values.decode(Int.self, forKey: .version)
-        guard (1...12).contains(version) else { throw LibraryError.unsupportedVersion(version) }
+        guard (1...13).contains(version) else { throw LibraryError.unsupportedVersion(version) }
         apps = try values.decode([LibraryApp].self, forKey: .apps)
         removedApps = version == 1 ? [] : try values.decode([RemovedApp].self, forKey: .removedApps)
     }
@@ -75,7 +86,12 @@ enum LibraryError: LocalizedError {
         switch self {
         case .invalidPath: "This app refers to a file outside its Windows environment."
         case .missingExecutable: "Choose the Windows program to open in App Settings."
-        case .missingRuntime: "Windows support is missing. Add a Boxedwine Wine package in Settings."
+        case .missingRuntime:
+            #if BOXEDWINE_APP_STORE
+            WineCatalogError.downloadsUnavailable.localizedDescription
+            #else
+            "Windows support is missing. Add a Boxedwine Wine package in Settings."
+            #endif
         case .unsupportedVersion(let version): "This library was saved by a newer version of Boxedwine (format \(version))."
         case .invalidInstaller: "Choose a Windows installer ending in .exe or .msi."
         case .noProgramsInFolder: "This folder doesn’t contain a Windows program (.exe). Choose the folder containing the app and its supporting files."
@@ -108,7 +124,7 @@ struct LibraryRepository: Sendable {
             guard override.hasPrefix("/"), !override.utf8.contains(0) else { throw LibraryError.invalidPath }
             return URL(fileURLWithPath: override, isDirectory: true)
         }
-        return home.appendingPathComponent("Library/Containers/org.boxedwine.native/Data/Library/Application Support/BoxedwineNative", isDirectory: true)
+        return home.appendingPathComponent("Library/Containers/org.boxedwine.app/Data/Library/Application Support/BoxedwineNative", isDirectory: true)
     }
 
     func prepare() throws {
@@ -138,6 +154,7 @@ struct LibraryRepository: Sendable {
                 guard document.version >= 12 else { throw LibraryError.unsupportedVersion(document.version) }
                 try CustomAppIcon.validate(icon)
             }
+            guard app.builtInProgram == nil || (document.version >= 13 && !app.isNotepad) else { throw LibraryError.invalidPath }
             try app.demoSettings?.validate()
             try BoxedwineArguments.validate(app.boxedwineArguments ?? [])
             guard !app.hasBoxedwineArguments || document.version >= 9 else { throw BoxedwineArgumentError.invalid("These settings require library format 9.") }
@@ -288,8 +305,13 @@ struct LibraryRepository: Sendable {
     }
 
     func createNotepad(wine: WineImportSelection, control: ImportControl = ImportControl()) throws -> LibraryApp {
-        var app = LibraryApp(name: "Notepad")
-        app.isNotepad = true
+        try createBuiltInProgram(.notepad, wine: wine, control: control)
+    }
+
+    func createBuiltInProgram(_ program: WineBuiltInProgram, wine: WineImportSelection, control: ImportControl = ImportControl()) throws -> LibraryApp {
+        var app = LibraryApp(name: program.name)
+        if program == .notepad { app.isNotepad = true }
+        else { app.builtInProgram = program }
         _ = try beginOperation(kind: .folder, name: app.name, id: app.id)
         do {
             try prepare(app)
@@ -529,7 +551,7 @@ struct LaunchRequest: Sendable {
         var result = ["-root", repository.root(for: app).path, "-zip", wineZip.path,
                       "-title", app.name, "-resolution", resolution]
         if app.fullScreen { result.append("-fullscreenAspect") }
-        if app.isNotepad && !installing && alternateExecutable == nil && externalProgram == nil { return result + overrides + ["/bin/wine", "notepad"] + app.arguments }
+        if let program = app.wineProgram, !installing && alternateExecutable == nil && externalProgram == nil { return result + overrides + ["/bin/wine", program.command] + app.arguments }
         if let externalProgram {
             // Boxedwine gives the emulated user write permission under /home;
             // /mnt is read-only to that user, which breaks self-extracting tools.

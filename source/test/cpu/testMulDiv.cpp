@@ -348,7 +348,8 @@ void applyAccumulatorExpected(U32* expectedRegs, const Expected& e, int width) {
     }
 }
 
-const char* opName(MulDivOp op) {
+// Used by the MSVC x86 hardware oracle.
+[[maybe_unused]] const char* opName(MulDivOp op) {
     if (op == OP_MUL) return "mul";
     if (op == OP_IMUL) return "imul";
     if (op == OP_DIV) return "div";

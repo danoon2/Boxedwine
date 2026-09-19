@@ -73,6 +73,7 @@ final class LibraryStore: ObservableObject {
     private var recoveryGeneration = 0
     @Published var removalCandidate: LibraryApp?
     @Published var deletionCandidate: AppDeletionCandidate?
+    @Published var removedAppsDeletion: RemovedAppsDeletion?
     private var backupAfterDeletionSheet: LibraryApp?
     @Published private(set) var storageRevision = 0
     var hasUnfinishedDeletions: Bool { removedApps.contains { $0.deletionStartedAt != nil } }
@@ -96,6 +97,15 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var droppedAppSource: DroppedAppSource?
     var canDropApp: Bool { canEdit && !importing && !presentingLibrarySheet }
     @Published var editingApp: LibraryApp?
+    private var backupAfterSettingsSheet: LibraryApp?
+    @Published var troubleshootingApp: LibraryApp?
+    private enum TroubleshootingAction {
+        case runInstaller(LibraryApp)
+        #if !BOXEDWINE_APP_STORE
+        case tryWine(LibraryApp)
+        #endif
+    }
+    private var actionAfterTroubleshootingSheet: TroubleshootingAction?
     @Published var choosingProgram: LibraryApp?
     @Published var choosingAnotherProgram: LibraryApp?
     @Published private var selectingDemoPrograms: Set<UUID> = []
@@ -111,7 +121,12 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var wineVersions: [CatalogWine] = []
     @Published private(set) var wineCatalogProblem: String?
     @Published private(set) var wineDownloadStatuses: [String: WineDownloadStatus] = [:]
-    @Published var notepadWineDownload: CatalogWine?
+    struct BuiltInDownload: Identifiable {
+        let program: WineBuiltInProgram
+        let wine: CatalogWine
+        var id: String { program.rawValue + wine.id }
+    }
+    @Published var builtInWineDownload: BuiltInDownload?
     private var wineDownloadCandidates: [String: [WineLocalCandidate]] = [:]
     private var wineDownloadCheck: ImportControl?
     private var wineActivationObserver: AnyCancellable?
@@ -128,8 +143,8 @@ final class LibraryStore: ObservableObject {
 
     var selectedApp: LibraryApp? { showingRemoved || showingRecovery || showingDemos ? nil : visibleApps.first { $0.id == selectedID } }
     var presentingLibrarySheet: Bool {
-        showAddApp || editingApp != nil || choosingProgram != nil || choosingAnotherProgram != nil || errorMessage != nil || showingLaunchLog ||
-        removalCandidate != nil || deletionCandidate != nil || recoveryCleanupCandidate != nil || wineTrialCandidate != nil || pendingWineTrial != nil || notepadWineDownload != nil
+        showAddApp || editingApp != nil || troubleshootingApp != nil || backupAfterSettingsSheet != nil || actionAfterTroubleshootingSheet != nil || choosingProgram != nil || choosingAnotherProgram != nil || errorMessage != nil || showingLaunchLog ||
+        removalCandidate != nil || deletionCandidate != nil || removedAppsDeletion != nil || recoveryCleanupCandidate != nil || wineTrialCandidate != nil || pendingWineTrial != nil || builtInWineDownload != nil
     }
     var hasRunningApps: Bool { !sessions.isEmpty || !launchPreparations.isEmpty }
     var visibleApps: [LibraryApp] {
@@ -160,12 +175,15 @@ final class LibraryStore: ObservableObject {
         } catch { wineCatalogProblem = error.localizedDescription }
         organizeWineLibrary()
         refreshRecovery()
+#if !BOXEDWINE_APP_STORE
         if let url = Bundle.main.url(forResource: "catalog", withExtension: "xml", subdirectory: "Demos") {
             do { demos = try DemoCatalog.load(Data(contentsOf: url)).demos }
             catch { demoCatalogProblem = error.localizedDescription }
         } else {
             demoCatalogProblem = "Demos aren’t included in this build."
         }
+#endif
+
         wineActivationObserver = NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
             .sink { [weak self] _ in self?.refreshWineDownloads() }
     }
@@ -217,7 +235,7 @@ final class LibraryStore: ObservableObject {
                     removedApps = saved.removedApps
                     revealApp(app.id)
                     activity[app.id] = app.installer != nil && app.executable == nil ? "Installer ready — run it when you’re ready" : "Import recovered"
-                    if app.executable == nil && app.installer == nil && !app.isNotepad { chooseProgram(app) }
+                    if app.executable == nil && app.installer == nil && !app.isBuiltIn { chooseProgram(app) }
                 }
             } catch is CancellationError { }
             catch { errorMessage = "The unfinished work could not be completed. Its files have been kept.\n\n" + error.localizedDescription }
@@ -302,7 +320,7 @@ final class LibraryStore: ObservableObject {
 
     func isRunning(_ app: LibraryApp) -> Bool { sessions[app.id] != nil || launchPreparations[app.id] != nil }
     func defaultIconURL(for app: LibraryApp) -> URL? {
-        if app.isNotepad { return Bundle.main.url(forResource: "notepad", withExtension: "png", subdirectory: "AppIcons") }
+        if let program = app.wineProgram { return Bundle.main.url(forResource: program.command, withExtension: "png", subdirectory: "AppIcons") }
         guard let id = app.demo?.id, let demo = demos.first(where: { $0.id == id }), !demo.icon.isEmpty else { return nil }
         return Bundle.main.url(forResource: demo.icon, withExtension: nil, subdirectory: "Demos")
     }
@@ -378,6 +396,7 @@ final class LibraryStore: ObservableObject {
         }
     }
 
+#if !BOXEDWINE_APP_STORE
     func prepareWineTrial(_ app: LibraryApp, name: String, wine: CatalogWine) {
         guard canModify(app), wineTrialCandidate?.id == app.id, canSelectWine(wine.id) else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -418,7 +437,10 @@ final class LibraryStore: ObservableObject {
         }
     }
 
+#endif
+
     func isStopping(_ app: LibraryApp) -> Bool { stopping.contains(app.id) }
+
     func canModify(_ app: LibraryApp) -> Bool {
         canEdit && !importing && !isRunning(app) && !selectingDemoPrograms.contains(app.id) && !removedApps.contains { $0.id == app.id && $0.deletionStartedAt != nil }
     }
@@ -535,7 +557,12 @@ final class LibraryStore: ObservableObject {
         Task {
             do {
                 let (support, included, imported) = try await Task.detached {
+                    #if BOXEDWINE_APP_STORE
+                    guard let includedZip = bundled else { throw WineCatalogError.downloadsUnavailable }
+                    let support = LibraryRepository.RuntimeSupport(package: try repository.validateWine(includedZip, control: control), included: true, notice: nil)
+                    #else
                     let support = try repository.validatedRuntime(bundled: bundled, control: control)
+                    #endif
                     let included = support.included ? support.package : bundled.flatMap { try? repository.validateWine($0, control: control) }
                     let imported = support.included && repository.hasImportedRuntime
                         ? try? repository.validatedImportedWine(control: control)
@@ -568,6 +595,7 @@ final class LibraryStore: ObservableObject {
         return runtimeSupport.package.url
     }
 
+#if !BOXEDWINE_APP_STORE
     func chooseRuntime() {
         guard canEdit, !importing, !runtimeChecking, !hasRunningApps, repository != nil,
               let window = NSApp.keyWindow ?? NSApp.mainWindow, window.attachedSheet == nil else { return }
@@ -601,6 +629,8 @@ final class LibraryStore: ObservableObject {
             catch { errorMessage = "Active Windows support was not changed.\n\n" + error.localizedDescription }
         }
     }
+
+#endif
 
     enum SourceKind { case appFolder, installerFile, installerFolder }
 
@@ -825,6 +855,7 @@ final class LibraryStore: ObservableObject {
         if appIDToReveal == id { appIDToReveal = nil }
     }
 
+#if !BOXEDWINE_APP_STORE
     func showDemos() { appIDToReveal = nil; showingDemos = true; showingRemoved = false; showingRecovery = false; recentOnly = false; query = "" }
 
     func installedDemo(_ demo: Demo) -> LibraryApp? { apps.first { $0.demo?.id == demo.id } }
@@ -874,6 +905,8 @@ final class LibraryStore: ObservableObject {
             }
         }
     }
+
+#endif
 
     func requestRemoval(_ app: LibraryApp) {
         guard canModify(app), apps.contains(where: { $0.id == app.id }) else { return }
@@ -963,42 +996,81 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    var canTryNotepad: Bool {
+    var canDeleteAllRemovedApps: Bool {
+        canEdit && !importing && !removedApps.isEmpty && !removedApps.contains { isRunning($0.app) }
+    }
+
+    func requestDeleteAllRemovedApps() {
+        guard canDeleteAllRemovedApps, !presentingLibrarySheet else { return }
+        removedAppsDeletion = RemovedAppsDeletion(apps: removedApps.sorted { $0.removedAt > $1.removedAt })
+    }
+
+    func deleteAllRemovedApps(_ candidate: RemovedAppsDeletion) {
+        guard canDeleteAllRemovedApps, removedAppsDeletion == candidate, let repository else { return }
+        removedAppsDeletion = nil
+        let control = beginImport(name: "removed apps", runtime: true, transfer: .deleting)
+        try? control.beginFinishing()
+        importProgress = control.progress
+        Task {
+            defer { finishImport() }
+            do {
+                let document = try await Task.detached {
+                    try repository.deleteRemovedAppsPermanently(candidate.apps.map(\.id), control: control)
+                }.value
+                apps = document.apps
+                removedApps = document.removedApps
+            } catch {
+                let completed = control.progress.deletionBatch?.completed ?? 0
+                errorMessage = "Deleted \(completed) of \(candidate.apps.count) removed apps. Deletion stopped. Any unfinished deletion can be retried with Finish Deleting, or choose Delete All again for the remaining apps.\n\n" + error.localizedDescription
+            }
+            savedPackages = savedPackages.filter { $0.value.isCurrent }
+            for removed in candidate.apps { activity.removeValue(forKey: removed.id) }
+        }
+    }
+
+    func canTryBuiltIn(_ program: WineBuiltInProgram) -> Bool {
         guard canEdit, !importing, !presentingLibrarySheet else { return false }
-        if let existing = apps.first(where: \.isNotepad) { return canLaunch(existing) }
+        if let existing = apps.first(where: { $0.wineProgram == program }) { return canLaunch(existing) }
         guard !runtimeChecking else { return false }
         return runtimeAvailable || (defaultCatalogWine.map { canSelectWine($0.id) } ?? true)
     }
 
-    func addNotepad() {
-        guard canTryNotepad else { return }
+    func addBuiltIn(_ program: WineBuiltInProgram) {
+        guard canTryBuiltIn(program) else { return }
         showLibrary()
-        if let existing = apps.first(where: \.isNotepad) { revealApp(existing.id); launch(existing); return }
-        if runtimeAvailable { createNotepad(); return }
+        if let existing = apps.first(where: { $0.wineProgram == program }) { revealApp(existing.id); launch(existing); return }
+        if runtimeAvailable { createBuiltIn(program); return }
+#if BOXEDWINE_APP_STORE
+        errorMessage = WineCatalogError.downloadsUnavailable.localizedDescription
+#else
         guard let wine = defaultCatalogWine else {
             errorMessage = wineCatalogProblem ?? "The release Wine list is unavailable."
             return
         }
         switch wineDownloadStatus(wine) {
         case .checking: return
-        case .available: createNotepad(wine: wine)
-        case .required: notepadWineDownload = wine
+        case .available: createBuiltIn(program, wine: wine)
+        case .required: builtInWineDownload = BuiltInDownload(program: program, wine: wine)
         }
+#endif
     }
 
-    func downloadWineForNotepad(_ wine: CatalogWine) {
-        guard notepadWineDownload == wine, canEdit, !importing, !runtimeChecking, wineVersions.contains(wine) else { return }
-        notepadWineDownload = nil
-        createNotepad(wine: wine, allowDownload: true)
+#if !BOXEDWINE_APP_STORE
+    func downloadWineForBuiltIn(_ download: BuiltInDownload) {
+        let wine = download.wine
+        guard builtInWineDownload?.id == download.id, canEdit, !importing, !runtimeChecking, wineVersions.contains(wine) else { return }
+        builtInWineDownload = nil
+        createBuiltIn(download.program, wine: wine, allowDownload: true)
     }
+#endif
 
-    private func createNotepad(wine: CatalogWine? = nil, allowDownload: Bool = false) {
+    private func createBuiltIn(_ program: WineBuiltInProgram, wine: CatalogWine? = nil, allowDownload: Bool = false) {
         guard canEdit, !importing, !runtimeChecking, let repository else { return }
-        if let existing = apps.first(where: \.isNotepad) { revealApp(existing.id); launch(existing); return }
+        if let existing = apps.first(where: { $0.wineProgram == program }) { revealApp(existing.id); launch(existing); return }
         do {
             let runtime = try wine == nil ? wineZip() : nil
             let candidates = wine.map(catalogWineCandidates) ?? []
-            let control = beginImport(name: "Notepad", runtime: true)
+            let control = beginImport(name: program.name, runtime: true)
             Task {
                 var imported: LibraryApp?
                 do {
@@ -1007,13 +1079,13 @@ final class LibraryStore: ObservableObject {
                         app = try await CatalogWineProvider.withPackage(wine, candidates: candidates, control: control,
                                                                         allowDownload: allowDownload, validator: repository.wineValidator) { package in
                             try await Task.detached {
-                                try repository.createNotepad(wine: WineImportSelection(package: package), control: control)
+                                try repository.createBuiltInProgram(program, wine: WineImportSelection(package: package), control: control)
                             }.value
                         }
                     } else if let runtime {
                         app = try await Task.detached {
                             let package = try repository.validateWine(runtime, control: control)
-                            return try repository.createNotepad(wine: WineImportSelection(package: package), control: control)
+                            return try repository.createBuiltInProgram(program, wine: WineImportSelection(package: package), control: control)
                         }.value
                     } else { throw LibraryError.missingRuntime }
                     imported = app
@@ -1028,7 +1100,7 @@ final class LibraryStore: ObservableObject {
                         do { try await Task.detached { try repository.discardUncommittedImport(imported) }.value }
                         catch {
                             finishImport()
-                            errorMessage = "Notepad could not be added or fully cleaned up. Review Unfinished Work.\n\n" + error.localizedDescription
+                            errorMessage = "\(program.name) could not be added or fully cleaned up. Review Unfinished Work.\n\n" + error.localizedDescription
                             return
                         }
                     }
@@ -1040,10 +1112,56 @@ final class LibraryStore: ObservableObject {
     }
 
     func save(_ app: LibraryApp) {
-        guard canModify(app) else { return }
+        _ = saveChanges(app)
+    }
+
+    func saveAndBackUp(_ app: LibraryApp) {
+        guard hasRuntime(app), let saved = saveChanges(app) else { return }
+        backupAfterSettingsSheet = saved
+    }
+
+    func settingsSheetDismissed() {
+        if let app = backupAfterSettingsSheet {
+            backupAfterSettingsSheet = nil
+            exportBackup(app)
+        }
+        presentNextProgramChoice()
+    }
+
+    func runInstallerFromTroubleshooting(_ app: LibraryApp) {
+        guard troubleshootingApp?.id == app.id, app.installer != nil, canLaunch(app) else { return }
+        actionAfterTroubleshootingSheet = .runInstaller(app)
+        troubleshootingApp = nil
+    }
+
+    #if !BOXEDWINE_APP_STORE
+    func tryWineFromTroubleshooting(_ app: LibraryApp) {
+        guard troubleshootingApp?.id == app.id, canModify(app), apps.contains(app) else { return }
+        actionAfterTroubleshootingSheet = .tryWine(app)
+        troubleshootingApp = nil
+    }
+    #endif
+
+    func troubleshootingSheetDismissed() {
+        if let action = actionAfterTroubleshootingSheet {
+            actionAfterTroubleshootingSheet = nil
+            switch action {
+            case .runInstaller(let app):
+                launch(app, installing: true)
+            #if !BOXEDWINE_APP_STORE
+            case .tryWine(let app):
+                if canModify(app), apps.contains(app) { wineTrialCandidate = app }
+            #endif
+            }
+        }
+        presentNextProgramChoice()
+    }
+
+    private func saveChanges(_ app: LibraryApp) -> LibraryApp? {
+        guard canModify(app) else { return nil }
         do {
-            guard !app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-            guard let original = apps.first(where: { $0.id == app.id }) else { return }
+            guard !app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            guard let original = apps.first(where: { $0.id == app.id }) else { return nil }
             var updated = app
             if app.preferredWindowsVersion == original.preferredWindowsVersion {
                 updated.windowsVersion = original.windowsVersion
@@ -1071,11 +1189,13 @@ final class LibraryStore: ObservableObject {
             activity.removeValue(forKey: app.id)
             editingApp = nil
             choosingProgram = nil
+            return updated
         } catch { errorMessage = error.localizedDescription }
+        return nil
     }
 
     func openApp(_ app: LibraryApp) {
-        if app.executable == nil && !app.isNotepad { chooseProgram(app) }
+        if app.executable == nil && !app.isBuiltIn { chooseProgram(app) }
         else { launch(app) }
     }
 
@@ -1129,7 +1249,7 @@ final class LibraryStore: ObservableObject {
     }
 
     func presentNextProgramChoice() {
-        guard errorMessage == nil, choosingProgram == nil, choosingAnotherProgram == nil, editingApp == nil, removalCandidate == nil, deletionCandidate == nil, recoveryCleanupCandidate == nil, wineTrialCandidate == nil, pendingWineTrial == nil, !importing, !showAddApp, !showingLaunchLog else { return }
+        guard errorMessage == nil, choosingProgram == nil, choosingAnotherProgram == nil, editingApp == nil, troubleshootingApp == nil, backupAfterSettingsSheet == nil, actionAfterTroubleshootingSheet == nil, removalCandidate == nil, deletionCandidate == nil, removedAppsDeletion == nil, recoveryCleanupCandidate == nil, wineTrialCandidate == nil, pendingWineTrial == nil, !importing, !showAddApp, !showingLaunchLog else { return }
         while !pendingProgramChoices.isEmpty {
             let id = pendingProgramChoices.removeFirst()
             if let app = apps.first(where: { $0.id == id }), !isRunning(app) {
@@ -1142,7 +1262,7 @@ final class LibraryStore: ObservableObject {
     func programChoiceNotice(for app: LibraryApp) -> String? {
         guard app.installer != nil else { return nil }
         switch activity[app.id] {
-        case "Stopped": return "The installer was stopped. Some files may be incomplete; you can run it again from the library."
+        case "Stopped": return "The installer was stopped. Some files may be incomplete; use Troubleshooting → Run Installer Again to finish setup."
         case "Closed unexpectedly — see log": return "The installer ended unexpectedly. Some files may be incomplete; check the launch log if the app does not open."
         default: return nil
         }
@@ -1197,7 +1317,7 @@ final class LibraryStore: ObservableObject {
 
     func launch(_ app: LibraryApp, installing: Bool = false, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil) {
         guard canLaunch(app), apps.contains(app), let repository else { return }
-        if !app.isNotepad && !installing && alternateExecutable == nil && externalProgram == nil,
+        if !app.isBuiltIn && !installing && alternateExecutable == nil && externalProgram == nil,
            let executable = app.executable, (executable as NSString).pathExtension.lowercased() != "exe" {
             reportLaunchFailure(app, error: LibraryError.missingExecutable)
             return
@@ -1407,6 +1527,7 @@ final class LibraryStore: ObservableObject {
     }
 }
 
+#if !BOXEDWINE_APP_STORE
 /// The settings alert uses the same live download status as the SwiftUI pickers.
 @MainActor
 private final class WineRuntimeChooser: NSObject {
@@ -1446,3 +1567,5 @@ private final class WineRuntimeChooser: NSObject {
         button.isEnabled = displayedStatus != .checking
     }
 }
+
+#endif

@@ -32,7 +32,6 @@ using namespace TestX86;
 
 constexpr U32 REG_GUARD = 0x5A5A0000;
 constexpr U32 MEM_BASE = 0x10000;
-constexpr U32 INITIAL_FLAGS = CF | PF | AF | ZF | SF | OF | DF;
 constexpr U32 TEST_FLAG_MASK = CF | PF | AF | ZF | SF | OF | DF;
 
 enum RegId {
@@ -161,11 +160,6 @@ void initRegisters(U32* regs) {
     for (int i = 0; i < 8; ++i) {
         cpu->reg[i].u32 = regs[i];
     }
-}
-
-void makeAbsoluteCase(AddressCase& data, U32 offset) {
-    data.address = cpu->seg[DS].address + offset;
-    data.operand = memPtr(offset, 32);
 }
 
 void makeBaseCase(AddressCase& data, int base, U32 offset, S32 disp, int width) {

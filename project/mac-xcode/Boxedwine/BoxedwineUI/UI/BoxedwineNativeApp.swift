@@ -8,17 +8,28 @@ import AppKit
 struct BoxedwineNativeApp: App {
     @NSApplicationDelegateAdaptor(NativeAppDelegate.self) private var delegate
     @StateObject private var library = LibraryStore()
+#if BOXEDWINE_APP_STORE
+    @StateObject private var tips = TipStore()
+#endif
 
     var body: some Scene {
         WindowGroup("Boxedwine", id: "library") {
             LibraryView(store: library)
                 .onAppear { delegate.library = library }
+#if BOXEDWINE_APP_STORE
+                .onAppear { tips.startListening() }
+#endif
         }
         .defaultSize(width: 1040, height: 650)
         .commands { NativeLibraryCommands(store: library) }
         Settings { NativeSettingsView(store: library) }
         Window("Boxedwine Help", id: "native-help") { NativeHelpView() }
             .defaultSize(width: 650, height: 650)
+#if BOXEDWINE_APP_STORE
+        Window("Support Boxedwine", id: "support-boxedwine") { SupportView(tips: tips) }
+            .windowResizability(.contentSize)
+            .defaultPosition(.center)
+#endif
     }
 }
 

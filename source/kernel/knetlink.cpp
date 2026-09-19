@@ -629,7 +629,7 @@ U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 me
             BOXEDWINE_CONDITION_SIGNAL_ALL(lockCond);
             return length;
         } else {
-            kwarn_fmt("KNetLinkObject::sendto unhandled type %x", type);
+            kwarn_fmt("KNetLinkObject::sendto unhandled type %hx", type);
         }
     }
     return -1; // if we return 0 here and pretend it succeeded, then some library might call recvfrom on a block thread to get the response and hang the app

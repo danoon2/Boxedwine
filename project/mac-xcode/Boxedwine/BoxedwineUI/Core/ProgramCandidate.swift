@@ -38,7 +38,7 @@ extension LibraryRepository {
     /// Select only a catalog-named program after a normal installer exit. Finding
     /// the file does not establish that installation or gameplay fully succeeded.
     func selectingInstalledDemoProgram(_ app: LibraryApp, after exit: RuntimeExit) throws -> LibraryApp? {
-        guard let demo = app.demo, app.installer != nil, !app.isNotepad,
+        guard let demo = app.demo, app.installer != nil, !app.isBuiltIn,
               exit.status == 0, !exit.signalled, !exit.stoppedByUser else { return nil }
         let candidates = try executables(for: app).map { ProgramCandidate(path: $0) }
         // Re-running setup must preserve an existing, valid user selection.

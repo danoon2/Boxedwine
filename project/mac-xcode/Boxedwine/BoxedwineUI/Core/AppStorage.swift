@@ -60,6 +60,28 @@ extension LibraryRepository {
         try deletePermanently(id, fromLibrary: false, control: control)
     }
 
+    /// Deletes the confirmed snapshot, never apps removed after confirmation.
+    /// Each app uses the normal persisted deletion marker. Stop on the first
+    /// failure; completed deletions stay committed and remaining apps can retry.
+    func deleteRemovedAppsPermanently(_ ids: [UUID], control: ImportControl = ImportControl()) throws -> LibraryDocument {
+        var document = try loadDocument()
+        let removed = Dictionary(uniqueKeysWithValues: document.removedApps.map { ($0.id, $0.app) })
+        let active = Set(document.apps.map(\.id))
+        guard Set(ids).count == ids.count, ids.allSatisfy({ removed[$0] != nil && !active.contains($0) }) else {
+            throw StorageError.notRemoved
+        }
+        try control.checkCancellation()
+        guard !ids.isEmpty else { return document }
+        try control.beginFinishing()
+        for (index, id) in ids.enumerated() {
+            let name = removed[id]!.name
+            control.updateDeletionBatch(completed: index, total: ids.count, appName: name)
+            document = try deletePermanently(id, control: control)
+            control.updateDeletionBatch(completed: index + 1, total: ids.count, appName: name)
+        }
+        return document
+    }
+
     /// A confirmed immediate deletion atomically moves the active app into the deletion journal.
     /// It is never saved as a restorable removed app between removal and deletion.
     func deleteActiveAppPermanently(_ id: UUID, control: ImportControl = ImportControl()) throws -> LibraryDocument {

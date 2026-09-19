@@ -1264,7 +1264,7 @@ private:
     bool valid;
     MappedFilePtr result;
 };
-
+#ifdef __TEST
 static MappedFilePtr selectMappedFileForRange(const std::vector<MappedFilePtr>& mappings, U32 address, U32 len) {
     MappedFileRangeSelector selector(address, len);
     if (!selector.isValid()) {
@@ -1275,6 +1275,7 @@ static MappedFilePtr selectMappedFileForRange(const std::vector<MappedFilePtr>& 
     }
     return selector.takeResult();
 }
+#endif
 } // namespace
 
 #ifdef __TEST
@@ -1990,7 +1991,7 @@ U32 KProcess::dup2(FD fildes, FD fildes2) {
     KFileDescriptorPtr fd2 = this->getFileDescriptor(fildes2);
     if (fd2) {        
         if (fd2.use_count()>2) { // 1 in this->fds and 1 for fd2
-            kpanic_fmt("Not sure what to do on a dup2 where the refcount is %d", fd2.use_count());
+            kpanic_fmt("Not sure what to do on a dup2 where the refcount is %ld", fd2.use_count());
         }
         clearFdHandle(fd2->handle);
     } 
