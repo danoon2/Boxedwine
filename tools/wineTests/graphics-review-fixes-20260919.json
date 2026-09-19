@@ -1,0 +1,512 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-19",
+  "scope": "Published v41 review fixes; focused regression qualification and verification of the uploaded filesystem.",
+  "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+  "patch_manifest": {
+    "path": "tools/wineTests/webgl-test-divergences-v41.json",
+    "sha256": "deaed939f80d1bdedd2ed12e34f4c5e1683a4ddc643b1361d771f9b8b5dce1b9"
+  },
+  "source_replay": {
+    "passed": true,
+    "production_patches": 54,
+    "complete_test_adaptation_applied": true,
+    "first_52_production_patches_unchanged": true,
+    "test_policy_unchanged": true,
+    "tested_source_files": [
+      {
+        "path": "dlls/wined3d/context_gl.c",
+        "normalized_sha256": "bc8adcdff39e5d846cf92d8d95392722b5b8831d23fcc0d85ca33b5e9ff92db7"
+      },
+      {
+        "path": "dlls/wined3d/cs.c",
+        "normalized_sha256": "31d9dadcf7a2885aaa461bb33d4cade0b2acd9572facc140435edfe34ce4f0ae"
+      },
+      {
+        "path": "dlls/ddraw/utils.c",
+        "normalized_sha256": "95b993c9a9d7ed9ded1e541b28bdc5fcdb071adb0a76e018119dd4d7f33056cb"
+      }
+    ]
+  },
+  "build": {
+    "compiler": "i686-w64-mingw32-gcc (GCC) 13-win32",
+    "rebuilt_dlls": [
+      "wined3d.dll",
+      "ddraw.dll"
+    ],
+    "reused_dlls": "The other six DLLs are unchanged v40 binaries.",
+    "configuration": "Fresh Wine PE32 tree using v40 SSE/O3 flags and existing pinned native Wine tools.",
+    "native_tools": "/home/james/webgl/boxedwine-webgl-sse-20260914/wine-build/wine-tools",
+    "source_date_epoch": 1768319767,
+    "dlls": {
+      "wined3d.dll": {
+        "size": 3986918,
+        "sha256": "d34be9b831ab160507c1ef7f20135d5bb074664b07fe26e310aae198a60669c0",
+        "machine": "PE32/i386",
+        "imports": [
+          "advapi32.dll",
+          "gdi32.dll",
+          "kernel32.dll",
+          "ntdll.dll",
+          "opengl32.dll",
+          "ucrtbase.dll",
+          "user32.dll"
+        ]
+      },
+      "ddraw.dll": {
+        "size": 855284,
+        "sha256": "db721fdbc9f4917e6750732b4297f6911683f32d32c1c0b2217d528a53e675b3",
+        "machine": "PE32/i386",
+        "imports": [
+          "advapi32.dll",
+          "gdi32.dll",
+          "kernel32.dll",
+          "ntdll.dll",
+          "ucrtbase.dll",
+          "user32.dll",
+          "wined3d.dll"
+        ]
+      }
+    }
+  },
+  "filesystem": {
+    "path": "tmp/webgl-review-20260919/TinyCore15Wine11.0-v41-final.zip",
+    "archive": {
+      "filename": "TinyCore15Wine11.0-v41-final.zip",
+      "size": 167152655,
+      "sha256": "13993bf74c3421304ee50e247ff628ca47d75ae3118e10967a388e8a664aabee",
+      "entries": 8697,
+      "crc": "ok"
+    },
+    "parent_sha256": "52eaea9b29603ea9275c72e45526ea0f760efe87a6718f86fa2fa1146c976230",
+    "changed_entries": [
+      "home/username/.wine/drive_c/webgl/ddraw.dll",
+      "home/username/.wine/drive_c/webgl/wined3d.dll"
+    ],
+    "other_entries_and_metadata_preserved": 8695,
+    "configuration": "tmp/webgl-review-20260919/candidate-config.json"
+  },
+  "browser_validation": {
+    "checks": 7156,
+    "failures": 0,
+    "skips": 0,
+    "runs": [
+      {
+        "mode": "single-threaded-non-jit",
+        "probe": "index-boundaries",
+        "result": {
+          "suite": "index-boundaries",
+          "group": "indexboundaries",
+          "tests": 1275,
+          "todo": 0,
+          "failures": 0,
+          "skipped": 0,
+          "passed": true,
+          "reason": "ok",
+          "failure_records": [],
+          "browser_events": [],
+          "exit_status": 0
+        },
+        "build_identity": "bwgl-2fe70102e32df72d741b60621879c70be9b8adc4c2b251ae747f7cc4fa480fd3",
+        "runtime": {
+          "boxedwine-shell.js": {
+            "bytes": 99857,
+            "sha256": "a896bd23cc9e12bd593d59cd0b5f8df307cfa733b03b0da903cc816d26a05126"
+          },
+          "boxedwine.css": {
+            "bytes": 5080,
+            "sha256": "93ef8704312b18e4a081961efe2ebf86e9df6c243bb66832292a30b032d1d716"
+          },
+          "boxedwine.html": {
+            "bytes": 2623,
+            "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+          },
+          "boxedwine.js": {
+            "bytes": 271163,
+            "sha256": "f9c559e36f412d7117e4083ec6ce05ac0206cf8fb735b5846544b6354e729cd9"
+          },
+          "boxedwine.wasm": {
+            "bytes": 2909593,
+            "sha256": "1637c1f23bb635c787cca926e9667235d0029c503fba1496626d457d3d3e130c"
+          }
+        },
+        "executable_sha256": "9e36ac3326d270a1836c210ab132c6bf1048d60cedcefb69e1b5e009fac25c26",
+        "manifest": "tmp/webgl-review-20260919/final-indices-st/manifest.json",
+        "manifest_sha256": "763068d60c260b0327f4e72c01031b77efd902aee284b97469fea90660f68468"
+      },
+      {
+        "mode": "single-threaded-non-jit",
+        "probe": "ddraw-rgb10-masks",
+        "result": {
+          "suite": "ddraw-rgb10-masks",
+          "group": "ddrawrgb10",
+          "tests": 514,
+          "todo": 0,
+          "failures": 0,
+          "skipped": 0,
+          "passed": true,
+          "reason": "ok",
+          "failure_records": [],
+          "browser_events": [],
+          "exit_status": 0
+        },
+        "build_identity": "bwgl-2fe70102e32df72d741b60621879c70be9b8adc4c2b251ae747f7cc4fa480fd3",
+        "runtime": {
+          "boxedwine-shell.js": {
+            "bytes": 99857,
+            "sha256": "a896bd23cc9e12bd593d59cd0b5f8df307cfa733b03b0da903cc816d26a05126"
+          },
+          "boxedwine.css": {
+            "bytes": 5080,
+            "sha256": "93ef8704312b18e4a081961efe2ebf86e9df6c243bb66832292a30b032d1d716"
+          },
+          "boxedwine.html": {
+            "bytes": 2623,
+            "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+          },
+          "boxedwine.js": {
+            "bytes": 271163,
+            "sha256": "f9c559e36f412d7117e4083ec6ce05ac0206cf8fb735b5846544b6354e729cd9"
+          },
+          "boxedwine.wasm": {
+            "bytes": 2909593,
+            "sha256": "1637c1f23bb635c787cca926e9667235d0029c503fba1496626d457d3d3e130c"
+          }
+        },
+        "executable_sha256": "b3431b70646ba43a0f641f36fd58963fe18f01650d025d487b9041ce156980f2",
+        "manifest": "tmp/webgl-review-20260919/final-ddraw-st/manifest.json",
+        "manifest_sha256": "b6bb58dcd3d7adb89ab605769cf4f640b1f65a5d2290df923a6ef13f9602ba86"
+      },
+      {
+        "mode": "multi-threaded-non-jit",
+        "probe": "index-boundaries",
+        "result": {
+          "suite": "index-boundaries",
+          "group": "indexboundaries",
+          "tests": 1275,
+          "todo": 0,
+          "failures": 0,
+          "skipped": 0,
+          "passed": true,
+          "reason": "ok",
+          "failure_records": [],
+          "browser_events": [],
+          "exit_status": 0
+        },
+        "build_identity": "bwgl-a6c4e49ac59dfb6d79b4dd2b39e5e4a818ddd501a316ce731042b02850d2ce89",
+        "runtime": {
+          "boxedwine-shell.js": {
+            "bytes": 99857,
+            "sha256": "a896bd23cc9e12bd593d59cd0b5f8df307cfa733b03b0da903cc816d26a05126"
+          },
+          "boxedwine.css": {
+            "bytes": 5080,
+            "sha256": "93ef8704312b18e4a081961efe2ebf86e9df6c243bb66832292a30b032d1d716"
+          },
+          "boxedwine.html": {
+            "bytes": 2623,
+            "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+          },
+          "boxedwine.js": {
+            "bytes": 305071,
+            "sha256": "0f49618975a4e477c1fc384d0a26e83675a661a15b816b2a95f960e2220531d1"
+          },
+          "boxedwine.wasm": {
+            "bytes": 2974438,
+            "sha256": "316ac294b19d7eac980d80a46a29129f957d9e58a79176b4b4b244204677e429"
+          }
+        },
+        "executable_sha256": "9e36ac3326d270a1836c210ab132c6bf1048d60cedcefb69e1b5e009fac25c26",
+        "manifest": "tmp/webgl-review-20260919/final-indices-mt/manifest.json",
+        "manifest_sha256": "2602d9ab4c61b831b53452a6bcc177417e21e95f2a5cd2228bd76e0830ae24ae"
+      },
+      {
+        "mode": "multi-threaded-non-jit",
+        "probe": "ddraw-rgb10-masks",
+        "result": {
+          "suite": "ddraw-rgb10-masks",
+          "group": "ddrawrgb10",
+          "tests": 514,
+          "todo": 0,
+          "failures": 0,
+          "skipped": 0,
+          "passed": true,
+          "reason": "ok",
+          "failure_records": [],
+          "browser_events": [],
+          "exit_status": 0
+        },
+        "build_identity": "bwgl-a6c4e49ac59dfb6d79b4dd2b39e5e4a818ddd501a316ce731042b02850d2ce89",
+        "runtime": {
+          "boxedwine-shell.js": {
+            "bytes": 99857,
+            "sha256": "a896bd23cc9e12bd593d59cd0b5f8df307cfa733b03b0da903cc816d26a05126"
+          },
+          "boxedwine.css": {
+            "bytes": 5080,
+            "sha256": "93ef8704312b18e4a081961efe2ebf86e9df6c243bb66832292a30b032d1d716"
+          },
+          "boxedwine.html": {
+            "bytes": 2623,
+            "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+          },
+          "boxedwine.js": {
+            "bytes": 305071,
+            "sha256": "0f49618975a4e477c1fc384d0a26e83675a661a15b816b2a95f960e2220531d1"
+          },
+          "boxedwine.wasm": {
+            "bytes": 2974438,
+            "sha256": "316ac294b19d7eac980d80a46a29129f957d9e58a79176b4b4b244204677e429"
+          }
+        },
+        "executable_sha256": "b3431b70646ba43a0f641f36fd58963fe18f01650d025d487b9041ce156980f2",
+        "manifest": "tmp/webgl-review-20260919/final-ddraw-mt/manifest.json",
+        "manifest_sha256": "2b54e8aa2312c993d881e73523af520e236c7a4a65fd1e61f5243d5d78e4939d"
+      },
+      {
+        "mode": "single-threaded-jit",
+        "probe": "index-boundaries",
+        "result": {
+          "suite": "index-boundaries",
+          "group": "indexboundaries",
+          "tests": 1275,
+          "todo": 0,
+          "failures": 0,
+          "skipped": 0,
+          "passed": true,
+          "reason": "ok",
+          "failure_records": [],
+          "browser_events": [],
+          "exit_status": 0
+        },
+        "build_identity": "bwgl-dea967233f06e505cc9b253fc6d6358efe8de06dfc5b1ae9773997fcf041eb88",
+        "runtime": {
+          "boxedwine-shell.js": {
+            "bytes": 99857,
+            "sha256": "a896bd23cc9e12bd593d59cd0b5f8df307cfa733b03b0da903cc816d26a05126"
+          },
+          "boxedwine.css": {
+            "bytes": 5080,
+            "sha256": "93ef8704312b18e4a081961efe2ebf86e9df6c243bb66832292a30b032d1d716"
+          },
+          "boxedwine.html": {
+            "bytes": 2623,
+            "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+          },
+          "boxedwine.js": {
+            "bytes": 298511,
+            "sha256": "8a812da5264cd8f9c4baac6b366c7cd58e5e70b4165d615d5ca491b0fe86e30c"
+          },
+          "boxedwine.wasm": {
+            "bytes": 3939083,
+            "sha256": "7d1ffc0db1832e60cf76d8e33ba9e1d79cf5f91af80b439fc403b28dc71f8877"
+          }
+        },
+        "executable_sha256": "9e36ac3326d270a1836c210ab132c6bf1048d60cedcefb69e1b5e009fac25c26",
+        "manifest": "tmp/webgl-review-20260919/final-indices-st-jit/manifest.json",
+        "manifest_sha256": "2b64df07ebdc47d2eed103741563dc847898a78b4794758be0b7852dac0b17b1"
+      },
+      {
+        "mode": "single-threaded-jit",
+        "probe": "ddraw-rgb10-masks",
+        "result": {
+          "suite": "ddraw-rgb10-masks",
+          "group": "ddrawrgb10",
+          "tests": 514,
+          "todo": 0,
+          "failures": 0,
+          "skipped": 0,
+          "passed": true,
+          "reason": "ok",
+          "failure_records": [],
+          "browser_events": [],
+          "exit_status": 0
+        },
+        "build_identity": "bwgl-dea967233f06e505cc9b253fc6d6358efe8de06dfc5b1ae9773997fcf041eb88",
+        "runtime": {
+          "boxedwine-shell.js": {
+            "bytes": 99857,
+            "sha256": "a896bd23cc9e12bd593d59cd0b5f8df307cfa733b03b0da903cc816d26a05126"
+          },
+          "boxedwine.css": {
+            "bytes": 5080,
+            "sha256": "93ef8704312b18e4a081961efe2ebf86e9df6c243bb66832292a30b032d1d716"
+          },
+          "boxedwine.html": {
+            "bytes": 2623,
+            "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+          },
+          "boxedwine.js": {
+            "bytes": 298511,
+            "sha256": "8a812da5264cd8f9c4baac6b366c7cd58e5e70b4165d615d5ca491b0fe86e30c"
+          },
+          "boxedwine.wasm": {
+            "bytes": 3939083,
+            "sha256": "7d1ffc0db1832e60cf76d8e33ba9e1d79cf5f91af80b439fc403b28dc71f8877"
+          }
+        },
+        "executable_sha256": "b3431b70646ba43a0f641f36fd58963fe18f01650d025d487b9041ce156980f2",
+        "manifest": "tmp/webgl-review-20260919/final-ddraw-st-jit/manifest.json",
+        "manifest_sha256": "9973f3401b855eb5542b26e3823aad9f2408e733a8dbe11c42670da322034a06"
+      },
+      {
+        "mode": "multi-threaded-jit",
+        "probe": "index-boundaries",
+        "result": {
+          "suite": "index-boundaries",
+          "group": "indexboundaries",
+          "tests": 1275,
+          "todo": 0,
+          "failures": 0,
+          "skipped": 0,
+          "passed": true,
+          "reason": "ok",
+          "failure_records": [],
+          "browser_events": [],
+          "exit_status": 0
+        },
+        "build_identity": "bwgl-5d9331c12a5444c9fca47d4efa38522fe24aa5745f870a974abcebe3805c75eb",
+        "runtime": {
+          "boxedwine-shell.js": {
+            "bytes": 99857,
+            "sha256": "a896bd23cc9e12bd593d59cd0b5f8df307cfa733b03b0da903cc816d26a05126"
+          },
+          "boxedwine.css": {
+            "bytes": 5080,
+            "sha256": "93ef8704312b18e4a081961efe2ebf86e9df6c243bb66832292a30b032d1d716"
+          },
+          "boxedwine.html": {
+            "bytes": 2623,
+            "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+          },
+          "boxedwine.js": {
+            "bytes": 390354,
+            "sha256": "8e6add28da78b6abecabcc2281f59681c447bda62eea13437e00a1d288ea4a32"
+          },
+          "boxedwine.wasm": {
+            "bytes": 4027420,
+            "sha256": "48020bdf3c0e0039e91e096300ab13721b3da8d40cb9b8abb9e91219bb327550"
+          }
+        },
+        "executable_sha256": "9e36ac3326d270a1836c210ab132c6bf1048d60cedcefb69e1b5e009fac25c26",
+        "manifest": "tmp/webgl-review-20260919/final-indices-mt-jit/manifest.json",
+        "manifest_sha256": "a81e936f0122b75222d318165bd52c80515ef9bda67c00dea6e881ba704553de"
+      },
+      {
+        "mode": "multi-threaded-jit",
+        "probe": "ddraw-rgb10-masks",
+        "result": {
+          "suite": "ddraw-rgb10-masks",
+          "group": "ddrawrgb10",
+          "tests": 514,
+          "todo": 0,
+          "failures": 0,
+          "skipped": 0,
+          "passed": true,
+          "reason": "ok",
+          "failure_records": [],
+          "browser_events": [],
+          "exit_status": 0
+        },
+        "build_identity": "bwgl-5d9331c12a5444c9fca47d4efa38522fe24aa5745f870a974abcebe3805c75eb",
+        "runtime": {
+          "boxedwine-shell.js": {
+            "bytes": 99857,
+            "sha256": "a896bd23cc9e12bd593d59cd0b5f8df307cfa733b03b0da903cc816d26a05126"
+          },
+          "boxedwine.css": {
+            "bytes": 5080,
+            "sha256": "93ef8704312b18e4a081961efe2ebf86e9df6c243bb66832292a30b032d1d716"
+          },
+          "boxedwine.html": {
+            "bytes": 2623,
+            "sha256": "8760628c83c799430885d181165c61e00311692ca33e10ac76d97aec96f3603d"
+          },
+          "boxedwine.js": {
+            "bytes": 390354,
+            "sha256": "8e6add28da78b6abecabcc2281f59681c447bda62eea13437e00a1d288ea4a32"
+          },
+          "boxedwine.wasm": {
+            "bytes": 4027420,
+            "sha256": "48020bdf3c0e0039e91e096300ab13721b3da8d40cb9b8abb9e91219bb327550"
+          }
+        },
+        "executable_sha256": "b3431b70646ba43a0f641f36fd58963fe18f01650d025d487b9041ce156980f2",
+        "manifest": "tmp/webgl-review-20260919/final-ddraw-mt-jit/manifest.json",
+        "manifest_sha256": "ddab8631b266dd86b0684db41f1dd96988a6dcacb0473aaa2b9f3333f1403e88"
+      }
+    ],
+    "before_fix_controls": [
+      {
+        "probe": "index-boundaries",
+        "mode": "single-threaded-jit",
+        "tests": 1275,
+        "failures": 30,
+        "skipped": 0,
+        "executable_sha256": "9e36ac3326d270a1836c210ab132c6bf1048d60cedcefb69e1b5e009fac25c26",
+        "manifest": "tmp/webgl-review-20260919/final-before-indices/manifest.json",
+        "manifest_sha256": "c32e2f9d05da87c0a78029d53f549ef7835afb86cb0f901a714d0d706f11a645"
+      },
+      {
+        "probe": "ddraw-rgb10-masks",
+        "mode": "single-threaded-jit",
+        "tests": 6,
+        "failures": 3,
+        "skipped": 0,
+        "executable_sha256": "b3431b70646ba43a0f641f36fd58963fe18f01650d025d487b9041ce156980f2",
+        "manifest": "tmp/webgl-review-20260919/before-ddraw/manifest.json",
+        "manifest_sha256": "3f572e3517f1f5a6d5f3f8bc01097ed89688c0b4bbf6e1d7d47caf5819b1bafd"
+      }
+    ]
+  },
+  "direct_mapper_validation": {
+    "checks": 14,
+    "before_failures": 6,
+    "after_failures": 0,
+    "builder": "tools/wineTests/buildDDrawRGB10MapperProbe.py",
+    "source": "tools/wineTests/tests/ddraw_rgb10_mapper_probe.c",
+    "description": "Compiled the actual functions and Wine format enum from each selected source tree; ran natively without a graphics device."
+  },
+  "policy_validation": {
+    "passed": true,
+    "python_tests": 24,
+    "suites": [
+      "test_webgl_test*.py",
+      "test_unified_patch_inventory.py"
+    ],
+    "production_patches": 54,
+    "wine_test_files": 10,
+    "skip_calls": 31,
+    "todo_calls": 39
+  },
+  "limitations": [
+    "Full Wine graphics matrix not rerun.",
+    "Native Windows graphics reference could not create a HAL device (D3DERR_DEVICELOST); no native rendering pass is claimed.",
+    "Local browser runs used the existing deployment builds; their exact identities are recorded per run."
+  ],
+  "publication": {
+    "verified_at": "2026-09-19T17:49:30.555086+00:00",
+    "source_url": "http://boxedwine.org/v2/11/TinyCore15Wine11.0.zip",
+    "last_modified": "Sat, 19 Sep 2026 17:48:07 GMT",
+    "archive": {
+      "filename": "TinyCore15Wine11.0.zip",
+      "size": 167152655,
+      "sha256": "13993bf74c3421304ee50e247ff628ca47d75ae3118e10967a388e8a664aabee"
+    },
+    "matches_tested_candidate": true,
+    "configuration": "tools/buildWine/webgl_filesystems_v11.json",
+    "configuration_id": "wine11-webgl-filesystems-v11-v41-review-fixes-20260919",
+    "demo_root_validation": "passed",
+    "validation_checks": [
+      "patch series",
+      "archive size and SHA-256",
+      "ZIP CRC",
+      "PE32 DLLs and imports",
+      "GL libraries and links",
+      "loader cache",
+      "renderer registry settings"
+    ],
+    "download_record": "tmp/webgl-review-20260919/uploaded/download-verification.json",
+    "validation_record": "tmp/webgl-review-20260919/uploaded/demo-root-validation.json"
+  }
+}

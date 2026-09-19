@@ -1,0 +1,102 @@
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -4653,11 +4653,6 @@
+     return idx_size == 2 ? ((const WORD *)indices)[idx] : ((const DWORD *)indices)[idx];
+ }
+ 
+-static bool wined3d_context_gl_is_primitive_restart_index(DWORD idx, unsigned int idx_size)
+-{
+-    return (idx_size == 2 && idx == 0xffff) || (idx_size == 4 && idx == 0xffffffff);
+-}
+-
+ static DWORD *wined3d_context_gl_build_webgl_flat_shading_indices(struct wined3d_context_gl *context_gl,
+         const struct wined3d_state *state, const void *indices, unsigned int idx_size,
+         int base_vertex_idx, unsigned int start_idx, unsigned int count, unsigned int *converted_count)
+@@ -4667,7 +4662,7 @@
+     DWORD *converted;
+     bool indexed = !!idx_size;
+ 
+-    if (!state->extra_ps_args.flat_shading || base_vertex_idx < 0)
++    if (!state->extra_ps_args.flat_shading)
+         return NULL;
+ 
+     switch (state->primitive_type)
+@@ -4747,9 +4742,9 @@
+             c = wined3d_context_gl_read_index(indices, idx_size, i + 2);
+         }
+ 
+-        if (indexed && (wined3d_context_gl_is_primitive_restart_index(a, idx_size)
+-                || wined3d_context_gl_is_primitive_restart_index(b, idx_size)
+-                || wined3d_context_gl_is_primitive_restart_index(c, idx_size)))
++        /* A 16-bit 0xffff is a valid D3D vertex index. The converted
++         * 32-bit indices can represent it without triggering WebGL restart. */
++        if (indexed && idx_size == 4 && (a == 0xffffffff || b == 0xffffffff || c == 0xffffffff))
+         {
+             free(converted);
+             return NULL;
+@@ -4843,23 +4838,25 @@
+         checkGLcall("unbind WebGL flat-shading element array buffer");
+     }
+ 
+-    if (wined3d_settings.webgl && idx_size == 2 && state->index_buffer
+-            && (state->primitive_type == WINED3D_PT_LINESTRIP
+-            || state->primitive_type == WINED3D_PT_TRIANGLESTRIP
+-            || state->primitive_type == WINED3D_PT_TRIANGLEFAN))
+-    {
+-        const WORD *src_indices = wined3d_buffer_load_sysmem(state->index_buffer, &context_gl->c);
++    /* WebGL enables fixed-index primitive restart for every indexed
++     * topology. Also bake base vertices that cannot be applied to the
++     * attribute pointers into the indices. */
++    if (wined3d_settings.webgl && idx_size && !converted_indices && state->index_buffer
++            && (idx_size == 2 || base_vertex_idx != state->load_base_vertex_index))
++    {
++        int base_offset = base_vertex_idx - state->load_base_vertex_index;
++        const BYTE *src_indices = wined3d_buffer_load_sysmem(state->index_buffer, &context_gl->c);
+ 
+         if (src_indices)
+         {
+-            src_indices = (const WORD *)((const BYTE *)src_indices + state->index_offset) + start_idx;
+-            for (i = 0; i < count; ++i)
++            src_indices += state->index_offset + idx_size * start_idx;
++            for (i = 0; !base_offset && i < count; ++i)
+             {
+-                if (src_indices[i] == 0xffff)
++                if (wined3d_context_gl_read_index(src_indices, idx_size, i) == 0xffff)
+                     break;
+             }
+ 
+-            if (i < count)
++            if (base_offset || i < count)
+             {
+                 if (!(converted_indices = malloc(count * sizeof(*converted_indices))))
+                 {
+@@ -4868,10 +4865,12 @@
+                 else
+                 {
+                     for (i = 0; i < count; ++i)
+-                        converted_indices[i] = src_indices[i];
++                        converted_indices[i] = wined3d_context_gl_read_index(src_indices, idx_size, i) + base_offset;
+ 
+                     indices = converted_indices;
++                    idx_size = sizeof(*converted_indices);
+                     idx_type = GL_UNSIGNED_INT;
++                    base_vertex_idx = 0;
+                     GL_EXTCALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+                     checkGLcall("unbind converted element array buffer");
+                 }
+--- a/dlls/wined3d/cs.c
++++ b/dlls/wined3d/cs.c
+@@ -1122,6 +1122,13 @@
+     else
+         load_base_vertex_idx = 0;
+ 
++    /* WebGL client-array uploads need a valid pointer for the entire
++     * indexed span. A negative base can point before the allocation (e.g.
++     * DrawIndexedPrimitiveUP with a high minimum vertex index). Leave the
++     * pointers at the buffer start and bake this base into the draw indices. */
++    if (wined3d_settings.webgl && load_base_vertex_idx < 0)
++        load_base_vertex_idx = 0;
++
+     if (state->base_vertex_index != base_vertex_idx)
+     {
+         state->base_vertex_index = base_vertex_idx;

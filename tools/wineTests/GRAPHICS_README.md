@@ -15,10 +15,17 @@ and [BUILD_TESTS.md](BUILD_TESTS.md). Match the archive and filesystem to the
 baseline hashes; a matching filename is insufficient.
 Use ST JIT and MT JIT for focused development runs.
 
-The [v40 upload](../buildWine/webgl_filesystems_v11.json) adds three performance
-patches and retains the same Wine test policy. Its exact DLLs passed 5,132
-targeted depth/stencil checks; the full v39 matrix above has not been rerun
-against v40. See the [packaging record](graphics-performance-package-20260915.json).
+The [September 15 v40 upload](graphics-performance-package-20260915.json) added
+three performance patches and retained the same Wine test policy. Its exact
+DLLs passed 5,132 targeted depth/stencil checks; the full v39 matrix above has
+not been rerun against v40.
+
+The [current v41 upload](../buildWine/webgl_filesystems_v11.json) adds the
+indexed-draw and DirectDraw RGB10 corrections from the branch review. The
+[validation record](graphics-review-fixes-20260919.json) identifies its
+7,156 passing browser checks across all four runtime modes, before/after
+controls, and verification that the hosted ZIP matches the tested candidate.
+The full v39 graphics matrix has not been rerun against v41.
 
 ## Run a Wine graphics group
 
@@ -90,6 +97,39 @@ input configuration are documented in the existing
 [Jenkins instructions](../jenkins/instructions.md#wine-graphics-ci).
 
 ## Focused probes and game checks
+
+The v41 regressions use `--probe index-boundaries` and
+`--probe ddraw-rgb10-masks`. Compile their sources with the MinGW commands in
+[`d3d9_index_boundaries_probe.c`](tests/d3d9_index_boundaries_probe.c) and
+[`ddraw_rgb10_masks_probe.c`](tests/ddraw_rgb10_masks_probe.c), then pass the
+resulting PE32 executables, candidate filesystem and runtime explicitly:
+
+```bash
+python3 tools/wineTests/runGraphicsProbe.py --probe index-boundaries \
+  --executable /path/to/D3D9IndexBoundariesProbe.exe \
+  --filesystem /path/to/candidate.zip \
+  --build-dir project/emscripten/Deploy/Web/SingleThreadedJit \
+  --mode single-threaded-jit --headless --output /path/to/new-run
+```
+
+The index probe checks 76 draws: 16/32-bit indices, nonzero starts, positive
+and negative bases, user-pointer draws with a high minimum index, index 65535,
+flat/smooth shading, triangle lists/strips/fans and line lists/strips. The
+DirectDraw probe checks surface creation, reported masks and exact packed
+fills in system and video memory. Neither probe skips unsupported cases.
+
+DirectDraw texture enumeration does not advertise RGB10. Check its internal
+forward mapping separately with the actual functions from the selected Wine
+tree, then run the resulting executable on Windows (no graphics device needed):
+
+```bash
+python3 tools/wineTests/buildDDrawRGB10MapperProbe.py \
+  --wine-source /path/to/patched-wine --output /path/to/new-mapper-build
+```
+
+The mapper probe checks each mask independently, the reverse mapping, rejection
+of the old incorrect layout and an unchanged 8-bit format. A round trip alone
+would not detect two mutually consistent but incorrect mappings.
 
 - `runGraphicsProbe.py` runs the versioned standalone probes with explicit
   executable, filesystem, build directory, mode and output. `--repeat` retains

@@ -6,32 +6,42 @@ The current supported host environment is Debian or WSL running Debian/Ubuntu-st
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 
-### Current performance build (v40)
+### Current review fixes (v41)
 
 [`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) selects the
-[v40 patch series](../wineTests/webgl-test-divergences-v40.json): the v39
-SSE build plus full-surface clear, color readback loop, and lazy CPU depth
-synchronization improvements. The PE32 DLL build retains
+[v41 patch series](../wineTests/webgl-test-divergences-v41.json). It preserves
+index 65535 for all indexed topologies and flat shading, handles negative base
+vertices safely, and corrects DirectDraw RGB10 channel masks on top of the v40
+performance build. The PE32 DLL build retains
 `-msse2 -march=pentium4 -mfpmath=sse`, matching the CPU and floating-point
 flags in `wine_builds.json`, along with its existing `-O3` optimization and
 MinGW/Win32 configuration.
 
-The upload uses the exact clean DLLs tested in the
-[MechWarrior 3 investigation](../../docs/mechwarrior3-chrome-performance.md).
-They passed 2,118 depth and 3,014 stencil checks with zero failures or skips,
-plus scheduler wake/idle checks. The
-[packaging record](../wineTests/graphics-performance-package-20260915.json)
-distinguishes that targeted qualification from the full v39 matrix below.
-The full graphics matrix has not been rerun for v40.
+The September 19 upload matches the tested candidate byte for byte. Its
+rebuilt `ddraw.dll` and `wined3d.dll` passed 7,156 focused browser checks across
+all four runtime modes with zero failures or skips, plus 14 direct format
+mapping checks. See the
+[validation and upload record](../wineTests/graphics-review-fixes-20260919.json).
+The full Wine graphics matrix has not been rerun for v41.
 
 Build the current DLLs from a clean Wine checkout with:
 
 ```bash
 python3 tools/buildWine/webgl_filesystem.py build \
   --config tools/buildWine/webgl_filesystems_v11.json \
-  --work-dir /tmp/boxedwine-webgl-v40 \
+  --work-dir /tmp/boxedwine-webgl-v41 \
   --wine-repository /path/to/wine --jobs 8
 ```
+
+### Previous performance build (v40)
+
+The [v40 series](../wineTests/webgl-test-divergences-v40.json) added full-surface
+clear, color readback loop, and lazy CPU depth synchronization improvements.
+Its DLLs passed 2,118 depth and 3,014 stencil checks with zero failures or skips,
+plus scheduler wake/idle checks in the
+[MechWarrior 3 investigation](../../docs/mechwarrior3-chrome-performance.md).
+The [September 15 packaging record](../wineTests/graphics-performance-package-20260915.json)
+retains that earlier upload's identity and targeted qualification.
 
 ### Previous SSE qualification (v39)
 
@@ -79,10 +89,10 @@ and its GL shims and loader cache are unchanged.
 
 ### v11 demo upload artifact
 
-[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) pins the September 15
-`TinyCore15Wine11.0.zip` upload artifact. It combines the latest hosted
-filesystem downloaded September 15 with the tested performance `ddraw.dll`
-and `wined3d.dll`. All 8,695 other archive entries and their metadata are
+[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) pins the September 19
+`TinyCore15Wine11.0.zip` upload artifact. It combines the September 15 v40
+filesystem with the tested v41 `ddraw.dll` and `wined3d.dll`.
+All 8,695 other archive entries and their metadata are
 preserved, including the other six SSE WebGL DLLs. Every entry's contents
 match the clean root used for the targeted checks above. The archive passes
 CRC, PE32/import, GL library, loader cache, registry, and exact profile checks.
@@ -91,10 +101,10 @@ use this profile by default; see the [demo site instructions](../jenkins/instruc
 for selecting a candidate filesystem. GDI is a per-demo launch setting;
 a separate GDI filesystem is not required.
 
-Upload the exact matching archive to
+The archive downloaded from
 [`v2/11/TinyCore15Wine11.0.zip`](http://boxedwine.org/v2/11/TinyCore15Wine11.0.zip)
-before running jobs that download it. An earlier archive at that URL will fail
-the profile's size or SHA-256 check.
+was verified against the tested candidate on September 19. An earlier cached
+archive will fail the profile's size or SHA-256 check.
 
 Validate the exact upload artifact from WSL with:
 

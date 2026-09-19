@@ -1,0 +1,32 @@
+--- a/dlls/ddraw/utils.c
++++ b/dlls/ddraw/utils.c
+@@ -91,10 +91,10 @@
+             DDPixelFormat->dwFlags = DDPF_RGB | DDPF_ALPHAPIXELS;
+             DDPixelFormat->dwFourCC = 0;
+             DDPixelFormat->dwRGBBitCount = 32;
+-            DDPixelFormat->dwRBitMask = 0xc0000000;
+-            DDPixelFormat->dwGBitMask = 0x3ff00000;
+-            DDPixelFormat->dwBBitMask = 0x000ffc00;
+-            DDPixelFormat->dwRGBAlphaBitMask = 0x000003ff;
++            DDPixelFormat->dwRBitMask = 0x3ff00000;
++            DDPixelFormat->dwGBitMask = 0x000ffc00;
++            DDPixelFormat->dwBBitMask = 0x000003ff;
++            DDPixelFormat->dwRGBAlphaBitMask = 0xc0000000;
+             break;
+ 
+         case WINED3DFMT_B5G6R5_UNORM:
+@@ -441,10 +441,10 @@
+                         return WINED3DFMT_R8G8B8X8_UNORM;
+                 }
+                 if( (DDPixelFormat->dwFlags & DDPF_ALPHAPIXELS) &&
+-                    (DDPixelFormat->dwRBitMask == 0xC0000000) &&
+-                    (DDPixelFormat->dwGBitMask == 0x3FF00000) &&
+-                    (DDPixelFormat->dwBBitMask == 0x000FFC00) &&
+-                    (DDPixelFormat->dwRGBAlphaBitMask == 0x000003FF) )
++                    (DDPixelFormat->dwRBitMask == 0x3FF00000) &&
++                    (DDPixelFormat->dwGBitMask == 0x000FFC00) &&
++                    (DDPixelFormat->dwBBitMask == 0x000003FF) &&
++                    (DDPixelFormat->dwRGBAlphaBitMask == 0xC0000000) )
+                 {
+                     return WINED3DFMT_B10G10R10A2_UNORM;
+                 }
