@@ -55,7 +55,7 @@ uint32_t softfloat_approxRecip32_1( uint32_t a )
     r0 = softfloat_approxRecip_1k0s[index]
              - ((softfloat_approxRecip_1k1s[index] * (uint_fast32_t) eps)>>20);
     sigma0 = ~(uint_fast32_t) ((r0 * (uint_fast64_t) a)>>7);
-    r = ((uint_fast32_t) r0<<16) + ((r0 * (uint_fast64_t) sigma0)>>24);
+    r = (uint_fast32_t) (((uint_fast32_t) r0<<16) + ((r0 * (uint_fast64_t) sigma0)>>24));
     sqrSigma0 = ((uint_fast64_t) sigma0 * sigma0)>>32;
     r += ((uint32_t) r * (uint_fast64_t) sqrSigma0)>>48;
     return r;

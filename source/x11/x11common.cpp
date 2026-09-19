@@ -2296,7 +2296,6 @@ static void x11_SetWMNormalHints(CPU* cpu) {
 // Status XGetWMNormalHints(Display* display, Window w, XSizeHints* hints_return, long* supplied_return)
 static void x11_GetWMNormalHints(CPU* cpu) {
     KMemory* memory = cpu->memory;
-    KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
     XWindowPtr w = server->getWindow(ARG2);
 

@@ -43,18 +43,21 @@ enum class TSOMode {
 
 static TSOMode tsoMode = TSOMode::Automatic;
 static std::once_flag s_tsoModeInitFlag;
+#ifdef __linux__
 static thread_local bool s_hardwareTsoChecked = false;
+#endif
 
 #define NUMBER_OF_REGS 31
 #define NUMBER_OF_VREGS 32
 #define NUMBER_OF_TMPS 9
 #define NUMBER_OF_VREG_TMPS 9
 
+/*
 static bool isVolitile[] = { true,  true,  true,  true,  true,  true,  true,  true,
                              true,  true,  true,  true,  true,  true,  true,  true,
                              true,  true,  true,  false, false, false, false, false,
                              false, false, false, false, false, false, false, false };
-
+*/
 static bool isTmp[] = { false, false, false, false, false, false, false, false,
                         false, false, false, false, true, true, true, false,
                         false,  true,  false,  false,  false,  true, true, true,

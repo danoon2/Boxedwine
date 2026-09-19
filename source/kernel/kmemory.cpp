@@ -1644,8 +1644,6 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     U32 blockLen = blockOp->blockLen;
     U32 blockOpCount = blockOp->blockOpCount;
     DecodedOp* nextOp = blockOp;
-    KThread* thread = KThread::currentThread();
-    DecodedOp* currentOp = thread->memory->getDecodedOp(thread->cpu->getEipAddress());
     void* pMem = (void*)blockOp->pfnJitCode;
     U32 jitLen = 0;
 
@@ -1682,8 +1680,6 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
             jitCode = nextOp->pfnJitCode;
             nextOp->setJitCode(nullptr);
         }
-#else
-        void* jitCode = nextOp->pfnJitCode;
 #endif
         nextOp->blockStart = nullptr;
         nextOp->blockOpCount = 0;
@@ -1708,6 +1704,7 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         data->codeMemory.free(pMem);
     }
 #ifdef _DEBUG1
+    KThread* thread = KThread::currentThread();
     klog_fmt("removed active code block eip = %x - %x host %llx - %llx", thread->cpu->getEipAddress(), thread->cpu->getEipAddress() + blockLen, (U64)pMem, (U64)pMem + jitLen);
 #endif
 }

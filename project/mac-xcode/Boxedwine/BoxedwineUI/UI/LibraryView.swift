@@ -305,11 +305,11 @@ struct LibraryView: View {
         } message: { _ in
             Text("Your installed files, settings, and saves will be kept. You can restore the app from Removed Apps. This does not free disk space.")
         }
-        .onChange(of: store.removalCandidate?.id) { _ in store.presentNextProgramChoice() }
-        .onChange(of: store.showsRemovedApps) { visible in
+        .onChange(of: store.removalCandidate?.id) { store.presentNextProgramChoice() }
+        .onChange(of: store.showsRemovedApps) { _, visible in
             if !visible && store.showingRemoved { store.showLibrary() }
         }
-        .onChange(of: store.errorMessage) { _ in store.presentNextProgramChoice() }
+        .onChange(of: store.errorMessage) { store.presentNextProgramChoice() }
         .alert("Boxedwine needs your attention", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
             Button("OK") { store.errorMessage = nil }
         } message: { Text(store.errorMessage ?? "") }
@@ -986,7 +986,7 @@ struct LaunchLogView: View {
                 Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
             }
         }.padding(24).frame(width: 720, height: 500)
-            .onAppear { refresh() }.onChange(of: selection) { _ in refresh() }
+            .onAppear { refresh() }.onChange(of: selection) { refresh() }
             .alert("The log could not be saved", isPresented: Binding(get: { saveProblem != nil }, set: { if !$0 { saveProblem = nil } })) {
                 Button("OK") { saveProblem = nil }
             } message: { Text(saveProblem ?? "") }

@@ -90,9 +90,13 @@ bool macOpenGLSetWindow(void* context, SDL_Window* window) {
             return false;
         }
         NSOpenGLContext* nativeContext = getContext(context);
+        // SDL owns this NSView; attaching the context directly preserves its window/input handling.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if ([nativeContext view] != view) {
             [nativeContext setView:view];
         }
+#pragma clang diagnostic pop
         [nativeContext update];
         return true;
     }

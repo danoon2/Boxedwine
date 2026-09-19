@@ -601,8 +601,6 @@ static const char szKeyProdNT[] = "System\\CurrentControlSet\\Control\\ProductOp
 static const char szKeyWindNT[] = "System\\CurrentControlSet\\Control\\Windows";
 static const char szKeyEnvNT[] = "System\\CurrentControlSet\\Control\\Session Manager\\Environment";
 static const char szKeyEnvControlSet001[] = "System\\ControlSet001\\Control\\Session Manager\\Environment";
-static const char szKeyNdisService[] = "System\\ControlSet001\\Services\\NDIS";
-static const char szKeyNsiProxyService[] = "System\\ControlSet001\\Services\\nsiproxy";
 
 static BString normalizeWindowsPathForCompare(BString path) {
     path = path.trim().replace('/', '\\').toLowerCase();
@@ -629,18 +627,6 @@ static BString makeRegistryExpandString(BString value) {
     result += escapeRegistryString(value);
     result += "\"";
     return result;
-}
-
-static bool registryExpandStringEquals(BString value, BString expected) {
-    return normalizeWindowsPathForCompare(unescapeRegistryExpandString(value)) == normalizeWindowsPathForCompare(expected);
-}
-
-static bool registryDwordEquals(BString value, U32 expected) {
-    value = value.trim();
-    if (value.startsWith("dword:", true)) {
-        value = value.substr(6);
-    }
-    return (U32)strtoul(value.c_str(), nullptr, 16) == expected;
 }
 
 static bool pathListContains(BString pathList, BString path) {

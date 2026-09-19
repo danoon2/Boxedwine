@@ -254,7 +254,7 @@ void updateWaitingList() {
         }
 #ifndef BOXEDWINE_MSVC
         if (s->nativeSocket>=FD_SETSIZE) {
-            kpanic_fmt("updateWaitingList %s socket is too large to select on", s->nativeSocket);
+            kpanic_fmt("updateWaitingList %d socket is too large to select on", s->nativeSocket);
         }
 #endif
         if (s->readingCond->parentsCount()) {
@@ -1285,7 +1285,7 @@ U32 KNativeSocketObject::shutdown(KThread* thread, const KFileDescriptorPtr& fd,
 U32 KNativeSocketObject::setsockopt(KThread* thread, const KFileDescriptorPtr& fd, U32 level, U32 name, U32 value, U32 len) {
     KMemory* memory = thread->memory;
 
-    LOG_SOCK("%x native socket: %x setsockopt level=%x name=%x value=%x", thread->id, nativeSocket, memory->readd(value));
+    LOG_SOCK("%x native socket: %x setsockopt level=%x name=%x value=%x", thread->id, nativeSocket, level, name, memory->readd(value));
     if (this->nativeSocket < 0) {
         if (level == K_SOL_SOCKET) {
             if (name == K_SO_RCVBUF) {

@@ -397,7 +397,7 @@ U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo
             case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
                 if (sizeof(VkDescriptorImageInfo) > pCreateInfo->s.pDescriptorUpdateEntries[i].stride) {
                     // because of padding, this can be 20 or 24
-                    kpanic_fmt("calculateUpdateDescriptorSetWithTemplateDataSize sizeof(VkDescriptorBufferInfo) %d > stride", sizeof(VkDescriptorImageInfo), pCreateInfo->s.pDescriptorUpdateEntries[i].stride);
+                    kpanic_fmt("calculateUpdateDescriptorSetWithTemplateDataSize sizeof(VkDescriptorImageInfo) %zu > stride %zu", sizeof(VkDescriptorImageInfo), pCreateInfo->s.pDescriptorUpdateEntries[i].stride);
                 }
                 break;
 
@@ -406,7 +406,7 @@ U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
                 if (sizeof(VkDescriptorBufferInfo) != 24) {
-                    kpanic_fmt("calculateUpdateDescriptorSetWithTemplateDataSize unexpected sizeof(VkDescriptorBufferInfo) %d", sizeof(VkDescriptorBufferInfo));
+                    kpanic_fmt("calculateUpdateDescriptorSetWithTemplateDataSize unexpected sizeof(VkDescriptorBufferInfo) %zu", sizeof(VkDescriptorBufferInfo));
                 }
                 break;
 

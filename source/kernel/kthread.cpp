@@ -770,7 +770,7 @@ void KThread::signalTrap(U32 code) {
     KSigAction* action = &this->process->sigActions[K_SIGTRAP];
     if (action->handlerAndSigAction == K_SIG_DFL) {
         DecodedOp* op = cpu->getNextOp();
-        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%hX)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
     }
     memset(this->process->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(this->process->sigActions[K_SIGTRAP].sigInfo));
     this->process->sigActions[K_SIGTRAP].sigInfo[0] = K_SIGTRAP;
@@ -796,7 +796,7 @@ void KThread::signalDebugTrap(U32 code, U32 dr6) {
     KSigAction* action = &this->process->sigActions[K_SIGTRAP];
     if (action->handlerAndSigAction == K_SIG_DFL) {
         DecodedOp* op = cpu->getNextOp();
-        kpanic_fmt("%s tid=%04X eip=%08X Debug trap but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
+        kpanic_fmt("%s tid=%04X eip=%08X Debug trap but no signal handler set up for it: %s (%hX)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
     }
     memset(this->process->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(this->process->sigActions[K_SIGTRAP].sigInfo));
     this->process->sigActions[K_SIGTRAP].sigInfo[0] = K_SIGTRAP;
@@ -987,7 +987,7 @@ void KThread::signalIllegalInstruction(int code) {
     KSigAction* action = &this->process->sigActions[K_SIGILL];
     if (action->handlerAndSigAction == K_SIG_DFL) {
         DecodedOp* op = cpu->getNextOp();
-        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%hX)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
     }
     memset(this->process->sigActions[K_SIGILL].sigInfo, 0, sizeof(this->process->sigActions[K_SIGILL].sigInfo));
     this->process->sigActions[K_SIGILL].sigInfo[0] = K_SIGILL;

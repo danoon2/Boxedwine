@@ -127,7 +127,7 @@ enum DemoArchive {
             try control.checkCancellation()
             var info = BWZipEntry(), name = [CChar](repeating: 0, count: 4097)
             guard bwzip_info(zip, &info, &name, name.count) == 0,
-                  let raw = String(validatingCString: name), !raw.isEmpty,
+                  let raw = String(bytes: name.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, encoding: .utf8), !raw.isEmpty,
                   info.disk == 0, info.flags & 1 == 0, [0, 8].contains(info.method) else { throw DemoError.archive("An entry is damaged, encrypted or uses unsupported compression.") }
             let mode = (info.attributes >> 16) & 0xF000
             let folder = raw.hasSuffix("/") || mode == 0x4000
@@ -322,7 +322,7 @@ enum DemoRegistry {
         for i in 0..<count {
             try control.checkCancellation()
             var info = BWZipEntry(), name = [CChar](repeating: 0, count: 4097)
-            guard bwzip_info(zip, &info, &name, name.count) == 0, let path = String(validatingCString: name) else { throw RuntimePackageError.changed }
+            guard bwzip_info(zip, &info, &name, name.count) == 0, let path = String(bytes: name.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, encoding: .utf8) else { throw RuntimePackageError.changed }
             if wanted.contains(path) {
                 guard result[path] == nil, info.size > 0, info.size <= 8 * 1024 * 1024, bwzip_begin(zip) == 0 else { throw RuntimePackageError.changed }
                 var data = Data()

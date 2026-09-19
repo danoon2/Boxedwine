@@ -198,7 +198,7 @@ private:
 INLINE void safe_strcpy(char* dest, const char* src, size_t bufferSize) {
     size_t len = strlen(src);
     if (len+1>bufferSize) {
-        kpanic_fmt("safe_strcpy failed to copy %s, buffer is %d bytes", src, bufferSize);
+        kpanic_fmt("safe_strcpy failed to copy %s, buffer is %zu bytes", src, bufferSize);
     }
     strcpy(dest, src);
 }
@@ -206,7 +206,7 @@ INLINE void safe_strcpy(char* dest, const char* src, size_t bufferSize) {
 INLINE void safe_strcat(char* dest, const char* src, size_t bufferSize) {
     size_t len = strlen(src)+strlen(dest);
     if (len+1>bufferSize) {
-        kpanic_fmt("safe_strcat failed to copy %s, buffer is %d bytes", src, bufferSize);
+        kpanic_fmt("safe_strcat failed to copy %s, buffer is %zu bytes", src, bufferSize);
     }
     strcat(dest, src);
 }

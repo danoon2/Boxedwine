@@ -116,7 +116,7 @@ struct ProgramChooserView: View {
             } catch { loadError = "The program list could not be read. " + error.localizedDescription }
             loading = false
         }
-        .onChange(of: selectedPath) { path in
+        .onChange(of: selectedPath) { _, path in
             // Replace an installer filename with the chosen app name, while keeping
             // names the user already gave to portable apps or configured entries.
             if !runOnce, app.executable == nil, app.installer != nil,
@@ -127,7 +127,7 @@ struct ProgramChooserView: View {
                 suggestedName = candidate.name
             }
         }
-        .onChange(of: query) { value in
+        .onChange(of: query) { _, value in
             if !value.isEmpty && programs.isEmpty && !tools.isEmpty { showTools = true }
         }
     }

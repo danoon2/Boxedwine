@@ -32,8 +32,6 @@ constexpr U32 REG_GUARD = 0x6a000000;
 constexpr U32 MEM_BASE = 0x0300;
 constexpr U32 SETCC_RESULT = 0x0700;
 constexpr U32 MEM_GUARD = 0xcdcdcdcd;
-constexpr U32 CF_MASK = CF;
-constexpr U32 ZF_MASK = ZF;
 
 enum RegIndex {
     R_AX = 0,
@@ -250,10 +248,6 @@ void writeRegsLocal(const U32* regs) {
     for (int i = 0; i < 8; ++i) {
         cpu->reg[i].u32 = regs[i];
     }
-}
-
-U32 valueForWidth(U32 value, int width) {
-    return value & widthMask(width);
 }
 
 U32 bitMaskFor(BitOp op, int width, U32 base, U32 bit) {

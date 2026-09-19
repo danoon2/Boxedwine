@@ -416,7 +416,7 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 
 	this->open = true;	
 	SDL_PauseAudioDevice(this->deviceId, 0);
-	klog_fmt("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)", this->want.freq, this->got.freq, this->want.format, this->got.format, this->want.channels, this->got.channels);
+	klog_fmt("openAudio: freq=%d(got %d) format=%hx(got %hx) channels=%hhu(got %hhu)", this->want.freq, this->got.freq, this->want.format, this->got.format, this->want.channels, this->got.channels);
 }
 
 void KDspAudioSdl::closeAudio() {

@@ -73,7 +73,8 @@ struct NoThrowCodeWriteTestContext {
     U32 value;
 };
 
-void writeNoThrowCodeForTest(void* context) noexcept {
+// Used by the Windows code-write protection test.
+[[maybe_unused]] void writeNoThrowCodeForTest(void* context) noexcept {
     NoThrowCodeWriteTestContext* writeContext =
         static_cast<NoThrowCodeWriteTestContext*>(context);
     memcpy(writeContext->address, &writeContext->value,

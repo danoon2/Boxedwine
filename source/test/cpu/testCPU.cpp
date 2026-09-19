@@ -1167,7 +1167,7 @@ void runDirectArithmeticFlagsCase(const DirectArithmeticOpInfo& op, DirectArithm
     U32 initialMemory = memoryDestination ? lhs : rhs;
     context.memory->writed(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC, initialMemory);
 
-    U32 producerLen = emitDirectArithmetic(op, shape, rhs);
+    [[maybe_unused]] U32 producerLen = emitDirectArithmetic(op, shape, rhs);
     testPushCode8(0x0f); // setcc bl
     testPushCode8(0x90 + condition);
     testPushCode8(0xc3);
@@ -1434,7 +1434,8 @@ constexpr U32 DIRECT_INC_DEC_CASES[] = {
     0x55555555,
 };
 
-bool directIncDecConditionUsesCF(U8 condition) {
+// Used by the x86 JIT metadata checks.
+[[maybe_unused]] bool directIncDecConditionUsesCF(U8 condition) {
     return condition == 0x2 || condition == 0x3 || condition == 0x6 || condition == 0x7;
 }
 
@@ -1531,7 +1532,7 @@ void runDirectIncDecInterveningCFReaderCase(DirectIncDecTestOp op, bool oldCF,
         testPushCode8(0xd6);
         break;
     }
-    U32 setOffset = observer == DirectIncDecCFObserver::PushF ? 5 : 4;
+    [[maybe_unused]] U32 setOffset = observer == DirectIncDecCFObserver::PushF ? 5 : 4;
     testPushCode8(0x0f);
     testPushCode8(0x94); // setz bl
     testPushCode8(0xc3);
@@ -1735,7 +1736,7 @@ void runDirectCarryFlagsCase(const DirectCarryOpInfo& op, DirectCarryTestShape s
     context.memory->writed(TEST_HEAP_ADDRESS + DIRECT_ARITHMETIC_MEM_SRC, rhs);
 
     testPushCode8(carry ? 0xf9 : 0xf8); // stc/clc
-    U32 producerLen = emitDirectCarry(op, shape, rhs);
+    [[maybe_unused]] U32 producerLen = emitDirectCarry(op, shape, rhs);
     testPushCode8(0x0f);
     testPushCode8(0x90 + condition); // setcc bl
     testPushCode8(0xc3);
