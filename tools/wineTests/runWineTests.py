@@ -1944,6 +1944,10 @@ def _print_results(results: list[TestResult], run_dir: Path) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    native_args = sys.argv[1:] if argv is None else argv
+    if native_args[:1] == ["graphics-native"]:
+        from wineGraphicsNative import main as native_main
+        return native_main(native_args[1:])
     try:
         arguments = parse_arguments(argv)
         repo_root = Path(__file__).resolve().parents[2]
