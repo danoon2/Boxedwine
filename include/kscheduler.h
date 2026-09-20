@@ -30,6 +30,9 @@ void removeTimer(KTimerCallback* timer);
 
 bool runSlice();
 void runThreadSlice(KThread* thread);
+#if defined(__TEST) && !defined(BOXEDWINE_MULTI_THREADED)
+void setSchedulerTestClock(U64 (*clock)());
+#endif
 #if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
 bool recoverRunSliceException();
 #endif

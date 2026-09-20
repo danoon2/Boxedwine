@@ -4191,7 +4191,10 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
         }
         chainedBlocks++;
         op = cpu->nextOp;
-        if (!wasmJitCanChainTo(cpu, op)) {
+        // Include deferred chain accounting as well as instructions charged by
+        // generated loops; the block-count cap alone can overrun a guest slice.
+        if ((S32)(cpu->blockInstructionCount + chainedInstructionCount) >= contextTimeRemaining ||
+                !wasmJitCanChainTo(cpu, op)) {
             break;
         }
     }

@@ -53,6 +53,60 @@ void testWasmJitColdStringStub() {
     }
 }
 
+#ifndef BOXEDWINE_MULTI_THREADED
+void testWasmJitStBoundedDispatch() {
+    extern S32 contextTimeRemaining;
+    const S32 savedBudget = contextTimeRemaining;
+    testNewInstruction(0);
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    constexpr U32 blockCount = 32;
+    constexpr U32 blockBytes = 8;
+    std::vector<DecodedOp*> blocks;
+    for (U32 i = 0; i < blockCount; ++i) {
+        testPushCode8(0x43); // inc ebx
+        testPushCode8(0xb8); testPushCode32((i + 1) * blockBytes); // mov eax,next
+        testPushCode8(0xff); testPushCode8(0xe0); // jmp eax: separate blocks
+    }
+    testPushCode8(0xcd); testPushCode8(0x97);
+    for (U32 i = 0; i < blockCount; ++i) {
+        U32 address = TEST_CODE_ADDRESS + i * blockBytes;
+        DecodedOp* op = cpu->getOp(address, 0);
+        startNewJIT(cpu, address, op);
+        if (!op->pfnJitCode || op->pfn != context.process->startJITOp) {
+            testFail("instruction budget test requires compiled block entries");
+        }
+        op->runCount = JIT_RUN_COUNT + 1;
+        blocks.push_back(op);
+    }
+    cpu->eip.u32 = 0;
+    cpu->reg[3].u32 = 0;
+    cpu->nextOp = blocks[0];
+    cpu->yield = false;
+    cpu->blockInstructionCount = 0;
+    contextTimeRemaining = 12;
+    cpu->run();
+    if (cpu->reg[3].u32 != 4 || cpu->blockInstructionCount != 12 || cpu->nextOp != blocks[4]) {
+        testFail("ST JIT must return at the instruction budget with the next block pending");
+    }
+    // A partially used slice must count the first block as well as chained ones.
+    cpu->blockInstructionCount = 9;
+    cpu->run();
+    if (cpu->reg[3].u32 != 5 || cpu->blockInstructionCount != 12 || cpu->nextOp != blocks[5]) {
+        testFail("ST JIT must respect instructions already consumed in the slice");
+    }
+    for (U32 i = 0; i < blockCount && cpu->nextOp->inst != TestEnd; ++i) {
+        cpu->blockInstructionCount = 0;
+        cpu->run();
+    }
+    if (cpu->reg[3].u32 != blockCount || cpu->nextOp->inst != TestEnd) {
+        testFail("budgeted dispatch must resume without skipping or repeating guest blocks");
+    }
+    contextTimeRemaining = savedBudget;
+    cpu->nextOp = nullptr;
+}
+#endif
+
 #ifdef BOXEDWINE_MULTI_THREADED
 void testWasmJitMtBoundedDispatch() {
     testNewInstruction(0);

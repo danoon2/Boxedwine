@@ -19,6 +19,11 @@
 #include "boxedwine.h"
 #include "../x11/x11.h"
 #include "knativeaudio.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#else
+#include <chrono>
+#endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
 static KList<KTimerCallback*> timers;
@@ -123,29 +128,40 @@ void terminateCurrentThread(KThread* thread) {
 	unscheduleThread(thread);
 }
 
-#ifdef __EMSCRIPTEN__
-// Single-threaded scheduler slice size (instructions/slice), self-tuned toward a
-// ~10ms slice by runSlice() (grow when a slice took <9.5ms, shrink when >11ms).
-// The master merge capped this at 10000, which throttled ST JIT/interp throughput
-// (5-50x smaller slices than the pre-merge fixed 100000). The ceiling is raised
-// back to 100000 so cheap slices reach pre-merge throughput, while the 2000 floor
-// still lets it throttle down under load for UI responsiveness. STEP is widened
-// (1000 -> 10000) to match the larger range so it ramps/throttles in a few steps.
+// Instruction batches bound JIT dispatch within each timed thread turn. Keep
+// their adaptation bounded on every host; elapsed time determines fairness.
 static const S32 DEFAULT_CONTEXT_TIME = 10000;
 static const S32 MIN_CONTEXT_TIME = 2000;
 static const S32 MAX_CONTEXT_TIME = 100000;
 static const S32 CONTEXT_TIME_STEP = 10000;
 S32 contextTime = DEFAULT_CONTEXT_TIME;
 S32 contextTimeRemaining = DEFAULT_CONTEXT_TIME;
-#else
-S32 contextTime = 100000;
-S32 contextTimeRemaining = 100000;
-#endif
 int count;
 extern struct Block emptyBlock;
 
+#ifdef __TEST
+static U64 (*schedulerTestClock)() = nullptr;
+
+void setSchedulerTestClock(U64 (*clock)()) {
+    schedulerTestClock = clock;
+}
+#endif
+
+static U64 schedulerMicroCounter() {
+#ifdef __TEST
+    if (schedulerTestClock) {
+        return schedulerTestClock();
+    }
+#endif
+    // Scheduling uses monotonic host time, independent of the guest's clock
+    // adjustment and changes to the system date/time.
 #ifdef __EMSCRIPTEN__
-static KThread* runSliceExceptionThread;
+    return (U64)(emscripten_get_now() * 1000.0);
+#else
+    return (U64)std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+#endif
+}
 
 static S32 decreaseContextTime(S32 value) {
     if (value <= MIN_CONTEXT_TIME + CONTEXT_TIME_STEP) {
@@ -160,6 +176,9 @@ static S32 increaseContextTime(S32 value) {
     }
     return value + CONTEXT_TIME_STEP;
 }
+
+#ifdef __EMSCRIPTEN__
+static KThread* runSliceExceptionThread;
 
 bool recoverRunSliceException() {
     if (!runSliceExceptionThread) {
@@ -182,7 +201,14 @@ void runThreadSlice(KThread* thread) {
     cpu->blockInstructionCount = 0;
     cpu->yield = false;
     cpu->nextOp = cpu->getNextOp(); // another thread that just ran could have modified this
-#ifdef __EMSCRIPTEN__
+    // Guest threads can execute very different numbers of instructions
+    // per millisecond. Share execution time rather than giving a fast thread
+    // only a small fraction of the time used by a slower busy-polling thread.
+    const U64 sliceEnd = schedulerMicroCounter() + 1000;
+    contextTimeRemaining = contextTime;
+#ifndef __EMSCRIPTEN__
+    try {
+#endif
     do {
         cpu->run();
 #ifdef __TEST
@@ -190,17 +216,14 @@ void runThreadSlice(KThread* thread) {
             break;
         }
 #endif
-    } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);
-#else
-    try {
-        do {
-            cpu->run();
-#ifdef __TEST
-            if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
-                break;
-            }
-#endif
-        } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);
+        if (cpu->yield || schedulerMicroCounter() >= sliceEnd) {
+            break;
+        }
+        if ((S32)cpu->blockInstructionCount >= contextTimeRemaining) {
+            contextTimeRemaining = cpu->blockInstructionCount + contextTime;
+        }
+    } while (true);
+#ifndef __EMSCRIPTEN__
     } catch (...) {
         cpu->nextOp = nullptr;
     }
@@ -239,8 +262,8 @@ bool runSlice() {
     }
 
     U64 elapsedTime = 0;
+    const U64 sliceStart = schedulerMicroCounter();
 
-    contextTimeRemaining = contextTime;
     while (!scheduledThreads.isEmpty() && elapsedTime<9000) {
         U64 threadStartTime = KSystem::getMicroCounter();
         KListNode<KThread*>* node = scheduledThreads.front();
@@ -263,7 +286,7 @@ bool runSlice() {
         U64 threadEndTime = KSystem::getMicroCounter();
         U64 diff = threadEndTime - threadStartTime;
 
-        elapsedTime+=diff;
+        elapsedTime = schedulerMicroCounter() - sliceStart;
 
         elapsedTimeMIPS+=diff;        
         elapsedInstructionsMIPS+=currentThread->cpu->blockInstructionCount;
@@ -271,9 +294,6 @@ bool runSlice() {
         currentThread->userTime+=diff-sysCallTime;
         currentThread->kernelTime+=sysCallTime;
 
-        if (currentThread->cpu->blockInstructionCount) {
-            contextTimeRemaining = (U32)(contextTime * (10000-elapsedTime) / 10000);
-        }
         // this is how we signal to delete the current thread, since we can't delete it in the syscall, maybe we should use smart_ptr for threads
         if (currentThread->terminating) {
             KProcessPtr process = currentThread->process;
@@ -288,18 +308,9 @@ bool runSlice() {
     }
     if (!scheduledThreads.isEmpty()) {
         if (elapsedTime>11000) {
-#ifdef __EMSCRIPTEN__
             contextTime = decreaseContextTime(contextTime);
-#else
-            if (contextTime>100000)
-                contextTime-=20000;
-#endif
         } else if (elapsedTime<9500) {
-#ifdef __EMSCRIPTEN__
             contextTime = increaseContextTime(contextTime);
-#else
-            contextTime+=20000;
-#endif
         }
     }
     //klog("ran slice in %dus %d", (U32)elapsedTime, contextTime);    

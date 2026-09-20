@@ -23,6 +23,7 @@ void testWasmJitMtRuntimeGrouping();
 void testWasmJitMtPendingLifecycle();
 void testWasmJitMtGroupedOomBlock();
 #else
+void testWasmJitStBoundedDispatch();
 void testWasmJitRuntimeGrouping();
 void testWasmJitPendingLifecycle();
 void testWasmJitTinyAnonymousPromotion();

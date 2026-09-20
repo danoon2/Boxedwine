@@ -13,6 +13,10 @@
 
 #include "ksignal.h"
 #include "testCPU.h"
+#ifndef BOXEDWINE_MULTI_THREADED
+#include "kscheduler.h"
+#include "../../emulation/cpu/normal/normalCPU.h"
+#endif
 #ifdef BOXEDWINE_JIT
 #include "../../emulation/cpu/jit/jitCodeGen.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
@@ -262,6 +266,96 @@ void testPushCode32(int value) {
     context.memory->clearPageWriteCounts(startPage);
     context.memory->clearPageWriteCounts((context.codeIp - 1) >> K_PAGE_SHIFT);
 }
+
+#ifndef BOXEDWINE_MULTI_THREADED
+void testSingleThreadSchedulerTimeSlice() {
+    extern S32 contextTime;
+    extern S32 contextTimeRemaining;
+    static U64 hostTime;
+    TestContext& context = testContext();
+    struct RestoreScheduler {
+        KThread* thread;
+        CPU* cpu;
+        S32 budget = contextTime;
+        S32 remaining = contextTimeRemaining;
+        ~RestoreScheduler() {
+            thread->cpu = cpu;
+            contextTime = budget;
+            contextTimeRemaining = remaining;
+            setSchedulerTestClock(nullptr);
+        }
+    } restore{context.thread, context.thread->cpu};
+
+    // Give dispatches a deterministic host cost but very different guest
+    // instruction counts. A fixed instruction quota would favor the slow CPU.
+    class TimedCPU : public NormalCPU {
+    public:
+        TimedCPU(KMemory* memory) : NormalCPU(memory) { op.inst = Nop; }
+        DecodedOp* getOp(U32, U32) override { return &op; }
+        void run() override {
+            ++dispatches;
+            blockInstructionCount += instructionsPerDispatch;
+            hostTime += 250;
+            yield = dispatches == yieldAfter || dispatches == 100;
+#ifndef __EMSCRIPTEN__
+            if (raiseFault) {
+                throw 1;
+            }
+#endif
+        }
+        DecodedOp op;
+        U32 instructionsPerDispatch = 1;
+        U32 dispatches = 0;
+        U32 yieldAfter = 0;
+        bool raiseFault = false;
+    } cpu(context.memory);
+    cpu.thread = context.thread;
+    context.thread->cpu = &cpu;
+    setSchedulerTestClock([]() -> U64 { return hostTime; });
+    contextTime = 10000;
+
+    for (U32 instructions : {1u, 100000u}) {
+        hostTime = 0;
+        cpu.dispatches = 0;
+        cpu.instructionsPerDispatch = instructions;
+        cpu.instructionCount = 100;
+        contextTimeRemaining = 1; // Each turn must start with a fresh budget.
+        runThreadSlice(context.thread);
+        if (cpu.dispatches != 4 || hostTime != 1000 ||
+            cpu.instructionCount != 100 + 4 * instructions) {
+            testFail("scheduler must allocate host time independently of guest instruction rate");
+        }
+        runThreadSlice(context.thread);
+        if (cpu.dispatches != 8 || hostTime != 2000 ||
+            cpu.instructionCount != 100 + 8 * instructions) {
+            testFail("scheduler must resume with a fresh timed turn and preserve instruction accounting");
+        }
+    }
+    hostTime = 0;
+    cpu.dispatches = 0;
+    cpu.yieldAfter = 1;
+    runThreadSlice(context.thread);
+    if (cpu.dispatches != 1 || hostTime != 250 || !cpu.yield) {
+        testFail("a blocking or yielding thread must end its turn immediately");
+    }
+    cpu.yieldAfter = 0;
+    cpu.op.inst = TestEnd;
+    cpu.dispatches = 0;
+    runThreadSlice(context.thread);
+    if (cpu.dispatches != 1) {
+        testFail("scheduler must preserve the test-end sentinel");
+    }
+#ifndef __EMSCRIPTEN__
+    cpu.op.inst = Nop;
+    cpu.raiseFault = true;
+    cpu.dispatches = 0;
+    runThreadSlice(context.thread);
+    if (cpu.dispatches != 1 || cpu.nextOp != nullptr) {
+        testFail("native scheduler must return and discard the decoded op after a guest fault");
+    }
+#endif
+}
+#endif
 
 void testRunCPU() {
 #if defined(BOXEDWINE_JIT_ARMV8)

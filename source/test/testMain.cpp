@@ -191,6 +191,9 @@ const TestEntry TEST_ENTRIES[] = {
 #else
     {testDspAudioWriteMath, "Test DSP Audio Write Math"},
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
+#ifndef BOXEDWINE_MULTI_THREADED
+    {testSingleThreadSchedulerTimeSlice, "Test single-thread scheduler timed turns", TEST_ENTRY_SERIAL},
+#endif
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},
     {testWasmJitSseCompareConditions, "Test WASM JIT SSE compare conditions"},
@@ -220,6 +223,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testWasmJitMtGroupedOomBlock, "Test MT WASM JIT grouped OOM construction block"},
 #endif
 #if defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    {testWasmJitStBoundedDispatch, "Test ST WASM JIT instruction budget", TEST_ENTRY_SERIAL},
     {testWasmJitRuntimeGrouping, "Test WASM JIT runtime grouping"},
     {testWasmJitPendingLifecycle, "Test WASM JIT pending lifecycle"},
     {testWasmJitTinyAnonymousPromotion, "Test WASM JIT tiny anonymous promotion"},
