@@ -61,7 +61,7 @@ def main():
         manifest["process"] = process
         log = guest_log.read_text(errors="replace") if guest_log.exists() else ""
         host = host_log.read_text(errors="replace")
-        expected = f"BRIDGE_PROBE_PASS:loops={args.loops} devices={args.loops * 2} submissions={args.loops * 20} readback_words={args.loops * 16544}"
+        expected = f"BRIDGE_PROBE_PASS:loops={args.loops} devices={args.loops * 2} submissions={args.loops * 24} readback_words={args.loops * 16672}"
         reasons = manifest["reasons"]
         if process["timed_out"]:
             reasons.append("probe timed out")

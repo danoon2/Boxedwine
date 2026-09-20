@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
+#include "bridgeCompute.h"
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -30,7 +32,14 @@
  X(WaitForFences) X(QueueSubmit2) X(DeviceWaitIdle) X(ResetFences) \
  X(CreateImage) X(DestroyImage) X(GetImageMemoryRequirements) X(BindImageMemory) \
  X(CreateImageView) X(DestroyImageView) X(CmdBeginRendering) X(CmdEndRendering) \
- X(CmdPipelineBarrier2) X(CmdCopyImageToBuffer2) X(ResetCommandBuffer)
+ X(CmdPipelineBarrier2) X(CmdCopyImageToBuffer2) X(ResetCommandBuffer) \
+ X(CreateSampler) X(DestroySampler) X(CmdClearColorImage) \
+ X(CreateDescriptorSetLayout) X(DestroyDescriptorSetLayout) \
+ X(CreateDescriptorPool) X(DestroyDescriptorPool) X(AllocateDescriptorSets) \
+ X(UpdateDescriptorSets) X(CreateDescriptorUpdateTemplate) X(DestroyDescriptorUpdateTemplate) \
+ X(UpdateDescriptorSetWithTemplate) X(CreatePipelineLayout) X(DestroyPipelineLayout) \
+ X(CreateShaderModule) X(DestroyShaderModule) X(CreateComputePipelines) X(DestroyPipeline) \
+ X(CmdBindPipeline) X(CmdBindDescriptorSets) X(CmdPushConstants) X(CmdDispatch)
 #define DECLARE(name) static PFN_vk##name p##name;
 COMMANDS(DECLARE)
 #undef DECLARE
@@ -240,6 +249,239 @@ static void image_readback(struct DeviceTest* test, VkQueue queue, VkCommandPool
     pFreeCommandBuffers(device, pool, 1, commands); /* Other buffers are freed with the pool. */
 }
 
+static void descriptor_readback(struct DeviceTest* test, VkQueue queue, VkCommandPool pool,
+    VkBuffer readback, VkDeviceMemory readbackMemory, const void* mapped)
+{
+    VkDevice device = test->device;
+    VkImage images[2];
+    VkImageView views[2];
+    VkDeviceMemory allocations[2];
+    VkSampler samplers[2];
+    unsigned i, pass;
+    for (i = 0; i < 2; ++i) {
+        VkImageCreateInfo image = {0};
+        image.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        image.imageType = VK_IMAGE_TYPE_2D;
+        image.format = VK_FORMAT_R32_UINT;
+        image.extent.width = image.extent.height = image.extent.depth = 1;
+        image.mipLevels = image.arrayLayers = image.samples = 1;
+        image.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        VK_CHECK(pCreateImage(device, &image, NULL, &images[i]));
+        VkMemoryRequirements requirements;
+        pGetImageMemoryRequirements(device, images[i], &requirements);
+        uint32_t type = 0;
+        while (!(requirements.memoryTypeBits & (1u << type))) ++type;
+        VkMemoryAllocateInfo allocation = {0};
+        allocation.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocation.allocationSize = requirements.size;
+        allocation.memoryTypeIndex = type;
+        VK_CHECK(pAllocateMemory(device, &allocation, NULL, &allocations[i]));
+        VK_CHECK(pBindImageMemory(device, images[i], allocations[i], 0));
+        VkImageViewCreateInfo view = {0};
+        view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        view.image = images[i];
+        view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        view.format = image.format;
+        view.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        view.subresourceRange.levelCount = view.subresourceRange.layerCount = 1;
+        VK_CHECK(pCreateImageView(device, &view, NULL, &views[i]));
+        VkSamplerCreateInfo sampler = {0};
+        sampler.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sampler.maxLod = 1;
+        VK_CHECK(pCreateSampler(device, &sampler, NULL, &samplers[i]));
+    }
+    VkDescriptorSetLayoutBinding bindings[2] = {{0}, {0}};
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[0].descriptorCount = 2;
+    bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    bindings[1].binding = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindings[1].descriptorCount = 1;
+    bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    VkDescriptorSetLayoutCreateInfo setInfo = {0};
+    setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setInfo.bindingCount = 2;
+    setInfo.pBindings = bindings;
+    VkDescriptorSetLayout setLayout;
+    VK_CHECK(pCreateDescriptorSetLayout(device, &setInfo, NULL, &setLayout));
+    VkDescriptorPoolSize sizes[2] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}};
+    VkDescriptorPoolCreateInfo poolInfo = {0};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.maxSets = 1;
+    poolInfo.poolSizeCount = 2;
+    poolInfo.pPoolSizes = sizes;
+    VkDescriptorPool descriptorPool;
+    VK_CHECK(pCreateDescriptorPool(device, &poolInfo, NULL, &descriptorPool));
+    VkDescriptorSetAllocateInfo setAllocation = {0};
+    setAllocation.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    setAllocation.descriptorPool = descriptorPool;
+    setAllocation.descriptorSetCount = 1;
+    setAllocation.pSetLayouts = &setLayout;
+    VkDescriptorSet set;
+    VK_CHECK(pAllocateDescriptorSets(device, &setAllocation, &set));
+    VkPushConstantRange pushRange = {VK_SHADER_STAGE_COMPUTE_BIT, 0, 4};
+    VkPipelineLayoutCreateInfo layoutInfo = {0};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.setLayoutCount = 1;
+    layoutInfo.pSetLayouts = &setLayout;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges = &pushRange;
+    VkPipelineLayout layout;
+    VK_CHECK(pCreatePipelineLayout(device, &layoutInfo, NULL, &layout));
+    VkShaderModuleCreateInfo shaderInfo = {0};
+    shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shaderInfo.codeSize = sizeof(bridgeCompute);
+    shaderInfo.pCode = bridgeCompute;
+    VkShaderModule shader;
+    VK_CHECK(pCreateShaderModule(device, &shaderInfo, NULL, &shader));
+    VkComputePipelineCreateInfo pipelineInfo = {0};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pipelineInfo.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    pipelineInfo.stage.module = shader;
+    pipelineInfo.stage.pName = "main";
+    pipelineInfo.layout = layout;
+    VkPipeline pipeline;
+    VK_CHECK(pCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &pipeline));
+    // Image infos are 20 bytes on i386 and 24 on the host. Extra padding and
+    // nonzero offsets ensure the template's guest stride is actually honored.
+    struct ImageRecord { VkDescriptorImageInfo info; uint32_t padding; };
+    struct Payload { uint32_t padding[3]; struct ImageRecord images[2]; VkDescriptorBufferInfo buffer; } payload;
+    memset(&payload, 0x5a, sizeof(payload));
+    for (i = 0; i < 2; ++i) {
+        payload.images[i].info.sampler = samplers[i];
+        payload.images[i].info.imageView = views[i];
+        payload.images[i].info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+    payload.buffer.buffer = readback;
+    payload.buffer.offset = 256;
+    payload.buffer.range = 128;
+    VkDescriptorUpdateTemplateEntry entries[2] = {{0}, {0}};
+    entries[0].descriptorCount = 2;
+    entries[0].descriptorType = bindings[0].descriptorType;
+    entries[0].offset = offsetof(struct Payload, images);
+    entries[0].stride = sizeof(struct ImageRecord);
+    entries[1].dstBinding = 1;
+    entries[1].descriptorCount = 1;
+    entries[1].descriptorType = bindings[1].descriptorType;
+    entries[1].offset = offsetof(struct Payload, buffer);
+    entries[1].stride = sizeof(VkDescriptorBufferInfo);
+    VkDescriptorUpdateTemplateCreateInfo templateInfo = {0};
+    templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
+    templateInfo.descriptorUpdateEntryCount = 2;
+    templateInfo.pDescriptorUpdateEntries = entries;
+    templateInfo.templateType = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET;
+    templateInfo.descriptorSetLayout = setLayout;
+    VkDescriptorUpdateTemplate update;
+    VK_CHECK(pCreateDescriptorUpdateTemplate(device, &templateInfo, NULL, &update));
+    VkCommandBufferAllocateInfo commandInfo = {0};
+    commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandInfo.commandPool = pool;
+    commandInfo.commandBufferCount = 1;
+    VkCommandBuffer command;
+    VK_CHECK(pAllocateCommandBuffers(device, &commandInfo, &command));
+    VkFenceCreateInfo fenceInfo = {0};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    VkFence fence;
+    VK_CHECK(pCreateFence(device, &fenceInfo, NULL, &fence));
+    for (pass = 0; pass < 2; ++pass) {
+        if (pass) {
+            payload.images[0].info.imageView = views[1];
+            payload.images[1].info.imageView = views[0];
+            payload.buffer.offset = 512;
+            pUpdateDescriptorSetWithTemplate(device, set, update, &payload);
+        }
+        else {
+            VkDescriptorImageInfo imageInfos[2] = {payload.images[0].info, payload.images[1].info};
+            VkWriteDescriptorSet writes[2] = {{0}, {0}};
+            for (i = 0; i < 2; ++i) {
+                writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writes[i].dstSet = set;
+                writes[i].dstBinding = i;
+                writes[i].descriptorCount = bindings[i].descriptorCount;
+                writes[i].descriptorType = bindings[i].descriptorType;
+            }
+            writes[0].pImageInfo = imageInfos;
+            writes[1].pBufferInfo = &payload.buffer;
+            pUpdateDescriptorSets(device, 2, writes, 0, NULL);
+        }
+        VkCommandBufferBeginInfo begin = {0};
+        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        VK_CHECK(pBeginCommandBuffer(command, &begin));
+        if (!pass) for (i = 0; i < 2; ++i) {
+            VkImageMemoryBarrier barrier = {0};
+            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image = images[i];
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            barrier.subresourceRange.levelCount = barrier.subresourceRange.layerCount = 1;
+            pCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
+            VkClearColorValue color = {{0}};
+            color.uint32[0] = i ? 0x87654321 : 0x12345678;
+            pCmdClearColorImage(command, images[i], barrier.newLayout, &color, 1, &barrier.subresourceRange);
+            barrier.oldLayout = barrier.newLayout;
+            barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrier.srcAccessMask = barrier.dstAccessMask;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            pCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
+        }
+        uint32_t seed = 0xace00000u ^ test->number ^ (pass << 16);
+        VkMemoryBarrier priorWrites = {0};
+        priorWrites.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+        priorWrites.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+        priorWrites.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        pCmdPipelineBarrier(command, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            0, 1, &priorWrites, 0, NULL, 0, NULL);
+        pCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+        pCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &set, 0, NULL);
+        pCmdPushConstants(command, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 4, &seed);
+        pCmdDispatch(command, 1, 1, 1);
+        VkMemoryBarrier visibility = {0};
+        visibility.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+        visibility.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        visibility.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+        pCmdPipelineBarrier(command, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_HOST_BIT, 0, 1, &visibility, 0, NULL, 0, NULL);
+        VK_CHECK(pEndCommandBuffer(command));
+        VkCommandBufferSubmitInfo bufferInfo = {0};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        bufferInfo.commandBuffer = command;
+        VkSubmitInfo2 submit = {0};
+        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submit.commandBufferInfoCount = 1;
+        submit.pCommandBufferInfos = &bufferInfo;
+        VK_CHECK(pQueueSubmit2(queue, 1, &submit, fence));
+        ++test->submissions;
+        VK_CHECK(pWaitForFences(device, 1, &fence, VK_TRUE, 10000000000ULL));
+        VkMappedMemoryRange range = {0};
+        range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+        range.memory = readbackMemory;
+        range.size = VK_WHOLE_SIZE;
+        VK_CHECK(pInvalidateMappedMemoryRanges(device, 1, &range));
+        uint32_t expected = pass ? 0x87654321u + 3u * 0x12345678u : 0x12345678u + 3u * 0x87654321u;
+        for (i = 0; i < 32; ++i)
+            CHECK(((const uint32_t*)mapped)[payload.buffer.offset / 4 + i] == (expected ^ seed ^ (i * 79)));
+        test->readbackWords += 32;
+        VK_CHECK(pResetFences(device, 1, &fence));
+        VK_CHECK(pResetCommandBuffer(command, 0));
+    }
+    pDestroyFence(device, fence, NULL);
+    pDestroyDescriptorUpdateTemplate(device, update, NULL);
+    pDestroyDescriptorPool(device, descriptorPool, NULL);
+    pDestroyPipeline(device, pipeline, NULL);
+    pDestroyShaderModule(device, shader, NULL);
+    pDestroyPipelineLayout(device, layout, NULL);
+    pDestroyDescriptorSetLayout(device, setLayout, NULL);
+    for (i = 0; i < 2; ++i) {
+        pDestroySampler(device, samplers[i], NULL);
+        pDestroyImageView(device, views[i], NULL);
+        pDestroyImage(device, images[i], NULL);
+        pFreeMemory(device, allocations[i], NULL);
+    }
+    pFreeCommandBuffers(device, pool, 1, &command);
+}
+
 static void run_device(struct DeviceTest* test)
 {
     VkDevice device = test->device;
@@ -373,6 +615,7 @@ static void run_device(struct DeviceTest* test)
     for (i = 0; i < 16; ++i) CHECK(((uint32_t*)((char*)mapped + 512))[i] == 0xfeedface);
     test->readbackWords += 80;
     image_readback(test, queue, pool, dst, dstMemory, mapped);
+    descriptor_readback(test, queue, pool, dst, dstMemory, mapped);
     if (test->map2) {
         VkMemoryUnmapInfo unmapInfo = {0};
         unmapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO;
@@ -456,7 +699,8 @@ int main(int argc, char** argv)
         pGetPhysicalDeviceQueueFamilyProperties(physical, &count, families);
         uint32_t family;
         for (family = 0; family < count; ++family)
-            if (families[family].queueFlags & VK_QUEUE_GRAPHICS_BIT) break;
+            if ((families[family].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) ==
+                (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) break;
         CHECK(family < count);
         free(families);
         float priority = 1;

@@ -19,6 +19,7 @@ import wineGraphicsBrowser as graphics
 WINE_COMMIT = "db11d0fe6a169c457e23d007e20404643d067aa8"
 GROUPS = {
     "graphics-probe": ("probe", "abandon"),
+    "d3d11-probe": ("probe",),
     "vulkan-1": ("vulkan",), "d3d8": ("device", "stateblock", "visual"),
     "d3d9": ("d3d9ex", "device", "stateblock", "visual"),
     "d3d10": ("device", "effect"), "d3d10_1": ("d3d10_1",),
@@ -180,8 +181,8 @@ def parse_arguments(argv=None):
     args = parser.parse_args(argv)
     if args.timeout < 1:
         parser.error("timeout must be positive")
-    if (args.suite == "graphics-probe") != (args.probe is not None):
-        parser.error("graphics-probe requires --probe; Wine suites require --tests-archive")
+    if args.suite.endswith("-probe") != (args.probe is not None):
+        parser.error("probe suites require --probe; Wine suites require --tests-archive")
     if args.runtime == "boxedwine" and (args.boxedwine is None or args.filesystem is None):
         parser.error("BoxedWine requires --boxedwine and --filesystem")
     if args.runtime == "wine" and (os.name == "nt" or args.wine_root is None):

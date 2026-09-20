@@ -1,0 +1,11 @@
+#version 450
+// Build the checked-in word array with glslangValidator -V --vn bridgeCompute.
+layout(local_size_x = 32) in;
+layout(set = 0, binding = 0) uniform usampler2D images[2];
+layout(set = 0, binding = 1, std430) writeonly buffer Output { uint words[]; } result;
+layout(push_constant) uniform Values { uint seed; } values;
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+    result.words[i] = (texelFetch(images[0], ivec2(0), 0).r
+        + 3u * texelFetch(images[1], ivec2(0), 0).r) ^ values.seed ^ (i * 79);
+}
