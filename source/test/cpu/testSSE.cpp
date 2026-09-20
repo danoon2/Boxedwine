@@ -1038,6 +1038,35 @@ void testSseAddps_0x358() {
 }
 
 void testSseMoveUnpack_0x312_0x313_0x316_0x317_0x328_0x329() {
+    // DXVK 3.1.1 uses MOVDDUP to initialize paired 64-bit Vulkan stage/access
+    // masks. Treating its F2 prefix as an ordinary MOVLPS leaves stale access.
+    const U64 duplicateValues[] = {0x1000, 0, 0x8000000000000000ULL,
+        0x7ff0000000000001ULL, 0xaabbccddeeff2468ULL};
+    for (U64 value : duplicateValues) {
+        for (int dst = 0; dst < 8; ++dst) {
+            for (int src = 0; src < 8; ++src) {
+                initSse();
+                setXmm(src, value, XMM_SRC_HIGH);
+                cpu->flags = SSE_FLAG_MASK | DF;
+                emitSseRegReg(0xf2, 0x12, dst, src);
+                runTestCPU();
+                verifyXmmMove(dst, value, value, src, value, XMM_SRC_HIGH, "sse3 movddup reg");
+                if (dst != src && (cpu->xmm[src].pi.u64[0] != value || cpu->xmm[src].pi.u64[1] != XMM_SRC_HIGH)) {
+                    failed("sse3 movddup source changed");
+                }
+                if (TestX86::actualFlags(cpu, true) != (SSE_FLAG_MASK | DF)) {
+                    failed("sse3 movddup flags changed");
+                }
+            }
+            for (U32 address : {MEM_SRC, MEM_SRC + 1, 0x1fff8U}) {
+                initSse();
+                memory->writeq(TEST_HEAP_ADDRESS + address, value);
+                emitSseRegMem(0xf2, 0x12, dst, address);
+                runTestCPU();
+                verifyOnlyXmmChanged(dst, value, value, "sse3 movddup mem");
+            }
+        }
+    }
     runSse128RegOnly(0, 0, 0x12, 0xaabbccddeeff2468ULL, 0x1122334455667788ULL, 0x1234567890abcdefULL, 0x24680bdf13579aceULL, 0x24680bdf13579aceULL, 0x1122334455667788ULL, "sse movhlps");
     runSse128(0, 0, 0x14, 0xaabbccddeeff2468ULL, 0x1122334455667788ULL, 0x1234567890abcdefULL, 0x24680bdf13579aceULL, 0x90abcdefeeff2468ULL, 0x12345678aabbccddULL, "sse unpcklps");
     runSse128(0, 0, 0x15, 0xaabbccddeeff2468ULL, 0x1122334455667788ULL, 0x1234567890abcdefULL, 0x24680bdf13579aceULL, 0x13579ace55667788ULL, 0x24680bdf11223344ULL, "sse unpckhps");

@@ -487,6 +487,21 @@ void JitSSE::dynamic_movsdXmmE64(DecodedOp* op) {
     });
 }
 
+void JitSSE::dynamic_movddupXmmXmm(DecodedOp* op) {
+    SSERegPtr reg = loadCpuXMMReg(op->reg);
+    SSERegPtr src = loadCpuXMMReg(op->rm);
+    pshufdXmmXmm(reg, src, 0x44);
+    storeCpuXMMReg(reg, op->reg);
+}
+
+void JitSSE::dynamic_movddupXmmE64(DecodedOp* op) {
+    read(JitWidth::b64, calculateEaa(op), [op, this](MemPtr address) {
+        SSERegPtr reg = loadXMMFromMem64(op->reg, address);
+        pshufdXmmXmm(reg, reg, 0x44);
+        storeCpuXMMReg(reg, op->reg);
+    });
+}
+
 void JitSSE::dynamic_movsdE64Xmm(DecodedOp* op) {
     write(JitWidth::b64, calculateEaa(op), nullptr, [op, this](MemPtr address) {
         SSERegPtr reg = loadCpuXMMReg(op->reg);
