@@ -209,8 +209,7 @@ void OPCALL normal_int99(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_int9A(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
 #ifdef BOXEDWINE_VULKAN
-    U32 index = cpu->peek32(0);
-    callVulkan(cpu, index);
+    callVulkan(cpu, op->imm);
 #endif
     NEXT();
 }

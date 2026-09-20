@@ -30,13 +30,7 @@ public class VkHostMarshalNone extends VkHostMarshal {
         if (param.paramType != null) {
             out.append("(" + param.paramType.name + ")");
         }
-        if (param.getSize() <= 4) {
-            out.append(param.paramArg);
-        } else {
-            out.append("cpu->memory->readq(");
-            out.append(param.paramArg);
-            out.append(")");
-        }
+        out.append(param.paramArg);
         out.append(";\n");
     }
 

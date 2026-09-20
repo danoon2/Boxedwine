@@ -242,6 +242,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testJitOpenGLCallStateAndInvalidation, "Test JIT OpenGL state and code invalidation", TEST_ENTRY_SERIAL},
     {testJitOpenGLCallBoundaries, "Test JIT OpenGL call boundaries", TEST_ENTRY_SERIAL},
 #endif
+#ifdef BOXEDWINE_VULKAN
+    {testVulkanDirectStackABI, "Test Vulkan direct stack ABI", TEST_ENTRY_SERIAL},
+#endif
     {testJitDirectArithmeticFlags, "Test JIT direct arithmetic flags"},
     {testJitDirectIncDecFlags, "Test JIT direct INC/DEC flags"},
     {testJitDirectNegFlags, "Test JIT direct NEG flags"},

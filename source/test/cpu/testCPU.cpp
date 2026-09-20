@@ -962,6 +962,59 @@ void testJitOpenGLCallStateAndInvalidation() {
 #endif
 }
 
+#ifdef BOXEDWINE_VULKAN
+extern Int99Callback int9ACallback[];
+extern U32 int9ACallbackSize;
+namespace {
+U32 vkTestCalls;
+void vkTestCallback(CPU* cpu) {
+    ++vkTestCalls;
+    const U32 expected[] = {0xfeedcafe, 0x11223344, 0x89abcdef, 0x76543210, 0x3fc00000, 0xcafebabe};
+    for (U32 i = 0; i < 6; ++i) {
+        if (cpu->peek32(i) != expected[i]) testFail("Vulkan original stack word %u", i);
+    }
+    cpu->reg[0].u32 = 0x55667788;
+    cpu->reg[2].u32 = 0x12345678;
+}
+}
+#endif
+
+void testVulkanDirectStackABI() {
+#ifdef BOXEDWINE_VULKAN
+    Int99Callback saved = int9ACallback[3];
+    U32 savedSize = int9ACallbackSize;
+    int9ACallback[3] = vkTestCallback;
+    int9ACallbackSize = 4;
+    for (U32 compiled = 0; compiled < 2; ++compiled) {
+        testNewInstruction(0);
+        CPU* cpu = testContext().cpu;
+        U32 stack = cpu->reg[4].u32;
+        const U32 words[] = {0xfeedcafe, 0x11223344, 0x89abcdef, 0x76543210, 0x3fc00000, 0xcafebabe};
+        for (U32 i = 0; i < 6; ++i)
+            cpu->memory->writed(cpu->seg[SS].address + stack + i * 4, words[i]);
+        vkTestCalls = 0;
+        testPushCode8(0xcd); testPushCode8(0x9a); testPushCode32(3);
+        testPushCode8(0x43); // inc ebx: execute the continuation exactly once
+        testPushCode8(0xcd); testPushCode8(0x97);
+        DecodedOp* op = cpu->getOp(TEST_CODE_ADDRESS, 0);
+        if (op->inst != Int9A || op->imm != 3 || op->len != 6)
+            testFail("Vulkan immediate command decode");
+#ifdef BOXEDWINE_JIT
+        if (compiled) {
+            startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+            if (!op->pfnJitCode) testFail("Vulkan ABI test did not compile");
+        }
+#endif
+        testRunCPU();
+        if (vkTestCalls != 1 || cpu->reg[4].u32 != stack || cpu->reg[3].u32 != 1 ||
+            cpu->reg[0].u32 != 0x55667788 || cpu->reg[2].u32 != 0x12345678)
+            testFail("Vulkan ABI result, stack, or continuation (compiled=%u)", compiled);
+    }
+    int9ACallback[3] = saved;
+    int9ACallbackSize = savedSize;
+#endif
+}
+
 void testJitOpenGLCallBoundaries() {
 #if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
     ScopedGlTestCallbacks callbacks;

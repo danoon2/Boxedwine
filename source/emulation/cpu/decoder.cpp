@@ -3873,9 +3873,10 @@ public:
         else if (op->imm==0x99) {
             op->inst = Int99;
             op->imm = data->fetch32();
-        } else if (op->imm == 0x9a)
+        } else if (op->imm == 0x9a) {
             op->inst = Int9A;
-        else if (op->imm == 0x9b)
+            op->imm = data->fetch32();
+        } else if (op->imm == 0x9b)
             op->inst = Int9B;
 #ifdef __TEST
         else if (op->imm == 0x97)

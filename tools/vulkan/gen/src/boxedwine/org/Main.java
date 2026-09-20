@@ -36,6 +36,7 @@ public class Main {
             VkHost.write(data, hostSource);
         } catch (Exception e) {
             e.printStackTrace();
+            System.exit(1);
         }
     }
 }

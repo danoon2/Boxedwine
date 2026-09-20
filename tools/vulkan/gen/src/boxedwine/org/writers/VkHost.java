@@ -126,11 +126,11 @@ public class VkHost {
         // if a stride does reference another param, lets write that param first so the param that uses the stride can use it
         for (VkParam param : fn.params) {
             if (param != strideParam) {
-                stackPos++;
+                stackPos += param.getStackWords();
                 continue;
             }
             param.nameInFunction = param.name;
-            param.paramArg = "ARG" + String.valueOf(stackPos);
+            param.paramArg = (param.getStackWords() == 2 ? "QARG" : "ARG") + stackPos;
             if (param.isPointer) {
                 setCountParam(fn, param);
             }
@@ -140,16 +140,16 @@ public class VkHost {
             if (stackPos == 1 && fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 out.append("    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);\n");
             }
-            stackPos++;
+            stackPos += param.getStackWords();
         }
         stackPos = 1;
         for (VkParam param : fn.params) {
             if (param == strideParam) {
-                stackPos++;
+                stackPos += param.getStackWords();
                 continue;
             }
             param.nameInFunction = param.name;
-            param.paramArg = "ARG" + String.valueOf(stackPos);
+            param.paramArg = (param.getStackWords() == 2 ? "QARG" : "ARG") + stackPos;
             if (param.isPointer) {
                 setCountParam(fn, param);
             }
@@ -159,7 +159,7 @@ public class VkHost {
             if (stackPos == 1 && fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 out.append("    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);\n");
             }
-            stackPos++;
+            stackPos += param.getStackWords();
         }
         // make actual vulkan call on host
         hostCall(fn, out);
@@ -282,6 +282,8 @@ public class VkHost {
             out.append(" cpu->peek32(");
             out.append(i+1);
             out.append(")\n");
+            out.append("#define QARG" + (i+1) + " ((U64)cpu->peek32(" + (i+1)
+                    + ") | ((U64)cpu->peek32(" + (i+2) + ") << 32))\n");
         }
         StringBuilder part2 = new StringBuilder();
 

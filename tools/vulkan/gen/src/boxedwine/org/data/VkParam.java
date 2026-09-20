@@ -61,6 +61,11 @@ public class VkParam {
         return paramType.sizeof;
     }
 
+    public int getStackWords() {
+        // Fixed-size array parameters decay to pointers at a function boundary.
+        return (isPointer || isDoublePointer || arrayLen != 0) ? 1 : (getSize() + 3) / 4;
+    }
+
     public int getAlignment() {
         if (isPointer) {
             return 4;
