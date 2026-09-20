@@ -34,9 +34,13 @@ public class VkCapabilities {
             // Guest callbacks are not yet delivered; logging on the host is not
             // sufficient to expose the debug callback extensions to applications.
             if (extension.name.equals("VK_EXT_debug_report") || extension.name.equals("VK_EXT_debug_utils") ||
-                    extension.name.equals("VK_EXT_host_image_copy") || extension.name.equals("VK_EXT_map_memory_placed")) {
+                    extension.name.equals("VK_EXT_host_image_copy") || extension.name.equals("VK_EXT_map_memory_placed") ||
+                    extension.name.equals("VK_KHR_deferred_host_operations")) {
                 supported = false;
-                if (extension.name.startsWith("VK_EXT_debug_"))
+                // Deferred operations would retain marshaled pointer arguments
+                // after the wrapper returns. Those allocations currently have
+                // synchronous lifetimes, so do not expose the operation API.
+                if (extension.name.startsWith("VK_EXT_debug_") || extension.name.equals("VK_KHR_deferred_host_operations"))
                     for (VkExtension.VkExtensionRequire require : extension.require)
                         for (VkFunction fn : require.functions) unsupportedCommands.add(fn.name);
             }
