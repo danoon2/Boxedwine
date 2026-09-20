@@ -60,6 +60,7 @@ public:
 
 	static void moveWindow(const std::shared_ptr<XWindow>& wnd);
 	static void showWindow(const std::shared_ptr<XWindow>& wnd, bool bShow);
+    static void focusVulkanWindow(U32 nativeId);
 
 	static void shutdown();
 };

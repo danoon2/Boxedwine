@@ -112,6 +112,7 @@ void KNativeSystem::showScreen(bool show) {
 }
 
 void KNativeSystem::warpMouse(S32 x, S32 y) {
+    if (vulkan && vulkan->warpMouse(x, y)) return;
     if (!opengl || screen->isVisible()) {
         screen->warpMouse(x, y);
     } else {
@@ -156,9 +157,11 @@ void KNativeSystem::moveWindow(const XWindowPtr& wnd) {
     if (opengl) {
         opengl->glResizeWindow(wnd);
     }
+    if (vulkan) vulkan->resizeWindow(wnd);
 }
 
 void KNativeSystem::showWindow(const XWindowPtr & wnd, bool bShow) {
+    if (vulkan) vulkan->showWindow(wnd, bShow);
 #if defined(__EMSCRIPTEN__)
     if (bShow && screen) {
         if (wnd && wnd->isOpenGL) {
@@ -183,7 +186,12 @@ void KNativeSystem::showWindow(const XWindowPtr & wnd, bool bShow) {
 #endif
 }
 
+void KNativeSystem::focusVulkanWindow(U32 nativeId) {
+    if (vulkan) vulkan->focusWindow(nativeId);
+}
+
 void KNativeSystem::shutdown() {
+    vulkan = nullptr;
     screen = nullptr;
     opengl = nullptr;
 }

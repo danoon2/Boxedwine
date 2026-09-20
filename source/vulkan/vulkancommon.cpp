@@ -253,8 +253,12 @@ void trackVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle) {
 }
 
 void forgetVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->objectMutex);
-    info->liveObjects.erase({type, handle});
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->objectMutex);
+        info->liveObjects.erase({type, handle});
+    }
+    if (type == VK_OBJECT_TYPE_SURFACE_KHR && handle)
+        KNativeSystem::getVulkan()->destroyVulkanSurface((void*)handle);
 }
 
 void cleanupVulkanObjects(BoxedVulkanInfo* info) {
@@ -266,9 +270,13 @@ void cleanupVulkanObjects(BoxedVulkanInfo* info) {
     // Core object types put pools/framebuffers before views, and views before
     // their resources when traversed backwards. Swapchain images are implicit:
     // destroy their views before destroying the swapchain itself.
-    for (auto object = objects.rbegin(); object != objects.rend(); ++object)
-        if (object->first != VK_OBJECT_TYPE_SWAPCHAIN_KHR)
+    for (auto object = objects.rbegin(); object != objects.rend(); ++object) {
+        if (object->first != VK_OBJECT_TYPE_SWAPCHAIN_KHR) {
             destroyTrackedVulkanObject(info, object->first, object->second);
+            if (object->first == VK_OBJECT_TYPE_SURFACE_KHR)
+                KNativeSystem::getVulkan()->destroyVulkanSurface((void*)object->second);
+        }
+    }
     for (const auto& object : objects)
         if (object.first == VK_OBJECT_TYPE_SWAPCHAIN_KHR)
             destroyTrackedVulkanObject(info, object.first, object.second);

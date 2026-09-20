@@ -15,6 +15,43 @@ static unsigned assertions, failures;
     if (FAILED(result)) goto cleanup; } while (0)
 #define RELEASE(value, type) do { if (value) { type##_Release(value); value = NULL; } } while (0)
 
+static void second_window(PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN create)
+{
+    ID3D11Device* device = NULL;
+    ID3D11DeviceContext* context = NULL;
+    IDXGISwapChain* swapchain = NULL;
+    ID3D11Texture2D* back = NULL;
+    ID3D11RenderTargetView* target = NULL;
+    HWND window = CreateWindowA("STATIC", "Second Vulkan surface", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        240, 30, 128, 128, NULL, NULL, GetModuleHandleA(NULL), NULL);
+    EXPECT(window != NULL, "second window unavailable");
+    if (!window) goto cleanup;
+    DXGI_SWAP_CHAIN_DESC swap = {0};
+    swap.BufferDesc.Width = swap.BufferDesc.Height = 48;
+    swap.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swap.SampleDesc.Count = 1;
+    swap.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swap.BufferCount = 1;
+    swap.OutputWindow = window;
+    swap.Windowed = TRUE;
+    D3D_FEATURE_LEVEL level = D3D_FEATURE_LEVEL_11_0;
+    HR(create(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &level, 1, D3D11_SDK_VERSION,
+        &swap, &swapchain, &device, NULL, &context));
+    HR(IDXGISwapChain_GetBuffer(swapchain, 0, &IID_ID3D11Texture2D, (void**)&back));
+    HR(ID3D11Device_CreateRenderTargetView(device, (ID3D11Resource*)back, NULL, &target));
+    const FLOAT green[4] = {0, 1, 0, 1};
+    ID3D11DeviceContext_ClearRenderTargetView(context, target, green);
+    HR(IDXGISwapChain_Present(swapchain, 0, 0));
+cleanup:
+    if (context) { ID3D11DeviceContext_ClearState(context); ID3D11DeviceContext_Flush(context); }
+    RELEASE(target, ID3D11RenderTargetView);
+    RELEASE(back, ID3D11Texture2D);
+    RELEASE(swapchain, IDXGISwapChain);
+    RELEASE(context, ID3D11DeviceContext);
+    if (device) EXPECT(ID3D11Device_Release(device) == 0, "second device references remain");
+    if (window) DestroyWindow(window);
+}
+
 int main(void)
 {
     HMODULE d3d = LoadLibraryA("d3d11.dll");
@@ -82,6 +119,11 @@ int main(void)
     ID3D11DeviceContext_PSSetShader(context, ps, NULL, 0);
     for (frame = 0; frame < 3; ++frame) {
         UINT size = 32 * (frame + 1);
+        if (frame == 1) second_window(create);
+        if (frame == 2) {
+            ShowWindow(window, SW_MINIMIZE);
+            ShowWindow(window, SW_RESTORE);
+        }
         if (frame) {
             SetWindowPos(window, NULL, 30, 30, size + 40, size + 60, SWP_NOZORDER);
             HR(IDXGISwapChain_ResizeBuffers(swapchain, 1, size, size, DXGI_FORMAT_UNKNOWN, 0));
