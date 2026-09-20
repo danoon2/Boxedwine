@@ -288,7 +288,11 @@ __asm__(".text\n.globl vkCmdCopyImageToBuffer\n.type vkCmdCopyImageToBuffer,@fun
 
 __asm__(".text\n.globl vkCmdCopyMemoryIndirectNV\n.type vkCmdCopyMemoryIndirectNV,@function\nvkCmdCopyMemoryIndirectNV:\nint $0x9a\n.long 136\nret\n.size vkCmdCopyMemoryIndirectNV,.-vkCmdCopyMemoryIndirectNV\n");
 
+__asm__(".text\n.globl vkCmdCopyMemoryIndirectKHR\n.type vkCmdCopyMemoryIndirectKHR,@function\nvkCmdCopyMemoryIndirectKHR:\nint $0x9a\n.long 645\nret\n.size vkCmdCopyMemoryIndirectKHR,.-vkCmdCopyMemoryIndirectKHR\n");
+
 __asm__(".text\n.globl vkCmdCopyMemoryToImageIndirectNV\n.type vkCmdCopyMemoryToImageIndirectNV,@function\nvkCmdCopyMemoryToImageIndirectNV:\nint $0x9a\n.long 137\nret\n.size vkCmdCopyMemoryToImageIndirectNV,.-vkCmdCopyMemoryToImageIndirectNV\n");
+
+__asm__(".text\n.globl vkCmdCopyMemoryToImageIndirectKHR\n.type vkCmdCopyMemoryToImageIndirectKHR,@function\nvkCmdCopyMemoryToImageIndirectKHR:\nint $0x9a\n.long 646\nret\n.size vkCmdCopyMemoryToImageIndirectKHR,.-vkCmdCopyMemoryToImageIndirectKHR\n");
 
 __asm__(".text\n.globl vkCmdUpdateBuffer\n.type vkCmdUpdateBuffer,@function\nvkCmdUpdateBuffer:\nint $0x9a\n.long 138\nret\n.size vkCmdUpdateBuffer,.-vkCmdUpdateBuffer\n");
 
@@ -317,6 +321,8 @@ __asm__(".text\n.globl vkCmdEndQuery\n.type vkCmdEndQuery,@function\nvkCmdEndQue
 __asm__(".text\n.globl vkCmdBeginConditionalRenderingEXT\n.type vkCmdBeginConditionalRenderingEXT,@function\nvkCmdBeginConditionalRenderingEXT:\nint $0x9a\n.long 150\nret\n.size vkCmdBeginConditionalRenderingEXT,.-vkCmdBeginConditionalRenderingEXT\n");
 
 __asm__(".text\n.globl vkCmdEndConditionalRenderingEXT\n.type vkCmdEndConditionalRenderingEXT,@function\nvkCmdEndConditionalRenderingEXT:\nint $0x9a\n.long 151\nret\n.size vkCmdEndConditionalRenderingEXT,.-vkCmdEndConditionalRenderingEXT\n");
+
+__asm__(".text\n.globl vkCmdBeginCustomResolveEXT\n.type vkCmdBeginCustomResolveEXT,@function\nvkCmdBeginCustomResolveEXT:\nint $0x9a\n.long 647\nret\n.size vkCmdBeginCustomResolveEXT,.-vkCmdBeginCustomResolveEXT\n");
 
 __asm__(".text\n.globl vkCmdResetQueryPool\n.type vkCmdResetQueryPool,@function\nvkCmdResetQueryPool:\nint $0x9a\n.long 152\nret\n.size vkCmdResetQueryPool,.-vkCmdResetQueryPool\n");
 
@@ -1116,6 +1122,14 @@ __asm__(".text\n.globl vkCmdDecompressMemoryNV\n.type vkCmdDecompressMemoryNV,@f
 
 __asm__(".text\n.globl vkCmdDecompressMemoryIndirectCountNV\n.type vkCmdDecompressMemoryIndirectCountNV,@function\nvkCmdDecompressMemoryIndirectCountNV:\nint $0x9a\n.long 550\nret\n.size vkCmdDecompressMemoryIndirectCountNV,.-vkCmdDecompressMemoryIndirectCountNV\n");
 
+__asm__(".text\n.globl vkGetPartitionedAccelerationStructuresBuildSizesNV\n.type vkGetPartitionedAccelerationStructuresBuildSizesNV,@function\nvkGetPartitionedAccelerationStructuresBuildSizesNV:\nint $0x9a\n.long 648\nret\n.size vkGetPartitionedAccelerationStructuresBuildSizesNV,.-vkGetPartitionedAccelerationStructuresBuildSizesNV\n");
+
+__asm__(".text\n.globl vkCmdBuildPartitionedAccelerationStructuresNV\n.type vkCmdBuildPartitionedAccelerationStructuresNV,@function\nvkCmdBuildPartitionedAccelerationStructuresNV:\nint $0x9a\n.long 649\nret\n.size vkCmdBuildPartitionedAccelerationStructuresNV,.-vkCmdBuildPartitionedAccelerationStructuresNV\n");
+
+__asm__(".text\n.globl vkCmdDecompressMemoryEXT\n.type vkCmdDecompressMemoryEXT,@function\nvkCmdDecompressMemoryEXT:\nint $0x9a\n.long 650\nret\n.size vkCmdDecompressMemoryEXT,.-vkCmdDecompressMemoryEXT\n");
+
+__asm__(".text\n.globl vkCmdDecompressMemoryIndirectCountEXT\n.type vkCmdDecompressMemoryIndirectCountEXT,@function\nvkCmdDecompressMemoryIndirectCountEXT:\nint $0x9a\n.long 651\nret\n.size vkCmdDecompressMemoryIndirectCountEXT,.-vkCmdDecompressMemoryIndirectCountEXT\n");
+
 __asm__(".text\n.globl vkCreateCuModuleNVX\n.type vkCreateCuModuleNVX,@function\nvkCreateCuModuleNVX:\nint $0x9a\n.long 551\nret\n.size vkCreateCuModuleNVX,.-vkCreateCuModuleNVX\n");
 
 __asm__(".text\n.globl vkCreateCuFunctionNVX\n.type vkCreateCuFunctionNVX,@function\nvkCreateCuFunctionNVX:\nint $0x9a\n.long 552\nret\n.size vkCreateCuFunctionNVX,.-vkCreateCuFunctionNVX\n");
@@ -1154,25 +1168,19 @@ __asm__(".text\n.globl vkAcquireDrmDisplayEXT\n.type vkAcquireDrmDisplayEXT,@fun
 
 __asm__(".text\n.globl vkGetDrmDisplayEXT\n.type vkGetDrmDisplayEXT,@function\nvkGetDrmDisplayEXT:\nint $0x9a\n.long 569\nret\n.size vkGetDrmDisplayEXT,.-vkGetDrmDisplayEXT\n");
 
+__asm__(".text\n.globl vkWaitForPresent2KHR\n.type vkWaitForPresent2KHR,@function\nvkWaitForPresent2KHR:\nint $0x9a\n.long 652\nret\n.size vkWaitForPresent2KHR,.-vkWaitForPresent2KHR\n");
+
 __asm__(".text\n.globl vkWaitForPresentKHR\n.type vkWaitForPresentKHR,@function\nvkWaitForPresentKHR:\nint $0x9a\n.long 570\nret\n.size vkWaitForPresentKHR,.-vkWaitForPresentKHR\n");
-
-__asm__(".text\n.globl vkCreateCudaModuleNV\n.type vkCreateCudaModuleNV,@function\nvkCreateCudaModuleNV:\nint $0x9a\n.long 571\nret\n.size vkCreateCudaModuleNV,.-vkCreateCudaModuleNV\n");
-
-__asm__(".text\n.globl vkGetCudaModuleCacheNV\n.type vkGetCudaModuleCacheNV,@function\nvkGetCudaModuleCacheNV:\nint $0x9a\n.long 572\nret\n.size vkGetCudaModuleCacheNV,.-vkGetCudaModuleCacheNV\n");
-
-__asm__(".text\n.globl vkCreateCudaFunctionNV\n.type vkCreateCudaFunctionNV,@function\nvkCreateCudaFunctionNV:\nint $0x9a\n.long 573\nret\n.size vkCreateCudaFunctionNV,.-vkCreateCudaFunctionNV\n");
-
-__asm__(".text\n.globl vkDestroyCudaModuleNV\n.type vkDestroyCudaModuleNV,@function\nvkDestroyCudaModuleNV:\nint $0x9a\n.long 574\nret\n.size vkDestroyCudaModuleNV,.-vkDestroyCudaModuleNV\n");
-
-__asm__(".text\n.globl vkDestroyCudaFunctionNV\n.type vkDestroyCudaFunctionNV,@function\nvkDestroyCudaFunctionNV:\nint $0x9a\n.long 575\nret\n.size vkDestroyCudaFunctionNV,.-vkDestroyCudaFunctionNV\n");
-
-__asm__(".text\n.globl vkCmdCudaLaunchKernelNV\n.type vkCmdCudaLaunchKernelNV,@function\nvkCmdCudaLaunchKernelNV:\nint $0x9a\n.long 576\nret\n.size vkCmdCudaLaunchKernelNV,.-vkCmdCudaLaunchKernelNV\n");
 
 __asm__(".text\n.globl vkCmdBeginRendering\n.type vkCmdBeginRendering,@function\nvkCmdBeginRendering:\nint $0x9a\n.long 577\nret\n.size vkCmdBeginRendering,.-vkCmdBeginRendering\n");
 
 __asm__(".text\n.globl vkCmdBeginRenderingKHR\n.type vkCmdBeginRenderingKHR,@function\nvkCmdBeginRenderingKHR:\nint $0x9a\n.long 578\nret\n.size vkCmdBeginRenderingKHR,.-vkCmdBeginRenderingKHR\n");
 
 __asm__(".text\n.globl vkCmdEndRendering\n.type vkCmdEndRendering,@function\nvkCmdEndRendering:\nint $0x9a\n.long 579\nret\n.size vkCmdEndRendering,.-vkCmdEndRendering\n");
+
+__asm__(".text\n.globl vkCmdEndRendering2KHR\n.type vkCmdEndRendering2KHR,@function\nvkCmdEndRendering2KHR:\nint $0x9a\n.long 653\nret\n.size vkCmdEndRendering2KHR,.-vkCmdEndRendering2KHR\n");
+
+__asm__(".text\n.globl vkCmdEndRendering2EXT\n.type vkCmdEndRendering2EXT,@function\nvkCmdEndRendering2EXT:\nint $0x9a\n.long 654\nret\n.size vkCmdEndRendering2EXT,.-vkCmdEndRendering2EXT\n");
 
 __asm__(".text\n.globl vkCmdEndRenderingKHR\n.type vkCmdEndRenderingKHR,@function\nvkCmdEndRenderingKHR:\nint $0x9a\n.long 580\nret\n.size vkCmdEndRenderingKHR,.-vkCmdEndRenderingKHR\n");
 
@@ -1220,6 +1228,8 @@ __asm__(".text\n.globl vkGetImageSubresourceLayout2EXT\n.type vkGetImageSubresou
 
 __asm__(".text\n.globl vkGetPipelinePropertiesEXT\n.type vkGetPipelinePropertiesEXT,@function\nvkGetPipelinePropertiesEXT:\nint $0x9a\n.long 602\nret\n.size vkGetPipelinePropertiesEXT,.-vkGetPipelinePropertiesEXT\n");
 
+__asm__(".text\n.globl vkCmdBindTileMemoryQCOM\n.type vkCmdBindTileMemoryQCOM,@function\nvkCmdBindTileMemoryQCOM:\nint $0x9a\n.long 655\nret\n.size vkCmdBindTileMemoryQCOM,.-vkCmdBindTileMemoryQCOM\n");
+
 __asm__(".text\n.globl vkGetFramebufferTilePropertiesQCOM\n.type vkGetFramebufferTilePropertiesQCOM,@function\nvkGetFramebufferTilePropertiesQCOM:\nint $0x9a\n.long 603\nret\n.size vkGetFramebufferTilePropertiesQCOM,.-vkGetFramebufferTilePropertiesQCOM\n");
 
 __asm__(".text\n.globl vkGetDynamicRenderingTilePropertiesQCOM\n.type vkGetDynamicRenderingTilePropertiesQCOM,@function\nvkGetDynamicRenderingTilePropertiesQCOM:\nint $0x9a\n.long 604\nret\n.size vkGetDynamicRenderingTilePropertiesQCOM,.-vkGetDynamicRenderingTilePropertiesQCOM\n");
@@ -1237,6 +1247,8 @@ __asm__(".text\n.globl vkCmdOpticalFlowExecuteNV\n.type vkCmdOpticalFlowExecuteN
 __asm__(".text\n.globl vkGetDeviceFaultInfoEXT\n.type vkGetDeviceFaultInfoEXT,@function\nvkGetDeviceFaultInfoEXT:\nint $0x9a\n.long 610\nret\n.size vkGetDeviceFaultInfoEXT,.-vkGetDeviceFaultInfoEXT\n");
 
 __asm__(".text\n.globl vkCmdSetDepthBias2EXT\n.type vkCmdSetDepthBias2EXT,@function\nvkCmdSetDepthBias2EXT:\nint $0x9a\n.long 611\nret\n.size vkCmdSetDepthBias2EXT,.-vkCmdSetDepthBias2EXT\n");
+
+__asm__(".text\n.globl vkReleaseSwapchainImagesKHR\n.type vkReleaseSwapchainImagesKHR,@function\nvkReleaseSwapchainImagesKHR:\nint $0x9a\n.long 656\nret\n.size vkReleaseSwapchainImagesKHR,.-vkReleaseSwapchainImagesKHR\n");
 
 __asm__(".text\n.globl vkReleaseSwapchainImagesEXT\n.type vkReleaseSwapchainImagesEXT,@function\nvkReleaseSwapchainImagesEXT:\nint $0x9a\n.long 612\nret\n.size vkReleaseSwapchainImagesEXT,.-vkReleaseSwapchainImagesEXT\n");
 
@@ -1259,6 +1271,14 @@ __asm__(".text\n.globl vkDestroyShaderEXT\n.type vkDestroyShaderEXT,@function\nv
 __asm__(".text\n.globl vkGetShaderBinaryDataEXT\n.type vkGetShaderBinaryDataEXT,@function\nvkGetShaderBinaryDataEXT:\nint $0x9a\n.long 621\nret\n.size vkGetShaderBinaryDataEXT,.-vkGetShaderBinaryDataEXT\n");
 
 __asm__(".text\n.globl vkCmdBindShadersEXT\n.type vkCmdBindShadersEXT,@function\nvkCmdBindShadersEXT:\nint $0x9a\n.long 622\nret\n.size vkCmdBindShadersEXT,.-vkCmdBindShadersEXT\n");
+
+__asm__(".text\n.globl vkSetSwapchainPresentTimingQueueSizeEXT\n.type vkSetSwapchainPresentTimingQueueSizeEXT,@function\nvkSetSwapchainPresentTimingQueueSizeEXT:\nint $0x9a\n.long 657\nret\n.size vkSetSwapchainPresentTimingQueueSizeEXT,.-vkSetSwapchainPresentTimingQueueSizeEXT\n");
+
+__asm__(".text\n.globl vkGetSwapchainTimingPropertiesEXT\n.type vkGetSwapchainTimingPropertiesEXT,@function\nvkGetSwapchainTimingPropertiesEXT:\nint $0x9a\n.long 658\nret\n.size vkGetSwapchainTimingPropertiesEXT,.-vkGetSwapchainTimingPropertiesEXT\n");
+
+__asm__(".text\n.globl vkGetSwapchainTimeDomainPropertiesEXT\n.type vkGetSwapchainTimeDomainPropertiesEXT,@function\nvkGetSwapchainTimeDomainPropertiesEXT:\nint $0x9a\n.long 659\nret\n.size vkGetSwapchainTimeDomainPropertiesEXT,.-vkGetSwapchainTimeDomainPropertiesEXT\n");
+
+__asm__(".text\n.globl vkGetPastPresentationTimingEXT\n.type vkGetPastPresentationTimingEXT,@function\nvkGetPastPresentationTimingEXT:\nint $0x9a\n.long 660\nret\n.size vkGetPastPresentationTimingEXT,.-vkGetPastPresentationTimingEXT\n");
 
 __asm__(".text\n.globl vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR\n.type vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR,@function\nvkGetPhysicalDeviceCooperativeMatrixPropertiesKHR:\nint $0x9a\n.long 623\nret\n.size vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR,.-vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR\n");
 
@@ -1303,3 +1323,23 @@ __asm__(".text\n.globl vkCmdSetRenderingInputAttachmentIndicesKHR\n.type vkCmdSe
 __asm__(".text\n.globl vkCmdSetDepthClampRangeEXT\n.type vkCmdSetDepthClampRangeEXT,@function\nvkCmdSetDepthClampRangeEXT:\nint $0x9a\n.long 643\nret\n.size vkCmdSetDepthClampRangeEXT,.-vkCmdSetDepthClampRangeEXT\n");
 
 __asm__(".text\n.globl vkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV\n.type vkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV,@function\nvkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV:\nint $0x9a\n.long 644\nret\n.size vkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV,.-vkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV\n");
+
+__asm__(".text\n.globl vkGetPhysicalDeviceCooperativeVectorPropertiesNV\n.type vkGetPhysicalDeviceCooperativeVectorPropertiesNV,@function\nvkGetPhysicalDeviceCooperativeVectorPropertiesNV:\nint $0x9a\n.long 661\nret\n.size vkGetPhysicalDeviceCooperativeVectorPropertiesNV,.-vkGetPhysicalDeviceCooperativeVectorPropertiesNV\n");
+
+__asm__(".text\n.globl vkConvertCooperativeVectorMatrixNV\n.type vkConvertCooperativeVectorMatrixNV,@function\nvkConvertCooperativeVectorMatrixNV:\nint $0x9a\n.long 662\nret\n.size vkConvertCooperativeVectorMatrixNV,.-vkConvertCooperativeVectorMatrixNV\n");
+
+__asm__(".text\n.globl vkCmdConvertCooperativeVectorMatrixNV\n.type vkCmdConvertCooperativeVectorMatrixNV,@function\nvkCmdConvertCooperativeVectorMatrixNV:\nint $0x9a\n.long 663\nret\n.size vkCmdConvertCooperativeVectorMatrixNV,.-vkCmdConvertCooperativeVectorMatrixNV\n");
+
+__asm__(".text\n.globl vkCmdDispatchTileQCOM\n.type vkCmdDispatchTileQCOM,@function\nvkCmdDispatchTileQCOM:\nint $0x9a\n.long 664\nret\n.size vkCmdDispatchTileQCOM,.-vkCmdDispatchTileQCOM\n");
+
+__asm__(".text\n.globl vkCmdBeginPerTileExecutionQCOM\n.type vkCmdBeginPerTileExecutionQCOM,@function\nvkCmdBeginPerTileExecutionQCOM:\nint $0x9a\n.long 665\nret\n.size vkCmdBeginPerTileExecutionQCOM,.-vkCmdBeginPerTileExecutionQCOM\n");
+
+__asm__(".text\n.globl vkCmdEndPerTileExecutionQCOM\n.type vkCmdEndPerTileExecutionQCOM,@function\nvkCmdEndPerTileExecutionQCOM:\nint $0x9a\n.long 666\nret\n.size vkCmdEndPerTileExecutionQCOM,.-vkCmdEndPerTileExecutionQCOM\n");
+
+__asm__(".text\n.globl vkCreateExternalComputeQueueNV\n.type vkCreateExternalComputeQueueNV,@function\nvkCreateExternalComputeQueueNV:\nint $0x9a\n.long 667\nret\n.size vkCreateExternalComputeQueueNV,.-vkCreateExternalComputeQueueNV\n");
+
+__asm__(".text\n.globl vkDestroyExternalComputeQueueNV\n.type vkDestroyExternalComputeQueueNV,@function\nvkDestroyExternalComputeQueueNV:\nint $0x9a\n.long 668\nret\n.size vkDestroyExternalComputeQueueNV,.-vkDestroyExternalComputeQueueNV\n");
+
+__asm__(".text\n.globl vkGetExternalComputeQueueDataNV\n.type vkGetExternalComputeQueueDataNV,@function\nvkGetExternalComputeQueueDataNV:\nint $0x9a\n.long 669\nret\n.size vkGetExternalComputeQueueDataNV,.-vkGetExternalComputeQueueDataNV\n");
+
+__asm__(".text\n.globl vkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM\n.type vkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM,@function\nvkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM:\nint $0x9a\n.long 670\nret\n.size vkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM,.-vkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM\n");

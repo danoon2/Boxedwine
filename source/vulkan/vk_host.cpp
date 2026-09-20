@@ -124,6 +124,9 @@ static_assert(sizeof(VkBindSparseInfo) == 48, "false");
 static_assert(sizeof(VkImageCopy) == 68, "false");
 static_assert(sizeof(VkImageBlit) == 80, "false");
 static_assert(sizeof(VkBufferImageCopy) == 56, "false");
+static_assert(sizeof(VkStridedDeviceAddressRangeKHR) == 24, "false");
+static_assert(sizeof(VkCopyMemoryIndirectInfoKHR) == 44, "false");
+static_assert(sizeof(VkCopyMemoryToImageIndirectInfoKHR) == 56, "false");
 static_assert(sizeof(VkImageResolve) == 68, "false");
 static_assert(sizeof(VkShaderModuleCreateInfo) == 20, "false");
 static_assert(sizeof(VkDescriptorSetLayoutBinding) == 20, "false");
@@ -284,7 +287,22 @@ static_assert(sizeof(VkDescriptorUpdateTemplateCreateInfo) == 48, "false");
 static_assert(sizeof(VkXYColorEXT) == 8, "false");
 static_assert(sizeof(VkPhysicalDevicePresentIdFeaturesKHR) == 12, "false");
 static_assert(sizeof(VkPresentIdKHR) == 16, "false");
+static_assert(sizeof(VkPhysicalDevicePresentId2FeaturesKHR) == 12, "false");
+static_assert(sizeof(VkPresentId2KHR) == 16, "false");
+static_assert(sizeof(VkPresentWait2InfoKHR) == 24, "false");
 static_assert(sizeof(VkPhysicalDevicePresentWaitFeaturesKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDevicePresentWait2FeaturesKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDevicePresentTimingFeaturesEXT) == 20, "false");
+static_assert(sizeof(VkPresentTimingSurfaceCapabilitiesEXT) == 24, "false");
+static_assert(sizeof(VkSwapchainTimingPropertiesEXT) == 24, "false");
+static_assert(sizeof(VkSwapchainTimeDomainPropertiesEXT) == 20, "false");
+static_assert(sizeof(VkPresentStageTimeEXT) == 12, "false");
+static_assert(sizeof(VkPastPresentationTimingInfoEXT) == 20, "false");
+static_assert(sizeof(VkPastPresentationTimingPropertiesEXT) == 32, "false");
+static_assert(sizeof(VkPastPresentationTimingEXT) == 48, "false");
+static_assert(sizeof(VkPresentTimingsInfoEXT) == 16, "false");
+static_assert(sizeof(VkPresentTimingInfoEXT) == 36, "false");
+static_assert(sizeof(VkSwapchainCalibratedTimestampInfoEXT) == 28, "false");
 static_assert(sizeof(VkHdrMetadataEXT) == 56, "false");
 static_assert(sizeof(VkHdrVividDynamicMetadataHUAWEI) == 16, "false");
 static_assert(sizeof(VkViewportWScalingNV) == 8, "false");
@@ -363,6 +381,12 @@ static_assert(sizeof(VkPhysicalDeviceMaintenance5Features) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceMaintenance5Properties) == 32, "false");
 static_assert(sizeof(VkPhysicalDeviceMaintenance6Features) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceMaintenance6Properties) == 20, "false");
+static_assert(sizeof(VkPhysicalDeviceMaintenance8FeaturesKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceMaintenance9FeaturesKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceMaintenance9PropertiesKHR) == 16, "false");
+static_assert(sizeof(VkPhysicalDeviceMaintenance10PropertiesKHR) == 20, "false");
+static_assert(sizeof(VkPhysicalDeviceMaintenance10FeaturesKHR) == 12, "false");
+static_assert(sizeof(VkQueueFamilyOwnershipTransferPropertiesKHR) == 12, "false");
 static_assert(sizeof(VkRenderingAreaInfo) == 28, "false");
 static_assert(sizeof(VkDescriptorSetLayoutSupport) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceShaderDrawParametersFeatures) == 12, "false");
@@ -434,10 +458,11 @@ static_assert(sizeof(VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR) == 16,
 static_assert(sizeof(VkPhysicalDeviceComputeShaderDerivativesPropertiesKHR) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceShaderImageFootprintFeaturesNV) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceCopyMemoryIndirectFeaturesKHR) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceCopyMemoryIndirectFeaturesNV) == 12, "false");
-static_assert(sizeof(VkPhysicalDeviceCopyMemoryIndirectPropertiesNV) == 12, "false");
-static_assert(sizeof(VkPhysicalDeviceMemoryDecompressionFeaturesNV) == 12, "false");
-static_assert(sizeof(VkPhysicalDeviceMemoryDecompressionPropertiesNV) == 24, "false");
+static_assert(sizeof(VkPhysicalDeviceCopyMemoryIndirectPropertiesKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceMemoryDecompressionFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceMemoryDecompressionPropertiesEXT) == 24, "false");
 static_assert(sizeof(VkShadingRatePaletteNV) == 8, "false");
 static_assert(sizeof(VkPipelineViewportShadingRateImageStateCreateInfoNV) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceShadingRateImageFeaturesNV) == 16, "false");
@@ -476,12 +501,12 @@ static_assert(sizeof(VkImageStencilUsageCreateInfo) == 12, "false");
 static_assert(sizeof(VkDeviceMemoryOverallocationCreateInfoAMD) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceFragmentDensityMapFeaturesEXT) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceFragmentDensityMap2FeaturesEXT) == 12, "false");
-static_assert(sizeof(VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceFragmentDensityMapOffsetFeaturesEXT) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceFragmentDensityMapPropertiesEXT) == 28, "false");
 static_assert(sizeof(VkPhysicalDeviceFragmentDensityMap2PropertiesEXT) == 24, "false");
-static_assert(sizeof(VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM) == 16, "false");
+static_assert(sizeof(VkPhysicalDeviceFragmentDensityMapOffsetPropertiesEXT) == 16, "false");
 static_assert(sizeof(VkRenderPassFragmentDensityMapCreateInfoEXT) == 16, "false");
-static_assert(sizeof(VkSubpassFragmentDensityMapOffsetEndInfoQCOM) == 16, "false");
+static_assert(sizeof(VkRenderPassFragmentDensityMapOffsetEndInfoEXT) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceScalarBlockLayoutFeatures) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceUniformBufferStandardLayoutFeatures) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceDepthClipEnableFeaturesEXT) == 12, "false");
@@ -580,6 +605,8 @@ static_assert(sizeof(VkPhysicalDeviceBorderColorSwizzleFeaturesEXT) == 16, "fals
 static_assert(sizeof(VkAccelerationStructureGeometryTrianglesDataKHR) == 52, "false");
 static_assert(sizeof(VkAccelerationStructureGeometryAabbsDataKHR) == 24, "false");
 static_assert(sizeof(VkAccelerationStructureGeometryInstancesDataKHR) == 20, "false");
+static_assert(sizeof(VkAccelerationStructureGeometryLinearSweptSpheresDataNV) == 76, "false");
+static_assert(sizeof(VkAccelerationStructureGeometrySpheresDataNV) == 68, "false");
 static_assert(sizeof(VkAccelerationStructureGeometryKHR) == 68, "false");
 static_assert(sizeof(VkAccelerationStructureBuildGeometryInfoKHR) == 56, "false");
 static_assert(sizeof(VkAccelerationStructureBuildRangeInfoKHR) == 16, "false");
@@ -600,12 +627,18 @@ static_assert(sizeof(VkColorBlendAdvancedEXT) == 20, "false");
 static_assert(sizeof(VkRenderPassTransformBeginInfoQCOM) == 12, "false");
 static_assert(sizeof(VkCopyCommandTransformInfoQCOM) == 12, "false");
 static_assert(sizeof(VkCommandBufferInheritanceRenderPassTransformInfoQCOM) == 28, "false");
+static_assert(sizeof(VkPhysicalDevicePartitionedAccelerationStructureFeaturesNV) == 12, "false");
+static_assert(sizeof(VkPhysicalDevicePartitionedAccelerationStructurePropertiesNV) == 12, "false");
+static_assert(sizeof(VkPartitionedAccelerationStructureFlagsNV) == 12, "false");
+static_assert(sizeof(VkWriteDescriptorSetPartitionedAccelerationStructureNV) == 16, "false");
+static_assert(sizeof(VkPartitionedAccelerationStructureInstancesInputNV) == 28, "false");
+static_assert(sizeof(VkBuildPartitionedAccelerationStructureInfoNV) == 76, "false");
 static_assert(sizeof(VkPhysicalDeviceDiagnosticsConfigFeaturesNV) == 12, "false");
 static_assert(sizeof(VkDeviceDiagnosticsConfigCreateInfoNV) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR) == 12, "false");
-static_assert(sizeof(VkPhysicalDeviceRobustness2FeaturesEXT) == 20, "false");
-static_assert(sizeof(VkPhysicalDeviceRobustness2PropertiesEXT) == 24, "false");
+static_assert(sizeof(VkPhysicalDeviceRobustness2FeaturesKHR) == 20, "false");
+static_assert(sizeof(VkPhysicalDeviceRobustness2PropertiesKHR) == 24, "false");
 static_assert(sizeof(VkPhysicalDeviceImageRobustnessFeatures) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR) == 24, "false");
 static_assert(sizeof(VkPhysicalDevice4444FormatsFeaturesEXT) == 16, "false");
@@ -643,6 +676,10 @@ static_assert(sizeof(VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT) == 12, "f
 static_assert(sizeof(VkMutableDescriptorTypeListEXT) == 8, "false");
 static_assert(sizeof(VkMutableDescriptorTypeCreateInfoEXT) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceDepthClipControlFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceZeroInitializeDeviceMemoryFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkBeginCustomResolveInfoEXT) == 8, "false");
+static_assert(sizeof(VkPhysicalDeviceCustomResolveFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkCustomResolveCreateInfoEXT) == 28, "false");
 static_assert(sizeof(VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceDeviceGeneratedCommandsPropertiesEXT) == 56, "false");
 static_assert(sizeof(VkGeneratedCommandsPipelineInfoEXT) == 16, "false");
@@ -669,6 +706,7 @@ static_assert(sizeof(VkPipelineColorWriteCreateInfoEXT) == 16, "false");
 static_assert(sizeof(VkMemoryBarrier2) == 40, "false");
 static_assert(sizeof(VkImageMemoryBarrier2) == 84, "false");
 static_assert(sizeof(VkBufferMemoryBarrier2) == 72, "false");
+static_assert(sizeof(VkMemoryBarrierAccessFlags3KHR) == 24, "false");
 static_assert(sizeof(VkDependencyInfo) == 36, "false");
 static_assert(sizeof(VkSemaphoreSubmitInfo) == 36, "false");
 static_assert(sizeof(VkCommandBufferSubmitInfo) == 16, "false");
@@ -676,6 +714,7 @@ static_assert(sizeof(VkSubmitInfo2) == 36, "false");
 static_assert(sizeof(VkQueueFamilyCheckpointProperties2NV) == 16, "false");
 static_assert(sizeof(VkCheckpointData2NV) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceSynchronization2Features) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceHostImageCopyFeatures) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceHostImageCopyProperties) == 44, "false");
 static_assert(sizeof(VkMemoryToImageCopy) == 60, "false");
@@ -689,6 +728,8 @@ static_assert(sizeof(VkHostImageCopyDevicePerformanceQuery) == 16, "false");
 static_assert(sizeof(VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceLegacyDitheringFeaturesEXT) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkSurfaceCapabilitiesPresentId2KHR) == 12, "false");
+static_assert(sizeof(VkSurfaceCapabilitiesPresentWait2KHR) == 12, "false");
 static_assert(sizeof(VkSubpassResolvePerformanceQueryEXT) == 12, "false");
 static_assert(sizeof(VkMultisampledRenderToSingleSampledInfoEXT) == 16, "false");
 static_assert(sizeof(VkPhysicalDevicePipelineProtectedAccessFeatures) == 12, "false");
@@ -714,6 +755,7 @@ static_assert(sizeof(VkVideoDecodeCapabilitiesKHR) == 12, "false");
 static_assert(sizeof(VkVideoDecodeUsageInfoKHR) == 12, "false");
 static_assert(sizeof(VkVideoDecodeInfoKHR) == 84, "false");
 static_assert(sizeof(VkPhysicalDeviceVideoMaintenance1FeaturesKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceVideoMaintenance2FeaturesKHR) == 12, "false");
 static_assert(sizeof(VkVideoInlineQueryInfoKHR) == 24, "false");
 static_assert(sizeof(StdVideoDecodeH264PictureInfo) == 20, "false");
 static_assert(sizeof(StdVideoDecodeH264ReferenceInfo) == 16, "false");
@@ -723,6 +765,7 @@ static_assert(sizeof(StdVideoH264SequenceParameterSet) == 76, "false");
 static_assert(sizeof(StdVideoH264PictureParameterSet) == 20, "false");
 static_assert(sizeof(VkVideoDecodeH264SessionParametersAddInfoKHR) == 24, "false");
 static_assert(sizeof(VkVideoDecodeH264SessionParametersCreateInfoKHR) == 20, "false");
+static_assert(sizeof(VkVideoDecodeH264InlineSessionParametersInfoKHR) == 16, "false");
 static_assert(sizeof(VkVideoDecodeH264PictureInfoKHR) == 20, "false");
 static_assert(sizeof(VkVideoDecodeH264DpbSlotInfoKHR) == 12, "false");
 static_assert(sizeof(StdVideoH265VideoParameterSet) == 36, "false");
@@ -734,6 +777,7 @@ static_assert(sizeof(VkVideoDecodeH265ProfileInfoKHR) == 12, "false");
 static_assert(sizeof(VkVideoDecodeH265CapabilitiesKHR) == 12, "false");
 static_assert(sizeof(VkVideoDecodeH265SessionParametersAddInfoKHR) == 32, "false");
 static_assert(sizeof(VkVideoDecodeH265SessionParametersCreateInfoKHR) == 24, "false");
+static_assert(sizeof(VkVideoDecodeH265InlineSessionParametersInfoKHR) == 20, "false");
 static_assert(sizeof(VkVideoDecodeH265PictureInfoKHR) == 20, "false");
 static_assert(sizeof(VkVideoDecodeH265DpbSlotInfoKHR) == 12, "false");
 static_assert(sizeof(StdVideoAV1SequenceHeader) == 32, "false");
@@ -742,6 +786,7 @@ static_assert(sizeof(StdVideoDecodeAV1ReferenceInfo) == 16, "false");
 static_assert(sizeof(VkVideoDecodeAV1ProfileInfoKHR) == 16, "false");
 static_assert(sizeof(VkVideoDecodeAV1CapabilitiesKHR) == 12, "false");
 static_assert(sizeof(VkVideoDecodeAV1SessionParametersCreateInfoKHR) == 12, "false");
+static_assert(sizeof(VkVideoDecodeAV1InlineSessionParametersInfoKHR) == 12, "false");
 static_assert(sizeof(VkVideoDecodeAV1PictureInfoKHR) == 56, "false");
 static_assert(sizeof(VkVideoDecodeAV1DpbSlotInfoKHR) == 12, "false");
 static_assert(sizeof(VkVideoSessionCreateInfoKHR) == 48, "false");
@@ -826,6 +871,11 @@ static_assert(sizeof(VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT) == 12, "f
 static_assert(sizeof(VkPhysicalDeviceProvokingVertexFeaturesEXT) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceProvokingVertexPropertiesEXT) == 16, "false");
 static_assert(sizeof(VkPipelineRasterizationProvokingVertexStateCreateInfoEXT) == 12, "false");
+static_assert(sizeof(VkVideoEncodeIntraRefreshCapabilitiesKHR) == 28, "false");
+static_assert(sizeof(VkVideoEncodeSessionIntraRefreshCreateInfoKHR) == 12, "false");
+static_assert(sizeof(VkVideoEncodeIntraRefreshInfoKHR) == 16, "false");
+static_assert(sizeof(VkVideoReferenceIntraRefreshInfoKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceVideoEncodeIntraRefreshFeaturesKHR) == 12, "false");
 static_assert(sizeof(VkCuModuleCreateInfoNVX) == 16, "false");
 static_assert(sizeof(VkCuModuleTexturingModeCreateInfoNVX) == 12, "false");
 static_assert(sizeof(VkCuFunctionCreateInfoNVX) == 20, "false");
@@ -847,18 +897,19 @@ static_assert(sizeof(VkPhysicalDeviceShaderIntegerDotProductFeatures) == 12, "fa
 static_assert(sizeof(VkPhysicalDeviceShaderIntegerDotProductProperties) == 128, "false");
 static_assert(sizeof(VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceShaderFmaFeaturesKHR) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceRayTracingMotionBlurFeaturesNV) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceRayTracingValidationFeaturesNV) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV) == 16, "false");
 static_assert(sizeof(VkAccelerationStructureGeometryMotionTrianglesDataNV) == 16, "false");
 static_assert(sizeof(VkAccelerationStructureMotionInfoNV) == 16, "false");
-static_assert(sizeof(VkCudaModuleCreateInfoNV) == 16, "false");
-static_assert(sizeof(VkCudaFunctionCreateInfoNV) == 20, "false");
-static_assert(sizeof(VkCudaLaunchInfoNV) == 60, "false");
 static_assert(sizeof(VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT) == 12, "false");
 static_assert(sizeof(VkFormatProperties3) == 32, "false");
 static_assert(sizeof(VkPipelineRenderingCreateInfo) == 28, "false");
 static_assert(sizeof(VkRenderingInfo) == 52, "false");
+static_assert(sizeof(VkRenderingEndInfoKHR) == 8, "false");
 static_assert(sizeof(VkRenderingAttachmentInfo) == 60, "false");
+static_assert(sizeof(VkRenderingFragmentShadingRateAttachmentInfoKHR) == 28, "false");
 static_assert(sizeof(VkRenderingFragmentDensityMapAttachmentInfoEXT) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceDynamicRenderingFeatures) == 12, "false");
 static_assert(sizeof(VkCommandBufferInheritanceRenderingInfo) == 36, "false");
@@ -919,9 +970,12 @@ static_assert(sizeof(VkPhysicalDeviceImageProcessingFeaturesQCOM) == 20, "false"
 static_assert(sizeof(VkPhysicalDeviceImageProcessingPropertiesQCOM) == 36, "false");
 static_assert(sizeof(VkPhysicalDeviceTilePropertiesFeaturesQCOM) == 12, "false");
 static_assert(sizeof(VkTilePropertiesQCOM) == 36, "false");
+static_assert(sizeof(VkTileMemoryBindInfoQCOM) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT) == 12, "false");
-static_assert(sizeof(VkPhysicalDeviceDepthClampZeroOneFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkAttachmentFeedbackLoopInfoEXT) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceAddressBindingReportFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkRenderingAttachmentFlagsInfoKHR) == 12, "false");
+static_assert(sizeof(VkResolveImageModeInfoKHR) == 20, "false");
 static_assert(sizeof(VkDeviceAddressBindingCallbackDataEXT) == 32, "false");
 static_assert(sizeof(VkPhysicalDeviceOpticalFlowFeaturesNV) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceOpticalFlowPropertiesNV) == 52, "false");
@@ -939,22 +993,26 @@ static_assert(sizeof(VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT) == 
 static_assert(sizeof(VkDepthBiasInfoEXT) == 20, "false");
 static_assert(sizeof(VkDepthBiasRepresentationInfoEXT) == 16, "false");
 static_assert(sizeof(VkDecompressMemoryRegionNV) == 40, "false");
+static_assert(sizeof(VkDecompressMemoryRegionEXT) == 32, "false");
+static_assert(sizeof(VkDecompressMemoryInfoEXT) == 24, "false");
 static_assert(sizeof(VkPhysicalDeviceShaderCoreBuiltinsPropertiesARM) == 24, "false");
 static_assert(sizeof(VkPhysicalDeviceShaderCoreBuiltinsFeaturesARM) == 12, "false");
 static_assert(sizeof(VkFrameBoundaryEXT) == 52, "false");
 static_assert(sizeof(VkPhysicalDeviceFrameBoundaryFeaturesEXT) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT) == 12, "false");
-static_assert(sizeof(VkSurfacePresentModeEXT) == 12, "false");
-static_assert(sizeof(VkSurfacePresentScalingCapabilitiesEXT) == 36, "false");
-static_assert(sizeof(VkSurfacePresentModeCompatibilityEXT) == 16, "false");
-static_assert(sizeof(VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT) == 12, "false");
-static_assert(sizeof(VkSwapchainPresentFenceInfoEXT) == 16, "false");
-static_assert(sizeof(VkSwapchainPresentModesCreateInfoEXT) == 16, "false");
-static_assert(sizeof(VkSwapchainPresentModeInfoEXT) == 16, "false");
-static_assert(sizeof(VkSwapchainPresentScalingCreateInfoEXT) == 20, "false");
-static_assert(sizeof(VkReleaseSwapchainImagesInfoEXT) == 24, "false");
+static_assert(sizeof(VkSurfacePresentModeKHR) == 12, "false");
+static_assert(sizeof(VkSurfacePresentScalingCapabilitiesKHR) == 36, "false");
+static_assert(sizeof(VkSurfacePresentModeCompatibilityKHR) == 16, "false");
+static_assert(sizeof(VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR) == 12, "false");
+static_assert(sizeof(VkSwapchainPresentFenceInfoKHR) == 16, "false");
+static_assert(sizeof(VkSwapchainPresentModesCreateInfoKHR) == 16, "false");
+static_assert(sizeof(VkSwapchainPresentModeInfoKHR) == 16, "false");
+static_assert(sizeof(VkSwapchainPresentScalingCreateInfoKHR) == 20, "false");
+static_assert(sizeof(VkReleaseSwapchainImagesInfoKHR) == 24, "false");
 static_assert(sizeof(VkPhysicalDeviceDepthBiasControlFeaturesEXT) == 24, "false");
+static_assert(sizeof(VkPhysicalDeviceRayTracingInvocationReorderFeaturesEXT) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceRayTracingInvocationReorderPropertiesEXT) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV) == 24, "false");
@@ -979,6 +1037,10 @@ static_assert(sizeof(VkPhysicalDeviceAntiLagFeaturesAMD) == 12, "false");
 static_assert(sizeof(VkAntiLagDataAMD) == 20, "false");
 static_assert(sizeof(VkAntiLagPresentationInfoAMD) == 20, "false");
 static_assert(sizeof(VkBindMemoryStatus) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceTileMemoryHeapFeaturesQCOM) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceTileMemoryHeapPropertiesQCOM) == 16, "false");
+static_assert(sizeof(VkTileMemorySizeInfoQCOM) == 16, "false");
+static_assert(sizeof(VkTileMemoryRequirementsQCOM) == 24, "false");
 static_assert(sizeof(VkBindDescriptorSetsInfo) == 40, "false");
 static_assert(sizeof(VkPushConstantsInfo) == 32, "false");
 static_assert(sizeof(VkPushDescriptorSetInfo) == 32, "false");
@@ -1006,8 +1068,6 @@ static_assert(sizeof(VkOutOfBandQueueTypeInfoNV) == 12, "false");
 static_assert(sizeof(VkLatencySubmissionPresentIdNV) == 16, "false");
 static_assert(sizeof(VkSwapchainLatencyCreateInfoNV) == 12, "false");
 static_assert(sizeof(VkLatencySurfaceCapabilitiesNV) == 16, "false");
-static_assert(sizeof(VkPhysicalDeviceCudaKernelLaunchFeaturesNV) == 12, "false");
-static_assert(sizeof(VkPhysicalDeviceCudaKernelLaunchPropertiesNV) == 16, "false");
 static_assert(sizeof(VkDeviceQueueShaderCoreControlCreateInfoARM) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceSchedulingControlsFeaturesARM) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceSchedulingControlsPropertiesARM) == 16, "false");
@@ -1017,6 +1077,7 @@ static_assert(sizeof(VkPhysicalDeviceRenderPassStripedPropertiesARM) == 20, "fal
 static_assert(sizeof(VkRenderPassStripeInfoARM) == 24, "false");
 static_assert(sizeof(VkRenderPassStripeBeginInfoARM) == 16, "false");
 static_assert(sizeof(VkRenderPassStripeSubmitInfoARM) == 16, "false");
+static_assert(sizeof(VkPhysicalDevicePipelineOpacityMicromapFeaturesARM) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceShaderSubgroupRotateFeatures) == 16, "false");
 static_assert(sizeof(VkPhysicalDeviceShaderExpectAssumeFeatures) == 12, "false");
@@ -1029,19 +1090,55 @@ static_assert(sizeof(VkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV) == 12,
 static_assert(sizeof(VkPhysicalDeviceMapMemoryPlacedFeaturesEXT) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceMapMemoryPlacedPropertiesEXT) == 16, "false");
 static_assert(sizeof(VkMemoryMapPlacedInfoEXT) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceShaderBfloat16FeaturesKHR) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceRawAccessChainsFeaturesNV) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceCommandBufferInheritanceFeaturesNV) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceImageAlignmentControlFeaturesMESA) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceImageAlignmentControlPropertiesMESA) == 12, "false");
 static_assert(sizeof(VkImageAlignmentControlCreateInfoMESA) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT) == 12, "false");
-static_assert(sizeof(VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR) == 12, "false");
 static_assert(sizeof(VkDepthClampRangeEXT) == 8, "false");
 static_assert(sizeof(VkPhysicalDeviceCooperativeMatrix2FeaturesNV) == 36, "false");
 static_assert(sizeof(VkPhysicalDeviceCooperativeMatrix2PropertiesNV) == 20, "false");
 static_assert(sizeof(VkCooperativeMatrixFlexibleDimensionsPropertiesNV) == 48, "false");
 static_assert(sizeof(VkPhysicalDeviceHdrVividFeaturesHUAWEI) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceDepthClampZeroOneFeaturesKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceCooperativeVectorFeaturesNV) == 16, "false");
+static_assert(sizeof(VkCooperativeVectorPropertiesNV) == 32, "false");
+static_assert(sizeof(VkPhysicalDeviceCooperativeVectorPropertiesNV) == 24, "false");
+static_assert(sizeof(VkConvertCooperativeVectorMatrixInfoNV) == 64, "false");
+static_assert(sizeof(VkPhysicalDeviceTileShadingFeaturesQCOM) == 64, "false");
+static_assert(sizeof(VkPhysicalDeviceTileShadingPropertiesQCOM) == 32, "false");
+static_assert(sizeof(VkRenderPassTileShadingCreateInfoQCOM) == 20, "false");
+static_assert(sizeof(VkPerTileBeginInfoQCOM) == 8, "false");
+static_assert(sizeof(VkPerTileEndInfoQCOM) == 8, "false");
+static_assert(sizeof(VkDispatchTileInfoQCOM) == 8, "false");
+static_assert(sizeof(VkPhysicalDeviceFragmentDensityMapLayeredPropertiesVALVE) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceFragmentDensityMapLayeredFeaturesVALVE) == 12, "false");
+static_assert(sizeof(VkPipelineFragmentDensityMapLayeredCreateInfoVALVE) == 12, "false");
+static_assert(sizeof(VkExternalComputeQueueDeviceCreateInfoNV) == 12, "false");
+static_assert(sizeof(VkExternalComputeQueueCreateInfoNV) == 12, "false");
+static_assert(sizeof(VkExternalComputeQueueDataParamsNV) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceExternalComputeQueuePropertiesNV) == 16, "false");
+static_assert(sizeof(VkPhysicalDeviceShaderUniformBufferUnsizedArrayFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceFormatPackFeaturesARM) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceShaderFloat8FeaturesEXT) == 16, "false");
+static_assert(sizeof(VkPhysicalDevicePipelineCacheIncrementalModeFeaturesSEC) == 12, "false");
+static_assert(sizeof(VkDataGraphPipelineBuiltinModelCreateInfoQCOM) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceDataGraphModelFeaturesQCOM) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceShaderUntypedPointersFeaturesKHR) == 12, "false");
+static_assert(sizeof(VkPhysicalDeviceVideoEncodeRgbConversionFeaturesVALVE) == 12, "false");
+static_assert(sizeof(VkVideoEncodeRgbConversionCapabilitiesVALVE) == 24, "false");
+static_assert(sizeof(VkVideoEncodeProfileRgbConversionInfoVALVE) == 12, "false");
+static_assert(sizeof(VkVideoEncodeSessionRgbConversionCreateInfoVALVE) == 24, "false");
+static_assert(sizeof(VkPhysicalDeviceShader64BitIndexingFeaturesEXT) == 12, "false");
+static_assert(sizeof(VkPhysicalDevicePerformanceCountersByRegionFeaturesARM) == 12, "false");
+static_assert(sizeof(VkPhysicalDevicePerformanceCountersByRegionPropertiesARM) == 32, "false");
+static_assert(sizeof(VkPerformanceCounterARM) == 12, "false");
+static_assert(sizeof(VkPerformanceCounterDescriptionARM) == 268, "false");
+static_assert(sizeof(VkRenderPassPerformanceCountersByRegionBeginInfoARM) == 28, "false");
 static_assert(sizeof(StdVideoEncodeH264WeightTableFlags) == 16, "false");
 static_assert(sizeof(StdVideoEncodeH264WeightTable) == 404, "false");
 static_assert(sizeof(StdVideoH265SubLayerHrdParameters) == 516, "false");
@@ -1073,10 +1170,11 @@ static_assert(sizeof(StdVideoAV1GlobalMotion) == 200, "false");
 static_assert(sizeof(StdVideoAV1TimingInfo) == 16, "false");
 static_assert(sizeof(StdVideoAV1ColorConfig) == 24, "false");
 static_assert(sizeof(StdVideoAV1FilmGrain) == 164, "false");
-static_assert(sizeof(VkDisplayModePropertiesKHR) == 20, "false");
 static_assert(sizeof(VkDisplayPropertiesKHR) == 40, "false");
-static_assert(sizeof(VkDisplayPlaneCapabilitiesKHR) == 68, "false");
+static_assert(sizeof(VkPhysicalDeviceDataGraphOperationSupportARM) == 136, "false");
 static_assert(sizeof(VkDisplayPlanePropertiesKHR) == 12, "false");
+static_assert(sizeof(VkDisplayModePropertiesKHR) == 20, "false");
+static_assert(sizeof(VkDisplayPlaneCapabilitiesKHR) == 68, "false");
 static_assert(sizeof(VkDisplayModeParametersKHR) == 12, "false");
 #endif
 
@@ -2656,6 +2754,13 @@ void vk_CmdCopyMemoryIndirectNV(CPU* cpu) {
     uint32_t stride = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdCopyMemoryIndirectNV(commandBuffer, copyBufferAddress, copyCount, stride);
 }
+void vk_CmdCopyMemoryIndirectKHR(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkCopyMemoryIndirectInfoKHR local_pCopyMemoryIndirectInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkCopyMemoryIndirectInfoKHR* pCopyMemoryIndirectInfo = &local_pCopyMemoryIndirectInfo.s;
+    pBoxedInfo->pvkCmdCopyMemoryIndirectKHR(commandBuffer, pCopyMemoryIndirectInfo);
+}
 void vk_CmdCopyMemoryToImageIndirectNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
@@ -2675,6 +2780,13 @@ void vk_CmdCopyMemoryToImageIndirectNV(CPU* cpu) {
     if (pImageSubresources) {
         delete[] pImageSubresources;
     }
+}
+void vk_CmdCopyMemoryToImageIndirectKHR(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkCopyMemoryToImageIndirectInfoKHR local_pCopyMemoryToImageIndirectInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkCopyMemoryToImageIndirectInfoKHR* pCopyMemoryToImageIndirectInfo = &local_pCopyMemoryToImageIndirectInfo.s;
+    pBoxedInfo->pvkCmdCopyMemoryToImageIndirectKHR(commandBuffer, pCopyMemoryToImageIndirectInfo);
 }
 void vk_CmdUpdateBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -2912,6 +3024,13 @@ void vk_CmdEndConditionalRenderingEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     pBoxedInfo->pvkCmdEndConditionalRenderingEXT(commandBuffer);
+}
+void vk_CmdBeginCustomResolveEXT(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkBeginCustomResolveInfoEXT local_pBeginCustomResolveInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkBeginCustomResolveInfoEXT* pBeginCustomResolveInfo = &local_pBeginCustomResolveInfo.s;
+    pBoxedInfo->pvkCmdBeginCustomResolveEXT(commandBuffer, pBeginCustomResolveInfo);
 }
 void vk_CmdResetQueryPool(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -7408,6 +7527,39 @@ void vk_CmdDecompressMemoryIndirectCountNV(CPU* cpu) {
     uint32_t stride = (uint32_t)ARG6;
     pBoxedInfo->pvkCmdDecompressMemoryIndirectCountNV(commandBuffer, indirectCommandsAddress, indirectCommandsCountAddress, stride);
 }
+void vk_GetPartitionedAccelerationStructuresBuildSizesNV(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkPartitionedAccelerationStructureInstancesInputNV local_pInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkPartitionedAccelerationStructureInstancesInputNV* pInfo = &local_pInfo.s;
+    MarshalVkAccelerationStructureBuildSizesInfoKHR pSizeInfo(pBoxedInfo, cpu->memory, ARG3);
+    pBoxedInfo->pvkGetPartitionedAccelerationStructuresBuildSizesNV(device, pInfo, &pSizeInfo.s);
+    MarshalVkAccelerationStructureBuildSizesInfoKHR::write(pBoxedInfo, cpu->memory, ARG3, &pSizeInfo.s);
+}
+void vk_CmdBuildPartitionedAccelerationStructuresNV(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkBuildPartitionedAccelerationStructureInfoNV local_pBuildInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkBuildPartitionedAccelerationStructureInfoNV* pBuildInfo = &local_pBuildInfo.s;
+    pBoxedInfo->pvkCmdBuildPartitionedAccelerationStructuresNV(commandBuffer, pBuildInfo);
+}
+void vk_CmdDecompressMemoryEXT(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkDecompressMemoryInfoEXT local_pDecompressMemoryInfoEXT(pBoxedInfo, cpu->memory, ARG2);
+    VkDecompressMemoryInfoEXT* pDecompressMemoryInfoEXT = &local_pDecompressMemoryInfoEXT.s;
+    pBoxedInfo->pvkCmdDecompressMemoryEXT(commandBuffer, pDecompressMemoryInfoEXT);
+}
+void vk_CmdDecompressMemoryIndirectCountEXT(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    VkMemoryDecompressionMethodFlagsEXT decompressionMethod = (VkMemoryDecompressionMethodFlagsEXT)QARG2;
+    VkDeviceAddress indirectCommandsAddress = (VkDeviceAddress)QARG4;
+    VkDeviceAddress indirectCommandsCountAddress = (VkDeviceAddress)QARG6;
+    uint32_t maxDecompressionCount = (uint32_t)ARG8;
+    uint32_t stride = (uint32_t)ARG9;
+    pBoxedInfo->pvkCmdDecompressMemoryIndirectCountEXT(commandBuffer, decompressionMethod, indirectCommandsAddress, indirectCommandsCountAddress, maxDecompressionCount, stride);
+}
 // return type: VkResult(4 bytes)
 void vk_CreateCuModuleNVX(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -7611,6 +7763,15 @@ void vk_GetDrmDisplayEXT(CPU* cpu) {
     cpu->memory->writeq(ARG4, (U64)tmp_display);
 }
 // return type: VkResult(4 bytes)
+void vk_WaitForPresent2KHR(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    VkSwapchainKHR swapchain = (VkSwapchainKHR)QARG2;
+    MarshalVkPresentWait2InfoKHR local_pPresentWait2Info(pBoxedInfo, cpu->memory, ARG4);
+    VkPresentWait2InfoKHR* pPresentWait2Info = &local_pPresentWait2Info.s;
+    EAX = (U32)pBoxedInfo->pvkWaitForPresent2KHR(device, swapchain, pPresentWait2Info);
+}
+// return type: VkResult(4 bytes)
 void vk_WaitForPresentKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
@@ -7618,70 +7779,6 @@ void vk_WaitForPresentKHR(CPU* cpu) {
     uint64_t presentId = (uint64_t)QARG4;
     uint64_t timeout = (uint64_t)QARG6;
     EAX = (U32)pBoxedInfo->pvkWaitForPresentKHR(device, swapchain, presentId, timeout);
-}
-// return type: VkResult(4 bytes)
-void vk_CreateCudaModuleNV(CPU* cpu) {
-    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
-    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    MarshalVkCudaModuleCreateInfoNV local_pCreateInfo(pBoxedInfo, cpu->memory, ARG2);
-    VkCudaModuleCreateInfoNV* pCreateInfo = &local_pCreateInfo.s;
-    static bool shown; if (!shown && ARG3) { klog("vkCreateCudaModuleNV:VkAllocationCallbacks not implemented"); shown = true;}
-    VkAllocationCallbacks* pAllocator = NULL;
-    VkCudaModuleNV tmp_pModule = (VkCudaModuleNV) cpu->memory->readq(ARG4);
-    VkCudaModuleNV* pModule = &tmp_pModule;
-    EAX = (U32)pBoxedInfo->pvkCreateCudaModuleNV(device, pCreateInfo, pAllocator, pModule);
-    cpu->memory->writeq(ARG4, (U64)tmp_pModule);
-}
-// return type: VkResult(4 bytes)
-void vk_GetCudaModuleCacheNV(CPU* cpu) {
-    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
-    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkCudaModuleNV module = (VkCudaModuleNV)QARG2;
-    size_t tmp_pCacheSize = (size_t) cpu->memory->readd(ARG4);
-    size_t* pCacheSize = &tmp_pCacheSize;
-    void* pCacheData = nullptr;
-    if (ARG5) {
-        pCacheData = (char*)cpu->memory->lockReadWriteMemory(ARG5, (U32)*pCacheSize * sizeof(char));
-    }
-    EAX = (U32)pBoxedInfo->pvkGetCudaModuleCacheNV(device, module, pCacheSize, pCacheData);
-    cpu->memory->writed(ARG4, (U32)tmp_pCacheSize);
-    cpu->memory->unlockMemory((U8*)pCacheData);
-}
-// return type: VkResult(4 bytes)
-void vk_CreateCudaFunctionNV(CPU* cpu) {
-    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
-    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    MarshalVkCudaFunctionCreateInfoNV local_pCreateInfo(pBoxedInfo, cpu->memory, ARG2);
-    VkCudaFunctionCreateInfoNV* pCreateInfo = &local_pCreateInfo.s;
-    static bool shown; if (!shown && ARG3) { klog("vkCreateCudaFunctionNV:VkAllocationCallbacks not implemented"); shown = true;}
-    VkAllocationCallbacks* pAllocator = NULL;
-    VkCudaFunctionNV tmp_pFunction = (VkCudaFunctionNV) cpu->memory->readq(ARG4);
-    VkCudaFunctionNV* pFunction = &tmp_pFunction;
-    EAX = (U32)pBoxedInfo->pvkCreateCudaFunctionNV(device, pCreateInfo, pAllocator, pFunction);
-    cpu->memory->writeq(ARG4, (U64)tmp_pFunction);
-}
-void vk_DestroyCudaModuleNV(CPU* cpu) {
-    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
-    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkCudaModuleNV module = (VkCudaModuleNV)QARG2;
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyCudaModuleNV:VkAllocationCallbacks not implemented"); shown = true;}
-    VkAllocationCallbacks* pAllocator = NULL;
-    pBoxedInfo->pvkDestroyCudaModuleNV(device, module, pAllocator);
-}
-void vk_DestroyCudaFunctionNV(CPU* cpu) {
-    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
-    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkCudaFunctionNV function = (VkCudaFunctionNV)QARG2;
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyCudaFunctionNV:VkAllocationCallbacks not implemented"); shown = true;}
-    VkAllocationCallbacks* pAllocator = NULL;
-    pBoxedInfo->pvkDestroyCudaFunctionNV(device, function, pAllocator);
-}
-void vk_CmdCudaLaunchKernelNV(CPU* cpu) {
-    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
-    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    MarshalVkCudaLaunchInfoNV local_pLaunchInfo(pBoxedInfo, cpu->memory, ARG2);
-    VkCudaLaunchInfoNV* pLaunchInfo = &local_pLaunchInfo.s;
-    pBoxedInfo->pvkCmdCudaLaunchKernelNV(commandBuffer, pLaunchInfo);
 }
 void vk_CmdBeginRendering(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -7701,6 +7798,20 @@ void vk_CmdEndRendering(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     pBoxedInfo->pvkCmdEndRendering(commandBuffer);
+}
+void vk_CmdEndRendering2KHR(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkRenderingEndInfoKHR local_pRenderingEndInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkRenderingEndInfoKHR* pRenderingEndInfo = &local_pRenderingEndInfo.s;
+    pBoxedInfo->pvkCmdEndRendering2KHR(commandBuffer, pRenderingEndInfo);
+}
+void vk_CmdEndRendering2EXT(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkRenderingEndInfoKHR local_pRenderingEndInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkRenderingEndInfoKHR* pRenderingEndInfo = &local_pRenderingEndInfo.s;
+    pBoxedInfo->pvkCmdEndRendering2EXT(commandBuffer, pRenderingEndInfo);
 }
 void vk_CmdEndRenderingKHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -7938,6 +8049,13 @@ void vk_GetPipelinePropertiesEXT(CPU* cpu) {
     EAX = (U32)pBoxedInfo->pvkGetPipelinePropertiesEXT(device, pPipelineInfo, &pPipelineProperties.s);
     MarshalVkBaseOutStructure::write(pBoxedInfo, cpu->memory, ARG3, &pPipelineProperties.s);
 }
+void vk_CmdBindTileMemoryQCOM(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkTileMemoryBindInfoQCOM local_pTileMemoryBindInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkTileMemoryBindInfoQCOM* pTileMemoryBindInfo = &local_pTileMemoryBindInfo.s;
+    pBoxedInfo->pvkCmdBindTileMemoryQCOM(commandBuffer, pTileMemoryBindInfo);
+}
 // return type: VkResult(4 bytes)
 void vk_GetFramebufferTilePropertiesQCOM(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -8054,11 +8172,19 @@ void vk_CmdSetDepthBias2EXT(CPU* cpu) {
     pBoxedInfo->pvkCmdSetDepthBias2EXT(commandBuffer, pDepthBiasInfo);
 }
 // return type: VkResult(4 bytes)
+void vk_ReleaseSwapchainImagesKHR(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkReleaseSwapchainImagesInfoKHR local_pReleaseInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkReleaseSwapchainImagesInfoKHR* pReleaseInfo = &local_pReleaseInfo.s;
+    EAX = (U32)pBoxedInfo->pvkReleaseSwapchainImagesKHR(device, pReleaseInfo);
+}
+// return type: VkResult(4 bytes)
 void vk_ReleaseSwapchainImagesEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    MarshalVkReleaseSwapchainImagesInfoEXT local_pReleaseInfo(pBoxedInfo, cpu->memory, ARG2);
-    VkReleaseSwapchainImagesInfoEXT* pReleaseInfo = &local_pReleaseInfo.s;
+    MarshalVkReleaseSwapchainImagesInfoKHR local_pReleaseInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkReleaseSwapchainImagesInfoKHR* pReleaseInfo = &local_pReleaseInfo.s;
     EAX = (U32)pBoxedInfo->pvkReleaseSwapchainImagesEXT(device, pReleaseInfo);
 }
 void vk_GetDeviceImageSubresourceLayout(CPU* cpu) {
@@ -8187,6 +8313,48 @@ void vk_CmdBindShadersEXT(CPU* cpu) {
     }
     pBoxedInfo->pvkCmdBindShadersEXT(commandBuffer, stageCount, pStages, pShaders);
     cpu->memory->unlockMemory((U8*)pShaders);
+}
+// return type: VkResult(4 bytes)
+void vk_SetSwapchainPresentTimingQueueSizeEXT(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    VkSwapchainKHR swapchain = (VkSwapchainKHR)QARG2;
+    uint32_t size = (uint32_t)ARG4;
+    EAX = (U32)pBoxedInfo->pvkSetSwapchainPresentTimingQueueSizeEXT(device, swapchain, size);
+}
+// return type: VkResult(4 bytes)
+void vk_GetSwapchainTimingPropertiesEXT(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    VkSwapchainKHR swapchain = (VkSwapchainKHR)QARG2;
+    MarshalVkSwapchainTimingPropertiesEXT pSwapchainTimingProperties(pBoxedInfo, cpu->memory, ARG4);
+    uint64_t tmp_pSwapchainTimingPropertiesCounter = (uint64_t) cpu->memory->readq(ARG5);
+    uint64_t* pSwapchainTimingPropertiesCounter = &tmp_pSwapchainTimingPropertiesCounter;
+    EAX = (U32)pBoxedInfo->pvkGetSwapchainTimingPropertiesEXT(device, swapchain, &pSwapchainTimingProperties.s, pSwapchainTimingPropertiesCounter);
+    MarshalVkSwapchainTimingPropertiesEXT::write(pBoxedInfo, cpu->memory, ARG4, &pSwapchainTimingProperties.s);
+    cpu->memory->writeq(ARG5, (U64)tmp_pSwapchainTimingPropertiesCounter);
+}
+// return type: VkResult(4 bytes)
+void vk_GetSwapchainTimeDomainPropertiesEXT(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    VkSwapchainKHR swapchain = (VkSwapchainKHR)QARG2;
+    MarshalVkSwapchainTimeDomainPropertiesEXT pSwapchainTimeDomainProperties(pBoxedInfo, cpu->memory, ARG4);
+    uint64_t tmp_pTimeDomainsCounter = (uint64_t) cpu->memory->readq(ARG5);
+    uint64_t* pTimeDomainsCounter = &tmp_pTimeDomainsCounter;
+    EAX = (U32)pBoxedInfo->pvkGetSwapchainTimeDomainPropertiesEXT(device, swapchain, &pSwapchainTimeDomainProperties.s, pTimeDomainsCounter);
+    MarshalVkSwapchainTimeDomainPropertiesEXT::write(pBoxedInfo, cpu->memory, ARG4, &pSwapchainTimeDomainProperties.s);
+    cpu->memory->writeq(ARG5, (U64)tmp_pTimeDomainsCounter);
+}
+// return type: VkResult(4 bytes)
+void vk_GetPastPresentationTimingEXT(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkPastPresentationTimingInfoEXT local_pPastPresentationTimingInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkPastPresentationTimingInfoEXT* pPastPresentationTimingInfo = &local_pPastPresentationTimingInfo.s;
+    MarshalVkPastPresentationTimingPropertiesEXT pPastPresentationTimingProperties(pBoxedInfo, cpu->memory, ARG3);
+    EAX = (U32)pBoxedInfo->pvkGetPastPresentationTimingEXT(device, pPastPresentationTimingInfo, &pPastPresentationTimingProperties.s);
+    MarshalVkPastPresentationTimingPropertiesEXT::write(pBoxedInfo, cpu->memory, ARG3, &pPastPresentationTimingProperties.s);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPhysicalDeviceCooperativeMatrixPropertiesKHR(CPU* cpu) {
@@ -8381,6 +8549,141 @@ void vk_GetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV(CPU* cp
         delete[] pProperties;
     }
 }
+// return type: VkResult(4 bytes)
+void vk_GetPhysicalDeviceCooperativeVectorPropertiesNV(CPU* cpu) {
+    VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
+    uint32_t* pPropertyCount = &tmp_pPropertyCount;
+    VkCooperativeVectorPropertiesNV* pProperties = NULL;
+    if (ARG3) {
+        pProperties = new VkCooperativeVectorPropertiesNV[*pPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkCooperativeVectorPropertiesNV::read(pBoxedInfo, cpu->memory, address + i*32, &pProperties[i]);
+        }
+    }
+    EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCooperativeVectorPropertiesNV(physicalDevice, pPropertyCount, pProperties);
+    cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
+    if (ARG3) {
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkCooperativeVectorPropertiesNV::write(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pProperties[i]);
+        }
+        delete[] pProperties;
+    }
+}
+// return type: VkResult(4 bytes)
+void vk_ConvertCooperativeVectorMatrixNV(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkConvertCooperativeVectorMatrixInfoNV local_pInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkConvertCooperativeVectorMatrixInfoNV* pInfo = &local_pInfo.s;
+    EAX = (U32)pBoxedInfo->pvkConvertCooperativeVectorMatrixNV(device, pInfo);
+}
+void vk_CmdConvertCooperativeVectorMatrixNV(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    uint32_t infoCount = (uint32_t)ARG2;
+    VkConvertCooperativeVectorMatrixInfoNV* pInfos = NULL;
+    if (ARG3) {
+        pInfos = new VkConvertCooperativeVectorMatrixInfoNV[infoCount];
+        for (U32 i=0;i<infoCount;i++) {
+            MarshalVkConvertCooperativeVectorMatrixInfoNV::read(pBoxedInfo, cpu->memory, ARG3 + i * 64, &pInfos[i]);
+        }
+    }
+    pBoxedInfo->pvkCmdConvertCooperativeVectorMatrixNV(commandBuffer, infoCount, pInfos);
+    if (pInfos) {
+        delete[] pInfos;
+    }
+}
+void vk_CmdDispatchTileQCOM(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkDispatchTileInfoQCOM local_pDispatchTileInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkDispatchTileInfoQCOM* pDispatchTileInfo = &local_pDispatchTileInfo.s;
+    pBoxedInfo->pvkCmdDispatchTileQCOM(commandBuffer, pDispatchTileInfo);
+}
+void vk_CmdBeginPerTileExecutionQCOM(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkPerTileBeginInfoQCOM local_pPerTileBeginInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkPerTileBeginInfoQCOM* pPerTileBeginInfo = &local_pPerTileBeginInfo.s;
+    pBoxedInfo->pvkCmdBeginPerTileExecutionQCOM(commandBuffer, pPerTileBeginInfo);
+}
+void vk_CmdEndPerTileExecutionQCOM(CPU* cpu) {
+    VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkPerTileEndInfoQCOM local_pPerTileEndInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkPerTileEndInfoQCOM* pPerTileEndInfo = &local_pPerTileEndInfo.s;
+    pBoxedInfo->pvkCmdEndPerTileExecutionQCOM(commandBuffer, pPerTileEndInfo);
+}
+// return type: VkResult(4 bytes)
+void vk_CreateExternalComputeQueueNV(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkExternalComputeQueueCreateInfoNV local_pCreateInfo(pBoxedInfo, cpu->memory, ARG2);
+    VkExternalComputeQueueCreateInfoNV* pCreateInfo = &local_pCreateInfo.s;
+    static bool shown; if (!shown && ARG3) { klog("vkCreateExternalComputeQueueNV:VkAllocationCallbacks not implemented"); shown = true;}
+    VkAllocationCallbacks* pAllocator = NULL;
+    VkExternalComputeQueueNV pExternalQueue = (VkExternalComputeQueueNV)getVulkanPtr(cpu->memory, ARG4);
+    EAX = (U32)pBoxedInfo->pvkCreateExternalComputeQueueNV(device, pCreateInfo, pAllocator, &pExternalQueue);
+    cpu->memory->writed(ARG4, createVulkanPtr(cpu->memory, pExternalQueue, pBoxedInfo));
+}
+void vk_DestroyExternalComputeQueueNV(CPU* cpu) {
+    VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    VkExternalComputeQueueNV externalQueue = (VkExternalComputeQueueNV)getVulkanPtr(cpu->memory, ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyExternalComputeQueueNV:VkAllocationCallbacks not implemented"); shown = true;}
+    VkAllocationCallbacks* pAllocator = NULL;
+    pBoxedInfo->pvkDestroyExternalComputeQueueNV(device, externalQueue, pAllocator);
+}
+void vk_GetExternalComputeQueueDataNV(CPU* cpu) {
+    VkExternalComputeQueueNV externalQueue = (VkExternalComputeQueueNV)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    MarshalVkExternalComputeQueueDataParamsNV params(pBoxedInfo, cpu->memory, ARG2);
+    void* pData = nullptr;
+    kpanic("vkGetExternalComputeQueueDataNV not implemented");
+    pBoxedInfo->pvkGetExternalComputeQueueDataNV(externalQueue, &params.s, pData);
+    MarshalVkExternalComputeQueueDataParamsNV::write(pBoxedInfo, cpu->memory, ARG2, &params.s);
+}
+// return type: VkResult(4 bytes)
+void vk_EnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM(CPU* cpu) {
+    VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    uint32_t queueFamilyIndex = (uint32_t)ARG2;
+    uint32_t tmp_pCounterCount = (uint32_t) cpu->memory->readd(ARG3);
+    uint32_t* pCounterCount = &tmp_pCounterCount;
+    VkPerformanceCounterARM* pCounters = NULL;
+    if (ARG4) {
+        pCounters = new VkPerformanceCounterARM[*pCounterCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pCounterCount;i++) {
+            MarshalVkPerformanceCounterARM::read(pBoxedInfo, cpu->memory, address + i*12, &pCounters[i]);
+        }
+    }
+    VkPerformanceCounterDescriptionARM* pCounterDescriptions = NULL;
+    if (ARG5) {
+        pCounterDescriptions = new VkPerformanceCounterDescriptionARM[*pCounterCount];
+        U32 address = ARG5;
+        for (U32 i=0;i<*pCounterCount;i++) {
+            MarshalVkPerformanceCounterDescriptionARM::read(pBoxedInfo, cpu->memory, address + i*268, &pCounterDescriptions[i]);
+        }
+    }
+    EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM(physicalDevice, queueFamilyIndex, pCounterCount, pCounters, pCounterDescriptions);
+    cpu->memory->writed(ARG3, (U32)tmp_pCounterCount);
+    if (ARG4) {
+        for (U32 i=0;i<*pCounterCount;i++) {
+            MarshalVkPerformanceCounterARM::write(pBoxedInfo, cpu->memory, ARG4 + i * 12, &pCounters[i]);
+        }
+        delete[] pCounters;
+    }
+    if (ARG5) {
+        for (U32 i=0;i<*pCounterCount;i++) {
+            MarshalVkPerformanceCounterDescriptionARM::write(pBoxedInfo, cpu->memory, ARG5 + i * 268, &pCounterDescriptions[i]);
+        }
+        delete[] pCounterDescriptions;
+    }
+}
 VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {
     if (address == 0) {
         return NULL;
@@ -8422,11 +8725,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceIndexTypeUint8Features::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT: {
-            VkSwapchainPresentFenceInfoEXT* p = new VkSwapchainPresentFenceInfoEXT();
-            MarshalVkSwapchainPresentFenceInfoEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2: {
             VkSparseImageMemoryRequirements2* p = new VkSparseImageMemoryRequirements2();
             MarshalVkSparseImageMemoryRequirements2::read(pBoxedInfo, memory, address, p);
@@ -8442,9 +8740,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSwapchainCreateInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_NV: {
-            VkPhysicalDeviceMemoryDecompressionPropertiesNV* p = new VkPhysicalDeviceMemoryDecompressionPropertiesNV();
-            MarshalVkPhysicalDeviceMemoryDecompressionPropertiesNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_PROPERTIES_KHR: {
+            VkPhysicalDeviceMaintenance10PropertiesKHR* p = new VkPhysicalDeviceMaintenance10PropertiesKHR();
+            MarshalVkPhysicalDeviceMaintenance10PropertiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_BEGIN_INFO_ARM: {
@@ -8502,9 +8800,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPipelineViewportShadingRateImageStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR: {
+            VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR* p = new VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR();
+            MarshalVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_FORMAT_QUANTIZATION_MAP_PROPERTIES_KHR: {
             VkVideoFormatQuantizationMapPropertiesKHR* p = new VkVideoFormatQuantizationMapPropertiesKHR();
             MarshalVkVideoFormatQuantizationMapPropertiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_COMPUTE_QUEUE_PROPERTIES_NV: {
+            VkPhysicalDeviceExternalComputeQueuePropertiesNV* p = new VkPhysicalDeviceExternalComputeQueuePropertiesNV();
+            MarshalVkPhysicalDeviceExternalComputeQueuePropertiesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_QUALITY_LEVEL_PROPERTIES_KHR: {
@@ -8552,14 +8860,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceVariablePointersFeatures::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV: {
-            VkGeometryAABBNV* p = new VkGeometryAABBNV();
-            MarshalVkGeometryAABBNV::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT: {
             VkShaderModuleIdentifierEXT* p = new VkShaderModuleIdentifierEXT();
             MarshalVkShaderModuleIdentifierEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV: {
+            VkGeometryAABBNV* p = new VkGeometryAABBNV();
+            MarshalVkGeometryAABBNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES: {
@@ -8622,9 +8930,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkCommandBufferInheritanceRenderingInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_TILE_MEMORY_SIZE_INFO_QCOM: {
+            VkTileMemorySizeInfoQCOM* p = new VkTileMemorySizeInfoQCOM();
+            MarshalVkTileMemorySizeInfoQCOM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO: {
             VkDeviceGroupDeviceCreateInfo* p = new VkDeviceGroupDeviceCreateInfo();
             MarshalVkDeviceGroupDeviceCreateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_KHR: {
+            VkPhysicalDeviceDepthClampZeroOneFeaturesKHR* p = new VkPhysicalDeviceDepthClampZeroOneFeaturesKHR();
+            MarshalVkPhysicalDeviceDepthClampZeroOneFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_RENDER_PASS_CREATION_CONTROL_EXT: {
@@ -8652,9 +8970,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkBufferOpaqueCaptureAddressCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_DENSITY_MAP_LAYERED_CREATE_INFO_VALVE: {
+            VkPipelineFragmentDensityMapLayeredCreateInfoVALVE* p = new VkPipelineFragmentDensityMapLayeredCreateInfoVALVE();
+            MarshalVkPipelineFragmentDensityMapLayeredCreateInfoVALVE::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2: {
             VkImageSubresource2* p = new VkImageSubresource2();
             MarshalVkImageSubresource2::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_EXT: {
+            VkPhysicalDeviceMemoryDecompressionPropertiesEXT* p = new VkPhysicalDeviceMemoryDecompressionPropertiesEXT();
+            MarshalVkPhysicalDeviceMemoryDecompressionPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO: {
@@ -8682,11 +9010,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDeviceQueueCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR: {
-            VkAccelerationStructureGeometryInstancesDataKHR* p = new VkAccelerationStructureGeometryInstancesDataKHR();
-            MarshalVkAccelerationStructureGeometryInstancesDataKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR: {
             VkDisplayPlaneCapabilities2KHR* p = new VkDisplayPlaneCapabilities2KHR();
             MarshalVkDisplayPlaneCapabilities2KHR::read(pBoxedInfo, memory, address, p);
@@ -8697,19 +9020,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkAccelerationStructureCreateInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR: {
+            VkAccelerationStructureGeometryInstancesDataKHR* p = new VkAccelerationStructureGeometryInstancesDataKHR();
+            MarshalVkAccelerationStructureGeometryInstancesDataKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINEAR_COLOR_ATTACHMENT_FEATURES_NV: {
             VkPhysicalDeviceLinearColorAttachmentFeaturesNV* p = new VkPhysicalDeviceLinearColorAttachmentFeaturesNV();
             MarshalVkPhysicalDeviceLinearColorAttachmentFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
-            VkPhysicalDeviceFloatControlsProperties* p = new VkPhysicalDeviceFloatControlsProperties();
-            MarshalVkPhysicalDeviceFloatControlsProperties::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_OUT_OF_BAND_QUEUE_TYPE_INFO_NV: {
             VkOutOfBandQueueTypeInfoNV* p = new VkOutOfBandQueueTypeInfoNV();
             MarshalVkOutOfBandQueueTypeInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
+            VkPhysicalDeviceFloatControlsProperties* p = new VkPhysicalDeviceFloatControlsProperties();
+            MarshalVkPhysicalDeviceFloatControlsProperties::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT: {
@@ -8722,14 +9050,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoDecodeAV1CapabilitiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR: {
-            VkVideoEncodeH264ProfileInfoKHR* p = new VkVideoEncodeH264ProfileInfoKHR();
-            MarshalVkVideoEncodeH264ProfileInfoKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2: {
             VkImageMemoryRequirementsInfo2* p = new VkImageMemoryRequirementsInfo2();
             MarshalVkImageMemoryRequirementsInfo2::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR: {
+            VkVideoEncodeH264ProfileInfoKHR* p = new VkVideoEncodeH264ProfileInfoKHR();
+            MarshalVkVideoEncodeH264ProfileInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DESCRIPTOR_DATA_CREATE_INFO_EXT: {
@@ -8767,29 +9095,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDebugReportCallbackCreateInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_PROPERTIES_QCOM: {
+            VkPhysicalDeviceTileShadingPropertiesQCOM* p = new VkPhysicalDeviceTileShadingPropertiesQCOM();
+            MarshalVkPhysicalDeviceTileShadingPropertiesQCOM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_FEATURES_NV: {
             VkPhysicalDeviceCooperativeMatrix2FeaturesNV* p = new VkPhysicalDeviceCooperativeMatrix2FeaturesNV();
             MarshalVkPhysicalDeviceCooperativeMatrix2FeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT: {
-            VkSwapchainPresentModesCreateInfoEXT* p = new VkSwapchainPresentModesCreateInfoEXT();
-            MarshalVkSwapchainPresentModesCreateInfoEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_SUBPASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_QCOM: {
-            VkSubpassFragmentDensityMapOffsetEndInfoQCOM* p = new VkSubpassFragmentDensityMapOffsetEndInfoQCOM();
-            MarshalVkSubpassFragmentDensityMapOffsetEndInfoQCOM::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES: {
+            VkPhysicalDeviceToolProperties* p = new VkPhysicalDeviceToolProperties();
+            MarshalVkPhysicalDeviceToolProperties::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT: {
             VkPhysicalDeviceConservativeRasterizationPropertiesEXT* p = new VkPhysicalDeviceConservativeRasterizationPropertiesEXT();
             MarshalVkPhysicalDeviceConservativeRasterizationPropertiesEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES: {
-            VkPhysicalDeviceToolProperties* p = new VkPhysicalDeviceToolProperties();
-            MarshalVkPhysicalDeviceToolProperties::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2: {
@@ -8800,6 +9123,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET: {
             VkWriteDescriptorSet* p = new VkWriteDescriptorSet();
             MarshalVkWriteDescriptorSet::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT: {
+            VkAttachmentFeedbackLoopInfoEXT* p = new VkAttachmentFeedbackLoopInfoEXT();
+            MarshalVkAttachmentFeedbackLoopInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
@@ -8827,14 +9155,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FMA_FEATURES_KHR: {
+            VkPhysicalDeviceShaderFmaFeaturesKHR* p = new VkPhysicalDeviceShaderFmaFeaturesKHR();
+            MarshalVkPhysicalDeviceShaderFmaFeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_PROPERTIES_ARM: {
             VkPhysicalDeviceRenderPassStripedPropertiesARM* p = new VkPhysicalDeviceRenderPassStripedPropertiesARM();
             MarshalVkPhysicalDeviceRenderPassStripedPropertiesARM::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV: {
-            VkAccelerationStructureCreateInfoNV* p = new VkAccelerationStructureCreateInfoNV();
-            MarshalVkAccelerationStructureCreateInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV: {
@@ -8842,14 +9170,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDedicatedAllocationImageCreateInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV: {
+            VkAccelerationStructureCreateInfoNV* p = new VkAccelerationStructureCreateInfoNV();
+            MarshalVkAccelerationStructureCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_CONTROL_FEATURES_EXT: {
             VkPhysicalDeviceDepthClampControlFeaturesEXT* p = new VkPhysicalDeviceDepthClampControlFeaturesEXT();
             MarshalVkPhysicalDeviceDepthClampControlFeaturesEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT: {
-            VkSwapchainPresentModeInfoEXT* p = new VkSwapchainPresentModeInfoEXT();
-            MarshalVkSwapchainPresentModeInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_MEMORY_BARRIER: {
@@ -8867,9 +9195,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkBindImagePlaneMemoryInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO: {
-            VkPipelineShaderStageRequiredSubgroupSizeCreateInfo* p = new VkPipelineShaderStageRequiredSubgroupSizeCreateInfo();
-            MarshalVkPipelineShaderStageRequiredSubgroupSizeCreateInfo::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_KHR: {
+            VkSurfacePresentModeCompatibilityKHR* p = new VkSurfacePresentModeCompatibilityKHR();
+            MarshalVkSurfacePresentModeCompatibilityKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: {
@@ -8877,9 +9205,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceColorWriteEnableFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO: {
-            VkCommandBufferSubmitInfo* p = new VkCommandBufferSubmitInfo();
-            MarshalVkCommandBufferSubmitInfo::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO: {
+            VkPipelineShaderStageRequiredSubgroupSizeCreateInfo* p = new VkPipelineShaderStageRequiredSubgroupSizeCreateInfo();
+            MarshalVkPipelineShaderStageRequiredSubgroupSizeCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO: {
@@ -8887,14 +9215,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPushConstantsInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO: {
+            VkCommandBufferSubmitInfo* p = new VkCommandBufferSubmitInfo();
+            MarshalVkCommandBufferSubmitInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_PIPELINE_EXT: {
             VkWriteIndirectExecutionSetPipelineEXT* p = new VkWriteIndirectExecutionSetPipelineEXT();
             MarshalVkWriteIndirectExecutionSetPipelineEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
-            VkPhysicalDeviceRobustness2FeaturesEXT* p = new VkPhysicalDeviceRobustness2FeaturesEXT();
-            MarshalVkPhysicalDeviceRobustness2FeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_MICROMAP_INFO_EXT: {
@@ -8907,19 +9235,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoDecodeH264ProfileInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT: {
-            VkPipelineRasterizationStateStreamCreateInfoEXT* p = new VkPipelineRasterizationStateStreamCreateInfoEXT();
-            MarshalVkPipelineRasterizationStateStreamCreateInfoEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
             VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT* p = new VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT();
             MarshalVkPhysicalDeviceVertexAttributeDivisorPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT: {
+            VkPipelineRasterizationStateStreamCreateInfoEXT* p = new VkPipelineRasterizationStateStreamCreateInfoEXT();
+            MarshalVkPipelineRasterizationStateStreamCreateInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT: {
             VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT* p = new VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT();
             MarshalVkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_FEATURES_NV: {
+            VkPhysicalDeviceCooperativeVectorFeaturesNV* p = new VkPhysicalDeviceCooperativeVectorFeaturesNV();
+            MarshalVkPhysicalDeviceCooperativeVectorFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVES_GENERATED_QUERY_FEATURES_EXT: {
@@ -8967,6 +9300,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceMemoryProperties2::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_ACCESS_FLAGS_3_KHR: {
+            VkMemoryBarrierAccessFlags3KHR* p = new VkMemoryBarrierAccessFlags3KHR();
+            MarshalVkMemoryBarrierAccessFlags3KHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT: {
             VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT* p = new VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT();
             MarshalVkPhysicalDeviceShaderModuleIdentifierFeaturesEXT::read(pBoxedInfo, memory, address, p);
@@ -8992,6 +9330,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoProfileInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PER_TILE_BEGIN_INFO_QCOM: {
+            VkPerTileBeginInfoQCOM* p = new VkPerTileBeginInfoQCOM();
+            MarshalVkPerTileBeginInfoQCOM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR: {
             VkVideoCapabilitiesKHR* p = new VkVideoCapabilitiesKHR();
             MarshalVkVideoCapabilitiesKHR::read(pBoxedInfo, memory, address, p);
@@ -9000,6 +9343,16 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD: {
             VkAttachmentSampleCountInfoAMD* p = new VkAttachmentSampleCountInfoAMD();
             MarshalVkAttachmentSampleCountInfoAMD::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT: {
+            VkPresentTimingInfoEXT* p = new VkPresentTimingInfoEXT();
+            MarshalVkPresentTimingInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_CONVERT_COOPERATIVE_VECTOR_MATRIX_INFO_NV: {
+            VkConvertCooperativeVectorMatrixInfoNV* p = new VkConvertCooperativeVectorMatrixInfoNV();
+            MarshalVkConvertCooperativeVectorMatrixInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_BUFFER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: {
@@ -9032,6 +9385,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPipelineCreateInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO: {
+            VkImageCreateInfo* p = new VkImageCreateInfo();
+            MarshalVkImageCreateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV: {
             VkPhysicalDeviceShaderSMBuiltinsPropertiesNV* p = new VkPhysicalDeviceShaderSMBuiltinsPropertiesNV();
             MarshalVkPhysicalDeviceShaderSMBuiltinsPropertiesNV::read(pBoxedInfo, memory, address, p);
@@ -9042,19 +9400,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceCubicWeightsFeaturesQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO: {
-            VkImageCreateInfo* p = new VkImageCreateInfo();
-            MarshalVkImageCreateInfo::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR: {
-            VkVideoPictureResourceInfoKHR* p = new VkVideoPictureResourceInfoKHR();
-            MarshalVkVideoPictureResourceInfoKHR::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_FEATURES_QCOM: {
+            VkPhysicalDeviceTileMemoryHeapFeaturesQCOM* p = new VkPhysicalDeviceTileMemoryHeapFeaturesQCOM();
+            MarshalVkPhysicalDeviceTileMemoryHeapFeaturesQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
             VkPhysicalDevicePCIBusInfoPropertiesEXT* p = new VkPhysicalDevicePCIBusInfoPropertiesEXT();
             MarshalVkPhysicalDevicePCIBusInfoPropertiesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR: {
+            VkVideoPictureResourceInfoKHR* p = new VkVideoPictureResourceInfoKHR();
+            MarshalVkVideoPictureResourceInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_PROPERTIES_KHR: {
@@ -9102,9 +9460,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSamplerReductionModeCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM: {
-            VkSamplerBlockMatchWindowCreateInfoQCOM* p = new VkSamplerBlockMatchWindowCreateInfoQCOM();
-            MarshalVkSamplerBlockMatchWindowCreateInfoQCOM::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR: {
+            VkCopyMemoryToAccelerationStructureInfoKHR* p = new VkCopyMemoryToAccelerationStructureInfoKHR();
+            MarshalVkCopyMemoryToAccelerationStructureInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT: {
@@ -9112,9 +9470,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDescriptorSetVariableDescriptorCountLayoutSupport::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR: {
-            VkCopyMemoryToAccelerationStructureInfoKHR* p = new VkCopyMemoryToAccelerationStructureInfoKHR();
-            MarshalVkCopyMemoryToAccelerationStructureInfoKHR::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM: {
+            VkSamplerBlockMatchWindowCreateInfoQCOM* p = new VkSamplerBlockMatchWindowCreateInfoQCOM();
+            MarshalVkSamplerBlockMatchWindowCreateInfoQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL: {
@@ -9130,6 +9488,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: {
             VkExternalMemoryBufferCreateInfo* p = new VkExternalMemoryBufferCreateInfo();
             MarshalVkExternalMemoryBufferCreateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR: {
+            VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR* p = new VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR();
+            MarshalVkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_NV: {
@@ -9182,14 +9545,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT: {
-            VkImageCompressionControlEXT* p = new VkImageCompressionControlEXT();
-            MarshalVkImageCompressionControlEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_OPTICAL_FLOW_SESSION_CREATE_INFO_NV: {
             VkOpticalFlowSessionCreateInfoNV* p = new VkOpticalFlowSessionCreateInfoNV();
             MarshalVkOpticalFlowSessionCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT: {
+            VkImageCompressionControlEXT* p = new VkImageCompressionControlEXT();
+            MarshalVkImageCompressionControlEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO: {
@@ -9197,14 +9560,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkExportSemaphoreCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_GET_INFO_KHR: {
-            VkVideoEncodeH265SessionParametersGetInfoKHR* p = new VkVideoEncodeH265SessionParametersGetInfoKHR();
-            MarshalVkVideoEncodeH265SessionParametersGetInfoKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_DPB_SLOT_INFO_KHR: {
             VkVideoEncodeAV1DpbSlotInfoKHR* p = new VkVideoEncodeAV1DpbSlotInfoKHR();
             MarshalVkVideoEncodeAV1DpbSlotInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_GET_INFO_KHR: {
+            VkVideoEncodeH265SessionParametersGetInfoKHR* p = new VkVideoEncodeH265SessionParametersGetInfoKHR();
+            MarshalVkVideoEncodeH265SessionParametersGetInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_INFO_KHR: {
@@ -9220,6 +9583,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO: {
             VkPipelineRasterizationStateCreateInfo* p = new VkPipelineRasterizationStateCreateInfo();
             MarshalVkPipelineRasterizationStateCreateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_EXT: {
+            VkRenderPassFragmentDensityMapOffsetEndInfoEXT* p = new VkRenderPassFragmentDensityMapOffsetEndInfoEXT();
+            MarshalVkRenderPassFragmentDensityMapOffsetEndInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2: {
@@ -9250,6 +9618,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TILE_IMAGE_PROPERTIES_EXT: {
             VkPhysicalDeviceShaderTileImagePropertiesEXT* p = new VkPhysicalDeviceShaderTileImagePropertiesEXT();
             MarshalVkPhysicalDeviceShaderTileImagePropertiesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CACHE_INCREMENTAL_MODE_FEATURES_SEC: {
+            VkPhysicalDevicePipelineCacheIncrementalModeFeaturesSEC* p = new VkPhysicalDevicePipelineCacheIncrementalModeFeaturesSEC();
+            MarshalVkPhysicalDevicePipelineCacheIncrementalModeFeaturesSEC::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_SAMPLE_WEIGHT_CREATE_INFO_QCOM: {
@@ -9292,6 +9665,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSubpassResolvePerformanceQueryEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_CREATE_INFO_NV: {
+            VkExternalComputeQueueCreateInfoNV* p = new VkExternalComputeQueueCreateInfoNV();
+            MarshalVkExternalComputeQueueCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO: {
             VkCommandBufferBeginInfo* p = new VkCommandBufferBeginInfo();
             MarshalVkCommandBufferBeginInfo::read(pBoxedInfo, memory, address, p);
@@ -9312,19 +9690,29 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceLayeredDriverPropertiesMSFT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
-            VkPhysicalDeviceDepthClipControlFeaturesEXT* p = new VkPhysicalDeviceDepthClipControlFeaturesEXT();
-            MarshalVkPhysicalDeviceDepthClipControlFeaturesEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
             VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT* p = new VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT();
             MarshalVkPhysicalDeviceTexelBufferAlignmentFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
+            VkPhysicalDeviceDepthClipControlFeaturesEXT* p = new VkPhysicalDeviceDepthClipControlFeaturesEXT();
+            MarshalVkPhysicalDeviceDepthClipControlFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_KHR: {
+            VkReleaseSwapchainImagesInfoKHR* p = new VkReleaseSwapchainImagesInfoKHR();
+            MarshalVkReleaseSwapchainImagesInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV: {
             VkPipelineRepresentativeFragmentTestStateCreateInfoNV* p = new VkPipelineRepresentativeFragmentTestStateCreateInfoNV();
             MarshalVkPipelineRepresentativeFragmentTestStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_INTRA_REFRESH_FEATURES_KHR: {
+            VkPhysicalDeviceVideoEncodeIntraRefreshFeaturesKHR* p = new VkPhysicalDeviceVideoEncodeIntraRefreshFeaturesKHR();
+            MarshalVkPhysicalDeviceVideoEncodeIntraRefreshFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_LIBRARY_GROUP_HANDLES_FEATURES_EXT: {
@@ -9342,14 +9730,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDevicePresentBarrierFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR: {
-            VkVideoEncodeH264CapabilitiesKHR* p = new VkVideoEncodeH264CapabilitiesKHR();
-            MarshalVkVideoEncodeH264CapabilitiesKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_BARRIER_CREATE_INFO_NV: {
             VkSwapchainPresentBarrierCreateInfoNV* p = new VkSwapchainPresentBarrierCreateInfoNV();
             MarshalVkSwapchainPresentBarrierCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR: {
+            VkVideoEncodeH264CapabilitiesKHR* p = new VkVideoEncodeH264CapabilitiesKHR();
+            MarshalVkVideoEncodeH264CapabilitiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2: {
@@ -9367,6 +9755,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceOpticalFlowFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_PROPERTIES_NV: {
+            VkPhysicalDeviceCooperativeVectorPropertiesNV* p = new VkPhysicalDeviceCooperativeVectorPropertiesNV();
+            MarshalVkPhysicalDeviceCooperativeVectorPropertiesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
             VkPhysicalDeviceCustomBorderColorFeaturesEXT* p = new VkPhysicalDeviceCustomBorderColorFeaturesEXT();
             MarshalVkPhysicalDeviceCustomBorderColorFeaturesEXT::read(pBoxedInfo, memory, address, p);
@@ -9377,14 +9770,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoDecodeAV1DpbSlotInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV: {
-            VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV* p = new VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV();
-            MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_PROPERTIES_QCOM: {
+            VkPhysicalDeviceTileMemoryHeapPropertiesQCOM* p = new VkPhysicalDeviceTileMemoryHeapPropertiesQCOM();
+            MarshalVkPhysicalDeviceTileMemoryHeapPropertiesQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
             VkImageViewUsageCreateInfo* p = new VkImageViewUsageCreateInfo();
             MarshalVkImageViewUsageCreateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV: {
+            VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV* p = new VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV();
+            MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_SWAPCHAIN_FEATURES_EXT: {
@@ -9407,6 +9805,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkAccelerationStructureMotionInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_LINEAR_SWEPT_SPHERES_DATA_NV: {
+            VkAccelerationStructureGeometryLinearSweptSpheresDataNV* p = new VkAccelerationStructureGeometryLinearSweptSpheresDataNV();
+            MarshalVkAccelerationStructureGeometryLinearSweptSpheresDataNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PIPELINE_BINARY_CREATE_INFO_KHR: {
             VkPipelineBinaryCreateInfoKHR* p = new VkPipelineBinaryCreateInfoKHR();
             MarshalVkPipelineBinaryCreateInfoKHR::read(pBoxedInfo, memory, address, p);
@@ -9417,9 +9820,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceSampleLocationsPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
-            VkPhysicalDeviceMeshShaderFeaturesEXT* p = new VkPhysicalDeviceMeshShaderFeaturesEXT();
-            MarshalVkPhysicalDeviceMeshShaderFeaturesEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT: {
+            VkPhysicalDeviceNestedCommandBufferFeaturesEXT* p = new VkPhysicalDeviceNestedCommandBufferFeaturesEXT();
+            MarshalVkPhysicalDeviceNestedCommandBufferFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_BUFFER_COPY_2: {
@@ -9432,9 +9835,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT: {
-            VkPhysicalDeviceNestedCommandBufferFeaturesEXT* p = new VkPhysicalDeviceNestedCommandBufferFeaturesEXT();
-            MarshalVkPhysicalDeviceNestedCommandBufferFeaturesEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
+            VkPhysicalDeviceMeshShaderFeaturesEXT* p = new VkPhysicalDeviceMeshShaderFeaturesEXT();
+            MarshalVkPhysicalDeviceMeshShaderFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO: {
@@ -9457,9 +9860,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkBlitImageCubicWeightsInfoQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PER_TILE_END_INFO_QCOM: {
+            VkPerTileEndInfoQCOM* p = new VkPerTileEndInfoQCOM();
+            MarshalVkPerTileEndInfoQCOM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT: {
             VkDebugUtilsObjectTagInfoEXT* p = new VkDebugUtilsObjectTagInfoEXT();
             MarshalVkDebugUtilsObjectTagInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_INLINE_SESSION_PARAMETERS_INFO_KHR: {
+            VkVideoDecodeH264InlineSessionParametersInfoKHR* p = new VkVideoDecodeH264InlineSessionParametersInfoKHR();
+            MarshalVkVideoDecodeH264InlineSessionParametersInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT: {
@@ -9477,6 +9890,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDevicePresentWaitFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_RGB_CONVERSION_FEATURES_VALVE: {
+            VkPhysicalDeviceVideoEncodeRgbConversionFeaturesVALVE* p = new VkPhysicalDeviceVideoEncodeRgbConversionFeaturesVALVE();
+            MarshalVkPhysicalDeviceVideoEncodeRgbConversionFeaturesVALVE::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
             VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR* p = new VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR();
             MarshalVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR::read(pBoxedInfo, memory, address, p);
@@ -9487,9 +9905,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSurfaceCapabilities2EXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PRESENT_ID_KHR: {
-            VkPresentIdKHR* p = new VkPresentIdKHR();
-            MarshalVkPresentIdKHR::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT: {
+            VkMemoryHostPointerPropertiesEXT* p = new VkMemoryHostPointerPropertiesEXT();
+            MarshalVkMemoryHostPointerPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_INLINE_QUERY_INFO_KHR: {
@@ -9497,14 +9915,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoInlineQueryInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT: {
-            VkMemoryHostPointerPropertiesEXT* p = new VkMemoryHostPointerPropertiesEXT();
-            MarshalVkMemoryHostPointerPropertiesEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2: {
-            VkMemoryBarrier2* p = new VkMemoryBarrier2();
-            MarshalVkMemoryBarrier2::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PRESENT_ID_KHR: {
+            VkPresentIdKHR* p = new VkPresentIdKHR();
+            MarshalVkPresentIdKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: {
@@ -9512,9 +9925,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceShaderIntegerDotProductFeatures::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_CUDA_MODULE_CREATE_INFO_NV: {
-            VkCudaModuleCreateInfoNV* p = new VkCudaModuleCreateInfoNV();
-            MarshalVkCudaModuleCreateInfoNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2: {
+            VkMemoryBarrier2* p = new VkMemoryBarrier2();
+            MarshalVkMemoryBarrier2::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_INTRA_REFRESH_CREATE_INFO_KHR: {
+            VkVideoEncodeSessionIntraRefreshCreateInfoKHR* p = new VkVideoEncodeSessionIntraRefreshCreateInfoKHR();
+            MarshalVkVideoEncodeSessionIntraRefreshCreateInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR: {
@@ -9537,6 +9955,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_OWNERSHIP_TRANSFER_PROPERTIES_KHR: {
+            VkQueueFamilyOwnershipTransferPropertiesKHR* p = new VkQueueFamilyOwnershipTransferPropertiesKHR();
+            MarshalVkQueueFamilyOwnershipTransferPropertiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR: {
             VkVideoReferenceSlotInfoKHR* p = new VkVideoReferenceSlotInfoKHR();
             MarshalVkVideoReferenceSlotInfoKHR::read(pBoxedInfo, memory, address, p);
@@ -9552,19 +9975,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceShaderCoreBuiltinsPropertiesARM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV: {
-            VkPipelineViewportExclusiveScissorStateCreateInfoNV* p = new VkPipelineViewportExclusiveScissorStateCreateInfoNV();
-            MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT: {
             VkPhysicalDeviceBorderColorSwizzleFeaturesEXT* p = new VkPhysicalDeviceBorderColorSwizzleFeaturesEXT();
             MarshalVkPhysicalDeviceBorderColorSwizzleFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV: {
+            VkPipelineViewportExclusiveScissorStateCreateInfoNV* p = new VkPipelineViewportExclusiveScissorStateCreateInfoNV();
+            MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_CAPABILITIES_KHR: {
             VkVideoDecodeH264CapabilitiesKHR* p = new VkVideoDecodeH264CapabilitiesKHR();
             MarshalVkVideoDecodeH264CapabilitiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_KHR: {
+            VkSwapchainPresentScalingCreateInfoKHR* p = new VkSwapchainPresentScalingCreateInfoKHR();
+            MarshalVkSwapchainPresentScalingCreateInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_SUBPASS_SHADING_PIPELINE_CREATE_INFO_HUAWEI: {
@@ -9587,14 +10015,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPipelineBinaryInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR: {
-            VkPhysicalDeviceFragmentShadingRateKHR* p = new VkPhysicalDeviceFragmentShadingRateKHR();
-            MarshalVkPhysicalDeviceFragmentShadingRateKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO: {
             VkGraphicsPipelineCreateInfo* p = new VkGraphicsPipelineCreateInfo();
             MarshalVkGraphicsPipelineCreateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR: {
+            VkPhysicalDeviceFragmentShadingRateKHR* p = new VkPhysicalDeviceFragmentShadingRateKHR();
+            MarshalVkPhysicalDeviceFragmentShadingRateKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: {
@@ -9632,6 +10060,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceRGBA10X6FormatsFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_COUNTERS_BY_REGION_PROPERTIES_ARM: {
+            VkPhysicalDevicePerformanceCountersByRegionPropertiesARM* p = new VkPhysicalDevicePerformanceCountersByRegionPropertiesARM();
+            MarshalVkPhysicalDevicePerformanceCountersByRegionPropertiesARM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT: {
             VkCommandBufferInheritanceConditionalRenderingInfoEXT* p = new VkCommandBufferInheritanceConditionalRenderingInfoEXT();
             MarshalVkCommandBufferInheritanceConditionalRenderingInfoEXT::read(pBoxedInfo, memory, address, p);
@@ -9642,19 +10075,34 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoEncodeRateControlInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX: {
-            VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX* p = new VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX();
-            MarshalVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV: {
             VkExportMemoryAllocateInfoNV* p = new VkExportMemoryAllocateInfoNV();
             MarshalVkExportMemoryAllocateInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX: {
+            VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX* p = new VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX();
+            MarshalVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_BUILD_PARTITIONED_ACCELERATION_STRUCTURE_INFO_NV: {
+            VkBuildPartitionedAccelerationStructureInfoNV* p = new VkBuildPartitionedAccelerationStructureInfoNV();
+            MarshalVkBuildPartitionedAccelerationStructureInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_LINEAR_SWEPT_SPHERES_FEATURES_NV: {
+            VkPhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV* p = new VkPhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV();
+            MarshalVkPhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT: {
             VkPipelineRasterizationConservativeStateCreateInfoEXT* p = new VkPipelineRasterizationConservativeStateCreateInfoEXT();
             MarshalVkPipelineRasterizationConservativeStateCreateInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_TILE_SHADING_CREATE_INFO_QCOM: {
+            VkRenderPassTileShadingCreateInfoQCOM* p = new VkRenderPassTileShadingCreateInfoQCOM();
+            MarshalVkRenderPassTileShadingCreateInfoQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT: {
@@ -9687,6 +10135,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoDecodeInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_KHR: {
+            VkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR* p = new VkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR();
+            MarshalVkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT: {
             VkVertexInputBindingDescription2EXT* p = new VkVertexInputBindingDescription2EXT();
             MarshalVkVertexInputBindingDescription2EXT::read(pBoxedInfo, memory, address, p);
@@ -9695,6 +10148,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR: {
             VkCopyAccelerationStructureInfoKHR* p = new VkCopyAccelerationStructureInfoKHR();
             MarshalVkCopyAccelerationStructureInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_MODEL_FEATURES_QCOM: {
+            VkPhysicalDeviceDataGraphModelFeaturesQCOM* p = new VkPhysicalDeviceDataGraphModelFeaturesQCOM();
+            MarshalVkPhysicalDeviceDataGraphModelFeaturesQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT: {
@@ -9727,14 +10185,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkRenderingInputAttachmentIndexInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT: {
-            VkSurfacePresentModeEXT* p = new VkSurfacePresentModeEXT();
-            MarshalVkSurfacePresentModeEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO: {
             VkMemoryOpaqueCaptureAddressAllocateInfo* p = new VkMemoryOpaqueCaptureAddressAllocateInfo();
             MarshalVkMemoryOpaqueCaptureAddressAllocateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_PROFILE_RGB_CONVERSION_INFO_VALVE: {
+            VkVideoEncodeProfileRgbConversionInfoVALVE* p = new VkVideoEncodeProfileRgbConversionInfoVALVE();
+            MarshalVkVideoEncodeProfileRgbConversionInfoVALVE::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT: {
@@ -9762,9 +10220,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkImageBlit2::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_NV: {
-            VkPhysicalDeviceMemoryDecompressionFeaturesNV* p = new VkPhysicalDeviceMemoryDecompressionFeaturesNV();
-            MarshalVkPhysicalDeviceMemoryDecompressionFeaturesNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PARTITIONED_ACCELERATION_STRUCTURE_PROPERTIES_NV: {
+            VkPhysicalDevicePartitionedAccelerationStructurePropertiesNV* p = new VkPhysicalDevicePartitionedAccelerationStructurePropertiesNV();
+            MarshalVkPhysicalDevicePartitionedAccelerationStructurePropertiesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO: {
@@ -9790,6 +10248,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_GRAPHICS_SHADER_GROUP_CREATE_INFO_NV: {
             VkGraphicsShaderGroupCreateInfoNV* p = new VkGraphicsShaderGroupCreateInfoNV();
             MarshalVkGraphicsShaderGroupCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_PROPERTIES_EXT: {
+            VkPhysicalDeviceFragmentDensityMapOffsetPropertiesEXT* p = new VkPhysicalDeviceFragmentDensityMapOffsetPropertiesEXT();
+            MarshalVkPhysicalDeviceFragmentDensityMapOffsetPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR: {
@@ -9827,11 +10290,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkRenderPassMultiviewCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_PROPERTIES_QCOM: {
-            VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM* p = new VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM();
-            MarshalVkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT: {
             VkPipelineViewportDepthClipControlCreateInfoEXT* p = new VkPipelineViewportDepthClipControlCreateInfoEXT();
             MarshalVkPipelineViewportDepthClipControlCreateInfoEXT::read(pBoxedInfo, memory, address, p);
@@ -9842,9 +10300,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDescriptorSetLayoutBindingFlagsCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_OPACITY_MICROMAP_FEATURES_ARM: {
+            VkPhysicalDevicePipelineOpacityMicromapFeaturesARM* p = new VkPhysicalDevicePipelineOpacityMicromapFeaturesARM();
+            MarshalVkPhysicalDevicePipelineOpacityMicromapFeaturesARM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT: {
             VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT* p = new VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT();
             MarshalVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INDIRECT_INFO_KHR: {
+            VkCopyMemoryToImageIndirectInfoKHR* p = new VkCopyMemoryToImageIndirectInfoKHR();
+            MarshalVkCopyMemoryToImageIndirectInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_LAYERED_PROPERTIES_VALVE: {
+            VkPhysicalDeviceFragmentDensityMapLayeredPropertiesVALVE* p = new VkPhysicalDeviceFragmentDensityMapLayeredPropertiesVALVE();
+            MarshalVkPhysicalDeviceFragmentDensityMapLayeredPropertiesVALVE::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE: {
@@ -9872,9 +10345,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceSchedulingControlsFeaturesARM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO: {
-            VkDevicePrivateDataCreateInfo* p = new VkDevicePrivateDataCreateInfo();
-            MarshalVkDevicePrivateDataCreateInfo::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
+            VkPhysicalDeviceCornerSampledImageFeaturesNV* p = new VkPhysicalDeviceCornerSampledImageFeaturesNV();
+            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES: {
@@ -9882,9 +10355,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceMaintenance6Features::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
-            VkPhysicalDeviceCornerSampledImageFeaturesNV* p = new VkPhysicalDeviceCornerSampledImageFeaturesNV();
-            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO: {
+            VkDevicePrivateDataCreateInfo* p = new VkDevicePrivateDataCreateInfo();
+            MarshalVkDevicePrivateDataCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
@@ -9897,24 +10370,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkBufferCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES: {
-            VkExternalFenceProperties* p = new VkExternalFenceProperties();
-            MarshalVkExternalFenceProperties::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV: {
             VkPhysicalDeviceInheritedViewportScissorFeaturesNV* p = new VkPhysicalDeviceInheritedViewportScissorFeaturesNV();
             MarshalVkPhysicalDeviceInheritedViewportScissorFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES: {
+            VkExternalFenceProperties* p = new VkExternalFenceProperties();
+            MarshalVkExternalFenceProperties::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_IMAGE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: {
             VkImageCaptureDescriptorDataInfoEXT* p = new VkImageCaptureDescriptorDataInfoEXT();
             MarshalVkImageCaptureDescriptorDataInfoEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR: {
-            VkVideoFormatPropertiesKHR* p = new VkVideoFormatPropertiesKHR();
-            MarshalVkVideoFormatPropertiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_CULLING_SHADER_VRS_FEATURES_HUAWEI: {
@@ -9927,6 +10395,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkMicromapVersionInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR: {
+            VkVideoFormatPropertiesKHR* p = new VkVideoFormatPropertiesKHR();
+            MarshalVkVideoFormatPropertiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_HOST_MAPPING_INFO_VALVE: {
             VkDescriptorSetLayoutHostMappingInfoVALVE* p = new VkDescriptorSetLayoutHostMappingInfoVALVE();
             MarshalVkDescriptorSetLayoutHostMappingInfoVALVE::read(pBoxedInfo, memory, address, p);
@@ -9937,9 +10410,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceShadingRateImagePropertiesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT: {
-            VkPhysicalDeviceNestedCommandBufferPropertiesEXT* p = new VkPhysicalDeviceNestedCommandBufferPropertiesEXT();
-            MarshalVkPhysicalDeviceNestedCommandBufferPropertiesEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT8_FEATURES_EXT: {
+            VkPhysicalDeviceShaderFloat8FeaturesEXT* p = new VkPhysicalDeviceShaderFloat8FeaturesEXT();
+            MarshalVkPhysicalDeviceShaderFloat8FeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_FEATURES_ARM: {
@@ -9947,9 +10420,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceShaderCoreBuiltinsFeaturesARM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_FEATURES_NV: {
-            VkPhysicalDeviceCudaKernelLaunchFeaturesNV* p = new VkPhysicalDeviceCudaKernelLaunchFeaturesNV();
-            MarshalVkPhysicalDeviceCudaKernelLaunchFeaturesNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT: {
+            VkPhysicalDeviceNestedCommandBufferPropertiesEXT* p = new VkPhysicalDeviceNestedCommandBufferPropertiesEXT();
+            MarshalVkPhysicalDeviceNestedCommandBufferPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_UPDATE_INFO_KHR: {
@@ -9992,6 +10465,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceLegacyVertexAttributesFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_KHR: {
+            VkPhysicalDeviceCopyMemoryIndirectPropertiesKHR* p = new VkPhysicalDeviceCopyMemoryIndirectPropertiesKHR();
+            MarshalVkPhysicalDeviceCopyMemoryIndirectPropertiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR: {
             VkVideoEncodeAV1SessionParametersCreateInfoKHR* p = new VkVideoEncodeAV1SessionParametersCreateInfoKHR();
             MarshalVkVideoEncodeAV1SessionParametersCreateInfoKHR::read(pBoxedInfo, memory, address, p);
@@ -10015,6 +10493,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_VERSION_INFO_KHR: {
             VkAccelerationStructureVersionInfoKHR* p = new VkAccelerationStructureVersionInfoKHR();
             MarshalVkAccelerationStructureVersionInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_SPHERES_DATA_NV: {
+            VkAccelerationStructureGeometrySpheresDataNV* p = new VkAccelerationStructureGeometrySpheresDataNV();
+            MarshalVkAccelerationStructureGeometrySpheresDataNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR: {
@@ -10042,14 +10525,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkMemoryDedicatedRequirements::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: {
-            VkPhysicalDeviceVulkan14Features* p = new VkPhysicalDeviceVulkan14Features();
-            MarshalVkPhysicalDeviceVulkan14Features::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
             VkPhysicalDeviceHostQueryResetFeatures* p = new VkPhysicalDeviceHostQueryResetFeatures();
             MarshalVkPhysicalDeviceHostQueryResetFeatures::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: {
+            VkPhysicalDeviceVulkan14Features* p = new VkPhysicalDeviceVulkan14Features();
+            MarshalVkPhysicalDeviceVulkan14Features::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_SAMPLER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: {
@@ -10072,19 +10555,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceImageRobustnessFeatures::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_INLINE_SESSION_PARAMETERS_INFO_KHR: {
+            VkVideoDecodeAV1InlineSessionParametersInfoKHR* p = new VkVideoDecodeAV1InlineSessionParametersInfoKHR();
+            MarshalVkVideoDecodeAV1InlineSessionParametersInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR: {
             VkDisplayPlaneProperties2KHR* p = new VkDisplayPlaneProperties2KHR();
             MarshalVkDisplayPlaneProperties2KHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO: {
-            VkBindBufferMemoryInfo* p = new VkBindBufferMemoryInfo();
-            MarshalVkBindBufferMemoryInfo::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT: {
             VkImageViewMinLodCreateInfoEXT* p = new VkImageViewMinLodCreateInfoEXT();
             MarshalVkImageViewMinLodCreateInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO: {
+            VkBindBufferMemoryInfo* p = new VkBindBufferMemoryInfo();
+            MarshalVkBindBufferMemoryInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO: {
@@ -10097,14 +10585,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkApplicationInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
-            VkPhysicalDeviceRobustness2PropertiesEXT* p = new VkPhysicalDeviceRobustness2PropertiesEXT();
-            MarshalVkPhysicalDeviceRobustness2PropertiesEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT: {
             VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT* p = new VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT();
             MarshalVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_DECOMPRESS_MEMORY_INFO_EXT: {
+            VkDecompressMemoryInfoEXT* p = new VkDecompressMemoryInfoEXT();
+            MarshalVkDecompressMemoryInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
@@ -10117,14 +10605,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkRenderPassTransformBeginInfoQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO: {
-            VkPipelineMultisampleStateCreateInfo* p = new VkPipelineMultisampleStateCreateInfo();
-            MarshalVkPipelineMultisampleStateCreateInfo::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO: {
             VkPipelineCreationFeedbackCreateInfo* p = new VkPipelineCreationFeedbackCreateInfo();
             MarshalVkPipelineCreationFeedbackCreateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO: {
+            VkPipelineMultisampleStateCreateInfo* p = new VkPipelineMultisampleStateCreateInfo();
+            MarshalVkPipelineMultisampleStateCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DEVICE_QUEUE_SHADER_CORE_CONTROL_CREATE_INFO_ARM: {
@@ -10175,6 +10663,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
             VkPhysicalDeviceMemoryBudgetPropertiesEXT* p = new VkPhysicalDeviceMemoryBudgetPropertiesEXT();
             MarshalVkPhysicalDeviceMemoryBudgetPropertiesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_BUILTIN_MODEL_CREATE_INFO_QCOM: {
+            VkDataGraphPipelineBuiltinModelCreateInfoQCOM* p = new VkDataGraphPipelineBuiltinModelCreateInfoQCOM();
+            MarshalVkDataGraphPipelineBuiltinModelCreateInfoQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT: {
@@ -10252,6 +10745,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSubresourceHostMemcpySize::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR: {
+            VkRenderingFragmentShadingRateAttachmentInfoKHR* p = new VkRenderingFragmentShadingRateAttachmentInfoKHR();
+            MarshalVkRenderingFragmentShadingRateAttachmentInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_QUANTIZATION_MAP_CAPABILITIES_KHR: {
             VkVideoEncodeH264QuantizationMapCapabilitiesKHR* p = new VkVideoEncodeH264QuantizationMapCapabilitiesKHR();
             MarshalVkVideoEncodeH264QuantizationMapCapabilitiesKHR::read(pBoxedInfo, memory, address, p);
@@ -10262,14 +10760,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkIndirectExecutionSetShaderInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT: {
+            VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT* p = new VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT();
+            MarshalVkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES: {
             VkQueueFamilyGlobalPriorityProperties* p = new VkQueueFamilyGlobalPriorityProperties();
             MarshalVkQueueFamilyGlobalPriorityProperties::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT: {
-            VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT* p = new VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT();
-            MarshalVkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_EXT: {
+            VkPhysicalDeviceRayTracingInvocationReorderPropertiesEXT* p = new VkPhysicalDeviceRayTracingInvocationReorderPropertiesEXT();
+            MarshalVkPhysicalDeviceRayTracingInvocationReorderPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR: {
@@ -10302,14 +10805,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPipelineVertexInputDivisorStateCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT: {
+            VkPhysicalDevicePresentTimingFeaturesEXT* p = new VkPhysicalDevicePresentTimingFeaturesEXT();
+            MarshalVkPhysicalDevicePresentTimingFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR: {
             VkPerformanceCounterKHR* p = new VkPerformanceCounterKHR();
             MarshalVkPerformanceCounterKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
-            VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT* p = new VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT();
-            MarshalVkPhysicalDeviceSwapchainMaintenance1FeaturesEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_KHR: {
+            VkSurfacePresentScalingCapabilitiesKHR* p = new VkSurfacePresentScalingCapabilitiesKHR();
+            MarshalVkSurfacePresentScalingCapabilitiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT: {
@@ -10330,6 +10838,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2: {
             VkImageResolve2* p = new VkImageResolve2();
             MarshalVkImageResolve2::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_BFLOAT16_FEATURES_KHR: {
+            VkPhysicalDeviceShaderBfloat16FeaturesKHR* p = new VkPhysicalDeviceShaderBfloat16FeaturesKHR();
+            MarshalVkPhysicalDeviceShaderBfloat16FeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR: {
@@ -10362,14 +10875,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkImageFormatListCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
-            VkDedicatedAllocationMemoryAllocateInfoNV* p = new VkDedicatedAllocationMemoryAllocateInfoNV();
-            MarshalVkDedicatedAllocationMemoryAllocateInfoNV::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT: {
             VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT* p = new VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT();
             MarshalVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_INFO_KHR: {
+            VkVideoEncodeIntraRefreshInfoKHR* p = new VkVideoEncodeIntraRefreshInfoKHR();
+            MarshalVkVideoEncodeIntraRefreshInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
+            VkDedicatedAllocationMemoryAllocateInfoNV* p = new VkDedicatedAllocationMemoryAllocateInfoNV();
+            MarshalVkDedicatedAllocationMemoryAllocateInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
@@ -10397,24 +10915,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceImageCompressionControlFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR: {
-            VkVideoDecodeH264DpbSlotInfoKHR* p = new VkVideoDecodeH264DpbSlotInfoKHR();
-            MarshalVkVideoDecodeH264DpbSlotInfoKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_EXT: {
             VkGeneratedCommandsInfoEXT* p = new VkGeneratedCommandsInfoEXT();
             MarshalVkGeneratedCommandsInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT: {
-            VkDebugUtilsMessengerCreateInfoEXT* p = new VkDebugUtilsMessengerCreateInfoEXT();
-            MarshalVkDebugUtilsMessengerCreateInfoEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR: {
+            VkVideoDecodeH264DpbSlotInfoKHR* p = new VkVideoDecodeH264DpbSlotInfoKHR();
+            MarshalVkVideoDecodeH264DpbSlotInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2: {
             VkSubpassDependency2* p = new VkSubpassDependency2();
             MarshalVkSubpassDependency2::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT: {
+            VkDebugUtilsMessengerCreateInfoEXT* p = new VkDebugUtilsMessengerCreateInfoEXT();
+            MarshalVkDebugUtilsMessengerCreateInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2: {
@@ -10442,14 +10960,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDeviceEventInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_EXT: {
-            VkPhysicalDeviceDepthClampZeroOneFeaturesEXT* p = new VkPhysicalDeviceDepthClampZeroOneFeaturesEXT();
-            MarshalVkPhysicalDeviceDepthClampZeroOneFeaturesEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV: {
             VkPhysicalDeviceRawAccessChainsFeaturesNV* p = new VkPhysicalDeviceRawAccessChainsFeaturesNV();
             MarshalVkPhysicalDeviceRawAccessChainsFeaturesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_INLINE_SESSION_PARAMETERS_INFO_KHR: {
+            VkVideoDecodeH265InlineSessionParametersInfoKHR* p = new VkVideoDecodeH265InlineSessionParametersInfoKHR();
+            MarshalVkVideoDecodeH265InlineSessionParametersInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_AV1_FEATURES_KHR: {
@@ -10482,14 +11000,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSubpassBeginInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV: {
+            VkPipelineFragmentShadingRateEnumStateCreateInfoNV* p = new VkPipelineFragmentShadingRateEnumStateCreateInfoNV();
+            MarshalVkPipelineFragmentShadingRateEnumStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_EXT: {
             VkGeneratedCommandsMemoryRequirementsInfoEXT* p = new VkGeneratedCommandsMemoryRequirementsInfoEXT();
             MarshalVkGeneratedCommandsMemoryRequirementsInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV: {
-            VkPipelineFragmentShadingRateEnumStateCreateInfoNV* p = new VkPipelineFragmentShadingRateEnumStateCreateInfoNV();
-            MarshalVkPipelineFragmentShadingRateEnumStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_RESOLVE_FEATURES_EXT: {
+            VkPhysicalDeviceCustomResolveFeaturesEXT* p = new VkPhysicalDeviceCustomResolveFeaturesEXT();
+            MarshalVkPhysicalDeviceCustomResolveFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_GET_INFO_KHR: {
@@ -10507,6 +11030,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkAttachmentDescription2::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_ID_2_KHR: {
+            VkSurfaceCapabilitiesPresentId2KHR* p = new VkSurfaceCapabilitiesPresentId2KHR();
+            MarshalVkSurfaceCapabilitiesPresentId2KHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_IMAGE_COPY_2: {
             VkImageCopy2* p = new VkImageCopy2();
             MarshalVkImageCopy2::read(pBoxedInfo, memory, address, p);
@@ -10522,14 +11050,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceFragmentDensityMapFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_PROPERTIES_KHR: {
-            VkVideoEncodeQualityLevelPropertiesKHR* p = new VkVideoEncodeQualityLevelPropertiesKHR();
-            MarshalVkVideoEncodeQualityLevelPropertiesKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: {
             VkPhysicalDeviceShaderAtomicInt64Features* p = new VkPhysicalDeviceShaderAtomicInt64Features();
             MarshalVkPhysicalDeviceShaderAtomicInt64Features::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_PROPERTIES_KHR: {
+            VkVideoEncodeQualityLevelPropertiesKHR* p = new VkVideoEncodeQualityLevelPropertiesKHR();
+            MarshalVkVideoEncodeQualityLevelPropertiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER: {
@@ -10537,14 +11065,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkBufferMemoryBarrier::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_ARM: {
+            VkPerformanceCounterARM* p = new VkPerformanceCounterARM();
+            MarshalVkPerformanceCounterARM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV: {
             VkSetLatencyMarkerInfoNV* p = new VkSetLatencyMarkerInfoNV();
             MarshalVkSetLatencyMarkerInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
-            VkPhysicalDeviceConditionalRenderingFeaturesEXT* p = new VkPhysicalDeviceConditionalRenderingFeaturesEXT();
-            MarshalVkPhysicalDeviceConditionalRenderingFeaturesEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DATA_PARAMS_NV: {
+            VkExternalComputeQueueDataParamsNV* p = new VkExternalComputeQueueDataParamsNV();
+            MarshalVkExternalComputeQueueDataParamsNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_FEATURES_QCOM: {
+            VkPhysicalDeviceTileShadingFeaturesQCOM* p = new VkPhysicalDeviceTileShadingFeaturesQCOM();
+            MarshalVkPhysicalDeviceTileShadingFeaturesQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
@@ -10552,9 +11090,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceDepthClipEnableFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
+            VkPhysicalDeviceConditionalRenderingFeaturesEXT* p = new VkPhysicalDeviceConditionalRenderingFeaturesEXT();
+            MarshalVkPhysicalDeviceConditionalRenderingFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
             VkPhysicalDeviceImage2DViewOf3DFeaturesEXT* p = new VkPhysicalDeviceImage2DViewOf3DFeaturesEXT();
             MarshalVkPhysicalDeviceImage2DViewOf3DFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT: {
+            VkPresentTimingsInfoEXT* p = new VkPresentTimingsInfoEXT();
+            MarshalVkPresentTimingsInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO: {
@@ -10567,14 +11115,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceShaderImageFootprintFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR: {
-            VkVideoEncodeH265RateControlInfoKHR* p = new VkVideoEncodeH265RateControlInfoKHR();
-            MarshalVkVideoEncodeH265RateControlInfoKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT: {
             VkLayerSettingsCreateInfoEXT* p = new VkLayerSettingsCreateInfoEXT();
             MarshalVkLayerSettingsCreateInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR: {
+            VkVideoEncodeH265RateControlInfoKHR* p = new VkVideoEncodeH265RateControlInfoKHR();
+            MarshalVkVideoEncodeH265RateControlInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT: {
@@ -10602,24 +11150,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkAccelerationStructureGeometryKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR: {
-            VkVideoSessionCreateInfoKHR* p = new VkVideoSessionCreateInfoKHR();
-            MarshalVkVideoSessionCreateInfoKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT: {
             VkPipelineRasterizationDepthClipStateCreateInfoEXT* p = new VkPipelineRasterizationDepthClipStateCreateInfoEXT();
             MarshalVkPipelineRasterizationDepthClipStateCreateInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR: {
-            VkAccelerationStructureGeometryAabbsDataKHR* p = new VkAccelerationStructureGeometryAabbsDataKHR();
-            MarshalVkAccelerationStructureGeometryAabbsDataKHR::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR: {
+            VkVideoSessionCreateInfoKHR* p = new VkVideoSessionCreateInfoKHR();
+            MarshalVkVideoSessionCreateInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_ARM: {
             VkPhysicalDeviceShaderCorePropertiesARM* p = new VkPhysicalDeviceShaderCorePropertiesARM();
             MarshalVkPhysicalDeviceShaderCorePropertiesARM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR: {
+            VkAccelerationStructureGeometryAabbsDataKHR* p = new VkAccelerationStructureGeometryAabbsDataKHR();
+            MarshalVkAccelerationStructureGeometryAabbsDataKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO: {
@@ -10642,19 +11190,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceMeshShaderFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
-            VkPhysicalDeviceRayTracingPipelineFeaturesKHR* p = new VkPhysicalDeviceRayTracingPipelineFeaturesKHR();
-            MarshalVkPhysicalDeviceRayTracingPipelineFeaturesKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_CU_FUNCTION_CREATE_INFO_NVX: {
             VkCuFunctionCreateInfoNVX* p = new VkCuFunctionCreateInfoNVX();
             MarshalVkCuFunctionCreateInfoNVX::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT: {
-            VkSurfacePresentModeCompatibilityEXT* p = new VkSurfacePresentModeCompatibilityEXT();
-            MarshalVkSurfacePresentModeCompatibilityEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
+            VkPhysicalDeviceRayTracingPipelineFeaturesKHR* p = new VkPhysicalDeviceRayTracingPipelineFeaturesKHR();
+            MarshalVkPhysicalDeviceRayTracingPipelineFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_NV: {
@@ -10662,14 +11205,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceRayTracingInvocationReorderFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO: {
-            VkBufferViewCreateInfo* p = new VkBufferViewCreateInfo();
-            MarshalVkBufferViewCreateInfo::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR: {
             VkCooperativeMatrixPropertiesKHR* p = new VkCooperativeMatrixPropertiesKHR();
             MarshalVkCooperativeMatrixPropertiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO: {
+            VkBufferViewCreateInfo* p = new VkBufferViewCreateInfo();
+            MarshalVkBufferViewCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
@@ -10682,19 +11225,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceSubpassShadingFeaturesHUAWEI::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT: {
-            VkDeviceFaultInfoEXT* p = new VkDeviceFaultInfoEXT();
-            MarshalVkDeviceFaultInfoEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NV: {
             VkIndirectCommandsLayoutCreateInfoNV* p = new VkIndirectCommandsLayoutCreateInfoNV();
             MarshalVkIndirectCommandsLayoutCreateInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT: {
+            VkDeviceFaultInfoEXT* p = new VkDeviceFaultInfoEXT();
+            MarshalVkDeviceFaultInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_INFO_EXT: {
             VkMultisampledRenderToSingleSampledInfoEXT* p = new VkMultisampledRenderToSingleSampledInfoEXT();
             MarshalVkMultisampledRenderToSingleSampledInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_RESOLVE_IMAGE_MODE_INFO_KHR: {
+            VkResolveImageModeInfoKHR* p = new VkResolveImageModeInfoKHR();
+            MarshalVkResolveImageModeInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES: {
@@ -10717,19 +11265,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceVulkan13Features::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FORMAT_PACK_FEATURES_ARM: {
+            VkPhysicalDeviceFormatPackFeaturesARM* p = new VkPhysicalDeviceFormatPackFeaturesARM();
+            MarshalVkPhysicalDeviceFormatPackFeaturesARM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
             VkPhysicalDeviceProtectedMemoryProperties* p = new VkPhysicalDeviceProtectedMemoryProperties();
             MarshalVkPhysicalDeviceProtectedMemoryProperties::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO: {
-            VkSemaphoreTypeCreateInfo* p = new VkSemaphoreTypeCreateInfo();
-            MarshalVkSemaphoreTypeCreateInfo::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV: {
-            VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV* p = new VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV();
-            MarshalVkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
@@ -10737,14 +11280,34 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceMeshShaderPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
-            VkPhysicalDevice8BitStorageFeatures* p = new VkPhysicalDevice8BitStorageFeatures();
-            MarshalVkPhysicalDevice8BitStorageFeatures::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV: {
+            VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV* p = new VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV();
+            MarshalVkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO: {
+            VkSemaphoreTypeCreateInfo* p = new VkSemaphoreTypeCreateInfo();
+            MarshalVkSemaphoreTypeCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV: {
             VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV* p = new VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV();
             MarshalVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
+            VkPhysicalDevice8BitStorageFeatures* p = new VkPhysicalDevice8BitStorageFeatures();
+            MarshalVkPhysicalDevice8BitStorageFeatures::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_TILE_MEMORY_BIND_INFO_QCOM: {
+            VkTileMemoryBindInfoQCOM* p = new VkTileMemoryBindInfoQCOM();
+            MarshalVkTileMemoryBindInfoQCOM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_RGB_CONVERSION_CREATE_INFO_VALVE: {
+            VkVideoEncodeSessionRgbConversionCreateInfoVALVE* p = new VkVideoEncodeSessionRgbConversionCreateInfoVALVE();
+            MarshalVkVideoEncodeSessionRgbConversionCreateInfoVALVE::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO: {
@@ -10755,6 +11318,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_FEATURES_QCOM: {
             VkPhysicalDeviceImageProcessing2FeaturesQCOM* p = new VkPhysicalDeviceImageProcessing2FeaturesQCOM();
             MarshalVkPhysicalDeviceImageProcessing2FeaturesQCOM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT: {
+            VkSwapchainTimingPropertiesEXT* p = new VkSwapchainTimingPropertiesEXT();
+            MarshalVkSwapchainTimingPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_NV: {
@@ -10777,14 +11345,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSubpassEndInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR: {
+            VkVideoEncodeH265RateControlLayerInfoKHR* p = new VkVideoEncodeH265RateControlLayerInfoKHR();
+            MarshalVkVideoEncodeH265RateControlLayerInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR: {
             VkPerformanceCounterDescriptionKHR* p = new VkPerformanceCounterDescriptionKHR();
             MarshalVkPerformanceCounterDescriptionKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR: {
-            VkVideoEncodeH265RateControlLayerInfoKHR* p = new VkVideoEncodeH265RateControlLayerInfoKHR();
-            MarshalVkVideoEncodeH265RateControlLayerInfoKHR::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR: {
+            VkSwapchainPresentFenceInfoKHR* p = new VkSwapchainPresentFenceInfoKHR();
+            MarshalVkSwapchainPresentFenceInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_NV: {
@@ -10827,14 +11400,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceCubicClampFeaturesQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES: {
-            VkPhysicalDeviceHostImageCopyProperties* p = new VkPhysicalDeviceHostImageCopyProperties();
-            MarshalVkPhysicalDeviceHostImageCopyProperties::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO: {
             VkInstanceCreateInfo* p = new VkInstanceCreateInfo();
             MarshalVkInstanceCreateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES: {
+            VkPhysicalDeviceHostImageCopyProperties* p = new VkPhysicalDeviceHostImageCopyProperties();
+            MarshalVkPhysicalDeviceHostImageCopyProperties::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR: {
@@ -10892,11 +11465,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoEncodeH264DpbSlotInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_CUDA_LAUNCH_INFO_NV: {
-            VkCudaLaunchInfoNV* p = new VkCudaLaunchInfoNV();
-            MarshalVkCudaLaunchInfoNV::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_NV: {
             VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV* p = new VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV();
             MarshalVkPhysicalDeviceRayTracingInvocationReorderPropertiesNV::read(pBoxedInfo, memory, address, p);
@@ -10910,6 +11478,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD: {
             VkDeviceMemoryOverallocationCreateInfoAMD* p = new VkDeviceMemoryOverallocationCreateInfoAMD();
             MarshalVkDeviceMemoryOverallocationCreateInfoAMD::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT: {
+            VkPastPresentationTimingPropertiesEXT* p = new VkPastPresentationTimingPropertiesEXT();
+            MarshalVkPastPresentationTimingPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_INFO_ARM: {
@@ -10957,24 +11530,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR: {
-            VkPhysicalDeviceCooperativeMatrixFeaturesKHR* p = new VkPhysicalDeviceCooperativeMatrixFeaturesKHR();
-            MarshalVkPhysicalDeviceCooperativeMatrixFeaturesKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_CAPABILITIES_KHR: {
             VkVideoEncodeH265CapabilitiesKHR* p = new VkVideoEncodeH265CapabilitiesKHR();
             MarshalVkVideoEncodeH265CapabilitiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS: {
-            VkDeviceBufferMemoryRequirements* p = new VkDeviceBufferMemoryRequirements();
-            MarshalVkDeviceBufferMemoryRequirements::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV: {
             VkLatencySleepModeInfoNV* p = new VkLatencySleepModeInfoNV();
             MarshalVkLatencySleepModeInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR: {
+            VkPhysicalDeviceCooperativeMatrixFeaturesKHR* p = new VkPhysicalDeviceCooperativeMatrixFeaturesKHR();
+            MarshalVkPhysicalDeviceCooperativeMatrixFeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS: {
+            VkDeviceBufferMemoryRequirements* p = new VkDeviceBufferMemoryRequirements();
+            MarshalVkDeviceBufferMemoryRequirements::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_COPY_COMMAND_TRANSFORM_INFO_QCOM: {
@@ -11022,19 +11595,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoEncodeH265SessionParametersFeedbackInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_DEVICE_MEMORY_FEATURES_EXT: {
+            VkPhysicalDeviceZeroInitializeDeviceMemoryFeaturesEXT* p = new VkPhysicalDeviceZeroInitializeDeviceMemoryFeaturesEXT();
+            MarshalVkPhysicalDeviceZeroInitializeDeviceMemoryFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_LAYER_INFO_KHR: {
             VkVideoEncodeH264RateControlLayerInfoKHR* p = new VkVideoEncodeH264RateControlLayerInfoKHR();
             MarshalVkVideoEncodeH264RateControlLayerInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV: {
-            VkPipelineViewportSwizzleStateCreateInfoNV* p = new VkPipelineViewportSwizzleStateCreateInfoNV();
-            MarshalVkPipelineViewportSwizzleStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT: {
             VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT* p = new VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT();
             MarshalVkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV: {
+            VkPipelineViewportSwizzleStateCreateInfoNV* p = new VkPipelineViewportSwizzleStateCreateInfoNV();
+            MarshalVkPipelineViewportSwizzleStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_DYNAMIC_STATE_FEATURES_EXT: {
@@ -11060,6 +11638,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: {
             VkImageViewCaptureDescriptorDataInfoEXT* p = new VkImageViewCaptureDescriptorDataInfoEXT();
             MarshalVkImageViewCaptureDescriptorDataInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_ARM: {
+            VkPerformanceCounterDescriptionARM* p = new VkPerformanceCounterDescriptionARM();
+            MarshalVkPerformanceCounterDescriptionARM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_GET_LATENCY_MARKER_INFO_NV: {
@@ -11092,6 +11675,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoEncodeUsageInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PRESENT_TIMING_SURFACE_CAPABILITIES_EXT: {
+            VkPresentTimingSurfaceCapabilitiesEXT* p = new VkPresentTimingSurfaceCapabilitiesEXT();
+            MarshalVkPresentTimingSurfaceCapabilitiesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR: {
             VkCopyAccelerationStructureToMemoryInfoKHR* p = new VkCopyAccelerationStructureToMemoryInfoKHR();
             MarshalVkCopyAccelerationStructureToMemoryInfoKHR::read(pBoxedInfo, memory, address, p);
@@ -11102,14 +11690,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPipelineExecutableInternalRepresentationKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PARTITIONED_ACCELERATION_STRUCTURE_FEATURES_NV: {
+            VkPhysicalDevicePartitionedAccelerationStructureFeaturesNV* p = new VkPhysicalDevicePartitionedAccelerationStructureFeaturesNV();
+            MarshalVkPhysicalDevicePartitionedAccelerationStructureFeaturesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_QUERY_LOW_LATENCY_SUPPORT_NV: {
             VkQueryLowLatencySupportNV* p = new VkQueryLowLatencySupportNV();
             MarshalVkQueryLowLatencySupportNV::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_EXT: {
-            VkReleaseSwapchainImagesInfoEXT* p = new VkReleaseSwapchainImagesInfoEXT();
-            MarshalVkReleaseSwapchainImagesInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_SUBMIT_INFO_2: {
@@ -11117,14 +11705,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSubmitInfo2::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PICTURE_INFO_KHR: {
-            VkVideoDecodeH264PictureInfoKHR* p = new VkVideoDecodeH264PictureInfoKHR();
-            MarshalVkVideoDecodeH264PictureInfoKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_QUANTIZATION_MAP_CAPABILITIES_KHR: {
             VkVideoEncodeH265QuantizationMapCapabilitiesKHR* p = new VkVideoEncodeH265QuantizationMapCapabilitiesKHR();
             MarshalVkVideoEncodeH265QuantizationMapCapabilitiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_KHR: {
+            VkSwapchainPresentModesCreateInfoKHR* p = new VkSwapchainPresentModesCreateInfoKHR();
+            MarshalVkSwapchainPresentModesCreateInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PICTURE_INFO_KHR: {
+            VkVideoDecodeH264PictureInfoKHR* p = new VkVideoDecodeH264PictureInfoKHR();
+            MarshalVkVideoDecodeH264PictureInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR: {
@@ -11142,14 +11735,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDisplayPowerInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT: {
+            VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT* p = new VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT();
+            MarshalVkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_CAPABILITIES_KHR: {
             VkVideoDecodeH265CapabilitiesKHR* p = new VkVideoDecodeH265CapabilitiesKHR();
             MarshalVkVideoDecodeH265CapabilitiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT: {
-            VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT* p = new VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT();
-            MarshalVkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_PROPERTIES_KHR: {
+            VkPhysicalDeviceMaintenance9PropertiesKHR* p = new VkPhysicalDeviceMaintenance9PropertiesKHR();
+            MarshalVkPhysicalDeviceMaintenance9PropertiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX: {
@@ -11187,6 +11785,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkBufferUsageFlags2CreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_KHR: {
+            VkSwapchainPresentModeInfoKHR* p = new VkSwapchainPresentModeInfoKHR();
+            MarshalVkSwapchainPresentModeInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO: {
             VkDescriptorPoolInlineUniformBlockCreateInfo* p = new VkDescriptorPoolInlineUniformBlockCreateInfo();
             MarshalVkDescriptorPoolInlineUniformBlockCreateInfo::read(pBoxedInfo, memory, address, p);
@@ -11195,6 +11798,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_DEPTH_BIAS_INFO_EXT: {
             VkDepthBiasInfoEXT* p = new VkDepthBiasInfoEXT();
             MarshalVkDepthBiasInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_EXT: {
+            VkPhysicalDeviceRayTracingInvocationReorderFeaturesEXT* p = new VkPhysicalDeviceRayTracingInvocationReorderFeaturesEXT();
+            MarshalVkPhysicalDeviceRayTracingInvocationReorderFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: {
@@ -11207,14 +11815,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoEncodeH264SessionCreateInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO: {
-            VkPipelineCacheCreateInfo* p = new VkPipelineCacheCreateInfo();
-            MarshalVkPipelineCacheCreateInfo::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_FEATURES_QCOM: {
             VkPhysicalDeviceImageProcessingFeaturesQCOM* p = new VkPhysicalDeviceImageProcessingFeaturesQCOM();
             MarshalVkPhysicalDeviceImageProcessingFeaturesQCOM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO: {
+            VkPipelineCacheCreateInfo* p = new VkPipelineCacheCreateInfo();
+            MarshalVkPipelineCacheCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2: {
@@ -11247,6 +11855,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPresentInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: {
+            VkPhysicalDeviceRobustness2FeaturesKHR* p = new VkPhysicalDeviceRobustness2FeaturesKHR();
+            MarshalVkPhysicalDeviceRobustness2FeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_GOP_REMAINING_FRAME_INFO_KHR: {
             VkVideoEncodeAV1GopRemainingFrameInfoKHR* p = new VkVideoEncodeAV1GopRemainingFrameInfoKHR();
             MarshalVkVideoEncodeAV1GopRemainingFrameInfoKHR::read(pBoxedInfo, memory, address, p);
@@ -11262,6 +11875,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSamplerCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_8_FEATURES_KHR: {
+            VkPhysicalDeviceMaintenance8FeaturesKHR* p = new VkPhysicalDeviceMaintenance8FeaturesKHR();
+            MarshalVkPhysicalDeviceMaintenance8FeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_PUSH_DESCRIPTOR_BUFFER_HANDLE_EXT: {
             VkDescriptorBufferBindingPushDescriptorBufferHandleEXT* p = new VkDescriptorBufferBindingPushDescriptorBufferHandleEXT();
             MarshalVkDescriptorBufferBindingPushDescriptorBufferHandleEXT::read(pBoxedInfo, memory, address, p);
@@ -11270,6 +11888,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_PROPERTIES_KHR: {
             VkPhysicalDevicePipelineBinaryPropertiesKHR* p = new VkPhysicalDevicePipelineBinaryPropertiesKHR();
             MarshalVkPhysicalDevicePipelineBinaryPropertiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_PERFORMANCE_COUNTERS_BY_REGION_BEGIN_INFO_ARM: {
+            VkRenderPassPerformanceCountersByRegionBeginInfoARM* p = new VkRenderPassPerformanceCountersByRegionBeginInfoARM();
+            MarshalVkRenderPassPerformanceCountersByRegionBeginInfoARM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_MEMORY_MAP_PLACED_INFO_EXT: {
@@ -11307,6 +11930,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoDecodeH264SessionParametersAddInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_BEGIN_CUSTOM_RESOLVE_INFO_EXT: {
+            VkBeginCustomResolveInfoEXT* p = new VkBeginCustomResolveInfoEXT();
+            MarshalVkBeginCustomResolveInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR: {
             VkAccelerationStructureGeometryTrianglesDataKHR* p = new VkAccelerationStructureGeometryTrianglesDataKHR();
             MarshalVkAccelerationStructureGeometryTrianglesDataKHR::read(pBoxedInfo, memory, address, p);
@@ -11325,6 +11953,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO: {
             VkSemaphoreSignalInfo* p = new VkSemaphoreSignalInfo();
             MarshalVkSemaphoreSignalInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_RENDERING_END_INFO_KHR: {
+            VkRenderingEndInfoKHR* p = new VkRenderingEndInfoKHR();
+            MarshalVkRenderingEndInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_1_FEATURES_KHR: {
@@ -11347,11 +11980,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceRayTracingPipelinePropertiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT: {
-            VkSwapchainPresentScalingCreateInfoEXT* p = new VkSwapchainPresentScalingCreateInfoEXT();
-            MarshalVkSwapchainPresentScalingCreateInfoEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO: {
             VkRenderingAttachmentInfo* p = new VkRenderingAttachmentInfo();
             MarshalVkRenderingAttachmentInfo::read(pBoxedInfo, memory, address, p);
@@ -11360,6 +11988,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV: {
             VkQueueFamilyCheckpointPropertiesNV* p = new VkQueueFamilyCheckpointPropertiesNV();
             MarshalVkQueueFamilyCheckpointPropertiesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_RGB_CONVERSION_CAPABILITIES_VALVE: {
+            VkVideoEncodeRgbConversionCapabilitiesVALVE* p = new VkVideoEncodeRgbConversionCapabilitiesVALVE();
+            MarshalVkVideoEncodeRgbConversionCapabilitiesVALVE::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_RENDERING_INFO: {
@@ -11372,9 +12005,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceExtendedDynamicState2FeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
-            VkPhysicalDeviceShaderAtomicFloatFeaturesEXT* p = new VkPhysicalDeviceShaderAtomicFloatFeaturesEXT();
-            MarshalVkPhysicalDeviceShaderAtomicFloatFeaturesEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_INDIRECT_INFO_KHR: {
+            VkCopyMemoryIndirectInfoKHR* p = new VkCopyMemoryIndirectInfoKHR();
+            MarshalVkCopyMemoryIndirectInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_PARAMETERS_FEEDBACK_INFO_KHR: {
@@ -11382,9 +12015,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoEncodeSessionParametersFeedbackInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
+            VkPhysicalDeviceShaderAtomicFloatFeaturesEXT* p = new VkPhysicalDeviceShaderAtomicFloatFeaturesEXT();
+            MarshalVkPhysicalDeviceShaderAtomicFloatFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
             VkPhysicalDeviceProvokingVertexFeaturesEXT* p = new VkPhysicalDeviceProvokingVertexFeaturesEXT();
             MarshalVkPhysicalDeviceProvokingVertexFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_CAPABILITIES_KHR: {
+            VkVideoEncodeIntraRefreshCapabilitiesKHR* p = new VkVideoEncodeIntraRefreshCapabilitiesKHR();
+            MarshalVkVideoEncodeIntraRefreshCapabilitiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PICTURE_INFO_KHR: {
@@ -11400,6 +12043,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR: {
             VkVideoEncodeH264SessionParametersCreateInfoKHR* p = new VkVideoEncodeH264SessionParametersCreateInfoKHR();
             MarshalVkVideoEncodeH264SessionParametersCreateInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_WAIT_2_KHR: {
+            VkSurfaceCapabilitiesPresentWait2KHR* p = new VkSurfaceCapabilitiesPresentWait2KHR();
+            MarshalVkSurfaceCapabilitiesPresentWait2KHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DISPLAY_MODE_STEREO_PROPERTIES_NV: {
@@ -11432,14 +12080,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoSessionParametersCreateInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_EXT: {
+            VkPhysicalDeviceMemoryDecompressionFeaturesEXT* p = new VkPhysicalDeviceMemoryDecompressionFeaturesEXT();
+            MarshalVkPhysicalDeviceMemoryDecompressionFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
             VkPhysicalDeviceVulkan12Features* p = new VkPhysicalDeviceVulkan12Features();
             MarshalVkPhysicalDeviceVulkan12Features::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
-            VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR* p = new VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR();
-            MarshalVkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_2_FEATURES_KHR: {
+            VkPhysicalDevicePresentWait2FeaturesKHR* p = new VkPhysicalDevicePresentWait2FeaturesKHR();
+            MarshalVkPhysicalDevicePresentWait2FeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
@@ -11447,9 +12100,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceBufferDeviceAddressFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
+            VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR* p = new VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR();
+            MarshalVkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
             VkPhysicalDeviceFeatures2* p = new VkPhysicalDeviceFeatures2();
             MarshalVkPhysicalDeviceFeatures2::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_FLAGS_NV: {
+            VkPartitionedAccelerationStructureFlagsNV* p = new VkPartitionedAccelerationStructureFlagsNV();
+            MarshalVkPartitionedAccelerationStructureFlagsNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
@@ -11467,9 +12130,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPipelineViewportWScalingStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR: {
+            VkPhysicalDeviceShaderUntypedPointersFeaturesKHR* p = new VkPhysicalDeviceShaderUntypedPointersFeaturesKHR();
+            MarshalVkPhysicalDeviceShaderUntypedPointersFeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES: {
             VkPhysicalDeviceShaderFloatControls2Features* p = new VkPhysicalDeviceShaderFloatControls2Features();
             MarshalVkPhysicalDeviceShaderFloatControls2Features::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_64_BIT_INDEXING_FEATURES_EXT: {
+            VkPhysicalDeviceShader64BitIndexingFeaturesEXT* p = new VkPhysicalDeviceShader64BitIndexingFeaturesEXT();
+            MarshalVkPhysicalDeviceShader64BitIndexingFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
@@ -11482,11 +12155,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkRenderingAreaInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_FEATURES_QCOM: {
-            VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM* p = new VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM();
-            MarshalVkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT: {
             VkMicromapBuildSizesInfoEXT* p = new VkMicromapBuildSizesInfoEXT();
             MarshalVkMicromapBuildSizesInfoEXT::read(pBoxedInfo, memory, address, p);
@@ -11497,29 +12165,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPerformanceOverrideInfoINTEL::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_EXT: {
-            VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT* p = new VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT();
-            MarshalVkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV: {
             VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV* p = new VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV();
             MarshalVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_PROPERTIES_NV: {
-            VkPhysicalDeviceCudaKernelLaunchPropertiesNV* p = new VkPhysicalDeviceCudaKernelLaunchPropertiesNV();
-            MarshalVkPhysicalDeviceCudaKernelLaunchPropertiesNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR: {
+            VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR* p = new VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR();
+            MarshalVkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR: {
             VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR* p = new VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR();
             MarshalVkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR: {
-            VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR* p = new VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR();
-            MarshalVkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DEPTH_BIAS_REPRESENTATION_INFO_EXT: {
@@ -11592,14 +12250,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoEncodeH265GopRemainingFrameInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO: {
-            VkFramebufferCreateInfo* p = new VkFramebufferCreateInfo();
-            MarshalVkFramebufferCreateInfo::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: {
             VkPhysicalDeviceVulkan12Properties* p = new VkPhysicalDeviceVulkan12Properties();
             MarshalVkPhysicalDeviceVulkan12Properties::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO: {
+            VkFramebufferCreateInfo* p = new VkFramebufferCreateInfo();
+            MarshalVkFramebufferCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV: {
@@ -11612,19 +12270,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkCopyMicromapInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_FEATURES_EXT: {
+            VkPhysicalDeviceFragmentDensityMapOffsetFeaturesEXT* p = new VkPhysicalDeviceFragmentDensityMapOffsetFeaturesEXT();
+            MarshalVkPhysicalDeviceFragmentDensityMapOffsetFeaturesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_BINDING_REFERENCE_VALVE: {
             VkDescriptorSetBindingReferenceVALVE* p = new VkDescriptorSetBindingReferenceVALVE();
             MarshalVkDescriptorSetBindingReferenceVALVE::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
-            VkPhysicalDeviceRayQueryFeaturesKHR* p = new VkPhysicalDeviceRayQueryFeaturesKHR();
-            MarshalVkPhysicalDeviceRayQueryFeaturesKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT: {
             VkGraphicsPipelineLibraryCreateInfoEXT* p = new VkGraphicsPipelineLibraryCreateInfoEXT();
             MarshalVkGraphicsPipelineLibraryCreateInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
+            VkPhysicalDeviceRayQueryFeaturesKHR* p = new VkPhysicalDeviceRayQueryFeaturesKHR();
+            MarshalVkPhysicalDeviceRayQueryFeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY: {
@@ -11642,14 +12305,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceFragmentShadingRatePropertiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV: {
-            VkAccelerationStructureGeometryMotionTrianglesDataNV* p = new VkAccelerationStructureGeometryMotionTrianglesDataNV();
-            MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_COUNTERS_BY_REGION_FEATURES_ARM: {
+            VkPhysicalDevicePerformanceCountersByRegionFeaturesARM* p = new VkPhysicalDevicePerformanceCountersByRegionFeaturesARM();
+            MarshalVkPhysicalDevicePerformanceCountersByRegionFeaturesARM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_CAPABILITIES_KHR: {
             VkVideoEncodeQuantizationMapCapabilitiesKHR* p = new VkVideoEncodeQuantizationMapCapabilitiesKHR();
             MarshalVkVideoEncodeQuantizationMapCapabilitiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV: {
+            VkAccelerationStructureGeometryMotionTrianglesDataNV* p = new VkAccelerationStructureGeometryMotionTrianglesDataNV();
+            MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_FEATURES_NV: {
@@ -11662,14 +12330,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkSurfaceFormat2KHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM: {
-            VkPhysicalDeviceImageProcessingPropertiesQCOM* p = new VkPhysicalDeviceImageProcessingPropertiesQCOM();
-            MarshalVkPhysicalDeviceImageProcessingPropertiesQCOM::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR: {
             VkPhysicalDeviceShaderQuadControlFeaturesKHR* p = new VkPhysicalDeviceShaderQuadControlFeaturesKHR();
             MarshalVkPhysicalDeviceShaderQuadControlFeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM: {
+            VkPhysicalDeviceImageProcessingPropertiesQCOM* p = new VkPhysicalDeviceImageProcessingPropertiesQCOM();
+            MarshalVkPhysicalDeviceImageProcessingPropertiesQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV: {
@@ -11687,14 +12355,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPipelineCoverageReductionStateCreateInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES: {
-            VkPhysicalDeviceGroupProperties* p = new VkPhysicalDeviceGroupProperties();
-            MarshalVkPhysicalDeviceGroupProperties::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_PROPERTIES_NV: {
             VkOpticalFlowImageFormatPropertiesNV* p = new VkOpticalFlowImageFormatPropertiesNV();
             MarshalVkOpticalFlowImageFormatPropertiesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES: {
+            VkPhysicalDeviceGroupProperties* p = new VkPhysicalDeviceGroupProperties();
+            MarshalVkPhysicalDeviceGroupProperties::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD: {
@@ -11767,6 +12435,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkAccelerationStructureBuildGeometryInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT: {
+            VkPastPresentationTimingEXT* p = new VkPastPresentationTimingEXT();
+            MarshalVkPastPresentationTimingEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_PIPELINE_INFO_EXT: {
             VkGeneratedCommandsPipelineInfoEXT* p = new VkGeneratedCommandsPipelineInfoEXT();
             MarshalVkGeneratedCommandsPipelineInfoEXT::read(pBoxedInfo, memory, address, p);
@@ -11792,6 +12465,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceVulkan14Properties::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_2_FEATURES_KHR: {
+            VkPhysicalDevicePresentId2FeaturesKHR* p = new VkPhysicalDevicePresentId2FeaturesKHR();
+            MarshalVkPhysicalDevicePresentId2FeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT: {
             VkConditionalRenderingBeginInfoEXT* p = new VkConditionalRenderingBeginInfoEXT();
             MarshalVkConditionalRenderingBeginInfoEXT::read(pBoxedInfo, memory, address, p);
@@ -11810,6 +12488,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
             VkPhysicalDeviceDescriptorIndexingFeatures* p = new VkPhysicalDeviceDescriptorIndexingFeatures();
             MarshalVkPhysicalDeviceDescriptorIndexingFeatures::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT: {
+            VkSwapchainTimeDomainPropertiesEXT* p = new VkSwapchainTimeDomainPropertiesEXT();
+            MarshalVkSwapchainTimeDomainPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
@@ -11850,6 +12533,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO: {
             VkPipelineRobustnessCreateInfo* p = new VkPipelineRobustnessCreateInfo();
             MarshalVkPipelineRobustnessCreateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT: {
+            VkPastPresentationTimingInfoEXT* p = new VkPastPresentationTimingInfoEXT();
+            MarshalVkPastPresentationTimingInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_SHADER_EXT: {
@@ -11917,11 +12605,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkCooperativeMatrixFlexibleDimensionsPropertiesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO: {
-            VkCommandBufferAllocateInfo* p = new VkCommandBufferAllocateInfo();
-            MarshalVkCommandBufferAllocateInfo::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_NV: {
             VkGeneratedCommandsInfoNV* p = new VkGeneratedCommandsInfoNV();
             MarshalVkGeneratedCommandsInfoNV::read(pBoxedInfo, memory, address, p);
@@ -11932,6 +12615,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceExternalFenceInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO: {
+            VkCommandBufferAllocateInfo* p = new VkCommandBufferAllocateInfo();
+            MarshalVkCommandBufferAllocateInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT: {
             VkPhysicalDeviceMemoryPriorityFeaturesEXT* p = new VkPhysicalDeviceMemoryPriorityFeaturesEXT();
             MarshalVkPhysicalDeviceMemoryPriorityFeaturesEXT::read(pBoxedInfo, memory, address, p);
@@ -11940,6 +12628,21 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_ACQUIRE_UNMODIFIED_EXT: {
             VkExternalMemoryAcquireUnmodifiedEXT* p = new VkExternalMemoryAcquireUnmodifiedEXT();
             MarshalVkExternalMemoryAcquireUnmodifiedEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_DISPATCH_TILE_INFO_QCOM: {
+            VkDispatchTileInfoQCOM* p = new VkDispatchTileInfoQCOM();
+            MarshalVkDispatchTileInfoQCOM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DEVICE_CREATE_INFO_NV: {
+            VkExternalComputeQueueDeviceCreateInfoNV* p = new VkExternalComputeQueueDeviceCreateInfoNV();
+            MarshalVkExternalComputeQueueDeviceCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR: {
+            VkPhysicalDeviceMaintenance9FeaturesKHR* p = new VkPhysicalDeviceMaintenance9FeaturesKHR();
+            MarshalVkPhysicalDeviceMaintenance9FeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT: {
@@ -11972,19 +12675,29 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPushDescriptorSetWithTemplateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_KHR: {
+            VkPhysicalDeviceCopyMemoryIndirectFeaturesKHR* p = new VkPhysicalDeviceCopyMemoryIndirectFeaturesKHR();
+            MarshalVkPhysicalDeviceCopyMemoryIndirectFeaturesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_COOPERATIVE_VECTOR_PROPERTIES_NV: {
+            VkCooperativeVectorPropertiesNV* p = new VkCooperativeVectorPropertiesNV();
+            MarshalVkCooperativeVectorPropertiesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD: {
             VkPhysicalDeviceCoherentMemoryFeaturesAMD* p = new VkPhysicalDeviceCoherentMemoryFeaturesAMD();
             MarshalVkPhysicalDeviceCoherentMemoryFeaturesAMD::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2: {
-            VkCopyBufferInfo2* p = new VkCopyBufferInfo2();
-            MarshalVkCopyBufferInfo2::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV: {
             VkDedicatedAllocationBufferCreateInfoNV* p = new VkDedicatedAllocationBufferCreateInfoNV();
             MarshalVkDedicatedAllocationBufferCreateInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2: {
+            VkCopyBufferInfo2* p = new VkCopyBufferInfo2();
+            MarshalVkCopyBufferInfo2::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR: {
@@ -11997,9 +12710,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkShaderModuleCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_NV: {
-            VkPhysicalDeviceCopyMemoryIndirectPropertiesNV* p = new VkPhysicalDeviceCopyMemoryIndirectPropertiesNV();
-            MarshalVkPhysicalDeviceCopyMemoryIndirectPropertiesNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR: {
+            VkVideoProfileListInfoKHR* p = new VkVideoProfileListInfoKHR();
+            MarshalVkVideoProfileListInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_INFO_NV: {
@@ -12007,14 +12720,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkOpticalFlowImageFormatInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR: {
-            VkVideoProfileListInfoKHR* p = new VkVideoProfileListInfoKHR();
-            MarshalVkVideoProfileListInfoKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_CUDA_FUNCTION_CREATE_INFO_NV: {
-            VkCudaFunctionCreateInfoNV* p = new VkCudaFunctionCreateInfoNV();
-            MarshalVkCudaFunctionCreateInfoNV::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_2_FEATURES_KHR: {
+            VkPhysicalDeviceVideoMaintenance2FeaturesKHR* p = new VkPhysicalDeviceVideoMaintenance2FeaturesKHR();
+            MarshalVkPhysicalDeviceVideoMaintenance2FeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT: {
@@ -12032,14 +12740,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPipelineExecutableInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR: {
-            VkVideoEncodeH264RateControlInfoKHR* p = new VkVideoEncodeH264RateControlInfoKHR();
-            MarshalVkVideoEncodeH264RateControlInfoKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_PROPERTIES_NV: {
             VkPhysicalDeviceCooperativeMatrix2PropertiesNV* p = new VkPhysicalDeviceCooperativeMatrix2PropertiesNV();
             MarshalVkPhysicalDeviceCooperativeMatrix2PropertiesNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR: {
+            VkVideoEncodeH264RateControlInfoKHR* p = new VkVideoEncodeH264RateControlInfoKHR();
+            MarshalVkVideoEncodeH264RateControlInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_LATENCY_SURFACE_CAPABILITIES_NV: {
@@ -12072,14 +12780,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDescriptorBufferBindingInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT: {
-            VkPipelineDiscardRectangleStateCreateInfoEXT* p = new VkPipelineDiscardRectangleStateCreateInfoEXT();
-            MarshalVkPipelineDiscardRectangleStateCreateInfoEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO: {
             VkBindSparseInfo* p = new VkBindSparseInfo();
             MarshalVkBindSparseInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT: {
+            VkPipelineDiscardRectangleStateCreateInfoEXT* p = new VkPipelineDiscardRectangleStateCreateInfoEXT();
+            MarshalVkPipelineDiscardRectangleStateCreateInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
@@ -12107,19 +12815,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDescriptorUpdateTemplateCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX: {
-            VkImageViewHandleInfoNVX* p = new VkImageViewHandleInfoNVX();
-            MarshalVkImageViewHandleInfoNVX::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_PIPELINE_INFO_EXT: {
             VkIndirectExecutionSetPipelineInfoEXT* p = new VkIndirectExecutionSetPipelineInfoEXT();
             MarshalVkIndirectExecutionSetPipelineInfoEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX: {
+            VkImageViewHandleInfoNVX* p = new VkImageViewHandleInfoNVX();
+            MarshalVkImageViewHandleInfoNVX::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: {
             VkAttachmentDescriptionStencilLayout* p = new VkAttachmentDescriptionStencilLayout();
             MarshalVkAttachmentDescriptionStencilLayout::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNIFORM_BUFFER_UNSIZED_ARRAY_FEATURES_EXT: {
+            VkPhysicalDeviceShaderUniformBufferUnsizedArrayFeaturesEXT* p = new VkPhysicalDeviceShaderUniformBufferUnsizedArrayFeaturesEXT();
+            MarshalVkPhysicalDeviceShaderUniformBufferUnsizedArrayFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_FEATURES_NV: {
@@ -12130,6 +12843,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
             VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR* p = new VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR();
             MarshalVkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR: {
+            VkPresentWait2InfoKHR* p = new VkPresentWait2InfoKHR();
+            MarshalVkPresentWait2InfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
@@ -12147,14 +12865,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDeviceImageSubresourceInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
-            VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures* p = new VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures();
-            MarshalVkPhysicalDeviceShaderSubgroupExtendedTypesFeatures::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_FLAGS_INFO_KHR: {
+            VkRenderingAttachmentFlagsInfoKHR* p = new VkRenderingAttachmentFlagsInfoKHR();
+            MarshalVkRenderingAttachmentFlagsInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT: {
             VkValidationFlagsEXT* p = new VkValidationFlagsEXT();
             MarshalVkValidationFlagsEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
+            VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures* p = new VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures();
+            MarshalVkPhysicalDeviceShaderSubgroupExtendedTypesFeatures::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_DEVICE_ADDRESS_BINDING_CALLBACK_DATA_EXT: {
@@ -12182,11 +12905,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkQueueFamilyVideoPropertiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT: {
-            VkSurfacePresentScalingCapabilitiesEXT* p = new VkSurfacePresentScalingCapabilitiesEXT();
-            MarshalVkSurfacePresentScalingCapabilitiesEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES: {
             VkPhysicalDeviceShaderTerminateInvocationFeatures* p = new VkPhysicalDeviceShaderTerminateInvocationFeatures();
             MarshalVkPhysicalDeviceShaderTerminateInvocationFeatures::read(pBoxedInfo, memory, address, p);
@@ -12200,6 +12918,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR: {
             VkRayTracingPipelineInterfaceCreateInfoKHR* p = new VkRayTracingPipelineInterfaceCreateInfoKHR();
             MarshalVkRayTracingPipelineInterfaceCreateInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_KHR: {
+            VkSurfacePresentModeKHR* p = new VkSurfacePresentModeKHR();
+            MarshalVkSurfacePresentModeKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_PROPERTIES_NV: {
@@ -12252,6 +12975,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceVulkanMemoryModelFeatures::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_CUSTOM_RESOLVE_CREATE_INFO_EXT: {
+            VkCustomResolveCreateInfoEXT* p = new VkCustomResolveCreateInfoEXT();
+            MarshalVkCustomResolveCreateInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2: {
             VkSubpassDescription2* p = new VkSubpassDescription2();
             MarshalVkSubpassDescription2::read(pBoxedInfo, memory, address, p);
@@ -12302,14 +13030,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoDecodeAV1ProfileInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES: {
-            VkPhysicalDeviceGlobalPriorityQueryFeatures* p = new VkPhysicalDeviceGlobalPriorityQueryFeatures();
-            MarshalVkPhysicalDeviceGlobalPriorityQueryFeatures::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV: {
             VkAccelerationStructureInfoNV* p = new VkAccelerationStructureInfoNV();
             MarshalVkAccelerationStructureInfoNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES: {
+            VkPhysicalDeviceGlobalPriorityQueryFeatures* p = new VkPhysicalDeviceGlobalPriorityQueryFeatures();
+            MarshalVkPhysicalDeviceGlobalPriorityQueryFeatures::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2: {
@@ -12327,14 +13055,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceFaultFeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM: {
-            VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM* p = new VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM();
-            MarshalVkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2: {
             VkCopyBufferToImageInfo2* p = new VkCopyBufferToImageInfo2();
             MarshalVkCopyBufferToImageInfo2::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM: {
+            VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM* p = new VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM();
+            MarshalVkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HDR_VIVID_FEATURES_HUAWEI: {
@@ -12352,9 +13080,19 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceFragmentDensityMap2FeaturesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_INSTANCES_INPUT_NV: {
+            VkPartitionedAccelerationStructureInstancesInputNV* p = new VkPartitionedAccelerationStructureInstancesInputNV();
+            MarshalVkPartitionedAccelerationStructureInstancesInputNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
             VkPhysicalDeviceTimelineSemaphoreFeatures* p = new VkPhysicalDeviceTimelineSemaphoreFeatures();
             MarshalVkPhysicalDeviceTimelineSemaphoreFeatures::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_FEATURES_KHR: {
+            VkPhysicalDeviceMaintenance10FeaturesKHR* p = new VkPhysicalDeviceMaintenance10FeaturesKHR();
+            MarshalVkPhysicalDeviceMaintenance10FeaturesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO: {
@@ -12372,6 +13110,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkImageAlignmentControlCreateInfoMESA::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT: {
+            VkSwapchainCalibratedTimestampInfoEXT* p = new VkSwapchainCalibratedTimestampInfoEXT();
+            MarshalVkSwapchainCalibratedTimestampInfoEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT: {
             VkPhysicalDeviceLegacyDitheringFeaturesEXT* p = new VkPhysicalDeviceLegacyDitheringFeaturesEXT();
             MarshalVkPhysicalDeviceLegacyDitheringFeaturesEXT::read(pBoxedInfo, memory, address, p);
@@ -12382,24 +13125,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkGeneratedCommandsMemoryRequirementsInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV: {
-            VkLatencySleepInfoNV* p = new VkLatencySleepInfoNV();
-            MarshalVkLatencySleepInfoNV::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
             VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures* p = new VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures();
             MarshalVkPhysicalDeviceSeparateDepthStencilLayoutsFeatures::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR: {
-            VkAcquireNextImageInfoKHR* p = new VkAcquireNextImageInfoKHR();
-            MarshalVkAcquireNextImageInfoKHR::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV: {
+            VkLatencySleepInfoNV* p = new VkLatencySleepInfoNV();
+            MarshalVkLatencySleepInfoNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES: {
             VkPhysicalDeviceUniformBufferStandardLayoutFeatures* p = new VkPhysicalDeviceUniformBufferStandardLayoutFeatures();
             MarshalVkPhysicalDeviceUniformBufferStandardLayoutFeatures::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR: {
+            VkAcquireNextImageInfoKHR* p = new VkAcquireNextImageInfoKHR();
+            MarshalVkAcquireNextImageInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_COPY_MICROMAP_TO_MEMORY_INFO_EXT: {
@@ -12497,9 +13240,24 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkVideoEncodeH265SessionParametersCreateInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_PARTITIONED_ACCELERATION_STRUCTURE_NV: {
+            VkWriteDescriptorSetPartitionedAccelerationStructureNV* p = new VkWriteDescriptorSetPartitionedAccelerationStructureNV();
+            MarshalVkWriteDescriptorSetPartitionedAccelerationStructureNV::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_LAYERED_FEATURES_VALVE: {
+            VkPhysicalDeviceFragmentDensityMapLayeredFeaturesVALVE* p = new VkPhysicalDeviceFragmentDensityMapLayeredFeaturesVALVE();
+            MarshalVkPhysicalDeviceFragmentDensityMapLayeredFeaturesVALVE::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_NALU_SLICE_INFO_KHR: {
             VkVideoEncodeH264NaluSliceInfoKHR* p = new VkVideoEncodeH264NaluSliceInfoKHR();
             MarshalVkVideoEncodeH264NaluSliceInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_KHR: {
+            VkPhysicalDeviceRobustness2PropertiesKHR* p = new VkPhysicalDeviceRobustness2PropertiesKHR();
+            MarshalVkPhysicalDeviceRobustness2PropertiesKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL: {
@@ -12527,14 +13285,14 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkExportFenceCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD: {
-            VkPipelineCompilerControlCreateInfoAMD* p = new VkPipelineCompilerControlCreateInfoAMD();
-            MarshalVkPipelineCompilerControlCreateInfoAMD::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT: {
             VkPhysicalDeviceDiscardRectanglePropertiesEXT* p = new VkPhysicalDeviceDiscardRectanglePropertiesEXT();
             MarshalVkPhysicalDeviceDiscardRectanglePropertiesEXT::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD: {
+            VkPipelineCompilerControlCreateInfoAMD* p = new VkPipelineCompilerControlCreateInfoAMD();
+            MarshalVkPipelineCompilerControlCreateInfoAMD::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO: {
@@ -12547,6 +13305,16 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPipelineShaderStageCreateInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
+        case VK_STRUCTURE_TYPE_VIDEO_REFERENCE_INTRA_REFRESH_INFO_KHR: {
+            VkVideoReferenceIntraRefreshInfoKHR* p = new VkVideoReferenceIntraRefreshInfoKHR();
+            MarshalVkVideoReferenceIntraRefreshInfoKHR::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_TILE_MEMORY_REQUIREMENTS_QCOM: {
+            VkTileMemoryRequirementsQCOM* p = new VkTileMemoryRequirementsQCOM();
+            MarshalVkTileMemoryRequirementsQCOM::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_DEGAMMA_FEATURES_QCOM: {
             VkPhysicalDeviceYcbcrDegammaFeaturesQCOM* p = new VkPhysicalDeviceYcbcrDegammaFeaturesQCOM();
             MarshalVkPhysicalDeviceYcbcrDegammaFeaturesQCOM::read(pBoxedInfo, memory, address, p);
@@ -12555,6 +13323,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
             VkDeviceGroupBindSparseInfo* p = new VkDeviceGroupBindSparseInfo();
             MarshalVkDeviceGroupBindSparseInfo::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR: {
+            VkPresentId2KHR* p = new VkPresentId2KHR();
+            MarshalVkPresentId2KHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR: {
@@ -12572,9 +13345,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceLineRasterizationProperties::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT: {
-            VkPhysicalDeviceOpacityMicromapPropertiesEXT* p = new VkPhysicalDeviceOpacityMicromapPropertiesEXT();
-            MarshalVkPhysicalDeviceOpacityMicromapPropertiesEXT::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR: {
+            VkAccelerationStructureDeviceAddressInfoKHR* p = new VkAccelerationStructureDeviceAddressInfoKHR();
+            MarshalVkAccelerationStructureDeviceAddressInfoKHR::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
@@ -12582,9 +13355,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceMaintenance3Properties::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR: {
-            VkAccelerationStructureDeviceAddressInfoKHR* p = new VkAccelerationStructureDeviceAddressInfoKHR();
-            MarshalVkAccelerationStructureDeviceAddressInfoKHR::read(pBoxedInfo, memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT: {
+            VkPhysicalDeviceOpacityMicromapPropertiesEXT* p = new VkPhysicalDeviceOpacityMicromapPropertiesEXT();
+            MarshalVkPhysicalDeviceOpacityMicromapPropertiesEXT::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_INDIRECT_DEVICE_ADDRESS_INFO_NV: {
@@ -12633,9 +13406,6 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES:
             delete (VkPhysicalDeviceIndexTypeUint8Features*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT:
-            delete (VkSwapchainPresentFenceInfoEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2:
             delete (VkSparseImageMemoryRequirements2*)pNext;
             break;
@@ -12645,8 +13415,8 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR:
             delete (VkSwapchainCreateInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_NV:
-            delete (VkPhysicalDeviceMemoryDecompressionPropertiesNV*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceMaintenance10PropertiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_BEGIN_INFO_ARM:
             delete (VkRenderPassStripeBeginInfoARM*)pNext;
@@ -12681,8 +13451,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SHADING_RATE_IMAGE_STATE_CREATE_INFO_NV:
             delete (VkPipelineViewportShadingRateImageStateCreateInfoNV*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR:
+            delete (VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_FORMAT_QUANTIZATION_MAP_PROPERTIES_KHR:
             delete (VkVideoFormatQuantizationMapPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_COMPUTE_QUEUE_PROPERTIES_NV:
+            delete (VkPhysicalDeviceExternalComputeQueuePropertiesNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_QUALITY_LEVEL_PROPERTIES_KHR:
             delete (VkVideoEncodeAV1QualityLevelPropertiesKHR*)pNext;
@@ -12711,11 +13487,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES:
             delete (VkPhysicalDeviceVariablePointersFeatures*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV:
-            delete (VkGeometryAABBNV*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT:
             delete (VkShaderModuleIdentifierEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV:
+            delete (VkGeometryAABBNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES:
             delete (VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures*)pNext;
@@ -12753,8 +13529,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO:
             delete (VkCommandBufferInheritanceRenderingInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_TILE_MEMORY_SIZE_INFO_QCOM:
+            delete (VkTileMemorySizeInfoQCOM*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO:
             delete (VkDeviceGroupDeviceCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_KHR:
+            delete (VkPhysicalDeviceDepthClampZeroOneFeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_RENDER_PASS_CREATION_CONTROL_EXT:
             delete (VkRenderPassCreationControlEXT*)pNext;
@@ -12771,8 +13553,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO:
             delete (VkBufferOpaqueCaptureAddressCreateInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_DENSITY_MAP_LAYERED_CREATE_INFO_VALVE:
+            delete (VkPipelineFragmentDensityMapLayeredCreateInfoVALVE*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2:
             delete (VkImageSubresource2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceMemoryDecompressionPropertiesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO:
             delete (VkPipelineVertexInputStateCreateInfo*)pNext;
@@ -12789,23 +13577,23 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO:
             delete (VkDeviceQueueCreateInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR:
-            delete (VkAccelerationStructureGeometryInstancesDataKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR:
             delete (VkDisplayPlaneCapabilities2KHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR:
             delete (VkAccelerationStructureCreateInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR:
+            delete (VkAccelerationStructureGeometryInstancesDataKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINEAR_COLOR_ATTACHMENT_FEATURES_NV:
             delete (VkPhysicalDeviceLinearColorAttachmentFeaturesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES:
-            delete (VkPhysicalDeviceFloatControlsProperties*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_OUT_OF_BAND_QUEUE_TYPE_INFO_NV:
             delete (VkOutOfBandQueueTypeInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES:
+            delete (VkPhysicalDeviceFloatControlsProperties*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT:
             delete (VkValidationFeaturesEXT*)pNext;
@@ -12813,11 +13601,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_KHR:
             delete (VkVideoDecodeAV1CapabilitiesKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR:
-            delete (VkVideoEncodeH264ProfileInfoKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2:
             delete (VkImageMemoryRequirementsInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR:
+            delete (VkVideoEncodeH264ProfileInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DESCRIPTOR_DATA_CREATE_INFO_EXT:
             delete (VkOpaqueCaptureDescriptorDataCreateInfoEXT*)pNext;
@@ -12840,26 +13628,26 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT:
             delete (VkDebugReportCallbackCreateInfoEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_PROPERTIES_QCOM:
+            delete (VkPhysicalDeviceTileShadingPropertiesQCOM*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_FEATURES_NV:
             delete (VkPhysicalDeviceCooperativeMatrix2FeaturesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT:
-            delete (VkSwapchainPresentModesCreateInfoEXT*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_SUBPASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_QCOM:
-            delete (VkSubpassFragmentDensityMapOffsetEndInfoQCOM*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES:
+            delete (VkPhysicalDeviceToolProperties*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT:
             delete (VkPhysicalDeviceConservativeRasterizationPropertiesEXT*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES:
-            delete (VkPhysicalDeviceToolProperties*)pNext;
             break;
         case VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2:
             delete (VkImageSparseMemoryRequirementsInfo2*)pNext;
             break;
         case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET:
             delete (VkWriteDescriptorSet*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT:
+            delete (VkAttachmentFeedbackLoopInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES:
             delete (VkPhysicalDeviceTimelineSemaphoreProperties*)pNext;
@@ -12876,20 +13664,20 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_PROPERTIES_NV:
             delete (VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FMA_FEATURES_KHR:
+            delete (VkPhysicalDeviceShaderFmaFeaturesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_PROPERTIES_ARM:
             delete (VkPhysicalDeviceRenderPassStripedPropertiesARM*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV:
-            delete (VkAccelerationStructureCreateInfoNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV:
             delete (VkDedicatedAllocationImageCreateInfoNV*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV:
+            delete (VkAccelerationStructureCreateInfoNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_CONTROL_FEATURES_EXT:
             delete (VkPhysicalDeviceDepthClampControlFeaturesEXT*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT:
-            delete (VkSwapchainPresentModeInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_MEMORY_BARRIER:
             delete (VkMemoryBarrier*)pNext;
@@ -12900,23 +13688,23 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO:
             delete (VkBindImagePlaneMemoryInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO:
-            delete (VkPipelineShaderStageRequiredSubgroupSizeCreateInfo*)pNext;
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_KHR:
+            delete (VkSurfacePresentModeCompatibilityKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT:
             delete (VkPhysicalDeviceColorWriteEnableFeaturesEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO:
-            delete (VkCommandBufferSubmitInfo*)pNext;
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO:
+            delete (VkPipelineShaderStageRequiredSubgroupSizeCreateInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO:
             delete (VkPushConstantsInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO:
+            delete (VkCommandBufferSubmitInfo*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_PIPELINE_EXT:
             delete (VkWriteIndirectExecutionSetPipelineEXT*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT:
-            delete (VkPhysicalDeviceRobustness2FeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_MICROMAP_INFO_EXT:
             delete (VkCopyMemoryToMicromapInfoEXT*)pNext;
@@ -12924,14 +13712,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PROFILE_INFO_KHR:
             delete (VkVideoDecodeH264ProfileInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT:
-            delete (VkPipelineRasterizationStateStreamCreateInfoEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT:
             delete (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT:
+            delete (VkPipelineRasterizationStateStreamCreateInfoEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT:
             delete (VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_FEATURES_NV:
+            delete (VkPhysicalDeviceCooperativeVectorFeaturesNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVES_GENERATED_QUERY_FEATURES_EXT:
             delete (VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT*)pNext;
@@ -12960,6 +13751,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2:
             delete (VkPhysicalDeviceMemoryProperties2*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_ACCESS_FLAGS_3_KHR:
+            delete (VkMemoryBarrierAccessFlags3KHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT:
             delete (VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT*)pNext;
             break;
@@ -12975,11 +13769,20 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR:
             delete (VkVideoProfileInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PER_TILE_BEGIN_INFO_QCOM:
+            delete (VkPerTileBeginInfoQCOM*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR:
             delete (VkVideoCapabilitiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD:
             delete (VkAttachmentSampleCountInfoAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT:
+            delete (VkPresentTimingInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_CONVERT_COOPERATIVE_VECTOR_MATRIX_INFO_NV:
+            delete (VkConvertCooperativeVectorMatrixInfoNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_BUFFER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
             delete (VkBufferCaptureDescriptorDataInfoEXT*)pNext;
@@ -12999,20 +13802,23 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PIPELINE_CREATE_INFO_KHR:
             delete (VkPipelineCreateInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO:
+            delete (VkImageCreateInfo*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV:
             delete (VkPhysicalDeviceShaderSMBuiltinsPropertiesNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_WEIGHTS_FEATURES_QCOM:
             delete (VkPhysicalDeviceCubicWeightsFeaturesQCOM*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO:
-            delete (VkImageCreateInfo*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR:
-            delete (VkVideoPictureResourceInfoKHR*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_FEATURES_QCOM:
+            delete (VkPhysicalDeviceTileMemoryHeapFeaturesQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
             delete (VkPhysicalDevicePCIBusInfoPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR:
+            delete (VkVideoPictureResourceInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_PROPERTIES_KHR:
             delete (VkPipelineExecutablePropertiesKHR*)pNext;
@@ -13041,14 +13847,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO:
             delete (VkSamplerReductionModeCreateInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM:
-            delete (VkSamplerBlockMatchWindowCreateInfoQCOM*)pNext;
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR:
+            delete (VkCopyMemoryToAccelerationStructureInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT:
             delete (VkDescriptorSetVariableDescriptorCountLayoutSupport*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR:
-            delete (VkCopyMemoryToAccelerationStructureInfoKHR*)pNext;
+        case VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM:
+            delete (VkSamplerBlockMatchWindowCreateInfoQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL:
             delete (VkPerformanceConfigurationAcquireInfoINTEL*)pNext;
@@ -13058,6 +13864,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO:
             delete (VkExternalMemoryBufferCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR:
+            delete (VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_NV:
             delete (VkIndirectCommandsLayoutTokenNV*)pNext;
@@ -13089,20 +13898,20 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT:
             delete (VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT:
-            delete (VkImageCompressionControlEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_OPTICAL_FLOW_SESSION_CREATE_INFO_NV:
             delete (VkOpticalFlowSessionCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT:
+            delete (VkImageCompressionControlEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO:
             delete (VkExportSemaphoreCreateInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_GET_INFO_KHR:
-            delete (VkVideoEncodeH265SessionParametersGetInfoKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_DPB_SLOT_INFO_KHR:
             delete (VkVideoEncodeAV1DpbSlotInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_GET_INFO_KHR:
+            delete (VkVideoEncodeH265SessionParametersGetInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_INFO_KHR:
             delete (VkVideoEncodeQuantizationMapInfoKHR*)pNext;
@@ -13112,6 +13921,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO:
             delete (VkPipelineRasterizationStateCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_EXT:
+            delete (VkRenderPassFragmentDensityMapOffsetEndInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2:
             delete (VkImageMemoryBarrier2*)pNext;
@@ -13130,6 +13942,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TILE_IMAGE_PROPERTIES_EXT:
             delete (VkPhysicalDeviceShaderTileImagePropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CACHE_INCREMENTAL_MODE_FEATURES_SEC:
+            delete (VkPhysicalDevicePipelineCacheIncrementalModeFeaturesSEC*)pNext;
             break;
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_SAMPLE_WEIGHT_CREATE_INFO_QCOM:
             delete (VkImageViewSampleWeightCreateInfoQCOM*)pNext;
@@ -13155,6 +13970,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_SUBPASS_RESOLVE_PERFORMANCE_QUERY_EXT:
             delete (VkSubpassResolvePerformanceQueryEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_CREATE_INFO_NV:
+            delete (VkExternalComputeQueueCreateInfoNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO:
             delete (VkCommandBufferBeginInfo*)pNext;
             break;
@@ -13167,14 +13985,20 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT:
             delete (VkPhysicalDeviceLayeredDriverPropertiesMSFT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT:
-            delete (VkPhysicalDeviceDepthClipControlFeaturesEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT:
             delete (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT:
+            delete (VkPhysicalDeviceDepthClipControlFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_KHR:
+            delete (VkReleaseSwapchainImagesInfoKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV:
             delete (VkPipelineRepresentativeFragmentTestStateCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_INTRA_REFRESH_FEATURES_KHR:
+            delete (VkPhysicalDeviceVideoEncodeIntraRefreshFeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_LIBRARY_GROUP_HANDLES_FEATURES_EXT:
             delete (VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT*)pNext;
@@ -13185,11 +14009,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_BARRIER_FEATURES_NV:
             delete (VkPhysicalDevicePresentBarrierFeaturesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR:
-            delete (VkVideoEncodeH264CapabilitiesKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_BARRIER_CREATE_INFO_NV:
             delete (VkSwapchainPresentBarrierCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR:
+            delete (VkVideoEncodeH264CapabilitiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2:
             delete (VkImageFormatProperties2*)pNext;
@@ -13200,17 +14024,23 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_FEATURES_NV:
             delete (VkPhysicalDeviceOpticalFlowFeaturesNV*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_PROPERTIES_NV:
+            delete (VkPhysicalDeviceCooperativeVectorPropertiesNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT:
             delete (VkPhysicalDeviceCustomBorderColorFeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_DPB_SLOT_INFO_KHR:
             delete (VkVideoDecodeAV1DpbSlotInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV:
-            delete (VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_PROPERTIES_QCOM:
+            delete (VkPhysicalDeviceTileMemoryHeapPropertiesQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO:
             delete (VkImageViewUsageCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV:
+            delete (VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_SWAPCHAIN_FEATURES_EXT:
             delete (VkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT*)pNext;
@@ -13224,14 +14054,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MOTION_INFO_NV:
             delete (VkAccelerationStructureMotionInfoNV*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_LINEAR_SWEPT_SPHERES_DATA_NV:
+            delete (VkAccelerationStructureGeometryLinearSweptSpheresDataNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PIPELINE_BINARY_CREATE_INFO_KHR:
             delete (VkPipelineBinaryCreateInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT:
             delete (VkPhysicalDeviceSampleLocationsPropertiesEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT:
-            delete (VkPhysicalDeviceMeshShaderFeaturesEXT*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT:
+            delete (VkPhysicalDeviceNestedCommandBufferFeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_BUFFER_COPY_2:
             delete (VkBufferCopy2*)pNext;
@@ -13239,8 +14072,8 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV:
             delete (VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT:
-            delete (VkPhysicalDeviceNestedCommandBufferFeaturesEXT*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT:
+            delete (VkPhysicalDeviceMeshShaderFeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO:
             delete (VkDescriptorPoolCreateInfo*)pNext;
@@ -13254,8 +14087,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_BLIT_IMAGE_CUBIC_WEIGHTS_INFO_QCOM:
             delete (VkBlitImageCubicWeightsInfoQCOM*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PER_TILE_END_INFO_QCOM:
+            delete (VkPerTileEndInfoQCOM*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT:
             delete (VkDebugUtilsObjectTagInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_INLINE_SESSION_PARAMETERS_INFO_KHR:
+            delete (VkVideoDecodeH264InlineSessionParametersInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT:
             delete (VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT*)pNext;
@@ -13266,29 +14105,32 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR:
             delete (VkPhysicalDevicePresentWaitFeaturesKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_RGB_CONVERSION_FEATURES_VALVE:
+            delete (VkPhysicalDeviceVideoEncodeRgbConversionFeaturesVALVE*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR:
             delete (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT:
             delete (VkSurfaceCapabilities2EXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PRESENT_ID_KHR:
-            delete (VkPresentIdKHR*)pNext;
+        case VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT:
+            delete (VkMemoryHostPointerPropertiesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_INLINE_QUERY_INFO_KHR:
             delete (VkVideoInlineQueryInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT:
-            delete (VkMemoryHostPointerPropertiesEXT*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2:
-            delete (VkMemoryBarrier2*)pNext;
+        case VK_STRUCTURE_TYPE_PRESENT_ID_KHR:
+            delete (VkPresentIdKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES:
             delete (VkPhysicalDeviceShaderIntegerDotProductFeatures*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_CUDA_MODULE_CREATE_INFO_NV:
-            delete (VkCudaModuleCreateInfoNV*)pNext;
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2:
+            delete (VkMemoryBarrier2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_INTRA_REFRESH_CREATE_INFO_KHR:
+            delete (VkVideoEncodeSessionIntraRefreshCreateInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR:
             delete (VkPhysicalDevicePresentIdFeaturesKHR*)pNext;
@@ -13302,6 +14144,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR:
             delete (VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_OWNERSHIP_TRANSFER_PROPERTIES_KHR:
+            delete (VkQueueFamilyOwnershipTransferPropertiesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR:
             delete (VkVideoReferenceSlotInfoKHR*)pNext;
             break;
@@ -13311,14 +14156,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_PROPERTIES_ARM:
             delete (VkPhysicalDeviceShaderCoreBuiltinsPropertiesARM*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV:
-            delete (VkPipelineViewportExclusiveScissorStateCreateInfoNV*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT:
             delete (VkPhysicalDeviceBorderColorSwizzleFeaturesEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV:
+            delete (VkPipelineViewportExclusiveScissorStateCreateInfoNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_CAPABILITIES_KHR:
             delete (VkVideoDecodeH264CapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_KHR:
+            delete (VkSwapchainPresentScalingCreateInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SUBPASS_SHADING_PIPELINE_CREATE_INFO_HUAWEI:
             delete (VkSubpassShadingPipelineCreateInfoHUAWEI*)pNext;
@@ -13332,11 +14180,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PIPELINE_BINARY_INFO_KHR:
             delete (VkPipelineBinaryInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR:
-            delete (VkPhysicalDeviceFragmentShadingRateKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO:
             delete (VkGraphicsPipelineCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR:
+            delete (VkPhysicalDeviceFragmentShadingRateKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO:
             delete (VkMemoryDedicatedAllocateInfo*)pNext;
@@ -13359,20 +14207,32 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RGBA10X6_FORMATS_FEATURES_EXT:
             delete (VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_COUNTERS_BY_REGION_PROPERTIES_ARM:
+            delete (VkPhysicalDevicePerformanceCountersByRegionPropertiesARM*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT:
             delete (VkCommandBufferInheritanceConditionalRenderingInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_RATE_CONTROL_INFO_KHR:
             delete (VkVideoEncodeRateControlInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX:
-            delete (VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV:
             delete (VkExportMemoryAllocateInfoNV*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX:
+            delete (VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUILD_PARTITIONED_ACCELERATION_STRUCTURE_INFO_NV:
+            delete (VkBuildPartitionedAccelerationStructureInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_LINEAR_SWEPT_SPHERES_FEATURES_NV:
+            delete (VkPhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT:
             delete (VkPipelineRasterizationConservativeStateCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_TILE_SHADING_CREATE_INFO_QCOM:
+            delete (VkRenderPassTileShadingCreateInfoQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT:
             delete (VkPhysicalDeviceMapMemoryPlacedFeaturesEXT*)pNext;
@@ -13392,11 +14252,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_INFO_KHR:
             delete (VkVideoDecodeInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_KHR:
+            delete (VkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT:
             delete (VkVertexInputBindingDescription2EXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR:
             delete (VkCopyAccelerationStructureInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_MODEL_FEATURES_QCOM:
+            delete (VkPhysicalDeviceDataGraphModelFeaturesQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT:
             delete (VkDebugUtilsObjectNameInfoEXT*)pNext;
@@ -13416,11 +14282,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_RENDERING_INPUT_ATTACHMENT_INDEX_INFO:
             delete (VkRenderingInputAttachmentIndexInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT:
-            delete (VkSurfacePresentModeEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO:
             delete (VkMemoryOpaqueCaptureAddressAllocateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_PROFILE_RGB_CONVERSION_INFO_VALVE:
+            delete (VkVideoEncodeProfileRgbConversionInfoVALVE*)pNext;
             break;
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT:
             delete (VkImageViewASTCDecodeModeEXT*)pNext;
@@ -13437,8 +14303,8 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_IMAGE_BLIT_2:
             delete (VkImageBlit2*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_NV:
-            delete (VkPhysicalDeviceMemoryDecompressionFeaturesNV*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PARTITIONED_ACCELERATION_STRUCTURE_PROPERTIES_NV:
+            delete (VkPhysicalDevicePartitionedAccelerationStructurePropertiesNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO:
             delete (VkPipelineDynamicStateCreateInfo*)pNext;
@@ -13454,6 +14320,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_GRAPHICS_SHADER_GROUP_CREATE_INFO_NV:
             delete (VkGraphicsShaderGroupCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceFragmentDensityMapOffsetPropertiesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR:
             delete (VkVideoEncodeAV1ProfileInfoKHR*)pNext;
@@ -13476,17 +14345,23 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO:
             delete (VkRenderPassMultiviewCreateInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_PROPERTIES_QCOM:
-            delete (VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT:
             delete (VkPipelineViewportDepthClipControlCreateInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO:
             delete (VkDescriptorSetLayoutBindingFlagsCreateInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_OPACITY_MICROMAP_FEATURES_ARM:
+            delete (VkPhysicalDevicePipelineOpacityMicromapFeaturesARM*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT:
             delete (VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INDIRECT_INFO_KHR:
+            delete (VkCopyMemoryToImageIndirectInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_LAYERED_PROPERTIES_VALVE:
+            delete (VkPhysicalDeviceFragmentDensityMapLayeredPropertiesVALVE*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE:
             delete (VkSubpassDescriptionDepthStencilResolve*)pNext;
@@ -13503,14 +14378,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCHEDULING_CONTROLS_FEATURES_ARM:
             delete (VkPhysicalDeviceSchedulingControlsFeaturesARM*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO:
-            delete (VkDevicePrivateDataCreateInfo*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV:
+            delete (VkPhysicalDeviceCornerSampledImageFeaturesNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES:
             delete (VkPhysicalDeviceMaintenance6Features*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV:
-            delete (VkPhysicalDeviceCornerSampledImageFeaturesNV*)pNext;
+        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO:
+            delete (VkDevicePrivateDataCreateInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES:
             delete (VkPhysicalDeviceDepthStencilResolveProperties*)pNext;
@@ -13518,17 +14393,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO:
             delete (VkBufferCreateInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES:
-            delete (VkExternalFenceProperties*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV:
             delete (VkPhysicalDeviceInheritedViewportScissorFeaturesNV*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES:
+            delete (VkExternalFenceProperties*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_IMAGE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
             delete (VkImageCaptureDescriptorDataInfoEXT*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR:
-            delete (VkVideoFormatPropertiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_CULLING_SHADER_VRS_FEATURES_HUAWEI:
             delete (VkPhysicalDeviceClusterCullingShaderVrsFeaturesHUAWEI*)pNext;
@@ -13536,20 +14408,23 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_MICROMAP_VERSION_INFO_EXT:
             delete (VkMicromapVersionInfoEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR:
+            delete (VkVideoFormatPropertiesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_HOST_MAPPING_INFO_VALVE:
             delete (VkDescriptorSetLayoutHostMappingInfoVALVE*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV:
             delete (VkPhysicalDeviceShadingRateImagePropertiesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT:
-            delete (VkPhysicalDeviceNestedCommandBufferPropertiesEXT*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT8_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderFloat8FeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_FEATURES_ARM:
             delete (VkPhysicalDeviceShaderCoreBuiltinsFeaturesARM*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_FEATURES_NV:
-            delete (VkPhysicalDeviceCudaKernelLaunchFeaturesNV*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceNestedCommandBufferPropertiesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_UPDATE_INFO_KHR:
             delete (VkVideoSessionParametersUpdateInfoKHR*)pNext;
@@ -13575,6 +14450,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_VERTEX_ATTRIBUTES_FEATURES_EXT:
             delete (VkPhysicalDeviceLegacyVertexAttributesFeaturesEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceCopyMemoryIndirectPropertiesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR:
             delete (VkVideoEncodeAV1SessionParametersCreateInfoKHR*)pNext;
             break;
@@ -13589,6 +14467,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_VERSION_INFO_KHR:
             delete (VkAccelerationStructureVersionInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_SPHERES_DATA_NV:
+            delete (VkAccelerationStructureGeometrySpheresDataNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR:
             delete (VkDisplayPlaneInfo2KHR*)pNext;
@@ -13605,11 +14486,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS:
             delete (VkMemoryDedicatedRequirements*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES:
-            delete (VkPhysicalDeviceVulkan14Features*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES:
             delete (VkPhysicalDeviceHostQueryResetFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES:
+            delete (VkPhysicalDeviceVulkan14Features*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SAMPLER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
             delete (VkSamplerCaptureDescriptorDataInfoEXT*)pNext;
@@ -13623,14 +14504,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES:
             delete (VkPhysicalDeviceImageRobustnessFeatures*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_INLINE_SESSION_PARAMETERS_INFO_KHR:
+            delete (VkVideoDecodeAV1InlineSessionParametersInfoKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR:
             delete (VkDisplayPlaneProperties2KHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO:
-            delete (VkBindBufferMemoryInfo*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT:
             delete (VkImageViewMinLodCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO:
+            delete (VkBindBufferMemoryInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO:
             delete (VkDeviceMemoryOpaqueCaptureAddressInfo*)pNext;
@@ -13638,11 +14522,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_APPLICATION_INFO:
             delete (VkApplicationInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT:
-            delete (VkPhysicalDeviceRobustness2PropertiesEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT:
             delete (VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DECOMPRESS_MEMORY_INFO_EXT:
+            delete (VkDecompressMemoryInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT:
             delete (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)pNext;
@@ -13650,11 +14534,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_RENDER_PASS_TRANSFORM_BEGIN_INFO_QCOM:
             delete (VkRenderPassTransformBeginInfoQCOM*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO:
-            delete (VkPipelineMultisampleStateCreateInfo*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
             delete (VkPipelineCreationFeedbackCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO:
+            delete (VkPipelineMultisampleStateCreateInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEVICE_QUEUE_SHADER_CORE_CONTROL_CREATE_INFO_ARM:
             delete (VkDeviceQueueShaderCoreControlCreateInfoARM*)pNext;
@@ -13685,6 +14569,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT:
             delete (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_BUILTIN_MODEL_CREATE_INFO_QCOM:
+            delete (VkDataGraphPipelineBuiltinModelCreateInfoQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT:
             delete (VkDescriptorAddressInfoEXT*)pNext;
@@ -13731,17 +14618,23 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_SUBRESOURCE_HOST_MEMCPY_SIZE:
             delete (VkSubresourceHostMemcpySize*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR:
+            delete (VkRenderingFragmentShadingRateAttachmentInfoKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_QUANTIZATION_MAP_CAPABILITIES_KHR:
             delete (VkVideoEncodeH264QuantizationMapCapabilitiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_SHADER_INFO_EXT:
             delete (VkIndirectExecutionSetShaderInfoEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT:
+            delete (VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES:
             delete (VkQueueFamilyGlobalPriorityProperties*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT:
-            delete (VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceRayTracingInvocationReorderPropertiesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR:
             delete (VkDisplayModeProperties2KHR*)pNext;
@@ -13761,11 +14654,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO:
             delete (VkPipelineVertexInputDivisorStateCreateInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT:
+            delete (VkPhysicalDevicePresentTimingFeaturesEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR:
             delete (VkPerformanceCounterKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT:
-            delete (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT*)pNext;
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_KHR:
+            delete (VkSurfacePresentScalingCapabilitiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT:
             delete (VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT*)pNext;
@@ -13778,6 +14674,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2:
             delete (VkImageResolve2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_BFLOAT16_FEATURES_KHR:
+            delete (VkPhysicalDeviceShaderBfloat16FeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR:
             delete (VkVideoBeginCodingInfoKHR*)pNext;
@@ -13797,11 +14696,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO:
             delete (VkImageFormatListCreateInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV:
-            delete (VkDedicatedAllocationMemoryAllocateInfoNV*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT:
             delete (VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_INFO_KHR:
+            delete (VkVideoEncodeIntraRefreshInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV:
+            delete (VkDedicatedAllocationMemoryAllocateInfoNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES:
             delete (VkPhysicalDevice16BitStorageFeatures*)pNext;
@@ -13818,17 +14720,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_FEATURES_EXT:
             delete (VkPhysicalDeviceImageCompressionControlFeaturesEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR:
-            delete (VkVideoDecodeH264DpbSlotInfoKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_EXT:
             delete (VkGeneratedCommandsInfoEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT:
-            delete (VkDebugUtilsMessengerCreateInfoEXT*)pNext;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR:
+            delete (VkVideoDecodeH264DpbSlotInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2:
             delete (VkSubpassDependency2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT:
+            delete (VkDebugUtilsMessengerCreateInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2:
             delete (VkCopyImageToBufferInfo2*)pNext;
@@ -13845,11 +14747,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT:
             delete (VkDeviceEventInfoEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_EXT:
-            delete (VkPhysicalDeviceDepthClampZeroOneFeaturesEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV:
             delete (VkPhysicalDeviceRawAccessChainsFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_INLINE_SESSION_PARAMETERS_INFO_KHR:
+            delete (VkVideoDecodeH265InlineSessionParametersInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_AV1_FEATURES_KHR:
             delete (VkPhysicalDeviceVideoEncodeAV1FeaturesKHR*)pNext;
@@ -13869,11 +14771,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO:
             delete (VkSubpassBeginInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV:
+            delete (VkPipelineFragmentShadingRateEnumStateCreateInfoNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_EXT:
             delete (VkGeneratedCommandsMemoryRequirementsInfoEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV:
-            delete (VkPipelineFragmentShadingRateEnumStateCreateInfoNV*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_RESOLVE_FEATURES_EXT:
+            delete (VkPhysicalDeviceCustomResolveFeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_GET_INFO_KHR:
             delete (VkVideoEncodeH264SessionParametersGetInfoKHR*)pNext;
@@ -13884,6 +14789,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2:
             delete (VkAttachmentDescription2*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_ID_2_KHR:
+            delete (VkSurfaceCapabilitiesPresentId2KHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_IMAGE_COPY_2:
             delete (VkImageCopy2*)pNext;
             break;
@@ -13893,26 +14801,38 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT:
             delete (VkPhysicalDeviceFragmentDensityMapFeaturesEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_PROPERTIES_KHR:
-            delete (VkVideoEncodeQualityLevelPropertiesKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES:
             delete (VkPhysicalDeviceShaderAtomicInt64Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_PROPERTIES_KHR:
+            delete (VkVideoEncodeQualityLevelPropertiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER:
             delete (VkBufferMemoryBarrier*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_ARM:
+            delete (VkPerformanceCounterARM*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV:
             delete (VkSetLatencyMarkerInfoNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT:
-            delete (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)pNext;
+        case VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DATA_PARAMS_NV:
+            delete (VkExternalComputeQueueDataParamsNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_FEATURES_QCOM:
+            delete (VkPhysicalDeviceTileShadingFeaturesQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT:
             delete (VkPhysicalDeviceDepthClipEnableFeaturesEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT:
+            delete (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT:
             delete (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT:
+            delete (VkPresentTimingsInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO:
             delete (VkBufferDeviceAddressInfo*)pNext;
@@ -13920,11 +14840,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV:
             delete (VkPhysicalDeviceShaderImageFootprintFeaturesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR:
-            delete (VkVideoEncodeH265RateControlInfoKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT:
             delete (VkLayerSettingsCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR:
+            delete (VkVideoEncodeH265RateControlInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT:
             delete (VkSampleLocationsInfoEXT*)pNext;
@@ -13941,17 +14861,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR:
             delete (VkAccelerationStructureGeometryKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR:
-            delete (VkVideoSessionCreateInfoKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT:
             delete (VkPipelineRasterizationDepthClipStateCreateInfoEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR:
-            delete (VkAccelerationStructureGeometryAabbsDataKHR*)pNext;
+        case VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR:
+            delete (VkVideoSessionCreateInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_ARM:
             delete (VkPhysicalDeviceShaderCorePropertiesARM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR:
+            delete (VkAccelerationStructureGeometryAabbsDataKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO:
             delete (VkPrivateDataSlotCreateInfo*)pNext;
@@ -13965,23 +14885,20 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV:
             delete (VkPhysicalDeviceMeshShaderFeaturesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR:
-            delete (VkPhysicalDeviceRayTracingPipelineFeaturesKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_CU_FUNCTION_CREATE_INFO_NVX:
             delete (VkCuFunctionCreateInfoNVX*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT:
-            delete (VkSurfacePresentModeCompatibilityEXT*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR:
+            delete (VkPhysicalDeviceRayTracingPipelineFeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_NV:
             delete (VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO:
-            delete (VkBufferViewCreateInfo*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR:
             delete (VkCooperativeMatrixPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO:
+            delete (VkBufferViewCreateInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO:
             delete (VkSamplerYcbcrConversionInfo*)pNext;
@@ -13989,14 +14906,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_FEATURES_HUAWEI:
             delete (VkPhysicalDeviceSubpassShadingFeaturesHUAWEI*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT:
-            delete (VkDeviceFaultInfoEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NV:
             delete (VkIndirectCommandsLayoutCreateInfoNV*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT:
+            delete (VkDeviceFaultInfoEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_INFO_EXT:
             delete (VkMultisampledRenderToSingleSampledInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RESOLVE_IMAGE_MODE_INFO_KHR:
+            delete (VkResolveImageModeInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES:
             delete (VkPhysicalDeviceSynchronization2Features*)pNext;
@@ -14010,29 +14930,41 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES:
             delete (VkPhysicalDeviceVulkan13Features*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FORMAT_PACK_FEATURES_ARM:
+            delete (VkPhysicalDeviceFormatPackFeaturesARM*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES:
             delete (VkPhysicalDeviceProtectedMemoryProperties*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO:
-            delete (VkSemaphoreTypeCreateInfo*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV:
-            delete (VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT:
             delete (VkPhysicalDeviceMeshShaderPropertiesEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES:
-            delete (VkPhysicalDevice8BitStorageFeatures*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV:
+            delete (VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO:
+            delete (VkSemaphoreTypeCreateInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV:
             delete (VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES:
+            delete (VkPhysicalDevice8BitStorageFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_TILE_MEMORY_BIND_INFO_QCOM:
+            delete (VkTileMemoryBindInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_RGB_CONVERSION_CREATE_INFO_VALVE:
+            delete (VkVideoEncodeSessionRgbConversionCreateInfoVALVE*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO:
             delete (VkPipelineRasterizationLineStateCreateInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_FEATURES_QCOM:
             delete (VkPhysicalDeviceImageProcessing2FeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT:
+            delete (VkSwapchainTimingPropertiesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_NV:
             delete (VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV*)pNext;
@@ -14046,11 +14978,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_SUBPASS_END_INFO:
             delete (VkSubpassEndInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR:
+            delete (VkVideoEncodeH265RateControlLayerInfoKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR:
             delete (VkPerformanceCounterDescriptionKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR:
-            delete (VkVideoEncodeH265RateControlLayerInfoKHR*)pNext;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR:
+            delete (VkSwapchainPresentFenceInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_NV:
             delete (VkPhysicalDeviceCopyMemoryIndirectFeaturesNV*)pNext;
@@ -14076,11 +15011,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUBIC_CLAMP_FEATURES_QCOM:
             delete (VkPhysicalDeviceCubicClampFeaturesQCOM*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES:
-            delete (VkPhysicalDeviceHostImageCopyProperties*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO:
             delete (VkInstanceCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES:
+            delete (VkPhysicalDeviceHostImageCopyProperties*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR:
             delete (VkPhysicalDeviceVideoEncodeQualityLevelInfoKHR*)pNext;
@@ -14115,9 +15050,6 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_DPB_SLOT_INFO_KHR:
             delete (VkVideoEncodeH264DpbSlotInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_CUDA_LAUNCH_INFO_NV:
-            delete (VkCudaLaunchInfoNV*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_NV:
             delete (VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV*)pNext;
             break;
@@ -14126,6 +15058,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD:
             delete (VkDeviceMemoryOverallocationCreateInfoAMD*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT:
+            delete (VkPastPresentationTimingPropertiesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_INFO_ARM:
             delete (VkRenderPassStripeInfoARM*)pNext;
@@ -14154,17 +15089,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR:
             delete (VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR:
-            delete (VkPhysicalDeviceCooperativeMatrixFeaturesKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_CAPABILITIES_KHR:
             delete (VkVideoEncodeH265CapabilitiesKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS:
-            delete (VkDeviceBufferMemoryRequirements*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV:
             delete (VkLatencySleepModeInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR:
+            delete (VkPhysicalDeviceCooperativeMatrixFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS:
+            delete (VkDeviceBufferMemoryRequirements*)pNext;
             break;
         case VK_STRUCTURE_TYPE_COPY_COMMAND_TRANSFORM_INFO_QCOM:
             delete (VkCopyCommandTransformInfoQCOM*)pNext;
@@ -14193,14 +15128,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_FEEDBACK_INFO_KHR:
             delete (VkVideoEncodeH265SessionParametersFeedbackInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_DEVICE_MEMORY_FEATURES_EXT:
+            delete (VkPhysicalDeviceZeroInitializeDeviceMemoryFeaturesEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_LAYER_INFO_KHR:
             delete (VkVideoEncodeH264RateControlLayerInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV:
-            delete (VkPipelineViewportSwizzleStateCreateInfoNV*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT:
             delete (VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV:
+            delete (VkPipelineViewportSwizzleStateCreateInfoNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_DYNAMIC_STATE_FEATURES_EXT:
             delete (VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT*)pNext;
@@ -14216,6 +15154,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_CAPTURE_DESCRIPTOR_DATA_INFO_EXT:
             delete (VkImageViewCaptureDescriptorDataInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_ARM:
+            delete (VkPerformanceCounterDescriptionARM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_GET_LATENCY_MARKER_INFO_NV:
             delete (VkGetLatencyMarkerInfoNV*)pNext;
@@ -14235,26 +15176,32 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_USAGE_INFO_KHR:
             delete (VkVideoEncodeUsageInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PRESENT_TIMING_SURFACE_CAPABILITIES_EXT:
+            delete (VkPresentTimingSurfaceCapabilitiesEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR:
             delete (VkCopyAccelerationStructureToMemoryInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INTERNAL_REPRESENTATION_KHR:
             delete (VkPipelineExecutableInternalRepresentationKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PARTITIONED_ACCELERATION_STRUCTURE_FEATURES_NV:
+            delete (VkPhysicalDevicePartitionedAccelerationStructureFeaturesNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_QUERY_LOW_LATENCY_SUPPORT_NV:
             delete (VkQueryLowLatencySupportNV*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_EXT:
-            delete (VkReleaseSwapchainImagesInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SUBMIT_INFO_2:
             delete (VkSubmitInfo2*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PICTURE_INFO_KHR:
-            delete (VkVideoDecodeH264PictureInfoKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_QUANTIZATION_MAP_CAPABILITIES_KHR:
             delete (VkVideoEncodeH265QuantizationMapCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_KHR:
+            delete (VkSwapchainPresentModesCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PICTURE_INFO_KHR:
+            delete (VkVideoDecodeH264PictureInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR:
             delete (VkVideoDecodeH265ProfileInfoKHR*)pNext;
@@ -14265,11 +15212,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_DISPLAY_POWER_INFO_EXT:
             delete (VkDisplayPowerInfoEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT:
+            delete (VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_CAPABILITIES_KHR:
             delete (VkVideoDecodeH265CapabilitiesKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT:
-            delete (VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceMaintenance9PropertiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX:
             delete (VkImageViewAddressPropertiesNVX*)pNext;
@@ -14292,11 +15242,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO:
             delete (VkBufferUsageFlags2CreateInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_KHR:
+            delete (VkSwapchainPresentModeInfoKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO:
             delete (VkDescriptorPoolInlineUniformBlockCreateInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEPTH_BIAS_INFO_EXT:
             delete (VkDepthBiasInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_EXT:
+            delete (VkPhysicalDeviceRayTracingInvocationReorderFeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR:
             delete (VkPhysicalDeviceShaderClockFeaturesKHR*)pNext;
@@ -14304,11 +15260,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_CREATE_INFO_KHR:
             delete (VkVideoEncodeH264SessionCreateInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO:
-            delete (VkPipelineCacheCreateInfo*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_FEATURES_QCOM:
             delete (VkPhysicalDeviceImageProcessingFeaturesQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO:
+            delete (VkPipelineCacheCreateInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2:
             delete (VkResolveImageInfo2*)pNext;
@@ -14328,6 +15284,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PRESENT_INFO_KHR:
             delete (VkPresentInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR:
+            delete (VkPhysicalDeviceRobustness2FeaturesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_GOP_REMAINING_FRAME_INFO_KHR:
             delete (VkVideoEncodeAV1GopRemainingFrameInfoKHR*)pNext;
             break;
@@ -14337,11 +15296,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO:
             delete (VkSamplerCreateInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_8_FEATURES_KHR:
+            delete (VkPhysicalDeviceMaintenance8FeaturesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_PUSH_DESCRIPTOR_BUFFER_HANDLE_EXT:
             delete (VkDescriptorBufferBindingPushDescriptorBufferHandleEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_PROPERTIES_KHR:
             delete (VkPhysicalDevicePipelineBinaryPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDER_PASS_PERFORMANCE_COUNTERS_BY_REGION_BEGIN_INFO_ARM:
+            delete (VkRenderPassPerformanceCountersByRegionBeginInfoARM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_MEMORY_MAP_PLACED_INFO_EXT:
             delete (VkMemoryMapPlacedInfoEXT*)pNext;
@@ -14364,6 +15329,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR:
             delete (VkVideoDecodeH264SessionParametersAddInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_BEGIN_CUSTOM_RESOLVE_INFO_EXT:
+            delete (VkBeginCustomResolveInfoEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR:
             delete (VkAccelerationStructureGeometryTrianglesDataKHR*)pNext;
             break;
@@ -14375,6 +15343,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO:
             delete (VkSemaphoreSignalInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_RENDERING_END_INFO_KHR:
+            delete (VkRenderingEndInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_1_FEATURES_KHR:
             delete (VkPhysicalDeviceVideoMaintenance1FeaturesKHR*)pNext;
@@ -14388,14 +15359,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR:
             delete (VkPhysicalDeviceRayTracingPipelinePropertiesKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT:
-            delete (VkSwapchainPresentScalingCreateInfoEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO:
             delete (VkRenderingAttachmentInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV:
             delete (VkQueueFamilyCheckpointPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_RGB_CONVERSION_CAPABILITIES_VALVE:
+            delete (VkVideoEncodeRgbConversionCapabilitiesVALVE*)pNext;
             break;
         case VK_STRUCTURE_TYPE_RENDERING_INFO:
             delete (VkRenderingInfo*)pNext;
@@ -14403,14 +15374,20 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT:
             delete (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT:
-            delete (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)pNext;
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_INDIRECT_INFO_KHR:
+            delete (VkCopyMemoryIndirectInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_PARAMETERS_FEEDBACK_INFO_KHR:
             delete (VkVideoEncodeSessionParametersFeedbackInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT:
             delete (VkPhysicalDeviceProvokingVertexFeaturesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_CAPABILITIES_KHR:
+            delete (VkVideoEncodeIntraRefreshCapabilitiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PICTURE_INFO_KHR:
             delete (VkVideoEncodeAV1PictureInfoKHR*)pNext;
@@ -14420,6 +15397,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR:
             delete (VkVideoEncodeH264SessionParametersCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_WAIT_2_KHR:
+            delete (VkSurfaceCapabilitiesPresentWait2KHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DISPLAY_MODE_STEREO_PROPERTIES_NV:
             delete (VkDisplayModeStereoPropertiesNV*)pNext;
@@ -14439,17 +15419,26 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_CREATE_INFO_KHR:
             delete (VkVideoSessionParametersCreateInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_EXT:
+            delete (VkPhysicalDeviceMemoryDecompressionFeaturesEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
             delete (VkPhysicalDeviceVulkan12Features*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR:
-            delete (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_2_FEATURES_KHR:
+            delete (VkPhysicalDevicePresentWait2FeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT:
             delete (VkPhysicalDeviceBufferDeviceAddressFeaturesEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR:
+            delete (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2:
             delete (VkPhysicalDeviceFeatures2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_FLAGS_NV:
+            delete (VkPartitionedAccelerationStructureFlagsNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
             delete (VkPhysicalDeviceVulkan11Properties*)pNext;
@@ -14460,8 +15449,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV:
             delete (VkPipelineViewportWScalingStateCreateInfoNV*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR:
+            delete (VkPhysicalDeviceShaderUntypedPointersFeaturesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES:
             delete (VkPhysicalDeviceShaderFloatControls2Features*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_64_BIT_INDEXING_FEATURES_EXT:
+            delete (VkPhysicalDeviceShader64BitIndexingFeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR:
             delete (VkBindImageMemorySwapchainInfoKHR*)pNext;
@@ -14469,29 +15464,20 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_RENDERING_AREA_INFO:
             delete (VkRenderingAreaInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_FEATURES_QCOM:
-            delete (VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT:
             delete (VkMicromapBuildSizesInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PERFORMANCE_OVERRIDE_INFO_INTEL:
             delete (VkPerformanceOverrideInfoINTEL*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_EXT:
-            delete (VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV:
             delete (VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_PROPERTIES_NV:
-            delete (VkPhysicalDeviceCudaKernelLaunchPropertiesNV*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR:
+            delete (VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR:
             delete (VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR:
-            delete (VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEPTH_BIAS_REPRESENTATION_INFO_EXT:
             delete (VkDepthBiasRepresentationInfoEXT*)pNext;
@@ -14535,11 +15521,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_GOP_REMAINING_FRAME_INFO_KHR:
             delete (VkVideoEncodeH265GopRemainingFrameInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO:
-            delete (VkFramebufferCreateInfo*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
             delete (VkPhysicalDeviceVulkan12Properties*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO:
+            delete (VkFramebufferCreateInfo*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV:
             delete (VkDeviceDiagnosticsConfigCreateInfoNV*)pNext;
@@ -14547,14 +15533,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_COPY_MICROMAP_INFO_EXT:
             delete (VkCopyMicromapInfoEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_FEATURES_EXT:
+            delete (VkPhysicalDeviceFragmentDensityMapOffsetFeaturesEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_BINDING_REFERENCE_VALVE:
             delete (VkDescriptorSetBindingReferenceVALVE*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR:
-            delete (VkPhysicalDeviceRayQueryFeaturesKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT:
             delete (VkGraphicsPipelineLibraryCreateInfoEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR:
+            delete (VkPhysicalDeviceRayQueryFeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY:
             delete (VkHostImageCopyDevicePerformanceQuery*)pNext;
@@ -14565,11 +15554,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR:
             delete (VkPhysicalDeviceFragmentShadingRatePropertiesKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV:
-            delete (VkAccelerationStructureGeometryMotionTrianglesDataNV*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_COUNTERS_BY_REGION_FEATURES_ARM:
+            delete (VkPhysicalDevicePerformanceCountersByRegionFeaturesARM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_CAPABILITIES_KHR:
             delete (VkVideoEncodeQuantizationMapCapabilitiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV:
+            delete (VkAccelerationStructureGeometryMotionTrianglesDataNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_FEATURES_NV:
             delete (VkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV*)pNext;
@@ -14577,11 +15569,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR:
             delete (VkSurfaceFormat2KHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM:
-            delete (VkPhysicalDeviceImageProcessingPropertiesQCOM*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR:
             delete (VkPhysicalDeviceShaderQuadControlFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM:
+            delete (VkPhysicalDeviceImageProcessingPropertiesQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV:
             delete (VkCooperativeMatrixPropertiesNV*)pNext;
@@ -14592,11 +15584,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV:
             delete (VkPipelineCoverageReductionStateCreateInfoNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES:
-            delete (VkPhysicalDeviceGroupProperties*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_PROPERTIES_NV:
             delete (VkOpticalFlowImageFormatPropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES:
+            delete (VkPhysicalDeviceGroupProperties*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD:
             delete (VkPipelineRasterizationStateRasterizationOrderAMD*)pNext;
@@ -14640,6 +15632,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR:
             delete (VkAccelerationStructureBuildGeometryInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT:
+            delete (VkPastPresentationTimingEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_PIPELINE_INFO_EXT:
             delete (VkGeneratedCommandsPipelineInfoEXT*)pNext;
             break;
@@ -14655,6 +15650,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES:
             delete (VkPhysicalDeviceVulkan14Properties*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_2_FEATURES_KHR:
+            delete (VkPhysicalDevicePresentId2FeaturesKHR*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT:
             delete (VkConditionalRenderingBeginInfoEXT*)pNext;
             break;
@@ -14666,6 +15664,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES:
             delete (VkPhysicalDeviceDescriptorIndexingFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT:
+            delete (VkSwapchainTimeDomainPropertiesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES:
             delete (VkPhysicalDeviceIDProperties*)pNext;
@@ -14690,6 +15691,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO:
             delete (VkPipelineRobustnessCreateInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT:
+            delete (VkPastPresentationTimingInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_SHADER_EXT:
             delete (VkWriteIndirectExecutionSetShaderEXT*)pNext;
@@ -14730,20 +15734,29 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_FLEXIBLE_DIMENSIONS_PROPERTIES_NV:
             delete (VkCooperativeMatrixFlexibleDimensionsPropertiesNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO:
-            delete (VkCommandBufferAllocateInfo*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_NV:
             delete (VkGeneratedCommandsInfoNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO:
             delete (VkPhysicalDeviceExternalFenceInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO:
+            delete (VkCommandBufferAllocateInfo*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT:
             delete (VkPhysicalDeviceMemoryPriorityFeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_ACQUIRE_UNMODIFIED_EXT:
             delete (VkExternalMemoryAcquireUnmodifiedEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_DISPATCH_TILE_INFO_QCOM:
+            delete (VkDispatchTileInfoQCOM*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DEVICE_CREATE_INFO_NV:
+            delete (VkExternalComputeQueueDeviceCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR:
+            delete (VkPhysicalDeviceMaintenance9FeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT:
             delete (VkDebugUtilsLabelEXT*)pNext;
@@ -14763,14 +15776,20 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PUSH_DESCRIPTOR_SET_WITH_TEMPLATE_INFO:
             delete (VkPushDescriptorSetWithTemplateInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_KHR:
+            delete (VkPhysicalDeviceCopyMemoryIndirectFeaturesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COOPERATIVE_VECTOR_PROPERTIES_NV:
+            delete (VkCooperativeVectorPropertiesNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD:
             delete (VkPhysicalDeviceCoherentMemoryFeaturesAMD*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2:
-            delete (VkCopyBufferInfo2*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV:
             delete (VkDedicatedAllocationBufferCreateInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2:
+            delete (VkCopyBufferInfo2*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR:
             delete (VkPipelineLibraryCreateInfoKHR*)pNext;
@@ -14778,17 +15797,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO:
             delete (VkShaderModuleCreateInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_NV:
-            delete (VkPhysicalDeviceCopyMemoryIndirectPropertiesNV*)pNext;
+        case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR:
+            delete (VkVideoProfileListInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_INFO_NV:
             delete (VkOpticalFlowImageFormatInfoNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR:
-            delete (VkVideoProfileListInfoKHR*)pNext;
-            break;
-        case VK_STRUCTURE_TYPE_CUDA_FUNCTION_CREATE_INFO_NV:
-            delete (VkCudaFunctionCreateInfoNV*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_2_FEATURES_KHR:
+            delete (VkPhysicalDeviceVideoMaintenance2FeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT:
             delete (VkSamplerBorderColorComponentMappingCreateInfoEXT*)pNext;
@@ -14799,11 +15815,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INFO_KHR:
             delete (VkPipelineExecutableInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR:
-            delete (VkVideoEncodeH264RateControlInfoKHR*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_PROPERTIES_NV:
             delete (VkPhysicalDeviceCooperativeMatrix2PropertiesNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR:
+            delete (VkVideoEncodeH264RateControlInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_LATENCY_SURFACE_CAPABILITIES_NV:
             delete (VkLatencySurfaceCapabilitiesNV*)pNext;
@@ -14823,11 +15839,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT:
             delete (VkDescriptorBufferBindingInfoEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT:
-            delete (VkPipelineDiscardRectangleStateCreateInfoEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
             delete (VkBindSparseInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT:
+            delete (VkPipelineDiscardRectangleStateCreateInfoEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
             delete (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)pNext;
@@ -14844,20 +15860,26 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO:
             delete (VkDescriptorUpdateTemplateCreateInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX:
-            delete (VkImageViewHandleInfoNVX*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_PIPELINE_INFO_EXT:
             delete (VkIndirectExecutionSetPipelineInfoEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX:
+            delete (VkImageViewHandleInfoNVX*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT:
             delete (VkAttachmentDescriptionStencilLayout*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNIFORM_BUFFER_UNSIZED_ARRAY_FEATURES_EXT:
+            delete (VkPhysicalDeviceShaderUniformBufferUnsizedArrayFeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_FEATURES_NV:
             delete (VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR:
             delete (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR:
+            delete (VkPresentWait2InfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR:
             delete (VkPhysicalDeviceAccelerationStructureFeaturesKHR*)pNext;
@@ -14868,11 +15890,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO:
             delete (VkDeviceImageSubresourceInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES:
-            delete (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)pNext;
+        case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_FLAGS_INFO_KHR:
+            delete (VkRenderingAttachmentFlagsInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT:
             delete (VkValidationFlagsEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES:
+            delete (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEVICE_ADDRESS_BINDING_CALLBACK_DATA_EXT:
             delete (VkDeviceAddressBindingCallbackDataEXT*)pNext;
@@ -14889,9 +15914,6 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_VIDEO_PROPERTIES_KHR:
             delete (VkQueueFamilyVideoPropertiesKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT:
-            delete (VkSurfacePresentScalingCapabilitiesEXT*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES:
             delete (VkPhysicalDeviceShaderTerminateInvocationFeatures*)pNext;
             break;
@@ -14900,6 +15922,9 @@ void vulkanDeleteNextPtr(const void* p) {
             break;
         case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR:
             delete (VkRayTracingPipelineInterfaceCreateInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_KHR:
+            delete (VkSurfacePresentModeKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_PROPERTIES_NV:
             delete (VkPhysicalDeviceOpticalFlowPropertiesNV*)pNext;
@@ -14931,6 +15956,9 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES:
             delete (VkPhysicalDeviceVulkanMemoryModelFeatures*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_CUSTOM_RESOLVE_CREATE_INFO_EXT:
+            delete (VkCustomResolveCreateInfoEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2:
             delete (VkSubpassDescription2*)pNext;
             break;
@@ -14961,11 +15989,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR:
             delete (VkVideoDecodeAV1ProfileInfoKHR*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES:
-            delete (VkPhysicalDeviceGlobalPriorityQueryFeatures*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV:
             delete (VkAccelerationStructureInfoNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES:
+            delete (VkPhysicalDeviceGlobalPriorityQueryFeatures*)pNext;
             break;
         case VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2:
             delete (VkSparseImageFormatProperties2*)pNext;
@@ -14976,11 +16004,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT:
             delete (VkPhysicalDeviceFaultFeaturesEXT*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM:
-            delete (VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2:
             delete (VkCopyBufferToImageInfo2*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM:
+            delete (VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HDR_VIVID_FEATURES_HUAWEI:
             delete (VkPhysicalDeviceHdrVividFeaturesHUAWEI*)pNext;
@@ -14991,8 +16019,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT:
             delete (VkPhysicalDeviceFragmentDensityMap2FeaturesEXT*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_INSTANCES_INPUT_NV:
+            delete (VkPartitionedAccelerationStructureInstancesInputNV*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES:
             delete (VkPhysicalDeviceTimelineSemaphoreFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_FEATURES_KHR:
+            delete (VkPhysicalDeviceMaintenance10FeaturesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO:
             delete (VkBindImageMemoryDeviceGroupInfo*)pNext;
@@ -15003,23 +16037,26 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_IMAGE_ALIGNMENT_CONTROL_CREATE_INFO_MESA:
             delete (VkImageAlignmentControlCreateInfoMESA*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT:
+            delete (VkSwapchainCalibratedTimestampInfoEXT*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT:
             delete (VkPhysicalDeviceLegacyDitheringFeaturesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_NV:
             delete (VkGeneratedCommandsMemoryRequirementsInfoNV*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV:
-            delete (VkLatencySleepInfoNV*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES:
             delete (VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR:
-            delete (VkAcquireNextImageInfoKHR*)pNext;
+        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV:
+            delete (VkLatencySleepInfoNV*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES:
             delete (VkPhysicalDeviceUniformBufferStandardLayoutFeatures*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR:
+            delete (VkAcquireNextImageInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_COPY_MICROMAP_TO_MEMORY_INFO_EXT:
             delete (VkCopyMicromapToMemoryInfoEXT*)pNext;
@@ -15078,8 +16115,17 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_CREATE_INFO_KHR:
             delete (VkVideoEncodeH265SessionParametersCreateInfoKHR*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_PARTITIONED_ACCELERATION_STRUCTURE_NV:
+            delete (VkWriteDescriptorSetPartitionedAccelerationStructureNV*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_LAYERED_FEATURES_VALVE:
+            delete (VkPhysicalDeviceFragmentDensityMapLayeredFeaturesVALVE*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_NALU_SLICE_INFO_KHR:
             delete (VkVideoEncodeH264NaluSliceInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_KHR:
+            delete (VkPhysicalDeviceRobustness2PropertiesKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL:
             delete (VkInitializePerformanceApiInfoINTEL*)pNext;
@@ -15096,11 +16142,11 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO:
             delete (VkExportFenceCreateInfo*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD:
-            delete (VkPipelineCompilerControlCreateInfoAMD*)pNext;
-            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT:
             delete (VkPhysicalDeviceDiscardRectanglePropertiesEXT*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD:
+            delete (VkPipelineCompilerControlCreateInfoAMD*)pNext;
             break;
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO:
             delete (VkImageViewCreateInfo*)pNext;
@@ -15108,11 +16154,20 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO:
             delete (VkPipelineShaderStageCreateInfo*)pNext;
             break;
+        case VK_STRUCTURE_TYPE_VIDEO_REFERENCE_INTRA_REFRESH_INFO_KHR:
+            delete (VkVideoReferenceIntraRefreshInfoKHR*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_TILE_MEMORY_REQUIREMENTS_QCOM:
+            delete (VkTileMemoryRequirementsQCOM*)pNext;
+            break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_DEGAMMA_FEATURES_QCOM:
             delete (VkPhysicalDeviceYcbcrDegammaFeaturesQCOM*)pNext;
             break;
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO:
             delete (VkDeviceGroupBindSparseInfo*)pNext;
+            break;
+        case VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR:
+            delete (VkPresentId2KHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR:
             delete (VkFragmentShadingRateAttachmentInfoKHR*)pNext;
@@ -15123,14 +16178,14 @@ void vulkanDeleteNextPtr(const void* p) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES:
             delete (VkPhysicalDeviceLineRasterizationProperties*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT:
-            delete (VkPhysicalDeviceOpacityMicromapPropertiesEXT*)pNext;
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR:
+            delete (VkAccelerationStructureDeviceAddressInfoKHR*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES:
             delete (VkPhysicalDeviceMaintenance3Properties*)pNext;
             break;
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR:
-            delete (VkAccelerationStructureDeviceAddressInfoKHR*)pNext;
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT:
+            delete (VkPhysicalDeviceOpacityMicromapPropertiesEXT*)pNext;
             break;
         case VK_STRUCTURE_TYPE_PIPELINE_INDIRECT_DEVICE_ADDRESS_INFO_NV:
             delete (VkPipelineIndirectDeviceAddressInfoNV*)pNext;
@@ -15179,10 +16234,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceIndexTypeUint8Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceIndexTypeUint8Features*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT: {
-            MarshalVkSwapchainPresentFenceInfoEXT::write(pBoxedInfo, memory, address, (VkSwapchainPresentFenceInfoEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2: {
             MarshalVkSparseImageMemoryRequirements2::write(pBoxedInfo, memory, address, (VkSparseImageMemoryRequirements2*)p);
             break;
@@ -15195,8 +16246,8 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkSwapchainCreateInfoKHR::write(pBoxedInfo, memory, address, (VkSwapchainCreateInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_NV: {
-            MarshalVkPhysicalDeviceMemoryDecompressionPropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMemoryDecompressionPropertiesNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_PROPERTIES_KHR: {
+            MarshalVkPhysicalDeviceMaintenance10PropertiesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMaintenance10PropertiesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_BEGIN_INFO_ARM: {
@@ -15243,8 +16294,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPipelineViewportShadingRateImageStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineViewportShadingRateImageStateCreateInfoNV*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceSwapchainMaintenance1FeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_FORMAT_QUANTIZATION_MAP_PROPERTIES_KHR: {
             MarshalVkVideoFormatQuantizationMapPropertiesKHR::write(pBoxedInfo, memory, address, (VkVideoFormatQuantizationMapPropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_COMPUTE_QUEUE_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceExternalComputeQueuePropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceExternalComputeQueuePropertiesNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_QUALITY_LEVEL_PROPERTIES_KHR: {
@@ -15283,12 +16342,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceVariablePointersFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVariablePointersFeatures*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV: {
-            MarshalVkGeometryAABBNV::write(pBoxedInfo, memory, address, (VkGeometryAABBNV*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT: {
             MarshalVkShaderModuleIdentifierEXT::write(pBoxedInfo, memory, address, (VkShaderModuleIdentifierEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV: {
+            MarshalVkGeometryAABBNV::write(pBoxedInfo, memory, address, (VkGeometryAABBNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES: {
@@ -15339,8 +16398,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkCommandBufferInheritanceRenderingInfo::write(pBoxedInfo, memory, address, (VkCommandBufferInheritanceRenderingInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_TILE_MEMORY_SIZE_INFO_QCOM: {
+            MarshalVkTileMemorySizeInfoQCOM::write(pBoxedInfo, memory, address, (VkTileMemorySizeInfoQCOM*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO: {
             MarshalVkDeviceGroupDeviceCreateInfo::write(pBoxedInfo, memory, address, (VkDeviceGroupDeviceCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceDepthClampZeroOneFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDepthClampZeroOneFeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_RENDER_PASS_CREATION_CONTROL_EXT: {
@@ -15363,8 +16430,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkBufferOpaqueCaptureAddressCreateInfo::write(pBoxedInfo, memory, address, (VkBufferOpaqueCaptureAddressCreateInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_DENSITY_MAP_LAYERED_CREATE_INFO_VALVE: {
+            MarshalVkPipelineFragmentDensityMapLayeredCreateInfoVALVE::write(pBoxedInfo, memory, address, (VkPipelineFragmentDensityMapLayeredCreateInfoVALVE*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2: {
             MarshalVkImageSubresource2::write(pBoxedInfo, memory, address, (VkImageSubresource2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceMemoryDecompressionPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMemoryDecompressionPropertiesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO: {
@@ -15387,10 +16462,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkDeviceQueueCreateInfo::write(pBoxedInfo, memory, address, (VkDeviceQueueCreateInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR: {
-            MarshalVkAccelerationStructureGeometryInstancesDataKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometryInstancesDataKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR: {
             MarshalVkDisplayPlaneCapabilities2KHR::write(pBoxedInfo, memory, address, (VkDisplayPlaneCapabilities2KHR*)p);
             break;
@@ -15399,16 +16470,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkAccelerationStructureCreateInfoKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureCreateInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR: {
+            MarshalVkAccelerationStructureGeometryInstancesDataKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometryInstancesDataKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINEAR_COLOR_ATTACHMENT_FEATURES_NV: {
             MarshalVkPhysicalDeviceLinearColorAttachmentFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceLinearColorAttachmentFeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
-            MarshalVkPhysicalDeviceFloatControlsProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFloatControlsProperties*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_OUT_OF_BAND_QUEUE_TYPE_INFO_NV: {
             MarshalVkOutOfBandQueueTypeInfoNV::write(pBoxedInfo, memory, address, (VkOutOfBandQueueTypeInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
+            MarshalVkPhysicalDeviceFloatControlsProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFloatControlsProperties*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT: {
@@ -15419,12 +16494,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoDecodeAV1CapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeAV1CapabilitiesKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR: {
-            MarshalVkVideoEncodeH264ProfileInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264ProfileInfoKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2: {
             MarshalVkImageMemoryRequirementsInfo2::write(pBoxedInfo, memory, address, (VkImageMemoryRequirementsInfo2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR: {
+            MarshalVkVideoEncodeH264ProfileInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264ProfileInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DESCRIPTOR_DATA_CREATE_INFO_EXT: {
@@ -15455,24 +16530,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkDebugReportCallbackCreateInfoEXT::write(pBoxedInfo, memory, address, (VkDebugReportCallbackCreateInfoEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_PROPERTIES_QCOM: {
+            MarshalVkPhysicalDeviceTileShadingPropertiesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceTileShadingPropertiesQCOM*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_FEATURES_NV: {
             MarshalVkPhysicalDeviceCooperativeMatrix2FeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCooperativeMatrix2FeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT: {
-            MarshalVkSwapchainPresentModesCreateInfoEXT::write(pBoxedInfo, memory, address, (VkSwapchainPresentModesCreateInfoEXT*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_SUBPASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_QCOM: {
-            MarshalVkSubpassFragmentDensityMapOffsetEndInfoQCOM::write(pBoxedInfo, memory, address, (VkSubpassFragmentDensityMapOffsetEndInfoQCOM*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES: {
+            MarshalVkPhysicalDeviceToolProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceToolProperties*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT: {
             MarshalVkPhysicalDeviceConservativeRasterizationPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceConservativeRasterizationPropertiesEXT*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES: {
-            MarshalVkPhysicalDeviceToolProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceToolProperties*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2: {
@@ -15481,6 +16552,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET: {
             MarshalVkWriteDescriptorSet::write(pBoxedInfo, memory, address, (VkWriteDescriptorSet*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT: {
+            MarshalVkAttachmentFeedbackLoopInfoEXT::write(pBoxedInfo, memory, address, (VkAttachmentFeedbackLoopInfoEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
@@ -15503,24 +16578,24 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_PROPERTIES_ARM: {
-            MarshalVkPhysicalDeviceRenderPassStripedPropertiesARM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRenderPassStripedPropertiesARM*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FMA_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceShaderFmaFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderFmaFeaturesKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV: {
-            MarshalVkAccelerationStructureCreateInfoNV::write(pBoxedInfo, memory, address, (VkAccelerationStructureCreateInfoNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_PROPERTIES_ARM: {
+            MarshalVkPhysicalDeviceRenderPassStripedPropertiesARM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRenderPassStripedPropertiesARM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV: {
             MarshalVkDedicatedAllocationImageCreateInfoNV::write(pBoxedInfo, memory, address, (VkDedicatedAllocationImageCreateInfoNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_CONTROL_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceDepthClampControlFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDepthClampControlFeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV: {
+            MarshalVkAccelerationStructureCreateInfoNV::write(pBoxedInfo, memory, address, (VkAccelerationStructureCreateInfoNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT: {
-            MarshalVkSwapchainPresentModeInfoEXT::write(pBoxedInfo, memory, address, (VkSwapchainPresentModeInfoEXT*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_CONTROL_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceDepthClampControlFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDepthClampControlFeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_MEMORY_BARRIER: {
@@ -15535,28 +16610,28 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkBindImagePlaneMemoryInfo::write(pBoxedInfo, memory, address, (VkBindImagePlaneMemoryInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO: {
-            MarshalVkPipelineShaderStageRequiredSubgroupSizeCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineShaderStageRequiredSubgroupSizeCreateInfo*)p);
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_KHR: {
+            MarshalVkSurfacePresentModeCompatibilityKHR::write(pBoxedInfo, memory, address, (VkSurfacePresentModeCompatibilityKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: {
             MarshalVkPhysicalDeviceColorWriteEnableFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceColorWriteEnableFeaturesEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO: {
-            MarshalVkCommandBufferSubmitInfo::write(pBoxedInfo, memory, address, (VkCommandBufferSubmitInfo*)p);
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO: {
+            MarshalVkPipelineShaderStageRequiredSubgroupSizeCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineShaderStageRequiredSubgroupSizeCreateInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO: {
             MarshalVkPushConstantsInfo::write(pBoxedInfo, memory, address, (VkPushConstantsInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_PIPELINE_EXT: {
-            MarshalVkWriteIndirectExecutionSetPipelineEXT::write(pBoxedInfo, memory, address, (VkWriteIndirectExecutionSetPipelineEXT*)p);
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO: {
+            MarshalVkCommandBufferSubmitInfo::write(pBoxedInfo, memory, address, (VkCommandBufferSubmitInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceRobustness2FeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRobustness2FeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_PIPELINE_EXT: {
+            MarshalVkWriteIndirectExecutionSetPipelineEXT::write(pBoxedInfo, memory, address, (VkWriteIndirectExecutionSetPipelineEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_MICROMAP_INFO_EXT: {
@@ -15567,16 +16642,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoDecodeH264ProfileInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH264ProfileInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT: {
-            MarshalVkPipelineRasterizationStateStreamCreateInfoEXT::write(pBoxedInfo, memory, address, (VkPipelineRasterizationStateStreamCreateInfoEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
             MarshalVkPhysicalDeviceVertexAttributeDivisorPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT: {
+            MarshalVkPipelineRasterizationStateStreamCreateInfoEXT::write(pBoxedInfo, memory, address, (VkPipelineRasterizationStateStreamCreateInfoEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT: {
             MarshalVkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_FEATURES_NV: {
+            MarshalVkPhysicalDeviceCooperativeVectorFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCooperativeVectorFeaturesNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVES_GENERATED_QUERY_FEATURES_EXT: {
@@ -15615,6 +16694,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceMemoryProperties2::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMemoryProperties2*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_ACCESS_FLAGS_3_KHR: {
+            MarshalVkMemoryBarrierAccessFlags3KHR::write(pBoxedInfo, memory, address, (VkMemoryBarrierAccessFlags3KHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT: {
             MarshalVkPhysicalDeviceShaderModuleIdentifierFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT*)p);
             break;
@@ -15635,12 +16718,24 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoProfileInfoKHR::write(pBoxedInfo, memory, address, (VkVideoProfileInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PER_TILE_BEGIN_INFO_QCOM: {
+            MarshalVkPerTileBeginInfoQCOM::write(pBoxedInfo, memory, address, (VkPerTileBeginInfoQCOM*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR: {
             MarshalVkVideoCapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoCapabilitiesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD: {
             MarshalVkAttachmentSampleCountInfoAMD::write(pBoxedInfo, memory, address, (VkAttachmentSampleCountInfoAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT: {
+            MarshalVkPresentTimingInfoEXT::write(pBoxedInfo, memory, address, (VkPresentTimingInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_CONVERT_COOPERATIVE_VECTOR_MATRIX_INFO_NV: {
+            MarshalVkConvertCooperativeVectorMatrixInfoNV::write(pBoxedInfo, memory, address, (VkConvertCooperativeVectorMatrixInfoNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_BUFFER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: {
@@ -15667,6 +16762,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPipelineCreateInfoKHR::write(pBoxedInfo, memory, address, (VkPipelineCreateInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO: {
+            MarshalVkImageCreateInfo::write(pBoxedInfo, memory, address, (VkImageCreateInfo*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV: {
             MarshalVkPhysicalDeviceShaderSMBuiltinsPropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderSMBuiltinsPropertiesNV*)p);
             break;
@@ -15675,16 +16774,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceCubicWeightsFeaturesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCubicWeightsFeaturesQCOM*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO: {
-            MarshalVkImageCreateInfo::write(pBoxedInfo, memory, address, (VkImageCreateInfo*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR: {
-            MarshalVkVideoPictureResourceInfoKHR::write(pBoxedInfo, memory, address, (VkVideoPictureResourceInfoKHR*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_FEATURES_QCOM: {
+            MarshalVkPhysicalDeviceTileMemoryHeapFeaturesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceTileMemoryHeapFeaturesQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
             MarshalVkPhysicalDevicePCIBusInfoPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDevicePCIBusInfoPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_PICTURE_RESOURCE_INFO_KHR: {
+            MarshalVkVideoPictureResourceInfoKHR::write(pBoxedInfo, memory, address, (VkVideoPictureResourceInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_PROPERTIES_KHR: {
@@ -15723,16 +16822,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkSamplerReductionModeCreateInfo::write(pBoxedInfo, memory, address, (VkSamplerReductionModeCreateInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM: {
-            MarshalVkSamplerBlockMatchWindowCreateInfoQCOM::write(pBoxedInfo, memory, address, (VkSamplerBlockMatchWindowCreateInfoQCOM*)p);
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR: {
+            MarshalVkCopyMemoryToAccelerationStructureInfoKHR::write(pBoxedInfo, memory, address, (VkCopyMemoryToAccelerationStructureInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT: {
             MarshalVkDescriptorSetVariableDescriptorCountLayoutSupport::write(pBoxedInfo, memory, address, (VkDescriptorSetVariableDescriptorCountLayoutSupport*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR: {
-            MarshalVkCopyMemoryToAccelerationStructureInfoKHR::write(pBoxedInfo, memory, address, (VkCopyMemoryToAccelerationStructureInfoKHR*)p);
+        case VK_STRUCTURE_TYPE_SAMPLER_BLOCK_MATCH_WINDOW_CREATE_INFO_QCOM: {
+            MarshalVkSamplerBlockMatchWindowCreateInfoQCOM::write(pBoxedInfo, memory, address, (VkSamplerBlockMatchWindowCreateInfoQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL: {
@@ -15745,6 +16844,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: {
             MarshalVkExternalMemoryBufferCreateInfo::write(pBoxedInfo, memory, address, (VkExternalMemoryBufferCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFIED_IMAGE_LAYOUTS_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_NV: {
@@ -15787,24 +16890,24 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT: {
-            MarshalVkImageCompressionControlEXT::write(pBoxedInfo, memory, address, (VkImageCompressionControlEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_OPTICAL_FLOW_SESSION_CREATE_INFO_NV: {
             MarshalVkOpticalFlowSessionCreateInfoNV::write(pBoxedInfo, memory, address, (VkOpticalFlowSessionCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_COMPRESSION_CONTROL_EXT: {
+            MarshalVkImageCompressionControlEXT::write(pBoxedInfo, memory, address, (VkImageCompressionControlEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO: {
             MarshalVkExportSemaphoreCreateInfo::write(pBoxedInfo, memory, address, (VkExportSemaphoreCreateInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_GET_INFO_KHR: {
-            MarshalVkVideoEncodeH265SessionParametersGetInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265SessionParametersGetInfoKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_DPB_SLOT_INFO_KHR: {
             MarshalVkVideoEncodeAV1DpbSlotInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeAV1DpbSlotInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_SESSION_PARAMETERS_GET_INFO_KHR: {
+            MarshalVkVideoEncodeH265SessionParametersGetInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265SessionParametersGetInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_INFO_KHR: {
@@ -15817,6 +16920,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO: {
             MarshalVkPipelineRasterizationStateCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineRasterizationStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_OFFSET_END_INFO_EXT: {
+            MarshalVkRenderPassFragmentDensityMapOffsetEndInfoEXT::write(pBoxedInfo, memory, address, (VkRenderPassFragmentDensityMapOffsetEndInfoEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2: {
@@ -15841,6 +16948,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TILE_IMAGE_PROPERTIES_EXT: {
             MarshalVkPhysicalDeviceShaderTileImagePropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderTileImagePropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CACHE_INCREMENTAL_MODE_FEATURES_SEC: {
+            MarshalVkPhysicalDevicePipelineCacheIncrementalModeFeaturesSEC::write(pBoxedInfo, memory, address, (VkPhysicalDevicePipelineCacheIncrementalModeFeaturesSEC*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_SAMPLE_WEIGHT_CREATE_INFO_QCOM: {
@@ -15875,6 +16986,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkSubpassResolvePerformanceQueryEXT::write(pBoxedInfo, memory, address, (VkSubpassResolvePerformanceQueryEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_CREATE_INFO_NV: {
+            MarshalVkExternalComputeQueueCreateInfoNV::write(pBoxedInfo, memory, address, (VkExternalComputeQueueCreateInfoNV*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO: {
             MarshalVkCommandBufferBeginInfo::write(pBoxedInfo, memory, address, (VkCommandBufferBeginInfo*)p);
             break;
@@ -15891,16 +17006,24 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceLayeredDriverPropertiesMSFT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceLayeredDriverPropertiesMSFT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceDepthClipControlFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDepthClipControlFeaturesEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
             MarshalVkPhysicalDeviceTexelBufferAlignmentFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceDepthClipControlFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDepthClipControlFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_KHR: {
+            MarshalVkReleaseSwapchainImagesInfoKHR::write(pBoxedInfo, memory, address, (VkReleaseSwapchainImagesInfoKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV: {
             MarshalVkPipelineRepresentativeFragmentTestStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineRepresentativeFragmentTestStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_INTRA_REFRESH_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceVideoEncodeIntraRefreshFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVideoEncodeIntraRefreshFeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_LIBRARY_GROUP_HANDLES_FEATURES_EXT: {
@@ -15915,12 +17038,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDevicePresentBarrierFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDevicePresentBarrierFeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR: {
-            MarshalVkVideoEncodeH264CapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264CapabilitiesKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_BARRIER_CREATE_INFO_NV: {
             MarshalVkSwapchainPresentBarrierCreateInfoNV::write(pBoxedInfo, memory, address, (VkSwapchainPresentBarrierCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_CAPABILITIES_KHR: {
+            MarshalVkVideoEncodeH264CapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264CapabilitiesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2: {
@@ -15935,6 +17058,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceOpticalFlowFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceOpticalFlowFeaturesNV*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_VECTOR_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceCooperativeVectorPropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCooperativeVectorPropertiesNV*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
             MarshalVkPhysicalDeviceCustomBorderColorFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCustomBorderColorFeaturesEXT*)p);
             break;
@@ -15943,12 +17070,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoDecodeAV1DpbSlotInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeAV1DpbSlotInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV: {
-            MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_MEMORY_HEAP_PROPERTIES_QCOM: {
+            MarshalVkPhysicalDeviceTileMemoryHeapPropertiesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceTileMemoryHeapPropertiesQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
             MarshalVkImageViewUsageCreateInfo::write(pBoxedInfo, memory, address, (VkImageViewUsageCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_COMPRESSION_CONTROL_SWAPCHAIN_FEATURES_EXT: {
@@ -15967,6 +17098,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkAccelerationStructureMotionInfoNV::write(pBoxedInfo, memory, address, (VkAccelerationStructureMotionInfoNV*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_LINEAR_SWEPT_SPHERES_DATA_NV: {
+            MarshalVkAccelerationStructureGeometryLinearSweptSpheresDataNV::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometryLinearSweptSpheresDataNV*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PIPELINE_BINARY_CREATE_INFO_KHR: {
             MarshalVkPipelineBinaryCreateInfoKHR::write(pBoxedInfo, memory, address, (VkPipelineBinaryCreateInfoKHR*)p);
             break;
@@ -15975,8 +17110,8 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceSampleLocationsPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceSampleLocationsPropertiesEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceMeshShaderFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMeshShaderFeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceNestedCommandBufferFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceNestedCommandBufferFeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_BUFFER_COPY_2: {
@@ -15987,8 +17122,8 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceNestedCommandBufferFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceNestedCommandBufferFeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceMeshShaderFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMeshShaderFeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO: {
@@ -16007,8 +17142,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkBlitImageCubicWeightsInfoQCOM::write(pBoxedInfo, memory, address, (VkBlitImageCubicWeightsInfoQCOM*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PER_TILE_END_INFO_QCOM: {
+            MarshalVkPerTileEndInfoQCOM::write(pBoxedInfo, memory, address, (VkPerTileEndInfoQCOM*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT: {
             MarshalVkDebugUtilsObjectTagInfoEXT::write(pBoxedInfo, memory, address, (VkDebugUtilsObjectTagInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_INLINE_SESSION_PARAMETERS_INFO_KHR: {
+            MarshalVkVideoDecodeH264InlineSessionParametersInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH264InlineSessionParametersInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT: {
@@ -16023,6 +17166,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDevicePresentWaitFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDevicePresentWaitFeaturesKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_RGB_CONVERSION_FEATURES_VALVE: {
+            MarshalVkPhysicalDeviceVideoEncodeRgbConversionFeaturesVALVE::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVideoEncodeRgbConversionFeaturesVALVE*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR: {
             MarshalVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR*)p);
             break;
@@ -16031,28 +17178,28 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkSurfaceCapabilities2EXT::write(pBoxedInfo, memory, address, (VkSurfaceCapabilities2EXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PRESENT_ID_KHR: {
-            MarshalVkPresentIdKHR::write(pBoxedInfo, memory, address, (VkPresentIdKHR*)p);
+        case VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT: {
+            MarshalVkMemoryHostPointerPropertiesEXT::write(pBoxedInfo, memory, address, (VkMemoryHostPointerPropertiesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_INLINE_QUERY_INFO_KHR: {
             MarshalVkVideoInlineQueryInfoKHR::write(pBoxedInfo, memory, address, (VkVideoInlineQueryInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT: {
-            MarshalVkMemoryHostPointerPropertiesEXT::write(pBoxedInfo, memory, address, (VkMemoryHostPointerPropertiesEXT*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2: {
-            MarshalVkMemoryBarrier2::write(pBoxedInfo, memory, address, (VkMemoryBarrier2*)p);
+        case VK_STRUCTURE_TYPE_PRESENT_ID_KHR: {
+            MarshalVkPresentIdKHR::write(pBoxedInfo, memory, address, (VkPresentIdKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: {
             MarshalVkPhysicalDeviceShaderIntegerDotProductFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderIntegerDotProductFeatures*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_CUDA_MODULE_CREATE_INFO_NV: {
-            MarshalVkCudaModuleCreateInfoNV::write(pBoxedInfo, memory, address, (VkCudaModuleCreateInfoNV*)p);
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2: {
+            MarshalVkMemoryBarrier2::write(pBoxedInfo, memory, address, (VkMemoryBarrier2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_INTRA_REFRESH_CREATE_INFO_KHR: {
+            MarshalVkVideoEncodeSessionIntraRefreshCreateInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeSessionIntraRefreshCreateInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR: {
@@ -16071,6 +17218,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_OWNERSHIP_TRANSFER_PROPERTIES_KHR: {
+            MarshalVkQueueFamilyOwnershipTransferPropertiesKHR::write(pBoxedInfo, memory, address, (VkQueueFamilyOwnershipTransferPropertiesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR: {
             MarshalVkVideoReferenceSlotInfoKHR::write(pBoxedInfo, memory, address, (VkVideoReferenceSlotInfoKHR*)p);
             break;
@@ -16083,16 +17234,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceShaderCoreBuiltinsPropertiesARM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderCoreBuiltinsPropertiesARM*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV: {
-            MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineViewportExclusiveScissorStateCreateInfoNV*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT: {
             MarshalVkPhysicalDeviceBorderColorSwizzleFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceBorderColorSwizzleFeaturesEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineViewportExclusiveScissorStateCreateInfoNV*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_CAPABILITIES_KHR: {
             MarshalVkVideoDecodeH264CapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH264CapabilitiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_KHR: {
+            MarshalVkSwapchainPresentScalingCreateInfoKHR::write(pBoxedInfo, memory, address, (VkSwapchainPresentScalingCreateInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_SUBPASS_SHADING_PIPELINE_CREATE_INFO_HUAWEI: {
@@ -16111,12 +17266,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPipelineBinaryInfoKHR::write(pBoxedInfo, memory, address, (VkPipelineBinaryInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR: {
-            MarshalVkPhysicalDeviceFragmentShadingRateKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentShadingRateKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO: {
             MarshalVkGraphicsPipelineCreateInfo::write(pBoxedInfo, memory, address, (VkGraphicsPipelineCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR: {
+            MarshalVkPhysicalDeviceFragmentShadingRateKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentShadingRateKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: {
@@ -16147,6 +17302,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceRGBA10X6FormatsFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_COUNTERS_BY_REGION_PROPERTIES_ARM: {
+            MarshalVkPhysicalDevicePerformanceCountersByRegionPropertiesARM::write(pBoxedInfo, memory, address, (VkPhysicalDevicePerformanceCountersByRegionPropertiesARM*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT: {
             MarshalVkCommandBufferInheritanceConditionalRenderingInfoEXT::write(pBoxedInfo, memory, address, (VkCommandBufferInheritanceConditionalRenderingInfoEXT*)p);
             break;
@@ -16155,16 +17314,28 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoEncodeRateControlInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeRateControlInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX: {
-            MarshalVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV: {
             MarshalVkExportMemoryAllocateInfoNV::write(pBoxedInfo, memory, address, (VkExportMemoryAllocateInfoNV*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX: {
+            MarshalVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUILD_PARTITIONED_ACCELERATION_STRUCTURE_INFO_NV: {
+            MarshalVkBuildPartitionedAccelerationStructureInfoNV::write(pBoxedInfo, memory, address, (VkBuildPartitionedAccelerationStructureInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_LINEAR_SWEPT_SPHERES_FEATURES_NV: {
+            MarshalVkPhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT: {
             MarshalVkPipelineRasterizationConservativeStateCreateInfoEXT::write(pBoxedInfo, memory, address, (VkPipelineRasterizationConservativeStateCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_TILE_SHADING_CREATE_INFO_QCOM: {
+            MarshalVkRenderPassTileShadingCreateInfoQCOM::write(pBoxedInfo, memory, address, (VkRenderPassTileShadingCreateInfoQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT: {
@@ -16191,12 +17362,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoDecodeInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_KHR: {
+            MarshalVkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDevicePresentModeFifoLatestReadyFeaturesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT: {
             MarshalVkVertexInputBindingDescription2EXT::write(pBoxedInfo, memory, address, (VkVertexInputBindingDescription2EXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR: {
             MarshalVkCopyAccelerationStructureInfoKHR::write(pBoxedInfo, memory, address, (VkCopyAccelerationStructureInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DATA_GRAPH_MODEL_FEATURES_QCOM: {
+            MarshalVkPhysicalDeviceDataGraphModelFeaturesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDataGraphModelFeaturesQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT: {
@@ -16223,12 +17402,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkRenderingInputAttachmentIndexInfo::write(pBoxedInfo, memory, address, (VkRenderingInputAttachmentIndexInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT: {
-            MarshalVkSurfacePresentModeEXT::write(pBoxedInfo, memory, address, (VkSurfacePresentModeEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO: {
             MarshalVkMemoryOpaqueCaptureAddressAllocateInfo::write(pBoxedInfo, memory, address, (VkMemoryOpaqueCaptureAddressAllocateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_PROFILE_RGB_CONVERSION_INFO_VALVE: {
+            MarshalVkVideoEncodeProfileRgbConversionInfoVALVE::write(pBoxedInfo, memory, address, (VkVideoEncodeProfileRgbConversionInfoVALVE*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT: {
@@ -16251,8 +17430,8 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkImageBlit2::write(pBoxedInfo, memory, address, (VkImageBlit2*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_NV: {
-            MarshalVkPhysicalDeviceMemoryDecompressionFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMemoryDecompressionFeaturesNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PARTITIONED_ACCELERATION_STRUCTURE_PROPERTIES_NV: {
+            MarshalVkPhysicalDevicePartitionedAccelerationStructurePropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDevicePartitionedAccelerationStructurePropertiesNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO: {
@@ -16273,6 +17452,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_GRAPHICS_SHADER_GROUP_CREATE_INFO_NV: {
             MarshalVkGraphicsShaderGroupCreateInfoNV::write(pBoxedInfo, memory, address, (VkGraphicsShaderGroupCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceFragmentDensityMapOffsetPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentDensityMapOffsetPropertiesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR: {
@@ -16303,10 +17486,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkRenderPassMultiviewCreateInfo::write(pBoxedInfo, memory, address, (VkRenderPassMultiviewCreateInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_PROPERTIES_QCOM: {
-            MarshalVkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT: {
             MarshalVkPipelineViewportDepthClipControlCreateInfoEXT::write(pBoxedInfo, memory, address, (VkPipelineViewportDepthClipControlCreateInfoEXT*)p);
             break;
@@ -16315,8 +17494,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkDescriptorSetLayoutBindingFlagsCreateInfo::write(pBoxedInfo, memory, address, (VkDescriptorSetLayoutBindingFlagsCreateInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_OPACITY_MICROMAP_FEATURES_ARM: {
+            MarshalVkPhysicalDevicePipelineOpacityMicromapFeaturesARM::write(pBoxedInfo, memory, address, (VkPhysicalDevicePipelineOpacityMicromapFeaturesARM*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT: {
             MarshalVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INDIRECT_INFO_KHR: {
+            MarshalVkCopyMemoryToImageIndirectInfoKHR::write(pBoxedInfo, memory, address, (VkCopyMemoryToImageIndirectInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_LAYERED_PROPERTIES_VALVE: {
+            MarshalVkPhysicalDeviceFragmentDensityMapLayeredPropertiesVALVE::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentDensityMapLayeredPropertiesVALVE*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE: {
@@ -16339,16 +17530,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceSchedulingControlsFeaturesARM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceSchedulingControlsFeaturesARM*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO: {
-            MarshalVkDevicePrivateDataCreateInfo::write(pBoxedInfo, memory, address, (VkDevicePrivateDataCreateInfo*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
+            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCornerSampledImageFeaturesNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES: {
             MarshalVkPhysicalDeviceMaintenance6Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMaintenance6Features*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
-            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCornerSampledImageFeaturesNV*)p);
+        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO: {
+            MarshalVkDevicePrivateDataCreateInfo::write(pBoxedInfo, memory, address, (VkDevicePrivateDataCreateInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
@@ -16359,20 +17550,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkBufferCreateInfo::write(pBoxedInfo, memory, address, (VkBufferCreateInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES: {
-            MarshalVkExternalFenceProperties::write(pBoxedInfo, memory, address, (VkExternalFenceProperties*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV: {
             MarshalVkPhysicalDeviceInheritedViewportScissorFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceInheritedViewportScissorFeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_IMAGE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: {
-            MarshalVkImageCaptureDescriptorDataInfoEXT::write(pBoxedInfo, memory, address, (VkImageCaptureDescriptorDataInfoEXT*)p);
+        case VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES: {
+            MarshalVkExternalFenceProperties::write(pBoxedInfo, memory, address, (VkExternalFenceProperties*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR: {
-            MarshalVkVideoFormatPropertiesKHR::write(pBoxedInfo, memory, address, (VkVideoFormatPropertiesKHR*)p);
+        case VK_STRUCTURE_TYPE_IMAGE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: {
+            MarshalVkImageCaptureDescriptorDataInfoEXT::write(pBoxedInfo, memory, address, (VkImageCaptureDescriptorDataInfoEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CLUSTER_CULLING_SHADER_VRS_FEATURES_HUAWEI: {
@@ -16383,6 +17570,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkMicromapVersionInfoEXT::write(pBoxedInfo, memory, address, (VkMicromapVersionInfoEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR: {
+            MarshalVkVideoFormatPropertiesKHR::write(pBoxedInfo, memory, address, (VkVideoFormatPropertiesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_HOST_MAPPING_INFO_VALVE: {
             MarshalVkDescriptorSetLayoutHostMappingInfoVALVE::write(pBoxedInfo, memory, address, (VkDescriptorSetLayoutHostMappingInfoVALVE*)p);
             break;
@@ -16391,16 +17582,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceShadingRateImagePropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShadingRateImagePropertiesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT: {
-            MarshalVkPhysicalDeviceNestedCommandBufferPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceNestedCommandBufferPropertiesEXT*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT8_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceShaderFloat8FeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderFloat8FeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_BUILTINS_FEATURES_ARM: {
             MarshalVkPhysicalDeviceShaderCoreBuiltinsFeaturesARM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderCoreBuiltinsFeaturesARM*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_FEATURES_NV: {
-            MarshalVkPhysicalDeviceCudaKernelLaunchFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCudaKernelLaunchFeaturesNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NESTED_COMMAND_BUFFER_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceNestedCommandBufferPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceNestedCommandBufferPropertiesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_UPDATE_INFO_KHR: {
@@ -16435,6 +17626,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceLegacyVertexAttributesFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceLegacyVertexAttributesFeaturesEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_KHR: {
+            MarshalVkPhysicalDeviceCopyMemoryIndirectPropertiesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCopyMemoryIndirectPropertiesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR: {
             MarshalVkVideoEncodeAV1SessionParametersCreateInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeAV1SessionParametersCreateInfoKHR*)p);
             break;
@@ -16453,6 +17648,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_VERSION_INFO_KHR: {
             MarshalVkAccelerationStructureVersionInfoKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureVersionInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_SPHERES_DATA_NV: {
+            MarshalVkAccelerationStructureGeometrySpheresDataNV::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometrySpheresDataNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR: {
@@ -16475,12 +17674,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkMemoryDedicatedRequirements::write(pBoxedInfo, memory, address, (VkMemoryDedicatedRequirements*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: {
-            MarshalVkPhysicalDeviceVulkan14Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVulkan14Features*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
             MarshalVkPhysicalDeviceHostQueryResetFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceHostQueryResetFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: {
+            MarshalVkPhysicalDeviceVulkan14Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVulkan14Features*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_SAMPLER_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: {
@@ -16499,16 +17698,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceImageRobustnessFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceImageRobustnessFeatures*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_INLINE_SESSION_PARAMETERS_INFO_KHR: {
+            MarshalVkVideoDecodeAV1InlineSessionParametersInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeAV1InlineSessionParametersInfoKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR: {
             MarshalVkDisplayPlaneProperties2KHR::write(pBoxedInfo, memory, address, (VkDisplayPlaneProperties2KHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO: {
-            MarshalVkBindBufferMemoryInfo::write(pBoxedInfo, memory, address, (VkBindBufferMemoryInfo*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT: {
             MarshalVkImageViewMinLodCreateInfoEXT::write(pBoxedInfo, memory, address, (VkImageViewMinLodCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO: {
+            MarshalVkBindBufferMemoryInfo::write(pBoxedInfo, memory, address, (VkBindBufferMemoryInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO: {
@@ -16519,12 +17722,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkApplicationInfo::write(pBoxedInfo, memory, address, (VkApplicationInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
-            MarshalVkPhysicalDeviceRobustness2PropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRobustness2PropertiesEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT: {
             MarshalVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DECOMPRESS_MEMORY_INFO_EXT: {
+            MarshalVkDecompressMemoryInfoEXT::write(pBoxedInfo, memory, address, (VkDecompressMemoryInfoEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
@@ -16535,12 +17738,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkRenderPassTransformBeginInfoQCOM::write(pBoxedInfo, memory, address, (VkRenderPassTransformBeginInfoQCOM*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO: {
-            MarshalVkPipelineMultisampleStateCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineMultisampleStateCreateInfo*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO: {
             MarshalVkPipelineCreationFeedbackCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineCreationFeedbackCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO: {
+            MarshalVkPipelineMultisampleStateCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineMultisampleStateCreateInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEVICE_QUEUE_SHADER_CORE_CONTROL_CREATE_INFO_ARM: {
@@ -16581,6 +17784,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
             MarshalVkPhysicalDeviceMemoryBudgetPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DATA_GRAPH_PIPELINE_BUILTIN_MODEL_CREATE_INFO_QCOM: {
+            MarshalVkDataGraphPipelineBuiltinModelCreateInfoQCOM::write(pBoxedInfo, memory, address, (VkDataGraphPipelineBuiltinModelCreateInfoQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT: {
@@ -16643,6 +17850,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkSubresourceHostMemcpySize::write(pBoxedInfo, memory, address, (VkSubresourceHostMemcpySize*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR: {
+            MarshalVkRenderingFragmentShadingRateAttachmentInfoKHR::write(pBoxedInfo, memory, address, (VkRenderingFragmentShadingRateAttachmentInfoKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_QUANTIZATION_MAP_CAPABILITIES_KHR: {
             MarshalVkVideoEncodeH264QuantizationMapCapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264QuantizationMapCapabilitiesKHR*)p);
             break;
@@ -16651,12 +17862,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkIndirectExecutionSetShaderInfoEXT::write(pBoxedInfo, memory, address, (VkIndirectExecutionSetShaderInfoEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT: {
+            MarshalVkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES: {
             MarshalVkQueueFamilyGlobalPriorityProperties::write(pBoxedInfo, memory, address, (VkQueueFamilyGlobalPriorityProperties*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT: {
-            MarshalVkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceRayTracingInvocationReorderPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayTracingInvocationReorderPropertiesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR: {
@@ -16683,12 +17898,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPipelineVertexInputDivisorStateCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineVertexInputDivisorStateCreateInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT: {
+            MarshalVkPhysicalDevicePresentTimingFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDevicePresentTimingFeaturesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR: {
             MarshalVkPerformanceCounterKHR::write(pBoxedInfo, memory, address, (VkPerformanceCounterKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceSwapchainMaintenance1FeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_KHR: {
+            MarshalVkSurfacePresentScalingCapabilitiesKHR::write(pBoxedInfo, memory, address, (VkSurfacePresentScalingCapabilitiesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT: {
@@ -16705,6 +17924,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2: {
             MarshalVkImageResolve2::write(pBoxedInfo, memory, address, (VkImageResolve2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_BFLOAT16_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceShaderBfloat16FeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderBfloat16FeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR: {
@@ -16731,12 +17954,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkImageFormatListCreateInfo::write(pBoxedInfo, memory, address, (VkImageFormatListCreateInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
-            MarshalVkDedicatedAllocationMemoryAllocateInfoNV::write(pBoxedInfo, memory, address, (VkDedicatedAllocationMemoryAllocateInfoNV*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT: {
             MarshalVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_INFO_KHR: {
+            MarshalVkVideoEncodeIntraRefreshInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeIntraRefreshInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
+            MarshalVkDedicatedAllocationMemoryAllocateInfoNV::write(pBoxedInfo, memory, address, (VkDedicatedAllocationMemoryAllocateInfoNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
@@ -16759,20 +17986,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceImageCompressionControlFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceImageCompressionControlFeaturesEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR: {
-            MarshalVkVideoDecodeH264DpbSlotInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH264DpbSlotInfoKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_EXT: {
             MarshalVkGeneratedCommandsInfoEXT::write(pBoxedInfo, memory, address, (VkGeneratedCommandsInfoEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT: {
-            MarshalVkDebugUtilsMessengerCreateInfoEXT::write(pBoxedInfo, memory, address, (VkDebugUtilsMessengerCreateInfoEXT*)p);
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR: {
+            MarshalVkVideoDecodeH264DpbSlotInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH264DpbSlotInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2: {
             MarshalVkSubpassDependency2::write(pBoxedInfo, memory, address, (VkSubpassDependency2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT: {
+            MarshalVkDebugUtilsMessengerCreateInfoEXT::write(pBoxedInfo, memory, address, (VkDebugUtilsMessengerCreateInfoEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2: {
@@ -16795,12 +18022,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkDeviceEventInfoEXT::write(pBoxedInfo, memory, address, (VkDeviceEventInfoEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceDepthClampZeroOneFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDepthClampZeroOneFeaturesEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV: {
             MarshalVkPhysicalDeviceRawAccessChainsFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRawAccessChainsFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_INLINE_SESSION_PARAMETERS_INFO_KHR: {
+            MarshalVkVideoDecodeH265InlineSessionParametersInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH265InlineSessionParametersInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_AV1_FEATURES_KHR: {
@@ -16827,12 +18054,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkSubpassBeginInfo::write(pBoxedInfo, memory, address, (VkSubpassBeginInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineFragmentShadingRateEnumStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineFragmentShadingRateEnumStateCreateInfoNV*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_EXT: {
             MarshalVkGeneratedCommandsMemoryRequirementsInfoEXT::write(pBoxedInfo, memory, address, (VkGeneratedCommandsMemoryRequirementsInfoEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV: {
-            MarshalVkPipelineFragmentShadingRateEnumStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineFragmentShadingRateEnumStateCreateInfoNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_RESOLVE_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceCustomResolveFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCustomResolveFeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_GET_INFO_KHR: {
@@ -16847,6 +18078,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkAttachmentDescription2::write(pBoxedInfo, memory, address, (VkAttachmentDescription2*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_ID_2_KHR: {
+            MarshalVkSurfaceCapabilitiesPresentId2KHR::write(pBoxedInfo, memory, address, (VkSurfaceCapabilitiesPresentId2KHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_IMAGE_COPY_2: {
             MarshalVkImageCopy2::write(pBoxedInfo, memory, address, (VkImageCopy2*)p);
             break;
@@ -16859,32 +18094,48 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceFragmentDensityMapFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentDensityMapFeaturesEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_PROPERTIES_KHR: {
-            MarshalVkVideoEncodeQualityLevelPropertiesKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeQualityLevelPropertiesKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: {
             MarshalVkPhysicalDeviceShaderAtomicInt64Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderAtomicInt64Features*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUALITY_LEVEL_PROPERTIES_KHR: {
+            MarshalVkVideoEncodeQualityLevelPropertiesKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeQualityLevelPropertiesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER: {
             MarshalVkBufferMemoryBarrier::write(pBoxedInfo, memory, address, (VkBufferMemoryBarrier*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_ARM: {
+            MarshalVkPerformanceCounterARM::write(pBoxedInfo, memory, address, (VkPerformanceCounterARM*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV: {
             MarshalVkSetLatencyMarkerInfoNV::write(pBoxedInfo, memory, address, (VkSetLatencyMarkerInfoNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceConditionalRenderingFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DATA_PARAMS_NV: {
+            MarshalVkExternalComputeQueueDataParamsNV::write(pBoxedInfo, memory, address, (VkExternalComputeQueueDataParamsNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_SHADING_FEATURES_QCOM: {
+            MarshalVkPhysicalDeviceTileShadingFeaturesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceTileShadingFeaturesQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
             MarshalVkPhysicalDeviceDepthClipEnableFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDepthClipEnableFeaturesEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceConditionalRenderingFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
             MarshalVkPhysicalDeviceImage2DViewOf3DFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT: {
+            MarshalVkPresentTimingsInfoEXT::write(pBoxedInfo, memory, address, (VkPresentTimingsInfoEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO: {
@@ -16895,12 +18146,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceShaderImageFootprintFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderImageFootprintFeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR: {
-            MarshalVkVideoEncodeH265RateControlInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265RateControlInfoKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_LAYER_SETTINGS_CREATE_INFO_EXT: {
             MarshalVkLayerSettingsCreateInfoEXT::write(pBoxedInfo, memory, address, (VkLayerSettingsCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_INFO_KHR: {
+            MarshalVkVideoEncodeH265RateControlInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265RateControlInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT: {
@@ -16923,20 +18174,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkAccelerationStructureGeometryKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometryKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR: {
-            MarshalVkVideoSessionCreateInfoKHR::write(pBoxedInfo, memory, address, (VkVideoSessionCreateInfoKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT: {
             MarshalVkPipelineRasterizationDepthClipStateCreateInfoEXT::write(pBoxedInfo, memory, address, (VkPipelineRasterizationDepthClipStateCreateInfoEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR: {
-            MarshalVkAccelerationStructureGeometryAabbsDataKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometryAabbsDataKHR*)p);
+        case VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR: {
+            MarshalVkVideoSessionCreateInfoKHR::write(pBoxedInfo, memory, address, (VkVideoSessionCreateInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_ARM: {
             MarshalVkPhysicalDeviceShaderCorePropertiesARM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderCorePropertiesARM*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR: {
+            MarshalVkAccelerationStructureGeometryAabbsDataKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometryAabbsDataKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO: {
@@ -16955,28 +18206,24 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceMeshShaderFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMeshShaderFeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
-            MarshalVkPhysicalDeviceRayTracingPipelineFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayTracingPipelineFeaturesKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_CU_FUNCTION_CREATE_INFO_NVX: {
             MarshalVkCuFunctionCreateInfoNVX::write(pBoxedInfo, memory, address, (VkCuFunctionCreateInfoNVX*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT: {
-            MarshalVkSurfacePresentModeCompatibilityEXT::write(pBoxedInfo, memory, address, (VkSurfacePresentModeCompatibilityEXT*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceRayTracingPipelineFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayTracingPipelineFeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_NV: {
             MarshalVkPhysicalDeviceRayTracingInvocationReorderFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO: {
-            MarshalVkBufferViewCreateInfo::write(pBoxedInfo, memory, address, (VkBufferViewCreateInfo*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR: {
             MarshalVkCooperativeMatrixPropertiesKHR::write(pBoxedInfo, memory, address, (VkCooperativeMatrixPropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO: {
+            MarshalVkBufferViewCreateInfo::write(pBoxedInfo, memory, address, (VkBufferViewCreateInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
@@ -16987,16 +18234,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceSubpassShadingFeaturesHUAWEI::write(pBoxedInfo, memory, address, (VkPhysicalDeviceSubpassShadingFeaturesHUAWEI*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT: {
-            MarshalVkDeviceFaultInfoEXT::write(pBoxedInfo, memory, address, (VkDeviceFaultInfoEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NV: {
             MarshalVkIndirectCommandsLayoutCreateInfoNV::write(pBoxedInfo, memory, address, (VkIndirectCommandsLayoutCreateInfoNV*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT: {
+            MarshalVkDeviceFaultInfoEXT::write(pBoxedInfo, memory, address, (VkDeviceFaultInfoEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_INFO_EXT: {
             MarshalVkMultisampledRenderToSingleSampledInfoEXT::write(pBoxedInfo, memory, address, (VkMultisampledRenderToSingleSampledInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RESOLVE_IMAGE_MODE_INFO_KHR: {
+            MarshalVkResolveImageModeInfoKHR::write(pBoxedInfo, memory, address, (VkResolveImageModeInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES: {
@@ -17015,28 +18266,40 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceVulkan13Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVulkan13Features*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FORMAT_PACK_FEATURES_ARM: {
+            MarshalVkPhysicalDeviceFormatPackFeaturesARM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFormatPackFeaturesARM*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
             MarshalVkPhysicalDeviceProtectedMemoryProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceProtectedMemoryProperties*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO: {
-            MarshalVkSemaphoreTypeCreateInfo::write(pBoxedInfo, memory, address, (VkSemaphoreTypeCreateInfo*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV: {
-            MarshalVkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
             MarshalVkPhysicalDeviceMeshShaderPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMeshShaderPropertiesEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
-            MarshalVkPhysicalDevice8BitStorageFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDevice8BitStorageFeatures*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO: {
+            MarshalVkSemaphoreTypeCreateInfo::write(pBoxedInfo, memory, address, (VkSemaphoreTypeCreateInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV: {
             MarshalVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
+            MarshalVkPhysicalDevice8BitStorageFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDevice8BitStorageFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_TILE_MEMORY_BIND_INFO_QCOM: {
+            MarshalVkTileMemoryBindInfoQCOM::write(pBoxedInfo, memory, address, (VkTileMemoryBindInfoQCOM*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_RGB_CONVERSION_CREATE_INFO_VALVE: {
+            MarshalVkVideoEncodeSessionRgbConversionCreateInfoVALVE::write(pBoxedInfo, memory, address, (VkVideoEncodeSessionRgbConversionCreateInfoVALVE*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO: {
@@ -17045,6 +18308,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_2_FEATURES_QCOM: {
             MarshalVkPhysicalDeviceImageProcessing2FeaturesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceImageProcessing2FeaturesQCOM*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT: {
+            MarshalVkSwapchainTimingPropertiesEXT::write(pBoxedInfo, memory, address, (VkSwapchainTimingPropertiesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_NV: {
@@ -17063,12 +18330,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkSubpassEndInfo::write(pBoxedInfo, memory, address, (VkSubpassEndInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR: {
+            MarshalVkVideoEncodeH265RateControlLayerInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265RateControlLayerInfoKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR: {
             MarshalVkPerformanceCounterDescriptionKHR::write(pBoxedInfo, memory, address, (VkPerformanceCounterDescriptionKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_RATE_CONTROL_LAYER_INFO_KHR: {
-            MarshalVkVideoEncodeH265RateControlLayerInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265RateControlLayerInfoKHR*)p);
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR: {
+            MarshalVkSwapchainPresentFenceInfoKHR::write(pBoxedInfo, memory, address, (VkSwapchainPresentFenceInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_NV: {
@@ -17103,12 +18374,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceCubicClampFeaturesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCubicClampFeaturesQCOM*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES: {
-            MarshalVkPhysicalDeviceHostImageCopyProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceHostImageCopyProperties*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO: {
             MarshalVkInstanceCreateInfo::write(pBoxedInfo, memory, address, (VkInstanceCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES: {
+            MarshalVkPhysicalDeviceHostImageCopyProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceHostImageCopyProperties*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUALITY_LEVEL_INFO_KHR: {
@@ -17155,10 +18426,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoEncodeH264DpbSlotInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264DpbSlotInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_CUDA_LAUNCH_INFO_NV: {
-            MarshalVkCudaLaunchInfoNV::write(pBoxedInfo, memory, address, (VkCudaLaunchInfoNV*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_PROPERTIES_NV: {
             MarshalVkPhysicalDeviceRayTracingInvocationReorderPropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV*)p);
             break;
@@ -17169,6 +18436,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD: {
             MarshalVkDeviceMemoryOverallocationCreateInfoAMD::write(pBoxedInfo, memory, address, (VkDeviceMemoryOverallocationCreateInfoAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT: {
+            MarshalVkPastPresentationTimingPropertiesEXT::write(pBoxedInfo, memory, address, (VkPastPresentationTimingPropertiesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_RENDER_PASS_STRIPE_INFO_ARM: {
@@ -17207,20 +18478,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR: {
-            MarshalVkPhysicalDeviceCooperativeMatrixFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCooperativeMatrixFeaturesKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_CAPABILITIES_KHR: {
             MarshalVkVideoEncodeH265CapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265CapabilitiesKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS: {
-            MarshalVkDeviceBufferMemoryRequirements::write(pBoxedInfo, memory, address, (VkDeviceBufferMemoryRequirements*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV: {
             MarshalVkLatencySleepModeInfoNV::write(pBoxedInfo, memory, address, (VkLatencySleepModeInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceCooperativeMatrixFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCooperativeMatrixFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS: {
+            MarshalVkDeviceBufferMemoryRequirements::write(pBoxedInfo, memory, address, (VkDeviceBufferMemoryRequirements*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_COPY_COMMAND_TRANSFORM_INFO_QCOM: {
@@ -17259,16 +18530,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoEncodeH265SessionParametersFeedbackInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265SessionParametersFeedbackInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_DEVICE_MEMORY_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceZeroInitializeDeviceMemoryFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceZeroInitializeDeviceMemoryFeaturesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_LAYER_INFO_KHR: {
             MarshalVkVideoEncodeH264RateControlLayerInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264RateControlLayerInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV: {
-            MarshalVkPipelineViewportSwizzleStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineViewportSwizzleStateCreateInfoNV*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT: {
             MarshalVkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineViewportSwizzleStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineViewportSwizzleStateCreateInfoNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_DYNAMIC_STATE_FEATURES_EXT: {
@@ -17289,6 +18564,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_CAPTURE_DESCRIPTOR_DATA_INFO_EXT: {
             MarshalVkImageViewCaptureDescriptorDataInfoEXT::write(pBoxedInfo, memory, address, (VkImageViewCaptureDescriptorDataInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_ARM: {
+            MarshalVkPerformanceCounterDescriptionARM::write(pBoxedInfo, memory, address, (VkPerformanceCounterDescriptionARM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_GET_LATENCY_MARKER_INFO_NV: {
@@ -17315,6 +18594,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoEncodeUsageInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeUsageInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PRESENT_TIMING_SURFACE_CAPABILITIES_EXT: {
+            MarshalVkPresentTimingSurfaceCapabilitiesEXT::write(pBoxedInfo, memory, address, (VkPresentTimingSurfaceCapabilitiesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR: {
             MarshalVkCopyAccelerationStructureToMemoryInfoKHR::write(pBoxedInfo, memory, address, (VkCopyAccelerationStructureToMemoryInfoKHR*)p);
             break;
@@ -17323,24 +18606,28 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPipelineExecutableInternalRepresentationKHR::write(pBoxedInfo, memory, address, (VkPipelineExecutableInternalRepresentationKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_QUERY_LOW_LATENCY_SUPPORT_NV: {
-            MarshalVkQueryLowLatencySupportNV::write(pBoxedInfo, memory, address, (VkQueryLowLatencySupportNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PARTITIONED_ACCELERATION_STRUCTURE_FEATURES_NV: {
+            MarshalVkPhysicalDevicePartitionedAccelerationStructureFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDevicePartitionedAccelerationStructureFeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_EXT: {
-            MarshalVkReleaseSwapchainImagesInfoEXT::write(pBoxedInfo, memory, address, (VkReleaseSwapchainImagesInfoEXT*)p);
+        case VK_STRUCTURE_TYPE_QUERY_LOW_LATENCY_SUPPORT_NV: {
+            MarshalVkQueryLowLatencySupportNV::write(pBoxedInfo, memory, address, (VkQueryLowLatencySupportNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_SUBMIT_INFO_2: {
             MarshalVkSubmitInfo2::write(pBoxedInfo, memory, address, (VkSubmitInfo2*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PICTURE_INFO_KHR: {
-            MarshalVkVideoDecodeH264PictureInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH264PictureInfoKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_QUANTIZATION_MAP_CAPABILITIES_KHR: {
             MarshalVkVideoEncodeH265QuantizationMapCapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265QuantizationMapCapabilitiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_KHR: {
+            MarshalVkSwapchainPresentModesCreateInfoKHR::write(pBoxedInfo, memory, address, (VkSwapchainPresentModesCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PICTURE_INFO_KHR: {
+            MarshalVkVideoDecodeH264PictureInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH264PictureInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR: {
@@ -17355,12 +18642,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkDisplayPowerInfoEXT::write(pBoxedInfo, memory, address, (VkDisplayPowerInfoEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_CAPABILITIES_KHR: {
             MarshalVkVideoDecodeH265CapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH265CapabilitiesKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_PROPERTIES_KHR: {
+            MarshalVkPhysicalDeviceMaintenance9PropertiesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMaintenance9PropertiesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX: {
@@ -17391,12 +18682,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkBufferUsageFlags2CreateInfo::write(pBoxedInfo, memory, address, (VkBufferUsageFlags2CreateInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_KHR: {
+            MarshalVkSwapchainPresentModeInfoKHR::write(pBoxedInfo, memory, address, (VkSwapchainPresentModeInfoKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO: {
             MarshalVkDescriptorPoolInlineUniformBlockCreateInfo::write(pBoxedInfo, memory, address, (VkDescriptorPoolInlineUniformBlockCreateInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEPTH_BIAS_INFO_EXT: {
             MarshalVkDepthBiasInfoEXT::write(pBoxedInfo, memory, address, (VkDepthBiasInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceRayTracingInvocationReorderFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayTracingInvocationReorderFeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: {
@@ -17407,12 +18706,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoEncodeH264SessionCreateInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264SessionCreateInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO: {
-            MarshalVkPipelineCacheCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineCacheCreateInfo*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_FEATURES_QCOM: {
             MarshalVkPhysicalDeviceImageProcessingFeaturesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceImageProcessingFeaturesQCOM*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO: {
+            MarshalVkPipelineCacheCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineCacheCreateInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2: {
@@ -17439,6 +18738,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPresentInfoKHR::write(pBoxedInfo, memory, address, (VkPresentInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceRobustness2FeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRobustness2FeaturesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_GOP_REMAINING_FRAME_INFO_KHR: {
             MarshalVkVideoEncodeAV1GopRemainingFrameInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeAV1GopRemainingFrameInfoKHR*)p);
             break;
@@ -17451,12 +18754,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkSamplerCreateInfo::write(pBoxedInfo, memory, address, (VkSamplerCreateInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_8_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceMaintenance8FeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMaintenance8FeaturesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_PUSH_DESCRIPTOR_BUFFER_HANDLE_EXT: {
             MarshalVkDescriptorBufferBindingPushDescriptorBufferHandleEXT::write(pBoxedInfo, memory, address, (VkDescriptorBufferBindingPushDescriptorBufferHandleEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_BINARY_PROPERTIES_KHR: {
             MarshalVkPhysicalDevicePipelineBinaryPropertiesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDevicePipelineBinaryPropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_PERFORMANCE_COUNTERS_BY_REGION_BEGIN_INFO_ARM: {
+            MarshalVkRenderPassPerformanceCountersByRegionBeginInfoARM::write(pBoxedInfo, memory, address, (VkRenderPassPerformanceCountersByRegionBeginInfoARM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_MEMORY_MAP_PLACED_INFO_EXT: {
@@ -17487,6 +18798,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoDecodeH264SessionParametersAddInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeH264SessionParametersAddInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_BEGIN_CUSTOM_RESOLVE_INFO_EXT: {
+            MarshalVkBeginCustomResolveInfoEXT::write(pBoxedInfo, memory, address, (VkBeginCustomResolveInfoEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR: {
             MarshalVkAccelerationStructureGeometryTrianglesDataKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometryTrianglesDataKHR*)p);
             break;
@@ -17501,6 +18816,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO: {
             MarshalVkSemaphoreSignalInfo::write(pBoxedInfo, memory, address, (VkSemaphoreSignalInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDERING_END_INFO_KHR: {
+            MarshalVkRenderingEndInfoKHR::write(pBoxedInfo, memory, address, (VkRenderingEndInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_1_FEATURES_KHR: {
@@ -17519,16 +18838,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceRayTracingPipelinePropertiesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayTracingPipelinePropertiesKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_SCALING_CREATE_INFO_EXT: {
-            MarshalVkSwapchainPresentScalingCreateInfoEXT::write(pBoxedInfo, memory, address, (VkSwapchainPresentScalingCreateInfoEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO: {
             MarshalVkRenderingAttachmentInfo::write(pBoxedInfo, memory, address, (VkRenderingAttachmentInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV: {
             MarshalVkQueueFamilyCheckpointPropertiesNV::write(pBoxedInfo, memory, address, (VkQueueFamilyCheckpointPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_RGB_CONVERSION_CAPABILITIES_VALVE: {
+            MarshalVkVideoEncodeRgbConversionCapabilitiesVALVE::write(pBoxedInfo, memory, address, (VkVideoEncodeRgbConversionCapabilitiesVALVE*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_RENDERING_INFO: {
@@ -17539,16 +18858,24 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceExtendedDynamicState2FeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceShaderAtomicFloatFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_INDIRECT_INFO_KHR: {
+            MarshalVkCopyMemoryIndirectInfoKHR::write(pBoxedInfo, memory, address, (VkCopyMemoryIndirectInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_SESSION_PARAMETERS_FEEDBACK_INFO_KHR: {
             MarshalVkVideoEncodeSessionParametersFeedbackInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeSessionParametersFeedbackInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceShaderAtomicFloatFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
             MarshalVkPhysicalDeviceProvokingVertexFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceProvokingVertexFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_INTRA_REFRESH_CAPABILITIES_KHR: {
+            MarshalVkVideoEncodeIntraRefreshCapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeIntraRefreshCapabilitiesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PICTURE_INFO_KHR: {
@@ -17561,6 +18888,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR: {
             MarshalVkVideoEncodeH264SessionParametersCreateInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264SessionParametersCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_WAIT_2_KHR: {
+            MarshalVkSurfaceCapabilitiesPresentWait2KHR::write(pBoxedInfo, memory, address, (VkSurfaceCapabilitiesPresentWait2KHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DISPLAY_MODE_STEREO_PROPERTIES_NV: {
@@ -17587,20 +18918,32 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoSessionParametersCreateInfoKHR::write(pBoxedInfo, memory, address, (VkVideoSessionParametersCreateInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_DECOMPRESSION_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceMemoryDecompressionFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMemoryDecompressionFeaturesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
             MarshalVkPhysicalDeviceVulkan12Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVulkan12Features*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
-            MarshalVkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_2_FEATURES_KHR: {
+            MarshalVkPhysicalDevicePresentWait2FeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDevicePresentWait2FeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
             MarshalVkPhysicalDeviceBufferDeviceAddressFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceBufferDeviceAddressFeaturesEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
             MarshalVkPhysicalDeviceFeatures2::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFeatures2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_FLAGS_NV: {
+            MarshalVkPartitionedAccelerationStructureFlagsNV::write(pBoxedInfo, memory, address, (VkPartitionedAccelerationStructureFlagsNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
@@ -17615,8 +18958,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPipelineViewportWScalingStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineViewportWScalingStateCreateInfoNV*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceShaderUntypedPointersFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderUntypedPointersFeaturesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES: {
             MarshalVkPhysicalDeviceShaderFloatControls2Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderFloatControls2Features*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_64_BIT_INDEXING_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceShader64BitIndexingFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShader64BitIndexingFeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
@@ -17627,10 +18978,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkRenderingAreaInfo::write(pBoxedInfo, memory, address, (VkRenderingAreaInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_FEATURES_QCOM: {
-            MarshalVkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_MICROMAP_BUILD_SIZES_INFO_EXT: {
             MarshalVkMicromapBuildSizesInfoEXT::write(pBoxedInfo, memory, address, (VkMicromapBuildSizesInfoEXT*)p);
             break;
@@ -17639,24 +18986,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPerformanceOverrideInfoINTEL::write(pBoxedInfo, memory, address, (VkPerformanceOverrideInfoINTEL*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_EXT: {
-            MarshalVkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV: {
             MarshalVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_PROPERTIES_NV: {
-            MarshalVkPhysicalDeviceCudaKernelLaunchPropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCudaKernelLaunchPropertiesNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR: {
             MarshalVkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR: {
-            MarshalVkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEPTH_BIAS_REPRESENTATION_INFO_EXT: {
@@ -17715,12 +19054,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoEncodeH265GopRemainingFrameInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265GopRemainingFrameInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO: {
-            MarshalVkFramebufferCreateInfo::write(pBoxedInfo, memory, address, (VkFramebufferCreateInfo*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: {
             MarshalVkPhysicalDeviceVulkan12Properties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVulkan12Properties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO: {
+            MarshalVkFramebufferCreateInfo::write(pBoxedInfo, memory, address, (VkFramebufferCreateInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV: {
@@ -17731,16 +19070,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkCopyMicromapInfoEXT::write(pBoxedInfo, memory, address, (VkCopyMicromapInfoEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_OFFSET_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceFragmentDensityMapOffsetFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentDensityMapOffsetFeaturesEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_BINDING_REFERENCE_VALVE: {
             MarshalVkDescriptorSetBindingReferenceVALVE::write(pBoxedInfo, memory, address, (VkDescriptorSetBindingReferenceVALVE*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
-            MarshalVkPhysicalDeviceRayQueryFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayQueryFeaturesKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT: {
             MarshalVkGraphicsPipelineLibraryCreateInfoEXT::write(pBoxedInfo, memory, address, (VkGraphicsPipelineLibraryCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceRayQueryFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayQueryFeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_HOST_IMAGE_COPY_DEVICE_PERFORMANCE_QUERY: {
@@ -17755,12 +19098,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceFragmentShadingRatePropertiesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentShadingRatePropertiesKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV: {
-            MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometryMotionTrianglesDataNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_COUNTERS_BY_REGION_FEATURES_ARM: {
+            MarshalVkPhysicalDevicePerformanceCountersByRegionFeaturesARM::write(pBoxedInfo, memory, address, (VkPhysicalDevicePerformanceCountersByRegionFeaturesARM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_QUANTIZATION_MAP_CAPABILITIES_KHR: {
             MarshalVkVideoEncodeQuantizationMapCapabilitiesKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeQuantizationMapCapabilitiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV: {
+            MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::write(pBoxedInfo, memory, address, (VkAccelerationStructureGeometryMotionTrianglesDataNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_SPARSE_ADDRESS_SPACE_FEATURES_NV: {
@@ -17771,12 +19118,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkSurfaceFormat2KHR::write(pBoxedInfo, memory, address, (VkSurfaceFormat2KHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM: {
-            MarshalVkPhysicalDeviceImageProcessingPropertiesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceImageProcessingPropertiesQCOM*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR: {
             MarshalVkPhysicalDeviceShaderQuadControlFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderQuadControlFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_PROPERTIES_QCOM: {
+            MarshalVkPhysicalDeviceImageProcessingPropertiesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceImageProcessingPropertiesQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV: {
@@ -17791,12 +19138,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPipelineCoverageReductionStateCreateInfoNV::write(pBoxedInfo, memory, address, (VkPipelineCoverageReductionStateCreateInfoNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES: {
-            MarshalVkPhysicalDeviceGroupProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceGroupProperties*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_PROPERTIES_NV: {
             MarshalVkOpticalFlowImageFormatPropertiesNV::write(pBoxedInfo, memory, address, (VkOpticalFlowImageFormatPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES: {
+            MarshalVkPhysicalDeviceGroupProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceGroupProperties*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD: {
@@ -17855,6 +19202,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkAccelerationStructureBuildGeometryInfoKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureBuildGeometryInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT: {
+            MarshalVkPastPresentationTimingEXT::write(pBoxedInfo, memory, address, (VkPastPresentationTimingEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_PIPELINE_INFO_EXT: {
             MarshalVkGeneratedCommandsPipelineInfoEXT::write(pBoxedInfo, memory, address, (VkGeneratedCommandsPipelineInfoEXT*)p);
             break;
@@ -17875,6 +19226,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceVulkan14Properties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVulkan14Properties*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_2_FEATURES_KHR: {
+            MarshalVkPhysicalDevicePresentId2FeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDevicePresentId2FeaturesKHR*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT: {
             MarshalVkConditionalRenderingBeginInfoEXT::write(pBoxedInfo, memory, address, (VkConditionalRenderingBeginInfoEXT*)p);
             break;
@@ -17889,6 +19244,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
             MarshalVkPhysicalDeviceDescriptorIndexingFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDescriptorIndexingFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT: {
+            MarshalVkSwapchainTimeDomainPropertiesEXT::write(pBoxedInfo, memory, address, (VkSwapchainTimeDomainPropertiesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
@@ -17921,6 +19280,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_PIPELINE_ROBUSTNESS_CREATE_INFO: {
             MarshalVkPipelineRobustnessCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineRobustnessCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT: {
+            MarshalVkPastPresentationTimingInfoEXT::write(pBoxedInfo, memory, address, (VkPastPresentationTimingInfoEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_WRITE_INDIRECT_EXECUTION_SET_SHADER_EXT: {
@@ -17975,10 +19338,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkCooperativeMatrixFlexibleDimensionsPropertiesNV::write(pBoxedInfo, memory, address, (VkCooperativeMatrixFlexibleDimensionsPropertiesNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO: {
-            MarshalVkCommandBufferAllocateInfo::write(pBoxedInfo, memory, address, (VkCommandBufferAllocateInfo*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_NV: {
             MarshalVkGeneratedCommandsInfoNV::write(pBoxedInfo, memory, address, (VkGeneratedCommandsInfoNV*)p);
             break;
@@ -17987,12 +19346,28 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceExternalFenceInfo::write(pBoxedInfo, memory, address, (VkPhysicalDeviceExternalFenceInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO: {
+            MarshalVkCommandBufferAllocateInfo::write(pBoxedInfo, memory, address, (VkCommandBufferAllocateInfo*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT: {
             MarshalVkPhysicalDeviceMemoryPriorityFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMemoryPriorityFeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_ACQUIRE_UNMODIFIED_EXT: {
             MarshalVkExternalMemoryAcquireUnmodifiedEXT::write(pBoxedInfo, memory, address, (VkExternalMemoryAcquireUnmodifiedEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPATCH_TILE_INFO_QCOM: {
+            MarshalVkDispatchTileInfoQCOM::write(pBoxedInfo, memory, address, (VkDispatchTileInfoQCOM*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DEVICE_CREATE_INFO_NV: {
+            MarshalVkExternalComputeQueueDeviceCreateInfoNV::write(pBoxedInfo, memory, address, (VkExternalComputeQueueDeviceCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceMaintenance9FeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMaintenance9FeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT: {
@@ -18019,16 +19394,24 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPushDescriptorSetWithTemplateInfo::write(pBoxedInfo, memory, address, (VkPushDescriptorSetWithTemplateInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceCopyMemoryIndirectFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCopyMemoryIndirectFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COOPERATIVE_VECTOR_PROPERTIES_NV: {
+            MarshalVkCooperativeVectorPropertiesNV::write(pBoxedInfo, memory, address, (VkCooperativeVectorPropertiesNV*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD: {
             MarshalVkPhysicalDeviceCoherentMemoryFeaturesAMD::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCoherentMemoryFeaturesAMD*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2: {
-            MarshalVkCopyBufferInfo2::write(pBoxedInfo, memory, address, (VkCopyBufferInfo2*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV: {
             MarshalVkDedicatedAllocationBufferCreateInfoNV::write(pBoxedInfo, memory, address, (VkDedicatedAllocationBufferCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2: {
+            MarshalVkCopyBufferInfo2::write(pBoxedInfo, memory, address, (VkCopyBufferInfo2*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR: {
@@ -18039,20 +19422,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkShaderModuleCreateInfo::write(pBoxedInfo, memory, address, (VkShaderModuleCreateInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COPY_MEMORY_INDIRECT_PROPERTIES_NV: {
-            MarshalVkPhysicalDeviceCopyMemoryIndirectPropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCopyMemoryIndirectPropertiesNV*)p);
+        case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR: {
+            MarshalVkVideoProfileListInfoKHR::write(pBoxedInfo, memory, address, (VkVideoProfileListInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_OPTICAL_FLOW_IMAGE_FORMAT_INFO_NV: {
             MarshalVkOpticalFlowImageFormatInfoNV::write(pBoxedInfo, memory, address, (VkOpticalFlowImageFormatInfoNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR: {
-            MarshalVkVideoProfileListInfoKHR::write(pBoxedInfo, memory, address, (VkVideoProfileListInfoKHR*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_CUDA_FUNCTION_CREATE_INFO_NV: {
-            MarshalVkCudaFunctionCreateInfoNV::write(pBoxedInfo, memory, address, (VkCudaFunctionCreateInfoNV*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_2_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceVideoMaintenance2FeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVideoMaintenance2FeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT: {
@@ -18067,12 +19446,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPipelineExecutableInfoKHR::write(pBoxedInfo, memory, address, (VkPipelineExecutableInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR: {
-            MarshalVkVideoEncodeH264RateControlInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264RateControlInfoKHR*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_PROPERTIES_NV: {
             MarshalVkPhysicalDeviceCooperativeMatrix2PropertiesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCooperativeMatrix2PropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_RATE_CONTROL_INFO_KHR: {
+            MarshalVkVideoEncodeH264RateControlInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264RateControlInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_LATENCY_SURFACE_CAPABILITIES_NV: {
@@ -18099,12 +19478,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkDescriptorBufferBindingInfoEXT::write(pBoxedInfo, memory, address, (VkDescriptorBufferBindingInfoEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT: {
-            MarshalVkPipelineDiscardRectangleStateCreateInfoEXT::write(pBoxedInfo, memory, address, (VkPipelineDiscardRectangleStateCreateInfoEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO: {
             MarshalVkBindSparseInfo::write(pBoxedInfo, memory, address, (VkBindSparseInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT: {
+            MarshalVkPipelineDiscardRectangleStateCreateInfoEXT::write(pBoxedInfo, memory, address, (VkPipelineDiscardRectangleStateCreateInfoEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
@@ -18127,16 +19506,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkDescriptorUpdateTemplateCreateInfo::write(pBoxedInfo, memory, address, (VkDescriptorUpdateTemplateCreateInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX: {
-            MarshalVkImageViewHandleInfoNVX::write(pBoxedInfo, memory, address, (VkImageViewHandleInfoNVX*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_INDIRECT_EXECUTION_SET_PIPELINE_INFO_EXT: {
             MarshalVkIndirectExecutionSetPipelineInfoEXT::write(pBoxedInfo, memory, address, (VkIndirectExecutionSetPipelineInfoEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX: {
+            MarshalVkImageViewHandleInfoNVX::write(pBoxedInfo, memory, address, (VkImageViewHandleInfoNVX*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: {
             MarshalVkAttachmentDescriptionStencilLayout::write(pBoxedInfo, memory, address, (VkAttachmentDescriptionStencilLayout*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNIFORM_BUFFER_UNSIZED_ARRAY_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceShaderUniformBufferUnsizedArrayFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderUniformBufferUnsizedArrayFeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_FEATURES_NV: {
@@ -18145,6 +19528,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_PROPERTIES_KHR: {
             MarshalVkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR: {
+            MarshalVkPresentWait2InfoKHR::write(pBoxedInfo, memory, address, (VkPresentWait2InfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
@@ -18159,12 +19546,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkDeviceImageSubresourceInfo::write(pBoxedInfo, memory, address, (VkDeviceImageSubresourceInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
-            MarshalVkPhysicalDeviceShaderSubgroupExtendedTypesFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)p);
+        case VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_FLAGS_INFO_KHR: {
+            MarshalVkRenderingAttachmentFlagsInfoKHR::write(pBoxedInfo, memory, address, (VkRenderingAttachmentFlagsInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT: {
             MarshalVkValidationFlagsEXT::write(pBoxedInfo, memory, address, (VkValidationFlagsEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
+            MarshalVkPhysicalDeviceShaderSubgroupExtendedTypesFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEVICE_ADDRESS_BINDING_CALLBACK_DATA_EXT: {
@@ -18187,10 +19578,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkQueueFamilyVideoPropertiesKHR::write(pBoxedInfo, memory, address, (VkQueueFamilyVideoPropertiesKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_SCALING_CAPABILITIES_EXT: {
-            MarshalVkSurfacePresentScalingCapabilitiesEXT::write(pBoxedInfo, memory, address, (VkSurfacePresentScalingCapabilitiesEXT*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES: {
             MarshalVkPhysicalDeviceShaderTerminateInvocationFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceShaderTerminateInvocationFeatures*)p);
             break;
@@ -18201,6 +19588,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR: {
             MarshalVkRayTracingPipelineInterfaceCreateInfoKHR::write(pBoxedInfo, memory, address, (VkRayTracingPipelineInterfaceCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_KHR: {
+            MarshalVkSurfacePresentModeKHR::write(pBoxedInfo, memory, address, (VkSurfacePresentModeKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPTICAL_FLOW_PROPERTIES_NV: {
@@ -18243,6 +19634,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceVulkanMemoryModelFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVulkanMemoryModelFeatures*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_CUSTOM_RESOLVE_CREATE_INFO_EXT: {
+            MarshalVkCustomResolveCreateInfoEXT::write(pBoxedInfo, memory, address, (VkCustomResolveCreateInfoEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2: {
             MarshalVkSubpassDescription2::write(pBoxedInfo, memory, address, (VkSubpassDescription2*)p);
             break;
@@ -18283,12 +19678,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoDecodeAV1ProfileInfoKHR::write(pBoxedInfo, memory, address, (VkVideoDecodeAV1ProfileInfoKHR*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES: {
-            MarshalVkPhysicalDeviceGlobalPriorityQueryFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceGlobalPriorityQueryFeatures*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV: {
             MarshalVkAccelerationStructureInfoNV::write(pBoxedInfo, memory, address, (VkAccelerationStructureInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES: {
+            MarshalVkPhysicalDeviceGlobalPriorityQueryFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceGlobalPriorityQueryFeatures*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2: {
@@ -18303,12 +19698,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceFaultFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFaultFeaturesEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM: {
-            MarshalVkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM::write(pBoxedInfo, memory, address, (VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2: {
             MarshalVkCopyBufferToImageInfo2::write(pBoxedInfo, memory, address, (VkCopyBufferToImageInfo2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_YCBCR_DEGAMMA_CREATE_INFO_QCOM: {
+            MarshalVkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM::write(pBoxedInfo, memory, address, (VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HDR_VIVID_FEATURES_HUAWEI: {
@@ -18323,8 +19718,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceFragmentDensityMap2FeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentDensityMap2FeaturesEXT*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_INSTANCES_INPUT_NV: {
+            MarshalVkPartitionedAccelerationStructureInstancesInputNV::write(pBoxedInfo, memory, address, (VkPartitionedAccelerationStructureInstancesInputNV*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
             MarshalVkPhysicalDeviceTimelineSemaphoreFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceTimelineSemaphoreFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceMaintenance10FeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMaintenance10FeaturesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO: {
@@ -18339,6 +19742,10 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkImageAlignmentControlCreateInfoMESA::write(pBoxedInfo, memory, address, (VkImageAlignmentControlCreateInfoMESA*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT: {
+            MarshalVkSwapchainCalibratedTimestampInfoEXT::write(pBoxedInfo, memory, address, (VkSwapchainCalibratedTimestampInfoEXT*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT: {
             MarshalVkPhysicalDeviceLegacyDitheringFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceLegacyDitheringFeaturesEXT*)p);
             break;
@@ -18347,20 +19754,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkGeneratedCommandsMemoryRequirementsInfoNV::write(pBoxedInfo, memory, address, (VkGeneratedCommandsMemoryRequirementsInfoNV*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV: {
-            MarshalVkLatencySleepInfoNV::write(pBoxedInfo, memory, address, (VkLatencySleepInfoNV*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
             MarshalVkPhysicalDeviceSeparateDepthStencilLayoutsFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR: {
-            MarshalVkAcquireNextImageInfoKHR::write(pBoxedInfo, memory, address, (VkAcquireNextImageInfoKHR*)p);
+        case VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV: {
+            MarshalVkLatencySleepInfoNV::write(pBoxedInfo, memory, address, (VkLatencySleepInfoNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES: {
             MarshalVkPhysicalDeviceUniformBufferStandardLayoutFeatures::write(pBoxedInfo, memory, address, (VkPhysicalDeviceUniformBufferStandardLayoutFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR: {
+            MarshalVkAcquireNextImageInfoKHR::write(pBoxedInfo, memory, address, (VkAcquireNextImageInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_COPY_MICROMAP_TO_MEMORY_INFO_EXT: {
@@ -18439,8 +19846,20 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkVideoEncodeH265SessionParametersCreateInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH265SessionParametersCreateInfoKHR*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_PARTITIONED_ACCELERATION_STRUCTURE_NV: {
+            MarshalVkWriteDescriptorSetPartitionedAccelerationStructureNV::write(pBoxedInfo, memory, address, (VkWriteDescriptorSetPartitionedAccelerationStructureNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_LAYERED_FEATURES_VALVE: {
+            MarshalVkPhysicalDeviceFragmentDensityMapLayeredFeaturesVALVE::write(pBoxedInfo, memory, address, (VkPhysicalDeviceFragmentDensityMapLayeredFeaturesVALVE*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_NALU_SLICE_INFO_KHR: {
             MarshalVkVideoEncodeH264NaluSliceInfoKHR::write(pBoxedInfo, memory, address, (VkVideoEncodeH264NaluSliceInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_KHR: {
+            MarshalVkPhysicalDeviceRobustness2PropertiesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRobustness2PropertiesKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_INITIALIZE_PERFORMANCE_API_INFO_INTEL: {
@@ -18463,12 +19882,12 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkExportFenceCreateInfo::write(pBoxedInfo, memory, address, (VkExportFenceCreateInfo*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD: {
-            MarshalVkPipelineCompilerControlCreateInfoAMD::write(pBoxedInfo, memory, address, (VkPipelineCompilerControlCreateInfoAMD*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT: {
             MarshalVkPhysicalDeviceDiscardRectanglePropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceDiscardRectanglePropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD: {
+            MarshalVkPipelineCompilerControlCreateInfoAMD::write(pBoxedInfo, memory, address, (VkPipelineCompilerControlCreateInfoAMD*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO: {
@@ -18479,12 +19898,24 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPipelineShaderStageCreateInfo::write(pBoxedInfo, memory, address, (VkPipelineShaderStageCreateInfo*)p);
             break;
         }
+        case VK_STRUCTURE_TYPE_VIDEO_REFERENCE_INTRA_REFRESH_INFO_KHR: {
+            MarshalVkVideoReferenceIntraRefreshInfoKHR::write(pBoxedInfo, memory, address, (VkVideoReferenceIntraRefreshInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_TILE_MEMORY_REQUIREMENTS_QCOM: {
+            MarshalVkTileMemoryRequirementsQCOM::write(pBoxedInfo, memory, address, (VkTileMemoryRequirementsQCOM*)p);
+            break;
+        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_DEGAMMA_FEATURES_QCOM: {
             MarshalVkPhysicalDeviceYcbcrDegammaFeaturesQCOM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceYcbcrDegammaFeaturesQCOM*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
             MarshalVkDeviceGroupBindSparseInfo::write(pBoxedInfo, memory, address, (VkDeviceGroupBindSparseInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_ID_2_KHR: {
+            MarshalVkPresentId2KHR::write(pBoxedInfo, memory, address, (VkPresentId2KHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR: {
@@ -18499,16 +19930,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceLineRasterizationProperties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceLineRasterizationProperties*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT: {
-            MarshalVkPhysicalDeviceOpacityMicromapPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceOpacityMicromapPropertiesEXT*)p);
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR: {
+            MarshalVkAccelerationStructureDeviceAddressInfoKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureDeviceAddressInfoKHR*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
             MarshalVkPhysicalDeviceMaintenance3Properties::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMaintenance3Properties*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR: {
-            MarshalVkAccelerationStructureDeviceAddressInfoKHR::write(pBoxedInfo, memory, address, (VkAccelerationStructureDeviceAddressInfoKHR*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceOpacityMicromapPropertiesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceOpacityMicromapPropertiesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PIPELINE_INDIRECT_DEVICE_ADDRESS_INFO_NV: {

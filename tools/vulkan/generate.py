@@ -2,6 +2,8 @@
 """Regenerate the Vulkan bridge in isolation; check by default, --write to update."""
 
 import argparse
+import hashlib
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -17,6 +19,13 @@ def main():
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[2]
+    provenance_path = repo / "lib/mesa/vkRegistry/provenance.json"
+    if provenance_path.exists():
+        provenance = json.loads(provenance_path.read_text())
+        for name, expected in provenance["files_sha256_lf"].items():
+            contents = (repo / name).read_bytes().replace(b"\r\n", b"\n")
+            if hashlib.sha256(contents).hexdigest() != expected:
+                parser.error(f"registry/header input differs from pinned {provenance['version']}: {name}")
     with tempfile.TemporaryDirectory(prefix="boxedwine-vulkan-") as temp:
         work = Path(temp)
         for name in ("classes", "tools/vulkan", "source/vulkan", "lib/mesa/vkRegistry"):

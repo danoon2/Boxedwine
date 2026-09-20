@@ -131,6 +131,10 @@ public class VkParserRules {
             }
             if (vkType.requires.equals("windows.h")) {
                 todoDelete.add(vkType);
+            } else if (vkType.requires.startsWith("vk_video/vulkan_video_codec_vp9")) {
+                // The external VP9 structures are not described in vk.xml.
+                // Do not emit marshaling until their layouts are implemented.
+                todoDelete.add(vkType);
             } else if (vkType.requires.equals("wayland-client.h")) {
                 todoDelete.add(vkType);
             } else if (vkType.requires.equals("nvscibuf.h")) {
@@ -2033,6 +2037,10 @@ public class VkParserRules {
         unsupportedExtensions.add("VK_LUNARG_direct_driver_loading"); // Implemented in the Vulkan loader
 
         // Device extensions
+        unsupportedExtensions.add("VK_KHR_video_decode_vp9"); // External codec layouts are not implemented.
+        unsupportedExtensions.add("VK_NV_cluster_acceleration_structure"); // Selector-dependent pointer union.
+        unsupportedExtensions.add("VK_ARM_tensors"); // Host addresses and opaque capture data.
+        unsupportedExtensions.add("VK_ARM_data_graph"); // Tensor bindings and host pointers.
         unsupportedExtensions.add("VK_AMD_display_native_hdr");
         unsupportedExtensions.add("VK_EXT_full_screen_exclusive");
         unsupportedExtensions.add("VK_GOOGLE_display_timing");

@@ -533,7 +533,7 @@ public class VkHostMarshalType {
                         }
                     }
                     if (memberName == null) {
-                        throw new Exception("oops");
+                        throw new Exception("Unhandled scalar union " + param.paramType.name + "." + param.name);
                     }
                     out.append("    s->");
                     out.append(param.name);

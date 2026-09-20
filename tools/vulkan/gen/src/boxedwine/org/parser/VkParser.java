@@ -146,8 +146,9 @@ public class VkParser {
                     return;
                 }
             }
+            attributes.remove("requiredlimittype"); // Registry validation metadata, not C layout.
             if (attributes.size() > 0) {
-                throw new Exception("VkParser.parseType some attributes were not parsed");
+                throw new Exception("Unparsed type attributes for " + t.name + ": " + attributes);
             }
             NodeList baseType = eElement.getElementsByTagName("type");
             if (baseType.getLength() > 0 && (t.getCategory() == null || !t.getCategory().equals("union"))) {
@@ -291,6 +292,9 @@ public class VkParser {
             if (feature.api == null) {
                 return;
             }
+            // 1.4.335 factors core declarations into internal BASE/COMPUTE/GRAPHICS
+            // features. They still contribute their requirements to Vulkan.
+            attributes.remove("apitype");
             if (attributes.size() > 0) {
                 throw new Exception("VkParser.parseExtension some attributes were not parsed");
             }
@@ -650,7 +654,7 @@ public class VkParser {
                 attributes.remove("validstructs");
             }
             if (attributes.size() > 0) {
-                throw new Exception("VkParser.parseParam some attributes were not parsed");
+                throw new Exception("Unparsed parameter attributes for " + param.name + ": " + attributes);
             }
             param.full = eElement.getTextContent().replaceAll("\\s{2,}", " ").trim();
             NodeList commentNode = eElement.getElementsByTagName("comment");
