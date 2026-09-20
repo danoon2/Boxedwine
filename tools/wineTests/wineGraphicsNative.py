@@ -18,6 +18,7 @@ import wineGraphicsBrowser as graphics
 
 WINE_COMMIT = "db11d0fe6a169c457e23d007e20404643d067aa8"
 GROUPS = {
+    "graphics-probe": ("probe",),
     "vulkan-1": ("vulkan",), "d3d8": ("device", "stateblock", "visual"),
     "d3d9": ("d3d9ex", "device", "stateblock", "visual"),
     "d3d10": ("device", "effect"), "d3d10_1": ("d3d10_1",),
@@ -145,6 +146,7 @@ def assess(output, group, renderer, process, reference=None):
 def boxedwine_command(args, root, executable, group, guest_env):
     command = [str(args.boxedwine.resolve()), "-root", str(root), "-zip", str(args.filesystem.resolve()),
                "-w", "/home/username"]
+    command += getattr(args, "boxedwine_arg", [])
     # Presentation tests require a real SDL surface: intentionally no -novideo.
     for key, value in guest_env.items():
         command += ["-env", f"{key}={value}"]
@@ -160,12 +162,15 @@ def parse_arguments(argv=None):
     parser.add_argument("--runtime", choices=("boxedwine", "wine"), required=True)
     parser.add_argument("--renderer", choices=("vulkan", "wined3d-gl", "wined3d-vulkan", "dxvk"), required=True)
     parser.add_argument("--boxedwine", type=Path)
+    parser.add_argument("--boxedwine-arg", action="append", default=[])
     parser.add_argument("--filesystem", type=Path)
     parser.add_argument("--wine-root", type=Path)
     parser.add_argument("--guest-vulkan", type=Path)
     parser.add_argument("--dxvk-dir", type=Path)
     parser.add_argument("--dxvk-option", action="append", default=[])
-    parser.add_argument("--tests-archive", type=Path, required=True)
+    binaries = parser.add_mutually_exclusive_group(required=True)
+    binaries.add_argument("--tests-archive", type=Path)
+    binaries.add_argument("--probe", type=Path)
     parser.add_argument("--suite", choices=tuple(GROUPS), required=True)
     parser.add_argument("--group", action="append")
     parser.add_argument("--output", type=Path, required=True)
@@ -175,6 +180,8 @@ def parse_arguments(argv=None):
     args = parser.parse_args(argv)
     if args.timeout < 1:
         parser.error("timeout must be positive")
+    if (args.suite == "graphics-probe") != (args.probe is not None):
+        parser.error("graphics-probe requires --probe; Wine suites require --tests-archive")
     if args.runtime == "boxedwine" and (args.boxedwine is None or args.filesystem is None):
         parser.error("BoxedWine requires --boxedwine and --filesystem")
     if args.runtime == "wine" and (os.name == "nt" or args.wine_root is None):
@@ -199,13 +206,22 @@ def main(argv=None):
                 "suite": args.suite, "inputs": {}, "results": {}, "complete": False}
     try:
         inputs = manifest["inputs"]
-        inputs["tests_archive_sha256"] = sha256(args.tests_archive)
+        if args.runtime == "boxedwine":
+            inputs["boxedwine_arguments"] = args.boxedwine_arg
+        if args.tests_archive:
+            inputs["tests_archive_sha256"] = sha256(args.tests_archive)
         for name in ("boxedwine", "filesystem", "guest_vulkan"):
             path = getattr(args, name)
             if path is not None:
                 inputs[name] = {"path": str(path.resolve()), "sha256": sha256(path)}
         executable = run_dir / f"{args.suite}_test.exe"
-        inputs["test_bundle"] = extract_test(args.tests_archive, args.suite, executable)
+        if args.probe:
+            image = args.probe.read_bytes()
+            graphics._validate_pe32_i386(image, str(args.probe))
+            executable.write_bytes(image)
+            inputs["test_bundle"] = {"source": "local graphics probe", "architecture": "i386"}
+        else:
+            inputs["test_bundle"] = extract_test(args.tests_archive, args.suite, executable)
         inputs["test_sha256"] = sha256(executable)
         if args.dxvk_dir:
             inputs["dxvk"] = {name: sha256(args.dxvk_dir / name) for name in DXVK_DLLS}

@@ -169,6 +169,8 @@ public class VkHost {
             out.append("    pCreateInfo = &hostCreateInfo;\n");
         }
         hostCall(fn, out);
+        if (fn.name.equals("vkDestroyCommandPool"))
+            out.append("    releaseVulkanCommandPool(pBoxedInfo, cpu->memory, commandPool);\n");
         // marshal data if needed from host system back to emulated 32-bit linux
         VkCopyData copyData = data.copyData.get(fn.name);
         for (VkParam param : fn.params) {
@@ -189,6 +191,7 @@ public class VkHost {
         StringBuilder out = new StringBuilder();
         out.append("#ifndef __VK_HOST__H__\n");
         out.append("#define __VK_HOST__H__\n");
+        out.append("#include <unordered_set>\n");
         out.append("#define VK_NO_PROTOTYPES\n");
         out.append("#include \"vk/vulkan.h\"\n");
         out.append("#include \"vk/vulkan_core.h\"\n");
@@ -236,6 +239,9 @@ public class VkHost {
         out.append("void unmapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory);\n");
         out.append("void cacheDescriptorTemplate(BoxedVulkanInfo* info, U64 handle, const VkDescriptorUpdateTemplateCreateInfo& source);\n");
         out.append("void cacheImageInfo(BoxedVulkanInfo* info, U64 handle, const VkImageCreateInfo& source);\n");
+        out.append("void registerVulkanCommandBuffer(BoxedVulkanInfo* info, VkCommandPool pool, U32 wrapper);\n");
+        out.append("void releaseVulkanCommandBuffer(BoxedVulkanInfo* info, KMemory* memory, VkCommandPool pool, U32 wrapper);\n");
+        out.append("void releaseVulkanCommandPool(BoxedVulkanInfo* info, KMemory* memory, VkCommandPool pool);\n");
         out.append("class BoxedVulkanInfo {\npublic:\n");
         out.append("    VkInstance instance = VK_NULL_HANDLE;\n");
         out.append("    VkDevice device = VK_NULL_HANDLE;\n");
@@ -244,6 +250,7 @@ public class VkHost {
         out.append("    BOXEDWINE_MUTEX memoryMutex;\n");
         out.append("    std::unordered_map<U64, VulkanMemoryAllocation> allocations;\n");
         out.append("    BOXEDWINE_MUTEX cacheMutex;\n");
+        out.append("    std::unordered_map<U64, std::unordered_set<U32>> commandBuffersByPool;\n");
         for (VkFunction fn : hostFunctions ) {
             if (data.manuallyHandledFunctions.contains(fn.name)) {
                 continue;

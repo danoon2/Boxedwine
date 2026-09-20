@@ -147,12 +147,45 @@ static void hasDeviceProcAddress(CPU* cpu) {
 }
 
 void freeVulkanPtr(KMemory* memory, U32 p) {
+    if (!p) return;
     KProcessPtr process = KThread::currentThread()->process;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->freeVulkanPtrMutex);
     void* address = getVulkanPtr(memory, p);
     process->vulkanPtrMap.remove(address);
     memory->writed(p, process->vulkanFreePtrAddress);
     process->vulkanFreePtrAddress = p;
+}
+
+void registerVulkanCommandBuffer(BoxedVulkanInfo* info, VkCommandPool pool, U32 wrapper) {
+    if (!wrapper) return;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->cacheMutex);
+    info->commandBuffersByPool[(U64)pool].insert(wrapper);
+}
+
+void releaseVulkanCommandBuffer(BoxedVulkanInfo* info, KMemory* memory, VkCommandPool pool, U32 wrapper) {
+    if (!wrapper) return;
+    bool removed = false;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->cacheMutex);
+        auto found = info->commandBuffersByPool.find((U64)pool);
+        if (found != info->commandBuffersByPool.end()) {
+            removed = found->second.erase(wrapper) != 0;
+            if (found->second.empty()) info->commandBuffersByPool.erase(found);
+        }
+    }
+    if (removed) freeVulkanPtr(memory, wrapper);
+}
+
+void releaseVulkanCommandPool(BoxedVulkanInfo* info, KMemory* memory, VkCommandPool pool) {
+    std::unordered_set<U32> wrappers;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->cacheMutex);
+        auto found = info->commandBuffersByPool.find((U64)pool);
+        if (found == info->commandBuffersByPool.end()) return;
+        wrappers.swap(found->second);
+        info->commandBuffersByPool.erase(found);
+    }
+    for (U32 wrapper : wrappers) freeVulkanPtr(memory, wrapper);
 }
 
 void* getVulkanPtr(KMemory* memory, U32 address) {

@@ -988,6 +988,20 @@ void VKAPI_PTR vkTestMultiDraw(VkCommandBuffer commandBuffer, U32 drawCount, con
         draws[1].firstVertex != 17 || draws[1].vertexCount != 6)
         testFail("Vulkan repacked multi-draw array must use the host stride");
 }
+bool vkTestAllocationFails;
+VkResult VKAPI_PTR vkTestAllocateCommands(VkDevice device, const VkCommandBufferAllocateInfo* allocate, VkCommandBuffer* commands) {
+    if (allocate->commandBufferCount != 2 || (U64)allocate->commandPool != 0x1234567800000001ULL)
+        testFail("Vulkan command allocation inputs");
+    for (U32 i = 0; i < 2; ++i) commands[i] = vkTestAllocationFails ? VK_NULL_HANDLE : (VkCommandBuffer)(uintptr_t)(0x1234a000 + i * 4096);
+    return vkTestAllocationFails ? VK_ERROR_OUT_OF_HOST_MEMORY : VK_SUCCESS;
+}
+void VKAPI_PTR vkTestFreeCommands(VkDevice device, VkCommandPool pool, U32 count, const VkCommandBuffer* commands) {
+    if ((U64)pool != 0x1234567800000001ULL || count != 2 || (U64)commands[0] != 0x1234a000 || commands[1] != VK_NULL_HANDLE)
+        testFail("Vulkan explicit command buffer free");
+}
+void VKAPI_PTR vkTestDestroyPool(VkDevice device, VkCommandPool pool, const VkAllocationCallbacks* allocator) {
+    if ((U64)pool != 0x1234567800000001ULL || allocator) testFail("Vulkan command pool destroy");
+}
 }
 #endif
 
@@ -1121,6 +1135,49 @@ void testVulkanDirectStackABI() {
     vkTestCalls = 0;
     vk_CmdDrawMultiEXT(cpu);
     if (vkTestCalls != 1) testFail("Vulkan multi-draw callback");
+
+    info.pvkAllocateCommandBuffers = vkTestAllocateCommands;
+    info.pvkFreeCommandBuffers = vkTestFreeCommands;
+    info.pvkDestroyCommandPool = vkTestDestroyPool;
+    U32 allocateAddress = TEST_HEAP_ADDRESS + 900, output = TEST_HEAP_ADDRESS + 944;
+    VkCommandPool pool = (VkCommandPool)0x1234567800000001ULL;
+    memory->writed(allocateAddress, VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO);
+    memory->writed(allocateAddress + 4, 0);
+    memory->writeq(allocateAddress + 8, (U64)pool);
+    memory->writed(allocateAddress + 16, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    memory->writed(allocateAddress + 20, 2);
+    auto setArgs = [&](std::initializer_list<U32> args) {
+        U32 i = 0;
+        for (U32 arg : args) memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + i++ * 4, arg);
+    };
+    for (U32 iteration = 0; iteration < 8; ++iteration) {
+        vkTestAllocationFails = iteration == 0;
+        memory->writed(output, 0xcdcdcdcd); memory->writed(output + 4, 0xcdcdcdcd);
+        memory->writed(output + 8, 0xdeadbeef);
+        setArgs({0, wrapper, allocateAddress, output});
+        vk_AllocateCommandBuffers(cpu);
+        if (vkTestAllocationFails) {
+            if (memory->readd(output) || memory->readd(output + 4) || !info.commandBuffersByPool.empty())
+                testFail("Vulkan failed allocation must clear outputs without creating wrappers");
+        } else {
+            U32 first = memory->readd(output), second = memory->readd(output + 4);
+            if (!first || !second || first == second || info.commandBuffersByPool[(U64)pool].size() != 2)
+                testFail("Vulkan successful allocation must register distinct wrappers");
+            memory->writed(output + 4, 0); // vkFreeCommandBuffers permits null entries.
+            setArgs({0, wrapper, 1, 0x12345678, 2, output});
+            vk_FreeCommandBuffers(cpu);
+            if (info.commandBuffersByPool[(U64)pool].size() != 1)
+                testFail("Vulkan explicit free must retire only the named wrapper");
+            setArgs({0, wrapper, 1, 0x12345678, 0});
+            vk_DestroyCommandPool(cpu);
+            if (!info.commandBuffersByPool.empty()) testFail("Vulkan pool destruction must retire remaining wrappers");
+            U32 found = 0;
+            if (cpu->thread->process->vulkanPtrMap.get((void*)0x1234a000, found) ||
+                cpu->thread->process->vulkanPtrMap.get((void*)0x1234b000, found))
+                testFail("Vulkan command buffer wrappers survived pool destruction");
+        }
+        if (memory->readd(output + 8) != 0xdeadbeef) testFail("Vulkan command output array overrun");
+    }
 #endif
 }
 

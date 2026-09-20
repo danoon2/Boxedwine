@@ -1188,14 +1188,18 @@ void vk_EnumeratePhysicalDevices(CPU* cpu) {
     uint32_t tmp_pPhysicalDeviceCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPhysicalDeviceCount = &tmp_pPhysicalDeviceCount;
     VkPhysicalDevice* pPhysicalDevices = NULL;
+    const U32 pPhysicalDevicesCapacity = *pPhysicalDeviceCount;
     if (ARG3) {
-        pPhysicalDevices = new VkPhysicalDevice[*pPhysicalDeviceCount]();
+        pPhysicalDevices = new VkPhysicalDevice[pPhysicalDevicesCapacity]();
     }
     EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices);
     cpu->memory->writed(ARG2, (U32)tmp_pPhysicalDeviceCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPhysicalDeviceCount;i++) {
-            cpu->memory->writed(ARG3 + i*4, createVulkanPtr(cpu->memory, pPhysicalDevices[i], pBoxedInfo));
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPhysicalDeviceCount), pPhysicalDevicesCapacity);i++) {
+            U32 wrapper = createVulkanPtr(cpu->memory, pPhysicalDevices[i], pBoxedInfo);
+            cpu->memory->writed(ARG3 + i*4, wrapper);
+        }
         }
         delete[] pPhysicalDevices;
     }
@@ -2370,6 +2374,7 @@ void vk_DestroyCommandPool(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyCommandPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyCommandPool(device, commandPool, pAllocator);
+    releaseVulkanCommandPool(pBoxedInfo, cpu->memory, commandPool);
 }
 // return type: VkResult(4 bytes)
 void vk_ResetCommandPool(CPU* cpu) {
@@ -2386,13 +2391,20 @@ void vk_AllocateCommandBuffers(CPU* cpu) {
     MarshalVkCommandBufferAllocateInfo local_pAllocateInfo(pBoxedInfo, cpu->memory, ARG2);
     VkCommandBufferAllocateInfo* pAllocateInfo = &local_pAllocateInfo.s;
     VkCommandBuffer* pCommandBuffers = NULL;
+    const U32 pCommandBuffersCapacity = pAllocateInfo->commandBufferCount;
     if (ARG3) {
-        pCommandBuffers = new VkCommandBuffer[pAllocateInfo->commandBufferCount]();
+        pCommandBuffers = new VkCommandBuffer[pCommandBuffersCapacity]();
     }
     EAX = (U32)pBoxedInfo->pvkAllocateCommandBuffers(device, pAllocateInfo, pCommandBuffers);
     if (ARG3) {
-        for (U32 i=0;i<pAllocateInfo->commandBufferCount;i++) {
-            cpu->memory->writed(ARG3 + i*4, createVulkanPtr(cpu->memory, pCommandBuffers[i], pBoxedInfo));
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(pAllocateInfo->commandBufferCount), pCommandBuffersCapacity);i++) {
+            U32 wrapper = createVulkanPtr(cpu->memory, pCommandBuffers[i], pBoxedInfo);
+            registerVulkanCommandBuffer(pBoxedInfo, pAllocateInfo->commandPool, wrapper);
+            cpu->memory->writed(ARG3 + i*4, wrapper);
+        }
+        } else {
+            for (U32 i=0;i<pCommandBuffersCapacity;++i) cpu->memory->writed(ARG3 + i*4, 0);
         }
         delete[] pCommandBuffers;
     }
@@ -2407,6 +2419,8 @@ void vk_FreeCommandBuffers(CPU* cpu) {
         pCommandBuffers[i] = (VkCommandBuffer)getVulkanPtr(cpu->memory, cpu->memory->readd(ARG5 + i*4));
     }
     pBoxedInfo->pvkFreeCommandBuffers(device, commandPool, commandBufferCount, pCommandBuffers);
+    for (U32 i=0;i<commandBufferCount;++i)
+        releaseVulkanCommandBuffer(pBoxedInfo, cpu->memory, commandPool, cpu->memory->readd(ARG5 + i*4));
     delete[] pCommandBuffers;
 }
 // return type: VkResult(4 bytes)

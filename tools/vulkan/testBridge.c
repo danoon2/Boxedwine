@@ -23,11 +23,14 @@
  X(CreateBuffer) X(DestroyBuffer) X(GetBufferMemoryRequirements) \
  X(AllocateMemory) X(FreeMemory) X(BindBufferMemory) X(MapMemory) X(UnmapMemory) \
  X(FlushMappedMemoryRanges) X(InvalidateMappedMemoryRanges) \
- X(CreateCommandPool) X(DestroyCommandPool) X(AllocateCommandBuffers) \
+ X(CreateCommandPool) X(DestroyCommandPool) X(AllocateCommandBuffers) X(FreeCommandBuffers) \
  X(BeginCommandBuffer) X(EndCommandBuffer) X(CmdCopyBuffer) X(CmdFillBuffer) \
  X(CmdPipelineBarrier) X(CreateSemaphore) X(DestroySemaphore) \
  X(GetSemaphoreCounterValue) X(WaitSemaphores) X(CreateFence) X(DestroyFence) \
- X(WaitForFences) X(QueueSubmit2) X(DeviceWaitIdle)
+ X(WaitForFences) X(QueueSubmit2) X(DeviceWaitIdle) X(ResetFences) \
+ X(CreateImage) X(DestroyImage) X(GetImageMemoryRequirements) X(BindImageMemory) \
+ X(CreateImageView) X(DestroyImageView) X(CmdBeginRendering) X(CmdEndRendering) \
+ X(CmdPipelineBarrier2) X(CmdCopyImageToBuffer2) X(ResetCommandBuffer)
 #define DECLARE(name) static PFN_vk##name p##name;
 COMMANDS(DECLARE)
 #undef DECLARE
@@ -86,6 +89,157 @@ static void make_buffer(struct DeviceTest* test, VkBuffer* buffer, VkDeviceMemor
     VK_CHECK(pBindBufferMemory(test->device, *buffer, *allocation, 0));
 }
 
+static void image_readback(struct DeviceTest* test, VkQueue queue, VkCommandPool pool,
+    VkBuffer readback, VkDeviceMemory readbackMemory, const void* mapped)
+{
+    VkDevice device = test->device;
+    VkImageCreateInfo create = {0};
+    create.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    create.imageType = VK_IMAGE_TYPE_2D;
+    create.format = VK_FORMAT_R8G8B8A8_UNORM;
+    create.extent.width = create.extent.height = 32;
+    create.extent.depth = create.mipLevels = create.arrayLayers = 1;
+    create.samples = VK_SAMPLE_COUNT_1_BIT;
+    create.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    VkImage image;
+    VK_CHECK(pCreateImage(device, &create, NULL, &image));
+    VkMemoryRequirements requirements;
+    pGetImageMemoryRequirements(device, image, &requirements);
+    uint32_t type = 0;
+    while (!(requirements.memoryTypeBits & (1u << type))) ++type;
+    VkMemoryAllocateInfo memory = {0};
+    memory.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memory.allocationSize = requirements.size;
+    memory.memoryTypeIndex = type;
+    VkDeviceMemory allocation;
+    VK_CHECK(pAllocateMemory(device, &memory, NULL, &allocation));
+    VK_CHECK(pBindImageMemory(device, image, allocation, 0));
+    VkImageViewCreateInfo viewInfo = {0};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = create.format;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.levelCount = viewInfo.subresourceRange.layerCount = 1;
+    VkImageView view;
+    VK_CHECK(pCreateImageView(device, &viewInfo, NULL, &view));
+    VkCommandBufferAllocateInfo allocate = {0};
+    allocate.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocate.commandPool = pool;
+    allocate.commandBufferCount = 2;
+    VkCommandBuffer commands[2];
+    VK_CHECK(pAllocateCommandBuffers(device, &allocate, commands));
+    VkFenceCreateInfo fenceInfo = {0};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    VkFence fence;
+    VK_CHECK(pCreateFence(device, &fenceInfo, NULL, &fence));
+    unsigned frame, i;
+    for (frame = 0; frame < 8; ++frame) {
+        VkCommandBufferBeginInfo begin = {0};
+        begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        VkImageMemoryBarrier2 barrier = {0};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        barrier.srcStageMask = frame ? VK_PIPELINE_STAGE_2_COPY_BIT : VK_PIPELINE_STAGE_2_NONE;
+        barrier.srcAccessMask = frame ? VK_ACCESS_2_TRANSFER_READ_BIT : 0;
+        barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.oldLayout = frame ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+        barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image;
+        barrier.subresourceRange = viewInfo.subresourceRange;
+        VkDependencyInfo dependency = {0};
+        dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependency.imageMemoryBarrierCount = 1;
+        dependency.pImageMemoryBarriers = &barrier;
+        VK_CHECK(pBeginCommandBuffer(commands[1], &begin));
+        pCmdPipelineBarrier2(commands[1], &dependency);
+        VkRenderingAttachmentInfo attachment = {0};
+        attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        attachment.imageView = view;
+        attachment.imageLayout = barrier.newLayout;
+        attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        uint32_t expected = 0xff000000;
+        for (i = 0; i < 3; ++i) {
+            attachment.clearValue.color.float32[i] = (float)((frame >> i) & 1);
+            if ((frame >> i) & 1) expected |= 0xffu << (i * 8);
+        }
+        attachment.clearValue.color.float32[3] = 1;
+        VkRenderingInfo rendering = {0};
+        rendering.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        rendering.renderArea.extent.width = rendering.renderArea.extent.height = 32;
+        rendering.layerCount = rendering.colorAttachmentCount = 1;
+        rendering.pColorAttachments = &attachment;
+        pCmdBeginRendering(commands[1], &rendering);
+        pCmdEndRendering(commands[1]);
+        barrier.srcStageMask = barrier.dstStageMask;
+        barrier.srcAccessMask = barrier.dstAccessMask;
+        barrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+        barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+        barrier.oldLayout = barrier.newLayout;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        pCmdPipelineBarrier2(commands[1], &dependency);
+        VK_CHECK(pEndCommandBuffer(commands[1]));
+        VK_CHECK(pBeginCommandBuffer(commands[0], &begin));
+        VkBufferImageCopy2 region = {0};
+        region.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2;
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.layerCount = 1;
+        region.imageExtent = create.extent;
+        VkCopyImageToBufferInfo2 copy = {0};
+        copy.sType = VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2;
+        copy.srcImage = image;
+        copy.srcImageLayout = barrier.newLayout;
+        copy.dstBuffer = readback;
+        copy.regionCount = 1;
+        copy.pRegions = &region;
+        pCmdCopyImageToBuffer2(commands[0], &copy);
+        VkMemoryBarrier2 visibility = {0};
+        visibility.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+        visibility.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+        visibility.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        visibility.dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT;
+        visibility.dstAccessMask = VK_ACCESS_2_HOST_READ_BIT;
+        dependency.imageMemoryBarrierCount = 0;
+        dependency.memoryBarrierCount = 1;
+        dependency.pMemoryBarriers = &visibility;
+        pCmdPipelineBarrier2(commands[0], &dependency);
+        VK_CHECK(pEndCommandBuffer(commands[0]));
+        VkCommandBufferSubmitInfo commandInfo[2] = {{0}, {0}};
+        for (i = 0; i < 2; ++i) {
+            commandInfo[i].sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+            commandInfo[i].commandBuffer = commands[1 - i];
+        }
+        VkSubmitInfo2 submit = {0};
+        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submit.commandBufferInfoCount = 2;
+        submit.pCommandBufferInfos = commandInfo;
+        VK_CHECK(pQueueSubmit2(queue, 1, &submit, fence));
+        ++test->submissions;
+        VK_CHECK(pWaitForFences(device, 1, &fence, VK_TRUE, 10000000000ULL));
+        VkMappedMemoryRange range = {0};
+        range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+        range.memory = readbackMemory;
+        range.size = VK_WHOLE_SIZE;
+        VK_CHECK(pInvalidateMappedMemoryRanges(device, 1, &range));
+        for (i = 0; i < 1024; ++i) {
+            if (((const uint32_t*)mapped)[i] != expected) {
+                fprintf(stderr, "IMAGE frame=%u pixel=%u got=%08x expected=%08x\n", frame, i, ((const uint32_t*)mapped)[i], expected);
+                CHECK(0);
+            }
+        }
+        test->readbackWords += 1024;
+        VK_CHECK(pResetFences(device, 1, &fence));
+        for (i = 0; i < 2; ++i) VK_CHECK(pResetCommandBuffer(commands[i], 0));
+    }
+    pDestroyFence(device, fence, NULL);
+    pDestroyImageView(device, view, NULL);
+    pDestroyImage(device, image, NULL);
+    pFreeMemory(device, allocation, NULL);
+    pFreeCommandBuffers(device, pool, 1, commands); /* Other buffers are freed with the pool. */
+}
+
 static void run_device(struct DeviceTest* test)
 {
     VkDevice device = test->device;
@@ -117,9 +271,24 @@ static void run_device(struct DeviceTest* test)
     VK_CHECK(pFlushMappedMemoryRanges(device, 1, &range));
     pUnmapMemory(device, srcMemory);
 
+    // Persistently map and touch readback memory before the GPU writes it.
+    // Mapping only after completion would miss stale guest/JIT memory views.
+    if (test->map2) {
+        VkMemoryMapInfo mapInfo = {0};
+        mapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO;
+        mapInfo.memory = dstMemory;
+        mapInfo.size = VK_WHOLE_SIZE;
+        VK_CHECK(map2(device, &mapInfo, &mapped));
+    } else VK_CHECK(pMapMemory(device, dstMemory, 0, VK_WHOLE_SIZE, 0, &mapped));
+    memset(mapped, 0, 4096);
+    range.memory = dstMemory;
+    VK_CHECK(pFlushMappedMemoryRanges(device, 1, &range));
+    CHECK(*(volatile uint32_t*)((char*)mapped + 128) == 0);
+
     VkCommandPoolCreateInfo poolInfo = {0};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.queueFamilyIndex = test->queueFamily;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     VkCommandPool pool;
     VK_CHECK(pCreateCommandPool(device, &poolInfo, NULL, &pool));
     VkCommandBufferAllocateInfo allocate = {0};
@@ -198,18 +367,12 @@ static void run_device(struct DeviceTest* test)
     VK_CHECK(pGetSemaphoreCounterValue(device, timeline, &counter));
     CHECK(counter == 8);
 
-    if (test->map2) {
-        VkMemoryMapInfo mapInfo = {0};
-        mapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO;
-        mapInfo.memory = dstMemory;
-        mapInfo.size = VK_WHOLE_SIZE;
-        VK_CHECK(map2(device, &mapInfo, &mapped));
-    } else VK_CHECK(pMapMemory(device, dstMemory, 0, VK_WHOLE_SIZE, 0, &mapped));
     range.memory = dstMemory;
     VK_CHECK(pInvalidateMappedMemoryRanges(device, 1, &range));
     CHECK(!memcmp((char*)mapped + 128, pattern, sizeof(pattern)));
     for (i = 0; i < 16; ++i) CHECK(((uint32_t*)((char*)mapped + 512))[i] == 0xfeedface);
     test->readbackWords += 80;
+    image_readback(test, queue, pool, dst, dstMemory, mapped);
     if (test->map2) {
         VkMemoryUnmapInfo unmapInfo = {0};
         unmapInfo.sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO;
@@ -220,7 +383,7 @@ static void run_device(struct DeviceTest* test)
     pDestroyFence(device, fence, NULL);
     pDestroySemaphore(device, timeline, NULL);
     pDestroySemaphore(device, binary, NULL);
-    pDestroyCommandPool(device, pool, NULL); /* Implicitly frees both command buffers. */
+    pDestroyCommandPool(device, pool, NULL); /* Implicitly frees remaining command buffers. */
     pDestroyBuffer(device, src, NULL);
     pDestroyBuffer(device, dst, NULL);
     pFreeMemory(device, srcMemory, NULL);
@@ -286,7 +449,7 @@ int main(int argc, char** argv)
         features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         features.pNext = &v12;
         pGetPhysicalDeviceFeatures2(physical, &features);
-        CHECK(v12.timelineSemaphore && v13.synchronization2);
+        CHECK(v12.timelineSemaphore && v13.synchronization2 && v13.dynamicRendering);
         pGetPhysicalDeviceQueueFamilyProperties(physical, &count, NULL);
         VkQueueFamilyProperties* families = calloc(count, sizeof(*families));
         CHECK(families != NULL);
@@ -302,7 +465,7 @@ int main(int argc, char** argv)
         queueInfo.queueFamilyIndex = family;
         queueInfo.queueCount = 1;
         queueInfo.pQueuePriorities = &priority;
-        /* Enable only the two queried features used by the probe. */
+        /* Enable only the queried features used by the probe. */
         memset(&v12, 0, sizeof(v12));
         memset(&v13, 0, sizeof(v13));
         v12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -310,6 +473,7 @@ int main(int argc, char** argv)
         v12.pNext = &v13;
         v13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
         v13.synchronization2 = VK_TRUE;
+        v13.dynamicRendering = VK_TRUE;
         VkDeviceCreateInfo deviceInfo = {0};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         deviceInfo.pNext = &v12;

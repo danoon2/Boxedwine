@@ -38,6 +38,10 @@ public class VkHostMarshalInHandleArray extends VkHostMarshal {
     }
 
     public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+        if (fn.name.equals("vkFreeCommandBuffers")) {
+            out.append("    for (U32 i=0;i<" + param.countString + ";++i)\n");
+            out.append("        releaseVulkanCommandBuffer(pBoxedInfo, cpu->memory, commandPool, cpu->memory->readd(" + param.paramArg + " + i*4));\n");
+        }
         out.append("    delete[] ");
         out.append(param.name);
         out.append(";\n");

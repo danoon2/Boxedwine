@@ -1,5 +1,6 @@
 #ifndef __VK_HOST__H__
 #define __VK_HOST__H__
+#include <unordered_set>
 #define VK_NO_PROTOTYPES
 #include "vk/vulkan.h"
 #include "vk/vulkan_core.h"
@@ -694,6 +695,9 @@ U32 mapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory, void* pData, VkDev
 void unmapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory);
 void cacheDescriptorTemplate(BoxedVulkanInfo* info, U64 handle, const VkDescriptorUpdateTemplateCreateInfo& source);
 void cacheImageInfo(BoxedVulkanInfo* info, U64 handle, const VkImageCreateInfo& source);
+void registerVulkanCommandBuffer(BoxedVulkanInfo* info, VkCommandPool pool, U32 wrapper);
+void releaseVulkanCommandBuffer(BoxedVulkanInfo* info, KMemory* memory, VkCommandPool pool, U32 wrapper);
+void releaseVulkanCommandPool(BoxedVulkanInfo* info, KMemory* memory, VkCommandPool pool);
 class BoxedVulkanInfo {
 public:
     VkInstance instance = VK_NULL_HANDLE;
@@ -703,6 +707,7 @@ public:
     BOXEDWINE_MUTEX memoryMutex;
     std::unordered_map<U64, VulkanMemoryAllocation> allocations;
     BOXEDWINE_MUTEX cacheMutex;
+    std::unordered_map<U64, std::unordered_set<U32>> commandBuffersByPool;
     PFN_vkDestroyInstance pvkDestroyInstance = nullptr;
     PFN_vkEnumeratePhysicalDevices pvkEnumeratePhysicalDevices = nullptr;
     PFN_vkGetPhysicalDeviceProperties pvkGetPhysicalDeviceProperties = nullptr;
