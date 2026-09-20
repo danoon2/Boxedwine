@@ -65,6 +65,11 @@ class NativeGraphicsTests(unittest.TestCase):
             self.assertLess(result['seconds'], 10)
             self.assertIn('started', log.read_text())
 
+    def test_host_validation_error_fails_a_passing_guest(self):
+        output = self.output + '\nVulkan validation ERROR: a driver-side problem\n'
+        self.assertFalse(self.assess(output)['passed'])
+        self.assertEqual(len(self.assess(output)['validation_errors']), 1)
+
 
 if __name__ == '__main__':
     unittest.main()

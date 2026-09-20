@@ -23,25 +23,24 @@
 #include "vk_host.h"
 #include "vkdef.h"
 #include "kvulkan.h"
+#include "vk_host_marshal.h"
 #include <SDL_vulkan.h>
+#include <unordered_set>
 
 static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = nullptr;
+void initVulkan();
 
-static U32 vulkanPtrCount;
-static U32 vulkanPtrHighMark;
-
-#ifdef _DEBUG
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
     void* pUserData) {
 
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+    klog_fmt("Vulkan validation %s: %s", (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) ? "ERROR" : "warning",
+        pCallbackData && pCallbackData->pMessage ? pCallbackData->pMessage : "(no message)");
 
     return VK_FALSE;
 }
-#endif
 
 U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info) {
     KProcessPtr process = KThread::currentThread()->process;
@@ -67,38 +66,24 @@ U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info) {
     memory->writeq(result, (U64)value);
 
     if (!info) {
-        info = new BoxedVulkanInfo();
+        auto owned = std::make_shared<BoxedVulkanInfo>();
+        info = owned.get();
+        process->vulkanInfo.set(value, owned);
         if (!pvkGetInstanceProcAddr) {
             pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
         }
 #undef VKFUNC
 #undef VKFUNC_INSTANCE
-#define VKFUNC_INSTANCE(f) info->pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr((VkInstance)value, "vk"#f); if (!info->pvk##f) {kwarn("Boxedwine: Failed to load vk"#f);} else {info->functionAddressByName[B("vk"#f)]=1;}
+#undef VKFUNC_DEVICE
+#define VKFUNC_INSTANCE(f) info->pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr((VkInstance)value, "vk"#f); if (info->pvk##f) {info->functionAddressByName[B("vk"#f)]=1;}
+#define VKFUNC_DEVICE(f) info->pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr((VkInstance)value, "vk"#f); if (info->pvk##f) {info->functionAddressByName[B("vk"#f)]=1;}
 #define VKFUNC(f)
 #include "vkfuncs.h" 
         info->instance = (VkInstance)value;
+        info->getDeviceProcAddr = (PFN_vkGetDeviceProcAddr)pvkGetInstanceProcAddr(info->instance, "vkGetDeviceProcAddr");
 
-#ifdef _DEBUG1
-        KNativeSystem::getScreen()->showWindow(true);
-        PFN_vkCreateDebugUtilsMessengerEXT debugFunc = (PFN_vkCreateDebugUtilsMessengerEXT)pvkGetInstanceProcAddr((VkInstance)value, "vkCreateDebugUtilsMessengerEXT");
-        VkDebugUtilsMessengerCreateInfoEXT createInfo;
-        memset(&createInfo, 0, sizeof(VkDebugUtilsMessengerCreateInfoEXT));
-        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-        createInfo.pfnUserCallback = debugCallback;
-        createInfo.pUserData = nullptr;
-
-        if (debugFunc) {
-            debugFunc(info->instance, &createInfo, nullptr, &info->debugMessenger);
-        } else {
-            klog("Vulkan debug function not found");
-        }
-#endif
     }
     memory->writeq(result + 8, (U64)info);
-    vulkanPtrCount++;
-    vulkanPtrHighMark = std::max(vulkanPtrHighMark, vulkanPtrCount);
     process->vulkanPtrMap.set(value, result);
     return result;
 }
@@ -107,23 +92,58 @@ BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address) {
     return (BoxedVulkanInfo*)memory->readq(address+8);
 }
 
-static void hasProcAddress(CPU* cpu) {
+BoxedVulkanInfo* createVulkanDeviceInfo(VkDevice device, BoxedVulkanInfo* instanceInfo) {
+    auto owned = std::make_shared<BoxedVulkanInfo>();
+    BoxedVulkanInfo* info = owned.get();
+    info->instance = instanceInfo->instance;
+    info->device = device;
+    info->getDeviceProcAddr = instanceInfo->getDeviceProcAddr;
+#undef VKFUNC
+#undef VKFUNC_INSTANCE
+#undef VKFUNC_DEVICE
+#define VKFUNC(f)
+#define VKFUNC_INSTANCE(f) info->pvk##f = instanceInfo->pvk##f;
+#define VKFUNC_DEVICE(f) info->pvk##f = (PFN_vk##f)info->getDeviceProcAddr(device, "vk"#f); if (info->pvk##f) info->functionAddressByName[B("vk"#f)]=1;
+#include "vkfuncs.h"
+    auto process = KThread::currentThread()->process;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->freeVulkanPtrMutex);
+    process->vulkanInfo.set(device, owned);
+    return info;
+}
+
+static bool bridgeCommandSupported(const BString& name) {
+#define VK_INSTANCE_EXTENSION(name, revision, dependencies)
+#define VK_DEVICE_EXTENSION(name, revision, dependencies)
+#define VK_UNSUPPORTED_COMMAND(command) if (name == command) return false;
+#include "vkextensions.h"
+#undef VK_UNSUPPORTED_COMMAND
+#undef VK_INSTANCE_EXTENSION
+#undef VK_DEVICE_EXTENSION
+    return true;
+}
+
+static void hasInstanceProcAddress(CPU* cpu) {
+    initVulkan();
     U32 handle = cpu->peek32(1);
+    BString name = cpu->memory->readString(cpu->peek32(2));
+    EAX = 0;
+    if (!bridgeCommandSupported(name)) return;
     if (!handle) {
-        EAX = 1;
+        EAX = pvkGetInstanceProcAddr(VK_NULL_HANDLE, name.c_str()) != nullptr;
     } else {
         BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, handle);
-        BString name = cpu->memory->readString(cpu->peek32(2));
-
-        if (name == "vkMapMemory2KHR" || name == "vkUnmapMemory2KHR") {
-            EAX = 0;
-        } else if (pBoxedInfo->functionAddressByName.count(name) || name == "vkGetDeviceProcAddr" || name == "vkCreateXlibSurfaceKHR") {
-            EAX = 1;
-        }
-        else {
-            EAX = 0;
-        }
+        if (name == "vkCreateXlibSurfaceKHR") EAX = pBoxedInfo->xlibSurfaceEnabled;
+        else EAX = pvkGetInstanceProcAddr(pBoxedInfo->instance, name.c_str()) != nullptr;
     }
+}
+
+static void hasDeviceProcAddress(CPU* cpu) {
+    U32 handle = cpu->peek32(1);
+    EAX = 0;
+    if (!handle) return;
+    BoxedVulkanInfo* info = getInfoFromHandle(cpu->memory, handle);
+    BString name = cpu->memory->readString(cpu->peek32(2));
+    if (bridgeCommandSupported(name)) EAX = info->getDeviceProcAddr(info->device, name.c_str()) != nullptr;
 }
 
 void freeVulkanPtr(KMemory* memory, U32 p) {
@@ -133,7 +153,6 @@ void freeVulkanPtr(KMemory* memory, U32 p) {
     process->vulkanPtrMap.remove(address);
     memory->writed(p, process->vulkanFreePtrAddress);
     process->vulkanFreePtrAddress = p;
-    vulkanPtrCount--;
 }
 
 void* getVulkanPtr(KMemory* memory, U32 address) {
@@ -153,76 +172,91 @@ U64 translateVulkanObjectHandle(KMemory* memory, VkObjectType type, U64 handle) 
     }
 }
 
-class VMemory {
-public:
-    VkDeviceMemory memory;
-    VkDeviceSize size;
-    VkDeviceSize mappedLen;
-    U32 mappedAddress;
-};
-
-std::unordered_map<VkDeviceMemory, std::shared_ptr<VMemory>> vmemory;
-BOXEDWINE_MUTEX vmemoryMutex;
-
-std::shared_ptr<VMemory> getVMemory(VkDeviceMemory memory) {
-    if (vmemory.count(memory))
-        return vmemory[memory];
-    return NULL;
+void registerVkMemoryAllocation(BoxedVulkanInfo* info, VkDeviceMemory memory, VkDeviceSize size) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->memoryMutex);
+    info->allocations[(U64)memory] = {size, 0, 0};
 }
 
-void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
-    std::shared_ptr<VMemory> m = std::make_shared<VMemory>();
-    m->memory = memory;
-    m->size = size;
-    m->mappedLen = 0;
-    m->mappedAddress = 0;
-    vmemory[memory] = m;
+void unregisterVkMemoryAllocation(BoxedVulkanInfo* info, VkDeviceMemory memory) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->memoryMutex);
+    auto found = info->allocations.find((U64)memory);
+    if (found == info->allocations.end()) return;
+    if (found->second.mappedAddress)
+        KThread::currentThread()->memory->unmapNativeMemory(found->second.mappedAddress, found->second.mappedLen);
+    info->allocations.erase(found);
 }
 
-void unregisterVkMemoryAllocation(VkDeviceMemory memory) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
-    std::shared_ptr<VMemory> m = getVMemory(memory);
-    if (m) {
-        vmemory.erase(memory);
+U32 mapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->memoryMutex);
+    auto found = info->allocations.find((U64)memory);
+    if (found == info->allocations.end() || !pData) return 0;
+    auto& allocation = found->second;
+    if (allocation.mappedAddress || offset >= allocation.size) return 0;
+    if (len == VK_WHOLE_SIZE) len = allocation.size - offset;
+    // Leave room for page alignment and the two native-memory guard pages.
+    // A valid host mapping can still fail in the guest's 32-bit address space.
+    if (!len || len > allocation.size - offset || len > 0xffffffffULL - 3 * K_PAGE_SIZE) return 0;
+    U32 address = KThread::currentThread()->memory->mapNativeMemory(pData, (U32)len);
+    if (address) {
+        allocation.mappedAddress = address;
+        allocation.mappedLen = (U32)len;
     }
+    return address;
 }
 
-U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
-    std::shared_ptr<VMemory> m = getVMemory(memory);
-    if (!m) {
-        kpanic("Wasn't expecting mapVkMemory before registerVkMemoryAllocation");
-    }
-    if (m->mappedAddress) {
-        kpanic("Wasn't expecting mapVkMemory to be called twice on the same memory");
-    }
-    if (offset > m->size) {
-        kpanic("mapVkMemory offset exceeds allocation size");
-    }
-    if (len == VK_WHOLE_SIZE) {
-        len = m->size - offset;
-    }
-    if (len > m->size - offset) {
-        kpanic("mapVkMemory range exceeds allocation size");
-    }
-    m->mappedLen = len;
-    m->mappedAddress = KThread::currentThread()->memory->mapNativeMemory(pData, (U32)len);
-    return m->mappedAddress;
+void unmapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->memoryMutex);
+    auto found = info->allocations.find((U64)memory);
+    if (found == info->allocations.end() || !found->second.mappedAddress) return;
+    auto& allocation = found->second;
+    KThread::currentThread()->memory->unmapNativeMemory(allocation.mappedAddress, allocation.mappedLen);
+    allocation.mappedAddress = allocation.mappedLen = 0;
 }
 
-void unmapVkMemory(VkDeviceMemory memory) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
-    std::shared_ptr<VMemory> m = getVMemory(memory);
-    if (!m) {
-        kpanic("Wasn't expecting mapVkMemory before registerVkMemoryAllocation");
+// Guest process exit implicitly destroys its native devices and instances.
+// Guest pages are discarded by exec/exit; no guest pointers are needed here.
+void cleanupVulkanProcess(KProcess* process) {
+    for (const auto& entry : process->vulkanInfo) {
+        auto& info = entry.value;
+        if (info->device) {
+            info->pvkDeviceWaitIdle(info->device);
+            info->pvkDestroyDevice(info->device, nullptr);
+        }
     }
-    if (!m->mappedAddress) {
-        klog("unmapVkMemory called, but no record of being mapped");
+    for (const auto& entry : process->vulkanInfo) {
+        auto& info = entry.value;
+        if (!info->device) {
+            if (info->debugMessenger) info->pvkDestroyDebugUtilsMessengerEXT(info->instance, info->debugMessenger, nullptr);
+            info->pvkDestroyInstance(info->instance, nullptr);
+        }
     }
-    KThread::currentThread()->memory->unmapNativeMemory(m->mappedAddress, (U32)m->mappedLen);
-    m->mappedAddress = 0;
-    m->mappedLen = 0;
+    process->vulkanInfo.clear();
+    process->vulkanPtrMap.clear();
+    process->vulkanFreePtrAddress = 0;
+}
+
+static void releaseVulkanInfo(KMemory* memory, BoxedVulkanInfo* info) {
+    auto process = KThread::currentThread()->process;
+    std::vector<U32> wrappers;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->freeVulkanPtrMutex);
+        for (const auto& entry : process->vulkanPtrMap)
+            if (getInfoFromHandle(memory, entry.value) == info) wrappers.push_back(entry.value);
+    }
+    for (U32 wrapper : wrappers) freeVulkanPtr(memory, wrapper);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->freeVulkanPtrMutex);
+    process->vulkanInfo.remove(info->device ? (void*)info->device : (void*)info->instance);
+}
+
+static void vk_DestroyDevice2(CPU* cpu) {
+    U32 handle = cpu->peek32(1);
+    if (!handle) return;
+    BoxedVulkanInfo* info = getInfoFromHandle(cpu->memory, handle);
+    for (const auto& allocation : info->allocations)
+        if (allocation.second.mappedAddress)
+            cpu->memory->unmapNativeMemory(allocation.second.mappedAddress, allocation.second.mappedLen);
+    info->pvkDestroyDevice(info->device, nullptr);
+    releaseVulkanInfo(cpu->memory, info);
 }
 
 #define ARG1 cpu->peek32(1)
@@ -234,10 +268,11 @@ struct BridgeExtension {
     const char* name;
     U32 revision;
     bool instance;
+    const char* dependencies;
 };
 static const BridgeExtension bridgeExtensions[] = {
-#define VK_INSTANCE_EXTENSION(name, revision) {name, revision, true},
-#define VK_DEVICE_EXTENSION(name, revision) {name, revision, false},
+#define VK_INSTANCE_EXTENSION(name, revision, dependencies) {name, revision, true, dependencies},
+#define VK_DEVICE_EXTENSION(name, revision, dependencies) {name, revision, false, dependencies},
 #include "vkextensions.h"
 #undef VK_INSTANCE_EXTENSION
 #undef VK_DEVICE_EXTENSION
@@ -272,7 +307,45 @@ static VkResult collectHostExtensions(Enumerate enumerate, std::vector<VkExtensi
     return VK_ERROR_INITIALIZATION_FAILED;
 }
 
-static void filterExtensions(std::vector<VkExtensionProperties>& properties, bool instance) {
+class ExtensionDependencies {
+public:
+    ExtensionDependencies(const char* expression, U32 version, const std::unordered_set<std::string>& names)
+        : cursor(expression), version(version), names(names) {}
+    bool satisfied() { bool result = !*cursor || alternatives(); return result && !*cursor; }
+private:
+    bool alternatives() {
+        bool result = conjunction();
+        while (*cursor == ',') { ++cursor; bool other = conjunction(); result = result || other; }
+        return result;
+    }
+    bool conjunction() {
+        bool result = term();
+        while (*cursor == '+') { ++cursor; bool other = term(); result = result && other; }
+        return result;
+    }
+    bool term() {
+        if (*cursor == '(') {
+            ++cursor;
+            bool result = alternatives();
+            if (*cursor != ')') return false;
+            ++cursor;
+            return result;
+        }
+        const char* start = cursor;
+        while ((*cursor >= 'A' && *cursor <= 'Z') || (*cursor >= 'a' && *cursor <= 'z') ||
+            (*cursor >= '0' && *cursor <= '9') || *cursor == '_') ++cursor;
+        std::string name(start, cursor);
+        unsigned major, minor;
+        if (sscanf(name.c_str(), "VK_VERSION_%u_%u", &major, &minor) == 2)
+            return version >= VK_MAKE_API_VERSION(0, major, minor, 0);
+        return names.count(name) != 0;
+    }
+    const char* cursor;
+    U32 version;
+    const std::unordered_set<std::string>& names;
+};
+
+static void filterExtensions(std::vector<VkExtensionProperties>& properties, bool instance, U32 apiVersion) {
     auto destination = properties.begin();
     for (auto extension : properties) {
         U32 revision = bridgeExtensionRevision(extension.extensionName, instance);
@@ -281,6 +354,32 @@ static void filterExtensions(std::vector<VkExtensionProperties>& properties, boo
         *destination++ = extension;
     }
     properties.erase(destination, properties.end());
+    std::vector<VkExtensionProperties> parentProperties;
+    if (!instance) {
+        if (collectHostExtensions([](U32* count, VkExtensionProperties* values) {
+            return pvkEnumerateInstanceExtensionProperties(nullptr, count, values);
+        }, parentProperties) == VK_SUCCESS) {
+            filterExtensions(parentProperties, true, apiVersion);
+        }
+    }
+    // Removing one bridge-unsupported extension can invalidate another. Iterate
+    // to a fixed point; registry dependency expressions use ',' for OR and '+'
+    // for AND, with parentheses and core-version alternatives.
+    bool changed;
+    do {
+        std::unordered_set<std::string> available;
+        for (const auto& property : properties) available.insert(property.extensionName);
+        for (const auto& property : parentProperties) available.insert(property.extensionName);
+        auto end = std::remove_if(properties.begin(), properties.end(), [&](const auto& property) {
+            for (const auto& extension : bridgeExtensions) {
+                if (instance == extension.instance && !strcmp(property.extensionName, extension.name))
+                    return !ExtensionDependencies(extension.dependencies, apiVersion, available).satisfied();
+            }
+            return true;
+        });
+        changed = end != properties.end();
+        properties.erase(end, properties.end());
+    } while (changed);
 }
 
 static void writeExtensions(CPU* cpu, const std::vector<VkExtensionProperties>& properties, U32 countAddress, U32 dataAddress) {
@@ -335,9 +434,6 @@ static void BOXED_vkCreateXlibSurfaceKHR(CPU* cpu) {
     }
 }
 
-#include "vk_host_marshal.h"
-
-void initVulkan();
 void vk_CreateInstance(CPU* cpu) {
     initVulkan();
     if (!validateGuestExtensions(cpu->memory, cpu->memory->readd(ARG1 + 24),
@@ -348,6 +444,22 @@ void vk_CreateInstance(CPU* cpu) {
     MarshalVkInstanceCreateInfo local_pCreateInfo(nullptr, cpu->memory, ARG1);
     VkInstanceCreateInfo createInfo = local_pCreateInfo.s;
     std::vector<const char*> names;
+    const bool validation = std::getenv("BOXEDWINE_VULKAN_VALIDATION") != nullptr;
+    VkDebugUtilsMessengerCreateInfoEXT debugInfo{};
+    debugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    debugInfo.pfnUserCallback = debugCallback;
+    std::vector<const char*> layers;
+    if (validation) {
+        for (U32 i = 0; i < createInfo.enabledLayerCount; ++i) layers.push_back(createInfo.ppEnabledLayerNames[i]);
+        layers.push_back("VK_LAYER_KHRONOS_validation");
+        createInfo.enabledLayerCount = (U32)layers.size();
+        createInfo.ppEnabledLayerNames = layers.data();
+        names.push_back("VK_EXT_debug_utils");
+        debugInfo.pNext = createInfo.pNext;
+        createInfo.pNext = &debugInfo;
+    }
     for (U32 i = 0; i < createInfo.enabledExtensionCount; ++i) {
         const char* name = createInfo.ppEnabledExtensionNames[i];
         if (!strcmp(name, "VK_KHR_xlib_surface")) {
@@ -364,7 +476,20 @@ void vk_CreateInstance(CPU* cpu) {
     createInfo.ppEnabledExtensionNames = names.data();
     VkInstance instance = VK_NULL_HANDLE;
     EAX = pvkCreateInstance(&createInfo, nullptr, &instance);
-    if (EAX == VK_SUCCESS) cpu->memory->writed(ARG3, createVulkanPtr(cpu->memory, instance, nullptr));
+    if (EAX == VK_SUCCESS) {
+        U32 handle = createVulkanPtr(cpu->memory, instance, nullptr);
+        cpu->memory->writed(ARG3, handle);
+        BoxedVulkanInfo* info = getInfoFromHandle(cpu->memory, handle);
+        if (validation) {
+            debugInfo.pNext = nullptr;
+            VkResult debugResult = info->pvkCreateDebugUtilsMessengerEXT(instance, &debugInfo, nullptr, &info->debugMessenger);
+            if (debugResult != VK_SUCCESS) klog_fmt("Vulkan validation ERROR: cannot install messenger (%d)", debugResult);
+            else klog("Vulkan host validation enabled");
+        }
+        for (U32 i = 0; i < local_pCreateInfo.s.enabledExtensionCount; ++i)
+            if (!strcmp(local_pCreateInfo.s.ppEnabledExtensionNames[i], "VK_KHR_xlib_surface"))
+                getInfoFromHandle(cpu->memory, handle)->xlibSurfaceEnabled = true;
+    }
 }
 
 void vk_DestroyInstance2(CPU* cpu) {
@@ -376,18 +501,11 @@ void vk_DestroyInstance2(CPU* cpu) {
     static bool shown; if (!shown && ARG2) { klog("vkDestroyInstance:VkAllocationCallbacks not implemented"); shown = true; }
     VkAllocationCallbacks* pAllocator = NULL;
 
-#ifdef _DEBUG
-    PFN_vkDestroyDebugUtilsMessengerEXT debugFunc = (PFN_vkDestroyDebugUtilsMessengerEXT)pvkGetInstanceProcAddr(pBoxedInfo->instance, "vkDestroyDebugUtilsMessengerEXT");
-
-    if (debugFunc) {
-        debugFunc(pBoxedInfo->instance, pBoxedInfo->debugMessenger, nullptr);
-    } else {
-        klog("Vulkan debug function not found");
-    }
-#endif
+    if (pBoxedInfo->debugMessenger)
+        pBoxedInfo->pvkDestroyDebugUtilsMessengerEXT(instance, pBoxedInfo->debugMessenger, nullptr);
 
     pBoxedInfo->pvkDestroyInstance(instance, pAllocator);
-    freeVulkanPtr(cpu->memory, ARG1);
+    releaseVulkanInfo(cpu->memory, pBoxedInfo);
 }
 
 void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
@@ -405,7 +523,9 @@ void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
         for (const auto& extension : properties) if (!strcmp(extension.extensionName, name)) found = true;
         if (!found) surfaceSupported = false;
     }
-    filterExtensions(properties, true);
+    U32 apiVersion = VK_API_VERSION_1_0;
+    if (pvkEnumerateInstanceVersion) pvkEnumerateInstanceVersion(&apiVersion);
+    filterExtensions(properties, true, std::min(apiVersion, (U32)VK_HEADER_VERSION_COMPLETE));
     // The guest always uses Xlib; SDL selects Win32, Xlib or Wayland on the host.
     properties.erase(std::remove_if(properties.begin(), properties.end(), [](const auto& extension) {
         return !strcmp(extension.extensionName, "VK_KHR_xlib_surface");
@@ -423,7 +543,9 @@ static void vk_EnumerateDeviceExtensionProperties2(CPU* cpu) {
         return info->pvkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, count, values);
     }, properties);
     if (EAX != VK_SUCCESS) return;
-    filterExtensions(properties, false);
+    VkPhysicalDeviceProperties deviceProperties{};
+    info->pvkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+    filterExtensions(properties, false, std::min(deviceProperties.apiVersion, (U32)VK_HEADER_VERSION_COMPLETE));
     writeExtensions(cpu, properties, ARG3, ARG4);
 }
 
@@ -436,13 +558,20 @@ static void vk_CreateDevice2(CPU* cpu) {
     vk_CreateDevice(cpu);
 }
 
+static void vk_EnumerateInstanceVersion2(CPU* cpu) {
+    initVulkan();
+    U32 version = VK_API_VERSION_1_0;
+    EAX = pvkEnumerateInstanceVersion ? pvkEnumerateInstanceVersion(&version) : VK_SUCCESS;
+    if (EAX == VK_SUCCESS) cpu->memory->writed(ARG1, std::min(version, (U32)VK_HEADER_VERSION_COMPLETE));
+}
+
 VkBool32 VKAPI_PTR boxed_vkDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData) {
     if (pMessage) {
         klog(pMessage);
     } else {
         klog_fmt("vkDebugReportCallbackEXT %d", messageCode);
     }
-    return VK_TRUE;
+    return VK_FALSE;
 }
 
 VkBool32 VKAPI_PTR boxed_vkDebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -451,7 +580,30 @@ VkBool32 VKAPI_PTR boxed_vkDebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSev
     } else {
         klog("vkDebugUtilsMessengerCallbackEXT");
     }
-    return VK_TRUE;
+    return VK_FALSE;
+}
+
+void cacheDescriptorTemplate(BoxedVulkanInfo* info, U64 handle, const VkDescriptorUpdateTemplateCreateInfo& source) {
+    auto owned = std::make_shared<MarshalVkDescriptorUpdateTemplateCreateInfo>();
+    owned->s = source;
+    // Only template entries are used later; do not retain guest memory locks or
+    // callback/pNext data past the synchronous creation call.
+    owned->s.pNext = nullptr;
+    auto entries = new VkDescriptorUpdateTemplateEntry[source.descriptorUpdateEntryCount];
+    std::copy_n(source.pDescriptorUpdateEntries, source.descriptorUpdateEntryCount, entries);
+    owned->s.pDescriptorUpdateEntries = entries;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->cacheMutex);
+    info->descriptorUpdateTemplateCreateInfo[handle] = owned;
+}
+
+void cacheImageInfo(BoxedVulkanInfo* info, U64 handle, const VkImageCreateInfo& source) {
+    auto owned = std::make_shared<MarshalVkImageCreateInfo>();
+    owned->s = source;
+    owned->s.pNext = nullptr;
+    owned->s.pQueueFamilyIndices = nullptr;
+    owned->s.queueFamilyIndexCount = 0;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->cacheMutex);
+    info->imageCreateInfo[handle] = owned;
 }
 
 static size_t descriptorElementSize(VkDescriptorType type) {
@@ -492,7 +644,11 @@ bool prepareDescriptorTemplate(VkDescriptorUpdateTemplateCreateInfo& info, std::
 
 const void* marshalDescriptorTemplateData(BoxedVulkanInfo* info, KMemory* memory,
     VkDescriptorUpdateTemplate descriptorTemplate, U32 address, std::vector<U8>& storage) {
-    auto original = info->descriptorUpdateTemplateCreateInfo.at((U64)descriptorTemplate);
+    std::shared_ptr<MarshalVkDescriptorUpdateTemplateCreateInfo> original;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->cacheMutex);
+        original = info->descriptorUpdateTemplateCreateInfo.at((U64)descriptorTemplate);
+    }
     VkDescriptorUpdateTemplateCreateInfo packed = original->s;
     std::vector<VkDescriptorUpdateTemplateEntry> entries;
     if (!prepareDescriptorTemplate(packed, entries)) kpanic("Unsupported descriptor template layout");
@@ -562,6 +718,8 @@ void initVulkan() {
         pvkEnumerateInstanceExtensionProperties = (PFN_vkEnumerateInstanceExtensionProperties)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties");
 #undef VKFUNC_INSTANCE
 #define VKFUNC_INSTANCE(f)
+#undef VKFUNC_DEVICE
+#define VKFUNC_DEVICE(f)
 #undef VKFUNC
 #define VKFUNC(f) pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vk"#f); if (!pvk##f) {kwarn("Boxedwine: Failed to load vk"#f);}
 #include "../vulkan/vkfuncs.h"
@@ -578,18 +736,22 @@ void vulkan_init() {
 
 #undef VKFUNC
 #undef VKFUNC_INSTANCE
+#undef VKFUNC_DEVICE
 #define VKFUNC(name) int9ACallback[name] = vk_##name;
 #define VKFUNC_INSTANCE(name) int9ACallback[name] = vk_##name;
+#define VKFUNC_DEVICE(name) int9ACallback[name] = vk_##name;
 #include "vkfuncs.h"      
 
     int9ACallback[CreateXlibSurfaceKHR] = BOXED_vkCreateXlibSurfaceKHR;
-    int9ACallback[GetDeviceProcAddr] = hasProcAddress;
-    int9ACallback[GetInstanceProcAddr] = hasProcAddress;
+    int9ACallback[GetDeviceProcAddr] = hasDeviceProcAddress;
+    int9ACallback[GetInstanceProcAddr] = hasInstanceProcAddress;
     int9ACallback[CreateInstance] = vk_CreateInstance;
     int9ACallback[DestroyInstance] = vk_DestroyInstance2;
     int9ACallback[EnumerateInstanceExtensionProperties] = vk_EnumerateInstanceExtensionProperties;
     int9ACallback[EnumerateDeviceExtensionProperties] = vk_EnumerateDeviceExtensionProperties2;
     int9ACallback[CreateDevice] = vk_CreateDevice2;
+    int9ACallback[DestroyDevice] = vk_DestroyDevice2;
+    int9ACallback[EnumerateInstanceVersion] = vk_EnumerateInstanceVersion2;
 }
 
 #endif
@@ -598,7 +760,7 @@ void callVulkan(CPU* cpu, U32 index) {
 #ifdef BOXEDWINE_VULKAN
     if (index < int9ACallbackSize) {
         if (int9ACallback[index]) {
-            const bool trace = std::getenv("BOXEDWINE_VULKAN_TRACE") != nullptr;
+            static const bool trace = std::getenv("BOXEDWINE_VULKAN_TRACE") != nullptr;
             if (trace) klog_fmt("Vulkan call %u args %08x %08x %08x %08x", index,
                 cpu->peek32(1), cpu->peek32(2), cpu->peek32(3), cpu->peek32(4));
             int9ACallback[index](cpu);

@@ -92,7 +92,7 @@ public class VkHostMarshalInStructureArray  extends VkHostMarshal {
                 if (param.stride != null) {
                     out.append("        ");
                     out.append(param.stride);
-                    out.append(" = 4;\n");
+                    out.append(" = sizeof(" + param.paramType.name + ");\n");
                 }
             }
         }

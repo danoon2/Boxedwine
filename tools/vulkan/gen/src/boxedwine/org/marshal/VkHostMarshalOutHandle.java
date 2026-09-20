@@ -17,6 +17,7 @@ public class VkHostMarshalOutHandle extends VkHostMarshal {
 
     public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         if (fn.returnType.name.equals("VkResult")) out.append("    if (EAX == VK_SUCCESS) {\n");
+        if (fn.name.equals("vkCreateDevice")) out.append("    pBoxedInfo = createVulkanDeviceInfo(pDevice, pBoxedInfo);\n");
         out.append("    cpu->memory->writed(");
         out.append(param.paramArg);
         out.append(", createVulkanPtr(cpu->memory, ");

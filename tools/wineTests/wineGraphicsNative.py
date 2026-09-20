@@ -124,7 +124,7 @@ def assess(output, group, renderer, process, reference=None):
     if not evidence["verified"]:
         reasons.append("requested rendering backend was not observed")
     validation_errors = tuple(line.strip() for line in output.splitlines()
-                              if "Validation Error" in line or "VUID-" in line)
+                              if "Validation Error" in line or "Vulkan validation ERROR" in line)
     if validation_errors:
         reasons.append("Vulkan validation reported errors")
     infrastructure_ok = not reasons
@@ -164,6 +164,7 @@ def parse_arguments(argv=None):
     parser.add_argument("--wine-root", type=Path)
     parser.add_argument("--guest-vulkan", type=Path)
     parser.add_argument("--dxvk-dir", type=Path)
+    parser.add_argument("--dxvk-option", action="append", default=[])
     parser.add_argument("--tests-archive", type=Path, required=True)
     parser.add_argument("--suite", choices=tuple(GROUPS), required=True)
     parser.add_argument("--group", action="append")
@@ -180,6 +181,8 @@ def parse_arguments(argv=None):
         parser.error("native Wine requires Linux and --wine-root")
     if args.renderer == "dxvk" and args.dxvk_dir is None:
         parser.error("DXVK requires --dxvk-dir")
+    if args.dxvk_option and args.renderer != "dxvk":
+        parser.error("DXVK options require renderer=dxvk")
     if (args.suite == "vulkan-1") != (args.renderer == "vulkan"):
         parser.error("the Vulkan suite requires renderer=vulkan; D3D suites require a D3D renderer")
     args.group = args.group or list(GROUPS[args.suite])
@@ -206,10 +209,12 @@ def main(argv=None):
         inputs["test_sha256"] = sha256(executable)
         if args.dxvk_dir:
             inputs["dxvk"] = {name: sha256(args.dxvk_dir / name) for name in DXVK_DLLS}
+            inputs["dxvk_options"] = args.dxvk_option
         reference = json.loads(args.baseline.read_text()) if args.baseline else None
         if reference and (not reference.get("complete") or reference["renderer"] != args.renderer or reference["suite"] != args.suite or
                           reference["inputs"]["test_sha256"] != inputs["test_sha256"] or
-                          reference["inputs"].get("dxvk") != inputs.get("dxvk")):
+                          reference["inputs"].get("dxvk") != inputs.get("dxvk") or
+                          reference["inputs"].get("dxvk_options", []) != inputs.get("dxvk_options", [])):
             raise ValueError("reference renderer, test binary, and DXVK inputs must match")
         host_env = os.environ.copy()
         for key in ("WINEPREFIX", "WINEARCH", "WINEDEBUG", "WINEDLLOVERRIDES", "WINE_D3D_CONFIG",
@@ -228,6 +233,8 @@ def main(argv=None):
             group_dir = run_dir / group
             group_dir.mkdir()
             guest_env = environment_for(args.renderer)
+            if args.dxvk_option:
+                guest_env["DXVK_CONFIG_FILE"] = r"C:\dxvk.conf"
             if args.runtime == "boxedwine":
                 root = group_dir / "root"
                 guest_dir = root / "home/username"
@@ -262,6 +269,8 @@ def main(argv=None):
                     if target.is_symlink():
                         target.unlink()
                     shutil.copy2(args.dxvk_dir / name, target)
+                if args.dxvk_option:
+                    (prefix / "drive_c/dxvk.conf").write_text("\n".join(args.dxvk_option) + "\n")
             log = group_dir / "output.log"
             process = run_process(command, group_dir, host_env, args.timeout, log)
             if args.runtime == "boxedwine":
@@ -272,7 +281,10 @@ def main(argv=None):
             elif process["timed_out"]:
                 run_process([str(wineserver), "-k"], group_dir, host_env, 30, group_dir / "cleanup.log")
                 run_process([str(wineserver), "-w"], group_dir, host_env, 30, group_dir / "cleanup-wait.log")
-            result = assess(log.read_text(errors="replace") if log.exists() else "", group, args.renderer, process,
+            output = log.read_text(errors="replace") if log.exists() else ""
+            if args.runtime == "boxedwine":
+                output += "\n" + (group_dir / "output.log").read_text(errors="replace")
+            result = assess(output, group, args.renderer, process,
                             reference["results"][group] if reference else None)
             result.update(process=process, command=command, guest_environment=guest_env, log=str(log))
             manifest["results"][group] = result

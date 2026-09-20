@@ -174,6 +174,7 @@ public class VkHost {
         for (VkParam param : fn.params) {
             paramMarshals.get(param.paramArg).after(data, fn, out, param);
             if (copyData != null && copyData.destroyFunction.equals(fn.name) && copyData.destroyParamName.equals(param.name)) {
+                out.append("    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pBoxedInfo->cacheMutex);\n");
                 out.append("    pBoxedInfo->");
                 out.append(copyData.variableName);
                 out.append(".erase((U64)");
@@ -208,6 +209,7 @@ public class VkHost {
         out.append("VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);\n");
         out.append("void vulkanDeleteNextPtr(const void* pNext);\n");
         out.append("U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);\n");
+        out.append("BoxedVulkanInfo* createVulkanDeviceInfo(VkDevice device, BoxedVulkanInfo* instanceInfo);\n");
         out.append("void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);\n");
         out.append("void* getVulkanPtr(KMemory* memory, U32 address);\n");
         for (VkFunction fn : hostFunctions ) {
@@ -227,8 +229,21 @@ public class VkHost {
         out.append("U64 translateVulkanObjectHandle(KMemory* memory, VkObjectType type, U64 handle);\n");
         out.append("bool prepareDescriptorTemplate(VkDescriptorUpdateTemplateCreateInfo& info, std::vector<VkDescriptorUpdateTemplateEntry>& entries);\n");
         out.append("const void* marshalDescriptorTemplateData(BoxedVulkanInfo* info, KMemory* memory, VkDescriptorUpdateTemplate descriptorTemplate, U32 address, std::vector<U8>& storage);\n");
+        out.append("struct VulkanMemoryAllocation { U64 size = 0; U32 mappedAddress = 0; U32 mappedLen = 0; };\n");
+        out.append("void registerVkMemoryAllocation(BoxedVulkanInfo* info, VkDeviceMemory memory, VkDeviceSize size);\n");
+        out.append("void unregisterVkMemoryAllocation(BoxedVulkanInfo* info, VkDeviceMemory memory);\n");
+        out.append("U32 mapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len);\n");
+        out.append("void unmapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory);\n");
+        out.append("void cacheDescriptorTemplate(BoxedVulkanInfo* info, U64 handle, const VkDescriptorUpdateTemplateCreateInfo& source);\n");
+        out.append("void cacheImageInfo(BoxedVulkanInfo* info, U64 handle, const VkImageCreateInfo& source);\n");
         out.append("class BoxedVulkanInfo {\npublic:\n");
-        out.append("    VkInstance instance;\n");
+        out.append("    VkInstance instance = VK_NULL_HANDLE;\n");
+        out.append("    VkDevice device = VK_NULL_HANDLE;\n");
+        out.append("    PFN_vkGetDeviceProcAddr getDeviceProcAddr = nullptr;\n");
+        out.append("    bool xlibSurfaceEnabled = false;\n");
+        out.append("    BOXEDWINE_MUTEX memoryMutex;\n");
+        out.append("    std::unordered_map<U64, VulkanMemoryAllocation> allocations;\n");
+        out.append("    BOXEDWINE_MUTEX cacheMutex;\n");
         for (VkFunction fn : hostFunctions ) {
             if (data.manuallyHandledFunctions.contains(fn.name)) {
                 continue;
@@ -238,7 +253,7 @@ public class VkHost {
                 out.append(fn.name);
                 out.append(" p");
                 out.append(fn.name);
-                out.append(";\n");
+                out.append(" = nullptr;\n");
             }
         }
         out.append("    std::unordered_map<BString, U32> functionAddressByName;\n");
@@ -257,7 +272,7 @@ public class VkHost {
             out.append(copyData.variableName);
             out.append(";\n");
         }
-        out.append("    VkDebugUtilsMessengerEXT debugMessenger;\n");
+        out.append("    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;\n");
         out.append("};\n");
 
         out.append("#endif\n");
@@ -280,10 +295,6 @@ public class VkHost {
         out.append("void initVulkan();\n");
         out.append("BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address);\n");
         out.append("void freeVulkanPtr(KMemory* memory, U32 p);\n");
-        out.append("void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size);\n");
-        out.append("void unregisterVkMemoryAllocation(VkDeviceMemory memory);\n");
-        out.append("U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len);\n");
-        out.append("void unmapVkMemory(VkDeviceMemory memory);\n\n");
         for (int i=0;i<26;i++) {
             out.append("#define ARG");
             out.append(i+1);

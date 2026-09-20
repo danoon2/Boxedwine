@@ -21,6 +21,8 @@ public class VkHostMarshalMapMemory2 extends VkHostMarshal {
     }
 
     public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-        out.append("    if (EAX == 0) {\n        cpu->memory->writed(ARG3, mapVkMemory(pMemoryMapInfo->memory, pData, pMemoryMapInfo->offset, pMemoryMapInfo->size));\n    }\n");
+        out.append("    if (EAX == VK_SUCCESS) {\n        U32 address = mapVkMemory(pBoxedInfo, pMemoryMapInfo->memory, pData, pMemoryMapInfo->offset, pMemoryMapInfo->size);\n");
+        out.append("        if (address) cpu->memory->writed(" + param.paramArg + ", address);\n");
+        out.append("        else { pBoxedInfo->pvkUnmapMemory(device, pMemoryMapInfo->memory); EAX = VK_ERROR_MEMORY_MAP_FAILED; }\n    }\n");
     }
 }

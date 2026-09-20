@@ -899,6 +899,16 @@ public class VkHostMarshalType {
     private static void marshalOutParam(VkData data, VkType type, VkParam param, StringBuilder out) throws Exception {
         int width = param.getSize();
 
+        if (type.name.equals("VkPhysicalDeviceProperties") && param.name.equals("apiVersion")) {
+            out.append("    memory->writed(address, std::min(s->apiVersion, (U32)VK_HEADER_VERSION_COMPLETE)); address += 4;\n");
+            return;
+        }
+        if ((param.name.equals("hostImageCopy") && type.name.startsWith("VkPhysicalDevice")) ||
+                type.name.equals("VkPhysicalDeviceMapMemoryPlacedFeaturesEXT") && param.paramType.name.equals("VkBool32")) {
+            out.append("    memory->writed(address, VK_FALSE); address += 4; // Requires guest host-pointer translation.\n");
+            return;
+        }
+
         if (type.name.equals("VkPerformanceValueINTEL") && param.name.equals("data")) {
             out.append("    switch (s->type) {\n");
             out.append("    case VK_PERFORMANCE_VALUE_TYPE_UINT32_INTEL:\n");
@@ -1128,7 +1138,7 @@ public class VkHostMarshalType {
                 continue;
             }
             if (data.unlock) {
-                out.append("    KThread::currentThread()->memory->unlockMemory((U8*)");
+                out.append("    if (" + data.name + ") KThread::currentThread()->memory->unlockMemory((U8*)");
                 out.append(data.name);
                 out.append(");\n");
                 continue;
@@ -1295,7 +1305,7 @@ public class VkHostMarshalType {
     static VkHostMarshalInStructure unmapMemory2 = new VkHostMarshalInStructure() {
         public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
             super.after(data, fn, out, param);
-            out.append("    if (EAX == 0) {\n        unmapVkMemory(pMemoryUnmapInfo->memory);\n    }\n");
+            out.append("    if (EAX == 0) {\n        unmapVkMemory(pBoxedInfo, pMemoryUnmapInfo->memory);\n    }\n");
         }
     };
     private static HashSet<String> simpleTypes;

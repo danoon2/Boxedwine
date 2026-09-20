@@ -13,11 +13,6 @@
 void initVulkan();
 BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address);
 void freeVulkanPtr(KMemory* memory, U32 p);
-void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size);
-void unregisterVkMemoryAllocation(VkDeviceMemory memory);
-U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len);
-void unmapVkMemory(VkDeviceMemory memory);
-
 #define ARG1 cpu->peek32(1)
 #define QARG1 ((U64)cpu->peek32(1) | ((U64)cpu->peek32(2) << 32))
 #define ARG2 cpu->peek32(2)
@@ -1284,6 +1279,7 @@ void vk_CreateDevice(CPU* cpu) {
     VkDevice pDevice = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateDevice(physicalDevice, pCreateInfo, pAllocator, &pDevice);
     if (EAX == VK_SUCCESS) {
+    pBoxedInfo = createVulkanDeviceInfo(pDevice, pBoxedInfo);
     cpu->memory->writed(ARG4, createVulkanPtr(cpu->memory, pDevice, pBoxedInfo));
     }
 }
@@ -1448,7 +1444,7 @@ void vk_AllocateMemory(CPU* cpu) {
     VkDeviceMemory* pMemory = &tmp_pMemory;
     EAX = (U32)pBoxedInfo->pvkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory);
     if (EAX == 0 && pMemory) {
-        registerVkMemoryAllocation(*pMemory, pAllocateInfo->allocationSize);
+        registerVkMemoryAllocation(pBoxedInfo, *pMemory, pAllocateInfo->allocationSize);
     }
     cpu->memory->writeq(ARG4, (U64)tmp_pMemory);
 }
@@ -1459,7 +1455,7 @@ void vk_FreeMemory(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkFreeMemory:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkFreeMemory(device, memory, pAllocator);
-    unregisterVkMemoryAllocation(memory);
+    unregisterVkMemoryAllocation(pBoxedInfo, memory);
 }
 // return type: VkResult(4 bytes)
 void vk_MapMemory(CPU* cpu) {
@@ -1471,8 +1467,10 @@ void vk_MapMemory(CPU* cpu) {
     VkMemoryMapFlags flags = (VkMemoryMapFlags)ARG8;
     void *pData = NULL;
     EAX = (U32)pBoxedInfo->pvkMapMemory(device, memory, offset, size, flags, &pData);
-    if (EAX == 0) {
-        cpu->memory->writed(ARG9, mapVkMemory(memory, pData, offset, size));
+    if (EAX == VK_SUCCESS) {
+        U32 address = mapVkMemory(pBoxedInfo, memory, pData, offset, size);
+        if (address) cpu->memory->writed(ARG9, address);
+        else { pBoxedInfo->pvkUnmapMemory(device, memory); EAX = VK_ERROR_MEMORY_MAP_FAILED; }
     }
 }
 void vk_UnmapMemory(CPU* cpu) {
@@ -1480,7 +1478,7 @@ void vk_UnmapMemory(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkDeviceMemory memory = (VkDeviceMemory)QARG2;
     pBoxedInfo->pvkUnmapMemory(device, memory);
-    unmapVkMemory(memory);
+    unmapVkMemory(pBoxedInfo, memory);
 }
 // return type: VkResult(4 bytes)
 void vk_FlushMappedMemoryRanges(CPU* cpu) {
@@ -1869,7 +1867,7 @@ void vk_CreateImage(CPU* cpu) {
     VkImage* pImage = &tmp_pImage;
     EAX = (U32)pBoxedInfo->pvkCreateImage(device, pCreateInfo, pAllocator, pImage);
     if (!EAX && tmp_pImage) {
-        pBoxedInfo->imageCreateInfo[(U64)tmp_pImage] = local_pCreateInfo;
+        cacheImageInfo(pBoxedInfo, (U64)tmp_pImage, local_pCreateInfo->s);
     }
     cpu->memory->writeq(ARG4, (U64)tmp_pImage);
 }
@@ -1880,6 +1878,7 @@ void vk_DestroyImage(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyImage:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyImage(device, image, pAllocator);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pBoxedInfo->cacheMutex);
     pBoxedInfo->imageCreateInfo.erase((U64)image);
 }
 void vk_GetImageSubresourceLayout(CPU* cpu) {
@@ -2623,7 +2622,7 @@ void vk_CmdDrawMultiEXT(CPU* cpu) {
         for (U32 i=0;i<drawCount;i++) {
             MarshalVkMultiDrawInfoEXT::read(pBoxedInfo, cpu->memory, ARG3 + i * stride, &pVertexInfo[i]);
         }
-        stride = 4;
+        stride = sizeof(VkMultiDrawInfoEXT);
     }
     uint32_t instanceCount = (uint32_t)ARG4;
     uint32_t firstInstance = (uint32_t)ARG5;
@@ -2646,7 +2645,7 @@ void vk_CmdDrawMultiIndexedEXT(CPU* cpu) {
         for (U32 i=0;i<drawCount;i++) {
             MarshalVkMultiDrawIndexedInfoEXT::read(pBoxedInfo, cpu->memory, ARG3 + i * stride, &pIndexInfo[i]);
         }
-        stride = 4;
+        stride = sizeof(VkMultiDrawIndexedInfoEXT);
     }
     uint32_t instanceCount = (uint32_t)ARG4;
     uint32_t firstInstance = (uint32_t)ARG5;
@@ -4257,7 +4256,7 @@ void vk_CreateDescriptorUpdateTemplate(CPU* cpu) {
     pCreateInfo = &hostCreateInfo;
     EAX = (U32)pBoxedInfo->pvkCreateDescriptorUpdateTemplate(device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
     if (!EAX && tmp_pDescriptorUpdateTemplate) {
-        pBoxedInfo->descriptorUpdateTemplateCreateInfo[(U64)tmp_pDescriptorUpdateTemplate] = local_pCreateInfo;
+        cacheDescriptorTemplate(pBoxedInfo, (U64)tmp_pDescriptorUpdateTemplate, local_pCreateInfo->s);
     }
     cpu->memory->writeq(ARG4, (U64)tmp_pDescriptorUpdateTemplate);
 }
@@ -4277,7 +4276,7 @@ void vk_CreateDescriptorUpdateTemplateKHR(CPU* cpu) {
     pCreateInfo = &hostCreateInfo;
     EAX = (U32)pBoxedInfo->pvkCreateDescriptorUpdateTemplateKHR(device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
     if (!EAX && tmp_pDescriptorUpdateTemplate) {
-        pBoxedInfo->descriptorUpdateTemplateCreateInfo[(U64)tmp_pDescriptorUpdateTemplate] = local_pCreateInfo;
+        cacheDescriptorTemplate(pBoxedInfo, (U64)tmp_pDescriptorUpdateTemplate, local_pCreateInfo->s);
     }
     cpu->memory->writeq(ARG4, (U64)tmp_pDescriptorUpdateTemplate);
 }
@@ -4288,6 +4287,7 @@ void vk_DestroyDescriptorUpdateTemplate(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorUpdateTemplate:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorUpdateTemplate(device, descriptorUpdateTemplate, pAllocator);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pBoxedInfo->cacheMutex);
     pBoxedInfo->descriptorUpdateTemplateCreateInfo.erase((U64)descriptorUpdateTemplate);
 }
 void vk_DestroyDescriptorUpdateTemplateKHR(CPU* cpu) {
@@ -4297,6 +4297,7 @@ void vk_DestroyDescriptorUpdateTemplateKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorUpdateTemplateKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorUpdateTemplateKHR(device, descriptorUpdateTemplate, pAllocator);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pBoxedInfo->cacheMutex);
     pBoxedInfo->descriptorUpdateTemplateCreateInfo.erase((U64)descriptorUpdateTemplate);
 }
 void vk_UpdateDescriptorSetWithTemplate(CPU* cpu) {
@@ -8656,8 +8657,10 @@ void vk_MapMemory2(CPU* cpu) {
     VkMemoryMapInfo* pMemoryMapInfo = &local_pMemoryMapInfo.s;
     void *pData = NULL;
     EAX = (U32)pBoxedInfo->pvkMapMemory2(device, pMemoryMapInfo, &pData);
-    if (EAX == 0) {
-        cpu->memory->writed(ARG3, mapVkMemory(pMemoryMapInfo->memory, pData, pMemoryMapInfo->offset, pMemoryMapInfo->size));
+    if (EAX == VK_SUCCESS) {
+        U32 address = mapVkMemory(pBoxedInfo, pMemoryMapInfo->memory, pData, pMemoryMapInfo->offset, pMemoryMapInfo->size);
+        if (address) cpu->memory->writed(ARG3, address);
+        else { pBoxedInfo->pvkUnmapMemory(device, pMemoryMapInfo->memory); EAX = VK_ERROR_MEMORY_MAP_FAILED; }
     }
 }
 // return type: VkResult(4 bytes)
@@ -8668,8 +8671,10 @@ void vk_MapMemory2KHR(CPU* cpu) {
     VkMemoryMapInfo* pMemoryMapInfo = &local_pMemoryMapInfo.s;
     void *pData = NULL;
     EAX = (U32)pBoxedInfo->pvkMapMemory2KHR(device, pMemoryMapInfo, &pData);
-    if (EAX == 0) {
-        cpu->memory->writed(ARG3, mapVkMemory(pMemoryMapInfo->memory, pData, pMemoryMapInfo->offset, pMemoryMapInfo->size));
+    if (EAX == VK_SUCCESS) {
+        U32 address = mapVkMemory(pBoxedInfo, pMemoryMapInfo->memory, pData, pMemoryMapInfo->offset, pMemoryMapInfo->size);
+        if (address) cpu->memory->writed(ARG3, address);
+        else { pBoxedInfo->pvkUnmapMemory(device, pMemoryMapInfo->memory); EAX = VK_ERROR_MEMORY_MAP_FAILED; }
     }
 }
 // return type: VkResult(4 bytes)
@@ -8680,7 +8685,7 @@ void vk_UnmapMemory2(CPU* cpu) {
     VkMemoryUnmapInfo* pMemoryUnmapInfo = &local_pMemoryUnmapInfo.s;
     EAX = (U32)pBoxedInfo->pvkUnmapMemory2(device, pMemoryUnmapInfo);
     if (EAX == 0) {
-        unmapVkMemory(pMemoryUnmapInfo->memory);
+        unmapVkMemory(pBoxedInfo, pMemoryUnmapInfo->memory);
     }
 }
 // return type: VkResult(4 bytes)
@@ -8691,7 +8696,7 @@ void vk_UnmapMemory2KHR(CPU* cpu) {
     VkMemoryUnmapInfo* pMemoryUnmapInfo = &local_pMemoryUnmapInfo.s;
     EAX = (U32)pBoxedInfo->pvkUnmapMemory2KHR(device, pMemoryUnmapInfo);
     if (EAX == 0) {
-        unmapVkMemory(pMemoryUnmapInfo->memory);
+        unmapVkMemory(pBoxedInfo, pMemoryUnmapInfo->memory);
     }
 }
 // return type: VkResult(4 bytes)

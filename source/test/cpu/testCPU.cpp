@@ -980,6 +980,14 @@ void vkTestCallback(CPU* cpu) {
     cpu->reg[0].u32 = 0x55667788;
     cpu->reg[2].u32 = 0x12345678;
 }
+void VKAPI_PTR vkTestMultiDraw(VkCommandBuffer commandBuffer, U32 drawCount, const VkMultiDrawInfoEXT* draws,
+    U32 instanceCount, U32 firstInstance, U32 stride) {
+    ++vkTestCalls;
+    if ((U64)commandBuffer != 0x123000 || drawCount != 2 || instanceCount != 2 || firstInstance != 7 ||
+        stride != sizeof(VkMultiDrawInfoEXT) || draws[0].firstVertex != 5 || draws[0].vertexCount != 3 ||
+        draws[1].firstVertex != 17 || draws[1].vertexCount != 6)
+        testFail("Vulkan repacked multi-draw array must use the host stride");
+}
 }
 #endif
 
@@ -1078,6 +1086,41 @@ void testVulkanDirectStackABI() {
         images[1].imageLayout != VK_IMAGE_LAYOUT_GENERAL || (U64)buffer.buffer != 0xabcdef0123456789ULL ||
         buffer.offset != 0x100000008ULL || buffer.range != VK_WHOLE_SIZE || inlineData != 0xdeadbeef)
         testFail("Vulkan descriptor template guest data conversion");
+
+    BoxedVulkanInfo otherDevice{};
+    VkDeviceMemory allocation = (VkDeviceMemory)7;
+    std::vector<U8> nativeBytes(8192);
+    registerVkMemoryAllocation(&info, allocation, 0x100001000ULL);
+    registerVkMemoryAllocation(&otherDevice, allocation, 128);
+    if (mapVkMemory(&info, allocation, nativeBytes.data(), 0, VK_WHOLE_SIZE) ||
+        mapVkMemory(&otherDevice, allocation, nativeBytes.data(), 127, 2))
+        testFail("Vulkan mapping must reject overflow and out-of-bounds ranges");
+    U32 mapped = mapVkMemory(&info, allocation, nativeBytes.data(), 0x100000000ULL, VK_WHOLE_SIZE);
+    if (!mapped || info.allocations[7].mappedLen != 4096 || otherDevice.allocations[7].size != 128)
+        testFail("Vulkan allocation ownership and partial 64-bit mapping");
+    if (mapped) {
+        memory->writed(mapped + 100, 0x13579bdf);
+        U32 value;
+        memcpy(&value, nativeBytes.data() + 100, sizeof(value));
+        if (value != 0x13579bdf) testFail("Vulkan mapped guest writes must reach host memory");
+        unregisterVkMemoryAllocation(&info, allocation);
+        if (memory->canRead(mapped, 1)) testFail("Vulkan free must retire guest memory mapping");
+    }
+    if (otherDevice.allocations.size() != 1) testFail("Vulkan free affected a different logical device");
+    unregisterVkMemoryAllocation(&otherDevice, allocation);
+
+    CPU* cpu = testContext().cpu;
+    info.pvkCmdDrawMultiEXT = vkTestMultiDraw;
+    U32 wrapper = TEST_HEAP_ADDRESS + 800, draws = TEST_HEAP_ADDRESS + 840;
+    memory->writeq(wrapper, 0x123000);
+    memory->writeq(wrapper + 8, (U64)&info);
+    memory->writed(draws, 5); memory->writed(draws + 4, 3);
+    memory->writed(draws + 16, 17); memory->writed(draws + 20, 6);
+    const U32 drawArgs[] = {0, wrapper, 2, draws, 2, 7, 16};
+    for (U32 i = 0; i < 7; ++i) memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + i * 4, drawArgs[i]);
+    vkTestCalls = 0;
+    vk_CmdDrawMultiEXT(cpu);
+    if (vkTestCalls != 1) testFail("Vulkan multi-draw callback");
 #endif
 }
 

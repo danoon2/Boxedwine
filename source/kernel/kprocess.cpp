@@ -330,6 +330,8 @@ void KProcess::onExec(KThread* thread) {
     memset(calculateCF, 0, sizeof(calculateCF));
 #endif
 #ifdef BOXEDWINE_VULKAN
+    extern void cleanupVulkanProcess(KProcess* process);
+    cleanupVulkanProcess(this);
     vulkanFreePtrAddress = 0;
     vulkanPtrMap.clear();
 #endif
@@ -490,6 +492,10 @@ void KProcess::cleanupProcess() {
     // Invalidate and release every directly accessible mapped page before a
     // last lease begins writeback. KFile owners retained by the cache remain
     // valid after descriptor teardown.
+#ifdef BOXEDWINE_VULKAN
+    extern void cleanupVulkanProcess(KProcess* process);
+    cleanupVulkanProcess(this);
+#endif
     if (memory) {
         if (cloneVM) {
             // Forced exit reaches this path without exitgroup(). Detach the

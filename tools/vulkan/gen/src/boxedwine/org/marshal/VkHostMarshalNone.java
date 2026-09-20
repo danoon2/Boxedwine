@@ -40,9 +40,9 @@ public class VkHostMarshalNone extends VkHostMarshal {
 
     public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         if (fn.name.equals("vkFreeMemory") && param.name.equals("memory")) {
-            out.append("    unregisterVkMemoryAllocation(memory);\n");
+            out.append("    unregisterVkMemoryAllocation(pBoxedInfo, memory);\n");
         } else if (fn.name.equals("vkUnmapMemory") && param.name.equals("memory")) {
-            out.append("    unmapVkMemory(memory);\n");
+            out.append("    unmapVkMemory(pBoxedInfo, memory);\n");
         }
     }
 }

@@ -17,7 +17,8 @@ public class VkFuncsH {
                 int ii=0;
             }
             if (fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
-                out.append("VKFUNC_INSTANCE(");
+                String type = fn.params.elementAt(0).paramType.name;
+                out.append(type.equals("VkInstance") || type.equals("VkPhysicalDevice") ? "VKFUNC_INSTANCE(" : "VKFUNC_DEVICE(");
             } else {
                 out.append("VKFUNC(");
             }
