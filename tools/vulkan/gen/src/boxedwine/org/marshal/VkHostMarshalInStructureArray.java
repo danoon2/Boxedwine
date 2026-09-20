@@ -33,7 +33,7 @@ public class VkHostMarshalInStructureArray  extends VkHostMarshal {
         }
         param.countString += param.countParam.name;
         out.append(param.countString);
-        out.append("];\n");
+        out.append("]();\n");
 
         out.append("        for (U32 i=0;i<");
         out.append(param.countString);
@@ -46,7 +46,7 @@ public class VkHostMarshalInStructureArray  extends VkHostMarshal {
             if (param.secondArrayLen != null) {
                 out.append("[");
                 out.append(param.secondArrayLen);
-                out.append("];\n");
+                out.append("]();\n");
             } else {
                 out.append("();\n");
             }
@@ -61,7 +61,7 @@ public class VkHostMarshalInStructureArray  extends VkHostMarshal {
             out.append(";j++) {\n");
             out.append("                Marshal");
             out.append(param.paramType.name);
-            out.append("::read(pBoxedInfo, cpu->memory, address + j * 4, &");
+            out.append("::read(pBoxedInfo, cpu->memory, address + j * " + param.paramType.sizeof + ", &");
             out.append(param.name);
             out.append("[i][j]);\n            }\n        }\n");
         } else {
@@ -108,6 +108,12 @@ public class VkHostMarshalInStructureArray  extends VkHostMarshal {
             out.append("        for (U32 i=0;i<");
             out.append(param.countString);
             out.append(";i++) {\n");
+            if (param.secondArrayLen != null) {
+                out.append("            for (U32 j=0;j<" + param.secondArrayLen + ";++j) {\n");
+                out.append("                Marshal" + param.paramType.name + " owned; owned.s = " + param.name + "[i][j];\n            }\n");
+            } else {
+                out.append("            { Marshal" + param.paramType.name + " owned; owned.s = *" + param.name + "[i]; }\n");
+            }
             out.append("            delete");
             if (param.secondArrayLen != null) {
                 out.append("[]");
@@ -116,6 +122,9 @@ public class VkHostMarshalInStructureArray  extends VkHostMarshal {
             out.append(param.name);
             out.append("[i];\n");
             out.append("        }\n");
+        } else {
+            out.append("        for (U32 i=0;i<" + param.countString + ";++i) {\n");
+            out.append("            Marshal" + param.paramType.name + " owned; owned.s = " + param.name + "[i];\n        }\n");
         }
         out.append("        delete[] ");
         out.append(param.name);

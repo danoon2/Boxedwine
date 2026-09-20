@@ -27,7 +27,7 @@ public class VkHostMarshalOutHandleArray extends VkHostMarshal {
         }
         param.countString += param.len;
         out.append(param.countString);
-        out.append("];\n    }\n");
+        out.append("]();\n    }\n");
     }
 
     public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {

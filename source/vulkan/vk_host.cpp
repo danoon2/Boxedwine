@@ -1194,7 +1194,7 @@ void vk_EnumeratePhysicalDevices(CPU* cpu) {
     uint32_t* pPhysicalDeviceCount = &tmp_pPhysicalDeviceCount;
     VkPhysicalDevice* pPhysicalDevices = NULL;
     if (ARG3) {
-        pPhysicalDevices = new VkPhysicalDevice[*pPhysicalDeviceCount];
+        pPhysicalDevices = new VkPhysicalDevice[*pPhysicalDeviceCount]();
     }
     EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices);
     cpu->memory->writed(ARG2, (U32)tmp_pPhysicalDeviceCount);
@@ -1218,18 +1218,22 @@ void vk_GetPhysicalDeviceQueueFamilyProperties(CPU* cpu) {
     uint32_t tmp_pQueueFamilyPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pQueueFamilyPropertyCount = &tmp_pQueueFamilyPropertyCount;
     VkQueueFamilyProperties* pQueueFamilyProperties = NULL;
+    const U32 pQueueFamilyPropertiesCapacity = *pQueueFamilyPropertyCount;
     if (ARG3) {
-        pQueueFamilyProperties = new VkQueueFamilyProperties[*pQueueFamilyPropertyCount];
+        pQueueFamilyProperties = new VkQueueFamilyProperties[pQueueFamilyPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pQueueFamilyPropertyCount;i++) {
+        for (U32 i=0;i<pQueueFamilyPropertiesCapacity;i++) {
             MarshalVkQueueFamilyProperties::read(pBoxedInfo, cpu->memory, address + i*24, &pQueueFamilyProperties[i]);
         }
     }
     pBoxedInfo->pvkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pQueueFamilyPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pQueueFamilyPropertyCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pQueueFamilyPropertyCount), pQueueFamilyPropertiesCapacity);i++) {
             MarshalVkQueueFamilyProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 24, &pQueueFamilyProperties[i]);
+        }
+        for (U32 i=0;i<pQueueFamilyPropertiesCapacity;++i) {
+            MarshalVkQueueFamilyProperties owned; owned.s = pQueueFamilyProperties[i];
         }
         delete[] pQueueFamilyProperties;
     }
@@ -1277,9 +1281,11 @@ void vk_CreateDevice(CPU* cpu) {
     VkDeviceCreateInfo* pCreateInfo = &local_pCreateInfo.s;
     static bool shown; if (!shown && ARG3) { klog("vkCreateDevice:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
-    VkDevice pDevice = (VkDevice)getVulkanPtr(cpu->memory, ARG4);
+    VkDevice pDevice = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateDevice(physicalDevice, pCreateInfo, pAllocator, &pDevice);
+    if (EAX == VK_SUCCESS) {
     cpu->memory->writed(ARG4, createVulkanPtr(cpu->memory, pDevice, pBoxedInfo));
+    }
 }
 void vk_DestroyDevice(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -1303,18 +1309,24 @@ void vk_EnumerateInstanceLayerProperties(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG1);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkLayerProperties* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG2) {
-        pProperties = new VkLayerProperties[*pPropertyCount];
+        pProperties = new VkLayerProperties[pPropertiesCapacity]();
         U32 address = ARG2;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkLayerProperties::read(nullptr, cpu->memory, address + i*520, &pProperties[i]);
         }
     }
     EAX = (U32)pvkEnumerateInstanceLayerProperties(pPropertyCount, pProperties);
     cpu->memory->writed(ARG1, (U32)tmp_pPropertyCount);
     if (ARG2) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkLayerProperties::write(nullptr, cpu->memory, ARG2 + i * 520, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkLayerProperties owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -1326,18 +1338,24 @@ void vk_EnumerateDeviceLayerProperties(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkLayerProperties* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG3) {
-        pProperties = new VkLayerProperties[*pPropertyCount];
+        pProperties = new VkLayerProperties[pPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkLayerProperties::read(pBoxedInfo, cpu->memory, address + i*520, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkEnumerateDeviceLayerProperties(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkLayerProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 520, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkLayerProperties owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -1353,10 +1371,11 @@ void vk_EnumerateDeviceExtensionProperties(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkExtensionProperties* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG4) {
-        pProperties = new VkExtensionProperties[*pPropertyCount];
+        pProperties = new VkExtensionProperties[pPropertiesCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkExtensionProperties::read(pBoxedInfo, cpu->memory, address + i*260, &pProperties[i]);
         }
     }
@@ -1364,8 +1383,13 @@ void vk_EnumerateDeviceExtensionProperties(CPU* cpu) {
     cpu->memory->unlockMemory((U8*)pLayerName);
     cpu->memory->writed(ARG3, (U32)tmp_pPropertyCount);
     if (ARG4) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkExtensionProperties::write(pBoxedInfo, cpu->memory, ARG4 + i * 260, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkExtensionProperties owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -1375,7 +1399,7 @@ void vk_GetDeviceQueue(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t queueFamilyIndex = (uint32_t)ARG2;
     uint32_t queueIndex = (uint32_t)ARG3;
-    VkQueue pQueue = (VkQueue)getVulkanPtr(cpu->memory, ARG4);
+    VkQueue pQueue = VK_NULL_HANDLE;
     pBoxedInfo->pvkGetDeviceQueue(device, queueFamilyIndex, queueIndex, &pQueue);
     cpu->memory->writed(ARG4, createVulkanPtr(cpu->memory, pQueue, pBoxedInfo));
 }
@@ -1386,7 +1410,7 @@ void vk_QueueSubmit(CPU* cpu) {
     uint32_t submitCount = (uint32_t)ARG2;
     VkSubmitInfo* pSubmits = NULL;
     if (ARG3) {
-        pSubmits = new VkSubmitInfo[submitCount];
+        pSubmits = new VkSubmitInfo[submitCount]();
         for (U32 i=0;i<submitCount;i++) {
             MarshalVkSubmitInfo::read(pBoxedInfo, cpu->memory, ARG3 + i * 36, &pSubmits[i]);
         }
@@ -1394,6 +1418,9 @@ void vk_QueueSubmit(CPU* cpu) {
     VkFence fence = (VkFence)QARG4;
     EAX = (U32)pBoxedInfo->pvkQueueSubmit(queue, submitCount, pSubmits, fence);
     if (pSubmits) {
+        for (U32 i=0;i<submitCount;++i) {
+            MarshalVkSubmitInfo owned; owned.s = pSubmits[i];
+        }
         delete[] pSubmits;
     }
 }
@@ -1462,13 +1489,16 @@ void vk_FlushMappedMemoryRanges(CPU* cpu) {
     uint32_t memoryRangeCount = (uint32_t)ARG2;
     VkMappedMemoryRange* pMemoryRanges = NULL;
     if (ARG3) {
-        pMemoryRanges = new VkMappedMemoryRange[memoryRangeCount];
+        pMemoryRanges = new VkMappedMemoryRange[memoryRangeCount]();
         for (U32 i=0;i<memoryRangeCount;i++) {
             MarshalVkMappedMemoryRange::read(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pMemoryRanges[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkFlushMappedMemoryRanges(device, memoryRangeCount, pMemoryRanges);
     if (pMemoryRanges) {
+        for (U32 i=0;i<memoryRangeCount;++i) {
+            MarshalVkMappedMemoryRange owned; owned.s = pMemoryRanges[i];
+        }
         delete[] pMemoryRanges;
     }
 }
@@ -1479,13 +1509,16 @@ void vk_InvalidateMappedMemoryRanges(CPU* cpu) {
     uint32_t memoryRangeCount = (uint32_t)ARG2;
     VkMappedMemoryRange* pMemoryRanges = NULL;
     if (ARG3) {
-        pMemoryRanges = new VkMappedMemoryRange[memoryRangeCount];
+        pMemoryRanges = new VkMappedMemoryRange[memoryRangeCount]();
         for (U32 i=0;i<memoryRangeCount;i++) {
             MarshalVkMappedMemoryRange::read(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pMemoryRanges[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkInvalidateMappedMemoryRanges(device, memoryRangeCount, pMemoryRanges);
     if (pMemoryRanges) {
+        for (U32 i=0;i<memoryRangeCount;++i) {
+            MarshalVkMappedMemoryRange owned; owned.s = pMemoryRanges[i];
+        }
         delete[] pMemoryRanges;
     }
 }
@@ -1539,18 +1572,22 @@ void vk_GetImageSparseMemoryRequirements(CPU* cpu) {
     uint32_t tmp_pSparseMemoryRequirementCount = (uint32_t) cpu->memory->readd(ARG4);
     uint32_t* pSparseMemoryRequirementCount = &tmp_pSparseMemoryRequirementCount;
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements = NULL;
+    const U32 pSparseMemoryRequirementsCapacity = *pSparseMemoryRequirementCount;
     if (ARG5) {
-        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements[*pSparseMemoryRequirementCount];
+        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements[pSparseMemoryRequirementsCapacity]();
         U32 address = ARG5;
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;i++) {
             MarshalVkSparseImageMemoryRequirements::read(pBoxedInfo, cpu->memory, address + i*48, &pSparseMemoryRequirements[i]);
         }
     }
     pBoxedInfo->pvkGetImageSparseMemoryRequirements(device, image, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG4, (U32)tmp_pSparseMemoryRequirementCount);
     if (ARG5) {
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pSparseMemoryRequirementCount), pSparseMemoryRequirementsCapacity);i++) {
             MarshalVkSparseImageMemoryRequirements::write(pBoxedInfo, cpu->memory, ARG5 + i * 48, &pSparseMemoryRequirements[i]);
+        }
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;++i) {
+            MarshalVkSparseImageMemoryRequirements owned; owned.s = pSparseMemoryRequirements[i];
         }
         delete[] pSparseMemoryRequirements;
     }
@@ -1566,18 +1603,22 @@ void vk_GetPhysicalDeviceSparseImageFormatProperties(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG7);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkSparseImageFormatProperties* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG8) {
-        pProperties = new VkSparseImageFormatProperties[*pPropertyCount];
+        pProperties = new VkSparseImageFormatProperties[pPropertiesCapacity]();
         U32 address = ARG8;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkSparseImageFormatProperties::read(pBoxedInfo, cpu->memory, address + i*20, &pProperties[i]);
         }
     }
     pBoxedInfo->pvkGetPhysicalDeviceSparseImageFormatProperties(physicalDevice, format, type, samples, usage, tiling, pPropertyCount, pProperties);
     cpu->memory->writed(ARG7, (U32)tmp_pPropertyCount);
     if (ARG8) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkSparseImageFormatProperties::write(pBoxedInfo, cpu->memory, ARG8 + i * 20, &pProperties[i]);
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkSparseImageFormatProperties owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -1589,7 +1630,7 @@ void vk_QueueBindSparse(CPU* cpu) {
     uint32_t bindInfoCount = (uint32_t)ARG2;
     VkBindSparseInfo* pBindInfo = NULL;
     if (ARG3) {
-        pBindInfo = new VkBindSparseInfo[bindInfoCount];
+        pBindInfo = new VkBindSparseInfo[bindInfoCount]();
         for (U32 i=0;i<bindInfoCount;i++) {
             MarshalVkBindSparseInfo::read(pBoxedInfo, cpu->memory, ARG3 + i * 48, &pBindInfo[i]);
         }
@@ -1597,6 +1638,9 @@ void vk_QueueBindSparse(CPU* cpu) {
     VkFence fence = (VkFence)QARG4;
     EAX = (U32)pBoxedInfo->pvkQueueBindSparse(queue, bindInfoCount, pBindInfo, fence);
     if (pBindInfo) {
+        for (U32 i=0;i<bindInfoCount;++i) {
+            MarshalVkBindSparseInfo owned; owned.s = pBindInfo[i];
+        }
         delete[] pBindInfo;
     }
 }
@@ -2005,7 +2049,7 @@ void vk_CreateGraphicsPipelines(CPU* cpu) {
     uint32_t createInfoCount = (uint32_t)ARG4;
     VkGraphicsPipelineCreateInfo* pCreateInfos = NULL;
     if (ARG5) {
-        pCreateInfos = new VkGraphicsPipelineCreateInfo[createInfoCount];
+        pCreateInfos = new VkGraphicsPipelineCreateInfo[createInfoCount]();
         for (U32 i=0;i<createInfoCount;i++) {
             MarshalVkGraphicsPipelineCreateInfo::read(pBoxedInfo, cpu->memory, ARG5 + i * 88, &pCreateInfos[i]);
         }
@@ -2018,6 +2062,9 @@ void vk_CreateGraphicsPipelines(CPU* cpu) {
     }
     EAX = (U32)pBoxedInfo->pvkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
+        for (U32 i=0;i<createInfoCount;++i) {
+            MarshalVkGraphicsPipelineCreateInfo owned; owned.s = pCreateInfos[i];
+        }
         delete[] pCreateInfos;
     }
     cpu->memory->unlockMemory((U8*)pPipelines);
@@ -2030,7 +2077,7 @@ void vk_CreateComputePipelines(CPU* cpu) {
     uint32_t createInfoCount = (uint32_t)ARG4;
     VkComputePipelineCreateInfo* pCreateInfos = NULL;
     if (ARG5) {
-        pCreateInfos = new VkComputePipelineCreateInfo[createInfoCount];
+        pCreateInfos = new VkComputePipelineCreateInfo[createInfoCount]();
         for (U32 i=0;i<createInfoCount;i++) {
             MarshalVkComputePipelineCreateInfo::read(pBoxedInfo, cpu->memory, ARG5 + i * 64, &pCreateInfos[i]);
         }
@@ -2043,6 +2090,9 @@ void vk_CreateComputePipelines(CPU* cpu) {
     }
     EAX = (U32)pBoxedInfo->pvkCreateComputePipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
+        for (U32 i=0;i<createInfoCount;++i) {
+            MarshalVkComputePipelineCreateInfo owned; owned.s = pCreateInfos[i];
+        }
         delete[] pCreateInfos;
     }
     cpu->memory->unlockMemory((U8*)pPipelines);
@@ -2053,17 +2103,23 @@ void vk_GetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkRenderPass renderpass = (VkRenderPass)QARG2;
     VkExtent2D* pMaxWorkgroupSize = NULL;
+    const U32 pMaxWorkgroupSizeCapacity = 1;
     if (ARG4) {
-        pMaxWorkgroupSize = new VkExtent2D[1];
+        pMaxWorkgroupSize = new VkExtent2D[pMaxWorkgroupSizeCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<1;i++) {
+        for (U32 i=0;i<pMaxWorkgroupSizeCapacity;i++) {
             MarshalVkExtent2D::read(pBoxedInfo, cpu->memory, address + i*8, &pMaxWorkgroupSize[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI(device, renderpass, pMaxWorkgroupSize);
     if (ARG4) {
-        for (U32 i=0;i<1;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(1), pMaxWorkgroupSizeCapacity);i++) {
             MarshalVkExtent2D::write(pBoxedInfo, cpu->memory, ARG4 + i * 8, &pMaxWorkgroupSize[i]);
+        }
+        }
+        for (U32 i=0;i<pMaxWorkgroupSizeCapacity;++i) {
+            MarshalVkExtent2D owned; owned.s = pMaxWorkgroupSize[i];
         }
         delete[] pMaxWorkgroupSize;
     }
@@ -2200,7 +2256,7 @@ void vk_UpdateDescriptorSets(CPU* cpu) {
     uint32_t descriptorWriteCount = (uint32_t)ARG2;
     VkWriteDescriptorSet* pDescriptorWrites = NULL;
     if (ARG3) {
-        pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount];
+        pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount]();
         for (U32 i=0;i<descriptorWriteCount;i++) {
             MarshalVkWriteDescriptorSet::read(pBoxedInfo, cpu->memory, ARG3 + i * 44, &pDescriptorWrites[i]);
         }
@@ -2208,16 +2264,22 @@ void vk_UpdateDescriptorSets(CPU* cpu) {
     uint32_t descriptorCopyCount = (uint32_t)ARG4;
     VkCopyDescriptorSet* pDescriptorCopies = NULL;
     if (ARG5) {
-        pDescriptorCopies = new VkCopyDescriptorSet[descriptorCopyCount];
+        pDescriptorCopies = new VkCopyDescriptorSet[descriptorCopyCount]();
         for (U32 i=0;i<descriptorCopyCount;i++) {
             MarshalVkCopyDescriptorSet::read(pBoxedInfo, cpu->memory, ARG5 + i * 44, &pDescriptorCopies[i]);
         }
     }
     pBoxedInfo->pvkUpdateDescriptorSets(device, descriptorWriteCount, pDescriptorWrites, descriptorCopyCount, pDescriptorCopies);
     if (pDescriptorWrites) {
+        for (U32 i=0;i<descriptorWriteCount;++i) {
+            MarshalVkWriteDescriptorSet owned; owned.s = pDescriptorWrites[i];
+        }
         delete[] pDescriptorWrites;
     }
     if (pDescriptorCopies) {
+        for (U32 i=0;i<descriptorCopyCount;++i) {
+            MarshalVkCopyDescriptorSet owned; owned.s = pDescriptorCopies[i];
+        }
         delete[] pDescriptorCopies;
     }
 }
@@ -2326,7 +2388,7 @@ void vk_AllocateCommandBuffers(CPU* cpu) {
     VkCommandBufferAllocateInfo* pAllocateInfo = &local_pAllocateInfo.s;
     VkCommandBuffer* pCommandBuffers = NULL;
     if (ARG3) {
-        pCommandBuffers = new VkCommandBuffer[pAllocateInfo->commandBufferCount];
+        pCommandBuffers = new VkCommandBuffer[pAllocateInfo->commandBufferCount]();
     }
     EAX = (U32)pBoxedInfo->pvkAllocateCommandBuffers(device, pAllocateInfo, pCommandBuffers);
     if (ARG3) {
@@ -2389,13 +2451,16 @@ void vk_CmdSetViewport(CPU* cpu) {
     uint32_t viewportCount = (uint32_t)ARG3;
     VkViewport* pViewports = NULL;
     if (ARG4) {
-        pViewports = new VkViewport[viewportCount];
+        pViewports = new VkViewport[viewportCount]();
         for (U32 i=0;i<viewportCount;i++) {
             MarshalVkViewport::read(pBoxedInfo, cpu->memory, ARG4 + i * 24, &pViewports[i]);
         }
     }
     pBoxedInfo->pvkCmdSetViewport(commandBuffer, firstViewport, viewportCount, pViewports);
     if (pViewports) {
+        for (U32 i=0;i<viewportCount;++i) {
+            MarshalVkViewport owned; owned.s = pViewports[i];
+        }
         delete[] pViewports;
     }
 }
@@ -2406,13 +2471,16 @@ void vk_CmdSetScissor(CPU* cpu) {
     uint32_t scissorCount = (uint32_t)ARG3;
     VkRect2D* pScissors = NULL;
     if (ARG4) {
-        pScissors = new VkRect2D[scissorCount];
+        pScissors = new VkRect2D[scissorCount]();
         for (U32 i=0;i<scissorCount;i++) {
             MarshalVkRect2D::read(pBoxedInfo, cpu->memory, ARG4 + i * 16, &pScissors[i]);
         }
     }
     pBoxedInfo->pvkCmdSetScissor(commandBuffer, firstScissor, scissorCount, pScissors);
     if (pScissors) {
+        for (U32 i=0;i<scissorCount;++i) {
+            MarshalVkRect2D owned; owned.s = pScissors[i];
+        }
         delete[] pScissors;
     }
 }
@@ -2551,7 +2619,7 @@ void vk_CmdDrawMultiEXT(CPU* cpu) {
     uint32_t drawCount = (uint32_t)ARG2;
     VkMultiDrawInfoEXT* pVertexInfo = NULL;
     if (ARG3) {
-        pVertexInfo = new VkMultiDrawInfoEXT[drawCount];
+        pVertexInfo = new VkMultiDrawInfoEXT[drawCount]();
         for (U32 i=0;i<drawCount;i++) {
             MarshalVkMultiDrawInfoEXT::read(pBoxedInfo, cpu->memory, ARG3 + i * stride, &pVertexInfo[i]);
         }
@@ -2561,6 +2629,9 @@ void vk_CmdDrawMultiEXT(CPU* cpu) {
     uint32_t firstInstance = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdDrawMultiEXT(commandBuffer, drawCount, pVertexInfo, instanceCount, firstInstance, stride);
     if (pVertexInfo) {
+        for (U32 i=0;i<drawCount;++i) {
+            MarshalVkMultiDrawInfoEXT owned; owned.s = pVertexInfo[i];
+        }
         delete[] pVertexInfo;
     }
 }
@@ -2571,7 +2642,7 @@ void vk_CmdDrawMultiIndexedEXT(CPU* cpu) {
     uint32_t drawCount = (uint32_t)ARG2;
     VkMultiDrawIndexedInfoEXT* pIndexInfo = NULL;
     if (ARG3) {
-        pIndexInfo = new VkMultiDrawIndexedInfoEXT[drawCount];
+        pIndexInfo = new VkMultiDrawIndexedInfoEXT[drawCount]();
         for (U32 i=0;i<drawCount;i++) {
             MarshalVkMultiDrawIndexedInfoEXT::read(pBoxedInfo, cpu->memory, ARG3 + i * stride, &pIndexInfo[i]);
         }
@@ -2585,6 +2656,9 @@ void vk_CmdDrawMultiIndexedEXT(CPU* cpu) {
     }
     pBoxedInfo->pvkCmdDrawMultiIndexedEXT(commandBuffer, drawCount, pIndexInfo, instanceCount, firstInstance, stride, pVertexOffset);
     if (pIndexInfo) {
+        for (U32 i=0;i<drawCount;++i) {
+            MarshalVkMultiDrawIndexedInfoEXT owned; owned.s = pIndexInfo[i];
+        }
         delete[] pIndexInfo;
     }
     cpu->memory->unlockMemory((U8*)pVertexOffset);
@@ -2657,13 +2731,16 @@ void vk_CmdCopyBuffer(CPU* cpu) {
     uint32_t regionCount = (uint32_t)ARG6;
     VkBufferCopy* pRegions = NULL;
     if (ARG7) {
-        pRegions = new VkBufferCopy[regionCount];
+        pRegions = new VkBufferCopy[regionCount]();
         for (U32 i=0;i<regionCount;i++) {
             MarshalVkBufferCopy::read(pBoxedInfo, cpu->memory, ARG7 + i * 24, &pRegions[i]);
         }
     }
     pBoxedInfo->pvkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, regionCount, pRegions);
     if (pRegions) {
+        for (U32 i=0;i<regionCount;++i) {
+            MarshalVkBufferCopy owned; owned.s = pRegions[i];
+        }
         delete[] pRegions;
     }
 }
@@ -2677,13 +2754,16 @@ void vk_CmdCopyImage(CPU* cpu) {
     uint32_t regionCount = (uint32_t)ARG8;
     VkImageCopy* pRegions = NULL;
     if (ARG9) {
-        pRegions = new VkImageCopy[regionCount];
+        pRegions = new VkImageCopy[regionCount]();
         for (U32 i=0;i<regionCount;i++) {
             MarshalVkImageCopy::read(pBoxedInfo, cpu->memory, ARG9 + i * 68, &pRegions[i]);
         }
     }
     pBoxedInfo->pvkCmdCopyImage(commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
     if (pRegions) {
+        for (U32 i=0;i<regionCount;++i) {
+            MarshalVkImageCopy owned; owned.s = pRegions[i];
+        }
         delete[] pRegions;
     }
 }
@@ -2697,7 +2777,7 @@ void vk_CmdBlitImage(CPU* cpu) {
     uint32_t regionCount = (uint32_t)ARG8;
     VkImageBlit* pRegions = NULL;
     if (ARG9) {
-        pRegions = new VkImageBlit[regionCount];
+        pRegions = new VkImageBlit[regionCount]();
         for (U32 i=0;i<regionCount;i++) {
             MarshalVkImageBlit::read(pBoxedInfo, cpu->memory, ARG9 + i * 80, &pRegions[i]);
         }
@@ -2705,6 +2785,9 @@ void vk_CmdBlitImage(CPU* cpu) {
     VkFilter filter = (VkFilter)ARG10;
     pBoxedInfo->pvkCmdBlitImage(commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
     if (pRegions) {
+        for (U32 i=0;i<regionCount;++i) {
+            MarshalVkImageBlit owned; owned.s = pRegions[i];
+        }
         delete[] pRegions;
     }
 }
@@ -2717,13 +2800,16 @@ void vk_CmdCopyBufferToImage(CPU* cpu) {
     uint32_t regionCount = (uint32_t)ARG7;
     VkBufferImageCopy* pRegions = NULL;
     if (ARG8) {
-        pRegions = new VkBufferImageCopy[regionCount];
+        pRegions = new VkBufferImageCopy[regionCount]();
         for (U32 i=0;i<regionCount;i++) {
             MarshalVkBufferImageCopy::read(pBoxedInfo, cpu->memory, ARG8 + i * 56, &pRegions[i]);
         }
     }
     pBoxedInfo->pvkCmdCopyBufferToImage(commandBuffer, srcBuffer, dstImage, dstImageLayout, regionCount, pRegions);
     if (pRegions) {
+        for (U32 i=0;i<regionCount;++i) {
+            MarshalVkBufferImageCopy owned; owned.s = pRegions[i];
+        }
         delete[] pRegions;
     }
 }
@@ -2736,13 +2822,16 @@ void vk_CmdCopyImageToBuffer(CPU* cpu) {
     uint32_t regionCount = (uint32_t)ARG7;
     VkBufferImageCopy* pRegions = NULL;
     if (ARG8) {
-        pRegions = new VkBufferImageCopy[regionCount];
+        pRegions = new VkBufferImageCopy[regionCount]();
         for (U32 i=0;i<regionCount;i++) {
             MarshalVkBufferImageCopy::read(pBoxedInfo, cpu->memory, ARG8 + i * 56, &pRegions[i]);
         }
     }
     pBoxedInfo->pvkCmdCopyImageToBuffer(commandBuffer, srcImage, srcImageLayout, dstBuffer, regionCount, pRegions);
     if (pRegions) {
+        for (U32 i=0;i<regionCount;++i) {
+            MarshalVkBufferImageCopy owned; owned.s = pRegions[i];
+        }
         delete[] pRegions;
     }
 }
@@ -2771,13 +2860,16 @@ void vk_CmdCopyMemoryToImageIndirectNV(CPU* cpu) {
     VkImageLayout dstImageLayout = (VkImageLayout)ARG8;
     VkImageSubresourceLayers* pImageSubresources = NULL;
     if (ARG9) {
-        pImageSubresources = new VkImageSubresourceLayers[copyCount];
+        pImageSubresources = new VkImageSubresourceLayers[copyCount]();
         for (U32 i=0;i<copyCount;i++) {
             MarshalVkImageSubresourceLayers::read(pBoxedInfo, cpu->memory, ARG9 + i * 16, &pImageSubresources[i]);
         }
     }
     pBoxedInfo->pvkCmdCopyMemoryToImageIndirectNV(commandBuffer, copyBufferAddress, copyCount, stride, dstImage, dstImageLayout, pImageSubresources);
     if (pImageSubresources) {
+        for (U32 i=0;i<copyCount;++i) {
+            MarshalVkImageSubresourceLayers owned; owned.s = pImageSubresources[i];
+        }
         delete[] pImageSubresources;
     }
 }
@@ -2820,13 +2912,16 @@ void vk_CmdClearColorImage(CPU* cpu) {
     uint32_t rangeCount = (uint32_t)ARG6;
     VkImageSubresourceRange* pRanges = NULL;
     if (ARG7) {
-        pRanges = new VkImageSubresourceRange[rangeCount];
+        pRanges = new VkImageSubresourceRange[rangeCount]();
         for (U32 i=0;i<rangeCount;i++) {
             MarshalVkImageSubresourceRange::read(pBoxedInfo, cpu->memory, ARG7 + i * 20, &pRanges[i]);
         }
     }
     pBoxedInfo->pvkCmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
     if (pRanges) {
+        for (U32 i=0;i<rangeCount;++i) {
+            MarshalVkImageSubresourceRange owned; owned.s = pRanges[i];
+        }
         delete[] pRanges;
     }
 }
@@ -2840,13 +2935,16 @@ void vk_CmdClearDepthStencilImage(CPU* cpu) {
     uint32_t rangeCount = (uint32_t)ARG6;
     VkImageSubresourceRange* pRanges = NULL;
     if (ARG7) {
-        pRanges = new VkImageSubresourceRange[rangeCount];
+        pRanges = new VkImageSubresourceRange[rangeCount]();
         for (U32 i=0;i<rangeCount;i++) {
             MarshalVkImageSubresourceRange::read(pBoxedInfo, cpu->memory, ARG7 + i * 20, &pRanges[i]);
         }
     }
     pBoxedInfo->pvkCmdClearDepthStencilImage(commandBuffer, image, imageLayout, pDepthStencil, rangeCount, pRanges);
     if (pRanges) {
+        for (U32 i=0;i<rangeCount;++i) {
+            MarshalVkImageSubresourceRange owned; owned.s = pRanges[i];
+        }
         delete[] pRanges;
     }
 }
@@ -2856,7 +2954,7 @@ void vk_CmdClearAttachments(CPU* cpu) {
     uint32_t attachmentCount = (uint32_t)ARG2;
     VkClearAttachment* pAttachments = NULL;
     if (ARG3) {
-        pAttachments = new VkClearAttachment[attachmentCount];
+        pAttachments = new VkClearAttachment[attachmentCount]();
         for (U32 i=0;i<attachmentCount;i++) {
             MarshalVkClearAttachment::read(pBoxedInfo, cpu->memory, ARG3 + i * 24, &pAttachments[i]);
         }
@@ -2864,16 +2962,22 @@ void vk_CmdClearAttachments(CPU* cpu) {
     uint32_t rectCount = (uint32_t)ARG4;
     VkClearRect* pRects = NULL;
     if (ARG5) {
-        pRects = new VkClearRect[rectCount];
+        pRects = new VkClearRect[rectCount]();
         for (U32 i=0;i<rectCount;i++) {
             MarshalVkClearRect::read(pBoxedInfo, cpu->memory, ARG5 + i * 24, &pRects[i]);
         }
     }
     pBoxedInfo->pvkCmdClearAttachments(commandBuffer, attachmentCount, pAttachments, rectCount, pRects);
     if (pAttachments) {
+        for (U32 i=0;i<attachmentCount;++i) {
+            MarshalVkClearAttachment owned; owned.s = pAttachments[i];
+        }
         delete[] pAttachments;
     }
     if (pRects) {
+        for (U32 i=0;i<rectCount;++i) {
+            MarshalVkClearRect owned; owned.s = pRects[i];
+        }
         delete[] pRects;
     }
 }
@@ -2887,13 +2991,16 @@ void vk_CmdResolveImage(CPU* cpu) {
     uint32_t regionCount = (uint32_t)ARG8;
     VkImageResolve* pRegions = NULL;
     if (ARG9) {
-        pRegions = new VkImageResolve[regionCount];
+        pRegions = new VkImageResolve[regionCount]();
         for (U32 i=0;i<regionCount;i++) {
             MarshalVkImageResolve::read(pBoxedInfo, cpu->memory, ARG9 + i * 68, &pRegions[i]);
         }
     }
     pBoxedInfo->pvkCmdResolveImage(commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
     if (pRegions) {
+        for (U32 i=0;i<regionCount;++i) {
+            MarshalVkImageResolve owned; owned.s = pRegions[i];
+        }
         delete[] pRegions;
     }
 }
@@ -2924,7 +3031,7 @@ void vk_CmdWaitEvents(CPU* cpu) {
     uint32_t memoryBarrierCount = (uint32_t)ARG6;
     VkMemoryBarrier* pMemoryBarriers = NULL;
     if (ARG7) {
-        pMemoryBarriers = new VkMemoryBarrier[memoryBarrierCount];
+        pMemoryBarriers = new VkMemoryBarrier[memoryBarrierCount]();
         for (U32 i=0;i<memoryBarrierCount;i++) {
             MarshalVkMemoryBarrier::read(pBoxedInfo, cpu->memory, ARG7 + i * 16, &pMemoryBarriers[i]);
         }
@@ -2932,7 +3039,7 @@ void vk_CmdWaitEvents(CPU* cpu) {
     uint32_t bufferMemoryBarrierCount = (uint32_t)ARG8;
     VkBufferMemoryBarrier* pBufferMemoryBarriers = NULL;
     if (ARG9) {
-        pBufferMemoryBarriers = new VkBufferMemoryBarrier[bufferMemoryBarrierCount];
+        pBufferMemoryBarriers = new VkBufferMemoryBarrier[bufferMemoryBarrierCount]();
         for (U32 i=0;i<bufferMemoryBarrierCount;i++) {
             MarshalVkBufferMemoryBarrier::read(pBoxedInfo, cpu->memory, ARG9 + i * 48, &pBufferMemoryBarriers[i]);
         }
@@ -2940,7 +3047,7 @@ void vk_CmdWaitEvents(CPU* cpu) {
     uint32_t imageMemoryBarrierCount = (uint32_t)ARG10;
     VkImageMemoryBarrier* pImageMemoryBarriers = NULL;
     if (ARG11) {
-        pImageMemoryBarriers = new VkImageMemoryBarrier[imageMemoryBarrierCount];
+        pImageMemoryBarriers = new VkImageMemoryBarrier[imageMemoryBarrierCount]();
         for (U32 i=0;i<imageMemoryBarrierCount;i++) {
             MarshalVkImageMemoryBarrier::read(pBoxedInfo, cpu->memory, ARG11 + i * 60, &pImageMemoryBarriers[i]);
         }
@@ -2948,12 +3055,21 @@ void vk_CmdWaitEvents(CPU* cpu) {
     pBoxedInfo->pvkCmdWaitEvents(commandBuffer, eventCount, pEvents, srcStageMask, dstStageMask, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
     cpu->memory->unlockMemory((U8*)pEvents);
     if (pMemoryBarriers) {
+        for (U32 i=0;i<memoryBarrierCount;++i) {
+            MarshalVkMemoryBarrier owned; owned.s = pMemoryBarriers[i];
+        }
         delete[] pMemoryBarriers;
     }
     if (pBufferMemoryBarriers) {
+        for (U32 i=0;i<bufferMemoryBarrierCount;++i) {
+            MarshalVkBufferMemoryBarrier owned; owned.s = pBufferMemoryBarriers[i];
+        }
         delete[] pBufferMemoryBarriers;
     }
     if (pImageMemoryBarriers) {
+        for (U32 i=0;i<imageMemoryBarrierCount;++i) {
+            MarshalVkImageMemoryBarrier owned; owned.s = pImageMemoryBarriers[i];
+        }
         delete[] pImageMemoryBarriers;
     }
 }
@@ -2966,7 +3082,7 @@ void vk_CmdPipelineBarrier(CPU* cpu) {
     uint32_t memoryBarrierCount = (uint32_t)ARG5;
     VkMemoryBarrier* pMemoryBarriers = NULL;
     if (ARG6) {
-        pMemoryBarriers = new VkMemoryBarrier[memoryBarrierCount];
+        pMemoryBarriers = new VkMemoryBarrier[memoryBarrierCount]();
         for (U32 i=0;i<memoryBarrierCount;i++) {
             MarshalVkMemoryBarrier::read(pBoxedInfo, cpu->memory, ARG6 + i * 16, &pMemoryBarriers[i]);
         }
@@ -2974,7 +3090,7 @@ void vk_CmdPipelineBarrier(CPU* cpu) {
     uint32_t bufferMemoryBarrierCount = (uint32_t)ARG7;
     VkBufferMemoryBarrier* pBufferMemoryBarriers = NULL;
     if (ARG8) {
-        pBufferMemoryBarriers = new VkBufferMemoryBarrier[bufferMemoryBarrierCount];
+        pBufferMemoryBarriers = new VkBufferMemoryBarrier[bufferMemoryBarrierCount]();
         for (U32 i=0;i<bufferMemoryBarrierCount;i++) {
             MarshalVkBufferMemoryBarrier::read(pBoxedInfo, cpu->memory, ARG8 + i * 48, &pBufferMemoryBarriers[i]);
         }
@@ -2982,19 +3098,28 @@ void vk_CmdPipelineBarrier(CPU* cpu) {
     uint32_t imageMemoryBarrierCount = (uint32_t)ARG9;
     VkImageMemoryBarrier* pImageMemoryBarriers = NULL;
     if (ARG10) {
-        pImageMemoryBarriers = new VkImageMemoryBarrier[imageMemoryBarrierCount];
+        pImageMemoryBarriers = new VkImageMemoryBarrier[imageMemoryBarrierCount]();
         for (U32 i=0;i<imageMemoryBarrierCount;i++) {
             MarshalVkImageMemoryBarrier::read(pBoxedInfo, cpu->memory, ARG10 + i * 60, &pImageMemoryBarriers[i]);
         }
     }
     pBoxedInfo->pvkCmdPipelineBarrier(commandBuffer, srcStageMask, dstStageMask, dependencyFlags, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
     if (pMemoryBarriers) {
+        for (U32 i=0;i<memoryBarrierCount;++i) {
+            MarshalVkMemoryBarrier owned; owned.s = pMemoryBarriers[i];
+        }
         delete[] pMemoryBarriers;
     }
     if (pBufferMemoryBarriers) {
+        for (U32 i=0;i<bufferMemoryBarrierCount;++i) {
+            MarshalVkBufferMemoryBarrier owned; owned.s = pBufferMemoryBarriers[i];
+        }
         delete[] pBufferMemoryBarriers;
     }
     if (pImageMemoryBarriers) {
+        for (U32 i=0;i<imageMemoryBarrierCount;++i) {
+            MarshalVkImageMemoryBarrier owned; owned.s = pImageMemoryBarriers[i];
+        }
         delete[] pImageMemoryBarriers;
     }
 }
@@ -3111,7 +3236,7 @@ void vk_CreateSharedSwapchainsKHR(CPU* cpu) {
     uint32_t swapchainCount = (uint32_t)ARG2;
     VkSwapchainCreateInfoKHR* pCreateInfos = NULL;
     if (ARG3) {
-        pCreateInfos = new VkSwapchainCreateInfoKHR[swapchainCount];
+        pCreateInfos = new VkSwapchainCreateInfoKHR[swapchainCount]();
         for (U32 i=0;i<swapchainCount;i++) {
             MarshalVkSwapchainCreateInfoKHR::read(pBoxedInfo, cpu->memory, ARG3 + i * 84, &pCreateInfos[i]);
         }
@@ -3124,6 +3249,9 @@ void vk_CreateSharedSwapchainsKHR(CPU* cpu) {
     }
     EAX = (U32)pBoxedInfo->pvkCreateSharedSwapchainsKHR(device, swapchainCount, pCreateInfos, pAllocator, pSwapchains);
     if (pCreateInfos) {
+        for (U32 i=0;i<swapchainCount;++i) {
+            MarshalVkSwapchainCreateInfoKHR owned; owned.s = pCreateInfos[i];
+        }
         delete[] pCreateInfos;
     }
     cpu->memory->unlockMemory((U8*)pSwapchains);
@@ -3164,18 +3292,24 @@ void vk_GetPhysicalDeviceSurfaceFormatsKHR(CPU* cpu) {
     uint32_t tmp_pSurfaceFormatCount = (uint32_t) cpu->memory->readd(ARG4);
     uint32_t* pSurfaceFormatCount = &tmp_pSurfaceFormatCount;
     VkSurfaceFormatKHR* pSurfaceFormats = NULL;
+    const U32 pSurfaceFormatsCapacity = *pSurfaceFormatCount;
     if (ARG5) {
-        pSurfaceFormats = new VkSurfaceFormatKHR[*pSurfaceFormatCount];
+        pSurfaceFormats = new VkSurfaceFormatKHR[pSurfaceFormatsCapacity]();
         U32 address = ARG5;
-        for (U32 i=0;i<*pSurfaceFormatCount;i++) {
+        for (U32 i=0;i<pSurfaceFormatsCapacity;i++) {
             MarshalVkSurfaceFormatKHR::read(pBoxedInfo, cpu->memory, address + i*8, &pSurfaceFormats[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, pSurfaceFormatCount, pSurfaceFormats);
     cpu->memory->writed(ARG4, (U32)tmp_pSurfaceFormatCount);
     if (ARG5) {
-        for (U32 i=0;i<*pSurfaceFormatCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pSurfaceFormatCount), pSurfaceFormatsCapacity);i++) {
             MarshalVkSurfaceFormatKHR::write(pBoxedInfo, cpu->memory, ARG5 + i * 8, &pSurfaceFormats[i]);
+        }
+        }
+        for (U32 i=0;i<pSurfaceFormatsCapacity;++i) {
+            MarshalVkSurfaceFormatKHR owned; owned.s = pSurfaceFormats[i];
         }
         delete[] pSurfaceFormats;
     }
@@ -3283,6 +3417,7 @@ void vk_DebugReportMessageEXT(CPU* cpu) {
     VkDebugReportFlagsEXT flags = (VkDebugReportFlagsEXT)ARG2;
     VkDebugReportObjectTypeEXT objectType = (VkDebugReportObjectTypeEXT)ARG3;
     uint64_t object = (uint64_t)QARG4;
+    object = translateVulkanObjectHandle(cpu->memory, (VkObjectType)objectType, object);
     size_t location = (size_t)ARG6;
     int32_t messageCode = (int32_t)ARG7;
     char* pLayerPrefix = nullptr;
@@ -3459,13 +3594,16 @@ void vk_UpdateIndirectExecutionSetPipelineEXT(CPU* cpu) {
     uint32_t executionSetWriteCount = (uint32_t)ARG4;
     VkWriteIndirectExecutionSetPipelineEXT* pExecutionSetWrites = NULL;
     if (ARG5) {
-        pExecutionSetWrites = new VkWriteIndirectExecutionSetPipelineEXT[executionSetWriteCount];
+        pExecutionSetWrites = new VkWriteIndirectExecutionSetPipelineEXT[executionSetWriteCount]();
         for (U32 i=0;i<executionSetWriteCount;i++) {
             MarshalVkWriteIndirectExecutionSetPipelineEXT::read(pBoxedInfo, cpu->memory, ARG5 + i * 20, &pExecutionSetWrites[i]);
         }
     }
     pBoxedInfo->pvkUpdateIndirectExecutionSetPipelineEXT(device, indirectExecutionSet, executionSetWriteCount, pExecutionSetWrites);
     if (pExecutionSetWrites) {
+        for (U32 i=0;i<executionSetWriteCount;++i) {
+            MarshalVkWriteIndirectExecutionSetPipelineEXT owned; owned.s = pExecutionSetWrites[i];
+        }
         delete[] pExecutionSetWrites;
     }
 }
@@ -3476,13 +3614,16 @@ void vk_UpdateIndirectExecutionSetShaderEXT(CPU* cpu) {
     uint32_t executionSetWriteCount = (uint32_t)ARG4;
     VkWriteIndirectExecutionSetShaderEXT* pExecutionSetWrites = NULL;
     if (ARG5) {
-        pExecutionSetWrites = new VkWriteIndirectExecutionSetShaderEXT[executionSetWriteCount];
+        pExecutionSetWrites = new VkWriteIndirectExecutionSetShaderEXT[executionSetWriteCount]();
         for (U32 i=0;i<executionSetWriteCount;i++) {
             MarshalVkWriteIndirectExecutionSetShaderEXT::read(pBoxedInfo, cpu->memory, ARG5 + i * 20, &pExecutionSetWrites[i]);
         }
     }
     pBoxedInfo->pvkUpdateIndirectExecutionSetShaderEXT(device, indirectExecutionSet, executionSetWriteCount, pExecutionSetWrites);
     if (pExecutionSetWrites) {
+        for (U32 i=0;i<executionSetWriteCount;++i) {
+            MarshalVkWriteIndirectExecutionSetShaderEXT owned; owned.s = pExecutionSetWrites[i];
+        }
         delete[] pExecutionSetWrites;
     }
 }
@@ -3556,18 +3697,22 @@ void vk_GetPhysicalDeviceQueueFamilyProperties2(CPU* cpu) {
     uint32_t tmp_pQueueFamilyPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pQueueFamilyPropertyCount = &tmp_pQueueFamilyPropertyCount;
     VkQueueFamilyProperties2* pQueueFamilyProperties = NULL;
+    const U32 pQueueFamilyPropertiesCapacity = *pQueueFamilyPropertyCount;
     if (ARG3) {
-        pQueueFamilyProperties = new VkQueueFamilyProperties2[*pQueueFamilyPropertyCount];
+        pQueueFamilyProperties = new VkQueueFamilyProperties2[pQueueFamilyPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pQueueFamilyPropertyCount;i++) {
+        for (U32 i=0;i<pQueueFamilyPropertiesCapacity;i++) {
             MarshalVkQueueFamilyProperties2::read(pBoxedInfo, cpu->memory, address + i*32, &pQueueFamilyProperties[i]);
         }
     }
     pBoxedInfo->pvkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pQueueFamilyPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pQueueFamilyPropertyCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pQueueFamilyPropertyCount), pQueueFamilyPropertiesCapacity);i++) {
             MarshalVkQueueFamilyProperties2::write(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pQueueFamilyProperties[i]);
+        }
+        for (U32 i=0;i<pQueueFamilyPropertiesCapacity;++i) {
+            MarshalVkQueueFamilyProperties2 owned; owned.s = pQueueFamilyProperties[i];
         }
         delete[] pQueueFamilyProperties;
     }
@@ -3578,18 +3723,22 @@ void vk_GetPhysicalDeviceQueueFamilyProperties2KHR(CPU* cpu) {
     uint32_t tmp_pQueueFamilyPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pQueueFamilyPropertyCount = &tmp_pQueueFamilyPropertyCount;
     VkQueueFamilyProperties2* pQueueFamilyProperties = NULL;
+    const U32 pQueueFamilyPropertiesCapacity = *pQueueFamilyPropertyCount;
     if (ARG3) {
-        pQueueFamilyProperties = new VkQueueFamilyProperties2[*pQueueFamilyPropertyCount];
+        pQueueFamilyProperties = new VkQueueFamilyProperties2[pQueueFamilyPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pQueueFamilyPropertyCount;i++) {
+        for (U32 i=0;i<pQueueFamilyPropertiesCapacity;i++) {
             MarshalVkQueueFamilyProperties2::read(pBoxedInfo, cpu->memory, address + i*32, &pQueueFamilyProperties[i]);
         }
     }
     pBoxedInfo->pvkGetPhysicalDeviceQueueFamilyProperties2KHR(physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pQueueFamilyPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pQueueFamilyPropertyCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pQueueFamilyPropertyCount), pQueueFamilyPropertiesCapacity);i++) {
             MarshalVkQueueFamilyProperties2::write(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pQueueFamilyProperties[i]);
+        }
+        for (U32 i=0;i<pQueueFamilyPropertiesCapacity;++i) {
+            MarshalVkQueueFamilyProperties2 owned; owned.s = pQueueFamilyProperties[i];
         }
         delete[] pQueueFamilyProperties;
     }
@@ -3616,18 +3765,22 @@ void vk_GetPhysicalDeviceSparseImageFormatProperties2(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkSparseImageFormatProperties2* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG4) {
-        pProperties = new VkSparseImageFormatProperties2[*pPropertyCount];
+        pProperties = new VkSparseImageFormatProperties2[pPropertiesCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkSparseImageFormatProperties2::read(pBoxedInfo, cpu->memory, address + i*28, &pProperties[i]);
         }
     }
     pBoxedInfo->pvkGetPhysicalDeviceSparseImageFormatProperties2(physicalDevice, pFormatInfo, pPropertyCount, pProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pPropertyCount);
     if (ARG4) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkSparseImageFormatProperties2::write(pBoxedInfo, cpu->memory, ARG4 + i * 28, &pProperties[i]);
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkSparseImageFormatProperties2 owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -3640,18 +3793,22 @@ void vk_GetPhysicalDeviceSparseImageFormatProperties2KHR(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkSparseImageFormatProperties2* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG4) {
-        pProperties = new VkSparseImageFormatProperties2[*pPropertyCount];
+        pProperties = new VkSparseImageFormatProperties2[pPropertiesCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkSparseImageFormatProperties2::read(pBoxedInfo, cpu->memory, address + i*28, &pProperties[i]);
         }
     }
     pBoxedInfo->pvkGetPhysicalDeviceSparseImageFormatProperties2KHR(physicalDevice, pFormatInfo, pPropertyCount, pProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pPropertyCount);
     if (ARG4) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkSparseImageFormatProperties2::write(pBoxedInfo, cpu->memory, ARG4 + i * 28, &pProperties[i]);
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkSparseImageFormatProperties2 owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -3665,13 +3822,16 @@ void vk_CmdPushDescriptorSet(CPU* cpu) {
     uint32_t descriptorWriteCount = (uint32_t)ARG6;
     VkWriteDescriptorSet* pDescriptorWrites = NULL;
     if (ARG7) {
-        pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount];
+        pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount]();
         for (U32 i=0;i<descriptorWriteCount;i++) {
             MarshalVkWriteDescriptorSet::read(pBoxedInfo, cpu->memory, ARG7 + i * 44, &pDescriptorWrites[i]);
         }
     }
     pBoxedInfo->pvkCmdPushDescriptorSet(commandBuffer, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
     if (pDescriptorWrites) {
+        for (U32 i=0;i<descriptorWriteCount;++i) {
+            MarshalVkWriteDescriptorSet owned; owned.s = pDescriptorWrites[i];
+        }
         delete[] pDescriptorWrites;
     }
 }
@@ -3684,13 +3844,16 @@ void vk_CmdPushDescriptorSetKHR(CPU* cpu) {
     uint32_t descriptorWriteCount = (uint32_t)ARG6;
     VkWriteDescriptorSet* pDescriptorWrites = NULL;
     if (ARG7) {
-        pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount];
+        pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount]();
         for (U32 i=0;i<descriptorWriteCount;i++) {
             MarshalVkWriteDescriptorSet::read(pBoxedInfo, cpu->memory, ARG7 + i * 44, &pDescriptorWrites[i]);
         }
     }
     pBoxedInfo->pvkCmdPushDescriptorSetKHR(commandBuffer, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
     if (pDescriptorWrites) {
+        for (U32 i=0;i<descriptorWriteCount;++i) {
+            MarshalVkWriteDescriptorSet owned; owned.s = pDescriptorWrites[i];
+        }
         delete[] pDescriptorWrites;
     }
 }
@@ -3832,18 +3995,24 @@ void vk_EnumeratePhysicalDeviceGroups(CPU* cpu) {
     uint32_t tmp_pPhysicalDeviceGroupCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPhysicalDeviceGroupCount = &tmp_pPhysicalDeviceGroupCount;
     VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties = NULL;
+    const U32 pPhysicalDeviceGroupPropertiesCapacity = *pPhysicalDeviceGroupCount;
     if (ARG3) {
-        pPhysicalDeviceGroupProperties = new VkPhysicalDeviceGroupProperties[*pPhysicalDeviceGroupCount];
+        pPhysicalDeviceGroupProperties = new VkPhysicalDeviceGroupProperties[pPhysicalDeviceGroupPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pPhysicalDeviceGroupCount;i++) {
+        for (U32 i=0;i<pPhysicalDeviceGroupPropertiesCapacity;i++) {
             MarshalVkPhysicalDeviceGroupProperties::read(pBoxedInfo, cpu->memory, address + i*144, &pPhysicalDeviceGroupProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDeviceGroups(instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPhysicalDeviceGroupCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPhysicalDeviceGroupCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPhysicalDeviceGroupCount), pPhysicalDeviceGroupPropertiesCapacity);i++) {
             MarshalVkPhysicalDeviceGroupProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 144, &pPhysicalDeviceGroupProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPhysicalDeviceGroupPropertiesCapacity;++i) {
+            MarshalVkPhysicalDeviceGroupProperties owned; owned.s = pPhysicalDeviceGroupProperties[i];
         }
         delete[] pPhysicalDeviceGroupProperties;
     }
@@ -3855,18 +4024,24 @@ void vk_EnumeratePhysicalDeviceGroupsKHR(CPU* cpu) {
     uint32_t tmp_pPhysicalDeviceGroupCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPhysicalDeviceGroupCount = &tmp_pPhysicalDeviceGroupCount;
     VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties = NULL;
+    const U32 pPhysicalDeviceGroupPropertiesCapacity = *pPhysicalDeviceGroupCount;
     if (ARG3) {
-        pPhysicalDeviceGroupProperties = new VkPhysicalDeviceGroupProperties[*pPhysicalDeviceGroupCount];
+        pPhysicalDeviceGroupProperties = new VkPhysicalDeviceGroupProperties[pPhysicalDeviceGroupPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pPhysicalDeviceGroupCount;i++) {
+        for (U32 i=0;i<pPhysicalDeviceGroupPropertiesCapacity;i++) {
             MarshalVkPhysicalDeviceGroupProperties::read(pBoxedInfo, cpu->memory, address + i*144, &pPhysicalDeviceGroupProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDeviceGroupsKHR(instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPhysicalDeviceGroupCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPhysicalDeviceGroupCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPhysicalDeviceGroupCount), pPhysicalDeviceGroupPropertiesCapacity);i++) {
             MarshalVkPhysicalDeviceGroupProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 144, &pPhysicalDeviceGroupProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPhysicalDeviceGroupPropertiesCapacity;++i) {
+            MarshalVkPhysicalDeviceGroupProperties owned; owned.s = pPhysicalDeviceGroupProperties[i];
         }
         delete[] pPhysicalDeviceGroupProperties;
     }
@@ -3900,13 +4075,16 @@ void vk_BindBufferMemory2(CPU* cpu) {
     uint32_t bindInfoCount = (uint32_t)ARG2;
     VkBindBufferMemoryInfo* pBindInfos = NULL;
     if (ARG3) {
-        pBindInfos = new VkBindBufferMemoryInfo[bindInfoCount];
+        pBindInfos = new VkBindBufferMemoryInfo[bindInfoCount]();
         for (U32 i=0;i<bindInfoCount;i++) {
             MarshalVkBindBufferMemoryInfo::read(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pBindInfos[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkBindBufferMemory2(device, bindInfoCount, pBindInfos);
     if (pBindInfos) {
+        for (U32 i=0;i<bindInfoCount;++i) {
+            MarshalVkBindBufferMemoryInfo owned; owned.s = pBindInfos[i];
+        }
         delete[] pBindInfos;
     }
 }
@@ -3917,13 +4095,16 @@ void vk_BindBufferMemory2KHR(CPU* cpu) {
     uint32_t bindInfoCount = (uint32_t)ARG2;
     VkBindBufferMemoryInfo* pBindInfos = NULL;
     if (ARG3) {
-        pBindInfos = new VkBindBufferMemoryInfo[bindInfoCount];
+        pBindInfos = new VkBindBufferMemoryInfo[bindInfoCount]();
         for (U32 i=0;i<bindInfoCount;i++) {
             MarshalVkBindBufferMemoryInfo::read(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pBindInfos[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkBindBufferMemory2KHR(device, bindInfoCount, pBindInfos);
     if (pBindInfos) {
+        for (U32 i=0;i<bindInfoCount;++i) {
+            MarshalVkBindBufferMemoryInfo owned; owned.s = pBindInfos[i];
+        }
         delete[] pBindInfos;
     }
 }
@@ -3934,13 +4115,16 @@ void vk_BindImageMemory2(CPU* cpu) {
     uint32_t bindInfoCount = (uint32_t)ARG2;
     VkBindImageMemoryInfo* pBindInfos = NULL;
     if (ARG3) {
-        pBindInfos = new VkBindImageMemoryInfo[bindInfoCount];
+        pBindInfos = new VkBindImageMemoryInfo[bindInfoCount]();
         for (U32 i=0;i<bindInfoCount;i++) {
             MarshalVkBindImageMemoryInfo::read(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pBindInfos[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkBindImageMemory2(device, bindInfoCount, pBindInfos);
     if (pBindInfos) {
+        for (U32 i=0;i<bindInfoCount;++i) {
+            MarshalVkBindImageMemoryInfo owned; owned.s = pBindInfos[i];
+        }
         delete[] pBindInfos;
     }
 }
@@ -3951,13 +4135,16 @@ void vk_BindImageMemory2KHR(CPU* cpu) {
     uint32_t bindInfoCount = (uint32_t)ARG2;
     VkBindImageMemoryInfo* pBindInfos = NULL;
     if (ARG3) {
-        pBindInfos = new VkBindImageMemoryInfo[bindInfoCount];
+        pBindInfos = new VkBindImageMemoryInfo[bindInfoCount]();
         for (U32 i=0;i<bindInfoCount;i++) {
             MarshalVkBindImageMemoryInfo::read(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pBindInfos[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkBindImageMemory2KHR(device, bindInfoCount, pBindInfos);
     if (pBindInfos) {
+        for (U32 i=0;i<bindInfoCount;++i) {
+            MarshalVkBindImageMemoryInfo owned; owned.s = pBindInfos[i];
+        }
         delete[] pBindInfos;
     }
 }
@@ -4032,18 +4219,24 @@ void vk_GetPhysicalDevicePresentRectanglesKHR(CPU* cpu) {
     uint32_t tmp_pRectCount = (uint32_t) cpu->memory->readd(ARG4);
     uint32_t* pRectCount = &tmp_pRectCount;
     VkRect2D* pRects = NULL;
+    const U32 pRectsCapacity = *pRectCount;
     if (ARG5) {
-        pRects = new VkRect2D[*pRectCount];
+        pRects = new VkRect2D[pRectsCapacity]();
         U32 address = ARG5;
-        for (U32 i=0;i<*pRectCount;i++) {
+        for (U32 i=0;i<pRectsCapacity;i++) {
             MarshalVkRect2D::read(pBoxedInfo, cpu->memory, address + i*16, &pRects[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDevicePresentRectanglesKHR(physicalDevice, surface, pRectCount, pRects);
     cpu->memory->writed(ARG4, (U32)tmp_pRectCount);
     if (ARG5) {
-        for (U32 i=0;i<*pRectCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pRectCount), pRectsCapacity);i++) {
             MarshalVkRect2D::write(pBoxedInfo, cpu->memory, ARG5 + i * 16, &pRects[i]);
+        }
+        }
+        for (U32 i=0;i<pRectsCapacity;++i) {
+            MarshalVkRect2D owned; owned.s = pRects[i];
         }
         delete[] pRects;
     }
@@ -4058,6 +4251,10 @@ void vk_CreateDescriptorUpdateTemplate(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDescriptorUpdateTemplate tmp_pDescriptorUpdateTemplate = (VkDescriptorUpdateTemplate) cpu->memory->readq(ARG4);
     VkDescriptorUpdateTemplate* pDescriptorUpdateTemplate = &tmp_pDescriptorUpdateTemplate;
+    std::vector<VkDescriptorUpdateTemplateEntry> hostEntries;
+    VkDescriptorUpdateTemplateCreateInfo hostCreateInfo = *pCreateInfo;
+    if (!prepareDescriptorTemplate(hostCreateInfo, hostEntries)) { EAX = VK_ERROR_FEATURE_NOT_PRESENT; return; }
+    pCreateInfo = &hostCreateInfo;
     EAX = (U32)pBoxedInfo->pvkCreateDescriptorUpdateTemplate(device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
     if (!EAX && tmp_pDescriptorUpdateTemplate) {
         pBoxedInfo->descriptorUpdateTemplateCreateInfo[(U64)tmp_pDescriptorUpdateTemplate] = local_pCreateInfo;
@@ -4074,6 +4271,10 @@ void vk_CreateDescriptorUpdateTemplateKHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDescriptorUpdateTemplate tmp_pDescriptorUpdateTemplate = (VkDescriptorUpdateTemplate) cpu->memory->readq(ARG4);
     VkDescriptorUpdateTemplate* pDescriptorUpdateTemplate = &tmp_pDescriptorUpdateTemplate;
+    std::vector<VkDescriptorUpdateTemplateEntry> hostEntries;
+    VkDescriptorUpdateTemplateCreateInfo hostCreateInfo = *pCreateInfo;
+    if (!prepareDescriptorTemplate(hostCreateInfo, hostEntries)) { EAX = VK_ERROR_FEATURE_NOT_PRESENT; return; }
+    pCreateInfo = &hostCreateInfo;
     EAX = (U32)pBoxedInfo->pvkCreateDescriptorUpdateTemplateKHR(device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
     if (!EAX && tmp_pDescriptorUpdateTemplate) {
         pBoxedInfo->descriptorUpdateTemplateCreateInfo[(U64)tmp_pDescriptorUpdateTemplate] = local_pCreateInfo;
@@ -4103,20 +4304,18 @@ void vk_UpdateDescriptorSetWithTemplate(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkDescriptorSet descriptorSet = (VkDescriptorSet)QARG2;
     VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)QARG4;
-    U32 dataSize = calculateUpdateDescriptorSetWithTemplateDataSize(pBoxedInfo, descriptorUpdateTemplate);
-    const void* pData = cpu->memory->lockReadOnlyMemory(ARG6, dataSize);
+    std::vector<U8> templateData;
+    const void* pData = marshalDescriptorTemplateData(pBoxedInfo, cpu->memory, descriptorUpdateTemplate, ARG6, templateData);
     pBoxedInfo->pvkUpdateDescriptorSetWithTemplate(device, descriptorSet, descriptorUpdateTemplate, pData);
-    cpu->memory->unlockMemory((U8*)pData);
 }
 void vk_UpdateDescriptorSetWithTemplateKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkDescriptorSet descriptorSet = (VkDescriptorSet)QARG2;
     VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)QARG4;
-    U32 dataSize = calculateUpdateDescriptorSetWithTemplateDataSize(pBoxedInfo, descriptorUpdateTemplate);
-    const void* pData = cpu->memory->lockReadOnlyMemory(ARG6, dataSize);
+    std::vector<U8> templateData;
+    const void* pData = marshalDescriptorTemplateData(pBoxedInfo, cpu->memory, descriptorUpdateTemplate, ARG6, templateData);
     pBoxedInfo->pvkUpdateDescriptorSetWithTemplateKHR(device, descriptorSet, descriptorUpdateTemplate, pData);
-    cpu->memory->unlockMemory((U8*)pData);
 }
 void vk_CmdPushDescriptorSetWithTemplate(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -4124,8 +4323,8 @@ void vk_CmdPushDescriptorSetWithTemplate(CPU* cpu) {
     VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)QARG2;
     VkPipelineLayout layout = (VkPipelineLayout)QARG4;
     uint32_t set = (uint32_t)ARG6;
-    void* pData = nullptr;
-    kpanic("vkCmdPushDescriptorSetWithTemplate not implemented");
+    std::vector<U8> templateData;
+    const void* pData = marshalDescriptorTemplateData(pBoxedInfo, cpu->memory, descriptorUpdateTemplate, ARG7, templateData);
     pBoxedInfo->pvkCmdPushDescriptorSetWithTemplate(commandBuffer, descriptorUpdateTemplate, layout, set, pData);
 }
 void vk_CmdPushDescriptorSetWithTemplateKHR(CPU* cpu) {
@@ -4134,8 +4333,8 @@ void vk_CmdPushDescriptorSetWithTemplateKHR(CPU* cpu) {
     VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)QARG2;
     VkPipelineLayout layout = (VkPipelineLayout)QARG4;
     uint32_t set = (uint32_t)ARG6;
-    void* pData = nullptr;
-    kpanic("vkCmdPushDescriptorSetWithTemplateKHR not implemented");
+    std::vector<U8> templateData;
+    const void* pData = marshalDescriptorTemplateData(pBoxedInfo, cpu->memory, descriptorUpdateTemplate, ARG7, templateData);
     pBoxedInfo->pvkCmdPushDescriptorSetWithTemplateKHR(commandBuffer, descriptorUpdateTemplate, layout, set, pData);
 }
 void vk_SetHdrMetadataEXT(CPU* cpu) {
@@ -4148,7 +4347,7 @@ void vk_SetHdrMetadataEXT(CPU* cpu) {
     }
     VkHdrMetadataEXT* pMetadata = NULL;
     if (ARG4) {
-        pMetadata = new VkHdrMetadataEXT[swapchainCount];
+        pMetadata = new VkHdrMetadataEXT[swapchainCount]();
         for (U32 i=0;i<swapchainCount;i++) {
             MarshalVkHdrMetadataEXT::read(pBoxedInfo, cpu->memory, ARG4 + i * 56, &pMetadata[i]);
         }
@@ -4156,6 +4355,9 @@ void vk_SetHdrMetadataEXT(CPU* cpu) {
     pBoxedInfo->pvkSetHdrMetadataEXT(device, swapchainCount, pSwapchains, pMetadata);
     cpu->memory->unlockMemory((U8*)pSwapchains);
     if (pMetadata) {
+        for (U32 i=0;i<swapchainCount;++i) {
+            MarshalVkHdrMetadataEXT owned; owned.s = pMetadata[i];
+        }
         delete[] pMetadata;
     }
 }
@@ -4166,13 +4368,16 @@ void vk_CmdSetViewportWScalingNV(CPU* cpu) {
     uint32_t viewportCount = (uint32_t)ARG3;
     VkViewportWScalingNV* pViewportWScalings = NULL;
     if (ARG4) {
-        pViewportWScalings = new VkViewportWScalingNV[viewportCount];
+        pViewportWScalings = new VkViewportWScalingNV[viewportCount]();
         for (U32 i=0;i<viewportCount;i++) {
             MarshalVkViewportWScalingNV::read(pBoxedInfo, cpu->memory, ARG4 + i * 8, &pViewportWScalings[i]);
         }
     }
     pBoxedInfo->pvkCmdSetViewportWScalingNV(commandBuffer, firstViewport, viewportCount, pViewportWScalings);
     if (pViewportWScalings) {
+        for (U32 i=0;i<viewportCount;++i) {
+            MarshalVkViewportWScalingNV owned; owned.s = pViewportWScalings[i];
+        }
         delete[] pViewportWScalings;
     }
 }
@@ -4183,13 +4388,16 @@ void vk_CmdSetDiscardRectangleEXT(CPU* cpu) {
     uint32_t discardRectangleCount = (uint32_t)ARG3;
     VkRect2D* pDiscardRectangles = NULL;
     if (ARG4) {
-        pDiscardRectangles = new VkRect2D[discardRectangleCount];
+        pDiscardRectangles = new VkRect2D[discardRectangleCount]();
         for (U32 i=0;i<discardRectangleCount;i++) {
             MarshalVkRect2D::read(pBoxedInfo, cpu->memory, ARG4 + i * 16, &pDiscardRectangles[i]);
         }
     }
     pBoxedInfo->pvkCmdSetDiscardRectangleEXT(commandBuffer, firstDiscardRectangle, discardRectangleCount, pDiscardRectangles);
     if (pDiscardRectangles) {
+        for (U32 i=0;i<discardRectangleCount;++i) {
+            MarshalVkRect2D owned; owned.s = pDiscardRectangles[i];
+        }
         delete[] pDiscardRectangles;
     }
 }
@@ -4239,18 +4447,24 @@ void vk_GetPhysicalDeviceSurfaceFormats2KHR(CPU* cpu) {
     uint32_t tmp_pSurfaceFormatCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pSurfaceFormatCount = &tmp_pSurfaceFormatCount;
     VkSurfaceFormat2KHR* pSurfaceFormats = NULL;
+    const U32 pSurfaceFormatsCapacity = *pSurfaceFormatCount;
     if (ARG4) {
-        pSurfaceFormats = new VkSurfaceFormat2KHR[*pSurfaceFormatCount];
+        pSurfaceFormats = new VkSurfaceFormat2KHR[pSurfaceFormatsCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pSurfaceFormatCount;i++) {
+        for (U32 i=0;i<pSurfaceFormatsCapacity;i++) {
             MarshalVkSurfaceFormat2KHR::read(pBoxedInfo, cpu->memory, address + i*16, &pSurfaceFormats[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceSurfaceFormats2KHR(physicalDevice, pSurfaceInfo, pSurfaceFormatCount, pSurfaceFormats);
     cpu->memory->writed(ARG3, (U32)tmp_pSurfaceFormatCount);
     if (ARG4) {
-        for (U32 i=0;i<*pSurfaceFormatCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pSurfaceFormatCount), pSurfaceFormatsCapacity);i++) {
             MarshalVkSurfaceFormat2KHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 16, &pSurfaceFormats[i]);
+        }
+        }
+        for (U32 i=0;i<pSurfaceFormatsCapacity;++i) {
+            MarshalVkSurfaceFormat2KHR owned; owned.s = pSurfaceFormats[i];
         }
         delete[] pSurfaceFormats;
     }
@@ -4262,18 +4476,24 @@ void vk_GetPhysicalDeviceDisplayProperties2KHR(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkDisplayProperties2KHR* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG3) {
-        pProperties = new VkDisplayProperties2KHR[*pPropertyCount];
+        pProperties = new VkDisplayProperties2KHR[pPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkDisplayProperties2KHR::read(pBoxedInfo, cpu->memory, address + i*48, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceDisplayProperties2KHR(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkDisplayProperties2KHR::write(pBoxedInfo, cpu->memory, ARG3 + i * 48, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkDisplayProperties2KHR owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -4285,18 +4505,24 @@ void vk_GetPhysicalDeviceDisplayPlaneProperties2KHR(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkDisplayPlaneProperties2KHR* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG3) {
-        pProperties = new VkDisplayPlaneProperties2KHR[*pPropertyCount];
+        pProperties = new VkDisplayPlaneProperties2KHR[pPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkDisplayPlaneProperties2KHR::read(pBoxedInfo, cpu->memory, address + i*20, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceDisplayPlaneProperties2KHR(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkDisplayPlaneProperties2KHR::write(pBoxedInfo, cpu->memory, ARG3 + i * 20, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkDisplayPlaneProperties2KHR owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -4309,18 +4535,24 @@ void vk_GetDisplayModeProperties2KHR(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG4);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkDisplayModeProperties2KHR* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG5) {
-        pProperties = new VkDisplayModeProperties2KHR[*pPropertyCount];
+        pProperties = new VkDisplayModeProperties2KHR[pPropertiesCapacity]();
         U32 address = ARG5;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkDisplayModeProperties2KHR::read(pBoxedInfo, cpu->memory, address + i*28, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetDisplayModeProperties2KHR(physicalDevice, display, pPropertyCount, pProperties);
     cpu->memory->writed(ARG4, (U32)tmp_pPropertyCount);
     if (ARG5) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkDisplayModeProperties2KHR::write(pBoxedInfo, cpu->memory, ARG5 + i * 28, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkDisplayModeProperties2KHR owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -4379,18 +4611,22 @@ void vk_GetImageSparseMemoryRequirements2(CPU* cpu) {
     uint32_t tmp_pSparseMemoryRequirementCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pSparseMemoryRequirementCount = &tmp_pSparseMemoryRequirementCount;
     VkSparseImageMemoryRequirements2* pSparseMemoryRequirements = NULL;
+    const U32 pSparseMemoryRequirementsCapacity = *pSparseMemoryRequirementCount;
     if (ARG4) {
-        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[*pSparseMemoryRequirementCount];
+        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[pSparseMemoryRequirementsCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;i++) {
             MarshalVkSparseImageMemoryRequirements2::read(pBoxedInfo, cpu->memory, address + i*56, &pSparseMemoryRequirements[i]);
         }
     }
     pBoxedInfo->pvkGetImageSparseMemoryRequirements2(device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
     if (ARG4) {
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pSparseMemoryRequirementCount), pSparseMemoryRequirementsCapacity);i++) {
             MarshalVkSparseImageMemoryRequirements2::write(pBoxedInfo, cpu->memory, ARG4 + i * 56, &pSparseMemoryRequirements[i]);
+        }
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;++i) {
+            MarshalVkSparseImageMemoryRequirements2 owned; owned.s = pSparseMemoryRequirements[i];
         }
         delete[] pSparseMemoryRequirements;
     }
@@ -4403,18 +4639,22 @@ void vk_GetImageSparseMemoryRequirements2KHR(CPU* cpu) {
     uint32_t tmp_pSparseMemoryRequirementCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pSparseMemoryRequirementCount = &tmp_pSparseMemoryRequirementCount;
     VkSparseImageMemoryRequirements2* pSparseMemoryRequirements = NULL;
+    const U32 pSparseMemoryRequirementsCapacity = *pSparseMemoryRequirementCount;
     if (ARG4) {
-        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[*pSparseMemoryRequirementCount];
+        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[pSparseMemoryRequirementsCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;i++) {
             MarshalVkSparseImageMemoryRequirements2::read(pBoxedInfo, cpu->memory, address + i*56, &pSparseMemoryRequirements[i]);
         }
     }
     pBoxedInfo->pvkGetImageSparseMemoryRequirements2KHR(device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
     if (ARG4) {
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pSparseMemoryRequirementCount), pSparseMemoryRequirementsCapacity);i++) {
             MarshalVkSparseImageMemoryRequirements2::write(pBoxedInfo, cpu->memory, ARG4 + i * 56, &pSparseMemoryRequirements[i]);
+        }
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;++i) {
+            MarshalVkSparseImageMemoryRequirements2 owned; owned.s = pSparseMemoryRequirements[i];
         }
         delete[] pSparseMemoryRequirements;
     }
@@ -4463,18 +4703,22 @@ void vk_GetDeviceImageSparseMemoryRequirements(CPU* cpu) {
     uint32_t tmp_pSparseMemoryRequirementCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pSparseMemoryRequirementCount = &tmp_pSparseMemoryRequirementCount;
     VkSparseImageMemoryRequirements2* pSparseMemoryRequirements = NULL;
+    const U32 pSparseMemoryRequirementsCapacity = *pSparseMemoryRequirementCount;
     if (ARG4) {
-        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[*pSparseMemoryRequirementCount];
+        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[pSparseMemoryRequirementsCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;i++) {
             MarshalVkSparseImageMemoryRequirements2::read(pBoxedInfo, cpu->memory, address + i*56, &pSparseMemoryRequirements[i]);
         }
     }
     pBoxedInfo->pvkGetDeviceImageSparseMemoryRequirements(device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
     if (ARG4) {
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pSparseMemoryRequirementCount), pSparseMemoryRequirementsCapacity);i++) {
             MarshalVkSparseImageMemoryRequirements2::write(pBoxedInfo, cpu->memory, ARG4 + i * 56, &pSparseMemoryRequirements[i]);
+        }
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;++i) {
+            MarshalVkSparseImageMemoryRequirements2 owned; owned.s = pSparseMemoryRequirements[i];
         }
         delete[] pSparseMemoryRequirements;
     }
@@ -4487,18 +4731,22 @@ void vk_GetDeviceImageSparseMemoryRequirementsKHR(CPU* cpu) {
     uint32_t tmp_pSparseMemoryRequirementCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pSparseMemoryRequirementCount = &tmp_pSparseMemoryRequirementCount;
     VkSparseImageMemoryRequirements2* pSparseMemoryRequirements = NULL;
+    const U32 pSparseMemoryRequirementsCapacity = *pSparseMemoryRequirementCount;
     if (ARG4) {
-        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[*pSparseMemoryRequirementCount];
+        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[pSparseMemoryRequirementsCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;i++) {
             MarshalVkSparseImageMemoryRequirements2::read(pBoxedInfo, cpu->memory, address + i*56, &pSparseMemoryRequirements[i]);
         }
     }
     pBoxedInfo->pvkGetDeviceImageSparseMemoryRequirementsKHR(device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
     if (ARG4) {
-        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pSparseMemoryRequirementCount), pSparseMemoryRequirementsCapacity);i++) {
             MarshalVkSparseImageMemoryRequirements2::write(pBoxedInfo, cpu->memory, ARG4 + i * 56, &pSparseMemoryRequirements[i]);
+        }
+        for (U32 i=0;i<pSparseMemoryRequirementsCapacity;++i) {
+            MarshalVkSparseImageMemoryRequirements2 owned; owned.s = pSparseMemoryRequirements[i];
         }
         delete[] pSparseMemoryRequirements;
     }
@@ -4550,7 +4798,7 @@ void vk_GetDeviceQueue2(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkDeviceQueueInfo2 local_pQueueInfo(pBoxedInfo, cpu->memory, ARG2);
     VkDeviceQueueInfo2* pQueueInfo = &local_pQueueInfo.s;
-    VkQueue pQueue = (VkQueue)getVulkanPtr(cpu->memory, ARG3);
+    VkQueue pQueue = VK_NULL_HANDLE;
     pBoxedInfo->pvkGetDeviceQueue2(device, pQueueInfo, &pQueue);
     cpu->memory->writed(ARG3, createVulkanPtr(cpu->memory, pQueue, pBoxedInfo));
 }
@@ -4675,7 +4923,7 @@ void vk_GetCalibratedTimestampsKHR(CPU* cpu) {
     uint32_t timestampCount = (uint32_t)ARG2;
     VkCalibratedTimestampInfoKHR* pTimestampInfos = NULL;
     if (ARG3) {
-        pTimestampInfos = new VkCalibratedTimestampInfoKHR[timestampCount];
+        pTimestampInfos = new VkCalibratedTimestampInfoKHR[timestampCount]();
         for (U32 i=0;i<timestampCount;i++) {
             MarshalVkCalibratedTimestampInfoKHR::read(pBoxedInfo, cpu->memory, ARG3 + i * 12, &pTimestampInfos[i]);
         }
@@ -4688,6 +4936,9 @@ void vk_GetCalibratedTimestampsKHR(CPU* cpu) {
     uint64_t* pMaxDeviation = &tmp_pMaxDeviation;
     EAX = (U32)pBoxedInfo->pvkGetCalibratedTimestampsKHR(device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation);
     if (pTimestampInfos) {
+        for (U32 i=0;i<timestampCount;++i) {
+            MarshalVkCalibratedTimestampInfoKHR owned; owned.s = pTimestampInfos[i];
+        }
         delete[] pTimestampInfos;
     }
     cpu->memory->unlockMemory((U8*)pTimestamps);
@@ -4700,7 +4951,7 @@ void vk_GetCalibratedTimestampsEXT(CPU* cpu) {
     uint32_t timestampCount = (uint32_t)ARG2;
     VkCalibratedTimestampInfoKHR* pTimestampInfos = NULL;
     if (ARG3) {
-        pTimestampInfos = new VkCalibratedTimestampInfoKHR[timestampCount];
+        pTimestampInfos = new VkCalibratedTimestampInfoKHR[timestampCount]();
         for (U32 i=0;i<timestampCount;i++) {
             MarshalVkCalibratedTimestampInfoKHR::read(pBoxedInfo, cpu->memory, ARG3 + i * 12, &pTimestampInfos[i]);
         }
@@ -4713,6 +4964,9 @@ void vk_GetCalibratedTimestampsEXT(CPU* cpu) {
     uint64_t* pMaxDeviation = &tmp_pMaxDeviation;
     EAX = (U32)pBoxedInfo->pvkGetCalibratedTimestampsEXT(device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation);
     if (pTimestampInfos) {
+        for (U32 i=0;i<timestampCount;++i) {
+            MarshalVkCalibratedTimestampInfoKHR owned; owned.s = pTimestampInfos[i];
+        }
         delete[] pTimestampInfos;
     }
     cpu->memory->unlockMemory((U8*)pTimestamps);
@@ -5034,18 +5288,22 @@ void vk_GetQueueCheckpointDataNV(CPU* cpu) {
     uint32_t tmp_pCheckpointDataCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pCheckpointDataCount = &tmp_pCheckpointDataCount;
     VkCheckpointDataNV* pCheckpointData = NULL;
+    const U32 pCheckpointDataCapacity = *pCheckpointDataCount;
     if (ARG3) {
-        pCheckpointData = new VkCheckpointDataNV[*pCheckpointDataCount];
+        pCheckpointData = new VkCheckpointDataNV[pCheckpointDataCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pCheckpointDataCount;i++) {
+        for (U32 i=0;i<pCheckpointDataCapacity;i++) {
             MarshalVkCheckpointDataNV::read(pBoxedInfo, cpu->memory, address + i*16, &pCheckpointData[i]);
         }
     }
     pBoxedInfo->pvkGetQueueCheckpointDataNV(queue, pCheckpointDataCount, pCheckpointData);
     cpu->memory->writed(ARG2, (U32)tmp_pCheckpointDataCount);
     if (ARG3) {
-        for (U32 i=0;i<*pCheckpointDataCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pCheckpointDataCount), pCheckpointDataCapacity);i++) {
             MarshalVkCheckpointDataNV::write(pBoxedInfo, cpu->memory, ARG3 + i * 16, &pCheckpointData[i]);
+        }
+        for (U32 i=0;i<pCheckpointDataCapacity;++i) {
+            MarshalVkCheckpointDataNV owned; owned.s = pCheckpointData[i];
         }
         delete[] pCheckpointData;
     }
@@ -5141,13 +5399,16 @@ void vk_CmdSetExclusiveScissorNV(CPU* cpu) {
     uint32_t exclusiveScissorCount = (uint32_t)ARG3;
     VkRect2D* pExclusiveScissors = NULL;
     if (ARG4) {
-        pExclusiveScissors = new VkRect2D[exclusiveScissorCount];
+        pExclusiveScissors = new VkRect2D[exclusiveScissorCount]();
         for (U32 i=0;i<exclusiveScissorCount;i++) {
             MarshalVkRect2D::read(pBoxedInfo, cpu->memory, ARG4 + i * 16, &pExclusiveScissors[i]);
         }
     }
     pBoxedInfo->pvkCmdSetExclusiveScissorNV(commandBuffer, firstExclusiveScissor, exclusiveScissorCount, pExclusiveScissors);
     if (pExclusiveScissors) {
+        for (U32 i=0;i<exclusiveScissorCount;++i) {
+            MarshalVkRect2D owned; owned.s = pExclusiveScissors[i];
+        }
         delete[] pExclusiveScissors;
     }
 }
@@ -5177,13 +5438,16 @@ void vk_CmdSetViewportShadingRatePaletteNV(CPU* cpu) {
     uint32_t viewportCount = (uint32_t)ARG3;
     VkShadingRatePaletteNV* pShadingRatePalettes = NULL;
     if (ARG4) {
-        pShadingRatePalettes = new VkShadingRatePaletteNV[viewportCount];
+        pShadingRatePalettes = new VkShadingRatePaletteNV[viewportCount]();
         for (U32 i=0;i<viewportCount;i++) {
             MarshalVkShadingRatePaletteNV::read(pBoxedInfo, cpu->memory, ARG4 + i * 8, &pShadingRatePalettes[i]);
         }
     }
     pBoxedInfo->pvkCmdSetViewportShadingRatePaletteNV(commandBuffer, firstViewport, viewportCount, pShadingRatePalettes);
     if (pShadingRatePalettes) {
+        for (U32 i=0;i<viewportCount;++i) {
+            MarshalVkShadingRatePaletteNV owned; owned.s = pShadingRatePalettes[i];
+        }
         delete[] pShadingRatePalettes;
     }
 }
@@ -5194,13 +5458,16 @@ void vk_CmdSetCoarseSampleOrderNV(CPU* cpu) {
     uint32_t customSampleOrderCount = (uint32_t)ARG3;
     VkCoarseSampleOrderCustomNV* pCustomSampleOrders = NULL;
     if (ARG4) {
-        pCustomSampleOrders = new VkCoarseSampleOrderCustomNV[customSampleOrderCount];
+        pCustomSampleOrders = new VkCoarseSampleOrderCustomNV[customSampleOrderCount]();
         for (U32 i=0;i<customSampleOrderCount;i++) {
             MarshalVkCoarseSampleOrderCustomNV::read(pBoxedInfo, cpu->memory, ARG4 + i * 16, &pCustomSampleOrders[i]);
         }
     }
     pBoxedInfo->pvkCmdSetCoarseSampleOrderNV(commandBuffer, sampleOrderType, customSampleOrderCount, pCustomSampleOrders);
     if (pCustomSampleOrders) {
+        for (U32 i=0;i<customSampleOrderCount;++i) {
+            MarshalVkCoarseSampleOrderCustomNV owned; owned.s = pCustomSampleOrders[i];
+        }
         delete[] pCustomSampleOrders;
     }
 }
@@ -5319,13 +5586,16 @@ void vk_BindAccelerationStructureMemoryNV(CPU* cpu) {
     uint32_t bindInfoCount = (uint32_t)ARG2;
     VkBindAccelerationStructureMemoryInfoNV* pBindInfos = NULL;
     if (ARG3) {
-        pBindInfos = new VkBindAccelerationStructureMemoryInfoNV[bindInfoCount];
+        pBindInfos = new VkBindAccelerationStructureMemoryInfoNV[bindInfoCount]();
         for (U32 i=0;i<bindInfoCount;i++) {
             MarshalVkBindAccelerationStructureMemoryInfoNV::read(pBoxedInfo, cpu->memory, ARG3 + i * 40, &pBindInfos[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkBindAccelerationStructureMemoryNV(device, bindInfoCount, pBindInfos);
     if (pBindInfos) {
+        for (U32 i=0;i<bindInfoCount;++i) {
+            MarshalVkBindAccelerationStructureMemoryInfoNV owned; owned.s = pBindInfos[i];
+        }
         delete[] pBindInfos;
     }
 }
@@ -5548,7 +5818,7 @@ void vk_CreateRayTracingPipelinesNV(CPU* cpu) {
     uint32_t createInfoCount = (uint32_t)ARG4;
     VkRayTracingPipelineCreateInfoNV* pCreateInfos = NULL;
     if (ARG5) {
-        pCreateInfos = new VkRayTracingPipelineCreateInfoNV[createInfoCount];
+        pCreateInfos = new VkRayTracingPipelineCreateInfoNV[createInfoCount]();
         for (U32 i=0;i<createInfoCount;i++) {
             MarshalVkRayTracingPipelineCreateInfoNV::read(pBoxedInfo, cpu->memory, ARG5 + i * 52, &pCreateInfos[i]);
         }
@@ -5561,6 +5831,9 @@ void vk_CreateRayTracingPipelinesNV(CPU* cpu) {
     }
     EAX = (U32)pBoxedInfo->pvkCreateRayTracingPipelinesNV(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
+        for (U32 i=0;i<createInfoCount;++i) {
+            MarshalVkRayTracingPipelineCreateInfoNV owned; owned.s = pCreateInfos[i];
+        }
         delete[] pCreateInfos;
     }
     cpu->memory->unlockMemory((U8*)pPipelines);
@@ -5574,7 +5847,7 @@ void vk_CreateRayTracingPipelinesKHR(CPU* cpu) {
     uint32_t createInfoCount = (uint32_t)ARG6;
     VkRayTracingPipelineCreateInfoKHR* pCreateInfos = NULL;
     if (ARG7) {
-        pCreateInfos = new VkRayTracingPipelineCreateInfoKHR[createInfoCount];
+        pCreateInfos = new VkRayTracingPipelineCreateInfoKHR[createInfoCount]();
         for (U32 i=0;i<createInfoCount;i++) {
             MarshalVkRayTracingPipelineCreateInfoKHR::read(pBoxedInfo, cpu->memory, ARG7 + i * 64, &pCreateInfos[i]);
         }
@@ -5587,6 +5860,9 @@ void vk_CreateRayTracingPipelinesKHR(CPU* cpu) {
     }
     EAX = (U32)pBoxedInfo->pvkCreateRayTracingPipelinesKHR(device, deferredOperation, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
+        for (U32 i=0;i<createInfoCount;++i) {
+            MarshalVkRayTracingPipelineCreateInfoKHR owned; owned.s = pCreateInfos[i];
+        }
         delete[] pCreateInfos;
     }
     cpu->memory->unlockMemory((U8*)pPipelines);
@@ -5598,18 +5874,24 @@ void vk_GetPhysicalDeviceCooperativeMatrixPropertiesNV(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkCooperativeMatrixPropertiesNV* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG3) {
-        pProperties = new VkCooperativeMatrixPropertiesNV[*pPropertyCount];
+        pProperties = new VkCooperativeMatrixPropertiesNV[pPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkCooperativeMatrixPropertiesNV::read(pBoxedInfo, cpu->memory, address + i*40, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCooperativeMatrixPropertiesNV(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkCooperativeMatrixPropertiesNV::write(pBoxedInfo, cpu->memory, ARG3 + i * 40, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkCooperativeMatrixPropertiesNV owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -5696,32 +5978,44 @@ void vk_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(CPU* cpu) 
     uint32_t tmp_pCounterCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pCounterCount = &tmp_pCounterCount;
     VkPerformanceCounterKHR* pCounters = NULL;
+    const U32 pCountersCapacity = *pCounterCount;
     if (ARG4) {
-        pCounters = new VkPerformanceCounterKHR[*pCounterCount];
+        pCounters = new VkPerformanceCounterKHR[pCountersCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pCounterCount;i++) {
+        for (U32 i=0;i<pCountersCapacity;i++) {
             MarshalVkPerformanceCounterKHR::read(pBoxedInfo, cpu->memory, address + i*36, &pCounters[i]);
         }
     }
     VkPerformanceCounterDescriptionKHR* pCounterDescriptions = NULL;
+    const U32 pCounterDescriptionsCapacity = *pCounterCount;
     if (ARG5) {
-        pCounterDescriptions = new VkPerformanceCounterDescriptionKHR[*pCounterCount];
+        pCounterDescriptions = new VkPerformanceCounterDescriptionKHR[pCounterDescriptionsCapacity]();
         U32 address = ARG5;
-        for (U32 i=0;i<*pCounterCount;i++) {
+        for (U32 i=0;i<pCounterDescriptionsCapacity;i++) {
             MarshalVkPerformanceCounterDescriptionKHR::read(pBoxedInfo, cpu->memory, address + i*780, &pCounterDescriptions[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(physicalDevice, queueFamilyIndex, pCounterCount, pCounters, pCounterDescriptions);
     cpu->memory->writed(ARG3, (U32)tmp_pCounterCount);
     if (ARG4) {
-        for (U32 i=0;i<*pCounterCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pCounterCount), pCountersCapacity);i++) {
             MarshalVkPerformanceCounterKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 36, &pCounters[i]);
+        }
+        }
+        for (U32 i=0;i<pCountersCapacity;++i) {
+            MarshalVkPerformanceCounterKHR owned; owned.s = pCounters[i];
         }
         delete[] pCounters;
     }
     if (ARG5) {
-        for (U32 i=0;i<*pCounterCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pCounterCount), pCounterDescriptionsCapacity);i++) {
             MarshalVkPerformanceCounterDescriptionKHR::write(pBoxedInfo, cpu->memory, ARG5 + i * 780, &pCounterDescriptions[i]);
+        }
+        }
+        for (U32 i=0;i<pCounterDescriptionsCapacity;++i) {
+            MarshalVkPerformanceCounterDescriptionKHR owned; owned.s = pCounterDescriptions[i];
         }
         delete[] pCounterDescriptions;
     }
@@ -5806,18 +6100,24 @@ void vk_GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV(CPU* cpu
     uint32_t tmp_pCombinationCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pCombinationCount = &tmp_pCombinationCount;
     VkFramebufferMixedSamplesCombinationNV* pCombinations = NULL;
+    const U32 pCombinationsCapacity = *pCombinationCount;
     if (ARG3) {
-        pCombinations = new VkFramebufferMixedSamplesCombinationNV[*pCombinationCount];
+        pCombinations = new VkFramebufferMixedSamplesCombinationNV[pCombinationsCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pCombinationCount;i++) {
+        for (U32 i=0;i<pCombinationsCapacity;i++) {
             MarshalVkFramebufferMixedSamplesCombinationNV::read(pBoxedInfo, cpu->memory, address + i*24, &pCombinations[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV(physicalDevice, pCombinationCount, pCombinations);
     cpu->memory->writed(ARG2, (U32)tmp_pCombinationCount);
     if (ARG3) {
-        for (U32 i=0;i<*pCombinationCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pCombinationCount), pCombinationsCapacity);i++) {
             MarshalVkFramebufferMixedSamplesCombinationNV::write(pBoxedInfo, cpu->memory, ARG3 + i * 24, &pCombinations[i]);
+        }
+        }
+        for (U32 i=0;i<pCombinationsCapacity;++i) {
+            MarshalVkFramebufferMixedSamplesCombinationNV owned; owned.s = pCombinations[i];
         }
         delete[] pCombinations;
     }
@@ -5922,18 +6222,24 @@ void vk_GetPipelineExecutablePropertiesKHR(CPU* cpu) {
     uint32_t tmp_pExecutableCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pExecutableCount = &tmp_pExecutableCount;
     VkPipelineExecutablePropertiesKHR* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pExecutableCount;
     if (ARG4) {
-        pProperties = new VkPipelineExecutablePropertiesKHR[*pExecutableCount];
+        pProperties = new VkPipelineExecutablePropertiesKHR[pPropertiesCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pExecutableCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkPipelineExecutablePropertiesKHR::read(pBoxedInfo, cpu->memory, address + i*528, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPipelineExecutablePropertiesKHR(device, pPipelineInfo, pExecutableCount, pProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pExecutableCount);
     if (ARG4) {
-        for (U32 i=0;i<*pExecutableCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pExecutableCount), pPropertiesCapacity);i++) {
             MarshalVkPipelineExecutablePropertiesKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 528, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkPipelineExecutablePropertiesKHR owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -5947,18 +6253,24 @@ void vk_GetPipelineExecutableStatisticsKHR(CPU* cpu) {
     uint32_t tmp_pStatisticCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pStatisticCount = &tmp_pStatisticCount;
     VkPipelineExecutableStatisticKHR* pStatistics = NULL;
+    const U32 pStatisticsCapacity = *pStatisticCount;
     if (ARG4) {
-        pStatistics = new VkPipelineExecutableStatisticKHR[*pStatisticCount];
+        pStatistics = new VkPipelineExecutableStatisticKHR[pStatisticsCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pStatisticCount;i++) {
+        for (U32 i=0;i<pStatisticsCapacity;i++) {
             MarshalVkPipelineExecutableStatisticKHR::read(pBoxedInfo, cpu->memory, address + i*532, &pStatistics[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPipelineExecutableStatisticsKHR(device, pExecutableInfo, pStatisticCount, pStatistics);
     cpu->memory->writed(ARG3, (U32)tmp_pStatisticCount);
     if (ARG4) {
-        for (U32 i=0;i<*pStatisticCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pStatisticCount), pStatisticsCapacity);i++) {
             MarshalVkPipelineExecutableStatisticKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 532, &pStatistics[i]);
+        }
+        }
+        for (U32 i=0;i<pStatisticsCapacity;++i) {
+            MarshalVkPipelineExecutableStatisticKHR owned; owned.s = pStatistics[i];
         }
         delete[] pStatistics;
     }
@@ -5972,18 +6284,24 @@ void vk_GetPipelineExecutableInternalRepresentationsKHR(CPU* cpu) {
     uint32_t tmp_pInternalRepresentationCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pInternalRepresentationCount = &tmp_pInternalRepresentationCount;
     VkPipelineExecutableInternalRepresentationKHR* pInternalRepresentations = NULL;
+    const U32 pInternalRepresentationsCapacity = *pInternalRepresentationCount;
     if (ARG4) {
-        pInternalRepresentations = new VkPipelineExecutableInternalRepresentationKHR[*pInternalRepresentationCount];
+        pInternalRepresentations = new VkPipelineExecutableInternalRepresentationKHR[pInternalRepresentationsCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pInternalRepresentationCount;i++) {
+        for (U32 i=0;i<pInternalRepresentationsCapacity;i++) {
             MarshalVkPipelineExecutableInternalRepresentationKHR::read(pBoxedInfo, cpu->memory, address + i*532, &pInternalRepresentations[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPipelineExecutableInternalRepresentationsKHR(device, pExecutableInfo, pInternalRepresentationCount, pInternalRepresentations);
     cpu->memory->writed(ARG3, (U32)tmp_pInternalRepresentationCount);
     if (ARG4) {
-        for (U32 i=0;i<*pInternalRepresentationCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pInternalRepresentationCount), pInternalRepresentationsCapacity);i++) {
             MarshalVkPipelineExecutableInternalRepresentationKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 532, &pInternalRepresentations[i]);
+        }
+        }
+        for (U32 i=0;i<pInternalRepresentationsCapacity;++i) {
+            MarshalVkPipelineExecutableInternalRepresentationKHR owned; owned.s = pInternalRepresentations[i];
         }
         delete[] pInternalRepresentations;
     }
@@ -6016,18 +6334,24 @@ void vk_GetPhysicalDeviceToolProperties(CPU* cpu) {
     uint32_t tmp_pToolCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pToolCount = &tmp_pToolCount;
     VkPhysicalDeviceToolProperties* pToolProperties = NULL;
+    const U32 pToolPropertiesCapacity = *pToolCount;
     if (ARG3) {
-        pToolProperties = new VkPhysicalDeviceToolProperties[*pToolCount];
+        pToolProperties = new VkPhysicalDeviceToolProperties[pToolPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pToolCount;i++) {
+        for (U32 i=0;i<pToolPropertiesCapacity;i++) {
             MarshalVkPhysicalDeviceToolProperties::read(pBoxedInfo, cpu->memory, address + i*1036, &pToolProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceToolProperties(physicalDevice, pToolCount, pToolProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pToolCount);
     if (ARG3) {
-        for (U32 i=0;i<*pToolCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pToolCount), pToolPropertiesCapacity);i++) {
             MarshalVkPhysicalDeviceToolProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 1036, &pToolProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pToolPropertiesCapacity;++i) {
+            MarshalVkPhysicalDeviceToolProperties owned; owned.s = pToolProperties[i];
         }
         delete[] pToolProperties;
     }
@@ -6039,18 +6363,24 @@ void vk_GetPhysicalDeviceToolPropertiesEXT(CPU* cpu) {
     uint32_t tmp_pToolCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pToolCount = &tmp_pToolCount;
     VkPhysicalDeviceToolProperties* pToolProperties = NULL;
+    const U32 pToolPropertiesCapacity = *pToolCount;
     if (ARG3) {
-        pToolProperties = new VkPhysicalDeviceToolProperties[*pToolCount];
+        pToolProperties = new VkPhysicalDeviceToolProperties[pToolPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pToolCount;i++) {
+        for (U32 i=0;i<pToolPropertiesCapacity;i++) {
             MarshalVkPhysicalDeviceToolProperties::read(pBoxedInfo, cpu->memory, address + i*1036, &pToolProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceToolPropertiesEXT(physicalDevice, pToolCount, pToolProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pToolCount);
     if (ARG3) {
-        for (U32 i=0;i<*pToolCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pToolCount), pToolPropertiesCapacity);i++) {
             MarshalVkPhysicalDeviceToolProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 1036, &pToolProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pToolPropertiesCapacity;++i) {
+            MarshalVkPhysicalDeviceToolProperties owned; owned.s = pToolProperties[i];
         }
         delete[] pToolProperties;
     }
@@ -6074,28 +6404,34 @@ void vk_CmdBuildAccelerationStructuresKHR(CPU* cpu) {
     uint32_t infoCount = (uint32_t)ARG2;
     VkAccelerationStructureBuildGeometryInfoKHR* pInfos = NULL;
     if (ARG3) {
-        pInfos = new VkAccelerationStructureBuildGeometryInfoKHR[infoCount];
+        pInfos = new VkAccelerationStructureBuildGeometryInfoKHR[infoCount]();
         for (U32 i=0;i<infoCount;i++) {
             MarshalVkAccelerationStructureBuildGeometryInfoKHR::read(pBoxedInfo, cpu->memory, ARG3 + i * 56, &pInfos[i]);
         }
     }
     VkAccelerationStructureBuildRangeInfoKHR** ppBuildRangeInfos = NULL;
     if (ARG4) {
-        ppBuildRangeInfos = new VkAccelerationStructureBuildRangeInfoKHR*[infoCount];
+        ppBuildRangeInfos = new VkAccelerationStructureBuildRangeInfoKHR*[infoCount]();
         for (U32 i=0;i<infoCount;i++) {
-            ppBuildRangeInfos[i] = new VkAccelerationStructureBuildRangeInfoKHR[pInfos[i].geometryCount];
+            ppBuildRangeInfos[i] = new VkAccelerationStructureBuildRangeInfoKHR[pInfos[i].geometryCount]();
             U32 address = cpu->memory->readd(ARG4 + i * 4);
             for (U32 j=0;j<pInfos[i].geometryCount;j++) {
-                MarshalVkAccelerationStructureBuildRangeInfoKHR::read(pBoxedInfo, cpu->memory, address + j * 4, &ppBuildRangeInfos[i][j]);
+                MarshalVkAccelerationStructureBuildRangeInfoKHR::read(pBoxedInfo, cpu->memory, address + j * 16, &ppBuildRangeInfos[i][j]);
             }
         }
     }
     pBoxedInfo->pvkCmdBuildAccelerationStructuresKHR(commandBuffer, infoCount, pInfos, ppBuildRangeInfos);
     if (pInfos) {
+        for (U32 i=0;i<infoCount;++i) {
+            MarshalVkAccelerationStructureBuildGeometryInfoKHR owned; owned.s = pInfos[i];
+        }
         delete[] pInfos;
     }
     if (ppBuildRangeInfos) {
         for (U32 i=0;i<infoCount;i++) {
+            for (U32 j=0;j<pInfos[i].geometryCount;++j) {
+                MarshalVkAccelerationStructureBuildRangeInfoKHR owned; owned.s = ppBuildRangeInfos[i][j];
+            }
             delete[] ppBuildRangeInfos[i];
         }
         delete[] ppBuildRangeInfos;
@@ -6107,7 +6443,7 @@ void vk_CmdBuildAccelerationStructuresIndirectKHR(CPU* cpu) {
     uint32_t infoCount = (uint32_t)ARG2;
     VkAccelerationStructureBuildGeometryInfoKHR* pInfos = NULL;
     if (ARG3) {
-        pInfos = new VkAccelerationStructureBuildGeometryInfoKHR[infoCount];
+        pInfos = new VkAccelerationStructureBuildGeometryInfoKHR[infoCount]();
         for (U32 i=0;i<infoCount;i++) {
             MarshalVkAccelerationStructureBuildGeometryInfoKHR::read(pBoxedInfo, cpu->memory, ARG3 + i * 56, &pInfos[i]);
         }
@@ -6132,6 +6468,9 @@ void vk_CmdBuildAccelerationStructuresIndirectKHR(CPU* cpu) {
     }
     pBoxedInfo->pvkCmdBuildAccelerationStructuresIndirectKHR(commandBuffer, infoCount, pInfos, pIndirectDeviceAddresses, pIndirectStrides, ppMaxPrimitiveCounts);
     if (pInfos) {
+        for (U32 i=0;i<infoCount;++i) {
+            MarshalVkAccelerationStructureBuildGeometryInfoKHR owned; owned.s = pInfos[i];
+        }
         delete[] pInfos;
     }
     cpu->memory->unlockMemory((U8*)pIndirectDeviceAddresses);
@@ -6151,28 +6490,34 @@ void vk_BuildAccelerationStructuresKHR(CPU* cpu) {
     uint32_t infoCount = (uint32_t)ARG4;
     VkAccelerationStructureBuildGeometryInfoKHR* pInfos = NULL;
     if (ARG5) {
-        pInfos = new VkAccelerationStructureBuildGeometryInfoKHR[infoCount];
+        pInfos = new VkAccelerationStructureBuildGeometryInfoKHR[infoCount]();
         for (U32 i=0;i<infoCount;i++) {
             MarshalVkAccelerationStructureBuildGeometryInfoKHR::read(pBoxedInfo, cpu->memory, ARG5 + i * 56, &pInfos[i]);
         }
     }
     VkAccelerationStructureBuildRangeInfoKHR** ppBuildRangeInfos = NULL;
     if (ARG6) {
-        ppBuildRangeInfos = new VkAccelerationStructureBuildRangeInfoKHR*[infoCount];
+        ppBuildRangeInfos = new VkAccelerationStructureBuildRangeInfoKHR*[infoCount]();
         for (U32 i=0;i<infoCount;i++) {
-            ppBuildRangeInfos[i] = new VkAccelerationStructureBuildRangeInfoKHR[pInfos[i].geometryCount];
+            ppBuildRangeInfos[i] = new VkAccelerationStructureBuildRangeInfoKHR[pInfos[i].geometryCount]();
             U32 address = cpu->memory->readd(ARG6 + i * 4);
             for (U32 j=0;j<pInfos[i].geometryCount;j++) {
-                MarshalVkAccelerationStructureBuildRangeInfoKHR::read(pBoxedInfo, cpu->memory, address + j * 4, &ppBuildRangeInfos[i][j]);
+                MarshalVkAccelerationStructureBuildRangeInfoKHR::read(pBoxedInfo, cpu->memory, address + j * 16, &ppBuildRangeInfos[i][j]);
             }
         }
     }
     EAX = (U32)pBoxedInfo->pvkBuildAccelerationStructuresKHR(device, deferredOperation, infoCount, pInfos, ppBuildRangeInfos);
     if (pInfos) {
+        for (U32 i=0;i<infoCount;++i) {
+            MarshalVkAccelerationStructureBuildGeometryInfoKHR owned; owned.s = pInfos[i];
+        }
         delete[] pInfos;
     }
     if (ppBuildRangeInfos) {
         for (U32 i=0;i<infoCount;i++) {
+            for (U32 j=0;j<pInfos[i].geometryCount;++j) {
+                MarshalVkAccelerationStructureBuildRangeInfoKHR owned; owned.s = ppBuildRangeInfos[i][j];
+            }
             delete[] ppBuildRangeInfos[i];
         }
         delete[] ppBuildRangeInfos;
@@ -6296,13 +6641,16 @@ void vk_CmdSetViewportWithCount(CPU* cpu) {
     uint32_t viewportCount = (uint32_t)ARG2;
     VkViewport* pViewports = NULL;
     if (ARG3) {
-        pViewports = new VkViewport[viewportCount];
+        pViewports = new VkViewport[viewportCount]();
         for (U32 i=0;i<viewportCount;i++) {
             MarshalVkViewport::read(pBoxedInfo, cpu->memory, ARG3 + i * 24, &pViewports[i]);
         }
     }
     pBoxedInfo->pvkCmdSetViewportWithCount(commandBuffer, viewportCount, pViewports);
     if (pViewports) {
+        for (U32 i=0;i<viewportCount;++i) {
+            MarshalVkViewport owned; owned.s = pViewports[i];
+        }
         delete[] pViewports;
     }
 }
@@ -6312,13 +6660,16 @@ void vk_CmdSetViewportWithCountEXT(CPU* cpu) {
     uint32_t viewportCount = (uint32_t)ARG2;
     VkViewport* pViewports = NULL;
     if (ARG3) {
-        pViewports = new VkViewport[viewportCount];
+        pViewports = new VkViewport[viewportCount]();
         for (U32 i=0;i<viewportCount;i++) {
             MarshalVkViewport::read(pBoxedInfo, cpu->memory, ARG3 + i * 24, &pViewports[i]);
         }
     }
     pBoxedInfo->pvkCmdSetViewportWithCountEXT(commandBuffer, viewportCount, pViewports);
     if (pViewports) {
+        for (U32 i=0;i<viewportCount;++i) {
+            MarshalVkViewport owned; owned.s = pViewports[i];
+        }
         delete[] pViewports;
     }
 }
@@ -6328,13 +6679,16 @@ void vk_CmdSetScissorWithCount(CPU* cpu) {
     uint32_t scissorCount = (uint32_t)ARG2;
     VkRect2D* pScissors = NULL;
     if (ARG3) {
-        pScissors = new VkRect2D[scissorCount];
+        pScissors = new VkRect2D[scissorCount]();
         for (U32 i=0;i<scissorCount;i++) {
             MarshalVkRect2D::read(pBoxedInfo, cpu->memory, ARG3 + i * 16, &pScissors[i]);
         }
     }
     pBoxedInfo->pvkCmdSetScissorWithCount(commandBuffer, scissorCount, pScissors);
     if (pScissors) {
+        for (U32 i=0;i<scissorCount;++i) {
+            MarshalVkRect2D owned; owned.s = pScissors[i];
+        }
         delete[] pScissors;
     }
 }
@@ -6344,13 +6698,16 @@ void vk_CmdSetScissorWithCountEXT(CPU* cpu) {
     uint32_t scissorCount = (uint32_t)ARG2;
     VkRect2D* pScissors = NULL;
     if (ARG3) {
-        pScissors = new VkRect2D[scissorCount];
+        pScissors = new VkRect2D[scissorCount]();
         for (U32 i=0;i<scissorCount;i++) {
             MarshalVkRect2D::read(pBoxedInfo, cpu->memory, ARG3 + i * 16, &pScissors[i]);
         }
     }
     pBoxedInfo->pvkCmdSetScissorWithCountEXT(commandBuffer, scissorCount, pScissors);
     if (pScissors) {
+        for (U32 i=0;i<scissorCount;++i) {
+            MarshalVkRect2D owned; owned.s = pScissors[i];
+        }
         delete[] pScissors;
     }
 }
@@ -6623,13 +6980,16 @@ void vk_CmdSetColorBlendEquationEXT(CPU* cpu) {
     uint32_t attachmentCount = (uint32_t)ARG3;
     VkColorBlendEquationEXT* pColorBlendEquations = NULL;
     if (ARG4) {
-        pColorBlendEquations = new VkColorBlendEquationEXT[attachmentCount];
+        pColorBlendEquations = new VkColorBlendEquationEXT[attachmentCount]();
         for (U32 i=0;i<attachmentCount;i++) {
             MarshalVkColorBlendEquationEXT::read(pBoxedInfo, cpu->memory, ARG4 + i * 24, &pColorBlendEquations[i]);
         }
     }
     pBoxedInfo->pvkCmdSetColorBlendEquationEXT(commandBuffer, firstAttachment, attachmentCount, pColorBlendEquations);
     if (pColorBlendEquations) {
+        for (U32 i=0;i<attachmentCount;++i) {
+            MarshalVkColorBlendEquationEXT owned; owned.s = pColorBlendEquations[i];
+        }
         delete[] pColorBlendEquations;
     }
 }
@@ -6684,13 +7044,16 @@ void vk_CmdSetColorBlendAdvancedEXT(CPU* cpu) {
     uint32_t attachmentCount = (uint32_t)ARG3;
     VkColorBlendAdvancedEXT* pColorBlendAdvanced = NULL;
     if (ARG4) {
-        pColorBlendAdvanced = new VkColorBlendAdvancedEXT[attachmentCount];
+        pColorBlendAdvanced = new VkColorBlendAdvancedEXT[attachmentCount]();
         for (U32 i=0;i<attachmentCount;i++) {
             MarshalVkColorBlendAdvancedEXT::read(pBoxedInfo, cpu->memory, ARG4 + i * 20, &pColorBlendAdvanced[i]);
         }
     }
     pBoxedInfo->pvkCmdSetColorBlendAdvancedEXT(commandBuffer, firstAttachment, attachmentCount, pColorBlendAdvanced);
     if (pColorBlendAdvanced) {
+        for (U32 i=0;i<attachmentCount;++i) {
+            MarshalVkColorBlendAdvancedEXT owned; owned.s = pColorBlendAdvanced[i];
+        }
         delete[] pColorBlendAdvanced;
     }
 }
@@ -6731,13 +7094,16 @@ void vk_CmdSetViewportSwizzleNV(CPU* cpu) {
     uint32_t viewportCount = (uint32_t)ARG3;
     VkViewportSwizzleNV* pViewportSwizzles = NULL;
     if (ARG4) {
-        pViewportSwizzles = new VkViewportSwizzleNV[viewportCount];
+        pViewportSwizzles = new VkViewportSwizzleNV[viewportCount]();
         for (U32 i=0;i<viewportCount;i++) {
             MarshalVkViewportSwizzleNV::read(pBoxedInfo, cpu->memory, ARG4 + i * 16, &pViewportSwizzles[i]);
         }
     }
     pBoxedInfo->pvkCmdSetViewportSwizzleNV(commandBuffer, firstViewport, viewportCount, pViewportSwizzles);
     if (pViewportSwizzles) {
+        for (U32 i=0;i<viewportCount;++i) {
+            MarshalVkViewportSwizzleNV owned; owned.s = pViewportSwizzles[i];
+        }
         delete[] pViewportSwizzles;
     }
 }
@@ -6842,6 +7208,7 @@ void vk_SetPrivateData(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkObjectType objectType = (VkObjectType)ARG2;
     uint64_t objectHandle = (uint64_t)QARG3;
+    objectHandle = translateVulkanObjectHandle(cpu->memory, (VkObjectType)objectType, objectHandle);
     VkPrivateDataSlot privateDataSlot = (VkPrivateDataSlot)QARG5;
     uint64_t data = (uint64_t)QARG7;
     EAX = (U32)pBoxedInfo->pvkSetPrivateData(device, objectType, objectHandle, privateDataSlot, data);
@@ -6852,6 +7219,7 @@ void vk_SetPrivateDataEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkObjectType objectType = (VkObjectType)ARG2;
     uint64_t objectHandle = (uint64_t)QARG3;
+    objectHandle = translateVulkanObjectHandle(cpu->memory, (VkObjectType)objectType, objectHandle);
     VkPrivateDataSlot privateDataSlot = (VkPrivateDataSlot)QARG5;
     uint64_t data = (uint64_t)QARG7;
     EAX = (U32)pBoxedInfo->pvkSetPrivateDataEXT(device, objectType, objectHandle, privateDataSlot, data);
@@ -6861,6 +7229,7 @@ void vk_GetPrivateData(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkObjectType objectType = (VkObjectType)ARG2;
     uint64_t objectHandle = (uint64_t)QARG3;
+    objectHandle = translateVulkanObjectHandle(cpu->memory, (VkObjectType)objectType, objectHandle);
     VkPrivateDataSlot privateDataSlot = (VkPrivateDataSlot)QARG5;
     uint64_t tmp_pData = (uint64_t) cpu->memory->readq(ARG7);
     uint64_t* pData = &tmp_pData;
@@ -6872,6 +7241,7 @@ void vk_GetPrivateDataEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkObjectType objectType = (VkObjectType)ARG2;
     uint64_t objectHandle = (uint64_t)QARG3;
+    objectHandle = translateVulkanObjectHandle(cpu->memory, (VkObjectType)objectType, objectHandle);
     VkPrivateDataSlot privateDataSlot = (VkPrivateDataSlot)QARG5;
     uint64_t tmp_pData = (uint64_t) cpu->memory->readq(ARG7);
     uint64_t* pData = &tmp_pData;
@@ -6981,18 +7351,24 @@ void vk_GetPhysicalDeviceFragmentShadingRatesKHR(CPU* cpu) {
     uint32_t tmp_pFragmentShadingRateCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pFragmentShadingRateCount = &tmp_pFragmentShadingRateCount;
     VkPhysicalDeviceFragmentShadingRateKHR* pFragmentShadingRates = NULL;
+    const U32 pFragmentShadingRatesCapacity = *pFragmentShadingRateCount;
     if (ARG3) {
-        pFragmentShadingRates = new VkPhysicalDeviceFragmentShadingRateKHR[*pFragmentShadingRateCount];
+        pFragmentShadingRates = new VkPhysicalDeviceFragmentShadingRateKHR[pFragmentShadingRatesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pFragmentShadingRateCount;i++) {
+        for (U32 i=0;i<pFragmentShadingRatesCapacity;i++) {
             MarshalVkPhysicalDeviceFragmentShadingRateKHR::read(pBoxedInfo, cpu->memory, address + i*20, &pFragmentShadingRates[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceFragmentShadingRatesKHR(physicalDevice, pFragmentShadingRateCount, pFragmentShadingRates);
     cpu->memory->writed(ARG2, (U32)tmp_pFragmentShadingRateCount);
     if (ARG3) {
-        for (U32 i=0;i<*pFragmentShadingRateCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pFragmentShadingRateCount), pFragmentShadingRatesCapacity);i++) {
             MarshalVkPhysicalDeviceFragmentShadingRateKHR::write(pBoxedInfo, cpu->memory, ARG3 + i * 20, &pFragmentShadingRates[i]);
+        }
+        }
+        for (U32 i=0;i<pFragmentShadingRatesCapacity;++i) {
+            MarshalVkPhysicalDeviceFragmentShadingRateKHR owned; owned.s = pFragmentShadingRates[i];
         }
         delete[] pFragmentShadingRates;
     }
@@ -7029,7 +7405,7 @@ void vk_CmdSetVertexInputEXT(CPU* cpu) {
     uint32_t vertexBindingDescriptionCount = (uint32_t)ARG2;
     VkVertexInputBindingDescription2EXT* pVertexBindingDescriptions = NULL;
     if (ARG3) {
-        pVertexBindingDescriptions = new VkVertexInputBindingDescription2EXT[vertexBindingDescriptionCount];
+        pVertexBindingDescriptions = new VkVertexInputBindingDescription2EXT[vertexBindingDescriptionCount]();
         for (U32 i=0;i<vertexBindingDescriptionCount;i++) {
             MarshalVkVertexInputBindingDescription2EXT::read(pBoxedInfo, cpu->memory, ARG3 + i * 24, &pVertexBindingDescriptions[i]);
         }
@@ -7037,16 +7413,22 @@ void vk_CmdSetVertexInputEXT(CPU* cpu) {
     uint32_t vertexAttributeDescriptionCount = (uint32_t)ARG4;
     VkVertexInputAttributeDescription2EXT* pVertexAttributeDescriptions = NULL;
     if (ARG5) {
-        pVertexAttributeDescriptions = new VkVertexInputAttributeDescription2EXT[vertexAttributeDescriptionCount];
+        pVertexAttributeDescriptions = new VkVertexInputAttributeDescription2EXT[vertexAttributeDescriptionCount]();
         for (U32 i=0;i<vertexAttributeDescriptionCount;i++) {
             MarshalVkVertexInputAttributeDescription2EXT::read(pBoxedInfo, cpu->memory, ARG5 + i * 24, &pVertexAttributeDescriptions[i]);
         }
     }
     pBoxedInfo->pvkCmdSetVertexInputEXT(commandBuffer, vertexBindingDescriptionCount, pVertexBindingDescriptions, vertexAttributeDescriptionCount, pVertexAttributeDescriptions);
     if (pVertexBindingDescriptions) {
+        for (U32 i=0;i<vertexBindingDescriptionCount;++i) {
+            MarshalVkVertexInputBindingDescription2EXT owned; owned.s = pVertexBindingDescriptions[i];
+        }
         delete[] pVertexBindingDescriptions;
     }
     if (pVertexAttributeDescriptions) {
+        for (U32 i=0;i<vertexAttributeDescriptionCount;++i) {
+            MarshalVkVertexInputAttributeDescription2EXT owned; owned.s = pVertexAttributeDescriptions[i];
+        }
         delete[] pVertexAttributeDescriptions;
     }
 }
@@ -7101,7 +7483,7 @@ void vk_CmdWaitEvents2(CPU* cpu) {
     }
     VkDependencyInfo* pDependencyInfos = NULL;
     if (ARG4) {
-        pDependencyInfos = new VkDependencyInfo[eventCount];
+        pDependencyInfos = new VkDependencyInfo[eventCount]();
         for (U32 i=0;i<eventCount;i++) {
             MarshalVkDependencyInfo::read(pBoxedInfo, cpu->memory, ARG4 + i * 36, &pDependencyInfos[i]);
         }
@@ -7109,6 +7491,9 @@ void vk_CmdWaitEvents2(CPU* cpu) {
     pBoxedInfo->pvkCmdWaitEvents2(commandBuffer, eventCount, pEvents, pDependencyInfos);
     cpu->memory->unlockMemory((U8*)pEvents);
     if (pDependencyInfos) {
+        for (U32 i=0;i<eventCount;++i) {
+            MarshalVkDependencyInfo owned; owned.s = pDependencyInfos[i];
+        }
         delete[] pDependencyInfos;
     }
 }
@@ -7122,7 +7507,7 @@ void vk_CmdWaitEvents2KHR(CPU* cpu) {
     }
     VkDependencyInfo* pDependencyInfos = NULL;
     if (ARG4) {
-        pDependencyInfos = new VkDependencyInfo[eventCount];
+        pDependencyInfos = new VkDependencyInfo[eventCount]();
         for (U32 i=0;i<eventCount;i++) {
             MarshalVkDependencyInfo::read(pBoxedInfo, cpu->memory, ARG4 + i * 36, &pDependencyInfos[i]);
         }
@@ -7130,6 +7515,9 @@ void vk_CmdWaitEvents2KHR(CPU* cpu) {
     pBoxedInfo->pvkCmdWaitEvents2KHR(commandBuffer, eventCount, pEvents, pDependencyInfos);
     cpu->memory->unlockMemory((U8*)pEvents);
     if (pDependencyInfos) {
+        for (U32 i=0;i<eventCount;++i) {
+            MarshalVkDependencyInfo owned; owned.s = pDependencyInfos[i];
+        }
         delete[] pDependencyInfos;
     }
 }
@@ -7154,7 +7542,7 @@ void vk_QueueSubmit2(CPU* cpu) {
     uint32_t submitCount = (uint32_t)ARG2;
     VkSubmitInfo2* pSubmits = NULL;
     if (ARG3) {
-        pSubmits = new VkSubmitInfo2[submitCount];
+        pSubmits = new VkSubmitInfo2[submitCount]();
         for (U32 i=0;i<submitCount;i++) {
             MarshalVkSubmitInfo2::read(pBoxedInfo, cpu->memory, ARG3 + i * 36, &pSubmits[i]);
         }
@@ -7162,6 +7550,9 @@ void vk_QueueSubmit2(CPU* cpu) {
     VkFence fence = (VkFence)QARG4;
     EAX = (U32)pBoxedInfo->pvkQueueSubmit2(queue, submitCount, pSubmits, fence);
     if (pSubmits) {
+        for (U32 i=0;i<submitCount;++i) {
+            MarshalVkSubmitInfo2 owned; owned.s = pSubmits[i];
+        }
         delete[] pSubmits;
     }
 }
@@ -7172,7 +7563,7 @@ void vk_QueueSubmit2KHR(CPU* cpu) {
     uint32_t submitCount = (uint32_t)ARG2;
     VkSubmitInfo2* pSubmits = NULL;
     if (ARG3) {
-        pSubmits = new VkSubmitInfo2[submitCount];
+        pSubmits = new VkSubmitInfo2[submitCount]();
         for (U32 i=0;i<submitCount;i++) {
             MarshalVkSubmitInfo2::read(pBoxedInfo, cpu->memory, ARG3 + i * 36, &pSubmits[i]);
         }
@@ -7180,6 +7571,9 @@ void vk_QueueSubmit2KHR(CPU* cpu) {
     VkFence fence = (VkFence)QARG4;
     EAX = (U32)pBoxedInfo->pvkQueueSubmit2KHR(queue, submitCount, pSubmits, fence);
     if (pSubmits) {
+        for (U32 i=0;i<submitCount;++i) {
+            MarshalVkSubmitInfo2 owned; owned.s = pSubmits[i];
+        }
         delete[] pSubmits;
     }
 }
@@ -7214,18 +7608,22 @@ void vk_GetQueueCheckpointData2NV(CPU* cpu) {
     uint32_t tmp_pCheckpointDataCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pCheckpointDataCount = &tmp_pCheckpointDataCount;
     VkCheckpointData2NV* pCheckpointData = NULL;
+    const U32 pCheckpointDataCapacity = *pCheckpointDataCount;
     if (ARG3) {
-        pCheckpointData = new VkCheckpointData2NV[*pCheckpointDataCount];
+        pCheckpointData = new VkCheckpointData2NV[pCheckpointDataCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pCheckpointDataCount;i++) {
+        for (U32 i=0;i<pCheckpointDataCapacity;i++) {
             MarshalVkCheckpointData2NV::read(pBoxedInfo, cpu->memory, address + i*20, &pCheckpointData[i]);
         }
     }
     pBoxedInfo->pvkGetQueueCheckpointData2NV(queue, pCheckpointDataCount, pCheckpointData);
     cpu->memory->writed(ARG2, (U32)tmp_pCheckpointDataCount);
     if (ARG3) {
-        for (U32 i=0;i<*pCheckpointDataCount;i++) {
+        for (U32 i=0;i<std::min((U32)(*pCheckpointDataCount), pCheckpointDataCapacity);i++) {
             MarshalVkCheckpointData2NV::write(pBoxedInfo, cpu->memory, ARG3 + i * 20, &pCheckpointData[i]);
+        }
+        for (U32 i=0;i<pCheckpointDataCapacity;++i) {
+            MarshalVkCheckpointData2NV owned; owned.s = pCheckpointData[i];
         }
         delete[] pCheckpointData;
     }
@@ -7285,13 +7683,16 @@ void vk_TransitionImageLayout(CPU* cpu) {
     uint32_t transitionCount = (uint32_t)ARG2;
     VkHostImageLayoutTransitionInfo* pTransitions = NULL;
     if (ARG3) {
-        pTransitions = new VkHostImageLayoutTransitionInfo[transitionCount];
+        pTransitions = new VkHostImageLayoutTransitionInfo[transitionCount]();
         for (U32 i=0;i<transitionCount;i++) {
             MarshalVkHostImageLayoutTransitionInfo::read(pBoxedInfo, cpu->memory, ARG3 + i * 44, &pTransitions[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkTransitionImageLayout(device, transitionCount, pTransitions);
     if (pTransitions) {
+        for (U32 i=0;i<transitionCount;++i) {
+            MarshalVkHostImageLayoutTransitionInfo owned; owned.s = pTransitions[i];
+        }
         delete[] pTransitions;
     }
 }
@@ -7302,13 +7703,16 @@ void vk_TransitionImageLayoutEXT(CPU* cpu) {
     uint32_t transitionCount = (uint32_t)ARG2;
     VkHostImageLayoutTransitionInfo* pTransitions = NULL;
     if (ARG3) {
-        pTransitions = new VkHostImageLayoutTransitionInfo[transitionCount];
+        pTransitions = new VkHostImageLayoutTransitionInfo[transitionCount]();
         for (U32 i=0;i<transitionCount;i++) {
             MarshalVkHostImageLayoutTransitionInfo::read(pBoxedInfo, cpu->memory, ARG3 + i * 44, &pTransitions[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkTransitionImageLayoutEXT(device, transitionCount, pTransitions);
     if (pTransitions) {
+        for (U32 i=0;i<transitionCount;++i) {
+            MarshalVkHostImageLayoutTransitionInfo owned; owned.s = pTransitions[i];
+        }
         delete[] pTransitions;
     }
 }
@@ -7331,18 +7735,24 @@ void vk_GetPhysicalDeviceVideoFormatPropertiesKHR(CPU* cpu) {
     uint32_t tmp_pVideoFormatPropertyCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pVideoFormatPropertyCount = &tmp_pVideoFormatPropertyCount;
     VkVideoFormatPropertiesKHR* pVideoFormatProperties = NULL;
+    const U32 pVideoFormatPropertiesCapacity = *pVideoFormatPropertyCount;
     if (ARG4) {
-        pVideoFormatProperties = new VkVideoFormatPropertiesKHR[*pVideoFormatPropertyCount];
+        pVideoFormatProperties = new VkVideoFormatPropertiesKHR[pVideoFormatPropertiesCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pVideoFormatPropertyCount;i++) {
+        for (U32 i=0;i<pVideoFormatPropertiesCapacity;i++) {
             MarshalVkVideoFormatPropertiesKHR::read(pBoxedInfo, cpu->memory, address + i*44, &pVideoFormatProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceVideoFormatPropertiesKHR(physicalDevice, pVideoFormatInfo, pVideoFormatPropertyCount, pVideoFormatProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pVideoFormatPropertyCount);
     if (ARG4) {
-        for (U32 i=0;i<*pVideoFormatPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pVideoFormatPropertyCount), pVideoFormatPropertiesCapacity);i++) {
             MarshalVkVideoFormatPropertiesKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 44, &pVideoFormatProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pVideoFormatPropertiesCapacity;++i) {
+            MarshalVkVideoFormatPropertiesKHR owned; owned.s = pVideoFormatProperties[i];
         }
         delete[] pVideoFormatProperties;
     }
@@ -7434,18 +7844,24 @@ void vk_GetVideoSessionMemoryRequirementsKHR(CPU* cpu) {
     uint32_t tmp_pMemoryRequirementsCount = (uint32_t) cpu->memory->readd(ARG4);
     uint32_t* pMemoryRequirementsCount = &tmp_pMemoryRequirementsCount;
     VkVideoSessionMemoryRequirementsKHR* pMemoryRequirements = NULL;
+    const U32 pMemoryRequirementsCapacity = *pMemoryRequirementsCount;
     if (ARG5) {
-        pMemoryRequirements = new VkVideoSessionMemoryRequirementsKHR[*pMemoryRequirementsCount];
+        pMemoryRequirements = new VkVideoSessionMemoryRequirementsKHR[pMemoryRequirementsCapacity]();
         U32 address = ARG5;
-        for (U32 i=0;i<*pMemoryRequirementsCount;i++) {
+        for (U32 i=0;i<pMemoryRequirementsCapacity;i++) {
             MarshalVkVideoSessionMemoryRequirementsKHR::read(pBoxedInfo, cpu->memory, address + i*32, &pMemoryRequirements[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetVideoSessionMemoryRequirementsKHR(device, videoSession, pMemoryRequirementsCount, pMemoryRequirements);
     cpu->memory->writed(ARG4, (U32)tmp_pMemoryRequirementsCount);
     if (ARG5) {
-        for (U32 i=0;i<*pMemoryRequirementsCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pMemoryRequirementsCount), pMemoryRequirementsCapacity);i++) {
             MarshalVkVideoSessionMemoryRequirementsKHR::write(pBoxedInfo, cpu->memory, ARG5 + i * 32, &pMemoryRequirements[i]);
+        }
+        }
+        for (U32 i=0;i<pMemoryRequirementsCapacity;++i) {
+            MarshalVkVideoSessionMemoryRequirementsKHR owned; owned.s = pMemoryRequirements[i];
         }
         delete[] pMemoryRequirements;
     }
@@ -7458,13 +7874,16 @@ void vk_BindVideoSessionMemoryKHR(CPU* cpu) {
     uint32_t bindSessionMemoryInfoCount = (uint32_t)ARG4;
     VkBindVideoSessionMemoryInfoKHR* pBindSessionMemoryInfos = NULL;
     if (ARG5) {
-        pBindSessionMemoryInfos = new VkBindVideoSessionMemoryInfoKHR[bindSessionMemoryInfoCount];
+        pBindSessionMemoryInfos = new VkBindVideoSessionMemoryInfoKHR[bindSessionMemoryInfoCount]();
         for (U32 i=0;i<bindSessionMemoryInfoCount;i++) {
             MarshalVkBindVideoSessionMemoryInfoKHR::read(pBoxedInfo, cpu->memory, ARG5 + i * 36, &pBindSessionMemoryInfos[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkBindVideoSessionMemoryKHR(device, videoSession, bindSessionMemoryInfoCount, pBindSessionMemoryInfos);
     if (pBindSessionMemoryInfos) {
+        for (U32 i=0;i<bindSessionMemoryInfoCount;++i) {
+            MarshalVkBindVideoSessionMemoryInfoKHR owned; owned.s = pBindSessionMemoryInfos[i];
+        }
         delete[] pBindSessionMemoryInfos;
     }
 }
@@ -7509,13 +7928,16 @@ void vk_CmdDecompressMemoryNV(CPU* cpu) {
     uint32_t decompressRegionCount = (uint32_t)ARG2;
     VkDecompressMemoryRegionNV* pDecompressMemoryRegions = NULL;
     if (ARG3) {
-        pDecompressMemoryRegions = new VkDecompressMemoryRegionNV[decompressRegionCount];
+        pDecompressMemoryRegions = new VkDecompressMemoryRegionNV[decompressRegionCount]();
         for (U32 i=0;i<decompressRegionCount;i++) {
             MarshalVkDecompressMemoryRegionNV::read(pBoxedInfo, cpu->memory, ARG3 + i * 40, &pDecompressMemoryRegions[i]);
         }
     }
     pBoxedInfo->pvkCmdDecompressMemoryNV(commandBuffer, decompressRegionCount, pDecompressMemoryRegions);
     if (pDecompressMemoryRegions) {
+        for (U32 i=0;i<decompressRegionCount;++i) {
+            MarshalVkDecompressMemoryRegionNV owned; owned.s = pDecompressMemoryRegions[i];
+        }
         delete[] pDecompressMemoryRegions;
     }
 }
@@ -7647,13 +8069,16 @@ void vk_CmdBindDescriptorBuffersEXT(CPU* cpu) {
     uint32_t bufferCount = (uint32_t)ARG2;
     VkDescriptorBufferBindingInfoEXT* pBindingInfos = NULL;
     if (ARG3) {
-        pBindingInfos = new VkDescriptorBufferBindingInfoEXT[bufferCount];
+        pBindingInfos = new VkDescriptorBufferBindingInfoEXT[bufferCount]();
         for (U32 i=0;i<bufferCount;i++) {
             MarshalVkDescriptorBufferBindingInfoEXT::read(pBoxedInfo, cpu->memory, ARG3 + i * 20, &pBindingInfos[i]);
         }
     }
     pBoxedInfo->pvkCmdBindDescriptorBuffersEXT(commandBuffer, bufferCount, pBindingInfos);
     if (pBindingInfos) {
+        for (U32 i=0;i<bufferCount;++i) {
+            MarshalVkDescriptorBufferBindingInfoEXT owned; owned.s = pBindingInfos[i];
+        }
         delete[] pBindingInfos;
     }
 }
@@ -7854,13 +8279,16 @@ void vk_CmdBuildMicromapsEXT(CPU* cpu) {
     uint32_t infoCount = (uint32_t)ARG2;
     VkMicromapBuildInfoEXT* pInfos = NULL;
     if (ARG3) {
-        pInfos = new VkMicromapBuildInfoEXT[infoCount];
+        pInfos = new VkMicromapBuildInfoEXT[infoCount]();
         for (U32 i=0;i<infoCount;i++) {
             MarshalVkMicromapBuildInfoEXT::read(pBoxedInfo, cpu->memory, ARG3 + i * 72, &pInfos[i]);
         }
     }
     pBoxedInfo->pvkCmdBuildMicromapsEXT(commandBuffer, infoCount, pInfos);
     if (pInfos) {
+        for (U32 i=0;i<infoCount;++i) {
+            MarshalVkMicromapBuildInfoEXT owned; owned.s = pInfos[i];
+        }
         delete[] pInfos;
     }
 }
@@ -7872,13 +8300,16 @@ void vk_BuildMicromapsEXT(CPU* cpu) {
     uint32_t infoCount = (uint32_t)ARG4;
     VkMicromapBuildInfoEXT* pInfos = NULL;
     if (ARG5) {
-        pInfos = new VkMicromapBuildInfoEXT[infoCount];
+        pInfos = new VkMicromapBuildInfoEXT[infoCount]();
         for (U32 i=0;i<infoCount;i++) {
             MarshalVkMicromapBuildInfoEXT::read(pBoxedInfo, cpu->memory, ARG5 + i * 72, &pInfos[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkBuildMicromapsEXT(device, deferredOperation, infoCount, pInfos);
     if (pInfos) {
+        for (U32 i=0;i<infoCount;++i) {
+            MarshalVkMicromapBuildInfoEXT owned; owned.s = pInfos[i];
+        }
         delete[] pInfos;
     }
 }
@@ -8064,18 +8495,24 @@ void vk_GetFramebufferTilePropertiesQCOM(CPU* cpu) {
     uint32_t tmp_pPropertiesCount = (uint32_t) cpu->memory->readd(ARG4);
     uint32_t* pPropertiesCount = &tmp_pPropertiesCount;
     VkTilePropertiesQCOM* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertiesCount;
     if (ARG5) {
-        pProperties = new VkTilePropertiesQCOM[*pPropertiesCount];
+        pProperties = new VkTilePropertiesQCOM[pPropertiesCapacity]();
         U32 address = ARG5;
-        for (U32 i=0;i<*pPropertiesCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkTilePropertiesQCOM::read(pBoxedInfo, cpu->memory, address + i*36, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetFramebufferTilePropertiesQCOM(device, framebuffer, pPropertiesCount, pProperties);
     cpu->memory->writed(ARG4, (U32)tmp_pPropertiesCount);
     if (ARG5) {
-        for (U32 i=0;i<*pPropertiesCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertiesCount), pPropertiesCapacity);i++) {
             MarshalVkTilePropertiesQCOM::write(pBoxedInfo, cpu->memory, ARG5 + i * 36, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkTilePropertiesQCOM owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -8099,18 +8536,24 @@ void vk_GetPhysicalDeviceOpticalFlowImageFormatsNV(CPU* cpu) {
     uint32_t tmp_pFormatCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pFormatCount = &tmp_pFormatCount;
     VkOpticalFlowImageFormatPropertiesNV* pImageFormatProperties = NULL;
+    const U32 pImageFormatPropertiesCapacity = *pFormatCount;
     if (ARG4) {
-        pImageFormatProperties = new VkOpticalFlowImageFormatPropertiesNV[*pFormatCount];
+        pImageFormatProperties = new VkOpticalFlowImageFormatPropertiesNV[pImageFormatPropertiesCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pFormatCount;i++) {
+        for (U32 i=0;i<pImageFormatPropertiesCapacity;i++) {
             MarshalVkOpticalFlowImageFormatPropertiesNV::read(pBoxedInfo, cpu->memory, address + i*12, &pImageFormatProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceOpticalFlowImageFormatsNV(physicalDevice, pOpticalFlowImageFormatInfo, pFormatCount, pImageFormatProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pFormatCount);
     if (ARG4) {
-        for (U32 i=0;i<*pFormatCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pFormatCount), pImageFormatPropertiesCapacity);i++) {
             MarshalVkOpticalFlowImageFormatPropertiesNV::write(pBoxedInfo, cpu->memory, ARG4 + i * 12, &pImageFormatProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pImageFormatPropertiesCapacity;++i) {
+            MarshalVkOpticalFlowImageFormatPropertiesNV owned; owned.s = pImageFormatProperties[i];
         }
         delete[] pImageFormatProperties;
     }
@@ -8258,7 +8701,7 @@ void vk_CreateShadersEXT(CPU* cpu) {
     uint32_t createInfoCount = (uint32_t)ARG2;
     VkShaderCreateInfoEXT* pCreateInfos = NULL;
     if (ARG3) {
-        pCreateInfos = new VkShaderCreateInfoEXT[createInfoCount];
+        pCreateInfos = new VkShaderCreateInfoEXT[createInfoCount]();
         for (U32 i=0;i<createInfoCount;i++) {
             MarshalVkShaderCreateInfoEXT::read(pBoxedInfo, cpu->memory, ARG3 + i * 56, &pCreateInfos[i]);
         }
@@ -8271,6 +8714,9 @@ void vk_CreateShadersEXT(CPU* cpu) {
     }
     EAX = (U32)pBoxedInfo->pvkCreateShadersEXT(device, createInfoCount, pCreateInfos, pAllocator, pShaders);
     if (pCreateInfos) {
+        for (U32 i=0;i<createInfoCount;++i) {
+            MarshalVkShaderCreateInfoEXT owned; owned.s = pCreateInfos[i];
+        }
         delete[] pCreateInfos;
     }
     cpu->memory->unlockMemory((U8*)pShaders);
@@ -8363,18 +8809,24 @@ void vk_GetPhysicalDeviceCooperativeMatrixPropertiesKHR(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkCooperativeMatrixPropertiesKHR* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG3) {
-        pProperties = new VkCooperativeMatrixPropertiesKHR[*pPropertyCount];
+        pProperties = new VkCooperativeMatrixPropertiesKHR[pPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkCooperativeMatrixPropertiesKHR::read(pBoxedInfo, cpu->memory, address + i*44, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCooperativeMatrixPropertiesKHR(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkCooperativeMatrixPropertiesKHR::write(pBoxedInfo, cpu->memory, ARG3 + i * 44, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkCooperativeMatrixPropertiesKHR owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -8533,18 +8985,24 @@ void vk_GetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV(CPU* cp
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkCooperativeMatrixFlexibleDimensionsPropertiesNV* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG3) {
-        pProperties = new VkCooperativeMatrixFlexibleDimensionsPropertiesNV[*pPropertyCount];
+        pProperties = new VkCooperativeMatrixFlexibleDimensionsPropertiesNV[pPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkCooperativeMatrixFlexibleDimensionsPropertiesNV::read(pBoxedInfo, cpu->memory, address + i*48, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkCooperativeMatrixFlexibleDimensionsPropertiesNV::write(pBoxedInfo, cpu->memory, ARG3 + i * 48, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkCooperativeMatrixFlexibleDimensionsPropertiesNV owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -8556,18 +9014,24 @@ void vk_GetPhysicalDeviceCooperativeVectorPropertiesNV(CPU* cpu) {
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkCooperativeVectorPropertiesNV* pProperties = NULL;
+    const U32 pPropertiesCapacity = *pPropertyCount;
     if (ARG3) {
-        pProperties = new VkCooperativeVectorPropertiesNV[*pPropertyCount];
+        pProperties = new VkCooperativeVectorPropertiesNV[pPropertiesCapacity]();
         U32 address = ARG3;
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        for (U32 i=0;i<pPropertiesCapacity;i++) {
             MarshalVkCooperativeVectorPropertiesNV::read(pBoxedInfo, cpu->memory, address + i*32, &pProperties[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCooperativeVectorPropertiesNV(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
     if (ARG3) {
-        for (U32 i=0;i<*pPropertyCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pPropertyCount), pPropertiesCapacity);i++) {
             MarshalVkCooperativeVectorPropertiesNV::write(pBoxedInfo, cpu->memory, ARG3 + i * 32, &pProperties[i]);
+        }
+        }
+        for (U32 i=0;i<pPropertiesCapacity;++i) {
+            MarshalVkCooperativeVectorPropertiesNV owned; owned.s = pProperties[i];
         }
         delete[] pProperties;
     }
@@ -8586,13 +9050,16 @@ void vk_CmdConvertCooperativeVectorMatrixNV(CPU* cpu) {
     uint32_t infoCount = (uint32_t)ARG2;
     VkConvertCooperativeVectorMatrixInfoNV* pInfos = NULL;
     if (ARG3) {
-        pInfos = new VkConvertCooperativeVectorMatrixInfoNV[infoCount];
+        pInfos = new VkConvertCooperativeVectorMatrixInfoNV[infoCount]();
         for (U32 i=0;i<infoCount;i++) {
             MarshalVkConvertCooperativeVectorMatrixInfoNV::read(pBoxedInfo, cpu->memory, ARG3 + i * 64, &pInfos[i]);
         }
     }
     pBoxedInfo->pvkCmdConvertCooperativeVectorMatrixNV(commandBuffer, infoCount, pInfos);
     if (pInfos) {
+        for (U32 i=0;i<infoCount;++i) {
+            MarshalVkConvertCooperativeVectorMatrixInfoNV owned; owned.s = pInfos[i];
+        }
         delete[] pInfos;
     }
 }
@@ -8625,9 +9092,11 @@ void vk_CreateExternalComputeQueueNV(CPU* cpu) {
     VkExternalComputeQueueCreateInfoNV* pCreateInfo = &local_pCreateInfo.s;
     static bool shown; if (!shown && ARG3) { klog("vkCreateExternalComputeQueueNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
-    VkExternalComputeQueueNV pExternalQueue = (VkExternalComputeQueueNV)getVulkanPtr(cpu->memory, ARG4);
+    VkExternalComputeQueueNV pExternalQueue = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateExternalComputeQueueNV(device, pCreateInfo, pAllocator, &pExternalQueue);
+    if (EAX == VK_SUCCESS) {
     cpu->memory->writed(ARG4, createVulkanPtr(cpu->memory, pExternalQueue, pBoxedInfo));
+    }
 }
 void vk_DestroyExternalComputeQueueNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -8654,32 +9123,44 @@ void vk_EnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM(CPU* cp
     uint32_t tmp_pCounterCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pCounterCount = &tmp_pCounterCount;
     VkPerformanceCounterARM* pCounters = NULL;
+    const U32 pCountersCapacity = *pCounterCount;
     if (ARG4) {
-        pCounters = new VkPerformanceCounterARM[*pCounterCount];
+        pCounters = new VkPerformanceCounterARM[pCountersCapacity]();
         U32 address = ARG4;
-        for (U32 i=0;i<*pCounterCount;i++) {
+        for (U32 i=0;i<pCountersCapacity;i++) {
             MarshalVkPerformanceCounterARM::read(pBoxedInfo, cpu->memory, address + i*12, &pCounters[i]);
         }
     }
     VkPerformanceCounterDescriptionARM* pCounterDescriptions = NULL;
+    const U32 pCounterDescriptionsCapacity = *pCounterCount;
     if (ARG5) {
-        pCounterDescriptions = new VkPerformanceCounterDescriptionARM[*pCounterCount];
+        pCounterDescriptions = new VkPerformanceCounterDescriptionARM[pCounterDescriptionsCapacity]();
         U32 address = ARG5;
-        for (U32 i=0;i<*pCounterCount;i++) {
+        for (U32 i=0;i<pCounterDescriptionsCapacity;i++) {
             MarshalVkPerformanceCounterDescriptionARM::read(pBoxedInfo, cpu->memory, address + i*268, &pCounterDescriptions[i]);
         }
     }
     EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM(physicalDevice, queueFamilyIndex, pCounterCount, pCounters, pCounterDescriptions);
     cpu->memory->writed(ARG3, (U32)tmp_pCounterCount);
     if (ARG4) {
-        for (U32 i=0;i<*pCounterCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pCounterCount), pCountersCapacity);i++) {
             MarshalVkPerformanceCounterARM::write(pBoxedInfo, cpu->memory, ARG4 + i * 12, &pCounters[i]);
+        }
+        }
+        for (U32 i=0;i<pCountersCapacity;++i) {
+            MarshalVkPerformanceCounterARM owned; owned.s = pCounters[i];
         }
         delete[] pCounters;
     }
     if (ARG5) {
-        for (U32 i=0;i<*pCounterCount;i++) {
+        if ((VkResult)EAX >= VK_SUCCESS) {
+        for (U32 i=0;i<std::min((U32)(*pCounterCount), pCounterDescriptionsCapacity);i++) {
             MarshalVkPerformanceCounterDescriptionARM::write(pBoxedInfo, cpu->memory, ARG5 + i * 268, &pCounterDescriptions[i]);
+        }
+        }
+        for (U32 i=0;i<pCounterDescriptionsCapacity;++i) {
+            MarshalVkPerformanceCounterDescriptionARM owned; owned.s = pCounterDescriptions[i];
         }
         delete[] pCounterDescriptions;
     }

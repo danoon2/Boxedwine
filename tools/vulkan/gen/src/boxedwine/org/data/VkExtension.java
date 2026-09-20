@@ -14,6 +14,8 @@ public class VkExtension {
     public Vector<VkExtensionRequire> require = new Vector<>();
 
     public String name;
+    public String specVersion;
+    public boolean removed;
     public int number;
     public String type;
     public String author;

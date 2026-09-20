@@ -11,7 +11,8 @@ import tempfile
 
 OUTPUTS = ("tools/vulkan/vk.c", "tools/vulkan/vkdef.h", "source/vulkan/vkdef.h",
            "source/vulkan/vkfuncs.h", "source/vulkan/vk_host.cpp", "source/vulkan/vk_host.h",
-           "source/vulkan/vk_host_marshal.cpp", "source/vulkan/vk_host_marshal.h")
+           "source/vulkan/vk_host_marshal.cpp", "source/vulkan/vk_host_marshal.h",
+           "source/vulkan/vkextensions.h")
 
 
 def main():
@@ -47,7 +48,7 @@ def main():
         # not leave a mixture of old and new host/guest source in the checkout.
         generated = {name: (work / name).read_text(encoding="utf-8") for name in OUTPUTS}
         changed = [name for name, value in generated.items()
-                   if (repo / name).read_text(encoding="utf-8") != value]
+                   if not (repo / name).exists() or (repo / name).read_text(encoding="utf-8") != value]
         if args.write:
             for name in changed:
                 (repo / name).write_text(generated[name], encoding="utf-8", newline="\n")

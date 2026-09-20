@@ -396,6 +396,14 @@ public class VkParser {
                 Node requireNode = protoNodeList.item(temp);
                 parseExtensionRequire(requireNode, extension);
             }
+            NodeList enums = eElement.getElementsByTagName("enum");
+            for (int i = 0; i < enums.getLength(); ++i) {
+                String name = ((Element)enums.item(i)).getAttribute("name");
+                if (name.endsWith("_SPEC_VERSION")) {
+                    String value = ((Element)enums.item(i)).getAttribute("value");
+                    extension.specVersion = value.isEmpty() ? name : value;
+                }
+            }
             data.extensions.add(extension);
         }
     }

@@ -162,6 +162,12 @@ public class VkHost {
             stackPos += param.getStackWords();
         }
         // make actual vulkan call on host
+        if (fn.name.equals("vkCreateDescriptorUpdateTemplate") || fn.name.equals("vkCreateDescriptorUpdateTemplateKHR")) {
+            out.append("    std::vector<VkDescriptorUpdateTemplateEntry> hostEntries;\n");
+            out.append("    VkDescriptorUpdateTemplateCreateInfo hostCreateInfo = *pCreateInfo;\n");
+            out.append("    if (!prepareDescriptorTemplate(hostCreateInfo, hostEntries)) { EAX = VK_ERROR_FEATURE_NOT_PRESENT; return; }\n");
+            out.append("    pCreateInfo = &hostCreateInfo;\n");
+        }
         hostCall(fn, out);
         // marshal data if needed from host system back to emulated 32-bit linux
         VkCopyData copyData = data.copyData.get(fn.name);
@@ -204,7 +210,6 @@ public class VkHost {
         out.append("U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);\n");
         out.append("void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);\n");
         out.append("void* getVulkanPtr(KMemory* memory, U32 address);\n");
-        out.append("U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo, VkDescriptorUpdateTemplate descriptorUpdateTemplate);\n");
         for (VkFunction fn : hostFunctions ) {
             if (!fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 out.append("BOXED_VK_EXTERN PFN_");
@@ -219,6 +224,9 @@ public class VkHost {
             out.append(fn.name.substring(2));
             out.append("(CPU* cpu);\n");
         }
+        out.append("U64 translateVulkanObjectHandle(KMemory* memory, VkObjectType type, U64 handle);\n");
+        out.append("bool prepareDescriptorTemplate(VkDescriptorUpdateTemplateCreateInfo& info, std::vector<VkDescriptorUpdateTemplateEntry>& entries);\n");
+        out.append("const void* marshalDescriptorTemplateData(BoxedVulkanInfo* info, KMemory* memory, VkDescriptorUpdateTemplate descriptorTemplate, U32 address, std::vector<U8>& storage);\n");
         out.append("class BoxedVulkanInfo {\npublic:\n");
         out.append("    VkInstance instance;\n");
         for (VkFunction fn : hostFunctions ) {

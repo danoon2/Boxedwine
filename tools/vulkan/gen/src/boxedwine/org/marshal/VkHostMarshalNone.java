@@ -32,6 +32,10 @@ public class VkHostMarshalNone extends VkHostMarshal {
         }
         out.append(param.paramArg);
         out.append(";\n");
+        if (param.objecttype != null) {
+            out.append("    " + param.name + " = translateVulkanObjectHandle(cpu->memory, (VkObjectType)"
+                    + param.objecttype + ", " + param.name + ");\n");
+        }
     }
 
     public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {

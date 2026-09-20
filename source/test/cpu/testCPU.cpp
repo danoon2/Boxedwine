@@ -13,6 +13,10 @@
 
 #include "ksignal.h"
 #include "testCPU.h"
+#ifdef BOXEDWINE_VULKAN
+#include "../../vulkan/vk_host.h"
+#include "../../vulkan/vk_host_marshal.h"
+#endif
 #ifdef BOXEDWINE_JIT
 #include "../../emulation/cpu/jit/jitCodeGen.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
@@ -1012,6 +1016,68 @@ void testVulkanDirectStackABI() {
     }
     int9ACallback[3] = saved;
     int9ACallbackSize = savedSize;
+
+    // Wine's output conversion buffer can contain uninitialized handle slots.
+    // Only sType/pNext are input; poisoned handle bytes must never be followed.
+    testNewInstruction(0);
+    KMemory* memory = testContext().memory;
+    U32 address = TEST_HEAP_ADDRESS + 128;
+    for (U32 i = 0; i < 144; i += 4) memory->writed(address + i, 0xcdcdcdcd);
+    memory->writed(address, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES);
+    memory->writed(address + 4, 0);
+    VkPhysicalDeviceGroupProperties properties{};
+    MarshalVkPhysicalDeviceGroupProperties::read(nullptr, memory, address, &properties);
+    for (auto handle : properties.physicalDevices)
+        if (handle != VK_NULL_HANDLE) testFail("Vulkan output handles read from uninitialized guest data");
+    properties.physicalDeviceCount = 0;
+    properties.subsetAllocation = VK_TRUE;
+    MarshalVkPhysicalDeviceGroupProperties::write(nullptr, memory, address, &properties);
+    for (U32 i = 0; i < VK_MAX_DEVICE_GROUP_SIZE; ++i)
+        if (memory->readd(address + 12 + i * 4)) testFail("Vulkan inline handle array write");
+    if (memory->readd(address + 140) != VK_TRUE) testFail("Vulkan field following inline handle array");
+    memory->writeq(address, 0x1234567887654321ULL);
+    if (translateVulkanObjectHandle(memory, VK_OBJECT_TYPE_DEVICE, address) != 0x1234567887654321ULL ||
+        translateVulkanObjectHandle(memory, VK_OBJECT_TYPE_BUFFER, 0xabcdef0187654321ULL) != 0xabcdef0187654321ULL)
+        testFail("Vulkan generic object handle translation");
+
+    // A guest VkDescriptorImageInfo is 20 bytes, versus 24 on a 64-bit host.
+    // Template offsets and strides describe guest bytes and cannot be forwarded.
+    BoxedVulkanInfo info{};
+    auto original = std::make_shared<MarshalVkDescriptorUpdateTemplateCreateInfo>();
+    original->s.descriptorUpdateEntryCount = 3;
+    auto entries = new VkDescriptorUpdateTemplateEntry[3]{};
+    entries[0] = {0, 0, 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 12, 20};
+    entries[1] = {1, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 72, 24};
+    entries[2] = {2, 0, 4, VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK, 100, 0};
+    original->s.pDescriptorUpdateEntries = entries;
+    info.descriptorUpdateTemplateCreateInfo[5] = original;
+    VkDescriptorUpdateTemplateCreateInfo packed = original->s;
+    std::vector<VkDescriptorUpdateTemplateEntry> packedEntries;
+    if (!prepareDescriptorTemplate(packed, packedEntries) || entries[0].offset != 12 || entries[0].stride != 20 ||
+        packedEntries[0].stride != sizeof(VkDescriptorImageInfo) || packedEntries[1].offset != 48)
+        testFail("Vulkan descriptor template host layout");
+    U32 dataAddress = TEST_HEAP_ADDRESS + 512;
+    for (U32 i = 0; i < 2; ++i) {
+        memory->writeq(dataAddress + 12 + i * 20, 0x1234567800000000ULL + i);
+        memory->writeq(dataAddress + 20 + i * 20, 0x8765432100000000ULL + i);
+        memory->writed(dataAddress + 28 + i * 20, VK_IMAGE_LAYOUT_GENERAL);
+    }
+    memory->writeq(dataAddress + 72, 0xabcdef0123456789ULL);
+    memory->writeq(dataAddress + 80, 0x100000008ULL);
+    memory->writeq(dataAddress + 88, VK_WHOLE_SIZE);
+    memory->writed(dataAddress + 100, 0xdeadbeef);
+    std::vector<U8> packedData;
+    marshalDescriptorTemplateData(&info, memory, (VkDescriptorUpdateTemplate)5, dataAddress, packedData);
+    VkDescriptorImageInfo images[2];
+    memcpy(images, packedData.data(), sizeof(images));
+    VkDescriptorBufferInfo buffer;
+    memcpy(&buffer, packedData.data() + packedEntries[1].offset, sizeof(buffer));
+    U32 inlineData;
+    memcpy(&inlineData, packedData.data() + packedEntries[2].offset, sizeof(inlineData));
+    if ((U64)images[1].sampler != 0x1234567800000001ULL || (U64)images[1].imageView != 0x8765432100000001ULL ||
+        images[1].imageLayout != VK_IMAGE_LAYOUT_GENERAL || (U64)buffer.buffer != 0xabcdef0123456789ULL ||
+        buffer.offset != 0x100000008ULL || buffer.range != VK_WHOLE_SIZE || inlineData != 0xdeadbeef)
+        testFail("Vulkan descriptor template guest data conversion");
 #endif
 }
 

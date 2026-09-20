@@ -11,15 +11,12 @@ public class VkHostMarshalOutHandle extends VkHostMarshal {
         out.append(param.paramType.name);
         out.append(" ");
         out.append(param.name);
-        out.append(" = (");
-        out.append(param.paramType.name);
-        out.append(")getVulkanPtr(cpu->memory, ");
-        out.append(param.paramArg);
-        out.append(");\n");
+        out.append(" = VK_NULL_HANDLE;\n");
         param.nameInFunction = (param.isPointer?"&":"")+param.name;
     }
 
     public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+        if (fn.returnType.name.equals("VkResult")) out.append("    if (EAX == VK_SUCCESS) {\n");
         out.append("    cpu->memory->writed(");
         out.append(param.paramArg);
         out.append(", createVulkanPtr(cpu->memory, ");
@@ -31,5 +28,6 @@ public class VkHostMarshalOutHandle extends VkHostMarshal {
             out.append("pBoxedInfo");
         }
         out.append("));\n");
+        if (fn.returnType.name.equals("VkResult")) out.append("    }\n");
     }
 }

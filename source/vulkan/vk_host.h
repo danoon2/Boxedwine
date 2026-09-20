@@ -15,7 +15,6 @@ void vulkanDeleteNextPtr(const void* pNext);
 U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);
 void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);
 void* getVulkanPtr(KMemory* memory, U32 address);
-U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo, VkDescriptorUpdateTemplate descriptorUpdateTemplate);
 BOXED_VK_EXTERN PFN_vkCreateInstance pvkCreateInstance;
 BOXED_VK_EXTERN PFN_vkEnumerateInstanceVersion pvkEnumerateInstanceVersion;
 BOXED_VK_EXTERN PFN_vkEnumerateInstanceLayerProperties pvkEnumerateInstanceLayerProperties;
@@ -684,6 +683,9 @@ void vk_CreateExternalComputeQueueNV(CPU* cpu);
 void vk_DestroyExternalComputeQueueNV(CPU* cpu);
 void vk_GetExternalComputeQueueDataNV(CPU* cpu);
 void vk_EnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM(CPU* cpu);
+U64 translateVulkanObjectHandle(KMemory* memory, VkObjectType type, U64 handle);
+bool prepareDescriptorTemplate(VkDescriptorUpdateTemplateCreateInfo& info, std::vector<VkDescriptorUpdateTemplateEntry>& entries);
+const void* marshalDescriptorTemplateData(BoxedVulkanInfo* info, KMemory* memory, VkDescriptorUpdateTemplate descriptorTemplate, U32 address, std::vector<U8>& storage);
 class BoxedVulkanInfo {
 public:
     VkInstance instance;

@@ -10,6 +10,7 @@ import boxedwine.org.writers.VkC;
 import boxedwine.org.writers.VkDefH;
 import boxedwine.org.writers.VkFuncsH;
 import boxedwine.org.writers.VkHost;
+import boxedwine.org.writers.VkCapabilities;
 import org.w3c.dom.*;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -34,6 +35,7 @@ public class Main {
             VkC.write(data, fsSource);
 
             VkHost.write(data, hostSource);
+            VkCapabilities.write(data, hostSource);
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);

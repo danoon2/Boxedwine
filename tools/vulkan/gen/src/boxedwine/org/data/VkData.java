@@ -17,6 +17,7 @@ public class VkData {
     public Vector<VkFeature> features = new Vector<>();
 
     public Vector<String> manuallyHandledFunctions = new Vector<>();
+    public java.util.Set<String> unimplementedFunctions = new java.util.HashSet<>();
 
     public Vector<String> stubMarshalWrite = new Vector<>();
     public Vector<String> stubMarshalRead = new Vector<>();
