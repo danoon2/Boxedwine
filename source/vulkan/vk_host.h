@@ -1,6 +1,7 @@
 #ifndef __VK_HOST__H__
 #define __VK_HOST__H__
 #include <unordered_set>
+#include <set>
 #define VK_NO_PROTOTYPES
 #include "vk/vulkan.h"
 #include "vk/vulkan_core.h"
@@ -11,6 +12,10 @@ class MarshalVkDescriptorUpdateTemplateCreateInfo;
 class MarshalVkImageCreateInfo;
 class BoxedVulkanInfo;
 class MarshalCallbackData;
+void trackVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle);
+void forgetVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle);
+void destroyTrackedVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle);
+void cleanupVulkanObjects(BoxedVulkanInfo* info);
 VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);
 void vulkanDeleteNextPtr(const void* pNext);
 U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);
@@ -707,6 +712,8 @@ public:
     BOXEDWINE_MUTEX memoryMutex;
     std::unordered_map<U64, VulkanMemoryAllocation> allocations;
     BOXEDWINE_MUTEX cacheMutex;
+    BOXEDWINE_MUTEX objectMutex;
+    std::set<std::pair<VkObjectType, U64>> liveObjects;
     std::unordered_map<U64, std::unordered_set<U32>> commandBuffersByPool;
     PFN_vkDestroyInstance pvkDestroyInstance = nullptr;
     PFN_vkEnumeratePhysicalDevices pvkEnumeratePhysicalDevices = nullptr;

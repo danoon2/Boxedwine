@@ -1173,6 +1173,136 @@ static_assert(sizeof(VkDisplayPlaneCapabilitiesKHR) == 68, "false");
 static_assert(sizeof(VkDisplayModeParametersKHR) == 12, "false");
 #endif
 
+void destroyTrackedVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle) {
+    switch (type) {
+    case VK_OBJECT_TYPE_FENCE:
+        if (info->pvkDestroyFence) { info->pvkDestroyFence(info->device, (VkFence)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_SEMAPHORE:
+        if (info->pvkDestroySemaphore) { info->pvkDestroySemaphore(info->device, (VkSemaphore)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_EVENT:
+        if (info->pvkDestroyEvent) { info->pvkDestroyEvent(info->device, (VkEvent)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_QUERY_POOL:
+        if (info->pvkDestroyQueryPool) { info->pvkDestroyQueryPool(info->device, (VkQueryPool)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_BUFFER:
+        if (info->pvkDestroyBuffer) { info->pvkDestroyBuffer(info->device, (VkBuffer)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_BUFFER_VIEW:
+        if (info->pvkDestroyBufferView) { info->pvkDestroyBufferView(info->device, (VkBufferView)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_IMAGE:
+        if (info->pvkDestroyImage) { info->pvkDestroyImage(info->device, (VkImage)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_IMAGE_VIEW:
+        if (info->pvkDestroyImageView) { info->pvkDestroyImageView(info->device, (VkImageView)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_SHADER_MODULE:
+        if (info->pvkDestroyShaderModule) { info->pvkDestroyShaderModule(info->device, (VkShaderModule)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_PIPELINE_CACHE:
+        if (info->pvkDestroyPipelineCache) { info->pvkDestroyPipelineCache(info->device, (VkPipelineCache)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_PIPELINE_BINARY_KHR:
+        if (info->pvkDestroyPipelineBinaryKHR) { info->pvkDestroyPipelineBinaryKHR(info->device, (VkPipelineBinaryKHR)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_PIPELINE:
+        if (info->pvkDestroyPipeline) { info->pvkDestroyPipeline(info->device, (VkPipeline)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_PIPELINE_LAYOUT:
+        if (info->pvkDestroyPipelineLayout) { info->pvkDestroyPipelineLayout(info->device, (VkPipelineLayout)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_SAMPLER:
+        if (info->pvkDestroySampler) { info->pvkDestroySampler(info->device, (VkSampler)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:
+        if (info->pvkDestroyDescriptorSetLayout) { info->pvkDestroyDescriptorSetLayout(info->device, (VkDescriptorSetLayout)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_DESCRIPTOR_POOL:
+        if (info->pvkDestroyDescriptorPool) { info->pvkDestroyDescriptorPool(info->device, (VkDescriptorPool)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_FRAMEBUFFER:
+        if (info->pvkDestroyFramebuffer) { info->pvkDestroyFramebuffer(info->device, (VkFramebuffer)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_RENDER_PASS:
+        if (info->pvkDestroyRenderPass) { info->pvkDestroyRenderPass(info->device, (VkRenderPass)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_COMMAND_POOL:
+        if (info->pvkDestroyCommandPool) { info->pvkDestroyCommandPool(info->device, (VkCommandPool)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_SURFACE_KHR:
+        if (info->pvkDestroySurfaceKHR) { info->pvkDestroySurfaceKHR(info->instance, (VkSurfaceKHR)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_SWAPCHAIN_KHR:
+        if (info->pvkDestroySwapchainKHR) { info->pvkDestroySwapchainKHR(info->device, (VkSwapchainKHR)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:
+        if (info->pvkDestroyDebugReportCallbackEXT) { info->pvkDestroyDebugReportCallbackEXT(info->instance, (VkDebugReportCallbackEXT)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV:
+        if (info->pvkDestroyIndirectCommandsLayoutNV) { info->pvkDestroyIndirectCommandsLayoutNV(info->device, (VkIndirectCommandsLayoutNV)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_EXT:
+        if (info->pvkDestroyIndirectCommandsLayoutEXT) { info->pvkDestroyIndirectCommandsLayoutEXT(info->device, (VkIndirectCommandsLayoutEXT)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_INDIRECT_EXECUTION_SET_EXT:
+        if (info->pvkDestroyIndirectExecutionSetEXT) { info->pvkDestroyIndirectExecutionSetEXT(info->device, (VkIndirectExecutionSetEXT)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE:
+        if (info->pvkDestroyDescriptorUpdateTemplate) { info->pvkDestroyDescriptorUpdateTemplate(info->device, (VkDescriptorUpdateTemplate)handle, nullptr); return; }
+        if (info->pvkDestroyDescriptorUpdateTemplateKHR) { info->pvkDestroyDescriptorUpdateTemplateKHR(info->device, (VkDescriptorUpdateTemplate)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:
+        if (info->pvkDestroySamplerYcbcrConversion) { info->pvkDestroySamplerYcbcrConversion(info->device, (VkSamplerYcbcrConversion)handle, nullptr); return; }
+        if (info->pvkDestroySamplerYcbcrConversionKHR) { info->pvkDestroySamplerYcbcrConversionKHR(info->device, (VkSamplerYcbcrConversion)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:
+        if (info->pvkDestroyValidationCacheEXT) { info->pvkDestroyValidationCacheEXT(info->device, (VkValidationCacheEXT)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT:
+        if (info->pvkDestroyDebugUtilsMessengerEXT) { info->pvkDestroyDebugUtilsMessengerEXT(info->instance, (VkDebugUtilsMessengerEXT)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR:
+        if (info->pvkDestroyAccelerationStructureKHR) { info->pvkDestroyAccelerationStructureKHR(info->device, (VkAccelerationStructureKHR)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV:
+        if (info->pvkDestroyAccelerationStructureNV) { info->pvkDestroyAccelerationStructureNV(info->device, (VkAccelerationStructureNV)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR:
+        if (info->pvkDestroyDeferredOperationKHR) { info->pvkDestroyDeferredOperationKHR(info->device, (VkDeferredOperationKHR)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_PRIVATE_DATA_SLOT:
+        if (info->pvkDestroyPrivateDataSlot) { info->pvkDestroyPrivateDataSlot(info->device, (VkPrivateDataSlot)handle, nullptr); return; }
+        if (info->pvkDestroyPrivateDataSlotEXT) { info->pvkDestroyPrivateDataSlotEXT(info->device, (VkPrivateDataSlot)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_VIDEO_SESSION_KHR:
+        if (info->pvkDestroyVideoSessionKHR) { info->pvkDestroyVideoSessionKHR(info->device, (VkVideoSessionKHR)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_VIDEO_SESSION_PARAMETERS_KHR:
+        if (info->pvkDestroyVideoSessionParametersKHR) { info->pvkDestroyVideoSessionParametersKHR(info->device, (VkVideoSessionParametersKHR)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_CU_MODULE_NVX:
+        if (info->pvkDestroyCuModuleNVX) { info->pvkDestroyCuModuleNVX(info->device, (VkCuModuleNVX)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_CU_FUNCTION_NVX:
+        if (info->pvkDestroyCuFunctionNVX) { info->pvkDestroyCuFunctionNVX(info->device, (VkCuFunctionNVX)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_MICROMAP_EXT:
+        if (info->pvkDestroyMicromapEXT) { info->pvkDestroyMicromapEXT(info->device, (VkMicromapEXT)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_OPTICAL_FLOW_SESSION_NV:
+        if (info->pvkDestroyOpticalFlowSessionNV) { info->pvkDestroyOpticalFlowSessionNV(info->device, (VkOpticalFlowSessionNV)handle, nullptr); return; }
+        break;
+    case VK_OBJECT_TYPE_SHADER_EXT:
+        if (info->pvkDestroyShaderEXT) { info->pvkDestroyShaderEXT(info->device, (VkShaderEXT)handle, nullptr); return; }
+        break;
+    default: break;
+    }
+    kpanic_fmt("Missing Vulkan object destructor: %u", (U32)type);
+}
+
 void vk_DestroyInstance(CPU* cpu) {
     VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
@@ -1656,7 +1786,10 @@ void vk_CreateFence(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkFence tmp_pFence = (VkFence) cpu->memory->readq(ARG4);
     VkFence* pFence = &tmp_pFence;
+    if (pFence) for (U32 i=0;i<(U32)(1);++i) pFence[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateFence(device, pCreateInfo, pAllocator, pFence);
+    if (EAX == VK_SUCCESS && pFence)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_FENCE, (U64)pFence[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pFence);
 }
 void vk_DestroyFence(CPU* cpu) {
@@ -1666,6 +1799,7 @@ void vk_DestroyFence(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyFence:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyFence(device, fence, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_FENCE, (U64)fence);
 }
 // return type: VkResult(4 bytes)
 void vk_ResetFences(CPU* cpu) {
@@ -1710,7 +1844,10 @@ void vk_CreateSemaphore(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkSemaphore tmp_pSemaphore = (VkSemaphore) cpu->memory->readq(ARG4);
     VkSemaphore* pSemaphore = &tmp_pSemaphore;
+    if (pSemaphore) for (U32 i=0;i<(U32)(1);++i) pSemaphore[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateSemaphore(device, pCreateInfo, pAllocator, pSemaphore);
+    if (EAX == VK_SUCCESS && pSemaphore)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SEMAPHORE, (U64)pSemaphore[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pSemaphore);
 }
 void vk_DestroySemaphore(CPU* cpu) {
@@ -1720,6 +1857,7 @@ void vk_DestroySemaphore(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroySemaphore:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySemaphore(device, semaphore, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SEMAPHORE, (U64)semaphore);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateEvent(CPU* cpu) {
@@ -1731,7 +1869,10 @@ void vk_CreateEvent(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkEvent tmp_pEvent = (VkEvent) cpu->memory->readq(ARG4);
     VkEvent* pEvent = &tmp_pEvent;
+    if (pEvent) for (U32 i=0;i<(U32)(1);++i) pEvent[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateEvent(device, pCreateInfo, pAllocator, pEvent);
+    if (EAX == VK_SUCCESS && pEvent)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_EVENT, (U64)pEvent[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pEvent);
 }
 void vk_DestroyEvent(CPU* cpu) {
@@ -1741,6 +1882,7 @@ void vk_DestroyEvent(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyEvent:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyEvent(device, event, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_EVENT, (U64)event);
 }
 // return type: VkResult(4 bytes)
 void vk_GetEventStatus(CPU* cpu) {
@@ -1773,7 +1915,10 @@ void vk_CreateQueryPool(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkQueryPool tmp_pQueryPool = (VkQueryPool) cpu->memory->readq(ARG4);
     VkQueryPool* pQueryPool = &tmp_pQueryPool;
+    if (pQueryPool) for (U32 i=0;i<(U32)(1);++i) pQueryPool[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateQueryPool(device, pCreateInfo, pAllocator, pQueryPool);
+    if (EAX == VK_SUCCESS && pQueryPool)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_QUERY_POOL, (U64)pQueryPool[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pQueryPool);
 }
 void vk_DestroyQueryPool(CPU* cpu) {
@@ -1783,6 +1928,7 @@ void vk_DestroyQueryPool(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyQueryPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyQueryPool(device, queryPool, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_QUERY_POOL, (U64)queryPool);
 }
 // return type: VkResult(4 bytes)
 void vk_GetQueryPoolResults(CPU* cpu) {
@@ -1827,7 +1973,10 @@ void vk_CreateBuffer(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkBuffer tmp_pBuffer = (VkBuffer) cpu->memory->readq(ARG4);
     VkBuffer* pBuffer = &tmp_pBuffer;
+    if (pBuffer) for (U32 i=0;i<(U32)(1);++i) pBuffer[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateBuffer(device, pCreateInfo, pAllocator, pBuffer);
+    if (EAX == VK_SUCCESS && pBuffer)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_BUFFER, (U64)pBuffer[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pBuffer);
 }
 void vk_DestroyBuffer(CPU* cpu) {
@@ -1837,6 +1986,7 @@ void vk_DestroyBuffer(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyBuffer:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyBuffer(device, buffer, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_BUFFER, (U64)buffer);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateBufferView(CPU* cpu) {
@@ -1848,7 +1998,10 @@ void vk_CreateBufferView(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkBufferView tmp_pView = (VkBufferView) cpu->memory->readq(ARG4);
     VkBufferView* pView = &tmp_pView;
+    if (pView) for (U32 i=0;i<(U32)(1);++i) pView[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateBufferView(device, pCreateInfo, pAllocator, pView);
+    if (EAX == VK_SUCCESS && pView)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_BUFFER_VIEW, (U64)pView[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pView);
 }
 void vk_DestroyBufferView(CPU* cpu) {
@@ -1858,6 +2011,7 @@ void vk_DestroyBufferView(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyBufferView:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyBufferView(device, bufferView, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_BUFFER_VIEW, (U64)bufferView);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateImage(CPU* cpu) {
@@ -1869,7 +2023,10 @@ void vk_CreateImage(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkImage tmp_pImage = (VkImage) cpu->memory->readq(ARG4);
     VkImage* pImage = &tmp_pImage;
+    if (pImage) for (U32 i=0;i<(U32)(1);++i) pImage[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateImage(device, pCreateInfo, pAllocator, pImage);
+    if (EAX == VK_SUCCESS && pImage)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_IMAGE, (U64)pImage[i]);
     if (!EAX && tmp_pImage) {
         cacheImageInfo(pBoxedInfo, (U64)tmp_pImage, local_pCreateInfo->s);
     }
@@ -1882,6 +2039,7 @@ void vk_DestroyImage(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyImage:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyImage(device, image, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_IMAGE, (U64)image);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pBoxedInfo->cacheMutex);
     pBoxedInfo->imageCreateInfo.erase((U64)image);
 }
@@ -1905,7 +2063,10 @@ void vk_CreateImageView(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkImageView tmp_pView = (VkImageView) cpu->memory->readq(ARG4);
     VkImageView* pView = &tmp_pView;
+    if (pView) for (U32 i=0;i<(U32)(1);++i) pView[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateImageView(device, pCreateInfo, pAllocator, pView);
+    if (EAX == VK_SUCCESS && pView)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_IMAGE_VIEW, (U64)pView[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pView);
 }
 void vk_DestroyImageView(CPU* cpu) {
@@ -1915,6 +2076,7 @@ void vk_DestroyImageView(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyImageView:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyImageView(device, imageView, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_IMAGE_VIEW, (U64)imageView);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateShaderModule(CPU* cpu) {
@@ -1926,7 +2088,10 @@ void vk_CreateShaderModule(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkShaderModule tmp_pShaderModule = (VkShaderModule) cpu->memory->readq(ARG4);
     VkShaderModule* pShaderModule = &tmp_pShaderModule;
+    if (pShaderModule) for (U32 i=0;i<(U32)(1);++i) pShaderModule[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateShaderModule(device, pCreateInfo, pAllocator, pShaderModule);
+    if (EAX == VK_SUCCESS && pShaderModule)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SHADER_MODULE, (U64)pShaderModule[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pShaderModule);
 }
 void vk_DestroyShaderModule(CPU* cpu) {
@@ -1936,6 +2101,7 @@ void vk_DestroyShaderModule(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyShaderModule:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyShaderModule(device, shaderModule, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SHADER_MODULE, (U64)shaderModule);
 }
 // return type: VkResult(4 bytes)
 void vk_CreatePipelineCache(CPU* cpu) {
@@ -1947,7 +2113,10 @@ void vk_CreatePipelineCache(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkPipelineCache tmp_pPipelineCache = (VkPipelineCache) cpu->memory->readq(ARG4);
     VkPipelineCache* pPipelineCache = &tmp_pPipelineCache;
+    if (pPipelineCache) for (U32 i=0;i<(U32)(1);++i) pPipelineCache[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreatePipelineCache(device, pCreateInfo, pAllocator, pPipelineCache);
+    if (EAX == VK_SUCCESS && pPipelineCache)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE_CACHE, (U64)pPipelineCache[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pPipelineCache);
 }
 void vk_DestroyPipelineCache(CPU* cpu) {
@@ -1957,6 +2126,7 @@ void vk_DestroyPipelineCache(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyPipelineCache:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipelineCache(device, pipelineCache, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE_CACHE, (U64)pipelineCache);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPipelineCacheData(CPU* cpu) {
@@ -1995,7 +2165,11 @@ void vk_CreatePipelineBinariesKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG3) { klog("vkCreatePipelineBinariesKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     MarshalVkPipelineBinaryHandlesInfoKHR pBinaries(pBoxedInfo, cpu->memory, ARG4);
+    const U32 binaryCapacity = pBinaries.s.pipelineBinaryCount;
+    if (pBinaries.s.pPipelineBinaries) for (U32 i=0;i<binaryCapacity;++i) pBinaries.s.pPipelineBinaries[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreatePipelineBinariesKHR(device, pCreateInfo, pAllocator, &pBinaries.s);
+    if (pBinaries.s.pPipelineBinaries) for (U32 i=0;i<std::min(binaryCapacity, pBinaries.s.pipelineBinaryCount);++i)
+        trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE_BINARY_KHR, (U64)pBinaries.s.pPipelineBinaries[i]);
     MarshalVkPipelineBinaryHandlesInfoKHR::write(pBoxedInfo, cpu->memory, ARG4, &pBinaries.s);
 }
 void vk_DestroyPipelineBinaryKHR(CPU* cpu) {
@@ -2005,6 +2179,7 @@ void vk_DestroyPipelineBinaryKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyPipelineBinaryKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipelineBinaryKHR(device, pipelineBinary, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE_BINARY_KHR, (U64)pipelineBinary);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPipelineKeyKHR(CPU* cpu) {
@@ -2063,7 +2238,10 @@ void vk_CreateGraphicsPipelines(CPU* cpu) {
     if (ARG7) {
         pPipelines = (VkPipeline*)cpu->memory->lockReadWriteMemory(ARG7, (U32)createInfoCount * sizeof(VkPipeline));
     }
+    if (pPipelines) for (U32 i=0;i<(U32)(createInfoCount);++i) pPipelines[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+    if (pPipelines)
+        for (U32 i=0;i<(U32)(createInfoCount);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE, (U64)pPipelines[i]);
     if (pCreateInfos) {
         for (U32 i=0;i<createInfoCount;++i) {
             MarshalVkGraphicsPipelineCreateInfo owned; owned.s = pCreateInfos[i];
@@ -2091,7 +2269,10 @@ void vk_CreateComputePipelines(CPU* cpu) {
     if (ARG7) {
         pPipelines = (VkPipeline*)cpu->memory->lockReadWriteMemory(ARG7, (U32)createInfoCount * sizeof(VkPipeline));
     }
+    if (pPipelines) for (U32 i=0;i<(U32)(createInfoCount);++i) pPipelines[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateComputePipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+    if (pPipelines)
+        for (U32 i=0;i<(U32)(createInfoCount);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE, (U64)pPipelines[i]);
     if (pCreateInfos) {
         for (U32 i=0;i<createInfoCount;++i) {
             MarshalVkComputePipelineCreateInfo owned; owned.s = pCreateInfos[i];
@@ -2134,6 +2315,7 @@ void vk_DestroyPipeline(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyPipeline:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipeline(device, pipeline, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE, (U64)pipeline);
 }
 // return type: VkResult(4 bytes)
 void vk_CreatePipelineLayout(CPU* cpu) {
@@ -2145,7 +2327,10 @@ void vk_CreatePipelineLayout(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkPipelineLayout tmp_pPipelineLayout = (VkPipelineLayout) cpu->memory->readq(ARG4);
     VkPipelineLayout* pPipelineLayout = &tmp_pPipelineLayout;
+    if (pPipelineLayout) for (U32 i=0;i<(U32)(1);++i) pPipelineLayout[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreatePipelineLayout(device, pCreateInfo, pAllocator, pPipelineLayout);
+    if (EAX == VK_SUCCESS && pPipelineLayout)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE_LAYOUT, (U64)pPipelineLayout[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pPipelineLayout);
 }
 void vk_DestroyPipelineLayout(CPU* cpu) {
@@ -2155,6 +2340,7 @@ void vk_DestroyPipelineLayout(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyPipelineLayout:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipelineLayout(device, pipelineLayout, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE_LAYOUT, (U64)pipelineLayout);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateSampler(CPU* cpu) {
@@ -2166,7 +2352,10 @@ void vk_CreateSampler(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkSampler tmp_pSampler = (VkSampler) cpu->memory->readq(ARG4);
     VkSampler* pSampler = &tmp_pSampler;
+    if (pSampler) for (U32 i=0;i<(U32)(1);++i) pSampler[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateSampler(device, pCreateInfo, pAllocator, pSampler);
+    if (EAX == VK_SUCCESS && pSampler)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SAMPLER, (U64)pSampler[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pSampler);
 }
 void vk_DestroySampler(CPU* cpu) {
@@ -2176,6 +2365,7 @@ void vk_DestroySampler(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroySampler:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySampler(device, sampler, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SAMPLER, (U64)sampler);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateDescriptorSetLayout(CPU* cpu) {
@@ -2187,7 +2377,10 @@ void vk_CreateDescriptorSetLayout(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDescriptorSetLayout tmp_pSetLayout = (VkDescriptorSetLayout) cpu->memory->readq(ARG4);
     VkDescriptorSetLayout* pSetLayout = &tmp_pSetLayout;
+    if (pSetLayout) for (U32 i=0;i<(U32)(1);++i) pSetLayout[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateDescriptorSetLayout(device, pCreateInfo, pAllocator, pSetLayout);
+    if (EAX == VK_SUCCESS && pSetLayout)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, (U64)pSetLayout[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pSetLayout);
 }
 void vk_DestroyDescriptorSetLayout(CPU* cpu) {
@@ -2197,6 +2390,7 @@ void vk_DestroyDescriptorSetLayout(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorSetLayout:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorSetLayout(device, descriptorSetLayout, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, (U64)descriptorSetLayout);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateDescriptorPool(CPU* cpu) {
@@ -2208,7 +2402,10 @@ void vk_CreateDescriptorPool(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDescriptorPool tmp_pDescriptorPool = (VkDescriptorPool) cpu->memory->readq(ARG4);
     VkDescriptorPool* pDescriptorPool = &tmp_pDescriptorPool;
+    if (pDescriptorPool) for (U32 i=0;i<(U32)(1);++i) pDescriptorPool[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateDescriptorPool(device, pCreateInfo, pAllocator, pDescriptorPool);
+    if (EAX == VK_SUCCESS && pDescriptorPool)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DESCRIPTOR_POOL, (U64)pDescriptorPool[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pDescriptorPool);
 }
 void vk_DestroyDescriptorPool(CPU* cpu) {
@@ -2218,6 +2415,7 @@ void vk_DestroyDescriptorPool(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorPool(device, descriptorPool, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DESCRIPTOR_POOL, (U64)descriptorPool);
 }
 // return type: VkResult(4 bytes)
 void vk_ResetDescriptorPool(CPU* cpu) {
@@ -2296,7 +2494,10 @@ void vk_CreateFramebuffer(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkFramebuffer tmp_pFramebuffer = (VkFramebuffer) cpu->memory->readq(ARG4);
     VkFramebuffer* pFramebuffer = &tmp_pFramebuffer;
+    if (pFramebuffer) for (U32 i=0;i<(U32)(1);++i) pFramebuffer[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateFramebuffer(device, pCreateInfo, pAllocator, pFramebuffer);
+    if (EAX == VK_SUCCESS && pFramebuffer)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_FRAMEBUFFER, (U64)pFramebuffer[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pFramebuffer);
 }
 void vk_DestroyFramebuffer(CPU* cpu) {
@@ -2306,6 +2507,7 @@ void vk_DestroyFramebuffer(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyFramebuffer:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyFramebuffer(device, framebuffer, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_FRAMEBUFFER, (U64)framebuffer);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateRenderPass(CPU* cpu) {
@@ -2317,7 +2519,10 @@ void vk_CreateRenderPass(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkRenderPass tmp_pRenderPass = (VkRenderPass) cpu->memory->readq(ARG4);
     VkRenderPass* pRenderPass = &tmp_pRenderPass;
+    if (pRenderPass) for (U32 i=0;i<(U32)(1);++i) pRenderPass[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateRenderPass(device, pCreateInfo, pAllocator, pRenderPass);
+    if (EAX == VK_SUCCESS && pRenderPass)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_RENDER_PASS, (U64)pRenderPass[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pRenderPass);
 }
 void vk_DestroyRenderPass(CPU* cpu) {
@@ -2327,6 +2532,7 @@ void vk_DestroyRenderPass(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyRenderPass:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyRenderPass(device, renderPass, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_RENDER_PASS, (U64)renderPass);
 }
 void vk_GetRenderAreaGranularity(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -2364,7 +2570,10 @@ void vk_CreateCommandPool(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkCommandPool tmp_pCommandPool = (VkCommandPool) cpu->memory->readq(ARG4);
     VkCommandPool* pCommandPool = &tmp_pCommandPool;
+    if (pCommandPool) for (U32 i=0;i<(U32)(1);++i) pCommandPool[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateCommandPool(device, pCreateInfo, pAllocator, pCommandPool);
+    if (EAX == VK_SUCCESS && pCommandPool)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_COMMAND_POOL, (U64)pCommandPool[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pCommandPool);
 }
 void vk_DestroyCommandPool(CPU* cpu) {
@@ -2374,6 +2583,7 @@ void vk_DestroyCommandPool(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyCommandPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyCommandPool(device, commandPool, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_COMMAND_POOL, (U64)commandPool);
     releaseVulkanCommandPool(pBoxedInfo, cpu->memory, commandPool);
 }
 // return type: VkResult(4 bytes)
@@ -3260,7 +3470,10 @@ void vk_CreateSharedSwapchainsKHR(CPU* cpu) {
     if (ARG5) {
         pSwapchains = (VkSwapchainKHR*)cpu->memory->lockReadWriteMemory(ARG5, (U32)swapchainCount * sizeof(VkSwapchainKHR));
     }
+    if (pSwapchains) for (U32 i=0;i<(U32)(swapchainCount);++i) pSwapchains[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateSharedSwapchainsKHR(device, swapchainCount, pCreateInfos, pAllocator, pSwapchains);
+    if (EAX == VK_SUCCESS && pSwapchains)
+        for (U32 i=0;i<(U32)(swapchainCount);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SWAPCHAIN_KHR, (U64)pSwapchains[i]);
     if (pCreateInfos) {
         for (U32 i=0;i<swapchainCount;++i) {
             MarshalVkSwapchainCreateInfoKHR owned; owned.s = pCreateInfos[i];
@@ -3276,6 +3489,7 @@ void vk_DestroySurfaceKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroySurfaceKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySurfaceKHR(instance, surface, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SURFACE_KHR, (U64)surface);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPhysicalDeviceSurfaceSupportKHR(CPU* cpu) {
@@ -3353,7 +3567,10 @@ void vk_CreateSwapchainKHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkSwapchainKHR tmp_pSwapchain = (VkSwapchainKHR) cpu->memory->readq(ARG4);
     VkSwapchainKHR* pSwapchain = &tmp_pSwapchain;
+    if (pSwapchain) for (U32 i=0;i<(U32)(1);++i) pSwapchain[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateSwapchainKHR(device, pCreateInfo, pAllocator, pSwapchain);
+    if (EAX == VK_SUCCESS && pSwapchain)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SWAPCHAIN_KHR, (U64)pSwapchain[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pSwapchain);
 }
 void vk_DestroySwapchainKHR(CPU* cpu) {
@@ -3363,6 +3580,7 @@ void vk_DestroySwapchainKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroySwapchainKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySwapchainKHR(device, swapchain, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SWAPCHAIN_KHR, (U64)swapchain);
 }
 // return type: VkResult(4 bytes)
 void vk_GetSwapchainImagesKHR(CPU* cpu) {
@@ -3410,8 +3628,11 @@ void vk_CreateDebugReportCallbackEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDebugReportCallbackEXT tmp_pCallback = (VkDebugReportCallbackEXT) cpu->memory->readq(ARG4);
     VkDebugReportCallbackEXT* pCallback = &tmp_pCallback;
+    if (pCallback) for (U32 i=0;i<(U32)(1);++i) pCallback[i] = VK_NULL_HANDLE;
     pBoxedInfo->debugReportCallbacks[(U64)tmp_pCallback] = (MarshalCallbackData*)local_pCreateInfo.s.pUserData;
     EAX = (U32)pBoxedInfo->pvkCreateDebugReportCallbackEXT(instance, pCreateInfo, pAllocator, pCallback);
+    if (EAX == VK_SUCCESS && pCallback)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT, (U64)pCallback[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pCallback);
 }
 void vk_DestroyDebugReportCallbackEXT(CPU* cpu) {
@@ -3423,6 +3644,7 @@ void vk_DestroyDebugReportCallbackEXT(CPU* cpu) {
     delete pBoxedInfo->debugReportCallbacks[(U64)callback];
     pBoxedInfo->debugReportCallbacks.erase((U64)callback);
     pBoxedInfo->pvkDestroyDebugReportCallbackEXT(instance, callback, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT, (U64)callback);
 }
 void vk_DebugReportMessageEXT(CPU* cpu) {
     VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);
@@ -3522,7 +3744,10 @@ void vk_CreateIndirectCommandsLayoutNV(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkIndirectCommandsLayoutNV tmp_pIndirectCommandsLayout = (VkIndirectCommandsLayoutNV) cpu->memory->readq(ARG4);
     VkIndirectCommandsLayoutNV* pIndirectCommandsLayout = &tmp_pIndirectCommandsLayout;
+    if (pIndirectCommandsLayout) for (U32 i=0;i<(U32)(1);++i) pIndirectCommandsLayout[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateIndirectCommandsLayoutNV(device, pCreateInfo, pAllocator, pIndirectCommandsLayout);
+    if (EAX == VK_SUCCESS && pIndirectCommandsLayout)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV, (U64)pIndirectCommandsLayout[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pIndirectCommandsLayout);
 }
 void vk_DestroyIndirectCommandsLayoutNV(CPU* cpu) {
@@ -3532,6 +3757,7 @@ void vk_DestroyIndirectCommandsLayoutNV(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyIndirectCommandsLayoutNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyIndirectCommandsLayoutNV(device, indirectCommandsLayout, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV, (U64)indirectCommandsLayout);
 }
 void vk_CmdExecuteGeneratedCommandsEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -3568,7 +3794,10 @@ void vk_CreateIndirectCommandsLayoutEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkIndirectCommandsLayoutEXT tmp_pIndirectCommandsLayout = (VkIndirectCommandsLayoutEXT) cpu->memory->readq(ARG4);
     VkIndirectCommandsLayoutEXT* pIndirectCommandsLayout = &tmp_pIndirectCommandsLayout;
+    if (pIndirectCommandsLayout) for (U32 i=0;i<(U32)(1);++i) pIndirectCommandsLayout[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateIndirectCommandsLayoutEXT(device, pCreateInfo, pAllocator, pIndirectCommandsLayout);
+    if (EAX == VK_SUCCESS && pIndirectCommandsLayout)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_EXT, (U64)pIndirectCommandsLayout[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pIndirectCommandsLayout);
 }
 void vk_DestroyIndirectCommandsLayoutEXT(CPU* cpu) {
@@ -3578,6 +3807,7 @@ void vk_DestroyIndirectCommandsLayoutEXT(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyIndirectCommandsLayoutEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyIndirectCommandsLayoutEXT(device, indirectCommandsLayout, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_EXT, (U64)indirectCommandsLayout);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateIndirectExecutionSetEXT(CPU* cpu) {
@@ -3589,7 +3819,10 @@ void vk_CreateIndirectExecutionSetEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkIndirectExecutionSetEXT tmp_pIndirectExecutionSet = (VkIndirectExecutionSetEXT) cpu->memory->readq(ARG4);
     VkIndirectExecutionSetEXT* pIndirectExecutionSet = &tmp_pIndirectExecutionSet;
+    if (pIndirectExecutionSet) for (U32 i=0;i<(U32)(1);++i) pIndirectExecutionSet[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateIndirectExecutionSetEXT(device, pCreateInfo, pAllocator, pIndirectExecutionSet);
+    if (EAX == VK_SUCCESS && pIndirectExecutionSet)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_INDIRECT_EXECUTION_SET_EXT, (U64)pIndirectExecutionSet[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pIndirectExecutionSet);
 }
 void vk_DestroyIndirectExecutionSetEXT(CPU* cpu) {
@@ -3599,6 +3832,7 @@ void vk_DestroyIndirectExecutionSetEXT(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyIndirectExecutionSetEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyIndirectExecutionSetEXT(device, indirectExecutionSet, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_INDIRECT_EXECUTION_SET_EXT, (U64)indirectExecutionSet);
 }
 void vk_UpdateIndirectExecutionSetPipelineEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -3964,7 +4198,10 @@ void vk_RegisterDeviceEventEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkFence tmp_pFence = (VkFence) cpu->memory->readq(ARG4);
     VkFence* pFence = &tmp_pFence;
+    if (pFence) for (U32 i=0;i<(U32)(1);++i) pFence[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkRegisterDeviceEventEXT(device, pDeviceEventInfo, pAllocator, pFence);
+    if (EAX == VK_SUCCESS && pFence)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_FENCE, (U64)pFence[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pFence);
 }
 // return type: VkResult(4 bytes)
@@ -3978,7 +4215,10 @@ void vk_RegisterDisplayEventEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkFence tmp_pFence = (VkFence) cpu->memory->readq(ARG6);
     VkFence* pFence = &tmp_pFence;
+    if (pFence) for (U32 i=0;i<(U32)(1);++i) pFence[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkRegisterDisplayEventEXT(device, display, pDisplayEventInfo, pAllocator, pFence);
+    if (EAX == VK_SUCCESS && pFence)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_FENCE, (U64)pFence[i]);
     cpu->memory->writeq(ARG6, (U64)tmp_pFence);
 }
 // return type: VkResult(4 bytes)
@@ -4268,7 +4508,10 @@ void vk_CreateDescriptorUpdateTemplate(CPU* cpu) {
     VkDescriptorUpdateTemplateCreateInfo hostCreateInfo = *pCreateInfo;
     if (!prepareDescriptorTemplate(hostCreateInfo, hostEntries)) { EAX = VK_ERROR_FEATURE_NOT_PRESENT; return; }
     pCreateInfo = &hostCreateInfo;
+    if (pDescriptorUpdateTemplate) for (U32 i=0;i<(U32)(1);++i) pDescriptorUpdateTemplate[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateDescriptorUpdateTemplate(device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
+    if (EAX == VK_SUCCESS && pDescriptorUpdateTemplate)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE, (U64)pDescriptorUpdateTemplate[i]);
     if (!EAX && tmp_pDescriptorUpdateTemplate) {
         cacheDescriptorTemplate(pBoxedInfo, (U64)tmp_pDescriptorUpdateTemplate, local_pCreateInfo->s);
     }
@@ -4288,7 +4531,10 @@ void vk_CreateDescriptorUpdateTemplateKHR(CPU* cpu) {
     VkDescriptorUpdateTemplateCreateInfo hostCreateInfo = *pCreateInfo;
     if (!prepareDescriptorTemplate(hostCreateInfo, hostEntries)) { EAX = VK_ERROR_FEATURE_NOT_PRESENT; return; }
     pCreateInfo = &hostCreateInfo;
+    if (pDescriptorUpdateTemplate) for (U32 i=0;i<(U32)(1);++i) pDescriptorUpdateTemplate[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateDescriptorUpdateTemplateKHR(device, pCreateInfo, pAllocator, pDescriptorUpdateTemplate);
+    if (EAX == VK_SUCCESS && pDescriptorUpdateTemplate)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE, (U64)pDescriptorUpdateTemplate[i]);
     if (!EAX && tmp_pDescriptorUpdateTemplate) {
         cacheDescriptorTemplate(pBoxedInfo, (U64)tmp_pDescriptorUpdateTemplate, local_pCreateInfo->s);
     }
@@ -4301,6 +4547,7 @@ void vk_DestroyDescriptorUpdateTemplate(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorUpdateTemplate:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorUpdateTemplate(device, descriptorUpdateTemplate, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE, (U64)descriptorUpdateTemplate);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pBoxedInfo->cacheMutex);
     pBoxedInfo->descriptorUpdateTemplateCreateInfo.erase((U64)descriptorUpdateTemplate);
 }
@@ -4311,6 +4558,7 @@ void vk_DestroyDescriptorUpdateTemplateKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorUpdateTemplateKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorUpdateTemplateKHR(device, descriptorUpdateTemplate, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE, (U64)descriptorUpdateTemplate);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pBoxedInfo->cacheMutex);
     pBoxedInfo->descriptorUpdateTemplateCreateInfo.erase((U64)descriptorUpdateTemplate);
 }
@@ -4776,7 +5024,10 @@ void vk_CreateSamplerYcbcrConversion(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkSamplerYcbcrConversion tmp_pYcbcrConversion = (VkSamplerYcbcrConversion) cpu->memory->readq(ARG4);
     VkSamplerYcbcrConversion* pYcbcrConversion = &tmp_pYcbcrConversion;
+    if (pYcbcrConversion) for (U32 i=0;i<(U32)(1);++i) pYcbcrConversion[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateSamplerYcbcrConversion(device, pCreateInfo, pAllocator, pYcbcrConversion);
+    if (EAX == VK_SUCCESS && pYcbcrConversion)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION, (U64)pYcbcrConversion[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pYcbcrConversion);
 }
 // return type: VkResult(4 bytes)
@@ -4789,7 +5040,10 @@ void vk_CreateSamplerYcbcrConversionKHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkSamplerYcbcrConversion tmp_pYcbcrConversion = (VkSamplerYcbcrConversion) cpu->memory->readq(ARG4);
     VkSamplerYcbcrConversion* pYcbcrConversion = &tmp_pYcbcrConversion;
+    if (pYcbcrConversion) for (U32 i=0;i<(U32)(1);++i) pYcbcrConversion[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateSamplerYcbcrConversionKHR(device, pCreateInfo, pAllocator, pYcbcrConversion);
+    if (EAX == VK_SUCCESS && pYcbcrConversion)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION, (U64)pYcbcrConversion[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pYcbcrConversion);
 }
 void vk_DestroySamplerYcbcrConversion(CPU* cpu) {
@@ -4799,6 +5053,7 @@ void vk_DestroySamplerYcbcrConversion(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroySamplerYcbcrConversion:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySamplerYcbcrConversion(device, ycbcrConversion, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION, (U64)ycbcrConversion);
 }
 void vk_DestroySamplerYcbcrConversionKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -4807,6 +5062,7 @@ void vk_DestroySamplerYcbcrConversionKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroySamplerYcbcrConversionKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySamplerYcbcrConversionKHR(device, ycbcrConversion, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION, (U64)ycbcrConversion);
 }
 void vk_GetDeviceQueue2(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -4827,7 +5083,10 @@ void vk_CreateValidationCacheEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkValidationCacheEXT tmp_pValidationCache = (VkValidationCacheEXT) cpu->memory->readq(ARG4);
     VkValidationCacheEXT* pValidationCache = &tmp_pValidationCache;
+    if (pValidationCache) for (U32 i=0;i<(U32)(1);++i) pValidationCache[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateValidationCacheEXT(device, pCreateInfo, pAllocator, pValidationCache);
+    if (EAX == VK_SUCCESS && pValidationCache)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_VALIDATION_CACHE_EXT, (U64)pValidationCache[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pValidationCache);
 }
 void vk_DestroyValidationCacheEXT(CPU* cpu) {
@@ -4837,6 +5096,7 @@ void vk_DestroyValidationCacheEXT(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyValidationCacheEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyValidationCacheEXT(device, validationCache, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_VALIDATION_CACHE_EXT, (U64)validationCache);
 }
 // return type: VkResult(4 bytes)
 void vk_GetValidationCacheDataEXT(CPU* cpu) {
@@ -5051,8 +5311,11 @@ void vk_CreateDebugUtilsMessengerEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDebugUtilsMessengerEXT tmp_pMessenger = (VkDebugUtilsMessengerEXT) cpu->memory->readq(ARG4);
     VkDebugUtilsMessengerEXT* pMessenger = &tmp_pMessenger;
+    if (pMessenger) for (U32 i=0;i<(U32)(1);++i) pMessenger[i] = VK_NULL_HANDLE;
     pBoxedInfo->debugUtilsCallbacks[(U64)tmp_pMessenger] = (MarshalCallbackData*)local_pCreateInfo.s.pUserData;
     EAX = (U32)pBoxedInfo->pvkCreateDebugUtilsMessengerEXT(instance, pCreateInfo, pAllocator, pMessenger);
+    if (EAX == VK_SUCCESS && pMessenger)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT, (U64)pMessenger[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pMessenger);
 }
 void vk_DestroyDebugUtilsMessengerEXT(CPU* cpu) {
@@ -5064,6 +5327,7 @@ void vk_DestroyDebugUtilsMessengerEXT(CPU* cpu) {
     delete pBoxedInfo->debugUtilsCallbacks[(U64)messenger];
     pBoxedInfo->debugUtilsCallbacks.erase((U64)messenger);
     pBoxedInfo->pvkDestroyDebugUtilsMessengerEXT(instance, messenger, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT, (U64)messenger);
 }
 void vk_SubmitDebugUtilsMessageEXT(CPU* cpu) {
     VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);
@@ -5104,7 +5368,10 @@ void vk_CreateRenderPass2(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkRenderPass tmp_pRenderPass = (VkRenderPass) cpu->memory->readq(ARG4);
     VkRenderPass* pRenderPass = &tmp_pRenderPass;
+    if (pRenderPass) for (U32 i=0;i<(U32)(1);++i) pRenderPass[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateRenderPass2(device, pCreateInfo, pAllocator, pRenderPass);
+    if (EAX == VK_SUCCESS && pRenderPass)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_RENDER_PASS, (U64)pRenderPass[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pRenderPass);
 }
 // return type: VkResult(4 bytes)
@@ -5117,7 +5384,10 @@ void vk_CreateRenderPass2KHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkRenderPass tmp_pRenderPass = (VkRenderPass) cpu->memory->readq(ARG4);
     VkRenderPass* pRenderPass = &tmp_pRenderPass;
+    if (pRenderPass) for (U32 i=0;i<(U32)(1);++i) pRenderPass[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateRenderPass2KHR(device, pCreateInfo, pAllocator, pRenderPass);
+    if (EAX == VK_SUCCESS && pRenderPass)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_RENDER_PASS, (U64)pRenderPass[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pRenderPass);
 }
 void vk_CmdBeginRenderPass2(CPU* cpu) {
@@ -5559,7 +5829,10 @@ void vk_CreateAccelerationStructureNV(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkAccelerationStructureNV tmp_pAccelerationStructure = (VkAccelerationStructureNV) cpu->memory->readq(ARG4);
     VkAccelerationStructureNV* pAccelerationStructure = &tmp_pAccelerationStructure;
+    if (pAccelerationStructure) for (U32 i=0;i<(U32)(1);++i) pAccelerationStructure[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateAccelerationStructureNV(device, pCreateInfo, pAllocator, pAccelerationStructure);
+    if (EAX == VK_SUCCESS && pAccelerationStructure)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV, (U64)pAccelerationStructure[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pAccelerationStructure);
 }
 void vk_CmdBindInvocationMaskHUAWEI(CPU* cpu) {
@@ -5576,6 +5849,7 @@ void vk_DestroyAccelerationStructureKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyAccelerationStructureKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyAccelerationStructureKHR(device, accelerationStructure, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR, (U64)accelerationStructure);
 }
 void vk_DestroyAccelerationStructureNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -5584,6 +5858,7 @@ void vk_DestroyAccelerationStructureNV(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyAccelerationStructureNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyAccelerationStructureNV(device, accelerationStructure, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV, (U64)accelerationStructure);
 }
 void vk_GetAccelerationStructureMemoryRequirementsNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -5844,7 +6119,10 @@ void vk_CreateRayTracingPipelinesNV(CPU* cpu) {
     if (ARG7) {
         pPipelines = (VkPipeline*)cpu->memory->lockReadWriteMemory(ARG7, (U32)createInfoCount * sizeof(VkPipeline));
     }
+    if (pPipelines) for (U32 i=0;i<(U32)(createInfoCount);++i) pPipelines[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateRayTracingPipelinesNV(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+    if (pPipelines)
+        for (U32 i=0;i<(U32)(createInfoCount);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE, (U64)pPipelines[i]);
     if (pCreateInfos) {
         for (U32 i=0;i<createInfoCount;++i) {
             MarshalVkRayTracingPipelineCreateInfoNV owned; owned.s = pCreateInfos[i];
@@ -5873,7 +6151,10 @@ void vk_CreateRayTracingPipelinesKHR(CPU* cpu) {
     if (ARG9) {
         pPipelines = (VkPipeline*)cpu->memory->lockReadWriteMemory(ARG9, (U32)createInfoCount * sizeof(VkPipeline));
     }
+    if (pPipelines) for (U32 i=0;i<(U32)(createInfoCount);++i) pPipelines[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateRayTracingPipelinesKHR(device, deferredOperation, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+    if (pPipelines)
+        for (U32 i=0;i<(U32)(createInfoCount);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE, (U64)pPipelines[i]);
     if (pCreateInfos) {
         for (U32 i=0;i<createInfoCount;++i) {
             MarshalVkRayTracingPipelineCreateInfoKHR owned; owned.s = pCreateInfos[i];
@@ -6410,7 +6691,10 @@ void vk_CreateAccelerationStructureKHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkAccelerationStructureKHR tmp_pAccelerationStructure = (VkAccelerationStructureKHR) cpu->memory->readq(ARG4);
     VkAccelerationStructureKHR* pAccelerationStructure = &tmp_pAccelerationStructure;
+    if (pAccelerationStructure) for (U32 i=0;i<(U32)(1);++i) pAccelerationStructure[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateAccelerationStructureKHR(device, pCreateInfo, pAllocator, pAccelerationStructure);
+    if (EAX == VK_SUCCESS && pAccelerationStructure)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR, (U64)pAccelerationStructure[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pAccelerationStructure);
 }
 void vk_CmdBuildAccelerationStructuresKHR(CPU* cpu) {
@@ -6556,7 +6840,10 @@ void vk_CreateDeferredOperationKHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDeferredOperationKHR tmp_pDeferredOperation = (VkDeferredOperationKHR) cpu->memory->readq(ARG3);
     VkDeferredOperationKHR* pDeferredOperation = &tmp_pDeferredOperation;
+    if (pDeferredOperation) for (U32 i=0;i<(U32)(1);++i) pDeferredOperation[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateDeferredOperationKHR(device, pAllocator, pDeferredOperation);
+    if (EAX == VK_SUCCESS && pDeferredOperation)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR, (U64)pDeferredOperation[i]);
     cpu->memory->writeq(ARG3, (U64)tmp_pDeferredOperation);
 }
 void vk_DestroyDeferredOperationKHR(CPU* cpu) {
@@ -6566,6 +6853,7 @@ void vk_DestroyDeferredOperationKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyDeferredOperationKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDeferredOperationKHR(device, operation, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR, (U64)operation);
 }
 // return type: uint32_t(4 bytes)
 void vk_GetDeferredOperationMaxConcurrencyKHR(CPU* cpu) {
@@ -7185,7 +7473,10 @@ void vk_CreatePrivateDataSlot(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkPrivateDataSlot tmp_pPrivateDataSlot = (VkPrivateDataSlot) cpu->memory->readq(ARG4);
     VkPrivateDataSlot* pPrivateDataSlot = &tmp_pPrivateDataSlot;
+    if (pPrivateDataSlot) for (U32 i=0;i<(U32)(1);++i) pPrivateDataSlot[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreatePrivateDataSlot(device, pCreateInfo, pAllocator, pPrivateDataSlot);
+    if (EAX == VK_SUCCESS && pPrivateDataSlot)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PRIVATE_DATA_SLOT, (U64)pPrivateDataSlot[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pPrivateDataSlot);
 }
 // return type: VkResult(4 bytes)
@@ -7198,7 +7489,10 @@ void vk_CreatePrivateDataSlotEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkPrivateDataSlot tmp_pPrivateDataSlot = (VkPrivateDataSlot) cpu->memory->readq(ARG4);
     VkPrivateDataSlot* pPrivateDataSlot = &tmp_pPrivateDataSlot;
+    if (pPrivateDataSlot) for (U32 i=0;i<(U32)(1);++i) pPrivateDataSlot[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreatePrivateDataSlotEXT(device, pCreateInfo, pAllocator, pPrivateDataSlot);
+    if (EAX == VK_SUCCESS && pPrivateDataSlot)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PRIVATE_DATA_SLOT, (U64)pPrivateDataSlot[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pPrivateDataSlot);
 }
 void vk_DestroyPrivateDataSlot(CPU* cpu) {
@@ -7208,6 +7502,7 @@ void vk_DestroyPrivateDataSlot(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyPrivateDataSlot:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPrivateDataSlot(device, privateDataSlot, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PRIVATE_DATA_SLOT, (U64)privateDataSlot);
 }
 void vk_DestroyPrivateDataSlotEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -7216,6 +7511,7 @@ void vk_DestroyPrivateDataSlotEXT(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyPrivateDataSlotEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPrivateDataSlotEXT(device, privateDataSlot, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PRIVATE_DATA_SLOT, (U64)privateDataSlot);
 }
 // return type: VkResult(4 bytes)
 void vk_SetPrivateData(CPU* cpu) {
@@ -7792,7 +8088,10 @@ void vk_CreateVideoSessionKHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkVideoSessionKHR tmp_pVideoSession = (VkVideoSessionKHR) cpu->memory->readq(ARG4);
     VkVideoSessionKHR* pVideoSession = &tmp_pVideoSession;
+    if (pVideoSession) for (U32 i=0;i<(U32)(1);++i) pVideoSession[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateVideoSessionKHR(device, pCreateInfo, pAllocator, pVideoSession);
+    if (EAX == VK_SUCCESS && pVideoSession)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_VIDEO_SESSION_KHR, (U64)pVideoSession[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pVideoSession);
 }
 void vk_DestroyVideoSessionKHR(CPU* cpu) {
@@ -7802,6 +8101,7 @@ void vk_DestroyVideoSessionKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyVideoSessionKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyVideoSessionKHR(device, videoSession, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_VIDEO_SESSION_KHR, (U64)videoSession);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateVideoSessionParametersKHR(CPU* cpu) {
@@ -7813,7 +8113,10 @@ void vk_CreateVideoSessionParametersKHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkVideoSessionParametersKHR tmp_pVideoSessionParameters = (VkVideoSessionParametersKHR) cpu->memory->readq(ARG4);
     VkVideoSessionParametersKHR* pVideoSessionParameters = &tmp_pVideoSessionParameters;
+    if (pVideoSessionParameters) for (U32 i=0;i<(U32)(1);++i) pVideoSessionParameters[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateVideoSessionParametersKHR(device, pCreateInfo, pAllocator, pVideoSessionParameters);
+    if (EAX == VK_SUCCESS && pVideoSessionParameters)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_VIDEO_SESSION_PARAMETERS_KHR, (U64)pVideoSessionParameters[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pVideoSessionParameters);
 }
 // return type: VkResult(4 bytes)
@@ -7850,6 +8153,7 @@ void vk_DestroyVideoSessionParametersKHR(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyVideoSessionParametersKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyVideoSessionParametersKHR(device, videoSessionParameters, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_VIDEO_SESSION_PARAMETERS_KHR, (U64)videoSessionParameters);
 }
 // return type: VkResult(4 bytes)
 void vk_GetVideoSessionMemoryRequirementsKHR(CPU* cpu) {
@@ -8007,7 +8311,10 @@ void vk_CreateCuModuleNVX(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkCuModuleNVX tmp_pModule = (VkCuModuleNVX) cpu->memory->readq(ARG4);
     VkCuModuleNVX* pModule = &tmp_pModule;
+    if (pModule) for (U32 i=0;i<(U32)(1);++i) pModule[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateCuModuleNVX(device, pCreateInfo, pAllocator, pModule);
+    if (EAX == VK_SUCCESS && pModule)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_CU_MODULE_NVX, (U64)pModule[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pModule);
 }
 // return type: VkResult(4 bytes)
@@ -8020,7 +8327,10 @@ void vk_CreateCuFunctionNVX(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkCuFunctionNVX tmp_pFunction = (VkCuFunctionNVX) cpu->memory->readq(ARG4);
     VkCuFunctionNVX* pFunction = &tmp_pFunction;
+    if (pFunction) for (U32 i=0;i<(U32)(1);++i) pFunction[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateCuFunctionNVX(device, pCreateInfo, pAllocator, pFunction);
+    if (EAX == VK_SUCCESS && pFunction)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_CU_FUNCTION_NVX, (U64)pFunction[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pFunction);
 }
 void vk_DestroyCuModuleNVX(CPU* cpu) {
@@ -8030,6 +8340,7 @@ void vk_DestroyCuModuleNVX(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyCuModuleNVX:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyCuModuleNVX(device, module, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_CU_MODULE_NVX, (U64)module);
 }
 void vk_DestroyCuFunctionNVX(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -8038,6 +8349,7 @@ void vk_DestroyCuFunctionNVX(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyCuFunctionNVX:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyCuFunctionNVX(device, function, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_CU_FUNCTION_NVX, (U64)function);
 }
 void vk_CmdCuLaunchKernelNVX(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -8285,7 +8597,10 @@ void vk_CreateMicromapEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkMicromapEXT tmp_pMicromap = (VkMicromapEXT) cpu->memory->readq(ARG4);
     VkMicromapEXT* pMicromap = &tmp_pMicromap;
+    if (pMicromap) for (U32 i=0;i<(U32)(1);++i) pMicromap[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateMicromapEXT(device, pCreateInfo, pAllocator, pMicromap);
+    if (EAX == VK_SUCCESS && pMicromap)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_MICROMAP_EXT, (U64)pMicromap[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pMicromap);
 }
 void vk_CmdBuildMicromapsEXT(CPU* cpu) {
@@ -8335,6 +8650,7 @@ void vk_DestroyMicromapEXT(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyMicromapEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyMicromapEXT(device, micromap, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_MICROMAP_EXT, (U64)micromap);
 }
 void vk_CmdCopyMicromapEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -8583,7 +8899,10 @@ void vk_CreateOpticalFlowSessionNV(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkOpticalFlowSessionNV tmp_pSession = (VkOpticalFlowSessionNV) cpu->memory->readq(ARG4);
     VkOpticalFlowSessionNV* pSession = &tmp_pSession;
+    if (pSession) for (U32 i=0;i<(U32)(1);++i) pSession[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateOpticalFlowSessionNV(device, pCreateInfo, pAllocator, pSession);
+    if (EAX == VK_SUCCESS && pSession)
+        for (U32 i=0;i<(U32)(1);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_OPTICAL_FLOW_SESSION_NV, (U64)pSession[i]);
     cpu->memory->writeq(ARG4, (U64)tmp_pSession);
 }
 void vk_DestroyOpticalFlowSessionNV(CPU* cpu) {
@@ -8593,6 +8912,7 @@ void vk_DestroyOpticalFlowSessionNV(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyOpticalFlowSessionNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyOpticalFlowSessionNV(device, session, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_OPTICAL_FLOW_SESSION_NV, (U64)session);
 }
 // return type: VkResult(4 bytes)
 void vk_BindOpticalFlowSessionImageNV(CPU* cpu) {
@@ -8731,7 +9051,10 @@ void vk_CreateShadersEXT(CPU* cpu) {
     if (ARG5) {
         pShaders = (VkShaderEXT*)cpu->memory->lockReadWriteMemory(ARG5, (U32)createInfoCount * sizeof(VkShaderEXT));
     }
+    if (pShaders) for (U32 i=0;i<(U32)(createInfoCount);++i) pShaders[i] = VK_NULL_HANDLE;
     EAX = (U32)pBoxedInfo->pvkCreateShadersEXT(device, createInfoCount, pCreateInfos, pAllocator, pShaders);
+    if (pShaders)
+        for (U32 i=0;i<(U32)(createInfoCount);++i) trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SHADER_EXT, (U64)pShaders[i]);
     if (pCreateInfos) {
         for (U32 i=0;i<createInfoCount;++i) {
             MarshalVkShaderCreateInfoEXT owned; owned.s = pCreateInfos[i];
@@ -8747,6 +9070,7 @@ void vk_DestroyShaderEXT(CPU* cpu) {
     static bool shown; if (!shown && ARG4) { klog("vkDestroyShaderEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyShaderEXT(device, shader, pAllocator);
+    forgetVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_SHADER_EXT, (U64)shader);
 }
 // return type: VkResult(4 bytes)
 void vk_GetShaderBinaryDataEXT(CPU* cpu) {

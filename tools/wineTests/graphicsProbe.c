@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <d3d9.h>
 #include <stdio.h>
+#include <string.h>
 
 static unsigned assertions, failures;
 #define EXPECT(condition, ...) do { ++assertions; if (!(condition)) { ++failures; \
@@ -12,8 +13,9 @@ static unsigned assertions, failures;
 #define REQUIRE_HR(call) do { HRESULT status = (call); EXPECT(SUCCEEDED(status), "%s -> %#lx", #call, (unsigned long)status); \
     if (FAILED(status)) goto cleanup; } while (0)
 
-int main(void)
+int main(int argc, char** argv)
 {
+    const int abandon = argc > 1 && !strcmp(argv[1], "abandon");
     HMODULE module = LoadLibraryA("d3d9.dll");
     EXPECT(module != NULL, "d3d9.dll unavailable");
     if (!module) goto summary;
@@ -55,6 +57,13 @@ int main(void)
         REQUIRE_HR(IDirect3DSurface9_UnlockRect(staging));
         REQUIRE_HR(IDirect3DDevice9_Present(device, NULL, NULL, NULL, NULL));
     }
+    if (abandon && !failures) {
+        // Games can exit without releasing their D3D devices. The emulator must
+        // retire the corresponding host objects without relying on host exit.
+        printf("0000:abandon: %u tests executed (0 marked as todo, 0 failures), 0 skipped.\n", assertions);
+        fflush(stdout);
+        ExitProcess(0);
+    }
 cleanup:
     if (staging) IDirect3DSurface9_Release(staging);
     if (target) IDirect3DSurface9_Release(target);
@@ -66,6 +75,6 @@ cleanup:
     if (window) DestroyWindow(window);
 summary:
     if (module) FreeLibrary(module);
-    printf("0000:probe: %u tests executed (0 marked as todo, %u failures), 0 skipped.\n", assertions, failures);
+    printf("0000:%s: %u tests executed (0 marked as todo, %u failures), 0 skipped.\n", abandon ? "abandon" : "probe", assertions, failures);
     return failures > 255 ? 255 : failures;
 }

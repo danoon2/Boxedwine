@@ -1002,6 +1002,29 @@ void VKAPI_PTR vkTestFreeCommands(VkDevice device, VkCommandPool pool, U32 count
 void VKAPI_PTR vkTestDestroyPool(VkDevice device, VkCommandPool pool, const VkAllocationCallbacks* allocator) {
     if ((U64)pool != 0x1234567800000001ULL || allocator) testFail("Vulkan command pool destroy");
 }
+std::vector<VkObjectType> vkTestDestroyedTypes;
+VkResult VKAPI_PTR vkTestPartialPipelines(VkDevice device, VkPipelineCache cache, U32 count,
+    const VkGraphicsPipelineCreateInfo* create, const VkAllocationCallbacks* allocator, VkPipeline* pipelines) {
+    if (count != 2 || pipelines[0] || pipelines[1]) testFail("Vulkan partial pipeline outputs must start empty");
+    pipelines[0] = (VkPipeline)0x123456789ULL;
+    return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+}
+void VKAPI_PTR vkTestDestroyPipeline(VkDevice, VkPipeline pipeline, const VkAllocationCallbacks*) {
+    if ((U64)pipeline != 0x123456789ULL) testFail("Vulkan partial pipeline cleanup handle");
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_PIPELINE);
+}
+void VKAPI_PTR vkTestDestroyBuffer(VkDevice, VkBuffer, const VkAllocationCallbacks*) {
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_BUFFER);
+}
+void VKAPI_PTR vkTestDestroyImageView(VkDevice, VkImageView, const VkAllocationCallbacks*) {
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_IMAGE_VIEW);
+}
+void VKAPI_PTR vkTestDestroySwapchain(VkDevice, VkSwapchainKHR, const VkAllocationCallbacks*) {
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_SWAPCHAIN_KHR);
+}
+void VKAPI_PTR vkTestFreeMemory(VkDevice, VkDeviceMemory, const VkAllocationCallbacks*) {
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_DEVICE_MEMORY);
+}
 }
 #endif
 
@@ -1178,6 +1201,43 @@ void testVulkanDirectStackABI() {
         }
         if (memory->readd(output + 8) != 0xdeadbeef) testFail("Vulkan command output array overrun");
     }
+
+    info.device = (VkDevice)0x123000;
+    info.pvkCreateGraphicsPipelines = vkTestPartialPipelines;
+    info.pvkDestroyPipeline = vkTestDestroyPipeline;
+    memory->memset(allocateAddress, 0, 176); // Two guest graphics-pipeline create infos.
+    memory->writed(allocateAddress, VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
+    memory->writed(allocateAddress + 88, VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
+    output = TEST_HEAP_ADDRESS + 1200;
+    memory->memset(output, (char)0xcd, 16);
+    setArgs({0, wrapper, 0, 0, 2, allocateAddress, 0, output});
+    vk_CreateGraphicsPipelines(cpu);
+    if ((VkResult)cpu->reg[0].u32 != VK_ERROR_OUT_OF_DEVICE_MEMORY || memory->readq(output) != 0x123456789ULL ||
+        memory->readq(output + 8) || info.liveObjects.count({VK_OBJECT_TYPE_PIPELINE, 0x123456789ULL}) != 1)
+        testFail("Vulkan partial pipeline failure lost a live handle");
+    vkTestDestroyedTypes.clear();
+    setArgs({0, wrapper, 0x23456789, 1, 0});
+    vk_DestroyPipeline(cpu);
+    if (!info.liveObjects.empty() || vkTestDestroyedTypes != std::vector<VkObjectType>{VK_OBJECT_TYPE_PIPELINE})
+        testFail("Vulkan explicit destruction must retire tracked handles");
+
+    info.pvkDestroyBuffer = vkTestDestroyBuffer;
+    info.pvkDestroyImageView = vkTestDestroyImageView;
+    info.pvkDestroySwapchainKHR = vkTestDestroySwapchain;
+    info.pvkFreeMemory = vkTestFreeMemory;
+    // The same numeric handle can name objects of different types. Cleanup must
+    // preserve each one and release views/resources before swapchains/memory.
+    trackVulkanObject(&info, VK_OBJECT_TYPE_BUFFER, 7);
+    trackVulkanObject(&info, VK_OBJECT_TYPE_BUFFER, 7);
+    trackVulkanObject(&info, VK_OBJECT_TYPE_IMAGE_VIEW, 7);
+    trackVulkanObject(&info, VK_OBJECT_TYPE_SWAPCHAIN_KHR, 7);
+    registerVkMemoryAllocation(&info, (VkDeviceMemory)7, 4096);
+    vkTestDestroyedTypes.clear();
+    cleanupVulkanObjects(&info);
+    cleanupVulkanObjects(&info);
+    if (!info.liveObjects.empty() || !info.allocations.empty() || vkTestDestroyedTypes !=
+        std::vector<VkObjectType>{VK_OBJECT_TYPE_IMAGE_VIEW, VK_OBJECT_TYPE_BUFFER, VK_OBJECT_TYPE_SWAPCHAIN_KHR, VK_OBJECT_TYPE_DEVICE_MEMORY})
+        testFail("Vulkan abandoned resources cleanup order or duplicate destruction");
 #endif
 }
 

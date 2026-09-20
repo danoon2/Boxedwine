@@ -7,12 +7,92 @@ import boxedwine.org.marshal.VkHostMarshalType;
 import java.io.FileOutputStream;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Vector;
 
 /**
  * Created by James on 8/21/2021.
  */
 public class VkHost {
+    private static String objectType(VkType type) {
+        while (type != null) {
+            if (type.objtypeenum != null) return type.objtypeenum;
+            type = type.parent;
+        }
+        return null;
+    }
+
+    private static boolean destroysObject(VkFunction fn) {
+        if (!fn.name.startsWith("vkDestroy") || fn.params.size() != 3) return false;
+        return fn.params.get(1).paramType.getType().equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")
+                && fn.params.get(2).paramType.name.equals("VkAllocationCallbacks")
+                && (fn.params.get(0).paramType.name.equals("VkDevice") || fn.params.get(0).paramType.name.equals("VkInstance"));
+    }
+
+    private static boolean createsObject(VkData data, VkFunction fn, VkParam param) {
+        if (!(fn.name.startsWith("vkCreate") || fn.name.equals("vkRegisterDeviceEventEXT") || fn.name.equals("vkRegisterDisplayEventEXT"))) return false;
+        if (!param.isPointer || param.isConst || !param.paramType.getType().equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")) return false;
+        String type = objectType(param.paramType);
+        for (VkFunction candidate : data.functions)
+            if (destroysObject(candidate) && type != null && type.equals(objectType(candidate.params.get(1).paramType))) return true;
+        return false;
+    }
+
+    private static String objectCount(VkParam param) {
+        if (param.len == null) return "1";
+        return (param.countParam.isPointer && !param.countInStructure ? "*" : "") + param.len;
+    }
+
+    private static void prepareCreatedObjects(VkData data, VkFunction fn, StringBuilder out) {
+        for (VkParam param : fn.params) {
+            if (!createsObject(data, fn, param)) continue;
+            // Pipeline/shader array creation may return both live handles and an
+            // error. Start all slots empty so cleanup never records input poison.
+            out.append("    if (" + param.name + ") for (U32 i=0;i<(U32)(" + objectCount(param) + ");++i) " + param.name + "[i] = VK_NULL_HANDLE;\n");
+        }
+        if (fn.name.equals("vkCreatePipelineBinariesKHR")) {
+            out.append("    const U32 binaryCapacity = pBinaries.s.pipelineBinaryCount;\n");
+            out.append("    if (pBinaries.s.pPipelineBinaries) for (U32 i=0;i<binaryCapacity;++i) pBinaries.s.pPipelineBinaries[i] = VK_NULL_HANDLE;\n");
+        }
+    }
+
+    private static void recordCreatedObjects(VkData data, VkFunction fn, StringBuilder out) {
+        if (destroysObject(fn)) {
+            VkParam param = fn.params.get(1);
+            out.append("    forgetVulkanObject(pBoxedInfo, " + objectType(param.paramType) + ", (U64)" + param.name + ");\n");
+        }
+        for (VkParam param : fn.params) {
+            if (!createsObject(data, fn, param)) continue;
+            boolean partial = param.paramType.name.equals("VkPipeline") || param.paramType.name.equals("VkShaderEXT");
+            out.append("    if (" + (partial ? "" : "EAX == VK_SUCCESS && ") + param.name + ")\n");
+            out.append("        for (U32 i=0;i<(U32)(" + objectCount(param) + ");++i) trackVulkanObject(pBoxedInfo, "
+                    + objectType(param.paramType) + ", (U64)" + param.name + "[i]);\n");
+        }
+        if (fn.name.equals("vkCreatePipelineBinariesKHR")) {
+            out.append("    if (pBinaries.s.pPipelineBinaries) for (U32 i=0;i<std::min(binaryCapacity, pBinaries.s.pipelineBinaryCount);++i)\n");
+            out.append("        trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE_BINARY_KHR, (U64)pBinaries.s.pPipelineBinaries[i]);\n");
+        }
+    }
+
+    private static void writeObjectCleanup(VkData data, StringBuilder out) {
+        Map<String, Vector<VkFunction>> destructors = new LinkedHashMap<>();
+        for (VkFunction fn : data.functions) {
+            if (destroysObject(fn)) destructors.computeIfAbsent(objectType(fn.params.get(1).paramType), key -> new Vector<>()).add(fn);
+        }
+        out.append("void destroyTrackedVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle) {\n    switch (type) {\n");
+        for (Map.Entry<String, Vector<VkFunction>> entry : destructors.entrySet()) {
+            out.append("    case " + entry.getKey() + ":\n");
+            for (VkFunction fn : entry.getValue()) {
+                String owner = fn.params.get(0).paramType.name.equals("VkDevice") ? "device" : "instance";
+                out.append("        if (info->p" + fn.name + ") { info->p" + fn.name + "(info->" + owner + ", ("
+                        + fn.params.get(1).paramType.name + ")handle, nullptr); return; }\n");
+            }
+            out.append("        break;\n");
+        }
+        out.append("    default: break;\n    }\n    kpanic_fmt(\"Missing Vulkan object destructor: %u\", (U32)type);\n}\n\n");
+    }
+
     static public void write(VkData data, String dir) throws Exception {
         FileOutputStream fosPassThrough = new FileOutputStream(dir+"vk_host.cpp");
         FileOutputStream fosMarshal = new FileOutputStream(dir+"vk_host_marshal.cpp");
@@ -168,7 +248,9 @@ public class VkHost {
             out.append("    if (!prepareDescriptorTemplate(hostCreateInfo, hostEntries)) { EAX = VK_ERROR_FEATURE_NOT_PRESENT; return; }\n");
             out.append("    pCreateInfo = &hostCreateInfo;\n");
         }
+        prepareCreatedObjects(data, fn, out);
         hostCall(fn, out);
+        recordCreatedObjects(data, fn, out);
         if (fn.name.equals("vkDestroyCommandPool"))
             out.append("    releaseVulkanCommandPool(pBoxedInfo, cpu->memory, commandPool);\n");
         // marshal data if needed from host system back to emulated 32-bit linux
@@ -192,6 +274,7 @@ public class VkHost {
         out.append("#ifndef __VK_HOST__H__\n");
         out.append("#define __VK_HOST__H__\n");
         out.append("#include <unordered_set>\n");
+        out.append("#include <set>\n");
         out.append("#define VK_NO_PROTOTYPES\n");
         out.append("#include \"vk/vulkan.h\"\n");
         out.append("#include \"vk/vulkan_core.h\"\n");
@@ -209,6 +292,10 @@ public class VkHost {
         }
         out.append("class BoxedVulkanInfo;\n");
         out.append("class MarshalCallbackData;\n");
+        out.append("void trackVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle);\n");
+        out.append("void forgetVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle);\n");
+        out.append("void destroyTrackedVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle);\n");
+        out.append("void cleanupVulkanObjects(BoxedVulkanInfo* info);\n");
         out.append("VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);\n");
         out.append("void vulkanDeleteNextPtr(const void* pNext);\n");
         out.append("U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);\n");
@@ -250,6 +337,8 @@ public class VkHost {
         out.append("    BOXEDWINE_MUTEX memoryMutex;\n");
         out.append("    std::unordered_map<U64, VulkanMemoryAllocation> allocations;\n");
         out.append("    BOXEDWINE_MUTEX cacheMutex;\n");
+        out.append("    BOXEDWINE_MUTEX objectMutex;\n");
+        out.append("    std::set<std::pair<VkObjectType, U64>> liveObjects;\n");
         out.append("    std::unordered_map<U64, std::unordered_set<U32>> commandBuffersByPool;\n");
         for (VkFunction fn : hostFunctions ) {
             if (data.manuallyHandledFunctions.contains(fn.name)) {
@@ -312,6 +401,7 @@ public class VkHost {
                     + ") | ((U64)cpu->peek32(" + (i+2) + ") << 32))\n");
         }
         StringBuilder part2 = new StringBuilder();
+        writeObjectCleanup(data, part2);
 
         for (VkFunction fn : data.functions ) {
             if (data.manuallyHandledFunctions.contains(fn.name)) {

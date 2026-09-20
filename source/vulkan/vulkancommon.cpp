@@ -246,6 +246,38 @@ void unmapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory) {
     allocation.mappedAddress = allocation.mappedLen = 0;
 }
 
+void trackVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle) {
+    if (!handle) return;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->objectMutex);
+    info->liveObjects.emplace(type, handle);
+}
+
+void forgetVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->objectMutex);
+    info->liveObjects.erase({type, handle});
+}
+
+void cleanupVulkanObjects(BoxedVulkanInfo* info) {
+    std::set<std::pair<VkObjectType, U64>> objects;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(info->objectMutex);
+        objects.swap(info->liveObjects);
+    }
+    // Core object types put pools/framebuffers before views, and views before
+    // their resources when traversed backwards. Swapchain images are implicit:
+    // destroy their views before destroying the swapchain itself.
+    for (auto object = objects.rbegin(); object != objects.rend(); ++object)
+        if (object->first != VK_OBJECT_TYPE_SWAPCHAIN_KHR)
+            destroyTrackedVulkanObject(info, object->first, object->second);
+    for (const auto& object : objects)
+        if (object.first == VK_OBJECT_TYPE_SWAPCHAIN_KHR)
+            destroyTrackedVulkanObject(info, object.first, object.second);
+    // Memory can still be bound to resources above and must be freed last.
+    for (const auto& allocation : info->allocations)
+        info->pvkFreeMemory(info->device, (VkDeviceMemory)allocation.first, nullptr);
+    info->allocations.clear();
+}
+
 // Guest process exit implicitly destroys its native devices and instances.
 // Guest pages are discarded by exec/exit; no guest pointers are needed here.
 void cleanupVulkanProcess(KProcess* process) {
@@ -253,12 +285,14 @@ void cleanupVulkanProcess(KProcess* process) {
         auto& info = entry.value;
         if (info->device) {
             info->pvkDeviceWaitIdle(info->device);
+            cleanupVulkanObjects(info.get());
             info->pvkDestroyDevice(info->device, nullptr);
         }
     }
     for (const auto& entry : process->vulkanInfo) {
         auto& info = entry.value;
         if (!info->device) {
+            cleanupVulkanObjects(info.get());
             if (info->debugMessenger) info->pvkDestroyDebugUtilsMessengerEXT(info->instance, info->debugMessenger, nullptr);
             info->pvkDestroyInstance(info->instance, nullptr);
         }
@@ -285,9 +319,11 @@ static void vk_DestroyDevice2(CPU* cpu) {
     U32 handle = cpu->peek32(1);
     if (!handle) return;
     BoxedVulkanInfo* info = getInfoFromHandle(cpu->memory, handle);
+    if (!info->liveObjects.empty() || !info->allocations.empty()) info->pvkDeviceWaitIdle(info->device);
     for (const auto& allocation : info->allocations)
         if (allocation.second.mappedAddress)
             cpu->memory->unmapNativeMemory(allocation.second.mappedAddress, allocation.second.mappedLen);
+    cleanupVulkanObjects(info);
     info->pvkDestroyDevice(info->device, nullptr);
     releaseVulkanInfo(cpu->memory, info);
 }
@@ -463,6 +499,7 @@ static void BOXED_vkCreateXlibSurfaceKHR(CPU* cpu) {
         EAX = VK_SUCCESS;
         // VK_DEFINE_NON_DISPATCHABLE_HANDLE (always 64 bit)
         cpu->memory->writeq(cpu->peek32(4), (U64)surface);
+        trackVulkanObject(getInfoFromHandle(cpu->memory, ARG1), VK_OBJECT_TYPE_SURFACE_KHR, (U64)surface);
         XServer::getServer()->setFakeFullScreenWindow(xWindow);
     }
 }
@@ -534,6 +571,7 @@ void vk_DestroyInstance2(CPU* cpu) {
     static bool shown; if (!shown && ARG2) { klog("vkDestroyInstance:VkAllocationCallbacks not implemented"); shown = true; }
     VkAllocationCallbacks* pAllocator = NULL;
 
+    cleanupVulkanObjects(pBoxedInfo);
     if (pBoxedInfo->debugMessenger)
         pBoxedInfo->pvkDestroyDebugUtilsMessengerEXT(instance, pBoxedInfo->debugMessenger, nullptr);
 

@@ -18,7 +18,7 @@ import wineGraphicsBrowser as graphics
 
 WINE_COMMIT = "db11d0fe6a169c457e23d007e20404643d067aa8"
 GROUPS = {
-    "graphics-probe": ("probe",),
+    "graphics-probe": ("probe", "abandon"),
     "vulkan-1": ("vulkan",), "d3d8": ("device", "stateblock", "visual"),
     "d3d9": ("d3d9ex", "device", "stateblock", "visual"),
     "d3d10": ("device", "effect"), "d3d10_1": ("d3d10_1",),
