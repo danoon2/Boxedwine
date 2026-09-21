@@ -11,13 +11,13 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - One filesystem, `TinyCore15Wine11.0.zip`, is downloaded from `http://boxedwine.org/v2/11/TinyCore15Wine11.0.zip`.
+   - One filesystem, `TinyCore15Wine11.0.zip`, is downloaded from `https://boxedwine.org/v2/12/TinyCore15Wine11.0.zip`.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
-   - Existing `boxedwine.3.zip` and `boxedwine.gdi.3.zip` selections are migrated to the v11 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
+   - Existing `boxedwine.3.zip` and `boxedwine.gdi.3.zip` selections are migrated to the v12 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
    - A demo can set an app-specific Wine compatibility version with `"windowsVersion": "win98"`. The generated launcher sets that version before starting the executable, without changing other demos.
 3. Validates every filesystem root referenced by `demos.json` against
-   `tools/buildWine/webgl_filesystems_v11.json`.
+   `tools/buildWine/webgl_filesystems_v12.json`.
    - The patch series, declared filename, archive size and SHA-256, full ZIP CRC, PE32 DLLs and
      imports, GL SONAME links, `ld.so.cache`, and renderer registry settings must all match.
    - Validation runs before the four Emscripten builds, so a missing, stale, or damaged public
@@ -205,7 +205,7 @@ wsl python3 tools/jenkins/build_site.py `
 ```
 
 This command requires each referenced root filename to have an exact profile in
-`tools/buildWine/webgl_filesystems_v11.json`. If the public downloads are older than the pinned
+`tools/buildWine/webgl_filesystems_v12.json`. If the public downloads are older than the pinned
 profiles, upload the current roots first; do not bypass the validation.
 
 ## Stopping The Local Server
@@ -229,7 +229,7 @@ wsl bash -lc 'ps -ef | grep "project/emscripten/server.mjs" | grep -v grep'
 Both scripts download the same filesystem:
 
 ```text
-http://boxedwine.org/v2/11/TinyCore15Wine11.0.zip
+https://boxedwine.org/v2/12/TinyCore15Wine11.0.zip
 ```
 
 and save it as:
@@ -244,7 +244,7 @@ be published through this script.
 
 `BOXEDWINE_ZIP_URL` can override the download source for local validation before
 uploading a release. `BUILD_SITE_DEMO_ROOT_CONFIG` selects a different manifest.
-The GDI ZIP download is no longer needed. Upload the exact validated v11 archive
+The GDI ZIP download is no longer needed. Upload the exact validated v12 archive
 before running either script against the default URL.
 
 Newly generated demo builds retain `graphics-builds.json` beside their build
