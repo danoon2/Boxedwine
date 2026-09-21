@@ -16,6 +16,7 @@
 #ifndef BOXEDWINE_MULTI_THREADED
 #include "kscheduler.h"
 #include "../../emulation/cpu/normal/normalCPU.h"
+#endif
 #ifdef BOXEDWINE_VULKAN
 #include "../../vulkan/vk_host.h"
 #include "../../vulkan/vk_host_marshal.h"
