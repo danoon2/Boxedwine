@@ -190,6 +190,10 @@ void KNativeSystem::focusVulkanWindow(U32 nativeId) {
     if (vulkan) vulkan->focusWindow(nativeId);
 }
 
+void KNativeSystem::closeVulkanWindow(U32 nativeId) {
+    if (vulkan) vulkan->closeWindow(nativeId);
+}
+
 void KNativeSystem::shutdown() {
     vulkan = nullptr;
     screen = nullptr;
@@ -205,8 +209,8 @@ void KNativeSystem::exit(const char* msg, U32 code) {
     _exit(code);
 }
 
-void KNativeSystem::forceShutdown() {
-    std::shared_ptr<KProcess> p = KSystem::getProcess(10);
+void KNativeSystem::forceShutdown(U32 processId) {
+    std::shared_ptr<KProcess> p = KSystem::getProcess(processId);
     if (!p) {
         return;
     }

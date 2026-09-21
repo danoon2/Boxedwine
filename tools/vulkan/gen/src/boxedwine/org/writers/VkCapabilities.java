@@ -31,16 +31,23 @@ public class VkCapabilities {
                     if (unsupportedType(data, type, new HashSet<>())) supported = false;
                 }
             }
+            // These new registry APIs still require size_t/host-pointer or nested
+            // output-array conversion. Hide the whole extension, including its
+            // commands, until those marshal paths can handle valid arguments.
+            boolean incompleteMarshaling = extension.name.equals("VK_NV_cooperative_vector") ||
+                    extension.name.equals("VK_EXT_present_timing") ||
+                    extension.name.equals("VK_ARM_performance_counters_by_region");
             // Guest callbacks are not yet delivered; logging on the host is not
             // sufficient to expose the debug callback extensions to applications.
             if (extension.name.equals("VK_EXT_debug_report") || extension.name.equals("VK_EXT_debug_utils") ||
                     extension.name.equals("VK_EXT_host_image_copy") || extension.name.equals("VK_EXT_map_memory_placed") ||
-                    extension.name.equals("VK_KHR_deferred_host_operations")) {
+                    extension.name.equals("VK_KHR_deferred_host_operations") || incompleteMarshaling) {
                 supported = false;
                 // Deferred operations would retain marshaled pointer arguments
                 // after the wrapper returns. Those allocations currently have
                 // synchronous lifetimes, so do not expose the operation API.
-                if (extension.name.startsWith("VK_EXT_debug_") || extension.name.equals("VK_KHR_deferred_host_operations"))
+                if (extension.name.startsWith("VK_EXT_debug_") || extension.name.equals("VK_KHR_deferred_host_operations") ||
+                        incompleteMarshaling)
                     for (VkExtension.VkExtensionRequire require : extension.require)
                         for (VkFunction fn : require.functions) unsupportedCommands.add(fn.name);
             }

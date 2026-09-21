@@ -43,6 +43,15 @@ class NativeGraphicsTests(unittest.TestCase):
         output += '0024:trace:loaddll:build_module Loaded L"d3d9.dll": native\n'
         self.assertTrue(native.backend_evidence(output, 'dxvk')['verified'])
 
+    def test_dxvk_status_message_is_not_a_version(self):
+        output = ('info: DXVK: Using 8 compiler threads\n'
+                  '0024:trace:loaddll:build_module Loaded L"d3d9.dll": native\n')
+        self.assertFalse(native.backend_evidence(output, 'dxvk')['verified'])
+        output += 'info: DXVK: v3.1.1\n'
+        evidence = native.backend_evidence(output, 'dxvk')
+        self.assertTrue(evidence['verified'])
+        self.assertEqual(evidence['versions'], ['3.1.1'])
+
     def test_reference_cannot_accept_broken_infrastructure_or_new_failures(self):
         reference = self.assess()
         self.assertTrue(native.assess(self.output, 'vulkan', 'vulkan',

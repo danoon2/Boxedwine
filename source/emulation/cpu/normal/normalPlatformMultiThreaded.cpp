@@ -94,9 +94,10 @@ static void platformThread(CPU* cpu) {
 
     cpu->thread->cleanup();
 
-    platformThreadCount--;
     process->deleteThread(cpu->thread);
-    if (platformThreadCount == 0) {
+    // Last-thread process cleanup can synchronously destroy Vulkan windows on
+    // the UI thread. Keep its event loop alive until that cleanup has finished.
+    if (--platformThreadCount == 0) {
         KSystem::shutingDown = true;
         KNativeSystem::postQuit();
     }

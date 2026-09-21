@@ -834,7 +834,9 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
             }
         }
     } else if (e->type == SDL_WINDOWEVENT) {
-        if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+        if (e->window.event == SDL_WINDOWEVENT_CLOSE) {
+            KNativeSystem::closeVulkanWindow(e->window.windowID);
+        } else if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
             KNativeSystem::focusVulkanWindow(e->window.windowID);
             for (auto& callback : onFocusGained) {
                 callback();

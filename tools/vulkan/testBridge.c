@@ -679,6 +679,17 @@ int main(int argc, char** argv)
         VK_CHECK(pEnumeratePhysicalDevices(instance, &count, devices));
         VkPhysicalDevice physical = devices[0];
         free(devices);
+        if (getenv("BOXEDWINE_BRIDGE_PROFILE")) {
+            // Valid calls to these APIs still require unsupported pointer/array
+            // conversions. Check the public bridge contract, independent of GPU.
+            CHECK(!has_extension(physical, "VK_NV_cooperative_vector"));
+            CHECK(!has_extension(physical, "VK_EXT_present_timing"));
+            CHECK(!has_extension(physical, "VK_ARM_performance_counters_by_region"));
+            CHECK(!getInstanceProcAddr(instance, "vkConvertCooperativeVectorMatrixNV"));
+            CHECK(!getInstanceProcAddr(instance, "vkCmdConvertCooperativeVectorMatrixNV"));
+            CHECK(!getInstanceProcAddr(instance, "vkGetSwapchainTimeDomainPropertiesEXT"));
+            CHECK(!getInstanceProcAddr(instance, "vkGetPastPresentationTimingEXT"));
+        }
         VkPhysicalDeviceProperties properties;
         pGetPhysicalDeviceProperties(physical, &properties);
         if (!iteration) printf("BRIDGE_PROBE_GPU:%s api=%u.%u.%u\n", properties.deviceName,

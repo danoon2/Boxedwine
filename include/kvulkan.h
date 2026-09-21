@@ -29,6 +29,7 @@ public:
     virtual void showWindow(const std::shared_ptr<XWindow>& wnd, bool show) = 0;
     virtual void destroyVulkanSurface(void* surface) = 0;
     virtual void focusWindow(U32 nativeId) = 0;
+    virtual void closeWindow(U32 nativeId) = 0;
     virtual bool warpMouse(S32 x, S32 y) = 0;
 };
 

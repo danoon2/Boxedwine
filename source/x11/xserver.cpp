@@ -493,6 +493,34 @@ XWindowPtr XServer::getWindow(U32 window) {
 	return windows.get(window);
 }
 
+bool XServer::requestCloseWindow(const XWindowPtr& wnd) {
+    U32 protocols = internAtom(B("WM_PROTOCOLS"), true);
+    U32 deleteWindow = internAtom(B("WM_DELETE_WINDOW"), true);
+    if (!protocols || !deleteWindow) return false;
+    // Wine's Vulkan drawable is often a child of its managed window. Find the
+    // nearest owner of the close protocol, including inside a virtual desktop.
+    for (auto window = wnd; window && window != root; window = window->getParent()) {
+        auto property = window->getProperty(protocols);
+        if (!property || property->type != XA_ATOM || property->format != 32 ||
+            !property->contains32(deleteWindow)) continue;
+        auto display = getDisplayDataById(window->displayId);
+        if (!display) return false;
+        XEvent event = {};
+        event.xclient.type = ClientMessage;
+        event.xclient.serial = display->getNextEventSerial();
+        event.xclient.send_event = True;
+        event.xclient.display = display->displayAddress;
+        event.xclient.window = window->id;
+        event.xclient.message_type = protocols;
+        event.xclient.format = 32;
+        event.xclient.data.l[0] = deleteWindow;
+        event.xclient.data.l[1] = getEventTime();
+        display->putEvent(event);
+        return true;
+    }
+    return false;
+}
+
 int XServer::destroyWindow(U32 window) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
 	XWindowPtr w = windows.get(window);

@@ -50,7 +50,7 @@ def main():
             shutil.copy2(args.guest_vulkan, root / "lib/libvulkan.so.1")
             command = [str(args.boxedwine.resolve()), "-root", str(root), "-zip", str(args.filesystem.resolve()),
                        "-w", "/home/username", "/bin/sh", "-c",
-                       f"/home/username/bridge_probe {args.loops} > /home/username/probe.log 2>&1; "
+                       f"BOXEDWINE_BRIDGE_PROFILE=1 /home/username/bridge_probe {args.loops} > /home/username/probe.log 2>&1; "
                        "rc=$?; echo BRIDGE_PROBE_EXIT:$rc >> /home/username/probe.log"]
             guest_log = guest / "probe.log"
         else:

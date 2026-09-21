@@ -698,6 +698,7 @@ static size_t descriptorElementSize(VkDescriptorType type) {
     case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return sizeof(VkDescriptorBufferInfo);
     case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
     case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+    case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
     case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: return sizeof(U64);
     case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: return 1;
     default: return 0;

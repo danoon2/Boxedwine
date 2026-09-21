@@ -60,6 +60,7 @@ public:
 		if (fakeFullScreenWnd == wnd) fakeFullScreenWnd = nullptr;
 	}
 	int destroyWindow(U32 window);
+	bool requestCloseWindow(const XWindowPtr& wnd);
 
 	XPixmapPtr createNewPixmap(U32 width, U32 height, U32 depth, const VisualPtr& visual);
 	XPixmapPtr getPixmap(U32 pixmap);

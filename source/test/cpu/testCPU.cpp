@@ -1052,6 +1052,9 @@ void testVulkanDirectStackABI() {
         if (compiled) {
             startNewJIT(cpu, TEST_CODE_ADDRESS, op);
             if (!op->pfnJitCode) testFail("Vulkan ABI test did not compile");
+        } else {
+            // Test builds normally compile a block on its very first run.
+            op->flags |= OP_FLAG_NO_JIT;
         }
 #endif
         testRunCPU();
@@ -1089,11 +1092,12 @@ void testVulkanDirectStackABI() {
     // Template offsets and strides describe guest bytes and cannot be forwarded.
     BoxedVulkanInfo info{};
     auto original = std::make_shared<MarshalVkDescriptorUpdateTemplateCreateInfo>();
-    original->s.descriptorUpdateEntryCount = 3;
-    auto entries = new VkDescriptorUpdateTemplateEntry[3]{};
+    original->s.descriptorUpdateEntryCount = 4;
+    auto entries = new VkDescriptorUpdateTemplateEntry[4]{};
     entries[0] = {0, 0, 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 12, 20};
     entries[1] = {1, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 72, 24};
     entries[2] = {2, 0, 4, VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK, 100, 0};
+    entries[3] = {3, 0, 2, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV, 108, 12};
     original->s.pDescriptorUpdateEntries = entries;
     info.descriptorUpdateTemplateCreateInfo[5] = original;
     VkDescriptorUpdateTemplateCreateInfo packed = original->s;
@@ -1111,6 +1115,8 @@ void testVulkanDirectStackABI() {
     memory->writeq(dataAddress + 80, 0x100000008ULL);
     memory->writeq(dataAddress + 88, VK_WHOLE_SIZE);
     memory->writed(dataAddress + 100, 0xdeadbeef);
+    memory->writeq(dataAddress + 108, 0xabcdef0100000001ULL);
+    memory->writeq(dataAddress + 120, 0xabcdef0100000002ULL);
     std::vector<U8> packedData;
     marshalDescriptorTemplateData(&info, memory, (VkDescriptorUpdateTemplate)5, dataAddress, packedData);
     VkDescriptorImageInfo images[2];
@@ -1119,10 +1125,15 @@ void testVulkanDirectStackABI() {
     memcpy(&buffer, packedData.data() + packedEntries[1].offset, sizeof(buffer));
     U32 inlineData;
     memcpy(&inlineData, packedData.data() + packedEntries[2].offset, sizeof(inlineData));
+    U64 accelerationStructures[2];
+    memcpy(accelerationStructures, packedData.data() + packedEntries[3].offset, sizeof(accelerationStructures));
     if ((U64)images[1].sampler != 0x1234567800000001ULL || (U64)images[1].imageView != 0x8765432100000001ULL ||
         images[1].imageLayout != VK_IMAGE_LAYOUT_GENERAL || (U64)buffer.buffer != 0xabcdef0123456789ULL ||
         buffer.offset != 0x100000008ULL || buffer.range != VK_WHOLE_SIZE || inlineData != 0xdeadbeef)
         testFail("Vulkan descriptor template guest data conversion");
+    if (packedEntries[3].stride != sizeof(U64) || accelerationStructures[0] != 0xabcdef0100000001ULL ||
+        accelerationStructures[1] != 0xabcdef0100000002ULL)
+        testFail("Vulkan NV acceleration structure descriptor template conversion");
 
     BoxedVulkanInfo otherDevice{};
     VkDeviceMemory allocation = (VkDeviceMemory)7;

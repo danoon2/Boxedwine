@@ -22,6 +22,7 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include "kvulkanSDL.h"
+#include "knativesystem.h"
 #include <unordered_map>
 
 class KVulkdanSDLImpl : public KVulkan {
@@ -35,6 +36,7 @@ public:
     void showWindow(const XWindowPtr& wnd, bool show) override;
     void destroyVulkanSurface(void* surface) override;
     void focusWindow(U32 nativeId) override;
+    void closeWindow(U32 nativeId) override;
     bool warpMouse(S32 x, S32 y) override;
     void restoreInput();
     U32 savedWidth = 0, savedHeight = 0, savedScaleX = 0, savedScaleY = 0, savedOffsetX = 0, savedOffsetY = 0;
@@ -66,7 +68,7 @@ void KVulkdanSDLImpl::resizeWindow(const XWindowPtr& wnd) {
 void KVulkdanSDLImpl::showWindow(const XWindowPtr& wnd, bool show) {
     screen->input->runOnUiThread([this, wnd, show]() {
         for (const auto& entry : surfaces) if (entry.second->guest.lock() == wnd) {
-            if (show) SDL_ShowWindow(entry.second->window);
+            if (show && KSystem::videoOption == VIDEO_NORMAL) SDL_ShowWindow(entry.second->window);
             else SDL_HideWindow(entry.second->window);
             break;
         }
@@ -92,6 +94,19 @@ void KVulkdanSDLImpl::focusWindow(U32 nativeId) {
         return;
     }
     restoreInput();
+}
+
+void KVulkdanSDLImpl::closeWindow(U32 nativeId) {
+    // SDL does not emit SDL_QUIT while the hidden software window still exists.
+    for (const auto& entry : surfaces) if (SDL_GetWindowID(entry.second->window) == nativeId) {
+        auto server = XServer::getServer(true);
+        auto guest = entry.second->guest.lock();
+        if (server && guest && !server->requestCloseWindow(guest)) {
+            auto display = server->getDisplayDataById(guest->displayId);
+            if (display) KNativeSystem::forceShutdown(display->processId);
+        }
+        return;
+    }
 }
 
 void KVulkdanSDLImpl::restoreInput() {
@@ -161,8 +176,10 @@ void* KVulkdanSDLImpl::createVulkanSurface(const XWindowPtr& wnd, void* instance
         }
         surfaces[(void*)result] = window;
         screen->showWindow(false);
-        SDL_ShowWindow(window->window);
-        focusWindow(SDL_GetWindowID(window->window));
+        if (KSystem::videoOption == VIDEO_NORMAL) {
+            SDL_ShowWindow(window->window);
+            focusWindow(SDL_GetWindowID(window->window));
+        }
     });
     return (void*)result;
 }

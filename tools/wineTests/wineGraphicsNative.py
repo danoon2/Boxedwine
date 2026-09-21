@@ -89,7 +89,7 @@ def backend_evidence(output, renderer):
     loaded = [line for line in output.splitlines()
               if re.search(r"^[0-9a-f]+:trace:loaddll:.* Loaded ", line, re.I)]
     if renderer == "dxvk":
-        versions = sorted(set(re.findall(r"DXVK:\s+v?([\w.+-]+)", output)))
+        versions = sorted(set(re.findall(r"(?m)^info:\s+DXVK:\s+v?(\d+\.\d+(?:[\w.+-]*))\s*$", output)))
         native = any(re.search(r"(?:d3d8|d3d9|d3d11|dxgi)\.dll.*native", line, re.I)
                      for line in loaded)
         return {"verified": bool(versions) and native, "versions": versions,
