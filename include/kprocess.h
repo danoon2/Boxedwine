@@ -27,6 +27,7 @@
 #include "../source/util/bheap.h"
 
 class MappedFileCache;
+class BoxedVulkanInfo;
 
 struct MappedFileRetirementDiagnostic {
     std::atomic<S32> pendingError{0};
@@ -468,6 +469,7 @@ public:
     U32 vulkanFreePtrAddress = 0;
     BOXEDWINE_MUTEX freeVulkanPtrMutex;
     BHashTable<void*, U32> vulkanPtrMap;
+    BHashTable<void*, std::shared_ptr<BoxedVulkanInfo>> vulkanInfo;
 #endif
 private:
 

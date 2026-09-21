@@ -383,7 +383,7 @@ public:
     virtual void StartElse() = 0;
     virtual void EndIf() = 0;
 
-    void dynamic_sidt(DecodedOp* op);
+    void dynamic_descriptor_query(DecodedOp* op);
     void dynamic_callback(DecodedOp* op);
     void dynamic_invalid_op(DecodedOp* op);    
     void dynamic_onTestEnd(DecodedOp* op);

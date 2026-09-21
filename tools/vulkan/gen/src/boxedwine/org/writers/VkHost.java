@@ -7,12 +7,92 @@ import boxedwine.org.marshal.VkHostMarshalType;
 import java.io.FileOutputStream;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Vector;
 
 /**
  * Created by James on 8/21/2021.
  */
 public class VkHost {
+    private static String objectType(VkType type) {
+        while (type != null) {
+            if (type.objtypeenum != null) return type.objtypeenum;
+            type = type.parent;
+        }
+        return null;
+    }
+
+    private static boolean destroysObject(VkFunction fn) {
+        if (!fn.name.startsWith("vkDestroy") || fn.params.size() != 3) return false;
+        return fn.params.get(1).paramType.getType().equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")
+                && fn.params.get(2).paramType.name.equals("VkAllocationCallbacks")
+                && (fn.params.get(0).paramType.name.equals("VkDevice") || fn.params.get(0).paramType.name.equals("VkInstance"));
+    }
+
+    private static boolean createsObject(VkData data, VkFunction fn, VkParam param) {
+        if (!(fn.name.startsWith("vkCreate") || fn.name.equals("vkRegisterDeviceEventEXT") || fn.name.equals("vkRegisterDisplayEventEXT"))) return false;
+        if (!param.isPointer || param.isConst || !param.paramType.getType().equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")) return false;
+        String type = objectType(param.paramType);
+        for (VkFunction candidate : data.functions)
+            if (destroysObject(candidate) && type != null && type.equals(objectType(candidate.params.get(1).paramType))) return true;
+        return false;
+    }
+
+    private static String objectCount(VkParam param) {
+        if (param.len == null) return "1";
+        return (param.countParam.isPointer && !param.countInStructure ? "*" : "") + param.len;
+    }
+
+    private static void prepareCreatedObjects(VkData data, VkFunction fn, StringBuilder out) {
+        for (VkParam param : fn.params) {
+            if (!createsObject(data, fn, param)) continue;
+            // Pipeline/shader array creation may return both live handles and an
+            // error. Start all slots empty so cleanup never records input poison.
+            out.append("    if (" + param.name + ") for (U32 i=0;i<(U32)(" + objectCount(param) + ");++i) " + param.name + "[i] = VK_NULL_HANDLE;\n");
+        }
+        if (fn.name.equals("vkCreatePipelineBinariesKHR")) {
+            out.append("    const U32 binaryCapacity = pBinaries.s.pipelineBinaryCount;\n");
+            out.append("    if (pBinaries.s.pPipelineBinaries) for (U32 i=0;i<binaryCapacity;++i) pBinaries.s.pPipelineBinaries[i] = VK_NULL_HANDLE;\n");
+        }
+    }
+
+    private static void recordCreatedObjects(VkData data, VkFunction fn, StringBuilder out) {
+        if (destroysObject(fn)) {
+            VkParam param = fn.params.get(1);
+            out.append("    forgetVulkanObject(pBoxedInfo, " + objectType(param.paramType) + ", (U64)" + param.name + ");\n");
+        }
+        for (VkParam param : fn.params) {
+            if (!createsObject(data, fn, param)) continue;
+            boolean partial = param.paramType.name.equals("VkPipeline") || param.paramType.name.equals("VkShaderEXT");
+            out.append("    if (" + (partial ? "" : "EAX == VK_SUCCESS && ") + param.name + ")\n");
+            out.append("        for (U32 i=0;i<(U32)(" + objectCount(param) + ");++i) trackVulkanObject(pBoxedInfo, "
+                    + objectType(param.paramType) + ", (U64)" + param.name + "[i]);\n");
+        }
+        if (fn.name.equals("vkCreatePipelineBinariesKHR")) {
+            out.append("    if (pBinaries.s.pPipelineBinaries) for (U32 i=0;i<std::min(binaryCapacity, pBinaries.s.pipelineBinaryCount);++i)\n");
+            out.append("        trackVulkanObject(pBoxedInfo, VK_OBJECT_TYPE_PIPELINE_BINARY_KHR, (U64)pBinaries.s.pPipelineBinaries[i]);\n");
+        }
+    }
+
+    private static void writeObjectCleanup(VkData data, StringBuilder out) {
+        Map<String, Vector<VkFunction>> destructors = new LinkedHashMap<>();
+        for (VkFunction fn : data.functions) {
+            if (destroysObject(fn)) destructors.computeIfAbsent(objectType(fn.params.get(1).paramType), key -> new Vector<>()).add(fn);
+        }
+        out.append("void destroyTrackedVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle) {\n    switch (type) {\n");
+        for (Map.Entry<String, Vector<VkFunction>> entry : destructors.entrySet()) {
+            out.append("    case " + entry.getKey() + ":\n");
+            for (VkFunction fn : entry.getValue()) {
+                String owner = fn.params.get(0).paramType.name.equals("VkDevice") ? "device" : "instance";
+                out.append("        if (info->p" + fn.name + ") { info->p" + fn.name + "(info->" + owner + ", ("
+                        + fn.params.get(1).paramType.name + ")handle, nullptr); return; }\n");
+            }
+            out.append("        break;\n");
+        }
+        out.append("    default: break;\n    }\n    kpanic_fmt(\"Missing Vulkan object destructor: %u\", (U32)type);\n}\n\n");
+    }
+
     static public void write(VkData data, String dir) throws Exception {
         FileOutputStream fosPassThrough = new FileOutputStream(dir+"vk_host.cpp");
         FileOutputStream fosMarshal = new FileOutputStream(dir+"vk_host_marshal.cpp");
@@ -126,11 +206,11 @@ public class VkHost {
         // if a stride does reference another param, lets write that param first so the param that uses the stride can use it
         for (VkParam param : fn.params) {
             if (param != strideParam) {
-                stackPos++;
+                stackPos += param.getStackWords();
                 continue;
             }
             param.nameInFunction = param.name;
-            param.paramArg = "ARG" + String.valueOf(stackPos);
+            param.paramArg = (param.getStackWords() == 2 ? "QARG" : "ARG") + stackPos;
             if (param.isPointer) {
                 setCountParam(fn, param);
             }
@@ -140,16 +220,16 @@ public class VkHost {
             if (stackPos == 1 && fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 out.append("    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);\n");
             }
-            stackPos++;
+            stackPos += param.getStackWords();
         }
         stackPos = 1;
         for (VkParam param : fn.params) {
             if (param == strideParam) {
-                stackPos++;
+                stackPos += param.getStackWords();
                 continue;
             }
             param.nameInFunction = param.name;
-            param.paramArg = "ARG" + String.valueOf(stackPos);
+            param.paramArg = (param.getStackWords() == 2 ? "QARG" : "ARG") + stackPos;
             if (param.isPointer) {
                 setCountParam(fn, param);
             }
@@ -159,15 +239,26 @@ public class VkHost {
             if (stackPos == 1 && fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 out.append("    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);\n");
             }
-            stackPos++;
+            stackPos += param.getStackWords();
         }
         // make actual vulkan call on host
+        if (fn.name.equals("vkCreateDescriptorUpdateTemplate") || fn.name.equals("vkCreateDescriptorUpdateTemplateKHR")) {
+            out.append("    std::vector<VkDescriptorUpdateTemplateEntry> hostEntries;\n");
+            out.append("    VkDescriptorUpdateTemplateCreateInfo hostCreateInfo = *pCreateInfo;\n");
+            out.append("    if (!prepareDescriptorTemplate(hostCreateInfo, hostEntries)) { EAX = VK_ERROR_FEATURE_NOT_PRESENT; return; }\n");
+            out.append("    pCreateInfo = &hostCreateInfo;\n");
+        }
+        prepareCreatedObjects(data, fn, out);
         hostCall(fn, out);
+        recordCreatedObjects(data, fn, out);
+        if (fn.name.equals("vkDestroyCommandPool"))
+            out.append("    releaseVulkanCommandPool(pBoxedInfo, cpu->memory, commandPool);\n");
         // marshal data if needed from host system back to emulated 32-bit linux
         VkCopyData copyData = data.copyData.get(fn.name);
         for (VkParam param : fn.params) {
             paramMarshals.get(param.paramArg).after(data, fn, out, param);
             if (copyData != null && copyData.destroyFunction.equals(fn.name) && copyData.destroyParamName.equals(param.name)) {
+                out.append("    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pBoxedInfo->cacheMutex);\n");
                 out.append("    pBoxedInfo->");
                 out.append(copyData.variableName);
                 out.append(".erase((U64)");
@@ -182,6 +273,8 @@ public class VkHost {
         StringBuilder out = new StringBuilder();
         out.append("#ifndef __VK_HOST__H__\n");
         out.append("#define __VK_HOST__H__\n");
+        out.append("#include <unordered_set>\n");
+        out.append("#include <set>\n");
         out.append("#define VK_NO_PROTOTYPES\n");
         out.append("#include \"vk/vulkan.h\"\n");
         out.append("#include \"vk/vulkan_core.h\"\n");
@@ -199,12 +292,16 @@ public class VkHost {
         }
         out.append("class BoxedVulkanInfo;\n");
         out.append("class MarshalCallbackData;\n");
+        out.append("void trackVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle);\n");
+        out.append("void forgetVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle);\n");
+        out.append("void destroyTrackedVulkanObject(BoxedVulkanInfo* info, VkObjectType type, U64 handle);\n");
+        out.append("void cleanupVulkanObjects(BoxedVulkanInfo* info);\n");
         out.append("VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);\n");
         out.append("void vulkanDeleteNextPtr(const void* pNext);\n");
         out.append("U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);\n");
+        out.append("BoxedVulkanInfo* createVulkanDeviceInfo(VkDevice device, BoxedVulkanInfo* instanceInfo);\n");
         out.append("void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);\n");
         out.append("void* getVulkanPtr(KMemory* memory, U32 address);\n");
-        out.append("U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo, VkDescriptorUpdateTemplate descriptorUpdateTemplate);\n");
         for (VkFunction fn : hostFunctions ) {
             if (!fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 out.append("BOXED_VK_EXTERN PFN_");
@@ -219,8 +316,30 @@ public class VkHost {
             out.append(fn.name.substring(2));
             out.append("(CPU* cpu);\n");
         }
+        out.append("U64 translateVulkanObjectHandle(KMemory* memory, VkObjectType type, U64 handle);\n");
+        out.append("bool prepareDescriptorTemplate(VkDescriptorUpdateTemplateCreateInfo& info, std::vector<VkDescriptorUpdateTemplateEntry>& entries);\n");
+        out.append("const void* marshalDescriptorTemplateData(BoxedVulkanInfo* info, KMemory* memory, VkDescriptorUpdateTemplate descriptorTemplate, U32 address, std::vector<U8>& storage);\n");
+        out.append("struct VulkanMemoryAllocation { U64 size = 0; U32 mappedAddress = 0; U32 mappedLen = 0; };\n");
+        out.append("void registerVkMemoryAllocation(BoxedVulkanInfo* info, VkDeviceMemory memory, VkDeviceSize size);\n");
+        out.append("void unregisterVkMemoryAllocation(BoxedVulkanInfo* info, VkDeviceMemory memory);\n");
+        out.append("U32 mapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len);\n");
+        out.append("void unmapVkMemory(BoxedVulkanInfo* info, VkDeviceMemory memory);\n");
+        out.append("void cacheDescriptorTemplate(BoxedVulkanInfo* info, U64 handle, const VkDescriptorUpdateTemplateCreateInfo& source);\n");
+        out.append("void cacheImageInfo(BoxedVulkanInfo* info, U64 handle, const VkImageCreateInfo& source);\n");
+        out.append("void registerVulkanCommandBuffer(BoxedVulkanInfo* info, VkCommandPool pool, U32 wrapper);\n");
+        out.append("void releaseVulkanCommandBuffer(BoxedVulkanInfo* info, KMemory* memory, VkCommandPool pool, U32 wrapper);\n");
+        out.append("void releaseVulkanCommandPool(BoxedVulkanInfo* info, KMemory* memory, VkCommandPool pool);\n");
         out.append("class BoxedVulkanInfo {\npublic:\n");
-        out.append("    VkInstance instance;\n");
+        out.append("    VkInstance instance = VK_NULL_HANDLE;\n");
+        out.append("    VkDevice device = VK_NULL_HANDLE;\n");
+        out.append("    PFN_vkGetDeviceProcAddr getDeviceProcAddr = nullptr;\n");
+        out.append("    bool xlibSurfaceEnabled = false;\n");
+        out.append("    BOXEDWINE_MUTEX memoryMutex;\n");
+        out.append("    std::unordered_map<U64, VulkanMemoryAllocation> allocations;\n");
+        out.append("    BOXEDWINE_MUTEX cacheMutex;\n");
+        out.append("    BOXEDWINE_MUTEX objectMutex;\n");
+        out.append("    std::set<std::pair<VkObjectType, U64>> liveObjects;\n");
+        out.append("    std::unordered_map<U64, std::unordered_set<U32>> commandBuffersByPool;\n");
         for (VkFunction fn : hostFunctions ) {
             if (data.manuallyHandledFunctions.contains(fn.name)) {
                 continue;
@@ -230,7 +349,7 @@ public class VkHost {
                 out.append(fn.name);
                 out.append(" p");
                 out.append(fn.name);
-                out.append(";\n");
+                out.append(" = nullptr;\n");
             }
         }
         out.append("    std::unordered_map<BString, U32> functionAddressByName;\n");
@@ -249,7 +368,7 @@ public class VkHost {
             out.append(copyData.variableName);
             out.append(";\n");
         }
-        out.append("    VkDebugUtilsMessengerEXT debugMessenger;\n");
+        out.append("    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;\n");
         out.append("};\n");
 
         out.append("#endif\n");
@@ -272,18 +391,17 @@ public class VkHost {
         out.append("void initVulkan();\n");
         out.append("BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address);\n");
         out.append("void freeVulkanPtr(KMemory* memory, U32 p);\n");
-        out.append("void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size);\n");
-        out.append("void unregisterVkMemoryAllocation(VkDeviceMemory memory);\n");
-        out.append("U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize offset, VkDeviceSize len);\n");
-        out.append("void unmapVkMemory(VkDeviceMemory memory);\n\n");
         for (int i=0;i<26;i++) {
             out.append("#define ARG");
             out.append(i+1);
             out.append(" cpu->peek32(");
             out.append(i+1);
             out.append(")\n");
+            out.append("#define QARG" + (i+1) + " ((U64)cpu->peek32(" + (i+1)
+                    + ") | ((U64)cpu->peek32(" + (i+2) + ") << 32))\n");
         }
         StringBuilder part2 = new StringBuilder();
+        writeObjectCleanup(data, part2);
 
         for (VkFunction fn : data.functions ) {
             if (data.manuallyHandledFunctions.contains(fn.name)) {

@@ -134,6 +134,11 @@
       "reason": "Allow Explorer to initialize during cold emulated startup before loading the display driver"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_dinput_foreground_hook_cleanup.patch",
+      "reason": "Release DirectInput foreground hooks on explicit Unacquire so repeated game scenes do not exhaust the window hook chain"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

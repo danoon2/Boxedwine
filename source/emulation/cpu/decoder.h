@@ -1362,6 +1362,8 @@ enum Instruction {
     MovsdXmmXmm,
     MovsdXmmE64,
     MovsdE64Xmm,
+    MovddupXmmXmm,
+    MovddupXmmE64,
     MovapdXmmXmm,
     MovapdXmmE128,
     MovapdE128Xmm,

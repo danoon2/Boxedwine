@@ -27,7 +27,7 @@ DEFAULT_DEMO_ROOT_ZIP = "TinyCore15Wine11.0.zip"
 LEGACY_DEMO_ROOT_ZIP = "boxedwine.zip"
 PREVIOUS_DEMO_ROOT_ZIP = "boxedwine.3.zip"
 PREVIOUS_GDI_ROOT_ZIP = "boxedwine.gdi.3.zip"
-DEFAULT_DEMO_ROOT_CONFIG = BUILD_WINE_DIR / "webgl_filesystems_v11.json"
+DEFAULT_DEMO_ROOT_CONFIG = BUILD_WINE_DIR / "webgl_filesystems_v12.json"
 DEMO_RUNNER_SPECS = (
     ("st", "Single Threaded", "single_threaded_dir"),
     ("mt", "Multi Threaded", "multi_threaded_dir"),

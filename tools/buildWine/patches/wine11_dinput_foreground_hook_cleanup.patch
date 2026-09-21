@@ -1,0 +1,17 @@
+DirectInput's explicit Unacquire path removes the device from the acquired
+list before refreshing the input thread. The refresh cannot remove that
+device's CBT hook once it is no longer in the list. Remove the hook while
+holding the same lock that protects hook installation and list membership.
+
+Repeated foreground keyboard/mouse acquisition otherwise exhausts Wine's
+hook-chain recursion limit, preventing MFC from attaching newly created
+windows (3DMark2001 SE eventually passes a null HWND to DirectInput).
+
+diff --git a/dlls/dinput/dinput_main.c b/dlls/dinput/dinput_main.c
+--- a/dlls/dinput/dinput_main.c
++++ b/dlls/dinput/dinput_main.c
+@@ -464,3 +464,4 @@ void dinput_hooks_unacquire_device( IDirectInputDevice8W *iface )
+     EnterCriticalSection( &dinput_hook_crit );
++    unhook_device_window_foreground_changes( impl );
+     list_remove( &impl->entry );
+     LeaveCriticalSection( &dinput_hook_crit );

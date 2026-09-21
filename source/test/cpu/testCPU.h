@@ -71,6 +71,7 @@ void testFlagsAcrossIndirectJitBlockBoundary();
 void testJitOverlappingDirectJumpTarget();
 void testJitOpenGLCallStateAndInvalidation();
 void testJitOpenGLCallBoundaries();
+void testVulkanDirectStackABI();
 void testArmJitEntryInvalidatedBeforeDispatch();
 void testJitEntryCacheInvalidation();
 void testJitDirectTargetInvalidation();

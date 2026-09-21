@@ -1331,6 +1331,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0}, // MovsdXmmXmm
     {0, 64, 0, 0, 0, 0}, // MovsdXmmE64
     {0, 0, 64, 0, 0, 0}, // MovsdE64Xmm
+    {0, 0, 0, 0, 0, 0}, // MovddupXmmXmm
+    {0, 64, 0, 0, 0, 0}, // MovddupXmmE64
     {0, 0, 0, 0, 0, 0}, // MovapdXmmXmm
     {0, 128, 0, 0, 0, 0}, // MovapdXmmE128
     {0, 0, 128, 0, 0, 0}, // MovapdE128Xmm
@@ -3229,6 +3231,8 @@ const LogInstruction instructionLog[] = {
     {"Movsd", 0, logXmmXmm},
     {"Movsd", 64, logXmmE},
     {"Movsd", 64, logEXmm},
+    {"Movddup", 0, logXmmXmm},
+    {"Movddup", 64, logXmmE},
     {"Movapd", 0, logXmmXmm},
     {"Movapd", 128, logXmmE},
     {"Movapd", 128, logEXmm},
@@ -3873,9 +3877,10 @@ public:
         else if (op->imm==0x99) {
             op->inst = Int99;
             op->imm = data->fetch32();
-        } else if (op->imm == 0x9a)
+        } else if (op->imm == 0x9a) {
             op->inst = Int9A;
-        else if (op->imm == 0x9b)
+            op->imm = data->fetch32();
+        } else if (op->imm == 0x9b)
             op->inst = Int9B;
 #ifdef __TEST
         else if (op->imm == 0x97)
@@ -4400,8 +4405,8 @@ public:
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
-        case 0x00: func(data, op, rm, SLDTReg, SLDTE16); break;
-        case 0x01: func(data, op, rm, STRReg, STRE16); break;
+        case 0x00: func(data, op, rm, SLDTReg, SLDTE16); op->imm = 32; break;
+        case 0x01: func(data, op, rm, STRReg, STRE16); op->imm = 32; break;
         case 0x02: func(data, op, rm, LLDTR16, LLDTE16); break;
         case 0x03: func(data, op, rm, LTRR16, LTRE16); break;
         case 0x04: func(data, op, rm, VERRR16, VERRE16); break;
@@ -4417,8 +4422,8 @@ public:
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
-        case 0x00: func(data, op, rm, SLDTReg, SLDTE16); break;
-        case 0x01: func(data, op, rm, STRReg, STRE16); break;
+        case 0x00: func(data, op, rm, SLDTReg, SLDTE16); op->imm = 16; break;
+        case 0x01: func(data, op, rm, STRReg, STRE16); op->imm = 16; break;
         case 0x02: func(data, op, rm, LLDTR16, LLDTE16); break;
         case 0x03: func(data, op, rm, LTRR16, LTRE16); break;
         case 0x04: func(data, op, rm, VERRR16, VERRE16); break;
@@ -5854,8 +5859,8 @@ DecodeRMr sseMovapsXE(MovapsXmmXmm, MovapsXmmE128);
 DecodeRM sseMovapsEX(MovapsXmmXmm, MovapsE128Xmm);
 DecodeSSE2 sseMov0x310(MovupsXmmXmm, MovupsXmmE128, MovsdXmmXmm, MovsdXmmE64, MovssXmmXmm, MovssXmmE32);
 DecodeSSE2r sseMov0x311(MovupsXmmXmm, MovupsE128Xmm, MovsdXmmXmm, MovsdE64Xmm, MovssXmmXmm, MovssE32Xmm);
-DecodeRMr sseMov0x312(MovhlpsXmmXmm, MovlpsXmmE64);
-DecodeRMr sseMov0x112(Invalid, MovlpdXmmE64);
+DecodeSSE2 sseMov0x312(MovhlpsXmmXmm, MovlpsXmmE64, MovddupXmmXmm, MovddupXmmE64, Invalid, Invalid);
+DecodeSSE2 sseMov0x112(Invalid, MovlpdXmmE64, MovddupXmmXmm, MovddupXmmE64, Invalid, Invalid);
 DecodeRMr sseMov0x113(Invalid, MovlpdE64Xmm);
 DecodeRMr sseMov0x114(UnpcklpdXmmXmm, UnpcklpdXmmE128);
 DecodeRMr sseMov0x115(UnpckhpdXmmXmm, UnpckhpdXmmE128);
@@ -6027,7 +6032,7 @@ const Decode* const decoder[] = {
     &decodeLock, &decodeICEBP, &decodeRepNZ, &decodeRepZ, &decodeHlt, &decodeCmc, &decodeGroup3_8, &decodeGroup3_16,
     &decodeClc, &decodeStc, &decodeCli, &decodeSti, &decodeCld, &decodeStd, &decodeGroup4_8, &decodeGroup5_16,
     // 0x100
-    &decodeGroup6_16, nullptr, &decodeLar16, &decodeLsl16, nullptr, nullptr, nullptr, nullptr,
+    &decodeGroup6_16, &decodeGroup7_32, &decodeLar16, &decodeLsl16, nullptr, nullptr, nullptr, nullptr,
     nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x110
     &sse2Movupd, &sse2Movupd_r, &sseMov0x112, &sseMov0x113, &sseMov0x114, &sseMov0x115, &sseMov0x116, &sseMov0x117,

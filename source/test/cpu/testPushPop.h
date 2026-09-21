@@ -32,6 +32,8 @@ void testOverlongPrefixedCliDoesNotPoisonCodeCache();
 void testInt2dRaisesInterruptProtectionFault();
 void testInt3ImmediateRaisesBreakpoint();
 void testPortIoRaisesProtectionFault();
+void testDescriptorTableQueries();
+void testDescriptorSelectorQueries();
 void testHltRaisesProtectionFault();
 void testInvalidInterruptRaisesProtectionFault();
 void testControlRegisterAccessRaisesProtectionFault();

@@ -128,10 +128,10 @@ struct DemoTests {
         #expect(!FileManager.default.fileExists(atPath: f.repository.directory.appendingPathComponent("Applications").path))
     }
 
-    @Test func glideRecipePreparesInstallerAndPreservesGameConfiguration() async throws {
+    @Test(arguments: ["11", "12"]) func glideRecipePreparesInstallerAndPreservesGameConfiguration(filesystemVersion: String) async throws {
         let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
         var files = ZipFixture.files
-        files[1].data = Data("11".utf8)
+        files[1].data = Data(filesystemVersion.utf8)
         files.append(.init(LibraryRepository.driveC + "/windows/system32/glide2x.dll", "MZglide"))
         try ZipFixture.archive(files).write(to: f.runtime)
         let data = Data("MZsetup".utf8)

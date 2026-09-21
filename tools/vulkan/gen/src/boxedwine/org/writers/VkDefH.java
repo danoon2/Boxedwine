@@ -81,7 +81,7 @@ public class VkDefH {
             out.append("\n");
         }
         out.append("#define VK_LAST_VALUE ");
-        out.append(data.functions.size());
+        out.append(defs.get("LAST_VALUE"));
         out.append("\n");
         fosDefs.write(out.toString().getBytes());
         fosDefs.close();

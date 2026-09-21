@@ -254,20 +254,42 @@ static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op);
 static OpCallback normalOps[NUMBER_OF_OPS];
 static U32 normalOpsInitialized;
 
+void OPCALL normal_sgdt(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 address = eaa(cpu, op);
+    // Descriptor tables live in host data structures, not guest memory. Like
+    // SIDT, expose a stable synthetic descriptor for user-mode inspection.
+    cpu->memory->writew(address, LDT_ENTRIES * 8 - 1);
+    cpu->memory->writed(address + 2, 0);
+    NEXT();
+}
+
 void OPCALL normal_sidt(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);    
     U32 eaa = eaa(cpu, op);
     cpu->memory->writew(eaa, 1023); // limit
     cpu->memory->writed(eaa + 2, 0); // base
-#ifdef _DEBUG
-    klog("sidt not implemented");
-#endif
+    NEXT();
+}
+
+void OPCALL normal_sldt_reg(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    // There is no hardware LDTR in the user-mode emulator.
+    if (op->imm == 32) cpu->reg[op->reg].u32 = 0;
+    else cpu->reg[op->reg].u16 = 0;
+    NEXT();
+}
+
+void OPCALL normal_sldt_e16(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->memory->writew(eaa(cpu, op), 0);
     NEXT();
 }
 
 void OPCALL normal_str_reg(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->reg[op->reg].u16 = 0;
+    if (op->imm == 32) cpu->reg[op->reg].u32 = 0;
+    else cpu->reg[op->reg].u16 = 0;
     NEXT();
 }
 
@@ -311,7 +333,12 @@ static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op) {
 #include "../common/cpu_init_lock.h"
 #undef INIT_CPU_LOCK
 #endif
-        case SIDT:     MUSTTAIL return normal_sidt(cpu, op);
+        case SLDTReg: MUSTTAIL return normal_sldt_reg(cpu, op);
+        case SLDTE16: MUSTTAIL return normal_sldt_e16(cpu, op);
+        case STRReg:  MUSTTAIL return normal_str_reg(cpu, op);
+        case STRE16:  MUSTTAIL return normal_str_e16(cpu, op);
+        case SGDT:    MUSTTAIL return normal_sgdt(cpu, op);
+        case SIDT:    MUSTTAIL return normal_sidt(cpu, op);
         case Callback: MUSTTAIL return onExitSignal(cpu, op);
         case TestEnd:  MUSTTAIL return onTestEnd(cpu, op);
         default:       MUSTTAIL return op->pfn(cpu, op); // unimplemented/invalid opcodes
@@ -339,9 +366,12 @@ static void initNormalOps() {
 #endif
 #undef INIT_CPU    
     
+    normalOps[SLDTReg] = normal_sldt_reg;
+    normalOps[SLDTE16] = normal_sldt_e16;
     normalOps[STRReg] = normal_str_reg;
     normalOps[STRE16] = normal_str_e16;
     normalOps[SIDT] = normal_sidt;
+    normalOps[SGDT] = normal_sgdt;
     normalOps[Callback] = onExitSignal;
     normalOps[TestEnd] = onTestEnd;
 }

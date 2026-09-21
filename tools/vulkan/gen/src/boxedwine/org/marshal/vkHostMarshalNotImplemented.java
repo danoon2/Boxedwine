@@ -6,6 +6,7 @@ import boxedwine.org.data.VkParam;
 
 public class vkHostMarshalNotImplemented extends VkHostMarshal {
     public void before(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+        data.unimplementedFunctions.add(fn.name);
         out.append("    ");
         out.append(param.paramType.name);
         if (param.isPointer) {

@@ -25,6 +25,12 @@ class KVulkan {
 public:
     virtual ~KVulkan() {}
     virtual void* createVulkanSurface(const std::shared_ptr<XWindow>& wnd, void* instance) = 0;
+    virtual void resizeWindow(const std::shared_ptr<XWindow>& wnd) = 0;
+    virtual void showWindow(const std::shared_ptr<XWindow>& wnd, bool show) = 0;
+    virtual void destroyVulkanSurface(void* surface) = 0;
+    virtual void focusWindow(U32 nativeId) = 0;
+    virtual void closeWindow(U32 nativeId) = 0;
+    virtual bool warpMouse(S32 x, S32 y) = 0;
 };
 
 typedef std::shared_ptr<KVulkan> KVulkanPtr;

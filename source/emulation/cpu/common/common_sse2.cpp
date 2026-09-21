@@ -1028,6 +1028,18 @@ void common_movqXmmE64(CPU* cpu, U32 reg, U32 address) {
     cpu->xmm[reg].pi.u64[1] = 0;
 }
 
+void common_movddupXmmXmm(CPU* cpu, U32 r1, U32 r2) {
+    U64 value = cpu->xmm[r2].pi.u64[0];
+    cpu->xmm[r1].pi.u64[0] = value;
+    cpu->xmm[r1].pi.u64[1] = value;
+}
+
+void common_movddupXmmE64(CPU* cpu, U32 reg, U32 address) {
+    U64 value = cpu->memory->readq(address);
+    cpu->xmm[reg].pi.u64[0] = value;
+    cpu->xmm[reg].pi.u64[1] = value;
+}
+
 void common_movsdXmmXmm(CPU* cpu, U32 r1, U32 r2) {
     cpu->xmm[r1].pd = simde_mm_move_sd(cpu->xmm[r1].pd, cpu->xmm[r2].pd);
 }

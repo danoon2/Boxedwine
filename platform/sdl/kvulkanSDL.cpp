@@ -22,51 +22,166 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include "kvulkanSDL.h"
-#include "sdlcallback.h"
+#include "knativesystem.h"
+#include <unordered_map>
 
 class KVulkdanSDLImpl : public KVulkan {
 public:
 	KVulkdanSDLImpl(const KNativeScreenSDLPtr& screen) : screen(screen) {}
+    ~KVulkdanSDLImpl() override;
 	KNativeScreenSDLPtr screen;
 
 	void* createVulkanSurface(const XWindowPtr& wnd, void* instance) override;
+    void resizeWindow(const XWindowPtr& wnd) override;
+    void showWindow(const XWindowPtr& wnd, bool show) override;
+    void destroyVulkanSurface(void* surface) override;
+    void focusWindow(U32 nativeId) override;
+    void closeWindow(U32 nativeId) override;
+    bool warpMouse(S32 x, S32 y) override;
+    void restoreInput();
+    U32 savedWidth = 0, savedHeight = 0, savedScaleX = 0, savedScaleY = 0, savedOffsetX = 0, savedOffsetY = 0;
+    std::weak_ptr<XWindow> inputWindow;
+    struct NativeWindow {
+        SDL_Window* window;
+        std::weak_ptr<XWindow> guest;
+        ~NativeWindow() { SDL_DestroyWindow(window); }
+    };
+    // All window/map access runs on SDL's thread, including surface creation on
+    // macOS. Several VkSurfaces for one drawable share its native window.
+    std::unordered_map<void*, std::shared_ptr<NativeWindow>> surfaces;
 };
 
-void* KVulkdanSDLImpl::createVulkanSurface(const XWindowPtr& wnd, void* instance) {
-    VkSurfaceKHR result = {0};
+KVulkdanSDLImpl::~KVulkdanSDLImpl() {
+    screen->input->runOnUiThread([this]() { surfaces.clear(); });
+}
 
-#ifdef __MACH__
-    // if SDL_Vulkan_CreateSurface isn't on the main there, then it won't draw on Mac
-    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN_WITH_ARG2(=, &result)
-	if (!screen->additionalSDLWindowFlags) {
-		screen->additionalSDLWindowFlags = SDL_WINDOW_VULKAN;
-		screen->recreateMainWindow();		
-	}
-	screen->setScreenSize(wnd->width(), wnd->height());
-	screen->showWindow(true);
-	
-	if (!SDL_Vulkan_CreateSurface(screen->window, (VkInstance)instance, &result)) {
-        result = 0;
-	}
-    DISPATCH_MAIN_THREAD_BLOCK_END
-#else
-    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
-    if (!screen->additionalSDLWindowFlags) {
-        screen->additionalSDLWindowFlags = SDL_WINDOW_VULKAN;
-        screen->recreateMainWindow();
+void KVulkdanSDLImpl::resizeWindow(const XWindowPtr& wnd) {
+    screen->input->runOnUiThread([this, wnd]() {
+        for (const auto& entry : surfaces) if (entry.second->guest.lock() == wnd) {
+            SDL_SetWindowSize(entry.second->window, std::max(1u, wnd->width()), std::max(1u, wnd->height()));
+            if (SDL_GetKeyboardFocus() == entry.second->window) focusWindow(SDL_GetWindowID(entry.second->window));
+            break;
+        }
+    });
+}
+
+void KVulkdanSDLImpl::showWindow(const XWindowPtr& wnd, bool show) {
+    screen->input->runOnUiThread([this, wnd, show]() {
+        for (const auto& entry : surfaces) if (entry.second->guest.lock() == wnd) {
+            if (show && KSystem::videoOption == VIDEO_NORMAL) SDL_ShowWindow(entry.second->window);
+            else SDL_HideWindow(entry.second->window);
+            break;
+        }
+    });
+}
+
+void KVulkdanSDLImpl::focusWindow(U32 nativeId) {
+    // Called from the SDL focus event, or another operation already on its thread.
+    for (const auto& entry : surfaces) if (SDL_GetWindowID(entry.second->window) == nativeId) {
+        auto wnd = entry.second->guest.lock();
+        if (wnd && XServer::getServer(true)) {
+            XServer::getServer()->setFakeFullScreenWindow(wnd);
+            if (!savedWidth) {
+                savedWidth = screen->input->screenWidth(); savedHeight = screen->input->screenHeight();
+                savedScaleX = screen->input->scaleX; savedScaleY = screen->input->scaleY;
+                savedOffsetX = screen->input->scaleXOffset; savedOffsetY = screen->input->scaleYOffset;
+            }
+            inputWindow = wnd;
+            screen->input->scaleX = screen->input->scaleY = 100;
+            screen->input->scaleXOffset = screen->input->scaleYOffset = 0;
+            screen->input->setScreenSize(std::max(1u, wnd->width()), std::max(1u, wnd->height()));
+        }
+        return;
     }
-    screen->setScreenSize(wnd->width(), wnd->height());
-    screen->showWindow(true);
-    DISPATCH_MAIN_THREAD_BLOCK_END
-    
-    if (!SDL_Vulkan_CreateSurface(screen->window, (VkInstance)instance, &result)) {
-        result = 0;
+    restoreInput();
+}
+
+void KVulkdanSDLImpl::closeWindow(U32 nativeId) {
+    // SDL does not emit SDL_QUIT while the hidden software window still exists.
+    for (const auto& entry : surfaces) if (SDL_GetWindowID(entry.second->window) == nativeId) {
+        auto server = XServer::getServer(true);
+        auto guest = entry.second->guest.lock();
+        if (server && guest && !server->requestCloseWindow(guest)) {
+            auto display = server->getDisplayDataById(guest->displayId);
+            if (display) KNativeSystem::forceShutdown(display->processId);
+        }
+        return;
     }
-#endif
-    if (!result) {
-        kwarn_fmt("Failed to create vulkan surface: %s\n", SDL_GetError());
-    }
-	return (void*)result;
+}
+
+void KVulkdanSDLImpl::restoreInput() {
+    if (!savedWidth) return;
+    if (XServer::getServer(true)) XServer::getServer()->clearFakeFullScreenWindow(inputWindow.lock());
+    inputWindow.reset();
+    screen->input->scaleX = savedScaleX; screen->input->scaleY = savedScaleY;
+    screen->input->scaleXOffset = savedOffsetX; screen->input->scaleYOffset = savedOffsetY;
+    screen->input->setScreenSize(savedWidth, savedHeight);
+    savedWidth = 0;
+}
+
+bool KVulkdanSDLImpl::warpMouse(S32 x, S32 y) {
+    bool handled = false;
+    screen->input->runOnUiThread([this, x, y, &handled]() {
+        auto wnd = inputWindow.lock();
+        if (!wnd) return;
+        for (const auto& entry : surfaces) if (entry.second->guest.lock() == wnd) {
+            SDL_WarpMouseInWindow(entry.second->window, x, y);
+            handled = true;
+            break;
+        }
+    });
+    return handled;
+}
+
+void KVulkdanSDLImpl::destroyVulkanSurface(void* surface) {
+    screen->input->runOnUiThread([this, surface]() {
+        auto found = surfaces.find(surface);
+        if (found == surfaces.end()) return;
+        auto window = found->second;
+        surfaces.erase(found);
+        if (window.use_count() == 1 && window->guest.lock() == inputWindow.lock()) restoreInput();
+        if (window.use_count() == 1 && XServer::getServer(true))
+            XServer::getServer()->clearFakeFullScreenWindow(window->guest.lock());
+        window.reset();
+        if (surfaces.empty()) screen->showWindow(true);
+    });
+}
+
+void* KVulkdanSDLImpl::createVulkanSurface(const XWindowPtr& wnd, void* instance) {
+    VkSurfaceKHR result = 0;
+    screen->input->runOnUiThread([this, wnd, instance, &result]() {
+        std::shared_ptr<NativeWindow> window;
+        for (const auto& entry : surfaces) if (entry.second->guest.lock() == wnd) {
+            window = entry.second;
+            break;
+        }
+        if (!window) {
+            S32 x = 0, y = 0;
+            screen->getPos(x, y);
+            const char* title = KSystem::title.length() ? KSystem::title.c_str() : "BoxedWine Vulkan";
+            U32 flags = SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN;
+            SDL_DisplayMode display = {};
+            if (SDL_GetDesktopDisplayMode(0, &display) == 0 && wnd->width() == (U32)display.w && wnd->height() == (U32)display.h)
+                flags |= SDL_WINDOW_BORDERLESS;
+            SDL_Window* native = SDL_CreateWindow(title, x, y, std::max(1u, wnd->width()), std::max(1u, wnd->height()), flags);
+            if (!native) { kwarn_fmt("Failed to create Vulkan window: %s", SDL_GetError()); return; }
+            window = std::make_shared<NativeWindow>();
+            window->window = native;
+            window->guest = wnd;
+        }
+        if (!SDL_Vulkan_CreateSurface(window->window, (VkInstance)instance, &result)) {
+            kwarn_fmt("Failed to create Vulkan surface: %s", SDL_GetError());
+            result = 0;
+            return;
+        }
+        surfaces[(void*)result] = window;
+        screen->showWindow(false);
+        if (KSystem::videoOption == VIDEO_NORMAL) {
+            SDL_ShowWindow(window->window);
+            focusWindow(SDL_GetWindowID(window->window));
+        }
+    });
+    return (void*)result;
 }
 
 KVulkanPtr KVulkanSDL::create(const KNativeScreenSDLPtr& screen) {

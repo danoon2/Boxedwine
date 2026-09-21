@@ -1,0 +1,23 @@
+{
+  "version": "1.4.335",
+  "url": "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.335.tar.gz",
+  "archive_sha256": "8ee39bee575bdccc1ecacd0bdb26f181841de35d7409a3eca468c6b622daa2f1",
+  "files_sha256_lf": {
+    "lib/mesa/vkRegistry/vk.xml": "7cf3d7ec74371f4395d221c05aa23d994a5e03d0ccfb6269c60399d333551bcd",
+    "source/vulkan/vk/vk_platform.h": "2fa47dd60cd94eb6fd8d7615953878f5664eb57fdff3b1b9b856c1d8f1496737",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_av1std.h": "3443226503a8bcd6b828dabacb8ebe40ece32d6d37274ffd2d855a504629c968",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_av1std_decode.h": "2b912389d39d6627ee8af01e052e9557d213b27c0b79a0e25f5366cfe1942f1a",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_av1std_encode.h": "93ad363de123988cd7b27acc7930f7f93497bc2e5d74f8420ee8ba18e8746e0a",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_h264std.h": "0b715c26af3eecc950ebedcf6831fd8b8a7d6c662780fd8b8a37d9082ac07fae",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_h264std_decode.h": "9667ecc76eaba22e311e5d2d48b38af47ca307865ae35477897790343ba3ad14",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_h264std_encode.h": "c68a1fa4ebadd1b50992a61fb93310a6686d5ea932b91b850d3ad9bc8dec488e",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_h265std.h": "42a2daf1b396f1071f1855262bcadedd544b90da67e2c90d24885720177adf83",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_h265std_decode.h": "38a7c0d6688280795efe00f9ce8506795afbbe558300c9f7eacd764daa42f7e2",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_h265std_encode.h": "aa8c75beac0962abf752a5ec741a42b1a108ee28fb6b3abcdc995e57e20c6c14",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_vp9std.h": "80df697fad03a9acddadb8ae4944bb25b5df4b1a427157ad7fbdeb77112a3c89",
+    "source/vulkan/vk/vk_video/vulkan_video_codec_vp9std_decode.h": "318a21532405f31a7b977c340effbf5bff30790734153c29ed6ad9a8230efbaf",
+    "source/vulkan/vk/vk_video/vulkan_video_codecs_common.h": "7afc98e84d3bea72e40a65161463abbd4be2ff1e1853eca3f8c331afb7329a8b",
+    "source/vulkan/vk/vulkan.h": "20c7e1ac42fe62b3ed526612c52ddfc21e2265f5c69ca9a5e9dd182cc4c8625b",
+    "source/vulkan/vk/vulkan_core.h": "b8944f451db2231a07acbce90d1d6de2993fc6d656ab120cd833447ec9120710"
+  }
+}

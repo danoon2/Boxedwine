@@ -523,6 +523,8 @@ public:
 	void dynamic_movsdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::movsdXmmXmm); } // top bits are preserved
 	void dynamic_movsdXmmE64(DecodedOp* op) override; // // top bits are zero'd
 	void dynamic_movsdE64Xmm(DecodedOp* op) override;
+	void dynamic_movddupXmmXmm(DecodedOp* op) override;
+	void dynamic_movddupXmmE64(DecodedOp* op) override;
 	void dynamic_movapdXmmXmm(DecodedOp* op) override { dynamic_movupdXmmXmm(op); }
 	void dynamic_movapdXmmE128(DecodedOp* op) override { dynamic_movupdXmmE128(op); }
 	void dynamic_movapdE128Xmm(DecodedOp* op) override { dynamic_movupdE128Xmm(op); }

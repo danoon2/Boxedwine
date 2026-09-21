@@ -2068,6 +2068,102 @@ void testPortIoRaisesProtectionFault() {
     runPortIoRaisesProtectionFault();
 }
 
+static void runDescriptorQuery(bool useJit) {
+    emitByte(0xcd);
+    emitByte(0x97);
+    DecodedOp* op = cpu->getNextOp();
+    if (!useJit) op->flags |= OP_FLAG_NO_JIT;
+    runTestCPU();
+}
+
+static void runDescriptorTableQueries(bool useJit) {
+    // SGDT/SIDT store exactly six bytes with either operand size, including
+    // unaligned operands. Exercise both address sizes and interpreter/JIT.
+    for (int big = 0; big < 2; ++big) {
+        for (int operand32 = 0; operand32 < 2; ++operand32) {
+            for (int address32 = 0; address32 < 2; ++address32) {
+                for (int table = 0; table < 2; ++table) {
+                    newInstruction(INITIAL_FLAGS);
+                    cpu->big = big != 0;
+                    U32 expectedRegs[8];
+                    initRegisters(expectedRegs);
+                    constexpr U32 offset = MEM_BASE + 1;
+                    U32 address = cpu->seg[DS].address + offset;
+                    for (int i = -1; i < 7; ++i) memory->writeb(address + i, 0xa5);
+                    if (address32 != big) emitByte(0x67);
+                    if (operand32 != big) emitByte(0x66);
+                    emitByte(0x0f);
+                    emitByte(0x01);
+                    emitByte((table << 3) | (address32 ? 5 : 6));
+                    if (address32) emitDword(offset); else emitWord(offset);
+                    runDescriptorQuery(useJit);
+                    if (memory->readw(address) != (table ? 1023 : LDT_ENTRIES * 8 - 1) ||
+                            memory->readd(address + 2) != 0) failed("descriptor table contents");
+                    if (memory->readb(address - 1) != 0xa5 || memory->readb(address + 6) != 0xa5)
+                        failed("descriptor table write exceeded six bytes");
+                    verifyRegisters(expectedRegs, "descriptor table query");
+                    verifyFlagsUnchanged("descriptor table query");
+                }
+            }
+        }
+    }
+}
+
+static void runDescriptorSelectorQueries(bool useJit) {
+    for (int big = 0; big < 2; ++big) {
+        for (int operand32 = 0; operand32 < 2; ++operand32) {
+            for (int selector = 0; selector < 2; ++selector) {
+                for (int reg = 0; reg < 8; ++reg) {
+                    newInstruction(INITIAL_FLAGS);
+                    cpu->big = big != 0;
+                    U32 expectedRegs[8];
+                    initRegisters(expectedRegs);
+                    cpu->reg[reg].u32 = 0xa55a1234;
+                    expectedRegs[reg] = operand32 ? 0 : 0xa55a0000;
+                    if (operand32 != big) emitByte(0x66);
+                    emitByte(0x0f);
+                    emitByte(0x00);
+                    emitByte(0xc0 | (selector << 3) | reg);
+                    runDescriptorQuery(useJit);
+                    verifyRegisters(expectedRegs, "descriptor selector register query");
+                    verifyFlagsUnchanged("descriptor selector register query");
+                }
+                // A memory operand is always a word, even with operand-size 32.
+                for (int address32 = 0; address32 < 2; ++address32) {
+                    newInstruction(INITIAL_FLAGS);
+                    cpu->big = big != 0;
+                    U32 expectedRegs[8];
+                    initRegisters(expectedRegs);
+                    constexpr U32 offset = MEM_BASE + 1;
+                    U32 address = cpu->seg[DS].address + offset;
+                    memory->writed(address - 1, 0xa5a5a5a5);
+                    if (address32 != big) emitByte(0x67);
+                    if (operand32 != big) emitByte(0x66);
+                    emitByte(0x0f);
+                    emitByte(0x00);
+                    emitByte((selector << 3) | (address32 ? 5 : 6));
+                    if (address32) emitDword(offset); else emitWord(offset);
+                    runDescriptorQuery(useJit);
+                    if (memory->readd(address - 1) != 0xa50000a5)
+                        failed("descriptor selector memory write width/value");
+                    verifyRegisters(expectedRegs, "descriptor selector memory query");
+                    verifyFlagsUnchanged("descriptor selector memory query");
+                }
+            }
+        }
+    }
+}
+
+void testDescriptorTableQueries() {
+    runDescriptorTableQueries(false);
+    runDescriptorTableQueries(true);
+}
+
+void testDescriptorSelectorQueries() {
+    runDescriptorSelectorQueries(false);
+    runDescriptorSelectorQueries(true);
+}
+
 void testHltRaisesProtectionFault() {
     runHltRaisesProtectionFault();
 }

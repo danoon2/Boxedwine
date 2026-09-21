@@ -26,6 +26,7 @@ public class VkHostMarshalType {
         String itemCount;
         boolean unlock = false;
         boolean isVoid = false;
+        String structureType;
     }
 
     public static void writeHeader(VkType t, StringBuilder out) throws Exception {
@@ -38,7 +39,7 @@ public class VkHostMarshalType {
         out.append("() {}\n");
         out.append("    ");
         out.append(t.name);
-        out.append(" s;\n");
+        out.append(" s{};\n");
 
         if (t.isNeedMarshalIn()) {
             if (!t.name.equals("VkMemoryToImageCopy") && !t.name.equals("VkImageToMemoryCopy")) {
@@ -84,6 +85,7 @@ public class VkHostMarshalType {
                         MarshalParamData item = new MarshalParamData("s."+param.name, true);
                         item.itemCount = "s." + parts[0];
                         item.deleteItems = true;
+                        item.structureType = param.paramType.name;
                         paramData.add(item);
                         out.append(param.paramType.name);
                         out.append("*[s->");
@@ -292,11 +294,14 @@ public class VkHostMarshalType {
         out.append("* ");
         out.append(param.name);
         out.append(" = new ");
-        paramData.add(new MarshalParamData("s."+param.name, true));
+        MarshalParamData owned = new MarshalParamData("s."+param.name, true);
+        owned.structureType = param.paramType.name;
+        owned.itemCount = getParamLen(param).replace("s->", "s.");
+        paramData.add(owned);
         out.append(param.paramType.name);
         out.append("[");
         out.append(getParamLen(param));
-        out.append("];\n");
+        out.append("]();\n");
         out.append("        for (U32 i = 0; i < ");
         out.append(getParamLen(param));
         out.append("; i++) {\n");
@@ -332,7 +337,9 @@ public class VkHostMarshalType {
         out.append("* ");
         out.append(param.name);
         out.append(" = new ");
-        paramData.add(new MarshalParamData("s."+param.name, false));
+        MarshalParamData owned = new MarshalParamData("s."+param.name, false);
+        owned.structureType = param.paramType.name;
+        paramData.add(owned);
         out.append(param.paramType.name);
         out.append("();\n");
         out.append("        Marshal");
@@ -376,6 +383,12 @@ public class VkHostMarshalType {
             }
         } else if (param.paramType.getCategory().equals("struct")) {
             marshalInPointerToStruct(data, param, out, paramData);
+        } else if ((param.paramType.getCategory().equals("enum") || param.paramType.name.equals("uint32_t")) && !param.isDoublePointer) {
+            out.append("        s->" + param.name + " = (" + param.paramType.name + "*)memory->"
+                    + (param.isConst ? "lockReadOnlyMemory" : "lockReadWriteMemory") + "(paramAddress, 4);\n");
+            MarshalParamData item = new MarshalParamData("s." + param.name, false);
+            item.unlock = true;
+            paramData.add(item);
         } else {
             if (param.name.equals("pShaderGroupCaptureReplayHandle")) {
                 out.append("        s->");
@@ -426,7 +439,11 @@ public class VkHostMarshalType {
                 out.append(";\n");
             }
         } else if (param.paramType.getType().equals("VK_DEFINE_HANDLE")) {
-            if (param.isArray()) {
+            if (param.arrayLen > 0 && !param.isPointer) {
+                out.append("    for (U32 i=0; i<" + param.arrayLen + "; ++i) {\n");
+                out.append("        s->" + param.name + "[i] = (" + param.paramType.name
+                        + ")getVulkanPtr(memory, memory->readd(address)); address+=4;\n    }\n");
+            } else if (param.isArray()) {
                 out.append("    paramAddress = memory->readd(address);address+=4;\n");
                 out.append("    if (paramAddress) {\n");
                 if (param.arrayLen == 0) {
@@ -533,7 +550,7 @@ public class VkHostMarshalType {
                         }
                     }
                     if (memberName == null) {
-                        throw new Exception("oops");
+                        throw new Exception("Unhandled scalar union " + param.paramType.name + "." + param.name);
                     }
                     out.append("    s->");
                     out.append(param.name);
@@ -639,7 +656,12 @@ public class VkHostMarshalType {
                 out.append("; // structure padding\n");
                 offset += alignment - (offset % alignment);
             }
-            if (t.name.equals("VkPerformanceValueINTEL") && param.name.equals("data")) {
+            if (t.returnedonly && !param.isPointer && param.paramType.getType().equals("VK_DEFINE_HANDLE")) {
+                // Output handles may contain arbitrary caller bytes. They are
+                // not guest handle wrappers and must never be dereferenced.
+                out.append("    memset(&s->" + param.name + ", 0, sizeof(s->" + param.name + "));\n");
+                out.append("    address += " + param.getSize() + ";\n");
+            } else if (t.name.equals("VkPerformanceValueINTEL") && param.name.equals("data")) {
                 out.append("    switch (s->type) {\n");
                 out.append("    case VK_PERFORMANCE_VALUE_TYPE_UINT32_INTEL:\n");
                 out.append("        s->data.value32 = memory->readd(address);\n");
@@ -768,12 +790,24 @@ public class VkHostMarshalType {
                 out.append("    pData->userData = memory->readd(address);address+=4;\n");
                 out.append("    s->pUserData = pData;\n");
                 break; // pfnCallback and pUserData were handled
+            } else if (t.name.equals("VkPushDescriptorSetWithTemplateInfo") && param.name.equals("pData")) {
+                out.append("    U32 dataAddress = memory->readd(address); address += 4;\n");
+                out.append("    std::vector<U8> data;\n");
+                out.append("    marshalDescriptorTemplateData(pBoxedInfo, memory, s->descriptorUpdateTemplate, dataAddress, data);\n");
+                out.append("    U8* copied = new U8[data.size()];\n");
+                out.append("    if (!data.empty()) memcpy(copied, data.data(), data.size());\n");
+                out.append("    s->pData = copied;\n");
+                paramsData.add(new MarshalParamData("(U8*)s.pData", true));
             } else if ((t.name.equals("VkMemoryToImageCopy") || t.name.equals("VkImageToMemoryCopy")) && param.name.equals("pHostPointer")) {
                 out.append("    paramAddress = memory->readd(address);address+=4;\n");
             } else if (param.isPointer) {
                 marshalInPointer(data, param, out, pointerData, paramsData);
             } else {
                 marshalInParam(data, param, out, paramsData);
+            }
+            if (param.objecttype != null && !param.isPointer) {
+                out.append("    s->" + param.name + " = translateVulkanObjectHandle(memory, (VkObjectType)s->"
+                        + param.objecttype + ", s->" + param.name + ");\n");
             }
             offset += param.getSize();
         }
@@ -827,11 +861,13 @@ public class VkHostMarshalType {
             out.append("::write(pBoxedInfo, memory, paramAddress, s->");
             out.append(param.name);
             out.append(");\n");
-        } else if (param.paramType.getCategory().equals("enum")) {
+        } else if (param.paramType.getCategory().equals("enum") || param.paramType.name.equals("uint32_t")) {
             String size;
 
             if (param.arrayLen != 0) {
                 size = String.valueOf(param.arrayLen);
+            } else if (param.len == null) {
+                size = "1";
             } else if (param.len.startsWith("(")) {
                 size = "(s->";
                 size += String.valueOf(param.len.substring(1));
@@ -862,6 +898,16 @@ public class VkHostMarshalType {
     }
     private static void marshalOutParam(VkData data, VkType type, VkParam param, StringBuilder out) throws Exception {
         int width = param.getSize();
+
+        if (type.name.equals("VkPhysicalDeviceProperties") && param.name.equals("apiVersion")) {
+            out.append("    memory->writed(address, std::min(s->apiVersion, (U32)VK_HEADER_VERSION_COMPLETE)); address += 4;\n");
+            return;
+        }
+        if ((param.name.equals("hostImageCopy") && type.name.startsWith("VkPhysicalDevice")) ||
+                type.name.equals("VkPhysicalDeviceMapMemoryPlacedFeaturesEXT") && param.paramType.name.equals("VkBool32")) {
+            out.append("    memory->writed(address, VK_FALSE); address += 4; // Requires guest host-pointer translation.\n");
+            return;
+        }
 
         if (type.name.equals("VkPerformanceValueINTEL") && param.name.equals("data")) {
             out.append("    switch (s->type) {\n");
@@ -922,7 +968,11 @@ public class VkHostMarshalType {
                 out.append(";\n");
             }
         } else if (param.paramType.getType().equals("VK_DEFINE_HANDLE")) {
-            if (param.isArray()) {
+            if (param.arrayLen > 0 && !param.isPointer) {
+                out.append("    for (U32 i=0; i<" + param.arrayLen + "; ++i) {\n");
+                out.append("        memory->writed(address, createVulkanPtr(memory, s->"
+                        + param.name + "[i], pBoxedInfo)); address+=4;\n    }\n");
+            } else if (param.isArray()) {
                 out.append("    paramAddress = memory->readd(address);address+=4;\n");
                 out.append("    if (paramAddress) {\n");
                 out.append("        for (U32 i=0;i<");
@@ -1055,10 +1105,10 @@ public class VkHostMarshalType {
                 out.append(alignment - (offset % alignment));
                 out.append("; // structure padding\n");
                 offset += alignment - (offset % alignment);
-            }if (param.paramType.name.equals("VkPhysicalDevice") && param.name.equals("physicalDevices")) {
-                int ii=0;
             }
-            if (param.isPointer) {
+            if (t.name.equals("VkPushDescriptorSetWithTemplateInfo") && param.name.equals("pData")) {
+                out.append("    address += 4; // Retain the original guest template data pointer.\n");
+            } else if (param.isPointer) {
                 marshalOutPointer(data, param, out, pointerData, paramsData);
             } else {
                 marshalOutParam(data, t, param, out);
@@ -1088,10 +1138,21 @@ public class VkHostMarshalType {
                 continue;
             }
             if (data.unlock) {
-                out.append("    KThread::currentThread()->memory->unlockMemory((U8*)");
+                out.append("    if (" + data.name + ") KThread::currentThread()->memory->unlockMemory((U8*)");
                 out.append(data.name);
                 out.append(");\n");
                 continue;
+            }
+            if (data.structureType != null) {
+                out.append("    if (" + data.name + ") {\n");
+                if (data.isArray) {
+                    out.append("        for (U32 i=0;i<" + data.itemCount + ";++i) {\n");
+                    out.append("            Marshal" + data.structureType + " owned; owned.s = "
+                            + (data.deleteItems ? "*" : "") + data.name + "[i];\n        }\n");
+                } else {
+                    out.append("        Marshal" + data.structureType + " owned; owned.s = *" + data.name + ";\n");
+                }
+                out.append("    }\n");
             }
             if (data.deleteItems) {
                 out.append("    if (");
@@ -1244,7 +1305,7 @@ public class VkHostMarshalType {
     static VkHostMarshalInStructure unmapMemory2 = new VkHostMarshalInStructure() {
         public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
             super.after(data, fn, out, param);
-            out.append("    if (EAX == 0) {\n        unmapVkMemory(pMemoryUnmapInfo->memory);\n    }\n");
+            out.append("    if (EAX == 0) {\n        unmapVkMemory(pBoxedInfo, pMemoryUnmapInfo->memory);\n    }\n");
         }
     };
     private static HashSet<String> simpleTypes;
@@ -1361,7 +1422,8 @@ public class VkHostMarshalType {
             if (!param.isPointer) {
                 throw new Exception("Unhandled param type: " + function.name + ":" + param.name);
             }
-            if ((function.name.equals("vkUpdateDescriptorSetWithTemplateKHR") || function.name.equals("vkUpdateDescriptorSetWithTemplate")) && param.name.equals("pData")) {
+            if ((function.name.equals("vkUpdateDescriptorSetWithTemplateKHR") || function.name.equals("vkUpdateDescriptorSetWithTemplate")
+                    || function.name.equals("vkCmdPushDescriptorSetWithTemplate") || function.name.equals("vkCmdPushDescriptorSetWithTemplateKHR")) && param.name.equals("pData")) {
                 return updateDescriptorSetWithTemplateMarshal;
             }
             if (param.len == null && param.arrayLen == 0) {

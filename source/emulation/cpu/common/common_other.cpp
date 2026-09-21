@@ -40,12 +40,6 @@ void common_int99(CPU* cpu){
     U32 index = cpu->peek32(0);
     callOpenGL(cpu, index);    
 }
-void common_int9A(CPU* cpu) {
-#ifdef BOXEDWINE_VULKAN
-    U32 index = cpu->peek32(0);
-    callVulkan(cpu, index);
-#endif
-}
 void common_int9B(CPU* cpu) {
     U32 index = cpu->peek32(0);
     callX11(cpu, index);

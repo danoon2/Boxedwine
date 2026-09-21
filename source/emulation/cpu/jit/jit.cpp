@@ -131,7 +131,8 @@ RegPtr Jit::calculateEaa(DecodedOp* op, U32 popEspAmount) {
     }
 }
 
-void Jit::dynamic_sidt(DecodedOp* op) {
+void Jit::dynamic_descriptor_query(DecodedOp* op) {
+    emulateSingleOp();
 }
 
 void Jit::dynamic_callback(DecodedOp* op) {

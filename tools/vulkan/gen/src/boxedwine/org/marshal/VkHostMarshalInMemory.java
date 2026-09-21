@@ -234,7 +234,7 @@ public class VkHostMarshalInMemory extends VkHostMarshal {
 
     public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         if (fn.name.equals("vkAllocateMemory") && param.name.equals("pMemory")) {
-            out.append("    if (EAX == 0 && pMemory) {\n        registerVkMemoryAllocation(*pMemory, pAllocateInfo->allocationSize);\n    }\n");
+            out.append("    if (EAX == 0 && pMemory) {\n        registerVkMemoryAllocation(pBoxedInfo, *pMemory, pAllocateInfo->allocationSize);\n    }\n");
         }
 
         String len = null;

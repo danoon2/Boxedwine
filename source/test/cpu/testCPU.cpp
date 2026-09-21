@@ -16,6 +16,9 @@
 #ifndef BOXEDWINE_MULTI_THREADED
 #include "kscheduler.h"
 #include "../../emulation/cpu/normal/normalCPU.h"
+#ifdef BOXEDWINE_VULKAN
+#include "../../vulkan/vk_host.h"
+#include "../../vulkan/vk_host_marshal.h"
 #endif
 #ifdef BOXEDWINE_JIT
 #include "../../emulation/cpu/jit/jitCodeGen.h"
@@ -1053,6 +1056,292 @@ void testJitOpenGLCallStateAndInvalidation() {
         if (fastEnabled && !jitOpenGLFastCallCount) testFail("OpenGL dedicated JIT path was not exercised");
         if (mutate && !glTestSawCompiled) testFail("OpenGL callback did not invalidate compiled code");
     }
+#endif
+}
+
+#ifdef BOXEDWINE_VULKAN
+extern Int99Callback int9ACallback[];
+extern U32 int9ACallbackSize;
+namespace {
+U32 vkTestCalls;
+void vkTestCallback(CPU* cpu) {
+    ++vkTestCalls;
+    const U32 expected[] = {0xfeedcafe, 0x11223344, 0x89abcdef, 0x76543210, 0x3fc00000, 0xcafebabe};
+    for (U32 i = 0; i < 6; ++i) {
+        if (cpu->peek32(i) != expected[i]) testFail("Vulkan original stack word %u", i);
+    }
+    cpu->reg[0].u32 = 0x55667788;
+    cpu->reg[2].u32 = 0x12345678;
+}
+void VKAPI_PTR vkTestMultiDraw(VkCommandBuffer commandBuffer, U32 drawCount, const VkMultiDrawInfoEXT* draws,
+    U32 instanceCount, U32 firstInstance, U32 stride) {
+    ++vkTestCalls;
+    if ((U64)commandBuffer != 0x123000 || drawCount != 2 || instanceCount != 2 || firstInstance != 7 ||
+        stride != sizeof(VkMultiDrawInfoEXT) || draws[0].firstVertex != 5 || draws[0].vertexCount != 3 ||
+        draws[1].firstVertex != 17 || draws[1].vertexCount != 6)
+        testFail("Vulkan repacked multi-draw array must use the host stride");
+}
+bool vkTestAllocationFails;
+VkResult VKAPI_PTR vkTestAllocateCommands(VkDevice device, const VkCommandBufferAllocateInfo* allocate, VkCommandBuffer* commands) {
+    if (allocate->commandBufferCount != 2 || (U64)allocate->commandPool != 0x1234567800000001ULL)
+        testFail("Vulkan command allocation inputs");
+    for (U32 i = 0; i < 2; ++i) commands[i] = vkTestAllocationFails ? VK_NULL_HANDLE : (VkCommandBuffer)(uintptr_t)(0x1234a000 + i * 4096);
+    return vkTestAllocationFails ? VK_ERROR_OUT_OF_HOST_MEMORY : VK_SUCCESS;
+}
+void VKAPI_PTR vkTestFreeCommands(VkDevice device, VkCommandPool pool, U32 count, const VkCommandBuffer* commands) {
+    if ((U64)pool != 0x1234567800000001ULL || count != 2 || (U64)commands[0] != 0x1234a000 || commands[1] != VK_NULL_HANDLE)
+        testFail("Vulkan explicit command buffer free");
+}
+void VKAPI_PTR vkTestDestroyPool(VkDevice device, VkCommandPool pool, const VkAllocationCallbacks* allocator) {
+    if ((U64)pool != 0x1234567800000001ULL || allocator) testFail("Vulkan command pool destroy");
+}
+std::vector<VkObjectType> vkTestDestroyedTypes;
+VkResult VKAPI_PTR vkTestPartialPipelines(VkDevice device, VkPipelineCache cache, U32 count,
+    const VkGraphicsPipelineCreateInfo* create, const VkAllocationCallbacks* allocator, VkPipeline* pipelines) {
+    if (count != 2 || pipelines[0] || pipelines[1]) testFail("Vulkan partial pipeline outputs must start empty");
+    pipelines[0] = (VkPipeline)0x123456789ULL;
+    return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+}
+void VKAPI_PTR vkTestDestroyPipeline(VkDevice, VkPipeline pipeline, const VkAllocationCallbacks*) {
+    if ((U64)pipeline != 0x123456789ULL) testFail("Vulkan partial pipeline cleanup handle");
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_PIPELINE);
+}
+void VKAPI_PTR vkTestDestroyBuffer(VkDevice, VkBuffer, const VkAllocationCallbacks*) {
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_BUFFER);
+}
+void VKAPI_PTR vkTestDestroyImageView(VkDevice, VkImageView, const VkAllocationCallbacks*) {
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_IMAGE_VIEW);
+}
+void VKAPI_PTR vkTestDestroySwapchain(VkDevice, VkSwapchainKHR, const VkAllocationCallbacks*) {
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_SWAPCHAIN_KHR);
+}
+void VKAPI_PTR vkTestFreeMemory(VkDevice, VkDeviceMemory, const VkAllocationCallbacks*) {
+    vkTestDestroyedTypes.push_back(VK_OBJECT_TYPE_DEVICE_MEMORY);
+}
+}
+#endif
+
+void testVulkanDirectStackABI() {
+#ifdef BOXEDWINE_VULKAN
+    Int99Callback saved = int9ACallback[3];
+    U32 savedSize = int9ACallbackSize;
+    int9ACallback[3] = vkTestCallback;
+    int9ACallbackSize = 4;
+    for (U32 compiled = 0; compiled < 2; ++compiled) {
+        testNewInstruction(0);
+        CPU* cpu = testContext().cpu;
+        U32 stack = cpu->reg[4].u32;
+        const U32 words[] = {0xfeedcafe, 0x11223344, 0x89abcdef, 0x76543210, 0x3fc00000, 0xcafebabe};
+        for (U32 i = 0; i < 6; ++i)
+            cpu->memory->writed(cpu->seg[SS].address + stack + i * 4, words[i]);
+        vkTestCalls = 0;
+        testPushCode8(0xcd); testPushCode8(0x9a); testPushCode32(3);
+        testPushCode8(0x43); // inc ebx: execute the continuation exactly once
+        testPushCode8(0xcd); testPushCode8(0x97);
+        DecodedOp* op = cpu->getOp(TEST_CODE_ADDRESS, 0);
+        if (op->inst != Int9A || op->imm != 3 || op->len != 6)
+            testFail("Vulkan immediate command decode");
+#ifdef BOXEDWINE_JIT
+        if (compiled) {
+            startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+            if (!op->pfnJitCode) testFail("Vulkan ABI test did not compile");
+        } else {
+            // Test builds normally compile a block on its very first run.
+            op->flags |= OP_FLAG_NO_JIT;
+        }
+#endif
+        testRunCPU();
+        if (vkTestCalls != 1 || cpu->reg[4].u32 != stack || cpu->reg[3].u32 != 1 ||
+            cpu->reg[0].u32 != 0x55667788 || cpu->reg[2].u32 != 0x12345678)
+            testFail("Vulkan ABI result, stack, or continuation (compiled=%u)", compiled);
+    }
+    int9ACallback[3] = saved;
+    int9ACallbackSize = savedSize;
+
+    // Wine's output conversion buffer can contain uninitialized handle slots.
+    // Only sType/pNext are input; poisoned handle bytes must never be followed.
+    testNewInstruction(0);
+    KMemory* memory = testContext().memory;
+    U32 address = TEST_HEAP_ADDRESS + 128;
+    for (U32 i = 0; i < 144; i += 4) memory->writed(address + i, 0xcdcdcdcd);
+    memory->writed(address, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES);
+    memory->writed(address + 4, 0);
+    VkPhysicalDeviceGroupProperties properties{};
+    MarshalVkPhysicalDeviceGroupProperties::read(nullptr, memory, address, &properties);
+    for (auto handle : properties.physicalDevices)
+        if (handle != VK_NULL_HANDLE) testFail("Vulkan output handles read from uninitialized guest data");
+    properties.physicalDeviceCount = 0;
+    properties.subsetAllocation = VK_TRUE;
+    MarshalVkPhysicalDeviceGroupProperties::write(nullptr, memory, address, &properties);
+    for (U32 i = 0; i < VK_MAX_DEVICE_GROUP_SIZE; ++i)
+        if (memory->readd(address + 12 + i * 4)) testFail("Vulkan inline handle array write");
+    if (memory->readd(address + 140) != VK_TRUE) testFail("Vulkan field following inline handle array");
+    memory->writeq(address, 0x1234567887654321ULL);
+    if (translateVulkanObjectHandle(memory, VK_OBJECT_TYPE_DEVICE, address) != 0x1234567887654321ULL ||
+        translateVulkanObjectHandle(memory, VK_OBJECT_TYPE_BUFFER, 0xabcdef0187654321ULL) != 0xabcdef0187654321ULL)
+        testFail("Vulkan generic object handle translation");
+
+    // A guest VkDescriptorImageInfo is 20 bytes, versus 24 on a 64-bit host.
+    // Template offsets and strides describe guest bytes and cannot be forwarded.
+    BoxedVulkanInfo info{};
+    auto original = std::make_shared<MarshalVkDescriptorUpdateTemplateCreateInfo>();
+    original->s.descriptorUpdateEntryCount = 4;
+    auto entries = new VkDescriptorUpdateTemplateEntry[4]{};
+    entries[0] = {0, 0, 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 12, 20};
+    entries[1] = {1, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 72, 24};
+    entries[2] = {2, 0, 4, VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK, 100, 0};
+    entries[3] = {3, 0, 2, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV, 108, 12};
+    original->s.pDescriptorUpdateEntries = entries;
+    info.descriptorUpdateTemplateCreateInfo[5] = original;
+    VkDescriptorUpdateTemplateCreateInfo packed = original->s;
+    std::vector<VkDescriptorUpdateTemplateEntry> packedEntries;
+    if (!prepareDescriptorTemplate(packed, packedEntries) || entries[0].offset != 12 || entries[0].stride != 20 ||
+        packedEntries[0].stride != sizeof(VkDescriptorImageInfo) || packedEntries[1].offset != 48)
+        testFail("Vulkan descriptor template host layout");
+    U32 dataAddress = TEST_HEAP_ADDRESS + 512;
+    for (U32 i = 0; i < 2; ++i) {
+        memory->writeq(dataAddress + 12 + i * 20, 0x1234567800000000ULL + i);
+        memory->writeq(dataAddress + 20 + i * 20, 0x8765432100000000ULL + i);
+        memory->writed(dataAddress + 28 + i * 20, VK_IMAGE_LAYOUT_GENERAL);
+    }
+    memory->writeq(dataAddress + 72, 0xabcdef0123456789ULL);
+    memory->writeq(dataAddress + 80, 0x100000008ULL);
+    memory->writeq(dataAddress + 88, VK_WHOLE_SIZE);
+    memory->writed(dataAddress + 100, 0xdeadbeef);
+    memory->writeq(dataAddress + 108, 0xabcdef0100000001ULL);
+    memory->writeq(dataAddress + 120, 0xabcdef0100000002ULL);
+    std::vector<U8> packedData;
+    marshalDescriptorTemplateData(&info, memory, (VkDescriptorUpdateTemplate)5, dataAddress, packedData);
+    VkDescriptorImageInfo images[2];
+    memcpy(images, packedData.data(), sizeof(images));
+    VkDescriptorBufferInfo buffer;
+    memcpy(&buffer, packedData.data() + packedEntries[1].offset, sizeof(buffer));
+    U32 inlineData;
+    memcpy(&inlineData, packedData.data() + packedEntries[2].offset, sizeof(inlineData));
+    U64 accelerationStructures[2];
+    memcpy(accelerationStructures, packedData.data() + packedEntries[3].offset, sizeof(accelerationStructures));
+    if ((U64)images[1].sampler != 0x1234567800000001ULL || (U64)images[1].imageView != 0x8765432100000001ULL ||
+        images[1].imageLayout != VK_IMAGE_LAYOUT_GENERAL || (U64)buffer.buffer != 0xabcdef0123456789ULL ||
+        buffer.offset != 0x100000008ULL || buffer.range != VK_WHOLE_SIZE || inlineData != 0xdeadbeef)
+        testFail("Vulkan descriptor template guest data conversion");
+    if (packedEntries[3].stride != sizeof(U64) || accelerationStructures[0] != 0xabcdef0100000001ULL ||
+        accelerationStructures[1] != 0xabcdef0100000002ULL)
+        testFail("Vulkan NV acceleration structure descriptor template conversion");
+
+    BoxedVulkanInfo otherDevice{};
+    VkDeviceMemory allocation = (VkDeviceMemory)7;
+    std::vector<U8> nativeBytes(8192);
+    registerVkMemoryAllocation(&info, allocation, 0x100001000ULL);
+    registerVkMemoryAllocation(&otherDevice, allocation, 128);
+    if (mapVkMemory(&info, allocation, nativeBytes.data(), 0, VK_WHOLE_SIZE) ||
+        mapVkMemory(&otherDevice, allocation, nativeBytes.data(), 127, 2))
+        testFail("Vulkan mapping must reject overflow and out-of-bounds ranges");
+    U32 mapped = mapVkMemory(&info, allocation, nativeBytes.data(), 0x100000000ULL, VK_WHOLE_SIZE);
+    if (!mapped || info.allocations[7].mappedLen != 4096 || otherDevice.allocations[7].size != 128)
+        testFail("Vulkan allocation ownership and partial 64-bit mapping");
+    if (mapped) {
+        memory->writed(mapped + 100, 0x13579bdf);
+        U32 value;
+        memcpy(&value, nativeBytes.data() + 100, sizeof(value));
+        if (value != 0x13579bdf) testFail("Vulkan mapped guest writes must reach host memory");
+        unregisterVkMemoryAllocation(&info, allocation);
+        if (memory->canRead(mapped, 1)) testFail("Vulkan free must retire guest memory mapping");
+    }
+    if (otherDevice.allocations.size() != 1) testFail("Vulkan free affected a different logical device");
+    unregisterVkMemoryAllocation(&otherDevice, allocation);
+
+    CPU* cpu = testContext().cpu;
+    info.pvkCmdDrawMultiEXT = vkTestMultiDraw;
+    U32 wrapper = TEST_HEAP_ADDRESS + 800, draws = TEST_HEAP_ADDRESS + 840;
+    memory->writeq(wrapper, 0x123000);
+    memory->writeq(wrapper + 8, (U64)&info);
+    memory->writed(draws, 5); memory->writed(draws + 4, 3);
+    memory->writed(draws + 16, 17); memory->writed(draws + 20, 6);
+    const U32 drawArgs[] = {0, wrapper, 2, draws, 2, 7, 16};
+    for (U32 i = 0; i < 7; ++i) memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + i * 4, drawArgs[i]);
+    vkTestCalls = 0;
+    vk_CmdDrawMultiEXT(cpu);
+    if (vkTestCalls != 1) testFail("Vulkan multi-draw callback");
+
+    info.pvkAllocateCommandBuffers = vkTestAllocateCommands;
+    info.pvkFreeCommandBuffers = vkTestFreeCommands;
+    info.pvkDestroyCommandPool = vkTestDestroyPool;
+    U32 allocateAddress = TEST_HEAP_ADDRESS + 900, output = TEST_HEAP_ADDRESS + 944;
+    VkCommandPool pool = (VkCommandPool)0x1234567800000001ULL;
+    memory->writed(allocateAddress, VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO);
+    memory->writed(allocateAddress + 4, 0);
+    memory->writeq(allocateAddress + 8, (U64)pool);
+    memory->writed(allocateAddress + 16, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    memory->writed(allocateAddress + 20, 2);
+    auto setArgs = [&](std::initializer_list<U32> args) {
+        U32 i = 0;
+        for (U32 arg : args) memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + i++ * 4, arg);
+    };
+    for (U32 iteration = 0; iteration < 8; ++iteration) {
+        vkTestAllocationFails = iteration == 0;
+        memory->writed(output, 0xcdcdcdcd); memory->writed(output + 4, 0xcdcdcdcd);
+        memory->writed(output + 8, 0xdeadbeef);
+        setArgs({0, wrapper, allocateAddress, output});
+        vk_AllocateCommandBuffers(cpu);
+        if (vkTestAllocationFails) {
+            if (memory->readd(output) || memory->readd(output + 4) || !info.commandBuffersByPool.empty())
+                testFail("Vulkan failed allocation must clear outputs without creating wrappers");
+        } else {
+            U32 first = memory->readd(output), second = memory->readd(output + 4);
+            if (!first || !second || first == second || info.commandBuffersByPool[(U64)pool].size() != 2)
+                testFail("Vulkan successful allocation must register distinct wrappers");
+            memory->writed(output + 4, 0); // vkFreeCommandBuffers permits null entries.
+            setArgs({0, wrapper, 1, 0x12345678, 2, output});
+            vk_FreeCommandBuffers(cpu);
+            if (info.commandBuffersByPool[(U64)pool].size() != 1)
+                testFail("Vulkan explicit free must retire only the named wrapper");
+            setArgs({0, wrapper, 1, 0x12345678, 0});
+            vk_DestroyCommandPool(cpu);
+            if (!info.commandBuffersByPool.empty()) testFail("Vulkan pool destruction must retire remaining wrappers");
+            U32 found = 0;
+            if (cpu->thread->process->vulkanPtrMap.get((void*)0x1234a000, found) ||
+                cpu->thread->process->vulkanPtrMap.get((void*)0x1234b000, found))
+                testFail("Vulkan command buffer wrappers survived pool destruction");
+        }
+        if (memory->readd(output + 8) != 0xdeadbeef) testFail("Vulkan command output array overrun");
+    }
+
+    info.device = (VkDevice)0x123000;
+    info.pvkCreateGraphicsPipelines = vkTestPartialPipelines;
+    info.pvkDestroyPipeline = vkTestDestroyPipeline;
+    memory->memset(allocateAddress, 0, 176); // Two guest graphics-pipeline create infos.
+    memory->writed(allocateAddress, VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
+    memory->writed(allocateAddress + 88, VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
+    output = TEST_HEAP_ADDRESS + 1200;
+    memory->memset(output, (char)0xcd, 16);
+    setArgs({0, wrapper, 0, 0, 2, allocateAddress, 0, output});
+    vk_CreateGraphicsPipelines(cpu);
+    if ((VkResult)cpu->reg[0].u32 != VK_ERROR_OUT_OF_DEVICE_MEMORY || memory->readq(output) != 0x123456789ULL ||
+        memory->readq(output + 8) || info.liveObjects.count({VK_OBJECT_TYPE_PIPELINE, 0x123456789ULL}) != 1)
+        testFail("Vulkan partial pipeline failure lost a live handle");
+    vkTestDestroyedTypes.clear();
+    setArgs({0, wrapper, 0x23456789, 1, 0});
+    vk_DestroyPipeline(cpu);
+    if (!info.liveObjects.empty() || vkTestDestroyedTypes != std::vector<VkObjectType>{VK_OBJECT_TYPE_PIPELINE})
+        testFail("Vulkan explicit destruction must retire tracked handles");
+
+    info.pvkDestroyBuffer = vkTestDestroyBuffer;
+    info.pvkDestroyImageView = vkTestDestroyImageView;
+    info.pvkDestroySwapchainKHR = vkTestDestroySwapchain;
+    info.pvkFreeMemory = vkTestFreeMemory;
+    // The same numeric handle can name objects of different types. Cleanup must
+    // preserve each one and release views/resources before swapchains/memory.
+    trackVulkanObject(&info, VK_OBJECT_TYPE_BUFFER, 7);
+    trackVulkanObject(&info, VK_OBJECT_TYPE_BUFFER, 7);
+    trackVulkanObject(&info, VK_OBJECT_TYPE_IMAGE_VIEW, 7);
+    trackVulkanObject(&info, VK_OBJECT_TYPE_SWAPCHAIN_KHR, 7);
+    registerVkMemoryAllocation(&info, (VkDeviceMemory)7, 4096);
+    vkTestDestroyedTypes.clear();
+    cleanupVulkanObjects(&info);
+    cleanupVulkanObjects(&info);
+    if (!info.liveObjects.empty() || !info.allocations.empty() || vkTestDestroyedTypes !=
+        std::vector<VkObjectType>{VK_OBJECT_TYPE_IMAGE_VIEW, VK_OBJECT_TYPE_BUFFER, VK_OBJECT_TYPE_SWAPCHAIN_KHR, VK_OBJECT_TYPE_DEVICE_MEMORY})
+        testFail("Vulkan abandoned resources cleanup order or duplicate destruction");
 #endif
 }
 

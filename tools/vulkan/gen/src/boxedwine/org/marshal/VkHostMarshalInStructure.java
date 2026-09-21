@@ -64,11 +64,11 @@ public class VkHostMarshalInStructure extends VkHostMarshal {
                 out.append(copyData.conditionToStore);
                 out.append(") {\n    ");
             }
-            out.append("    pBoxedInfo->");
-            out.append(copyData.variableName);
-            out.append("[(U64)");
-            out.append(copyData.createKey);
-            out.append("] = local_pCreateInfo;\n");
+            String cacheFunction;
+            if (copyData.marshalType.equals("MarshalVkDescriptorUpdateTemplateCreateInfo")) cacheFunction = "cacheDescriptorTemplate";
+            else if (copyData.marshalType.equals("MarshalVkImageCreateInfo")) cacheFunction = "cacheImageInfo";
+            else throw new Exception("Unowned Vulkan cache: " + copyData.marshalType);
+            out.append("    " + cacheFunction + "(pBoxedInfo, (U64)" + copyData.createKey + ", local_pCreateInfo->s);\n");
             if (copyData.conditionToStore != null) {
                 out.append("    }\n");
             }

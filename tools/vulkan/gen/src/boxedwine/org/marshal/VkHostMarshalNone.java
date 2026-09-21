@@ -30,21 +30,19 @@ public class VkHostMarshalNone extends VkHostMarshal {
         if (param.paramType != null) {
             out.append("(" + param.paramType.name + ")");
         }
-        if (param.getSize() <= 4) {
-            out.append(param.paramArg);
-        } else {
-            out.append("cpu->memory->readq(");
-            out.append(param.paramArg);
-            out.append(")");
-        }
+        out.append(param.paramArg);
         out.append(";\n");
+        if (param.objecttype != null) {
+            out.append("    " + param.name + " = translateVulkanObjectHandle(cpu->memory, (VkObjectType)"
+                    + param.objecttype + ", " + param.name + ");\n");
+        }
     }
 
     public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         if (fn.name.equals("vkFreeMemory") && param.name.equals("memory")) {
-            out.append("    unregisterVkMemoryAllocation(memory);\n");
+            out.append("    unregisterVkMemoryAllocation(pBoxedInfo, memory);\n");
         } else if (fn.name.equals("vkUnmapMemory") && param.name.equals("memory")) {
-            out.append("    unmapVkMemory(memory);\n");
+            out.append("    unmapVkMemory(pBoxedInfo, memory);\n");
         }
     }
 }

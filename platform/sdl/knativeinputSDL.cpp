@@ -422,7 +422,7 @@ bool KNativeInputSDL::checkMousePos(int& x, int& y, bool allowWarp) {
     if (allowWarp && warp) {
         int scaledX = xToScreen(x);
         int scaledY = yToScreen(y);
-        KNativeSystem::getScreen()->warpMouse(scaledX, scaledY);
+        KNativeSystem::warpMouse(scaledX, scaledY);
     }
     return allowWarp || !warp;
 }
@@ -834,7 +834,10 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
             }
         }
     } else if (e->type == SDL_WINDOWEVENT) {
-        if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+        if (e->window.event == SDL_WINDOWEVENT_CLOSE) {
+            KNativeSystem::closeVulkanWindow(e->window.windowID);
+        } else if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+            KNativeSystem::focusVulkanWindow(e->window.windowID);
             for (auto& callback : onFocusGained) {
                 callback();
             }

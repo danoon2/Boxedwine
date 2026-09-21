@@ -17,7 +17,7 @@ extension LibraryRepository {
         let package = try validateWine(runtime, control: control)
         guard package.info.wineVersion == demo.wineVersion else { throw DemoError.wineVersion(demo.wineVersion) }
         if demo.glide != nil {
-            guard package.info.wineVersion == "11.0", package.info.filesystemVersion == "11" else { throw DemoError.glideMissing }
+            guard package.info.wineVersion == "11.0", ["11", "12"].contains(package.info.filesystemVersion) else { throw DemoError.glideMissing }
             let path = Self.driveC + "/windows/system32/glide2x.dll"
             let files = try DemoRegistry.read([path], from: runtime, control: control, missing: DemoError.glideMissing)
             guard files[path]?.prefix(2) == Data("MZ".utf8) else { throw DemoError.glideMissing }
