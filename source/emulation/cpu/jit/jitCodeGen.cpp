@@ -207,18 +207,18 @@ static void initDynamicOps() {
 
 #undef INIT_CPU    
 
-    dynamicOps[SLDTReg] = 0;
-    dynamicOps[SLDTE16] = 0;
-    dynamicOps[STRReg] = 0;
-    dynamicOps[STRE16] = 0;
+    dynamicOps[SLDTReg] = &Jit::dynamic_descriptor_query;
+    dynamicOps[SLDTE16] = &Jit::dynamic_descriptor_query;
+    dynamicOps[STRReg] = &Jit::dynamic_descriptor_query;
+    dynamicOps[STRE16] = &Jit::dynamic_descriptor_query;
     dynamicOps[LLDTR16] = 0;
     dynamicOps[LLDTE16] = 0;
     dynamicOps[LTRR16] = 0;
     dynamicOps[LTRE16] = 0;
     dynamicOps[VERRR16] = 0;
     dynamicOps[VERWR16] = 0;
-    dynamicOps[SGDT] = 0;
-    dynamicOps[SIDT] = &Jit::dynamic_sidt;
+    dynamicOps[SGDT] = &Jit::dynamic_descriptor_query;
+    dynamicOps[SIDT] = &Jit::dynamic_descriptor_query;
     dynamicOps[LGDT] = 0;
     dynamicOps[LIDT] = 0;
     dynamicOps[SMSWRreg] = 0;

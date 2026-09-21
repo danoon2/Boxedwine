@@ -4405,8 +4405,8 @@ public:
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
-        case 0x00: func(data, op, rm, SLDTReg, SLDTE16); break;
-        case 0x01: func(data, op, rm, STRReg, STRE16); break;
+        case 0x00: func(data, op, rm, SLDTReg, SLDTE16); op->imm = 32; break;
+        case 0x01: func(data, op, rm, STRReg, STRE16); op->imm = 32; break;
         case 0x02: func(data, op, rm, LLDTR16, LLDTE16); break;
         case 0x03: func(data, op, rm, LTRR16, LTRE16); break;
         case 0x04: func(data, op, rm, VERRR16, VERRE16); break;
@@ -4422,8 +4422,8 @@ public:
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
-        case 0x00: func(data, op, rm, SLDTReg, SLDTE16); break;
-        case 0x01: func(data, op, rm, STRReg, STRE16); break;
+        case 0x00: func(data, op, rm, SLDTReg, SLDTE16); op->imm = 16; break;
+        case 0x01: func(data, op, rm, STRReg, STRE16); op->imm = 16; break;
         case 0x02: func(data, op, rm, LLDTR16, LLDTE16); break;
         case 0x03: func(data, op, rm, LTRR16, LTRE16); break;
         case 0x04: func(data, op, rm, VERRR16, VERRE16); break;
@@ -6032,7 +6032,7 @@ const Decode* const decoder[] = {
     &decodeLock, &decodeICEBP, &decodeRepNZ, &decodeRepZ, &decodeHlt, &decodeCmc, &decodeGroup3_8, &decodeGroup3_16,
     &decodeClc, &decodeStc, &decodeCli, &decodeSti, &decodeCld, &decodeStd, &decodeGroup4_8, &decodeGroup5_16,
     // 0x100
-    &decodeGroup6_16, nullptr, &decodeLar16, &decodeLsl16, nullptr, nullptr, nullptr, nullptr,
+    &decodeGroup6_16, &decodeGroup7_32, &decodeLar16, &decodeLsl16, nullptr, nullptr, nullptr, nullptr,
     nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x110
     &sse2Movupd, &sse2Movupd_r, &sseMov0x112, &sseMov0x113, &sseMov0x114, &sseMov0x115, &sseMov0x116, &sseMov0x117,

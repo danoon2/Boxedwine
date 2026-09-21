@@ -606,6 +606,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testInt2dRaisesInterruptProtectionFault, "Test int 2d raises interrupt protection fault", TEST_ENTRY_SERIAL},
     {testInt3ImmediateRaisesBreakpoint, "Test int 3 immediate raises breakpoint", TEST_ENTRY_SERIAL},
     {testPortIoRaisesProtectionFault, "Test port I/O raises protection fault", TEST_ENTRY_SERIAL},
+    {testDescriptorTableQueries, "Test descriptor table queries"},
+    {testDescriptorSelectorQueries, "Test descriptor selector queries"},
     {testHltRaisesProtectionFault, "Test hlt raises protection fault", TEST_ENTRY_SERIAL},
     {testInvalidInterruptRaisesProtectionFault, "Test invalid interrupt raises protection fault", TEST_ENTRY_SERIAL},
     {testControlRegisterAccessRaisesProtectionFault, "Test control register access raises protection fault", TEST_ENTRY_SERIAL},
