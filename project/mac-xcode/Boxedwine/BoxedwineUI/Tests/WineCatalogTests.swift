@@ -40,7 +40,8 @@ struct WineCatalogTests {
         let catalog = try WineCatalog.load(xml: Data(contentsOf: resources.appendingPathComponent("filesV2.xml")), fingerprints: Data(contentsOf: resources.appendingPathComponent("packages.json")))
         #expect(catalog.wines.map(\.wineVersion) == ["11.0", "10.0", "9.0", "6.0", "5.0", "4.1", "3.1"])
         #expect(catalog.wines.allSatisfy { $0.url.scheme == "https" })
-        #expect(catalog.wines.first?.fileVersion == "11")
+        #expect(catalog.wines.first?.fileVersion == "12")
+        #expect(catalog.wines.first?.filesystemVersion == "12")
     }
 
     @Test func rejectsMalformedOrUnpinnedCatalogChoices() throws {

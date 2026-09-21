@@ -37,7 +37,7 @@ class DistributionResourcesTests(unittest.TestCase):
             url = "https://boxedwine.org/" + version + ".zip"
             for key, value in {"WineVersion": version, "FileURL": url}.items():
                 ET.SubElement(entry, key).text = value
-            self.pins[url] = {"bytes": self.wine.stat().st_size, "sha256": hashlib.sha256(self.wine.read_bytes()).hexdigest(), "filesystemVersion": "11"}
+            self.pins[url] = {"bytes": self.wine.stat().st_size, "sha256": hashlib.sha256(self.wine.read_bytes()).hexdigest(), "filesystemVersion": "12"}
         (support / "filesV2.xml").write_bytes(ET.tostring(xml))
         (support / "packages.json").write_text(json.dumps(self.pins))
         (self.source / "PrivacyInfo.xcprivacy").write_bytes(plistlib.dumps({"NSPrivacyTracking": False, "NSPrivacyCollectedDataTypes": [{"test": "download logs"}]}))
