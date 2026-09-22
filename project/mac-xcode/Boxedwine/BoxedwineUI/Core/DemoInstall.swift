@@ -29,7 +29,6 @@ extension LibraryRepository {
         try demo.settings?.validate()
         guard (demo.cncDDrawRenderer == nil && !demo.cncDDrawUncapped && demo.cncDDrawMode == nil) || demo.settings?.cncDDraw == true else { throw DemoError.catalog("CNC DDraw configuration requires CNCDDraw.") }
         app.demoSettings = demo.settings
-        app.boxedwineArguments = demo.glide?.boxedwineArguments
         app.windowsVersion = demo.settings?.windowsVersion.flatMap { WindowsVersion(rawValue: $0.rawValue) }
         if app.windowsVersion != nil { app.windowsVersionPending = true }
         if let resolution = demo.settings?.resolution { app.resolution = resolution }

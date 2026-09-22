@@ -2,8 +2,8 @@
 
 Native Xcode builds install the standard public-API MoltenVK **1.4.2** artifact
 pinned in `resources/moltenvk.lock.json`. The `Boxedwine` target prepares it before
-linking; `BoxedwineUI` embeds and re-signs it. The existing Mac dependency archive
-continues to supply SDL. No graphics default or guest Wine package is changed.
+linking; `BoxedwineUI` embeds and re-signs it. SDL is prepared from its own
+[Mac dependency pin](../sdl/README.md). No graphics default or guest Wine package is changed.
 
 The official library is universal arm64/x86_64, with a macOS 12 minimum; the
 native app still requires macOS 15. The private-API artifact is not used.

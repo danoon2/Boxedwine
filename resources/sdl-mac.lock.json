@@ -1,0 +1,8 @@
+{
+  "version": "2.32.10",
+  "url": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.dmg",
+  "bytes": 2041846,
+  "sha256": "4a7ac31640d70214e848f994be8a12849c0f97918a7e6c2e27a40036166d1a7f",
+  "frameworkSHA256": "bc96277325b2e1dc75a13cf70f5ddcf63005d29e93f54a8b7adc7f5c3c017b91",
+  "frameworkTreeSHA256": "98c5f7a66f022cf569b2825cc3d2234e6ce1d7e820eebe99ac15e8b0c1ba64c6"
+}

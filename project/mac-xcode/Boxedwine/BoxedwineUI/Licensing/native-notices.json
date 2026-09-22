@@ -53,18 +53,18 @@
     },
     {
       "id": "sdl",
-      "name": "SDL 2.0.14",
+      "name": "SDL 2.32.10",
       "license": "zlib; additional notices",
-      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
-      "sourceDescription": "The SDL framework and nested hidapi framework match the official SDL 2.0.14 Mac distribution.",
+      "sourceURL": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz",
+      "sourceDescription": "The framework matches the official SDL 2.32.10 Mac distribution; hidapi is compiled into SDL.",
       "notices": [
         {
           "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL.txt",
-          "sha256": "7a771248ca372e2dff4887c921543699847ae44c56d7558692f5860237f1f914"
+          "sha256": "97f35b302b361680ec1e891e95d2d52097bb95abff361434916d99dc1305f127"
         },
         {
           "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL-additional.txt",
-          "sha256": "9d3d6098d20d4f0fceae43563434f36471d1ffde11a3a3071d5a64cca6f917bc"
+          "sha256": "ad5c06258198f6b00fed817a5420fe08453327c4f702c8f20f2544c955007dc7"
         }
       ]
     },
@@ -72,7 +72,7 @@
       "id": "yuv2rgb",
       "name": "yuv2rgb (in SDL)",
       "license": "BSD-3-Clause",
-      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "sourceURL": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz",
       "sourceDescription": "Color conversion code included with SDL.",
       "notices": [
         {
@@ -83,13 +83,13 @@
     },
     {
       "id": "hidapi",
-      "name": "hidapi (in SDL 2.0.14)",
+      "name": "hidapi (in SDL 2.32.10)",
       "license": "BSD-style license",
-      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "sourceURL": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz",
       "sourceDescription": "This distribution uses the BSD-style option from hidapi\u2019s alternative licenses. Source is in SDL\u2019s src/hidapi directory.",
       "notices": [
         {
-          "path": "lib/sdl2/src/hidapi/LICENSE-bsd.txt",
+          "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL-hidapi.txt",
           "sha256": "30eb1bef29b46f8ba7ab8b416035dbd93cb034a45481dd97815b944284582cd2"
         }
       ]
@@ -340,20 +340,20 @@
   "externalNotices": [
     {
       "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL.txt",
-      "sha256": "ae4df3759a726538607b84c00ab8f8a5567d9f38ad5397486eb9b5c5f626caef",
-      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
-      "archiveMember": "SDL2-2.0.14/COPYING.txt"
+      "sha256": "97f35b302b361680ec1e891e95d2d52097bb95abff361434916d99dc1305f127",
+      "sourceURL": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz",
+      "archiveMember": "SDL2-2.32.10/LICENSE.txt"
     },
     {
       "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL-yuv2rgb.txt",
       "sha256": "f7d74004cc75778cae46c5f0139f244d67c07ef64cf51937e8272352197dcb18",
-      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
-      "archiveMember": "SDL2-2.0.14/src/video/yuv2rgb/LICENSE"
+      "sourceURL": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz",
+      "archiveMember": "SDL2-2.32.10/src/video/yuv2rgb/LICENSE"
     },
     {
       "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL-additional.txt",
-      "sha256": "9d3d6098d20d4f0fceae43563434f36471d1ffde11a3a3071d5a64cca6f917bc",
-      "sourceURL": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
+      "sha256": "ad5c06258198f6b00fed817a5420fe08453327c4f702c8f20f2544c955007dc7",
+      "sourceURL": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz",
       "archiveMember": "src/stdlib/SDL_qsort.c; src/libm/e_pow.c (copyright blocks)"
     },
     {
@@ -422,6 +422,12 @@
       "sourceURL": "http://www.tinycorelinux.net/faq.html#license",
       "archiveMember": null,
       "description": "Boxedwine-authored project acknowledgment summarizing Tiny Core\u2019s own FAQ; not a copy of a distribution-wide license manifest."
+    },
+    {
+      "path": "project/mac-xcode/Boxedwine/BoxedwineUI/Licensing/Notices/SDL-hidapi.txt",
+      "sha256": "30eb1bef29b46f8ba7ab8b416035dbd93cb034a45481dd97815b944284582cd2",
+      "sourceURL": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz",
+      "archiveMember": "SDL2-2.32.10/src/hidapi/LICENSE-bsd.txt"
     }
   ]
 }

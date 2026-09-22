@@ -42,7 +42,7 @@ The native demo catalog and icons are downloaded at build time using the shared 
 
 The emulator’s Debug configuration uses `CLANG_CXX_STANDARD_LIBRARY_HARDENING=extensive`. Xcode 26.5 otherwise enables debug-mode checks that walk the whole JIT address map on each insertion or removal, making Wine startup appear stuck. Extensive mode retains standard-library safety checks without those internal invariant scans; emulator assertions, debug symbols, and unoptimized source-level debugging remain enabled.
 
-The native `Boxedwine` target also prepares the checksum-pinned public-API MoltenVK build before linking. It downloads only when the required library/cache is absent. See [MoltenVK build inputs and verification](tools/moltenvk/README.md).
+The native `Boxedwine` target also prepares checksum-pinned SDL 2.32.10 and public-API MoltenVK builds before linking. It downloads only when the required dependency/cache is absent. SDL 2.32.10 fixes the hidden-window Metal renderer shutdown crash encountered during background Wine configuration with Xcode Metal validation enabled. See [SDL build inputs and verification](tools/sdl/README.md) and [MoltenVK build inputs and verification](tools/moltenvk/README.md).
 
 ## Linux
 

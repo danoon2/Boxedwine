@@ -3503,13 +3503,13 @@
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = ();
-			inputPaths = ("$(SRCROOT)/../../../resources/moltenvk.lock.json", "$(SRCROOT)/../../../tools/fetch_moltenvk.py");
-			name = "Prepare Pinned MoltenVK";
-			outputPaths = ("$(SRCROOT)/../../../lib/mac/vulkan/lib/libMoltenVK.dylib");
+			inputPaths = ("$(SRCROOT)/../../../resources/moltenvk.lock.json", "$(SRCROOT)/../../../tools/fetch_moltenvk.py", "$(SRCROOT)/../../../resources/sdl-mac.lock.json", "$(SRCROOT)/../../../tools/fetch_sdl.py");
+			name = "Prepare Pinned SDL and MoltenVK";
+			outputPaths = ("$(SRCROOT)/../../../lib/mac/vulkan/lib/libMoltenVK.dylib", "$(SRCROOT)/../../../lib/mac/SDL2.framework");
 			alwaysOutOfDate = 1;
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/../../../tools/fetch_moltenvk.py\"\n";
+			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/../../../tools/fetch_sdl.py\"\n/usr/bin/python3 \"$SRCROOT/../../../tools/fetch_moltenvk.py\"\n";
 		};
 
 	};

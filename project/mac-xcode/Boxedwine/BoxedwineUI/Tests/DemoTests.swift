@@ -128,7 +128,7 @@ struct DemoTests {
         #expect(!FileManager.default.fileExists(atPath: f.repository.directory.appendingPathComponent("Applications").path))
     }
 
-    @Test(arguments: ["11", "12"]) func glideRecipePreparesInstallerAndPreservesGameConfiguration(filesystemVersion: String) async throws {
+    @Test(arguments: ["11", "12"]) func glideRecipePreparesInstallerWithoutRendererOverrides(filesystemVersion: String) async throws {
         let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
         var files = ZipFixture.files
         files[1].data = Data(filesystemVersion.utf8)
@@ -140,8 +140,9 @@ struct DemoTests {
         var app = try await f.repository.importDemo(entry, runtime: f.runtime, downloader: Download(data: data))
         let wine = try f.repository.savedRuntimeURL(for: app)
         #expect(app.windowsVersion == .win98 && app.windowsVersionPending == true)
+        #expect(app.boxedwineArguments == nil)
         #expect(throws: WindowsCompatibilityError.self) { try LaunchRequest(app: app, repository: f.repository, wineZip: wine, installing: true).arguments() }
-        #expect(try f.repository.readOperation(app.id).version == 6)
+        #expect(try f.repository.readOperation(app.id).version == 4)
         app.windowsVersionPending = false
         app.executable = LibraryRepository.driveC + "/game.exe"
         let game = f.repository.root(for: app).appendingPathComponent(app.executable!)
@@ -149,12 +150,12 @@ struct DemoTests {
         try Data("MZgame".utf8).write(to: game)
         try f.repository.save([app])
         let saved = try #require(f.repository.load().first)
-        #expect(try f.repository.loadDocument().version == 9)
+        #expect(try f.repository.loadDocument().version == 7)
         for installing in [true, false] {
             let args = try LaunchRequest(app: saved, repository: f.repository, wineZip: wine, installing: installing).arguments()
             let boundary = try #require(args.firstIndex(of: "/bin/wine"))
-            #expect(args[..<boundary].contains("WINEDLLOVERRIDES=d3d9=b"))
-            #expect(args[..<boundary].contains("WINE_D3D_CONFIG=renderer=gl"))
+            #expect(!args[..<boundary].contains("WINEDLLOVERRIDES=d3d9=b"))
+            #expect(!args[..<boundary].contains("WINE_D3D_CONFIG=renderer=gl"))
             #expect(args.contains(installing ? "1024x768" : "640x480"))
             #expect(!args.contains("-dxvk"))
         }

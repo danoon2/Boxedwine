@@ -16,7 +16,6 @@ def validate_inputs():
     records = json.loads(SOURCES.read_text())
     inputs = {
         "lib/mac/SDL2.framework/Versions/A/SDL2": records["sdl"]["frameworkSHA256"],
-        "lib/mac/SDL2.framework/Versions/A/Frameworks/hidapi.framework/Versions/A/hidapi": records["sdl"]["hidapiSHA256"],
         "lib/mac/vulkan/lib/libMoltenVK.dylib": records["moltenvk"]["librarySHA256"],
     }
     for path, expected in inputs.items():

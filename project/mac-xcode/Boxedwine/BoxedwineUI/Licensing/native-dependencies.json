@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "date": "2026-09-14",
+  "date": "2026-09-21",
   "scope": "Native Mac dependencies; guest Wine filesystems remain a separate work item.",
   "artifacts": [
     {
@@ -10,16 +10,16 @@
       "sha256": "060d52bacf869e99111cbf16a98087acc2f3d0ee55013a84088e1b08845040d1"
     },
     {
-      "file": "SDL2-2.0.14.dmg",
-      "url": "https://www.libsdl.org/release/SDL2-2.0.14.dmg",
-      "bytes": 1717740,
-      "sha256": "05ee7538e4617e561333e7a85e5d9ef9813d3e5352e91c10e7f8912f86378793"
+      "file": "SDL2-2.32.10.dmg",
+      "url": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.dmg",
+      "bytes": 2041846,
+      "sha256": "4a7ac31640d70214e848f994be8a12849c0f97918a7e6c2e27a40036166d1a7f"
     },
     {
-      "file": "SDL2-2.0.14.tar.gz",
-      "url": "https://www.libsdl.org/release/SDL2-2.0.14.tar.gz",
-      "bytes": 6089974,
-      "sha256": "d8215b571a581be1332d2106f8036fcb03d12a70bae01e20f424976d275432bc"
+      "file": "SDL2-2.32.10.tar.gz",
+      "url": "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz",
+      "bytes": 7630262,
+      "sha256": "5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165"
     },
     {
       "file": "MoltenVK-macos-1.4.2.tar",
@@ -65,18 +65,18 @@
     }
   ],
   "sdl": {
-    "version": "2.0.14",
-    "upstreamBinary": "SDL2-2.0.14.dmg",
-    "source": "SDL2-2.0.14.tar.gz",
-    "frameworkSHA256": "1b11de3d606e85fed9cad1f54bc2a833e99e6fc1e67fb2e748cdb666dbd0f681",
-    "hidapiSHA256": "91530ffddb401bbc72d40c97313c0da25c67db209753b6aec5c8556b59930e00",
-    "verification": "Both original input Mach-O binaries match the official distribution byte for byte. hidapi source is the revision bundled inside the exact SDL source archive, not an inferred standalone hidapi version. Xcode re-signs copies for distribution.",
-    "buildRecipe": "SDL source archive: Xcode/SDL/SDL.xcodeproj and Xcode/SDL/pkg-support. Original producer flags are not independently reproduced."
+    "version": "2.32.10",
+    "upstreamBinary": "SDL2-2.32.10.dmg",
+    "source": "SDL2-2.32.10.tar.gz",
+    "frameworkSHA256": "bc96277325b2e1dc75a13cf70f5ddcf63005d29e93f54a8b7adc7f5c3c017b91",
+    "verification": "Original framework matches the official distribution byte for byte. hidapi is statically included, from the source bundled with this SDL release. Xcode re-signs copies for distribution.",
+    "buildRecipe": "SDL source archive: Xcode/SDL/SDL.xcodeproj and Xcode/SDL/pkg-support. Original producer flags are not independently reproduced.",
+    "frameworkTreeSHA256": "98c5f7a66f022cf569b2825cc3d2234e6ce1d7e820eebe99ac15e8b0c1ba64c6"
   },
   "macArchive": {
     "urlVersion": 4,
     "embeddedVersion": 3,
-    "verification": "Fresh archive download contains the same SDL/hidapi and former MoltenVK 1.2.11 binaries as the local inputs. Native builds now replace only MoltenVK from its separate project pin."
+    "verification": "Legacy dependency bootstrap archive. Native builds replace SDL and MoltenVK from their separate checksum pins before linking."
   },
   "moltenvk": {
     "version": "1.4.2",
@@ -114,12 +114,8 @@
   ],
   "bundleUUIDs": {
     "Contents/Frameworks/SDL2.framework/Versions/A/SDL2": {
-      "arm64": "669D8984-5088-364C-9A40-BDE8832C8C7F",
-      "x86_64": "F76D1DCE-E79F-3F3F-B875-A09B769E1441"
-    },
-    "Contents/Frameworks/SDL2.framework/Versions/A/Frameworks/hidapi.framework/Versions/A/hidapi": {
-      "arm64": "13178673-8B4A-3EB0-9205-8B3D5FD50A13",
-      "x86_64": "BAAC976E-A6DB-3107-8F5F-B779D6F51EC3"
+      "arm64": "CFA6ABC0-6D18-3C21-9624-803EE9E3A0DE",
+      "x86_64": "7A90032C-B32D-3062-BB91-33AECF7CAC1A"
     },
     "Contents/Frameworks/libMoltenVK.dylib": {
       "arm64": "12DD3985-CB0F-3D18-A8D2-960940A8356A",

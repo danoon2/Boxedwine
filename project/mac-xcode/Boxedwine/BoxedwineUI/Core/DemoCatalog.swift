@@ -48,11 +48,6 @@ struct Demo: Identifiable, Equatable, Sendable {
     }
     enum Glide: String, Sendable {
         case psVoodoo
-        // Saved as ordinary Advanced options so backups, recovery and Wine test
-        // copies retain the configuration using the existing format guarantees.
-        var boxedwineArguments: [String] {
-            ["-env", "WINEDLLOVERRIDES=d3d9=b", "-env", "WINE_D3D_CONFIG=renderer=gl"]
-        }
     }
     let origin: DemoOrigin
     var id: String { origin.id }

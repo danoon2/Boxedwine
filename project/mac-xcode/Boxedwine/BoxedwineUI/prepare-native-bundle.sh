@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-# SDL's vendored framework contains a nested hidapi framework. Sign inside out;
-# Xcode's Code Sign On Copy only signs the enclosing SDL framework.
+# SDL 2.32.10 includes hidapi in its main binary. Remove the former nested
+# framework if Xcode's incremental copy left it behind, then sign SDL again.
 framework_dir="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
 /bin/sh "$SRCROOT/../remove-mesa-libraries.sh"
 # Former helper names must not survive in an incremental application bundle.
@@ -13,8 +13,8 @@ rm -rf "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/BoxedwineRuntime.app" \
 rm -f "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/MacOS/Boxedwine"
 sdl_framework="$framework_dir/SDL2.framework"
 hidapi_framework="$sdl_framework/Versions/A/Frameworks/hidapi.framework"
-if [ "${CODE_SIGNING_ALLOWED:-YES}" != NO ] && [ -d "$hidapi_framework" ]; then
-    /usr/bin/codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --options runtime "$hidapi_framework"
+rm -rf "$hidapi_framework"
+if [ "${CODE_SIGNING_ALLOWED:-YES}" != NO ]; then
     /usr/bin/codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --options runtime "$sdl_framework"
 fi
 

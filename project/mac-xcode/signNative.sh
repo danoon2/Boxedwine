@@ -25,7 +25,6 @@ sign() {
 # Each executable gets its own entitlements. Libraries need no app entitlements.
 # Do not use --deep when signing: it would apply the same options to nested code.
 frameworks="$app/Contents/Frameworks"
-sign "$frameworks/SDL2.framework/Versions/A/Frameworks/hidapi.framework"
 sign "$frameworks/SDL2.framework"
 sign "$frameworks/libMoltenVK.dylib"
 sign --entitlements "$native_dir/Boxedwine.entitlements" "$app/Contents/Helpers/BoxedwineEngine.app"

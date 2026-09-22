@@ -1,6 +1,6 @@
 src/stdlib/SDL_qsort.c
 
-/* Copyright (c) 1998-2016 Gareth McCaughan
+/* Copyright (c) 1998-2021 Gareth McCaughan
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any
