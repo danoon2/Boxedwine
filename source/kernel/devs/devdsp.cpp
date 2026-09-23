@@ -112,9 +112,13 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
 
 #ifdef __EMSCRIPTEN__
 U32 DevDsp::getEffectiveBufferCapacity() {
-    U32 capacity = this->audio->getBufferCapacity();
-    U32 fragmentCapacity = this->audio->getFragmentSize() * this->fragmentCount;
-    return std::min(capacity, fragmentCapacity ? fragmentCapacity : capacity);
+    // Wine queries buffer space before its first write opens the host device.
+    // Negotiate in the selected PCM format, not the constructor's mono U8.
+    this->audio->configureAudio(this->format, this->freq, this->channels);
+    // SETFRAGMENT is a negotiation hint. A voice starting on the worklet uses
+    // fixed geometry, including after SDL fallback, so Wine's cached capacity
+    // and GETOPTR's fragment divisor remain valid throughout playback.
+    return this->audio->getBufferCapacity(this->fragmentCount);
 }
 
 U32 DevDsp::getUsedBufferSize() {

@@ -25,6 +25,18 @@
 
 #define DSP_BUFFER_SIZE (1024*32)
 
+#ifdef __EMSCRIPTEN__
+extern "C" {
+    int bw_audio_available();
+    int bw_audio_open(int channels, int rate, int targetFrames);
+    int bw_audio_status(int id);
+    U32 bw_audio_queued(int id);
+    int bw_audio_queue(int id, const void* pcm, int frames);
+    void bw_audio_close(int id, int drain);
+    void bw_audio_shutdown();
+}
+#endif
+
 class KDspAudioSdl : public KDspAudio, public std::enable_shared_from_this<KDspAudioSdl> {
 public:
 	KDspAudioSdl() {
@@ -35,6 +47,10 @@ public:
 		this->got.channels = 1;
 		this->got.freq = 11025;
 		this->got.samples = this->want.samples;
+#ifdef __EMSCRIPTEN__
+		this->preferWorklet = bw_audio_available() != 0;
+		this->useWorkletBufferLayout = this->preferWorklet;
+#endif
 	}
 
 	virtual ~KDspAudioSdl() {
@@ -43,6 +59,9 @@ public:
 			SDL_free(this->cvtBuf);
 		}
 #ifdef __EMSCRIPTEN__
+		if (this->webDevice) {
+			bw_audio_close(this->webDevice, 0);
+		}
 		if (this->stream) {
 			SDL_FreeAudioStream(this->stream);
 		}
@@ -54,11 +73,26 @@ public:
 	}
 
 	void openAudio(U32 format, U32 freq, U32 channels) override;
+#ifdef __EMSCRIPTEN__
+	void configureAudio(U32 format, U32 freq, U32 channels) override {
+		this->want.format = getSdlFormat(format);
+		this->want.freq = freq;
+		this->want.channels = channels;
+	}
+#endif
 	void soundEnabled() override;
 	bool isOpen() override { return this->open; }
 	void closeAudio() override;
 	U32 writeAudio(U8* data, U32 len) override;
-	U32 getFragmentSize() override {return this->dspFragSize;}
+	U32 getFragmentSize() override {
+#ifdef __EMSCRIPTEN__
+		if (this->useWorkletBufferLayout) {
+			return KDspAudioMath::getWorkletBufferLayout(this->want.freq,
+				bytesPerSampleWant() * this->want.channels).fragmentBytes;
+		}
+#endif
+		return this->dspFragSize;
+	}
 	void setFragmentSize(U32 size) override;
 	U32 getBufferSize() override {
 #ifdef __EMSCRIPTEN__
@@ -67,9 +101,12 @@ public:
 		return this->getQueuedAudioSizeWant();
 #endif
 	}
-	U32 getBufferCapacity() override {
+	U32 getBufferCapacity(U32 maxFragments = 0) override {
 #ifdef __EMSCRIPTEN__
-		return DSP_BUFFER_SIZE;
+		if (this->useWorkletBufferLayout) {
+			return getWriteCapacityWant();
+		}
+		return maxFragments ? std::min((U32)DSP_BUFFER_SIZE, getFragmentSize() * maxFragments) : DSP_BUFFER_SIZE;
 #else
 		return this->getWriteCapacityWant();
 #endif
@@ -94,6 +131,12 @@ public:
 	}
 
 	U32 getWriteCapacityWant() {
+#ifdef __EMSCRIPTEN__
+		if (this->useWorkletBufferLayout) {
+			return KDspAudioMath::getWorkletBufferLayout(this->want.freq,
+				bytesPerSampleWant() * this->want.channels).capacityBytes;
+		}
+#endif
 		return KDspAudioMath::getWriteCapacity(bytesPerSecondWant(), getFragmentSize(), DSP_BUFFER_SIZE);
 	}
 
@@ -133,7 +176,70 @@ public:
 
 #ifdef __EMSCRIPTEN__
 	U32 getGuestQueuedAudioSizeWant() {
+		if (this->useWorkletBufferLayout && !KSystem::soundEnabled) {
+			this->drainNoSoundAudioBuffer();
+			return (U32)this->audioBuffer.size();
+		}
+		if (this->webDevice) {
+			// The ring holds guest-rate float PCM. Its reader advances only as
+			// the worklet resamples those frames into the hardware output clock.
+			// One main-thread round trip returns queued frames or a failure.
+			S32 queued = bw_audio_status(this->webDevice);
+			this->webFailed = queued < 0;
+			return (queued < 0 ? 0 : (U32)queued) * this->want.channels * bytesPerSampleWant();
+		}
 		return this->getEstimatedRealQueuedWant();
+	}
+#endif
+
+	bool hasDevice() {
+#ifdef __EMSCRIPTEN__
+		if (this->webDevice) return true;
+#endif
+		return this->deviceId != 0;
+	}
+
+	U32 getDeviceQueuedBytes() {
+#ifdef __EMSCRIPTEN__
+		if (this->webDevice) return bw_audio_queued(this->webDevice) * this->got.channels * sizeof(float);
+#endif
+		return this->deviceId ? SDL_GetQueuedAudioSize(this->deviceId) : 0;
+	}
+
+	void closeDevice() {
+#ifdef __EMSCRIPTEN__
+		if (this->webDevice) {
+			bw_audio_close(this->webDevice, 0);
+			this->webDevice = 0;
+		}
+#endif
+		if (this->deviceId) {
+			SDL_CloseAudioDevice(this->deviceId);
+			this->deviceId = 0;
+		}
+	}
+
+	void queueDeviceAudio(const void* data, U32 bytes) {
+#ifdef __EMSCRIPTEN__
+		if (this->webDevice) {
+			U32 frames = bytes / (sizeof(float) * this->got.channels);
+			if (bw_audio_queue(this->webDevice, data, frames) != (int)frames) {
+				kwarn("AudioWorklet PCM queue rejected a write");
+			}
+			return;
+		}
+#endif
+		SDL_QueueAudio(this->deviceId, data, bytes);
+	}
+
+#ifdef __EMSCRIPTEN__
+	void drainStream() {
+		int available = SDL_AudioStreamAvailable(this->stream);
+		if (available > 0) {
+			this->streamBuffer.resize(available);
+			int bytes = SDL_AudioStreamGet(this->stream, this->streamBuffer.data(), available);
+			if (bytes > 0) queueDeviceAudio(this->streamBuffer.data(), bytes);
+		}
 	}
 #endif
 
@@ -185,6 +291,11 @@ public:
 	bool writeWatchActive = false;
 	bool writeWatchListed = false;
 #ifdef __EMSCRIPTEN__
+	bool preferWorklet = false;
+	// Keep the negotiated OSS geometry even if output falls back to SDL.
+	bool useWorkletBufferLayout = false;
+	int webDevice = 0;
+	bool webFailed = false;
 	U32 realQueuedWant = 0;
 	U32 lastRealQueuedTime = 0;
 	std::vector<U8> silenceBuffer;
@@ -252,11 +363,8 @@ static Uint32 SDLCALL drainTimerCb(Uint32 interval, void* /*param*/) {
 		auto it = pendingCloses.begin();
 		while (it != pendingCloses.end()) {
 			std::shared_ptr<KDspAudioSdl> v = *it;
-			if (!v->deviceId || SDL_GetQueuedAudioSize(v->deviceId) == 0) {
-				if (v->deviceId) {
-					SDL_CloseAudioDevice(v->deviceId);
-					v->deviceId = 0;
-				}
+			if (!v->hasDevice() || v->getDeviceQueuedBytes() == 0) {
+				v->closeDevice();
 				it = pendingCloses.erase(it);
 			} else {
 				++it;
@@ -299,13 +407,18 @@ static void ensureDrainTimer() {
 		if (!SDL_WasInit(SDL_INIT_TIMER)) {
 			SDL_InitSubSystem(SDL_INIT_TIMER);
 		}
+#ifdef __EMSCRIPTEN__
+		// Wake a blocked Wine writer before the worklet queue runs dry.
+		drainTimer = SDL_AddTimer(5, drainTimerCb, nullptr);
+#else
 		drainTimer = SDL_AddTimer(50, drainTimerCb, nullptr);
+#endif
 	}
 }
 
 bool KDspAudioSdl::isWriteReady() {
 #ifdef __EMSCRIPTEN__
-	return this->getGuestQueuedAudioSizeWant() < DSP_BUFFER_SIZE;
+	return this->getGuestQueuedAudioSizeWant() + getFragmentSize() <= getBufferCapacity();
 #else
 	U32 capacity = getWriteCapacityWant();
 	if (!capacity) {
@@ -375,10 +488,7 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 			}
 		}
 		// Close any prior device on this voice (reopening drops any still-queued audio).
-		if (this->deviceId) {
-			SDL_CloseAudioDevice(this->deviceId);
-			this->deviceId = 0;
-		}
+		this->closeDevice();
 #ifdef __EMSCRIPTEN__
 		if (this->stream) {
 			SDL_FreeAudioStream(this->stream);
@@ -387,6 +497,26 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 #endif
 	}
 
+#ifdef __EMSCRIPTEN__
+	this->preferWorklet = this->preferWorklet && bw_audio_available();
+	if (this->preferWorklet) {
+		this->webFailed = false;
+		this->webDevice = bw_audio_open(channels, freq,
+			getWriteCapacityWant() / (bytesPerSampleWant() * channels));
+		this->preferWorklet = this->webDevice != 0;
+	}
+	if (this->webDevice) {
+		this->got = this->want;
+		this->got.format = AUDIO_F32SYS;
+		// SDL converts sample format only. Its streaming rate converter needs
+		// 512 lookahead frames, which exceeds our entire queue at 11025 Hz.
+		// The worklet performs continuous rate conversion with 16 lookahead.
+		this->got.freq = this->want.freq;
+		this->got.samples = 128;
+		this->got.silence = 0;
+	} else
+#endif
+	{
     SDL_AudioSpec requested = this->want;
 #ifdef __MACH__
     if (requested.freq < 44100) {
@@ -399,6 +529,7 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 		return;
 	}
 	this->deviceId = newId;
+	}
 
 	if (this->want.freq != this->got.freq || this->want.channels != this->got.channels || this->want.format != this->got.format) {
 		this->sameFormat = false;
@@ -415,8 +546,11 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	}
 
 	this->open = true;	
-	SDL_PauseAudioDevice(this->deviceId, 0);
+	if (this->deviceId) SDL_PauseAudioDevice(this->deviceId, 0);
 	klog_fmt("openAudio: freq=%d(got %d) format=%hx(got %hx) channels=%hhu(got %hhu)", this->want.freq, this->got.freq, this->want.format, this->got.format, this->want.channels, this->got.channels);
+#ifdef __EMSCRIPTEN__
+	if (this->webDevice) klog("Audio output: AudioWorklet (fixed 30 ms queue target)");
+#endif
 }
 
 void KDspAudioSdl::closeAudio() {
@@ -432,6 +566,18 @@ void KDspAudioSdl::closeAudio() {
 
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pendingClosesMutex);
 	this->open = false;
+#ifdef __EMSCRIPTEN__
+	if (this->webDevice) {
+		if (this->stream) {
+			SDL_AudioStreamFlush(this->stream);
+			drainStream();
+		}
+		// The JS sink owns its shared buffers until the final samples play.
+		bw_audio_close(this->webDevice, 1);
+		this->webDevice = 0;
+		return;
+	}
+#endif
 	if (!this->deviceId) {
 		return;
 	}
@@ -472,17 +618,27 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		return len;
 	}
 
-	if (!this->open || !this->deviceId) {
+#ifdef __EMSCRIPTEN__
+	U32 queued = this->getGuestQueuedAudioSizeWant();
+	if (this->webDevice && this->webFailed) {
+		// addModule/node initialization is asynchronous. Recover on the next
+		// write if it failed after openAudio returned, rather than staying mute.
+		this->preferWorklet = false;
+		openAudio(this->openedFormat, this->want.freq, this->want.channels);
+		queued = this->getGuestQueuedAudioSizeWant();
+	}
+#endif
+	if (!this->open || !this->hasDevice()) {
 		return 0;
 	}
 
 #ifdef __EMSCRIPTEN__
-	U32 queued = this->getGuestQueuedAudioSizeWant();
-	if (queued >= DSP_BUFFER_SIZE) {
+	U32 capacity = getBufferCapacity();
+	if (queued >= capacity) {
 		return -K_EWOULDBLOCK;
 	}
 	U32 blockSize = bytesPerSampleWant() * want.channels;
-	len = std::min(len, (DSP_BUFFER_SIZE - queued) & ~(blockSize - 1));
+	len = KDspAudioMath::getWritableBytes(len, capacity, queued, blockSize);
 	if (!len) {
 		return -K_EWOULDBLOCK;
 	}
@@ -504,16 +660,7 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		if (SDL_AudioStreamPut(this->stream, data, (int)len) < 0) {
 			return 0;
 		}
-		int available = SDL_AudioStreamAvailable(this->stream);
-		if (available > 0) {
-			if ((int)this->streamBuffer.size() < available) {
-				this->streamBuffer.resize(available);
-			}
-			int got = SDL_AudioStreamGet(this->stream, this->streamBuffer.data(), available);
-			if (got > 0) {
-				SDL_QueueAudio(this->deviceId, this->streamBuffer.data(), got);
-			}
-		}
+		drainStream();
 	} else if (!this->sameFormat) {
 #else
 	if (!this->sameFormat) {
@@ -532,13 +679,15 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		this->cvt.buf = this->cvtBuf;
 		memcpy(this->cvt.buf, data, len);
 		SDL_ConvertAudio(&this->cvt);
-		SDL_QueueAudio(this->deviceId, this->cvt.buf, this->cvt.len_cvt);
+		queueDeviceAudio(this->cvt.buf, this->cvt.len_cvt);
 	} else {
-		SDL_QueueAudio(this->deviceId, data, len);
+		queueDeviceAudio(data, len);
 	}
 #ifdef __EMSCRIPTEN__
-	addRealQueuedWant(len);
-	topUpSilence();
+	if (!this->webDevice) {
+		addRealQueuedWant(len);
+		topUpSilence();
+	}
 #endif
 	return len;
 }
@@ -572,6 +721,9 @@ void KDspAudio::iterateOpenAudio(std::function<void(KDspAudioPtr&)> callback) {
 }
 
 void KDspAudio::shutdown() {
+#ifdef __EMSCRIPTEN__
+	bw_audio_shutdown();
+#endif
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pendingClosesMutex);
 	if (drainTimer) {
 		SDL_RemoveTimer(drainTimer);

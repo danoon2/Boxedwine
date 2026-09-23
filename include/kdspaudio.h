@@ -31,6 +31,9 @@ public:
 	virtual ~KDspAudio();
 
 	virtual void openAudio(U32 format, U32 freq, U32 channels) = 0;
+#ifdef __EMSCRIPTEN__
+	virtual void configureAudio(U32 format, U32 freq, U32 channels) = 0;
+#endif
 	virtual void soundEnabled() = 0;
 	virtual bool isOpen() = 0;
 	virtual void closeAudio() = 0;
@@ -38,7 +41,7 @@ public:
 	virtual U32 getFragmentSize() = 0;
 	virtual void setFragmentSize(U32 size) = 0;
 	virtual U32 getBufferSize() = 0;
-	virtual U32 getBufferCapacity() = 0;
+	virtual U32 getBufferCapacity(U32 maxFragments = 0) = 0;
 	virtual bool isWriteReady() = 0;
 	virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) = 0;
 

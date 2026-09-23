@@ -39,6 +39,64 @@ node server.mjs <port number>
 
 alternatively make sure your web server returns COEP, COOP headers
 
+## Browser audio
+
+All four targets use an AudioWorklet output backend when AudioWorklet and
+SharedArrayBuffer are available. Serve over HTTPS or localhost with the COOP
+and COEP headers above, including for single-threaded builds. Otherwise audio
+falls back to SDL. Append `&audioBackend=sdl` to a demo URL for an A/B comparison.
+Worklet initialization failures also fall back to SDL on the next audio write.
+
+The worklet uses a separate shared PCM ring, so single-threaded Wasm memory
+does not need to become shared. The guest queue has a fixed 30 ms target,
+rounded to whole PCM frames and at least two fragments. Its capacity and
+fragment size depend only on the negotiated PCM format and stay fixed during
+playback, including if that voice falls back to SDL. Live resizing is unsafe:
+Wine infers queued PCM from cached capacity, and GETOPTR counts block changes
+using the fragment size. Underrun telemetry never changes either value.
+Startup/recovery collects up to 20 ms of real PCM, with a 20 ms timeout for short
+packets. SDL converts PCM formats without resampling; the worklet's
+32-tap windowed-sinc converter carries its fractional phase and history between
+callbacks. It needs 16 input frames of lookahead (1.45 ms at 11025 Hz), instead
+of SDL's 512-frame resampler staging. Empty output is silenced without inserting
+silence ahead of future writes. Closing drains the converter tail; reopening
+starts a new ring. After 20 ms without new PCM, a short final packet is padded
+at the filter edge so WaveOut can observe completion before closing the device.
+Before user activation, a silent drain lets Wine progress.
+
+Inspect `Module.boxedwineAudio.snapshot()` in the browser console for the
+actual render quantum, input/output rates, negotiated target/current/maximum queued duration,
+consumed frames, nonzero output samples, queue failures, and starvation counts.
+Starvation includes intentional gaps in apps that stop supplying PCM; compare
+counter deltas during continuous playback, not just their lifetime totals.
+`baseLatencyMs` and `outputLatencyMs` are browser/device estimates, not an
+end-to-end input-to-speaker measurement. The queue limit includes the worklet's
+lookahead but excludes browser/device output latency.
+
+The worklet source is embedded in the generated JavaScript and loaded from a
+Blob URL; it adds no deployment asset. Sites with a restrictive CSP must allow
+the worklet module or will use the SDL fallback. Main-thread marshaling remains
+necessary for pthread producers; one status query returns queue occupancy or
+failure. Fragment/capacity calculations require no round trips to JavaScript.
+The worklet never calls or blocks on Wasm.
+
+Run the deterministic PCM, resampling, lifetime, and fallback checks with:
+
+```text
+node --test testAudioWorklet.mjs
+```
+
+For an end-to-end Wine check, compile
+`tools/wineTests/tests/waveout_stream_probe.c` with MinGW (`-lwinmm -lm`), ZIP
+the executable, and launch it as a demo. It plays 8-bit mono, 16-bit stereo,
+and float stereo streams and reopens the output between them. Click the canvas
+during its startup pause to enable Boxedwine sound. Add `audioFreq=22050` so
+both requested sample rates are available, and run with both
+`sound=true` and `sound=false`; `C:\audio-output-probe.log` must end in
+`AUDIO_RESULT PASS`. This checks stream completion, not acoustic latency.
+For sustained-tone testing, compile with `-DAUDIO_PROBE_BLOCK_MS=5000
+-DAUDIO_PROBE_CYCLES=1`; each format then plays continuously for 20 seconds.
+
 ## WASM JIT cache compatibility
 
 The current cache version is `v6`. Record new cache ZIPs with this build;

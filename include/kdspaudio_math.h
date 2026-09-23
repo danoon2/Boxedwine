@@ -11,6 +11,21 @@
 #define __KDSPAUDIO_MATH_H__
 
 namespace KDspAudioMath {
+	struct WorkletBufferLayout {
+		U32 fragmentBytes;
+		U32 capacityBytes;
+	};
+
+	inline WorkletBufferLayout getWorkletBufferLayout(U32 rate, U32 frameSize) {
+		// OSS clients cache this geometry. It must depend only on the negotiated
+		// PCM format, never on underruns or a change of host output backend.
+		U32 frames = (U32)((U64)rate * 30 / 1000);
+		U32 fragmentFrames = 1;
+		while (fragmentFrames < (frames + 2) / 3) fragmentFrames <<= 1;
+		U32 capacityFrames = frames < fragmentFrames * 2 ? fragmentFrames * 2 : frames;
+		return {fragmentFrames * frameSize, capacityFrames * frameSize};
+	}
+
 	inline U32 getRequestedSdlPeriodFrames() {
 #ifdef __EMSCRIPTEN__
 		return 4096;

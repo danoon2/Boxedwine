@@ -26,6 +26,40 @@ namespace {
 }
 
 void testDspAudioWriteMath() {
+	// Wine OSS remembers the maximum free space, then subtracts GETOSPACE's
+	// current free bytes to infer queued PCM. Live growth from 330 to 512
+	// would misreport 220 queued bytes as only 38, consuming 182 too early.
+	const auto initial = KDspAudioMath::getWorkletBufferLayout(11025, 1);
+	const U32 wineCachedCapacity = initial.capacityBytes;
+	const auto playing = KDspAudioMath::getWorkletBufferLayout(11025, 1);
+	expectEqual(wineCachedCapacity, 330, "worklet mono U8 capacity is 30 ms");
+	expectEqual(playing.capacityBytes, wineCachedCapacity, "playback keeps the negotiated capacity");
+	U32 freeBytes = KDspAudioMath::getOutputSpaceAvailable(playing.capacityBytes, 220, true);
+	expectEqual(freeBytes, 110, "GETOSPACE reports actual remaining space");
+	expectEqual(wineCachedCapacity - freeBytes, 220, "Wine still observes all 220 unplayed bytes");
+	freeBytes = KDspAudioMath::getOutputSpaceAvailable(playing.capacityBytes, 110, true);
+	expectEqual(wineCachedCapacity - freeBytes, 110, "Wine advances only after real consumption");
+
+	// GETOPTR subtracts block numbers computed on separate queries. Keeping
+	// its divisor at 128 avoids the old 86 -> 43 transition and unsigned wrap.
+	expectEqual(initial.fragmentBytes, 128, "worklet fragment size is fixed for the PCM format");
+	U32 previousBlocks = 11025 / initial.fragmentBytes;
+	U32 currentBlocks = 11135 / playing.fragmentBytes;
+	expectEqual(currentBlocks - previousBlocks, 0, "GETOPTR does not underflow between queries");
+	previousBlocks = currentBlocks;
+	currentBlocks = 11136 / playing.fragmentBytes;
+	expectEqual(currentBlocks - previousBlocks, 1, "GETOPTR counts the next fragment boundary once");
+
+	for (U32 frameSize : {1u, 2u, 4u, 8u}) {
+		for (U32 rate : {11025u, 22050u}) {
+			const auto layout = KDspAudioMath::getWorkletBufferLayout(rate, frameSize);
+			expectEqual(layout.capacityBytes, (rate * 30 / 1000) * frameSize,
+				"worklet capacity uses complete guest PCM frames");
+			expectEqual(layout.fragmentBytes, (rate == 11025 ? 128 : 256) * frameSize,
+				"worklet fragments use guest PCM frame size");
+		}
+	}
+
 	expectEqual(
 		KDspAudioMath::getWriteCapacity(11025, 4096, DSP_TEST_BUFFER_SIZE),
 		4096,
