@@ -22,6 +22,13 @@ type make and the name of the target. See contents of ./Build/<Target> folder fo
 
 python3 -m http.server <port number>
 
+Browser input regression checks (no build required):
+
+```text
+node testBrowserMouseCoordinates.mjs
+node testBrowserMouseButtons.mjs
+```
+
 
 ## Running Multi-Threaded Build
 - runs using Emscripten -pthread -sPROXY_TO_PTHREAD=1

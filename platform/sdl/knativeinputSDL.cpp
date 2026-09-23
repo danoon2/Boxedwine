@@ -35,8 +35,9 @@
 
 extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseMove(int x, int y) {
     KNativeScreenPtr screen = KNativeSystem::getScreen();
-    KNativeInputPtr input = screen ? screen->getInput() : nullptr;
+    KNativeInputSDLPtr input = screen ? std::static_pointer_cast<KNativeInputSDL>(screen->getInput()) : nullptr;
     if (input) {
+        input->setEmscriptenMousePosition(x, y);
         input->mouseMove(x, y, false);
     }
 }
@@ -44,13 +45,20 @@ extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseMove(int x, int y) 
 extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenPointerLock(U32 enabled) {
     // SDL's virtual cursor (including warps and polling) requires its own
     // relative mode as well as the browser's pointer lock.
+    if ((SDL_GetRelativeMouseMode() == SDL_TRUE) != (enabled != 0)) {
+        KNativeScreenPtr screen = KNativeSystem::getScreen();
+        if (screen) {
+            std::static_pointer_cast<KNativeInputSDL>(screen->getInput())->clearEmscriptenMousePosition();
+        }
+    }
     SDL_SetRelativeMouseMode(enabled ? SDL_TRUE : SDL_FALSE);
 }
 
 extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseButton(U32 down, U32 button, int x, int y) {
     KNativeScreenPtr screen = KNativeSystem::getScreen();
-    KNativeInputPtr input = screen ? screen->getInput() : nullptr;
+    KNativeInputSDLPtr input = screen ? std::static_pointer_cast<KNativeInputSDL>(screen->getInput()) : nullptr;
     if (input) {
+        input->setEmscriptenMousePosition(x, y);
         input->mouseButton(down, button, x, y);
     }
 }
@@ -83,11 +91,25 @@ static void boxedwineInstallEmscriptenInputHandlers() {
 
     canvas.tabIndex = canvas.tabIndex >= 0 ? canvas.tabIndex : 0;
 
-    var capturingMouse = false;
+    var capturingMouse = 0;
+    var lastMousePoint = {x: 0, y: 0};
+
+    function releaseCapturedMouseButtons() {
+        var buttons = capturingMouse;
+        capturingMouse = 0;
+        for (var button = 0; button < 5; button++) {
+            if (buttons & (1 << button)) {
+                _boxedwineEmscriptenMouseButton(0, boxedwineButton(button), lastMousePoint.x, lastMousePoint.y);
+            }
+        }
+    }
 
     document.addEventListener('pointerlockchange', function() {
+        releaseCapturedMouseButtons();
         _boxedwineEmscriptenPointerLock(document.pointerLockElement === canvas ? 1 : 0);
     }, false);
+
+    window.addEventListener('blur', releaseCapturedMouseButtons, false);
 
     function activeCanvasRect() {
         var presentCanvas = document.getElementById('boxedwine-webgl-canvas-0');
@@ -107,7 +129,7 @@ static void boxedwineInstallEmscriptenInputHandlers() {
         // its virtual cursor in sync with guest warps; do not replace those
         // events with absolute coordinates from the fixed browser pointer.
         if (document.pointerLockElement === canvas) {
-            capturingMouse = false;
+            releaseCapturedMouseButtons();
             return null;
         }
         var rectCanvas = activeCanvasRect();
@@ -133,7 +155,7 @@ static void boxedwineInstallEmscriptenInputHandlers() {
         if (button === 2) {
             return 1;
         }
-        return 0;
+        return button;
     }
 
 #if !defined(BOXEDWINE_MULTI_THREADED)
@@ -202,17 +224,22 @@ static void boxedwineInstallEmscriptenInputHandlers() {
         if (!point) {
             return;
         }
+        lastMousePoint = point;
         _boxedwineEmscriptenMouseMove(point.x, point.y);
         event.preventDefault();
         event.stopImmediatePropagation();
     }, true);
 
     window.addEventListener('mousedown', function(event) {
+        if (event.button < 0 || event.button >= 5) {
+            return;
+        }
         var point = canvasPoint(event, false);
         if (!point) {
             return;
         }
-        capturingMouse = true;
+        capturingMouse |= 1 << event.button;
+        lastMousePoint = point;
         canvas.focus();
         _boxedwineEmscriptenMouseButton(1, boxedwineButton(event.button), point.x, point.y);
         event.preventDefault();
@@ -220,14 +247,15 @@ static void boxedwineInstallEmscriptenInputHandlers() {
     }, true);
 
     window.addEventListener('mouseup', function(event) {
-        if (!capturingMouse) {
+        if (event.button < 0 || event.button >= 5 || !(capturingMouse & (1 << event.button))) {
             return;
         }
         var point = canvasPoint(event, true);
         if (!point) {
             return;
         }
-        capturingMouse = false;
+        capturingMouse &= ~(1 << event.button);
+        lastMousePoint = point;
         _boxedwineEmscriptenMouseButton(0, boxedwineButton(event.button), point.x, point.y);
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -316,6 +344,18 @@ bool KNativeInputSDL::mouseWheel(int amount, int x, int y) {
 }
 
 bool KNativeInputSDL::mouseButton(U32 down, U32 button, int x, int y) {
+#ifdef __EMSCRIPTEN__
+    // Absolute browser events bypass SDL. Keep polling consistent with those
+    // events and with SDL events delivered while the pointer is locked.
+    static const U32 masks[] = {SDL_BUTTON_LMASK, SDL_BUTTON_RMASK, SDL_BUTTON_MMASK, SDL_BUTTON_X1MASK, SDL_BUTTON_X2MASK};
+    if (button < sizeof(masks) / sizeof(masks[0])) {
+        if (down) {
+            emscriptenMouseButtons.fetch_or(masks[button]);
+        } else {
+            emscriptenMouseButtons.fetch_and(~masks[button]);
+        }
+    }
+#endif
     if (KSystem::enableSoundAfterMouseClick) {
         KSystem::enableSoundAfterMouseClick = false;
         KSystem::soundEnabled = true;
@@ -346,6 +386,18 @@ bool KNativeInputSDL::mouseButton(U32 down, U32 button, int x, int y) {
     return false;
 }
 
+#ifdef __EMSCRIPTEN__
+void KNativeInputSDL::setEmscriptenMousePosition(int x, int y) {
+    // Keep both coordinates together when the browser and guest use different
+    // threads. Store host pixels; getMousePos applies the usual guest mapping.
+    emscriptenMousePosition.store(((U64)(U32)x << 32) | (U32)y);
+}
+
+void KNativeInputSDL::clearEmscriptenMousePosition() {
+    emscriptenMousePosition.store(~(U64)0);
+}
+#endif
+
 bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
@@ -354,7 +406,19 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
         return checkMousePos(*x, *y, false);
     }
 #endif
-    SDL_GetMouseState(x, y);
+#ifdef __EMSCRIPTEN__
+    // The absolute browser handlers consume motion before SDL sees it. SDL
+    // can otherwise report the old canvas-entry point even after a click in
+    // the game. Pointer-locked input still uses SDL's virtual cursor.
+    U64 position = emscriptenMousePosition.load();
+    if (position != ~(U64)0 && !SDL_GetRelativeMouseMode()) {
+        *x = (S32)(position >> 32);
+        *y = (S32)(U32)position;
+    } else
+#endif
+    {
+        SDL_GetMouseState(x, y);
+    }
 
     *x = xFromScreen(*x);
     *y = yFromScreen(*y);
@@ -437,8 +501,12 @@ U32 KNativeInputSDL::getInputModifiers() {
         return Player::instance->currentInputModifiers;
     }
 #endif
+#ifdef __EMSCRIPTEN__
+    U32 result = emscriptenMouseButtons.load();
+#else
     int x, y;
     unsigned int result = SDL_GetMouseState(&x, &y);
+#endif
     U32 modifiers = 0;
     if (result & SDL_BUTTON_LMASK) {
         modifiers |= NATIVE_LEFT_BUTTON_MASK;

@@ -163,6 +163,10 @@ export async function run(configPath, gdiCycles = 0, pointerLock = false) {
             await action('wait', {milliseconds: 2000});
         }
         assert(ready, 'Probe startup timed out');
+        // Enter at a different location first. Jumping straight to the click
+        // hides stale SDL coordinates left behind by the browser handlers.
+        await action('move', {x: 0.02, y: 0.02});
+        await action('move', {x: 470 / 640, y: 428 / 480});
         await action('click', {x: 470 / 640, y: 428 / 480, holdMs: 1800});
         await action('wait', {milliseconds: 2000});
         const snapshot = await trace();

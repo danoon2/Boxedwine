@@ -20,6 +20,9 @@
 #include "knativesystem.h"
 #include <SDL.h>
 #include "knativescreenSDL.h"
+#ifdef __EMSCRIPTEN__
+#include "knativeinputSDL.h"
+#endif
 #include "kvulkanSDL.h"
 #include "../../source/x11/x11.h"
 #include "../../source/util/threadutils.h"
@@ -112,6 +115,11 @@ void KNativeSystem::showScreen(bool show) {
 }
 
 void KNativeSystem::warpMouse(S32 x, S32 y) {
+#ifdef __EMSCRIPTEN__
+    if (screen) {
+        std::static_pointer_cast<KNativeInputSDL>(screen->getInput())->setEmscriptenMousePosition(x, y);
+    }
+#endif
     if (vulkan && vulkan->warpMouse(x, y)) return;
     if (!opengl || screen->isVisible()) {
         screen->warpMouse(x, y);

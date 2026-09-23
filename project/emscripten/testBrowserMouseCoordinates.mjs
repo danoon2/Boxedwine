@@ -15,6 +15,7 @@ const document = {pointerLockElement: null};
 let relativeMode = null;
 const context = vm.createContext({canvas: input, document, capturingMouse: false,
     _boxedwineEmscriptenPointerLock: enabled => {relativeMode = enabled;},
+    releaseCapturedMouseButtons: () => {context.capturingMouse = false;},
     activeCanvasRect: () => displayed});
 vm.runInContext(code, context);
 const point = (x, y, outside = false) => JSON.parse(JSON.stringify(context.canvasPoint(

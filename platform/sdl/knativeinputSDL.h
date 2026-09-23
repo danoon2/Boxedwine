@@ -60,6 +60,17 @@ public:
     U32 height = 0;           
 
     bool handlSdlEvent(SDL_Event* e);
+
+#ifdef __EMSCRIPTEN__
+    void setEmscriptenMousePosition(int x, int y);
+    void clearEmscriptenMousePosition();
+#endif
+
+private:
+#ifdef __EMSCRIPTEN__
+    std::atomic<U32> emscriptenMouseButtons{0};
+    std::atomic<U64> emscriptenMousePosition{~(U64)0};
+#endif
 };
 
 typedef std::shared_ptr<KNativeInputSDL> KNativeInputSDLPtr;
