@@ -659,6 +659,15 @@ bool StartUpArgs::apply() {
         }
     }
 
+#ifndef BOXEDWINE_VULKAN
+    // Wine probes Vulkan during display initialization, even for GDI apps.
+    // Hide the guest bridge when host Vulkan support is not compiled in.
+    std::shared_ptr<FsNode> libVulkanNode = Fs::getNodeFromLocalPath(B(""), B("/lib/libvulkan.so.1"), false);
+    if (libVulkanNode) {
+        libVulkanNode->removeNodeFromParent();
+    }
+#endif
+
     if (this->args.size()==0) {
         args.push_back(B("/bin/wine"));
         args.push_back(B("explorer"));
