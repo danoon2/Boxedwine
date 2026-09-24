@@ -66,6 +66,8 @@ void testSetFastMode(bool fast);
 void testWasmJitOnlyBlockEntryIsCallable();
 void testWasmJitMaterializedConditions();
 void testWasmJitSseCompareConditions();
+void testWasmJitXmmCache();
+void testWasmJitXmmFaultState();
 void testWasmJitOomRetryAfterRelease();
 void testFlagsAcrossIndirectJitBlockBoundary();
 void testJitOverlappingDirectJumpTarget();

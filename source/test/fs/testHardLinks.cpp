@@ -48,6 +48,13 @@ extern "C" {
 #undef OF
 #endif
 
+#ifdef __EMSCRIPTEN__
+// Emscripten's libc aliases collide with the guest KProcess method names.
+#undef ftruncate64
+#undef pread64
+#undef pwrite64
+#endif
+
 #ifdef UTIME_OMIT
 #undef UTIME_OMIT
 #endif

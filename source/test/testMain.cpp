@@ -198,6 +198,8 @@ const TestEntry TEST_ENTRIES[] = {
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},
     {testWasmJitSseCompareConditions, "Test WASM JIT SSE compare conditions"},
+    {testWasmJitXmmCache, "Test WASM JIT XMM cache transitions"},
+    {testWasmJitXmmFaultState, "Test WASM JIT XMM cache fault state", TEST_ENTRY_SERIAL},
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
     {testExecutableFixedReplacementPreparationFailurePreservesState, "Test WASM JIT fixed replacement backend preparation is transactional", TEST_ENTRY_SERIAL},
     {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
