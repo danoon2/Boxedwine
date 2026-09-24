@@ -272,6 +272,85 @@ void testPushCode32(int value) {
 }
 
 #ifndef BOXEDWINE_MULTI_THREADED
+void testSingleThreadSchedulerTimers() {
+    extern S32 contextTime;
+    extern S32 contextTimeRemaining;
+    static U64 hostTime;
+    TestContext& context = testContext();
+    U32 dispatches = 0;
+    class Timer : public KTimerCallback {
+    public:
+        Timer(U32& dispatches) : dispatches(dispatches) {}
+        bool run() override {
+            firedAt = dispatches;
+            return true;
+        }
+        U32& dispatches;
+        U32 firedAt = 0;
+    } timer(dispatches), dueTimer(dispatches);
+
+    if (getNextTimer() != 0xffffffff || context.thread->scheduledThreadNode.isInList()) {
+        testFail("scheduler timer test requires an idle scheduler");
+    }
+    timer.millies = KSystem::getMilliesSinceStart() + 60000;
+    addTimer(&timer);
+    U32 remaining = getNextTimer();
+    if (!remaining || remaining > 60000) {
+        testFail("idle wait must be bounded by the next guest timer");
+    }
+    dueTimer.millies = 0;
+    addTimer(&dueTimer);
+    if (getNextTimer() != 0) {
+        testFail("an overdue timer must prevent an idle wait");
+    }
+    removeTimer(&dueTimer);
+
+    class YieldingCPU : public NormalCPU {
+    public:
+        YieldingCPU(KMemory* memory, Timer& timer, U32& dispatches)
+            : NormalCPU(memory), timer(timer), dispatches(dispatches) { op.inst = Nop; }
+        DecodedOp* getOp(U32, U32) override { return &op; }
+        void run() override {
+            ++dispatches;
+            ++blockInstructionCount;
+            hostTime += 1000;
+            yield = true;
+            if (dispatches == 1) {
+                // Make a worker's timer due after runSlice's initial timer pass.
+                timer.millies = 0;
+            }
+        }
+        DecodedOp op;
+        Timer& timer;
+        U32& dispatches;
+    } cpu(context.memory, timer, dispatches);
+    struct RestoreScheduler {
+        KThread* thread;
+        CPU* cpu;
+        S32 budget = contextTime;
+        S32 remaining = contextTimeRemaining;
+        ~RestoreScheduler() {
+            unscheduleThread(thread);
+            thread->cpu = cpu;
+            contextTime = budget;
+            contextTimeRemaining = remaining;
+            setSchedulerTestClock(nullptr);
+        }
+    } restore{context.thread, context.thread->cpu};
+    cpu.thread = context.thread;
+    context.thread->cpu = &cpu;
+    hostTime = 0;
+    setSchedulerTestClock([]() -> U64 { return hostTime; });
+    scheduleThread(context.thread);
+    runSlice();
+    if (timer.firedAt != 1 || dispatches != 9) {
+        testFail("a runnable yielding thread must not delay timers for an entire slice");
+    }
+    if (getNextTimer() != 0xffffffff) {
+        testFail("completed timers must not keep the scheduler awake");
+    }
+}
+
 void testSingleThreadSchedulerTimeSlice() {
     extern S32 contextTime;
     extern S32 contextTimeRemaining;

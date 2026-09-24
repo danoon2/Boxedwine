@@ -46,6 +46,7 @@ void testPushCode16(int value);
 void testPushCode32(int value);
 void testRunCPU();
 void testSingleThreadSchedulerTimeSlice();
+void testSingleThreadSchedulerTimers();
 void testFail(const char* msg, ...);
 void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCount = 0);
 void testJitSignalPendingReset();

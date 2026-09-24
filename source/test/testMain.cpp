@@ -194,6 +194,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifndef BOXEDWINE_MULTI_THREADED
     {testSingleThreadSchedulerTimeSlice, "Test single-thread scheduler timed turns", TEST_ENTRY_SERIAL},
+    {testSingleThreadSchedulerTimers, "Test single-thread scheduler timer deadlines", TEST_ENTRY_SERIAL},
 #endif
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},

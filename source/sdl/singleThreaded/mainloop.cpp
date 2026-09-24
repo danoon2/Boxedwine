@@ -22,6 +22,7 @@
 #include "knativesocket.h"
 #include "knativesystem.h"
 #include "knativethread.h"
+#include "kscheduler.h"
 
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
 #include "../../ui/mainui.h"
@@ -96,8 +97,10 @@ bool doMainLoop() {
             if (KSystem::getRunningProcessCount()==0) {
                 break;
             }
-            if (!checkWaitingNativeSockets(20)) {
-                KNativeThread::sleep(20);
+            // A short guest timeout may be the only source of runnable work.
+            U32 waitMs = std::min(20u, getNextTimer());
+            if (!checkWaitingNativeSockets(waitMs)) {
+                KNativeThread::sleep(waitMs);
             }
         }
     }
