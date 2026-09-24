@@ -79,6 +79,7 @@ void testArmJitEntryInvalidatedBeforeDispatch();
 void testJitEntryCacheInvalidation();
 void testJitDirectTargetInvalidation();
 void testNativeJitRunCountWraps();
+void testNativeJitCooperativeScheduling();
 void testJitDirectArithmeticFlags();
 void testJitDirectIncDecFlags();
 void testJitDirectNegFlags();

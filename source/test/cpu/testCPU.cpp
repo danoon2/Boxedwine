@@ -890,6 +890,114 @@ void testNativeJitRunCountWraps() {
 #endif
 }
 
+void testNativeJitCooperativeScheduling() {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    const U32 iterations = 10000;
+    // Finite loops make a missing scheduler check fail without hanging the suite.
+    for (U32 kind = 0; kind < 7; ++kind) {
+        testNewInstruction(CF);
+        cpu->yield = false;
+        cpu->reg[1].u32 = iterations;
+        std::vector<U32> entries{0};
+        if (kind < 3 || kind == 6) {
+            testPushCode8(0x46); // inc esi
+            if (kind == 2) {
+                testPushCode8(0xe2); testPushCode8(0xfd); // loop 0
+            } else if (kind == 6) {
+                testPushCode8(0x49); // dec ecx
+                testPushCode8(0x74); testPushCode8(0x02); // jz done
+                testPushCode8(0xeb); testPushCode8(0xfa); // jmp 0
+            } else {
+                testPushCode8(0x49); // dec ecx
+                testPushCode8(0x75); testPushCode8(0xfc); // jnz 0
+            }
+        } else {
+            // Force a separate block with a direct or indirect jump, or a call.
+            if (kind == 3) {
+                testPushCode8(0xe9); testPushCode32(0x100 - 5);
+            } else if (kind == 4) {
+                cpu->reg[0].u32 = 0x100;
+                testPushCode8(0xff); testPushCode8(0xe0); // jmp eax
+            } else {
+                testPushCode8(0xe8); testPushCode32(0x100 - 5);
+            }
+            const U32 continuation = context.codeIp - TEST_CODE_ADDRESS;
+            if (kind == 5) {
+                testPushCode8(0x49); // dec ecx
+                testPushCode8(0x75); testPushCode8(0xf8); // jnz 0
+            }
+            testPushCode8(0x9c); testPushCode8(0x5b); // pushfd; pop ebx
+            testPushCode8(0xcd); testPushCode8(0x97);
+            context.codeIp = TEST_CODE_ADDRESS + 0x100;
+            testPushCode8(0x46); // inc esi
+            if (kind == 5) {
+                testPushCode8(0xc3); // ret
+            } else {
+                testPushCode8(0x49); // dec ecx
+                testPushCode8(0x0f); testPushCode8(0x85); // jnz 0
+                testPushCode32(0 - 0x108);
+                testPushCode8(0xe9); // jmp continuation
+                testPushCode32(continuation - 0x10d);
+            }
+            entries.push_back(0x100);
+            entries.push_back(continuation);
+        }
+        if (kind == 0) {
+            // Overwrite flags after the loop, allowing the fused dec/jnz path.
+            testPushCode8(0x31); testPushCode8(0xd2); // xor edx,edx
+        }
+        testPushCode8(0x9c); testPushCode8(0x5b); // pushfd; pop ebx
+        testPushCode8(0xcd); testPushCode8(0x97);
+        for (U32 offset : entries) {
+            DecodedOp* op = cpu->getOp(TEST_CODE_ADDRESS + offset, 0);
+            startNewJIT(cpu, TEST_CODE_ADDRESS + offset, op);
+            if (!op->pfnJitCode) {
+                testFail("cooperative JIT case %u did not compile", kind);
+                return;
+            }
+        }
+        cpu->nextOp = cpu->getNextOp();
+        cpu->run();
+        if (!cpu->reg[6].u32 || cpu->reg[6].u32 >= iterations) {
+            testFail("cooperative JIT case %u must return before finishing its loop", kind);
+        }
+        U32 dispatches = 1;
+        while ((!cpu->nextOp || cpu->nextOp->inst != TestEnd) && dispatches++ < iterations) {
+            cpu->run();
+        }
+        if (cpu->reg[6].u32 != iterations || cpu->reg[1].u32 || cpu->reg[4].u32 != 4096 ||
+            !cpu->nextOp || cpu->nextOp->inst != TestEnd) {
+            testFail("cooperative JIT case %u must resume with intact registers, stack and EIP", kind);
+        }
+        if (kind != 0 && (!(cpu->reg[3].u32 & CF) || (kind != 2 && !(cpu->reg[3].u32 & ZF)))) {
+            testFail("cooperative JIT case %u must preserve guest flags", kind);
+        }
+    }
+    // The fallback helper can also chain directly to compiled code. It must
+    // honor the same budget after completing the emulated instruction.
+    extern DYN_PTR_SIZE jitRunSingleOp(CPU* cpu);
+    testNewInstruction(CF);
+    cpu->yield = false;
+    testPushCode8(0x46); // inc esi (run by the fallback helper)
+    testPushCode8(0x47); // inc edi (compiled continuation)
+    testPushCode8(0xcd); testPushCode8(0x97);
+    DecodedOp* continuation = cpu->getOp(TEST_CODE_ADDRESS + 1, 0);
+    startNewJIT(cpu, TEST_CODE_ADDRESS + 1, continuation);
+    cpu->jitBranchBudget = 1;
+    if (jitRunSingleOp(cpu) || cpu->reg[6].u32 != 1 || cpu->eip.u32 != 1 ||
+        cpu->nextOp != continuation) {
+        testFail("native JIT fallback must return at an exhausted budget with its instruction complete");
+    }
+    cpu->eip.u32 = 0;
+    cpu->jitBranchBudget = 2;
+    if (!continuation->pfnJitCode || jitRunSingleOp(cpu) != (DYN_PTR_SIZE)continuation->pfnJitCode) {
+        testFail("native JIT fallback must retain chaining while budget remains");
+    }
+#endif
+}
+
 #if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
 extern DYN_PTR_SIZE jitRunOpenGL(CPU* cpu);
 extern thread_local U32 jitOpenGLFastCallCount;

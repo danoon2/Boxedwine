@@ -264,6 +264,7 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
     {testNativeJitRunCountWraps, "Test native JIT runCount wrap"},
+    {testNativeJitCooperativeScheduling, "Test native JIT cooperative scheduling", TEST_ENTRY_SERIAL},
 #endif
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
