@@ -39,6 +39,15 @@
 #include <thread>
 #include <unordered_set>
 
+#ifdef BOXEDWINE_ZLIB
+#include "../../io/fszip.h"
+#define OF(args) args
+extern "C" {
+#include "../../../lib/zlib/contrib/minizip/zip.h"
+}
+#undef OF
+#endif
+
 #ifdef UTIME_OMIT
 #undef UTIME_OMIT
 #endif
@@ -447,6 +456,68 @@ private:
 };
 
 } // namespace
+
+void testReadOnlyCreatePreservesZipFile() {
+#ifdef BOXEDWINE_ZLIB
+    const BString root = B("tmp/test-readonly-create-zip-root");
+    cleanupRoot(root);
+    initTestFileSystem(root);
+    const BString archivePath = root.stringByApppendingPath(B("fixture.zip"));
+    const char payload[] = "existing map data";
+    const char* names[] = {"stored.map", "deflated.map"};
+    zipFile archive = zipOpen64(archivePath.c_str(), APPEND_STATUS_CREATE);
+    if (!archive) {
+        testFail("could not create ZIP open fixture");
+        cleanupRoot(root);
+        return;
+    }
+    for (int i = 0; i < 2; ++i) {
+        zip_fileinfo info = {};
+        info.tmz_date.tm_year = 2003;
+        info.tmz_date.tm_mday = 1;
+        expectZero("open ZIP fixture member", zipOpenNewFileInZip64(archive,
+            names[i], &info, nullptr, 0, nullptr, 0, nullptr,
+            i ? Z_DEFLATED : 0, Z_DEFAULT_COMPRESSION, 0));
+        expectZero("write ZIP fixture member", zipWriteInFileInZip(archive, payload, sizeof(payload)));
+        expectZero("close ZIP fixture member", zipCloseFileInZip(archive));
+    }
+    expectZero("close ZIP fixture", zipClose(archive, nullptr));
+
+    bool previousCacheReads = KSystem::cacheReads;
+    KSystem::cacheReads = false;
+    {
+        std::shared_ptr<FsZip> zip = std::make_shared<FsZip>();
+        if (!zip->init(archivePath, B(""))) {
+            testFail("could not mount ZIP open fixture");
+        } else {
+            for (const char* name : names) {
+                std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B("/"), BString::copy(name), false);
+                if (!node) {
+                    testFail("ZIP fixture member not found: %s", name);
+                    continue;
+                }
+                // Wine uses this for GENERIC_READ + OPEN_ALWAYS, as Halo does
+                // for its maps. O_CREAT must preserve existing ZIP contents.
+                for (U32 flags : {K_O_RDONLY | K_O_CREAT, K_O_RDONLY}) {
+                    std::unique_ptr<FsOpenNode> file(node->open(flags));
+                    if (!file) {
+                        testFail("could not open ZIP fixture member: %s", name);
+                        continue;
+                    }
+                    expectU64("ZIP file length after read-only create", file->length(), sizeof(payload));
+                    std::vector<U8> bytes(sizeof(payload));
+                    U32 count = file->readNative(bytes.data(), (U32)bytes.size());
+                    bytes.resize(count);
+                    expectBytes("ZIP data after read-only create", bytes, (const U8*)payload, sizeof(payload));
+                    file->close();
+                }
+            }
+        }
+    }
+    KSystem::cacheReads = previousCacheReads;
+    cleanupRoot(root);
+#endif
+}
 
 void testFileCacheIdentitySurvivesRenameAndHardLink() {
     TestContext& context = testContext();

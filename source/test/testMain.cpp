@@ -75,6 +75,7 @@ void testExitGroupPublishesStatusAfterCleanup();
 void testTerminationPinsThreadDuringLookup();
 void testThreadStartPublishesHandleBeforeEntry();
 void testHardLinksShareIdentityDataAndXattrs();
+void testReadOnlyCreatePreservesZipFile();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testSharedFileMappingGrowthKeepsPagesShared();
 void testSharedFileMappingTruncateClearsResidentBytes();
@@ -1058,6 +1059,7 @@ const TestEntry TEST_ENTRIES[] = {
         "Test native socket bind unavailable address returns EADDRNOTAVAIL", TEST_ENTRY_SERIAL},
 #endif
     {testGuestWritePreservesPartialProgress, "Test guest write preserves partial progress"},
+    {testReadOnlyCreatePreservesZipFile, "Test read-only create preserves ZIP file contents", TEST_ENTRY_SERIAL},
 };
 
 } // namespace
