@@ -284,13 +284,13 @@ void JitSSE::dynamic_movssE32Xmm(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_stmxcsr(DecodedOp* op) {
-    write(JitWidth::b32, calculateEaa(op), nullptr, [op, this](MemPtr address) {
+    write(JitWidth::b32, calculateEaa(op), nullptr, [this](MemPtr address) {
         stmxcsr(address);
     });
 }
 
 void JitSSE::dynamic_ldmxcsr(DecodedOp* op) {
-    read(JitWidth::b32, calculateEaa(op), [op, this](MemPtr address) {
+    read(JitWidth::b32, calculateEaa(op), [this](MemPtr address) {
         ldmxcsr(address);
         updateSseDivExceptionState();
     });
@@ -655,7 +655,7 @@ void JitSSE::dynamic_pmovmskbR32Xmm(DecodedOp* op) {
 }
 
 void JitSSE::dynamic_clflush(DecodedOp* op) {
-    read(JitWidth::b8, calculateEaa(op), [op, this](MemPtr address) {
+    read(JitWidth::b8, calculateEaa(op), [this](MemPtr address) {
         clflush(address);
     });
 }

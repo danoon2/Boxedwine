@@ -4350,7 +4350,7 @@ public:
                 op->inst = Callback;
             } else {
                 if ((data->eip & 0xfff) == 3) {
-                    kwarn_fmt("Unknown callback index %d", index);
+                    kwarn_fmt("Unknown callback index %hhu", index);
                 }
                 op->inst = Invalid;
                 op->reg = rm;

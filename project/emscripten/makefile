@@ -230,6 +230,15 @@ SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE)
 LDFLAGS = $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 -sFULL_ES3 -s STACK_SIZE=1048576 $(LINK_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' $(EXTRA_LD_FLAGS)
 LDFLAGS += --js-library=boxedwine-audio-worklet.js
 
+# Threaded JIT builds intentionally grow shared memory as compiled blocks
+# accumulate. Acknowledge the SDK's generic performance advisory while
+# retaining memory growth and all source diagnostics.
+ifneq (,$(filter -pthread,$(EXTRA_LD_FLAGS)))
+ifneq (,$(filter -sALLOW_MEMORY_GROWTH,$(EXTRA_LD_FLAGS)))
+LDFLAGS += -Wno-pthreads-mem-growth
+endif
+endif
+
 # ASan substitutes its own pthread argument. Keep module-broker owner lookup
 # working in diagnostic builds while retaining sanitizer thread registration.
 ifneq (,$(findstring -fsanitize=address,$(OPTIMIZATION_FLAGS)))
