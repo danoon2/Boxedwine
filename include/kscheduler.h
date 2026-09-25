@@ -38,5 +38,6 @@ bool recoverRunSliceException();
 #endif
 void waitForProcessToFinish(const KProcessPtr& process, KThread* thread);
 U32 getMIPS();
+U32 getNextTimer();
 
 #endif

@@ -297,6 +297,10 @@ public:
 
 #ifdef BOXEDWINE_JIT
     std::atomic<U32> jitSignalPending { 0 };
+#if !defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+    // Bound native block chaining and backedges between scheduler clock checks.
+    U32 jitBranchBudget = 1024;
+#endif
 #endif
     KThread* thread = nullptr;
     KMemory* memory = nullptr;

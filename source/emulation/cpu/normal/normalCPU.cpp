@@ -461,6 +461,11 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 jumpTargetFlags) {
 }
 
 void NormalCPU::run() {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+    // Native JIT blocks can chain without returning through this dispatcher.
+    // Periodically return so runThreadSlice can enforce its host-time limit.
+    jitBranchBudget = 1024;
+#endif
 #ifdef BOXEDWINE_MULTI_THREADED
     U32 decodedOpEpoch = decodedOpCacheGlobalEpoch->load(std::memory_order_acquire);
     if (decodedOpCacheEpoch.load(std::memory_order_relaxed) != decodedOpEpoch) {

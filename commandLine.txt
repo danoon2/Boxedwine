@@ -31,6 +31,8 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -dpiAware: will prevent Windows from scaling the screen if you are using display scaling.
 
+-env NAME=VALUE : Set a guest environment variable. For direct Wine application launches, Boxedwine defaults WINELOADERNOEXEC to 1 to skip Wine's initial preloader re-exec, since Boxedwine controls guest mappings. This default is not added for Wine command-line options, utility aliases, or shell scripts. Explicit values are preserved. Wine checks whether this variable exists, so 0 or an empty value also skips the re-exec. To test without it, launch through /bin/sh -c 'unset WINELOADERNOEXEC; exec /bin/wine program.exe'. Wine can still use its preloader when creating child processes.
+
 -forceRelativeMouse : will force mouse capture and relative mouse input.  This is useful if the mouse doesn't work right in some games.
 
 -fullscreen : if no resolution is passed in via the resolution command line argument then the resolution will be the same as the monitor

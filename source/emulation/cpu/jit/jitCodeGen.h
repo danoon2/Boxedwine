@@ -147,8 +147,8 @@ public:
     void blockNext2(U32 eip, DecodedOp* op) override;
     void jumpEip(RegPtr reg) override;
     void jumpInBlock(U32 address) override;
-    void exitToRunLoopIfPendingSignal(U32 eip) override;
-    void exitToRunLoopIfPendingSignal(RegPtr eip);
+    void exitToRunLoopIfNeeded(U32 eip) override;
+    void exitToRunLoopIfNeeded(RegPtr eip);
 
     void doJIT(U32 address, DecodedOp* op);
     void onTestEnd(DecodedOp* op) override;

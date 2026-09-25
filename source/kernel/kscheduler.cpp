@@ -263,8 +263,18 @@ bool runSlice() {
 
     U64 elapsedTime = 0;
     const U64 sliceStart = schedulerMicroCounter();
+    U64 nextTimerCheck = 1000;
 
     while (!scheduledThreads.isEmpty() && elapsedTime<9000) {
+        // Yielding threads can stay runnable while waiting for a sleeping
+        // worker. Service its timer during the slice, not just every 9 ms.
+        if (elapsedTime >= nextTimerCheck) {
+            runTimers();
+            nextTimerCheck = elapsedTime + 1000;
+            if (scheduledThreads.isEmpty()) {
+                break;
+            }
+        }
         U64 threadStartTime = KSystem::getMicroCounter();
         KListNode<KThread*>* node = scheduledThreads.front();
         KThread* currentThread = (KThread*)node->data;
@@ -325,6 +335,19 @@ U32 getMIPS() {
         elapsedTimeMIPS = 0;
         elapsedInstructionsMIPS = 0;
     }
+    return result;
+}
+
+U32 getNextTimer() {
+    U32 now = KSystem::getMilliesSinceStart();
+    U32 result = 0xffffffff;
+    timers.for_each([now, &result](KListNode<KTimerCallback*>* node) {
+        U32 deadline = node->data->millies;
+        U32 remaining = deadline <= now ? 0 : deadline - now;
+        if (remaining < result) {
+            result = remaining;
+        }
+    });
     return result;
 }
 

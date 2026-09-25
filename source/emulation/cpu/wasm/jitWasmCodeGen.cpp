@@ -6756,6 +6756,7 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitSSE(cpu) {
     //   locals 47-54 (f64 x8): FPU temporaries for shared JitFPU code
     //   locals 55-66 (v128 x12): MMX/SIMD scratch locals
     //   local 67 (i32 x1): bounded direct-loop iteration budget
+    //   locals 68-75 (v128 x8): cached XMM registers
     m_emitter.beginFunction({
         { 8,  WasmType::I32 },  // GP registers (locals 2-9)
         { 4,  WasmType::I32 },  // segment addresses (locals 10-13)
@@ -6764,10 +6765,13 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitSSE(cpu) {
         { 8,  WasmType::F64 },  // FPU temporaries (locals 47-54)
         { 12, WasmType::V128 }, // MMX/SIMD scratch locals (locals 55-66)
         { 1,  WasmType::I32 },  // direct-loop budget (local 67)
+        { WASM_XMM_LOCAL_COUNT, WasmType::V128 }, // cached XMM registers (locals 68-75)
     });
 
     m_gpLoaded.fill(false);
+    m_xmmLoaded.fill(false);
     m_gpDirty.fill(false);
+    m_xmmDirty.fill(false);
     m_segLoaded.fill(false);
     m_scratchInUse.fill(false);
     m_f64ScratchInUse.fill(false);
@@ -6807,6 +6811,14 @@ void JitWasmCodeGen::storeGPReg(U8 emulatedReg) {
 void JitWasmCodeGen::syncDirtyRegsToHost() {
     for (U8 i = 0; i < WASM_GP_LOCAL_COUNT; i++) {
         if (m_gpDirty[i]) storeGPReg(i);
+    }
+    for (U8 i = 0; i < WASM_XMM_LOCAL_COUNT; i++) {
+        if (m_xmmDirty[i]) {
+            m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+            m_emitter.emitLocalGet(WASM_XMM_LOCAL_BASE + i);
+            m_emitter.emitV128Store((U32)(offsetof(CPU, xmm) + i * sizeof(cpu->xmm[0])));
+            m_xmmDirty[i] = false;
+        }
     }
 }
 
@@ -8744,30 +8756,36 @@ SSERegPtr JitWasmCodeGen::getTmpSSE() {
 }
 
 bool JitWasmCodeGen::isSseRegCached(U8 reg) {
-    (void)reg;
-    return true;
+    return reg < WASM_XMM_LOCAL_COUNT;
 }
 
 void JitWasmCodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
-    if (index >= 8) {
+    if (index >= WASM_XMM_LOCAL_COUNT) {
         kpanic("WASM storeCpuXMMReg invalid XMM index");
         return;
     }
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitLocalGet(reg->hardwareReg());
-    m_emitter.emitV128Store((U32)(offsetof(CPU, xmm) + index * sizeof(cpu->xmm[0])));
+    U32 local = WASM_XMM_LOCAL_BASE + index;
+    if (reg->hardwareReg() != local) {
+        m_emitter.emitLocalGet(reg->hardwareReg());
+        m_emitter.emitLocalSet(local);
+    }
+    m_xmmLoaded[index] = true;
+    m_xmmDirty[index] = true;
 }
 
 SSERegPtr JitWasmCodeGen::loadCpuXMMReg(U8 index) {
-    if (index >= 8) {
+    if (index >= WASM_XMM_LOCAL_COUNT) {
         kpanic("WASM loadCpuXMMReg invalid XMM index");
         return getTmpSSE();
     }
-    SSERegPtr tmp = getTmpSSE();
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitV128Load((U32)(offsetof(CPU, xmm) + index * sizeof(cpu->xmm[0])));
-    m_emitter.emitLocalSet(tmp->hardwareReg());
-    return tmp;
+    U32 local = WASM_XMM_LOCAL_BASE + index;
+    if (!m_xmmLoaded[index]) {
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitV128Load((U32)(offsetof(CPU, xmm) + index * sizeof(cpu->xmm[0])));
+        m_emitter.emitLocalSet(local);
+        m_xmmLoaded[index] = true;
+    }
+    return std::make_shared<SSERegInternal>((U8)local, index);
 }
 
 SSERegPtr JitWasmCodeGen::loadXMMFromMem128(U8 index, MemPtr address, SSERegPtr result) {
@@ -9618,6 +9636,7 @@ void JitWasmCodeGen::dynamic_fxrstor(DecodedOp* op) {
     m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitHelperOp));
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(HELPER_SPECIAL_OP);
+    m_xmmLoaded.fill(false);
     freeScratch(address->hardwareReg());
 }
 
@@ -10457,10 +10476,12 @@ void JitWasmCodeGen::emitArmSmcBailout() {
 // no-bailout path to one load and branch.
 //
 // The if-body's blockExit() runs syncDirtyRegsToHost which compile-time-
-// clears m_gpDirty[]; that's wrong for the no-bailout path where the
-// body didn't run. Save/restore the tracker around the emit.
+// clears the dirty-register trackers; that's wrong for the no-bailout path
+// where the body didn't run. Save/restore the trackers around the emit.
 void JitWasmCodeGen::emitBailoutCheck() {
-    auto savedGpDirty   = m_gpDirty;
+    auto savedGpDirty = m_gpDirty;
+    auto savedXmmDirty = m_xmmDirty;
+    auto savedXmmLoaded = m_xmmLoaded;
     auto savedGpLoaded  = m_gpLoaded;
     auto savedSegLoaded = m_segLoaded;
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
@@ -10489,6 +10510,8 @@ void JitWasmCodeGen::emitBailoutCheck() {
     blockExit();
     m_emitter.emitEnd();
     m_gpDirty   = savedGpDirty;
+    m_xmmDirty = savedXmmDirty;
+    m_xmmLoaded = savedXmmLoaded;
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
 }
@@ -10497,7 +10520,9 @@ void JitWasmCodeGen::emitBailoutCheck() {
 // branch itself. The branch has not executed yet, so using the post-write
 // next-op bailout helper here would skip branch/call/ret side effects.
 void JitWasmCodeGen::emitBranchBailoutCheck() {
-    auto savedGpDirty   = m_gpDirty;
+    auto savedGpDirty = m_gpDirty;
+    auto savedXmmDirty = m_xmmDirty;
+    auto savedXmmLoaded = m_xmmLoaded;
     auto savedGpLoaded  = m_gpLoaded;
     auto savedSegLoaded = m_segLoaded;
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
@@ -10514,6 +10539,8 @@ void JitWasmCodeGen::emitBranchBailoutCheck() {
     blockExit();
     m_emitter.emitEnd();
     m_gpDirty   = savedGpDirty;
+    m_xmmDirty = savedXmmDirty;
+    m_xmmLoaded = savedXmmLoaded;
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
 }
@@ -10539,7 +10566,9 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
     auto result = getTmpReg();
     U32 entryLocal = allocScratch();
 
-    auto savedGpDirty   = m_gpDirty;
+    auto savedGpDirty = m_gpDirty;
+    auto savedXmmDirty = m_xmmDirty;
+    auto savedXmmLoaded = m_xmmLoaded;
     auto savedGpLoaded  = m_gpLoaded;
     auto savedSegLoaded = m_segLoaded;
 
@@ -10598,13 +10627,17 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
     m_emitter.emitEnd();
 
     m_gpDirty   = savedGpDirty;
+    m_xmmDirty = savedXmmDirty;
+    m_xmmLoaded = savedXmmLoaded;
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
 
     if (prepareWrite) {
         prepareWrite(result);
 
-        savedGpDirty   = m_gpDirty;
+        savedGpDirty = m_gpDirty;
+        savedXmmDirty = m_xmmDirty;
+        savedXmmLoaded = m_xmmLoaded;
         savedGpLoaded  = m_gpLoaded;
         savedSegLoaded = m_segLoaded;
 
@@ -10638,6 +10671,8 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
         m_emitter.emitEnd();
 
         m_gpDirty   = savedGpDirty;
+        m_xmmDirty = savedXmmDirty;
+        m_xmmLoaded = savedXmmLoaded;
         m_gpLoaded  = savedGpLoaded;
         m_segLoaded = savedSegLoaded;
     }
@@ -10670,7 +10705,9 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         m_needsWasmMemoryPageArrays = true;
         U32 entryLocal = allocScratch();
         U32 hostLocal = allocScratch();
-        auto savedGpDirty   = m_gpDirty;
+        auto savedGpDirty = m_gpDirty;
+        auto savedXmmDirty = m_xmmDirty;
+        auto savedXmmLoaded = m_xmmLoaded;
         auto savedGpLoaded  = m_gpLoaded;
         auto savedSegLoaded = m_segLoaded;
 
@@ -10704,9 +10741,17 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
             } else {
                 emulateSingleOp();
             }
+            // The interpreter may change any XMM register. Populate every
+            // local so the inline arm's lazy-cache state is valid at the join.
+            // This work is confined to the cold memory path.
+            syncDirtyRegsToHost();
+            m_xmmLoaded.fill(false);
+            for (U8 i = 0; i < WASM_XMM_LOCAL_COUNT; ++i) loadCpuXMMReg(i);
         }
         m_emitter.emitElse();
         {
+            m_xmmLoaded = savedXmmLoaded;
+            m_xmmDirty = savedXmmDirty;
             m_emitter.emitLocalGet(entryLocal);
             pushRegValue(addressReg);
             m_emitter.emitI32Const(K_PAGE_MASK);
@@ -10717,6 +10762,7 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
         }
         m_emitter.emitEnd();
 
+        // Keep the inline arm's XMM state: the cold arm reloaded all locals.
         m_gpDirty   = savedGpDirty;
         m_gpLoaded  = savedGpLoaded;
         m_segLoaded = savedSegLoaded;
@@ -10733,7 +10779,9 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
 RegPtr JitWasmCodeGen::readMemoryValue(JitWidth w, RegPtr addressReg, RegPtr tmp, bool signExtend) {
     m_needsWasmMemoryPageArrays = true;
     U32 entryLocal = allocScratch();
-    auto savedGpDirty   = m_gpDirty;
+    auto savedGpDirty = m_gpDirty;
+    auto savedXmmDirty = m_xmmDirty;
+    auto savedXmmLoaded = m_xmmLoaded;
     auto savedGpLoaded  = m_gpLoaded;
     auto savedSegLoaded = m_segLoaded;
 
@@ -10804,6 +10852,8 @@ RegPtr JitWasmCodeGen::readMemoryValue(JitWidth w, RegPtr addressReg, RegPtr tmp
     m_emitter.emitEnd();
 
     m_gpDirty   = savedGpDirty;
+    m_xmmDirty = savedXmmDirty;
+    m_xmmLoaded = savedXmmLoaded;
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
     freeScratch(entryLocal);
@@ -10832,7 +10882,9 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
         m_needsWasmMemoryPageArrays = true;
         U32 entryLocal = allocScratch();
         U32 hostLocal = allocScratch();
-        auto savedGpDirty   = m_gpDirty;
+        auto savedGpDirty = m_gpDirty;
+        auto savedXmmDirty = m_xmmDirty;
+        auto savedXmmLoaded = m_xmmLoaded;
         auto savedGpLoaded  = m_gpLoaded;
         auto savedSegLoaded = m_segLoaded;
 
@@ -10866,9 +10918,17 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
             } else {
                 emulateSingleOp();
             }
+            // The interpreter may change any XMM register. Populate every
+            // local so the inline arm's lazy-cache state is valid at the join.
+            // This work is confined to the cold memory path.
+            syncDirtyRegsToHost();
+            m_xmmLoaded.fill(false);
+            for (U8 i = 0; i < WASM_XMM_LOCAL_COUNT; ++i) loadCpuXMMReg(i);
         }
         m_emitter.emitElse();
         {
+            m_xmmLoaded = savedXmmLoaded;
+            m_xmmDirty = savedXmmDirty;
             m_emitter.emitLocalGet(entryLocal);
             pushRegValue(addressReg);
             m_emitter.emitI32Const(K_PAGE_MASK);
@@ -10879,6 +10939,7 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
         }
         m_emitter.emitEnd();
 
+        // Keep the inline arm's XMM state: the cold arm reloaded all locals.
         m_gpDirty   = savedGpDirty;
         m_gpLoaded  = savedGpLoaded;
         m_segLoaded = savedSegLoaded;
@@ -10889,7 +10950,9 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
 
     m_needsWasmMemoryPageArrays = true;
     U32 entryLocal = allocScratch();
-    auto savedGpDirty   = m_gpDirty;
+    auto savedGpDirty = m_gpDirty;
+    auto savedXmmDirty = m_xmmDirty;
+    auto savedXmmLoaded = m_xmmLoaded;
     auto savedGpLoaded  = m_gpLoaded;
     auto savedSegLoaded = m_segLoaded;
 
@@ -10950,6 +11013,8 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
     m_emitter.emitEnd();
 
     m_gpDirty   = savedGpDirty;
+    m_xmmDirty = savedXmmDirty;
+    m_xmmLoaded = savedXmmLoaded;
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
     freeScratch(entryLocal);
@@ -11849,21 +11914,22 @@ void JitWasmCodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth sr
 
 void JitWasmCodeGen::scalarSseFromMemory(DecodedOp* op, JitWidth width, U8 instruction, bool unary) {
     read(width, calculateEaa(op), [this, op, width, instruction, unary](MemPtr address) {
-        const U32 offset = (U32)(offsetof(CPU, xmm) + op->reg * sizeof(cpu->xmm[0]));
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL); // destination for the scalar store
+        SSERegPtr dst = loadCpuXMMReg(op->reg);
+        m_emitter.emitLocalGet(dst->hardwareReg()); // preserve the upper lanes
         if (!unary) {
-            m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-            if (width == JitWidth::b32) m_emitter.emitF32Load(offset);
-            else m_emitter.emitF64Load(offset);
+            m_emitter.emitLocalGet(dst->hardwareReg());
+            m_emitter.emitSimdLaneOp(width == JitWidth::b32 ?
+                WASM_SIMD_F32X4_EXTRACT_LANE : WASM_SIMD_F64X2_EXTRACT_LANE, 0);
         }
         U32 memOffset = 0;
         emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
         if (width == JitWidth::b32) m_emitter.emitF32Load(memOffset, 0);
         else m_emitter.emitF64Load(memOffset, 0);
         m_emitter.emitOp(instruction);
-        // Write only the low lane; the untouched XMM bytes need no load/merge.
-        if (width == JitWidth::b32) m_emitter.emitF32Store(offset);
-        else m_emitter.emitF64Store(offset);
+        m_emitter.emitSimdLaneOp(width == JitWidth::b32 ?
+            WASM_SIMD_F32X4_REPLACE_LANE : WASM_SIMD_F64X2_REPLACE_LANE, 0);
+        m_emitter.emitLocalSet(dst->hardwareReg());
+        storeCpuXMMReg(dst, op->reg);
     });
 }
 
@@ -11941,6 +12007,7 @@ void JitWasmCodeGen::fillFlags(U32 flags) {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(HELPER_FILL_FLAGS);
     m_gpLoaded.fill(false);
+    m_xmmLoaded.fill(false);
     currentLazyFlags = FLAGS_NONE;
 }
 RegPtr JitWasmCodeGen::getZF() {
@@ -11956,6 +12023,7 @@ RegPtr JitWasmCodeGen::getZF() {
     // Any register values we had cached may have been invalidated if helper
     // touched state; invalidate and let callers re-load as needed.
     m_gpLoaded.fill(false);
+    m_xmmLoaded.fill(false);
     return r;
 }
 RegPtr JitWasmCodeGen::getCF() {
@@ -11981,7 +12049,9 @@ RegPtr JitWasmCodeGen::getCF() {
     // with different lazy state, but compute the overwhelmingly common arm
     // directly in WASM instead of crossing an imported C++ helper.
     RegPtr runtimeType = getLazyFlagType();
-    auto savedGpDirty   = m_gpDirty;
+    auto savedGpDirty = m_gpDirty;
+    auto savedXmmDirty = m_xmmDirty;
+    auto savedXmmLoaded = m_xmmLoaded;
     auto savedGpLoaded  = m_gpLoaded;
     auto savedSegLoaded = m_segLoaded;
 
@@ -12000,6 +12070,8 @@ RegPtr JitWasmCodeGen::getCF() {
     m_emitter.emitEnd();
 
     m_gpDirty   = savedGpDirty;
+    m_xmmDirty = savedXmmDirty;
+    m_xmmLoaded = savedXmmLoaded;
     m_gpLoaded  = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
     if (canReleaseScratchReg(runtimeType)) {
@@ -12471,6 +12543,7 @@ void JitWasmCodeGen::finishIf() {
 void JitWasmCodeGen::branchBoundary() {
     syncDirtyRegsToHost();
     m_gpLoaded.fill(false);
+    m_xmmLoaded.fill(false);
     m_segLoaded.fill(false);
 }
 
@@ -12990,6 +13063,7 @@ void JitWasmCodeGen::callHostFunction(void* address, const std::vector<DynParam>
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCallIndirect(m_typeVoidI32, 0);
     m_gpLoaded.fill(false);
+    m_xmmLoaded.fill(false);
 }
 
 void JitWasmCodeGen::callHostFunctionWithResult(RegPtr result, void* address,
@@ -13006,6 +13080,8 @@ void JitWasmCodeGen::callHostFunctionWithResult(RegPtr result, void* address,
 void JitWasmCodeGen::dynamic_wait(DecodedOp* op) {
     (void)op;
     auto savedGpDirty = m_gpDirty;
+    auto savedXmmDirty = m_xmmDirty;
+    auto savedXmmLoaded = m_xmmLoaded;
     auto savedGpLoaded = m_gpLoaded;
     auto savedSegLoaded = m_segLoaded;
     LazyFlagType savedLazyFlags = currentLazyFlags;
@@ -13020,7 +13096,9 @@ void JitWasmCodeGen::dynamic_wait(DecodedOp* op) {
     blockExit();
     m_emitter.emitEnd();
 
-    m_gpDirty = savedGpDirty;
+    m_gpDirty   = savedGpDirty;
+    m_xmmDirty = savedXmmDirty;
+    m_xmmLoaded = savedXmmLoaded;
     m_gpLoaded = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
     currentLazyFlags = savedLazyFlags;
@@ -13075,6 +13153,8 @@ void JitWasmCodeGen::emulateSingleOp() {
     // trapping. Return to the dispatcher before compiling the following op so
     // it runs through CPU::startDebugInstruction/finishDebugInstruction.
     auto savedGpDirty = m_gpDirty;
+    auto savedXmmDirty = m_xmmDirty;
+    auto savedXmmLoaded = m_xmmLoaded;
     auto savedGpLoaded = m_gpLoaded;
     auto savedSegLoaded = m_segLoaded;
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
@@ -13083,11 +13163,14 @@ void JitWasmCodeGen::emulateSingleOp() {
     m_emitter.emitIf();
     blockExit();
     m_emitter.emitEnd();
-    m_gpDirty = savedGpDirty;
+    m_gpDirty   = savedGpDirty;
+    m_xmmDirty = savedXmmDirty;
+    m_xmmLoaded = savedXmmLoaded;
     m_gpLoaded = savedGpLoaded;
     m_segLoaded = savedSegLoaded;
 
     m_gpLoaded.fill(false);
+    m_xmmLoaded.fill(false);
     m_segLoaded.fill(false);
     // The interpreter may have updated cpu->lazyFlagType to any value.
     // Reset the compile-time cache so getCondition uses the safe runtime-read
@@ -13580,7 +13663,9 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
             }
 #endif
             m_gpDirty.fill(false);
+            m_xmmDirty.fill(false);
             m_gpLoaded.fill(false);
+            m_xmmLoaded.fill(false);
             m_segLoaded.fill(false);
             currentLazyFlags = FLAGS_NULL;
         }

@@ -229,6 +229,9 @@ CPPFLAGS ?= $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) $(COMPILE_EXCEPTION_FLAG) $(
 SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE),)
 LDFLAGS = $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 -sFULL_ES3 -s STACK_SIZE=1048576 $(LINK_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' $(EXTRA_LD_FLAGS)
 LDFLAGS += --js-library=boxedwine-audio-worklet.js
+# Wine's WebGL streaming buffers start at 16 MiB. Client-array draws include
+# the stream offset, so Halo exceeds Emscripten's default 2 MiB upload limit.
+LDFLAGS += -sGL_MAX_TEMP_BUFFER_SIZE=16777216
 
 # Threaded JIT builds intentionally grow shared memory as compiled blocks
 # accumulate. Acknowledge the SDK's generic performance advisory while

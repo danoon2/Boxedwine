@@ -765,6 +765,13 @@ bool StartUpArgs::apply() {
     x11_init();
 
     if (this->args.size()) {
+        // Boxedwine controls guest mappings, so ordinary Wine app launches do
+        // not need a preloader that can overlap large fixed-address PE images.
+        // NOEXEC also skips Wine's command-line/alias handling: keep it out of
+        // utility commands and shells (e.g. winetricks invokes wine --version).
+        if (args.size() > 1 && (args[0] == "wine" || args[0].endsWith("/wine")) && !args[1].startsWith("-")) {
+            addDefaultEnvValue(envValues, "WINELOADERNOEXEC=1");
+        }
         klog_nonewline("Launching ");
         for (U32 i=0;i<this->args.size();i++) {
             klog_nonewline_fmt("\"%s\" ", this->args[i].c_str());

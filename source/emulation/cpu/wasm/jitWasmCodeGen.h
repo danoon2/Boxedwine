@@ -39,6 +39,7 @@
  *   locals 47-54: f64 scratch temporaries for JitFPU
  *   locals 55-66: v128 scratch temporaries for JitMMX/MMX
  *   local 67: bounded direct-loop iteration budget
+ *   locals 68-75: cached XMM registers (v128), loaded lazily and written on sync
  *
  * The JitReg::hardwareReg() field stores the WASM local variable index.
  * Emulated register n maps to local n+2 (so eax=2, ecx=3, ..., edi=9).
@@ -216,12 +217,15 @@ static constexpr U32 WASM_I64_SCRATCH     = 46;  // WASM_TMP_LOCAL_BASE + WASM_T
 // f64 scratch locals used by the shared JitFPU implementation.
 static constexpr U32 WASM_F64_LOCAL_BASE  = 47;
 static constexpr U32 WASM_F64_LOCAL_COUNT = 8;
-// v128 scratch locals reserved for future MMX/SIMD lowering.
+// v128 scratch locals used by MMX/SIMD lowering.
 static constexpr U32 WASM_V128_LOCAL_BASE  = WASM_F64_LOCAL_BASE + WASM_F64_LOCAL_COUNT;
 static constexpr U32 WASM_V128_LOCAL_COUNT = 12;
 static constexpr U32 WASM_DIRECT_LOOP_BUDGET_LOCAL = WASM_V128_LOCAL_BASE + WASM_V128_LOCAL_COUNT;
+// Dedicated XMM locals must not be released by the SIMD scratch allocator.
+static constexpr U32 WASM_XMM_LOCAL_BASE = WASM_DIRECT_LOOP_BUDGET_LOCAL + 1;
+static constexpr U32 WASM_XMM_LOCAL_COUNT = 8;
 // Total WASM local slots, including parameters.
-static constexpr U32 WASM_LOCAL_COUNT = WASM_DIRECT_LOOP_BUDGET_LOCAL + 1;
+static constexpr U32 WASM_LOCAL_COUNT = WASM_XMM_LOCAL_BASE + WASM_XMM_LOCAL_COUNT;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
@@ -1000,7 +1004,7 @@ protected:
     RegPtr memPtrToAddressReg(MemPtr address);
 
     // Called at the start of each IfXxx and at StartElse/EndIf: flush any
-    // dirty GP regs to the CPU struct and invalidate the compile-time
+    // dirty GP/XMM regs to the CPU struct and invalidate the compile-time
     // load-cache. This keeps the two branches in sync: neither can assume a
     // local was populated by a load emitted in the other.
     void branchBoundary();
@@ -1069,6 +1073,8 @@ protected:
     std::array<bool, WASM_GP_LOCAL_COUNT> m_gpLoaded{};
     std::array<bool, WASM_GP_LOCAL_COUNT> m_gpDirty{};
     std::array<bool, 4> m_segLoaded{};
+    std::array<bool, WASM_XMM_LOCAL_COUNT> m_xmmLoaded{};
+    std::array<bool, WASM_XMM_LOCAL_COUNT> m_xmmDirty{};
 
     // Buffer used by getBufferSize/markBufferLocation for branch patching
     std::vector<U8>  m_patchBuffer;
@@ -1082,7 +1088,7 @@ protected:
     // The current block's WASM binary (set in commitJIT)
     std::vector<U8> m_wasmBinary;
 
-    // Helper: emit code to sync all dirty GP registers back to CPU struct
+    // Helper: emit code to sync all dirty GP and XMM registers back to CPU struct
     void syncDirtyRegsToHost();
     // Helper: emit code to load all GP registers from CPU struct
     void loadAllGPRegs();

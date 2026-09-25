@@ -75,6 +75,7 @@ void testExitGroupPublishesStatusAfterCleanup();
 void testTerminationPinsThreadDuringLookup();
 void testThreadStartPublishesHandleBeforeEntry();
 void testHardLinksShareIdentityDataAndXattrs();
+void testReadOnlyCreatePreservesZipFile();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testSharedFileMappingGrowthKeepsPagesShared();
 void testSharedFileMappingTruncateClearsResidentBytes();
@@ -193,10 +194,13 @@ const TestEntry TEST_ENTRIES[] = {
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifndef BOXEDWINE_MULTI_THREADED
     {testSingleThreadSchedulerTimeSlice, "Test single-thread scheduler timed turns", TEST_ENTRY_SERIAL},
+    {testSingleThreadSchedulerTimers, "Test single-thread scheduler timer deadlines", TEST_ENTRY_SERIAL},
 #endif
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},
     {testWasmJitSseCompareConditions, "Test WASM JIT SSE compare conditions"},
+    {testWasmJitXmmCache, "Test WASM JIT XMM cache transitions"},
+    {testWasmJitXmmFaultState, "Test WASM JIT XMM cache fault state", TEST_ENTRY_SERIAL},
     {testWasmJitOnlyBlockEntryIsCallable, "Test WASM JIT subblock entries and invalidation"},
     {testExecutableFixedReplacementPreparationFailurePreservesState, "Test WASM JIT fixed replacement backend preparation is transactional", TEST_ENTRY_SERIAL},
     {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
@@ -260,6 +264,7 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
     {testNativeJitRunCountWraps, "Test native JIT runCount wrap"},
+    {testNativeJitCooperativeScheduling, "Test native JIT cooperative scheduling", TEST_ENTRY_SERIAL},
 #endif
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
@@ -1058,6 +1063,7 @@ const TestEntry TEST_ENTRIES[] = {
         "Test native socket bind unavailable address returns EADDRNOTAVAIL", TEST_ENTRY_SERIAL},
 #endif
     {testGuestWritePreservesPartialProgress, "Test guest write preserves partial progress"},
+    {testReadOnlyCreatePreservesZipFile, "Test read-only create preserves ZIP file contents", TEST_ENTRY_SERIAL},
 };
 
 } // namespace

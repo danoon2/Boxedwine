@@ -337,6 +337,14 @@ FsOpenNode* FsFileNode::open(U32 flags) {
             return nullptr;
         }
         openFlags|=O_RDONLY;
+#ifdef BOXEDWINE_ZLIB
+        // O_CREAT also preserves an existing file on a read-only open. Without
+        // copying its ZIP contents first, the host open would shadow it with an
+        // empty file (Wine's GENERIC_READ + OPEN_ALWAYS uses this combination).
+        if (this->zipNode && (flags & K_O_CREAT)) {
+            ensurePathIsLocal(false);
+        }
+#endif
         // make the file local so that it will load faster (no inflate and weird seeking logic)
 #if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__)
         if (KSystem::cacheReads && this->zipNode) {
