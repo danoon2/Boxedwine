@@ -1323,7 +1323,8 @@ void common_FIST_WORD_INTEGER_Pop(CPU* cpu, U32 address) {
 
 void common_FBLD_PACKED_BCD(CPU* cpu, U32 address) {
     U8 value[10];
-    cpu->memory->memcpy(value, address, 10); // might generate PF, so do before we adjust the stack
+    // Use guest reads so a protected page delivers a fault before the push.
+    for (U32 i = 0; i < 10; ++i) value[i] = cpu->memory->readb(address + i);
     cpu->fpu.PREP_PUSH();
     cpu->fpu.FBLD(value, cpu->fpu.STV(0));
 #ifdef LOG_FPU

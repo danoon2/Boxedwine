@@ -94,6 +94,9 @@ public:
 
     U8 hardwareReg();
     bool isLoaded() { return reg != 0xff; }
+    // A backend may spill a persistent cache register and reload it lazily.
+    void invalidateHardwareReg() { reg = 0xff; }
+    void setHardwareReg(U8 hardwareReg) { reg = hardwareReg; }
     bool isTemporary() const { return emulatedReg == 0xff; }
     U8 emulatedReg;
     bool isHigh;

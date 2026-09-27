@@ -56,6 +56,9 @@ public:
 
     virtual void preOp(DecodedOp* op) {}
     virtual void onBlockPreCommit(DecodedOp* op) {}
+    // Some interiors require live backend registers. Dispatch those through
+    // the interpreter until the next independently enterable instruction.
+    virtual bool isExternalJitEntry(U32 eip) const { return true; }
     // Consulted per op while calculateLongestBlock extends a block (never for
     // the block's first op). Returning true ends the block before `op`, so a
     // backend can honor profile-guided split hints that want a hot interior

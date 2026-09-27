@@ -1360,7 +1360,10 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     }
 #endif
     DecodedOp* lastJitOp = nullptr;
-    U32 lastJitEip = 0;
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    U8* lastFaultAddress = nullptr;
+    U32 lastFaultEip = 0;
+#endif
 
     for (U32 i = 0; i < blockOpCount; i++) {
         U32 bufferIndex = 0;
@@ -1368,8 +1371,24 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
         if (!eipToBufferPos.get(address, bufferIndex)) {
             kpanic("x32CPU commitJIT 2");
         }
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        // Fault recovery needs every real instruction boundary, including
+        // interiors that cannot be entered without the backend's live cache.
+        if (bufferIndex != SKIPPED_OP) {
+            U8* faultAddress = begin + getBufferLocation(bufferIndex);
+            if (lastFaultAddress && faultAddress != lastFaultAddress)
+                getMemData(cpu->memory)->jitAddressToEip[lastFaultAddress] =
+                    JitData((U32)(faultAddress - lastFaultAddress), lastFaultEip - cpu->seg[CS].address);
+            lastFaultAddress = faultAddress;
+            lastFaultEip = address;
+        }
+#endif
         if (bufferIndex == SKIPPED_OP) {
             nextOp->flags2 |= OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE;
+        } else if (!isExternalJitEntry(address)) {
+            nextOp->setJitCode(nullptr);
+            nextOp->jitLen = 0;
+            nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         } else {
             bufferIndex = getBufferLocation(bufferIndex);
 #ifdef BOXEDWINE_JIT_X64
@@ -1382,11 +1401,7 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             nextOp->pfn = cpu->thread->process->startJITOp;
             if (lastJitOp) {
                 lastJitOp->jitLen = static_cast<U16>((U8*)nextOp->pfnJitCode - (U8*)lastJitOp->pfnJitCode);
-#ifdef BOXEDWINE_HOST_EXCEPTIONS
-                getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
-#endif
             }
-            lastJitEip = address;
             lastJitOp = nextOp;
         }
         nextOp->flags |= OP_FLAG_JIT;
@@ -1397,10 +1412,12 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
     }
     if (lastJitOp && !lastJitOp->jitLen) {
         lastJitOp->jitLen = (U16)(size - static_cast<U32>((U8*)lastJitOp->pfnJitCode - (U8*)begin));
-#ifdef BOXEDWINE_HOST_EXCEPTIONS
-        getMemData(cpu->memory)->jitAddressToEip[(U8*)lastJitOp->pfnJitCode] = JitData(lastJitOp->jitLen, lastJitEip - cpu->seg[CS].address);
-#endif
     }
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (lastFaultAddress)
+        getMemData(cpu->memory)->jitAddressToEip[lastFaultAddress] =
+            JitData((U32)(begin + size - lastFaultAddress), lastFaultEip - cpu->seg[CS].address);
+#endif
 #ifndef BOXEDWINE_WASM_JIT
     recordNativeJitBlock(cpu, begin, size, startingEip, emulatedLen);
 #endif

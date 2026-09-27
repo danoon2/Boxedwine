@@ -26,6 +26,7 @@ void testLinearMemoryCodeInvalidation();
 void testDecodedOpInvalidationDefersCrossThreadReuse();
 void testDecodedOpCacheCloneExecDetach();
 void testDecodedOpPreparedMultiRangeRemoval();
+void testDecodedOpCachePublishesCompleteChain();
 #endif
 
 #endif

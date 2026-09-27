@@ -116,8 +116,10 @@ enum WasmOp : U8 {
     WASM_I32_LE_U       = 0x4d,
     WASM_I32_GE_S       = 0x4e,
     WASM_I32_GE_U       = 0x4f,
+    WASM_I64_EQZ        = 0x50,
     WASM_I64_EQ         = 0x51,
     WASM_I64_NE         = 0x52,
+    WASM_I64_GT_U       = 0x56,
     WASM_F32_LT         = 0x5d,
     WASM_F64_EQ         = 0x61,
     WASM_F64_NE         = 0x62,
@@ -157,6 +159,7 @@ enum WasmOp : U8 {
     WASM_I64_SHR_S      = 0x87,
     WASM_I64_SHR_U      = 0x88,
     WASM_I64_CLZ        = 0x79,
+    WASM_I64_CTZ        = 0x7a,
     WASM_F32_SQRT       = 0x91,
     WASM_F32_ADD        = 0x92,
     WASM_F32_SUB        = 0x93,
@@ -404,6 +407,10 @@ public:
     void emitGlobalGet(U32 idx);
     void emitI32Const(S32 val);
     void emitI64Const(S64 val);
+    void emitF64ConstBits(U64 bits) {
+        emitI64Const((S64)bits);
+        emitOp(WASM_F64_REINTERPRET_I64);
+    }
 
     void emitI32Load(U32 offset, U32 align = 2);
     void emitI32Load8S(U32 offset);
@@ -421,6 +428,7 @@ public:
     void emitF64Store(U32 offset, U32 align = 3);
 
     void emitOp(U8 op);   // emit a standalone opcode
+    void emitI64TruncSatF64S();
     void emitSimdOp(U32 op);
     // For SIMD ops whose lane immediate directly follows the opcode.
     // Lane load/store ops need a separate memarg+lane helper if added later.

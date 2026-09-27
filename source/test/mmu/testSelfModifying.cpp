@@ -871,6 +871,49 @@ void testLinearMemoryCodeInvalidation() {
 #ifdef BOXEDWINE_MULTI_THREADED
 #undef cpu
 #undef memory
+void testDecodedOpCachePublishesCompleteChain() {
+    // Observe the same point at which another interpreter can enter the cache.
+    // Its NEXT() must already reach the cached successor, even when decoding
+    // stopped immediately before a previously decoded instruction.
+    for (U32 start : {0x1000u, 0x1ffeu}) {
+        DecodedOpCache cache;
+        auto makeOp = [](U32 address) {
+            DecodedOp* op = DecodedOp::alloc();
+            op->inst = Nop;
+            op->len = 1;
+#ifdef _DEBUG
+            op->eip = address;
+#endif
+            return op;
+        };
+        DecodedOp* successor = makeOp(start + 3);
+        cache.add(successor, start + 3, 1);
+        DecodedOp* first = makeOp(start);
+        first->next = makeOp(start + 1);
+        first->next->next = makeOp(start + 2);
+        U32 observed = 0;
+        bool incomplete = false;
+        cache.testAfterOpPublished = [&](U32 address, DecodedOp* published) {
+            ++observed;
+            if (cache.get(address) != published) {
+                incomplete = true;
+            }
+            DecodedOp* cursor = published;
+            for (U32 i = address; cursor && i < start + 3; ++i) {
+                cursor = cursor->next;
+            }
+            if (cursor != successor) {
+                incomplete = true;
+            }
+        };
+        cache.add(first, start, 3);
+        cache.testAfterOpPublished = {};
+        if (observed != 3 || incomplete) {
+            failed("decoded op cache exposed a chain before linking its successor");
+        }
+    }
+}
+
 void testDecodedOpPreparedMultiRangeRemoval() {
     // No registered CPU protects the retired ops. Reclamation must still keep
     // the prepared transaction's bookkeeping alive until its last range.

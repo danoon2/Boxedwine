@@ -475,10 +475,33 @@ void DecodedOpCache::removeAll() {
 }
 
 void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
+	// Readers can enter any cached instruction without taking the decoder's
+	// mutex. Finish the chain before publishing its first entry, otherwise a
+	// thread can reach the still-null tail while we install the remaining ops.
+	U32 endAddress = address;
+	DecodedOp* tail = op;
+	for (U32 remaining = opCount; tail && remaining; --remaining) {
+		if (tail->inst == Done) {
+			break;
+		}
+#ifdef __TEST
+		if (tail->inst == TestEnd) {
+			break;
+		}
+#endif
+		endAddress += tail->len;
+		if (remaining == 1 || !tail->next) {
+			if (!(tail->flags & OP_FLAG_END_OF_LONG_CHAIN)) {
+				tail->next = get(endAddress);
+			}
+			break;
+		}
+		tail = tail->next;
+	}
+
 	U32 pageIndex = address >> K_PAGE_SHIFT;
 	DecodedOpPageCache* page = getPageCache(pageIndex, true);
 	U32 offset = address & K_PAGE_MASK;
-	DecodedOp* prevOp = nullptr;
 
 #ifdef BOXEDWINE_MULTI_THREADED
 	reclaimPendingDeallocs();
@@ -506,6 +529,11 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
 		}
 #endif
 		page->ops[offset] = op;
+#ifdef __TEST
+        if (testAfterOpPublished) {
+            testAfterOpPublished(address, op);
+        }
+#endif
 #ifdef BOXEDWINE_JIT_X64
         if (page->jitEntries) {
             op->jitEntrySlot = &page->jitEntries[offset];
@@ -516,7 +544,6 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
 		activeOps++;
 		opCount--;		
 		offset += op->len;
-		prevOp = op;
 		if (opCount == 0) {
 			break;
 		}
@@ -526,9 +553,6 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
 			page = getPageCache(pageIndex, true);
 			offset -= K_PAGE_SIZE;
 		}
-	}
-	if (!(prevOp->flags & OP_FLAG_END_OF_LONG_CHAIN)) {
-		prevOp->next = get((pageIndex << K_PAGE_SHIFT) + offset);
 	}
 }
 

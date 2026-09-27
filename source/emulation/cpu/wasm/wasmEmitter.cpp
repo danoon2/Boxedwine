@@ -267,6 +267,11 @@ void WasmEmitter::emitF64Store(U32 offset, U32 align) {
 
 void WasmEmitter::emitOp(U8 op) { m_currentBody.push_back(op); }
 
+void WasmEmitter::emitI64TruncSatF64S() {
+    m_currentBody.push_back(0xfc);
+    appendULEB128(m_currentBody, 6);
+}
+
 void WasmEmitter::emitSimdOp(U32 op) {
     m_currentBody.push_back(0xfd);
     appendULEB128(m_currentBody, op);

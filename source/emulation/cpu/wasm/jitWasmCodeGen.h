@@ -40,6 +40,9 @@
  *   locals 55-66: v128 scratch temporaries for JitMMX/MMX
  *   local 67: bounded direct-loop iteration budget
  *   locals 68-75: cached XMM registers (v128), loaded lazily and written on sync
+ *   locals 76-83: cached x87 values (f64)
+ *   locals 84-91: cached x87 tags (i32); local 92: x87 TOP at region entry
+ *   locals 93-100: loop-carried x87 double-valid flags (i32)
  *
  * The JitReg::hardwareReg() field stores the WASM local variable index.
  * Emulated register n maps to local n+2 (so eax=2, ecx=3, ..., edi=9).
@@ -224,8 +227,13 @@ static constexpr U32 WASM_DIRECT_LOOP_BUDGET_LOCAL = WASM_V128_LOCAL_BASE + WASM
 // Dedicated XMM locals must not be released by the SIMD scratch allocator.
 static constexpr U32 WASM_XMM_LOCAL_BASE = WASM_DIRECT_LOOP_BUDGET_LOCAL + 1;
 static constexpr U32 WASM_XMM_LOCAL_COUNT = 8;
+// Persistent x87 locals are separate from the per-instruction scratch pools.
+static constexpr U32 WASM_FPU_CACHE_BASE = WASM_XMM_LOCAL_BASE + WASM_XMM_LOCAL_COUNT;
+static constexpr U32 WASM_FPU_TAG_BASE = WASM_FPU_CACHE_BASE + 8;
+static constexpr U32 WASM_FPU_TOP_LOCAL = WASM_FPU_TAG_BASE + 8;
 // Total WASM local slots, including parameters.
-static constexpr U32 WASM_LOCAL_COUNT = WASM_XMM_LOCAL_BASE + WASM_XMM_LOCAL_COUNT;
+static constexpr U32 WASM_FPU_VALID_BASE = WASM_FPU_TOP_LOCAL + 1;
+static constexpr U32 WASM_LOCAL_COUNT = WASM_FPU_VALID_BASE + 8;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
@@ -481,6 +489,31 @@ public:
     bool directDoesAffectFlags(DecodedOp* op) override;
 
     // --- JitFPU backend hooks ---
+    bool supportsFpuStackCache() const override { return true; }
+    bool supportsFpuLoopCache() const override { return true; }
+    void materializeFpuCache(U8 slotMask = 0xff) override;
+    RegPtr getFpuCacheValidReg(U8 index) override;
+    FPURegPtr getFpuCacheReg(U8 index) override;
+    RegPtr getFpuCacheTagReg(U8 index) override;
+    RegPtr getFpuCacheTopReg() override;
+    void moveFpuReg(FPURegPtr dst, FPURegPtr src) override;
+    void loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
+    void fpuMath(FpuMath op, FPURegPtr dst, FPURegPtr src) override;
+    void fpuAtan2(FPURegPtr dst, FPURegPtr y, FPURegPtr x) override;
+    RegPtr classifyFpu(FPURegPtr value) override;
+    RegPtr classifyExtendedFpu(RegPtr index) override;
+    void fpuSlotArithmetic(U8 operation, RegPtr st0, RegPtr st1) override;
+    void fpuRemainder(FPURegPtr x, FPURegPtr y, RegPtr xValid, RegPtr yValid, RegPtr st0, RegPtr st1, bool nearest, const std::function<void()>& slow) override;
+    void fpuScale(FPURegPtr x, FPURegPtr y, RegPtr xValid, RegPtr yValid, RegPtr st0, RegPtr st1) override;
+    void fpuExtract(FPURegPtr x, RegPtr valid, RegPtr st0, RegPtr result) override;
+    void accessFpu80(RegPtr address, bool store, const std::function<void(MemPtr)>& action) override;
+    void accessFpuEnvironment(RegPtr address, U32 size, bool store, const std::function<void(MemPtr)>& action) override;
+    void withFpuScratchScope(const std::function<void()>& action) override;
+    void transferFpu80(MemPtr address, RegPtr index, bool store, bool bcd) override;
+    void saveFpu80(MemPtr address, RegPtr index, FPURegPtr value, RegPtr valid) override;
+    void storeFpuBcd(MemPtr address, RegPtr index, FPURegPtr value, RegPtr valid) override;
+    void loadInt64ToExtended(MemPtr address, RegPtr index) override;
+    void storeExtendedAsInt64(RegPtr index, MemPtr address, bool truncate) override;
     FPURegPtr getFPUTmp() override;
     void storeCpuFpuReg(FPURegPtr reg, RegPtr index) override;
     void loadCpuFpuReg(FPURegPtr reg, RegPtr index) override;
@@ -927,6 +960,10 @@ public:
     U32 m_directLoopToken = 0;
     bool m_hasDirectLoopCandidate = false;
     bool m_directLoopOpen = false;
+    bool m_directLoopTouchesFpu = false;
+    bool m_directLoopKeepsFpu = false;
+    bool m_directLoopDynamicFpuValidity = false;
+    FpuStackCache m_directLoopFpuEntry;
     // Profile-guided split bookkeeping: set when shouldStopBlockBefore ends a
     // block early because a grouped-manifest split hint named an interior
     // target; cleared once the prefix block commits.
@@ -938,9 +975,23 @@ public:
     void commitJIT(DecodedOp* op) override;
 
 protected:
+    void convertExtendedFpu(FPURegPtr dst, RegPtr index, bool nearest = true);
+    void emitFpuNormalOrZero(FPURegPtr value);
+    void fpuRemainderExact(RegPtr st0, RegPtr st1, bool nearest, const std::function<void()>& slow);
+    void fpuRemainderNonzero(RegPtr st0, RegPtr st1, bool nearest, const std::function<void()>& slow);
+    void fpuRemainderDyadic(RegPtr st0, RegPtr st1, bool nearest, const std::function<void()>& slow);
+    void storeFpuRemainder(U32 xAddress, U32 xSignExp, U32 ySignExp, U32 resultSign, U32 quotient, U32 difference);
+    void storeNormalDoubleAsExtended(FPURegPtr value, RegPtr index);
+    void storeDoubleAsExtended(FPURegPtr value, RegPtr index) override;
+    void storeInt64AsExtended(RegPtr index);
+    void emitExtendedToInt64(RegPtr index, bool truncate);
+    void emitFpuSlotAddress(RegPtr index);
+
     // Helpers used internally during code generation
     void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
     RegPtr readMemoryValue(JitWidth width, RegPtr address, RegPtr result, bool signExtend = false);
+    void accessMemoryCustom(U32 widthBytes, RegPtr addressReg, bool store,
+        const std::function<void(MemPtr)>& customOp, const std::function<void()>& failedOp);
     void scalarSseFromMemory(DecodedOp* op, JitWidth width, U8 instruction, bool unary = false);
     void fallbackToEmulateSingleOp(const char* family);
     void dynamic_div32(DecodedOp* op, RegPtr src);
@@ -1017,6 +1068,7 @@ protected:
     void emitArmSmcBailout();
     void emitBailoutCheck();
     void emitBranchBailoutCheck();
+    void emitFunctionReturn();
     void emitBlockExitWithProfile(U32 profileHelperIdx);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     void emitProfileSampledCall(U32 helperIdx, U32 detail = InstructionCount);

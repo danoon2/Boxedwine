@@ -339,6 +339,8 @@ $(BUILD_DIR)/%.cpp.o: %.cpp $(COMPILE_CONFIG)
 # jitWasmCodeGen.cpp: calls generated JIT blocks via call_indirect and contains
 #   diagnostic catch paths. Keep it in the WASM EH set so exceptions thrown
 #   inside JIT WASM modules stay in the same exception model while propagating.
+# jitWasmFpu.cpp: numeric lowering extracted from jitWasmCodeGen.cpp; retain
+#   the same exception model for its shared code-generation calls and cleanup.
 #
 # kscheduler.cpp: runThreadSlice is the top-level CPU-loop handler.  Its
 #   catch(...) must be WASM catch_all so it can catch throw 2 (SIGSEGV) and
@@ -356,8 +358,9 @@ else
 WASM_EXCEPTION_CPPFLAGS = $(CPPFLAGS)
 endif
 
-$(BUILD_DIR)/$(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp.o: \
-        $(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp $(COMPILE_CONFIG)
+$(BUILD_DIR)/$(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp.o \
+$(BUILD_DIR)/$(PROJDIR)/source/emulation/cpu/wasm/jitWasmFpu.cpp.o: \
+        $(BUILD_DIR)/%.cpp.o: %.cpp $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
 	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 

@@ -23,6 +23,7 @@
 #include "../jit/jitSSE.h"
 #include "../../softmmu/soft_ram.h"
 #include <array>
+#include <set>
 
 #undef u8
 #undef h8
@@ -214,6 +215,7 @@ asmjit::x86::Vec XMM(U8 reg) {
 
 class JitX86CodeGen : public JitSSE, asmjit::ErrorHandler {
 public:    
+    ~JitX86CodeGen() override { fpuStackCache = FpuStackCache{}; }
     void handle_error(asmjit::Error err, const char* message, asmjit::BaseEmitter* origin) override {
         kpanic(message);
     }
@@ -238,6 +240,33 @@ public:
     }
 
     void preOp(DecodedOp* op) override;
+    void preCompile(DecodedOp* op, bool skippedOp = false) override;
+    void postCompile(DecodedOp* op) override;
+    void compile(DecodedOp* op) override;
+    bool isExternalJitEntry(U32 eip) const override { return !fpuInternalEntries.count(eip); }
+    bool supportsFpuStackCache() const override {
+        static const bool enabled = !std::getenv("BOXEDWINE_DISABLE_NATIVE_FPU_CACHE");
+        return enabled;
+    }
+    bool canCacheFpuOp(DecodedOp* op) const override;
+    RegPtr getFpuCacheTopReg() override;
+    RegPtr getFpuCacheTagReg(U8 index) override;
+    FPURegPtr getFpuCacheReg(U8 index) override;
+    void moveFpuReg(FPURegPtr dst, FPURegPtr src) override;
+    void loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
+    void materializeFpuCache(U8 slotMask = 0xff) override;
+    void nativeFpuIndex(U8 index, const std::function<void(asmjit::x86::Gp)>& action, U8 scratch = 0);
+    void spillFpuValue(U8 index);
+    void spillFpuTag(U8 index);
+    void spillFpuTop();
+    bool spillFpuTmp(bool needs8bitReg);
+    U8 allocateFpuValue(FPURegInternal* value, bool load = true);
+    U8 getFpuWriteReg(FPURegPtr value);
+    U8 getFpuWriteReg(RegPtr tag);
+    U8 allocateFpuTag(JitReg* tag, bool load = true);
+    U32 saveNativeFpuRegisters();
+    void restoreNativeFpuRegisters(U32 mask);
+    std::set<U32> fpuInternalEntries;
     RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) override;
     RegPtr getReg8(U8 reg, bool load = true) override;
     RegPtr getReadOnlyReg(U8 reg, bool delayed = false, S8 hint = -1) override;
@@ -880,9 +909,288 @@ protected:
     BHashTable<U32, Label> pendingLabels;
 };
 
+bool JitX86CodeGen::canCacheFpuOp(DecodedOp* op) const {
+    return canCacheNativeFpuOp(op);
+}
+
+void JitX86CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
+    // Known control-flow entries and legacy FPU/MMX operations start clean.
+    // Memory faults expose CPU state, but successful accesses retain the cache.
+    if (op->isBranch() || !canKeepFpuCache(op) || (op->flags2 & OP_FLAG2_JUMP_TARGET)) flushFpuCache();
+    else if (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth) {
+        materializeFpuCache();
+        // This writeback runs unconditionally on the fall-through path. Cold
+        // helper/exit writebacks must not clean the compiler's hot-path state.
+        for (auto& slot : fpuStackCache.slots) {
+            slot.dirty = false;
+            slot.tagDirty = false;
+        }
+    }
+    if (fpuStackCache.entryTop) fpuInternalEntries.insert(currentEip);
+    JitCodeGen::preCompile(op, skippedOp);
+}
+
+void JitX86CodeGen::compile(DecodedOp* op) {
+    if (!compileCachedFpuOp(op)) JitCodeGen::compile(op);
+}
+
+void JitX86CodeGen::postCompile(DecodedOp* op) {
+    // Tags/TOP share the small GP temporary pool. Values stay in the separate
+    // four-register x87 cache; metadata is reloaded only when it is used.
+    for (U8 i = 0; i < 8; ++i) spillFpuTag(i);
+    spillFpuTop();
+    JitCodeGen::postCompile(op);
+}
+
+void JitX86CodeGen::nativeFpuIndex(U8 index, const std::function<void(asmjit::x86::Gp)>& action, U8 scratch) {
+    auto& top = fpuStackCache.entryTop;
+    if (!index && top && top->isLoaded()) {
+        action(RN(top));
+        return;
+    }
+    // Borrow an unused temporary without invoking the spilling allocator.
+    // If all are live, preserve the caller-selected scratch register.
+    bool borrowed = false;
+    for (U8 tmp : tmps) if (!regUsed[tmp]) {
+        scratch = tmp;
+        regUsed[tmp] = true;
+        borrowed = true;
+        break;
+    }
+    if (!borrowed) compiler.push(RN(scratch));
+    if (top && top->isLoaded()) compiler.mov(R32(scratch), R32(top));
+    else compiler.mov(R32(scratch), Mem32(HOST_CPU, offsetof(CPU, nativeFpuCacheTop)));
+    if (index) {
+        compiler.movzx(R32(scratch), Mem8(HOST_CPU, RN(scratch), 0, offsetof(CPU, nativeFpuCacheModulo) + index));
+    }
+    action(RN(scratch));
+    if (borrowed) regUsed[scratch] = false;
+    else compiler.pop(RN(scratch));
+}
+
+void JitX86CodeGen::materializeFpuCache(U8 slotMask) {
+    if (!fpuStackCache.entryTop) return;
+    for (U8 i = 0; i < 8; ++i) {
+        auto& slot = fpuStackCache.slots[i];
+        if (!(slotMask & (1u << i))) continue;
+        bool valueDirty = slot.dirty && slot.value->isLoaded();
+        bool tagDirty = slot.tagDirty && slot.tag->isLoaded();
+        if (!valueDirty && !tagDirty) continue;
+        U8 tag = tagDirty ? slot.tag->hardwareReg() : INVALID_REG;
+        nativeFpuIndex(i, [&](asmjit::x86::Gp index) {
+            if (valueDirty) {
+                compiler.movsd(Mem64(HOST_CPU, index, 3, offsetof(CPU, fpu.regCache)), getFPUReg(slot.value));
+                compiler.mov(Mem8(HOST_CPU, index, 0, offsetof(CPU, fpu.isRegCached)), 1);
+            }
+            if (tagDirty) compiler.mov(Mem8(HOST_CPU, index, 0, offsetof(CPU, fpu.tags)), R8(tag));
+            if (slotMask == 0xff && i == fpuStackCache.top)
+                compiler.mov(Mem32(HOST_CPU, offsetof(CPU, fpu.top)), R32(index.id()));
+        }, tag == 0 ? 1 : 0);
+    }
+    if (slotMask == 0xff) {
+        auto& top = fpuStackCache.slots[fpuStackCache.top];
+        if (!(top.dirty && top.value->isLoaded()) && !(top.tagDirty && top.tag->isLoaded()))
+            nativeFpuIndex(fpuStackCache.top, [&](asmjit::x86::Gp index) {
+                compiler.mov(Mem32(HOST_CPU, offsetof(CPU, fpu.top)), R32(index.id()));
+            });
+    }
+}
+
+void JitX86CodeGen::spillFpuValue(U8 index) {
+    auto& slot = fpuStackCache.slots[index];
+    if (!slot.value || !slot.value->isLoaded()) return;
+    materializeFpuCache(1u << index);
+    xmmUsed[slot.value->hardwareReg()] = false;
+    slot.value->invalidateHardwareReg();
+    slot.dirty = false;
+}
+
+void JitX86CodeGen::spillFpuTag(U8 index) {
+    auto& slot = fpuStackCache.slots[index];
+    if (!slot.tag || !slot.tag->isLoaded()) return;
+    if (slot.tagDirty) {
+        U8 tag = slot.tag->hardwareReg();
+        nativeFpuIndex(index, [&](asmjit::x86::Gp address) {
+            compiler.mov(Mem8(HOST_CPU, address, 0, offsetof(CPU, fpu.tags)), R8(tag));
+        }, tag == 0 ? 1 : 0);
+    }
+    regUsed[slot.tag->hardwareReg()] = false;
+    slot.tag->invalidateHardwareReg();
+    slot.tagDirty = false;
+}
+
+void JitX86CodeGen::spillFpuTop() {
+    auto& top = fpuStackCache.entryTop;
+    if (!top || !top->isLoaded()) return;
+    compiler.mov(Mem32(HOST_CPU, offsetof(CPU, nativeFpuCacheTop)), R32(top));
+    regUsed[top->hardwareReg()] = false;
+    top->invalidateHardwareReg();
+}
+
+bool JitX86CodeGen::spillFpuTmp(bool needs8bitReg) {
+    for (U8 i = 0; i < 8; ++i) {
+        auto& tag = fpuStackCache.slots[i].tag;
+        if (tag && tag->isLoaded() && tag.use_count() == 1 && (!needs8bitReg || tag->hardwareReg() < 4)) {
+            spillFpuTag(i);
+            return true;
+        }
+    }
+    auto& top = fpuStackCache.entryTop;
+    if (top && top->isLoaded() && top.use_count() == 1 && (!needs8bitReg || top->hardwareReg() < 4)) {
+        spillFpuTop();
+        return true;
+    }
+    return false;
+}
+
+RegPtr JitX86CodeGen::getFpuCacheTopReg() {
+    return RegPtr(new JitReg(INVALID_REG, INVALID_REG, [this] {
+        U8 reg = findTmpReg(false);
+        compiler.mov(R32(reg), Mem32(HOST_CPU, offsetof(CPU, nativeFpuCacheTop)));
+        return reg;
+    }), [this](JitReg* reg) {
+        if (reg->isLoaded()) regUsed[reg->hardwareReg()] = false;
+        delete reg;
+    });
+}
+
+RegPtr JitX86CodeGen::getFpuCacheTagReg(U8) {
+    // Find the current slot at reload time: FXCH renames these handles.
+    auto holder = new JitReg*(nullptr);
+    RegPtr result(new JitReg(INVALID_REG, INVALID_REG, [this, holder] { return allocateFpuTag(*holder); }),
+        [this, holder](JitReg* reg) {
+            if (reg->isLoaded()) regUsed[reg->hardwareReg()] = false;
+            delete holder;
+            delete reg;
+        });
+    *holder = result.get();
+    return result;
+}
+
+U8 JitX86CodeGen::allocateFpuTag(JitReg* tag, bool load) {
+    U8 reg = findTmpReg(true);
+    for (U8 i = 0; i < 8; ++i) if (fpuStackCache.slots[i].tag.get() == tag) {
+        if (load) nativeFpuIndex(i, [&](asmjit::x86::Gp index) {
+            compiler.movzx(R32(reg), Mem8(HOST_CPU, index, 0, offsetof(CPU, fpu.tags)));
+        }, reg == 0 ? 1 : 0);
+        return reg;
+    }
+    kpanic("native x87 tag without slot");
+    return reg;
+}
+
+FPURegPtr JitX86CodeGen::getFpuCacheReg(U8) {
+    auto holder = new FPURegInternal*(nullptr);
+    FPURegPtr result(new FPURegInternal(INVALID_REG, [this, holder] { return allocateFpuValue(*holder); }),
+        [this, holder](FPURegInternal* reg) {
+            if (reg->isLoaded()) xmmUsed[reg->hardwareReg()] = false;
+            delete holder;
+            delete reg;
+        });
+    *holder = result.get();
+    return result;
+}
+
+U8 JitX86CodeGen::allocateFpuValue(FPURegInternal* value, bool load) {
+#ifdef BOXEDWINE_64
+    constexpr U8 first = 8;
+#else
+    constexpr U8 first = 0;
+#endif
+    U8 reg = INVALID_REG;
+    for (U8 i = first; i < first + 4; ++i) if (!xmmUsed[i]) { reg = i; break; }
+    if (reg == INVALID_REG) {
+        for (U8 i = 0; i < 8; ++i) {
+            auto& candidate = fpuStackCache.slots[i].value;
+            if (candidate && candidate->isLoaded() && candidate.use_count() == 1) {
+                reg = candidate->hardwareReg();
+                spillFpuValue(i);
+                break;
+            }
+        }
+    }
+    if (reg == INVALID_REG) kpanic("native x87 cache has no spillable value");
+    xmmUsed[reg] = true;
+    for (U8 i = 0; i < 8; ++i) if (fpuStackCache.slots[i].value.get() == value) {
+        if (load && fpuStackCache.slots[i].loaded) nativeFpuIndex(i, [&](asmjit::x86::Gp index) {
+            compiler.movsd(XMM(reg), Mem64(HOST_CPU, index, 3, offsetof(CPU, fpu.regCache)));
+        });
+        return reg;
+    }
+    kpanic("native x87 value without slot");
+    return reg;
+}
+
+// A full overwrite needs a register, but not the spilled value it held.
+// Ordinary temporary/guest handles keep their existing allocation behavior.
+U8 JitX86CodeGen::getFpuWriteReg(FPURegPtr value) {
+    if (!value->isLoaded()) {
+        for (auto& slot : fpuStackCache.slots) if (slot.value == value) {
+            value->setHardwareReg(allocateFpuValue(value.get(), false));
+            break;
+        }
+    }
+    return value->hardwareReg();
+}
+
+U8 JitX86CodeGen::getFpuWriteReg(RegPtr tag) {
+    if (!tag->isLoaded()) {
+        for (auto& slot : fpuStackCache.slots) if (slot.tag == tag) {
+            tag->setHardwareReg(allocateFpuTag(tag.get(), false));
+            break;
+        }
+    }
+    return tag->hardwareReg();
+}
+
+void JitX86CodeGen::moveFpuReg(FPURegPtr dst, FPURegPtr src) {
+    Vec source = getFPUReg(src);
+    compiler.movsd(XMM(getFpuWriteReg(dst)), source);
+}
+
+static void nativeCacheFpuValue(CPU* cpu, U32 index) {
+    cpu->fpu.getF64(index);
+}
+
+void JitX86CodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
+    if (valid || !nearest) kpanic("unsupported native x87 cache validation");
+    IfNotRegCached(index);
+    callHostFunction((void*)nativeCacheFpuValue, {DynParam(JitCallParamType::CPU), DynParam(JitCallParamType::REG_32, index)});
+    EndIf();
+    loadCpuFpuReg(dst, index);
+}
+
+U32 JitX86CodeGen::saveNativeFpuRegisters() {
+    U32 mask = 0;
+    if (!fpuStackCache.entryTop) return mask;
+    for (U8 i = 0; i < NUMBER_OF_XMM_REG; ++i) {
+        bool guest = false;
+        for (U8 cached : xmmCache) guest |= cached == i;
+        if (xmmUsed[i] && !guest) {
+            mask |= 1u << i;
+            compiler.sub(RN(4), 16);
+            compiler.movups(Mem128(RN(4)), XMM(i));
+        }
+    }
+    return mask;
+}
+
+void JitX86CodeGen::restoreNativeFpuRegisters(U32 mask) {
+    for (int i = NUMBER_OF_XMM_REG - 1; i >= 0; --i) if (mask & (1u << i)) {
+        compiler.movups(XMM(i), Mem128(RN(4)));
+        compiler.add(RN(4), 16);
+    }
+}
+
 void JitX86CodeGen::preOp(DecodedOp* op) {
     regUsed.fill(false);
     xmmUsed.fill(false);
+    for (auto& slot : fpuStackCache.slots) {
+        if (slot.value && slot.value->isLoaded()) xmmUsed[slot.value->hardwareReg()] = true;
+        if (slot.tag && slot.tag->isLoaded()) regUsed[slot.tag->hardwareReg()] = true;
+    }
+    if (fpuStackCache.entryTop && fpuStackCache.entryTop->isLoaded())
+        regUsed[fpuStackCache.entryTop->hardwareReg()] = true;
     currentOp = op;
     Label label;
     if (!opLabels.get(currentEip, label)) {
@@ -943,6 +1251,7 @@ FPURegPtr JitX86CodeGen::getFPUTmp() {
 }
 
 void JitX86CodeGen::emulateSingleOp() {
+    materializeFpuCache();
     writeCurrentEip(0);
     compiler.jmp((DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
 }
@@ -970,6 +1279,7 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
     if (needs8bitReg) {
         return findTmpReg(false, hint);
     }
+    if (spillFpuTmp(needs8bitReg)) return findTmpReg(needs8bitReg, hint, allowInvalidReturn);
     if (!allowInvalidReturn) {
         kpanic_fmt("JitX86CodeGen::getTmpReg ran out of tmp regs: op=%s eip=%x needs8bit=%d hint=%d tmpUsed=%d%d%d%d%d exceptions=%d",
             currentOp ? currentOp->name() : "none", currentEip, needs8bitReg, hint,
@@ -994,6 +1304,7 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
             break;
         }
     }
+    if (tmpReg == INVALID_REG && spillFpuTmp(needs8bitReg)) return findTmpReg(needs8bitReg, hint, allowInvalidReturn);
     if (tmpReg == INVALID_REG && !allowInvalidReturn) {
         kpanic_fmt("JitX86CodeGen::getTmpReg ran out of tmp regs: op=%s eip=%x needs8bit=%d hint=%d used=%d%d%d%d%d%d%d%d",
             currentOp ? currentOp->name() : "none", currentEip, needs8bitReg, hint,
@@ -2540,7 +2851,8 @@ void JitX86CodeGen::writeCPUValue(JitWidth width, U32 offset, DYN_PTR_SIZE src) 
 
 void JitX86CodeGen::mov(JitWidth regWidth, RegPtr dest, RegPtr src) {
     if (regWidth == JitWidth::b32) {
-        compiler.mov(R32(dest), R32(src));
+        auto source = R32(src);
+        compiler.mov(R32(getFpuWriteReg(dest)), source);
     } else if (regWidth == JitWidth::b16) {
         compiler.mov(R16(dest), R16(src));
     } else if (regWidth == JitWidth::b8) {
@@ -2556,7 +2868,7 @@ void JitX86CodeGen::mov(JitWidth regWidth, RegPtr dest, RegPtr src) {
 
 void JitX86CodeGen::movValue(JitWidth regWidth, RegPtr dst, DYN_PTR_SIZE imm) {
     if (regWidth == JitWidth::b32) {
-        compiler.mov(R32(dst), (U32)imm);
+        compiler.mov(R32(getFpuWriteReg(dst)), (U32)imm);
     } else if (regWidth == JitWidth::b16) {
         compiler.mov(R16(dst), (U16)imm);
     } else if (regWidth == JitWidth::b8) {
@@ -2724,6 +3036,8 @@ void JitX86CodeGen::callWriteCache() {
 }
 
 void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache, bool saveCache) {
+    materializeFpuCache();
+    U32 fpuSaved = saveNativeFpuRegisters();
     U32 stackAdjust = 0;
     std::vector<U8> pushedRegs;
 
@@ -2774,6 +3088,7 @@ void JitX86CodeGen::callHostFunction(void* address, const std::vector<DynParam>&
     for (int i = (int)pushedRegs.size() - 1; i >= 0; i--) {
         compiler.pop(RN(pushedRegs[i]));
     }
+    restoreNativeFpuRegisters(fpuSaved);
 }
 
 void JitX86CodeGen::nakedCall(RegPtr reg) {
@@ -2785,6 +3100,8 @@ void JitX86CodeGen::nakedReturn() {
 }
 
 void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) {
+    materializeFpuCache();
+    U32 fpuSaved = saveNativeFpuRegisters();
     U32 stackAdjust = 0; // if 64-bit stack isn't aligned to 16-bytes, things like FPU::F2XM1()
     std::vector<U8> pushedRegs;
 
@@ -2831,6 +3148,7 @@ void JitX86CodeGen::callHostFunctionWithResult(RegPtr result, void* address, con
         compiler.pop(RN(pushedRegs[i]));
     }
     callLoadCache();
+    restoreNativeFpuRegisters(fpuSaved);
 }
 
 void JitX86CodeGen::If(JitWidth regWidth, RegPtr reg) {
@@ -3233,10 +3551,12 @@ void JitX86CodeGen::Goto(U32 location) {
 }
 
 void JitX86CodeGen::jmpHost(DYN_PTR_SIZE address) {
+    materializeFpuCache();
     compiler.jmp(address);
 }
 
 void JitX86CodeGen::jmpHost(RegPtr reg) {
+    materializeFpuCache();
     compiler.jmp(RN(reg));
 }
 
@@ -4516,7 +4836,7 @@ void JitX86CodeGen::storeCpuFpuReg(FPURegPtr reg, RegPtr index) {
 }
 
 void JitX86CodeGen::loadCpuFpuReg(FPURegPtr reg, RegPtr index) {
-    compiler.movsd(getFPUReg(reg), Mem(HOST_CPU, R32(index), 3, offsetof(CPU, fpu.regCache[0].d)));
+    compiler.movsd(XMM(getFpuWriteReg(reg)), Mem(HOST_CPU, R32(index), 3, offsetof(CPU, fpu.regCache[0].d)));
 }
 
 void JitX86CodeGen::loadCpuFpuRegConst(FPURegPtr reg, U32 offset) {
@@ -4787,6 +5107,7 @@ U8* JitX86CodeGen::createBlockExit() {
 }
 
 void JitX86CodeGen::blockExit() {
+    materializeFpuCache();
     compiler.ret();
 }
 

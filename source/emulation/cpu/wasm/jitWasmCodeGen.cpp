@@ -21,6 +21,7 @@
 #ifdef BOXEDWINE_WASM_JIT
 
 #include "jitWasmCodeGen.h"
+#include "wasmJitImports.h"
 #include "wasmJitBatchPolicy.h"
 #include "wasmModuleMerger.h"
 #include "../jit/jitCodeGen.h"
@@ -39,6 +40,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <math.h>
 #include <bit>      // std::bit_cast (C++20) — used in boxedwine_wasm_call_block
 #include <deque>
 #include <emscripten.h>
@@ -3819,6 +3821,16 @@ static inline void boxedwine_wasm_call_block(int tableIndex, int cpuPtr, int rel
     U64 profileStartNs = profileSample ? wasmJitProfileNowNs() : 0;
 #endif
     CPU* cpu = (CPU*)(uintptr_t)cpuPtr;
+    // Generated code may be compiled or shared by a different pthread. Resolve
+    // SoftFloat TLS on the worker that actually enters this activation. Linked
+    // blocks and loop backedges stay on that worker until returning here.
+    U32 rounding = (U32)(uintptr_t)&softfloat_roundingMode;
+    if (cpu->wasmSoftFloatRounding != rounding) {
+        cpu->wasmSoftFloatRounding = rounding;
+        cpu->wasmSoftFloatFlags = (U32)(uintptr_t)&softfloat_exceptionFlags;
+        cpu->wasmSoftFloatTininess = (U32)(uintptr_t)&softfloat_detectTininess;
+        cpu->wasmSoftFloatPrecision = (U32)(uintptr_t)&extF80_roundingPrecision;
+    }
     cpu->wasmJitActiveBlock = nullptr;
     cpu->wasmJitBailout = WASM_JIT_BAILOUT_NONE;
     static bool fired = false;
@@ -4511,6 +4523,47 @@ static void wasmHelper_cacheFloat(CPU* cpu) {
     cpu->fpu.getF64(cpu->fpu.STV(0));
 }
 
+static void wasmHelper_storeExtendedI64(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    S64 value = cpu->fpu.toInt64(cpu->memHelperValue & 7, (cpu->memHelperValue & 8) != 0);
+    // The write wrapper has checked the entire operand and excluded code pages.
+    memcpy((void*)(uintptr_t)cpu->memHelperAddr, &value, sizeof(value));
+}
+
+static void wasmHelper_transferFpu80(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    U32 index = cpu->memHelperValue & 7;
+    U32 operation = cpu->memHelperValue >> 3;
+    U8* address = (U8*)(uintptr_t)cpu->memHelperAddr;
+    // The memory wrapper checked exactly ten bytes before entering this helper.
+    if (operation == 0) {
+        U64 low; U16 high;
+        memcpy(&low, address, 8); memcpy(&high, address + 8, 2);
+        cpu->fpu.LD80(index, low, high);
+    } else if (operation == 1) {
+        U64 low, high;
+        cpu->fpu.ST80(index, &low, &high);
+        U16 signExp = (U16)high;
+        memcpy(address, &low, 8); memcpy(address + 8, &signExp, 2);
+    } else if (operation == 2) {
+        cpu->fpu.FBLD(address, index);
+    } else {
+        cpu->fpu.FBST(index, address);
+    }
+}
+
+static void wasmHelper_fpuSlotArithmetic(CPU* cpu) {
+    WASM_JIT_HELPER_STAT(X87);
+    U32 st0 = cpu->memHelperValue & 7;
+    U32 st1 = (cpu->memHelperValue >> 3) & 7;
+    switch (cpu->memHelperValue >> 6) {
+    case 0: cpu->fpu.FPREM(st0, st1, true); break;
+    case 1: cpu->fpu.FPREM1(st0, st1); break;
+    case 2: cpu->fpu.FSCALE(st0, st1); break;
+    case 3: cpu->fpu.FXTRACT(st0, st1); break;
+    }
+}
+
 static void wasmHelper_movsdXmmE64(CPU* cpu) {
     WASM_JIT_HELPER_STAT(Sse);
     WASM_JIT_HELPER_DETAIL(MovsdXmmE64);
@@ -4575,6 +4628,15 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_readWriteMem8,
     (void*)wasmHelper_readWriteMem16,
     (void*)wasmHelper_readWriteMem32,
+    (void*)wasmHelper_storeExtendedI64,
+    (void*)wasmHelper_transferFpu80,
+    (void*)(double(*)(double))sin,
+    (void*)(double(*)(double))cos,
+    (void*)(double(*)(double))tan,
+    (void*)(double(*)(double))log,
+    (void*)(double(*)(double, double))pow,
+    (void*)(double(*)(double, double))atan2,
+    (void*)wasmHelper_fpuSlotArithmetic,
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     (void*)wasmHelper_profileBlockExit,
     (void*)wasmHelper_profileExitNext1,
@@ -6679,39 +6741,6 @@ static bool wasmJitPrepareSlotForWorker(int tableIndex, CPU* cpu, DecodedOp* op,
 }
 #endif
 
-enum WasmHelperIdx {
-    HELPER_READ_MEM8         = 0,
-    HELPER_WRITE_MEM8        = 1,
-    HELPER_READ_MEM16        = 2,
-    HELPER_WRITE_MEM16       = 3,
-    HELPER_READ_MEM32        = 4,
-    HELPER_WRITE_MEM32       = 5,
-    HELPER_FETCH_NEXT        = 6,
-    HELPER_SYNC_FLAGS        = 7,
-    HELPER_EMULATE_SINGLE_OP = 8,
-    HELPER_COMPUTE_CF        = 9,
-    HELPER_COMPUTE_ZF        = 10,
-    HELPER_FILL_FLAGS        = 11,
-    HELPER_COND_BASE         = 12, // add JitConditional index to this
-    HELPER_SPECIAL_OP        = 28, // legacy block-entry helper slot
-    HELPER_WRITE_MEM8_CHECK  = 29,
-    HELPER_WRITE_MEM16_CHECK = 30,
-    HELPER_WRITE_MEM32_CHECK = 31,
-    HELPER_CACHE_FLOAT      = 32,
-    HELPER_MOVSD_XMM_E64    = 33,
-    HELPER_MOVSD_E64_XMM    = 34,
-    HELPER_MOVSD32R           = 35,
-    HELPER_READ_WRITE_MEM8    = 36,
-    HELPER_READ_WRITE_MEM16   = 37,
-    HELPER_READ_WRITE_MEM32   = 38,
-    HELPER_PROFILE_BLOCK_EXIT = 39,
-    HELPER_PROFILE_EXIT_NEXT1 = 40,
-    HELPER_PROFILE_EXIT_NEXT2 = 41,
-    HELPER_PROFILE_EXIT_JUMP = 42,
-    HELPER_PROFILE_EXIT_GENERIC = 43,
-    HELPER_PROFILE_INLINE_COND = 44,
-    HELPER_PROFILE_RMW = 45,
-};
 
 // ---------------------------------------------------------------------------
 // JitWasmCodeGen constructor
@@ -6727,11 +6756,16 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitSSE(cpu) {
     // Import linear memory.
     m_emitter.addMemoryImport("env", "memory");
 
-    // Import the C++ helpers (all have signature (i32) -> () i.e. cpu_ptr).
+    // Most helpers take CPU*. Pure math imports instead receive cached f64
+    // operands directly and return f64, without any architectural writeback.
+    U32 unaryMathType = m_emitter.addFuncType({ WasmType::F64 }, { WasmType::F64 });
+    U32 binaryMathType = m_emitter.addFuncType({ WasmType::F64, WasmType::F64 }, { WasmType::F64 });
     for (int i = 0; i < WASM_HELPER_COUNT; i++) {
         char name[16];
         snprintf(name, sizeof(name), "fn_%d", i);
-        m_emitter.addFunctionImport("helpers", name, m_typeVoidI32);
+        U32 type = i >= HELPER_FPU_SIN && i <= HELPER_FPU_LOG ? unaryMathType :
+            i == HELPER_FPU_POW || i == HELPER_FPU_ATAN2 ? binaryMathType : m_typeVoidI32;
+        m_emitter.addFunctionImport("helpers", name, type);
     }
     // Map well-known helpers to their import indices.
     m_helperReadMemIdx          = HELPER_READ_MEM32;
@@ -6766,6 +6800,8 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitSSE(cpu) {
         { 12, WasmType::V128 }, // MMX/SIMD scratch locals (locals 55-66)
         { 1,  WasmType::I32 },  // direct-loop budget (local 67)
         { WASM_XMM_LOCAL_COUNT, WasmType::V128 }, // cached XMM registers (locals 68-75)
+        { 8, WasmType::F64 },  // persistent x87 values (locals 76-83)
+        { 17, WasmType::I32 }, // x87 tags, entry TOP, and validity (locals 84-100)
     });
 
     m_gpLoaded.fill(false);
@@ -6823,6 +6859,7 @@ void JitWasmCodeGen::syncDirtyRegsToHost() {
 }
 
 void JitWasmCodeGen::syncStateBeforeFaultingMemoryHelper() {
+    materializeFpuCache();
     writeEip(this->currentEip - cpu->seg[CS].address);
     syncDirtyRegsToHost();
 }
@@ -7831,11 +7868,6 @@ static void emitXmmShuffle(WasmEmitter& emitter, SSERegPtr dst, SSERegPtr src, c
     emitter.emitLocalSet(dst->hardwareReg());
 }
 
-static void emitWasmF64ConstBits(WasmEmitter& emitter, U64 bits) {
-    emitter.emitI64Const((S64)bits);
-    emitter.emitOp(WASM_F64_REINTERPRET_I64);
-}
-
 static void emitWasmF32x4SplatBits(WasmEmitter& emitter, U32 bits) {
     emitter.emitI32Const((S32)bits);
     emitter.emitOp(WASM_F32_REINTERPRET_I32);
@@ -7950,12 +7982,12 @@ static void emitWasmF64ToI32OrIndefinite(WasmEmitter& emitter, U32 f64Local) {
     emitter.emitOp(WASM_F64_NE);
 
     emitter.emitLocalGet(f64Local);
-    emitWasmF64ConstBits(emitter, 0xc1e0000000000000ULL); // -2147483648.0
+    emitter.emitF64ConstBits(0xc1e0000000000000ULL); // -2147483648.0
     emitter.emitOp(WASM_F64_LT);
     emitter.emitOp(WASM_I32_OR);
 
     emitter.emitLocalGet(f64Local);
-    emitWasmF64ConstBits(emitter, 0x41e0000000000000ULL); // 2147483648.0
+    emitter.emitF64ConstBits(0x41e0000000000000ULL); // 2147483648.0
     emitter.emitOp(WASM_F64_GE);
     emitter.emitOp(WASM_I32_OR);
 
@@ -7973,12 +8005,12 @@ static void emitWasmF64ToI64OrIndefinite(WasmEmitter& emitter, U32 f64Local) {
     emitter.emitOp(WASM_F64_NE);
 
     emitter.emitLocalGet(f64Local);
-    emitWasmF64ConstBits(emitter, 0xc3e0000000000000ULL); // -9223372036854775808.0
+    emitter.emitF64ConstBits(0xc3e0000000000000ULL); // -9223372036854775808.0
     emitter.emitOp(WASM_F64_LT);
     emitter.emitOp(WASM_I32_OR);
 
     emitter.emitLocalGet(f64Local);
-    emitWasmF64ConstBits(emitter, 0x43e0000000000000ULL); // 9223372036854775808.0
+    emitter.emitF64ConstBits(0x43e0000000000000ULL); // 9223372036854775808.0
     emitter.emitOp(WASM_F64_GE);
     emitter.emitOp(WASM_I32_OR);
 
@@ -9439,6 +9471,62 @@ static bool canReleaseScratchReg(const RegPtr& reg) {
     return reg && reg->emulatedReg == 0xff && reg.use_count() == 1;
 }
 
+void JitWasmCodeGen::materializeFpuCache(U8 slotMask) {
+    // Shared lowering can emit several cold writebacks for one instruction.
+    // Their index temporaries do not escape; keep the caller's scratch locals
+    // live but recycle those allocated solely for this writeback.
+    auto scratch = m_scratchInUse;
+    // Validity guards use shared If/EndIf hooks, which invalidate unrelated
+    // register bookkeeping. Writeback does not change those registers. Keep
+    // their mapping intact, especially when this is a cold memory arm whose
+    // sibling fast arm must still read dirty GP/XMM locals rather than CPU.
+    auto gpDirty = m_gpDirty;
+    auto gpLoaded = m_gpLoaded;
+    auto xmmDirty = m_xmmDirty;
+    auto xmmLoaded = m_xmmLoaded;
+    auto segLoaded = m_segLoaded;
+    JitFPU::materializeFpuCache(slotMask);
+    m_scratchInUse = scratch;
+    m_gpDirty = gpDirty;
+    m_gpLoaded = gpLoaded;
+    m_xmmDirty = xmmDirty;
+    m_xmmLoaded = xmmLoaded;
+    m_segLoaded = segLoaded;
+}
+
+RegPtr JitWasmCodeGen::getFpuCacheValidReg(U8 index) {
+    return makeWasmReg((U8)(WASM_FPU_VALID_BASE + index), 0xff);
+}
+FPURegPtr JitWasmCodeGen::getFpuCacheReg(U8 index) {
+    return std::make_shared<FPURegInternal>((U8)(WASM_FPU_CACHE_BASE + index));
+}
+RegPtr JitWasmCodeGen::getFpuCacheTagReg(U8 index) {
+    return makeWasmReg((U8)(WASM_FPU_TAG_BASE + index), 0xff);
+}
+RegPtr JitWasmCodeGen::getFpuCacheTopReg() {
+    return makeWasmReg((U8)WASM_FPU_TOP_LOCAL, 0xff);
+}
+void JitWasmCodeGen::moveFpuReg(FPURegPtr dst, FPURegPtr src) {
+    m_emitter.emitLocalGet(src->hardwareReg());
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
+    if (valid) pushRegValue(valid);
+    else {
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL); pushRegValue(index);
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitI32Load8U(offsetof(CPU, fpu.isRegCached));
+    }
+    // These branches only assign dst. Do not use shared branch boundaries,
+    // which spill unrelated GP/XMM locals in preparation for arbitrary code.
+    m_emitter.emitIf();
+        if (!valid) loadCpuFpuReg(dst, index);
+    m_emitter.emitElse();
+        convertExtendedFpu(dst, index, nearest);
+    m_emitter.emitEnd();
+}
+
 FPURegPtr JitWasmCodeGen::getFPUTmp() {
     return std::shared_ptr<FPURegInternal>(new FPURegInternal((U8)allocF64Scratch()), [this](FPURegInternal* p) {
         freeF64Scratch(p->hardwareReg());
@@ -9534,83 +9622,140 @@ void JitWasmCodeGen::loadFpuRegFromInt(FPURegPtr reg, MemPtr address) {
 void JitWasmCodeGen::dynamic_FILD_QWORD_INTEGER(DecodedOp* op) {
     read(JitWidth::b64, calculateEaa(op), [this](MemPtr address) {
         RegPtr topReg = getTopReg();
-        dynamic_FPU_PREP_PUSH(topReg, true); // will change topReg
-
-        U32 memOffset = 0;
-        emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
-        m_emitter.emitI64Load(memOffset);
-        m_emitter.emitLocalSet(WASM_I64_SCRATCH);
-
-        U32 signExp = allocScratch();
-        U32 dist = allocScratch();
-        m_emitter.emitI32Const(0);
-        m_emitter.emitLocalSet(signExp);
-
-        m_emitter.emitLocalGet(WASM_I64_SCRATCH);
-        m_emitter.emitI64Const(0);
-        m_emitter.emitOp(WASM_I64_NE);
-        m_emitter.emitIf();
-        {
-            m_emitter.emitLocalGet(WASM_I64_SCRATCH);
-            m_emitter.emitI64Const(63);
-            m_emitter.emitOp(WASM_I64_SHR_U);
-            m_emitter.emitOp(WASM_I32_WRAP_I64);
-            m_emitter.emitI32Const(15);
-            m_emitter.emitOp(WASM_I32_SHL);
-            m_emitter.emitLocalSet(signExp);
-
-            m_emitter.emitLocalGet(signExp);
-            m_emitter.emitIf();
-            {
-                m_emitter.emitI64Const(0);
-                m_emitter.emitLocalGet(WASM_I64_SCRATCH);
-                m_emitter.emitOp(WASM_I64_SUB);
-                m_emitter.emitLocalSet(WASM_I64_SCRATCH);
-            }
-            m_emitter.emitEnd();
-
-            m_emitter.emitLocalGet(WASM_I64_SCRATCH);
-            m_emitter.emitOp(WASM_I64_CLZ);
-            m_emitter.emitOp(WASM_I32_WRAP_I64);
-            m_emitter.emitLocalSet(dist);
-
-            m_emitter.emitLocalGet(WASM_I64_SCRATCH);
-            m_emitter.emitLocalGet(dist);
-            m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
-            m_emitter.emitOp(WASM_I64_SHL);
-            m_emitter.emitLocalSet(WASM_I64_SCRATCH);
-
-            m_emitter.emitLocalGet(signExp);
-            m_emitter.emitI32Const(0x403e);
-            m_emitter.emitLocalGet(dist);
-            m_emitter.emitOp(WASM_I32_SUB);
-            m_emitter.emitOp(WASM_I32_OR);
-            m_emitter.emitLocalSet(signExp);
-        }
-        m_emitter.emitEnd();
-
-        setRegIsCached(topReg, false);
-        shlValue(JitWidth::b32, topReg, 4);
-
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        pushRegValue(topReg);
-        m_emitter.emitI32Const((S32)offsetof(CPU, fpu.regs[0].signExp));
-        m_emitter.emitOp(WASM_I32_ADD);
-        m_emitter.emitOp(WASM_I32_ADD);
-        m_emitter.emitLocalGet(signExp);
-        m_emitter.emitI32Store16(0);
-
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        pushRegValue(topReg);
-        m_emitter.emitI32Const((S32)offsetof(CPU, fpu.regs[0].signif));
-        m_emitter.emitOp(WASM_I32_ADD);
-        m_emitter.emitOp(WASM_I32_ADD);
-        m_emitter.emitLocalGet(WASM_I64_SCRATCH);
-        m_emitter.emitI64Store(0);
-
-        freeScratch(dist);
-        freeScratch(signExp);
+        dynamic_FPU_PREP_PUSH(topReg, true);
+        loadInt64ToExtended(address, topReg);
     });
+}
+
+void JitWasmCodeGen::loadInt64ToExtended(MemPtr address, RegPtr index) {
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitI64Load(memOffset);
+    m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+
+    storeInt64AsExtended(index);
+}
+
+void JitWasmCodeGen::storeExtendedAsInt64(RegPtr index, MemPtr address, bool truncate) {
+    emitExtendedToInt64(index, truncate);
+    U32 memOffset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitI64Store(memOffset);
+}
+
+void JitWasmCodeGen::transferFpu80(MemPtr address, RegPtr index, bool store, bool bcd) {
+    if (!store && bcd) {
+        U32 offset = 0;
+        U32 digit = allocScratch();
+        auto loadByte = [this, address, &offset](U32 byte) {
+            emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, offset);
+            m_emitter.emitI32Load8U(offset + byte);
+        };
+        // Match FPU::FBLD, including its permissive treatment of digit nibbles
+        // and the low nibble of the sign byte as a nineteenth digit.
+        loadByte(9); m_emitter.emitI32Const(15); m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_U); m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+        for (S32 byte = 8; byte >= 0; --byte) {
+            m_emitter.emitLocalGet(WASM_I64_SCRATCH); m_emitter.emitI64Const(100);
+            m_emitter.emitOp(WASM_I64_MUL);
+            loadByte(byte); m_emitter.emitLocalTee(digit);
+            m_emitter.emitI32Const(4); m_emitter.emitOp(WASM_I32_SHR_U);
+            m_emitter.emitI32Const(10); m_emitter.emitOp(WASM_I32_MUL);
+            m_emitter.emitLocalGet(digit); m_emitter.emitI32Const(15);
+            m_emitter.emitOp(WASM_I32_AND); m_emitter.emitOp(WASM_I32_ADD);
+            m_emitter.emitOp(WASM_I64_EXTEND_I32_U); m_emitter.emitOp(WASM_I64_ADD);
+            m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+        }
+        loadByte(9); m_emitter.emitI32Const(0x80); m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitIf();
+            m_emitter.emitI64Const(0); m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+            m_emitter.emitOp(WASM_I64_SUB); m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+        m_emitter.emitEnd();
+        freeScratch(digit);
+        storeInt64AsExtended(index);
+        return;
+    }
+    if (!store && !bcd) {
+        // FLD/FRSTOR retain the exact raw bits, including noncanonical values.
+        U32 offset = 0;
+        emitFpuSlotAddress(index);
+        emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, offset);
+        m_emitter.emitI64Load(offset);
+        m_emitter.emitI64Store(offsetof(extFloat80_t, signif));
+        emitFpuSlotAddress(index);
+        emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, offset);
+        m_emitter.emitI32Load16U(offset + 8);
+        m_emitter.emitI32Store16(offsetof(extFloat80_t, signExp));
+        setRegIsCached(index, false);
+        return;
+    }
+    U32 memOffset = 0;
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, memOffset);
+    if (memOffset) {
+        m_emitter.emitI32Const((S32)memOffset);
+        m_emitter.emitOp(WASM_I32_ADD);
+    }
+    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperAddr));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    pushRegValue(index);
+    m_emitter.emitI32Const((store ? 8 : 0) | (bcd ? 16 : 0));
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_TRANSFER_FPU80);
+}
+
+void JitWasmCodeGen::saveFpu80(MemPtr address, RegPtr index, FPURegPtr value, RegPtr valid) {
+    pushRegValue(valid);
+    m_emitter.emitIf();
+        storeDoubleAsExtended(value, index);
+    m_emitter.emitEnd();
+    // FSAVE and FSTP both retain the converted physical raw bits after their
+    // reset/pop, including values later revisited by stack rotations.
+    U32 offset = 0;
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, offset);
+    emitFpuSlotAddress(index); m_emitter.emitI64Load(offsetof(extFloat80_t, signif));
+    m_emitter.emitI64Store(offset);
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, offset);
+    emitFpuSlotAddress(index); m_emitter.emitI32Load16U(offsetof(extFloat80_t, signExp));
+    m_emitter.emitI32Store16(offset + 8);
+}
+
+void JitWasmCodeGen::storeFpuBcd(MemPtr address, RegPtr index, FPURegPtr value, RegPtr valid) {
+    pushRegValue(valid); m_emitter.emitIf();
+        // Preserve FBST's existing policy: cached doubles truncate, while
+        // exact extended inputs follow the x87 control word.
+        emitWasmF64ToI64OrIndefinite(m_emitter, value->hardwareReg());
+        m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+    m_emitter.emitElse();
+        emitExtendedToInt64(index, false);
+    m_emitter.emitEnd();
+    U32 sign = allocScratch(), pair = allocScratch(), offset = 0;
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH); m_emitter.emitI64Const(63); m_emitter.emitOp(WASM_I64_SHR_U);
+    m_emitter.emitOp(WASM_I32_WRAP_I64); m_emitter.emitLocalTee(sign);
+    m_emitter.emitIf();
+        m_emitter.emitI64Const(0); m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+        m_emitter.emitOp(WASM_I64_SUB); m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+    m_emitter.emitEnd();
+    for (U32 byte = 0; byte < 9; ++byte) {
+        m_emitter.emitLocalGet(WASM_I64_SCRATCH); m_emitter.emitI64Const(100); m_emitter.emitOp(WASM_I64_REM_U);
+        m_emitter.emitOp(WASM_I32_WRAP_I64); m_emitter.emitLocalSet(pair);
+        emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, offset);
+        m_emitter.emitLocalGet(pair); m_emitter.emitI32Const(10); m_emitter.emitOp(WASM_I32_DIV_U);
+        m_emitter.emitI32Const(4); m_emitter.emitOp(WASM_I32_SHL);
+        m_emitter.emitLocalGet(pair); m_emitter.emitI32Const(10); m_emitter.emitOp(WASM_I32_REM_U);
+        m_emitter.emitOp(WASM_I32_OR); m_emitter.emitI32Store8(offset + byte);
+        if (byte != 8) {
+            m_emitter.emitLocalGet(WASM_I64_SCRATCH); m_emitter.emitI64Const(100); m_emitter.emitOp(WASM_I64_DIV_U);
+            m_emitter.emitLocalSet(WASM_I64_SCRATCH);
+        }
+    }
+    emitWasmMemBase(m_emitter, [this](RegPtr reg) { pushRegValue(reg); }, address, offset);
+    m_emitter.emitLocalGet(sign); m_emitter.emitI32Const(7); m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitI32Store8(offset + 9);
+    freeScratch(pair); freeScratch(sign);
 }
 
 void JitWasmCodeGen::dynamic_fxsave(DecodedOp* op) {
@@ -10251,6 +10396,7 @@ void JitWasmCodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
     // flag state survives the call.
     auto r = dest ? dest : getTmpReg();
     storeMemHelperField((U32)offsetof(CPU, memHelperAddr), index);
+    syncStateBeforeFaultingMemoryHelper();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCall(HELPER_READ_MEM32);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
@@ -10696,80 +10842,105 @@ RegPtr JitWasmCodeGen::readWriteMem(JitWidth w, RegPtr addressReg,
 // Save/restore the dirty/loaded trackers around the if since only one
 // arm runs and `if`/`end` is treated as a branch boundary structurally
 // even though neither branch invalidates the JIT register file.
+void JitWasmCodeGen::accessMemoryCustom(U32 widthBytes, RegPtr addressReg, bool store,
+        const std::function<void(MemPtr)>& customOp, const std::function<void()>& failedOp) {
+    m_needsWasmMemoryPageArrays = true;
+    U32 entryLocal = allocScratch();
+    U32 hostLocal = allocScratch();
+    auto savedFpuCache = fpuStackCache;
+    auto savedGpDirty = m_gpDirty;
+    auto savedXmmDirty = m_xmmDirty;
+    auto savedXmmLoaded = m_xmmLoaded;
+    auto savedGpLoaded  = m_gpLoaded;
+    auto savedSegLoaded = m_segLoaded;
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)(store ? offsetof(CPU, wasmWritePageBaseArray) : offsetof(CPU, wasmReadPageBaseArray)));
+    pushRegValue(addressReg);
+    m_emitter.emitI32Const(K_PAGE_SHIFT);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitI32Const(2);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load(0);
+    m_emitter.emitLocalTee(entryLocal);
+    m_emitter.emitOp(WASM_I32_EQZ);
+
+    if (widthBytes != 1) {
+        pushRegValue(addressReg);
+        m_emitter.emitI32Const(K_PAGE_MASK);
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitI32Const((S32)(K_PAGE_SIZE - widthBytes));
+        m_emitter.emitOp(WASM_I32_GT_U);
+        m_emitter.emitOp(WASM_I32_OR);
+    }
+
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+    m_emitter.emitIf();
+    {
+        if (failedOp) {
+            failedOp();
+        } else {
+            emulateSingleOp();
+        }
+        // The cold arm executed the entire instruction in CPU state. It
+        // cannot join the inline arm's virtual x87 stack mapping.
+        if (savedFpuCache.entryTop) blockExit();
+        // The interpreter may change any XMM register. Populate every
+        // local so the inline arm's lazy-cache state is valid at the join.
+        // This work is confined to the cold memory path.
+        syncDirtyRegsToHost();
+        m_xmmLoaded.fill(false);
+        for (U8 i = 0; i < WASM_XMM_LOCAL_COUNT; ++i) loadCpuXMMReg(i);
+    }
+    m_emitter.emitElse();
+    {
+        fpuStackCache = savedFpuCache;
+        m_xmmLoaded = savedXmmLoaded;
+        m_xmmDirty = savedXmmDirty;
+        m_emitter.emitLocalGet(entryLocal);
+        pushRegValue(addressReg);
+        m_emitter.emitI32Const(K_PAGE_MASK);
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitOp(WASM_I32_ADD);
+        m_emitter.emitLocalSet(hostLocal);
+        customOp(createMemPtr(makeWasmReg((U8)hostLocal, 0xff), 0, false));
+    }
+    m_emitter.emitEnd();
+
+    // Keep the inline arm's XMM state: the cold arm reloaded all locals.
+    m_gpDirty   = savedGpDirty;
+    m_gpLoaded  = savedGpLoaded;
+    m_segLoaded = savedSegLoaded;
+    freeScratch(hostLocal);
+    freeScratch(entryLocal);
+    if (!store && canReleaseScratchReg(addressReg))
+        freeScratch(addressReg->hardwareReg());
+}
+
+void JitWasmCodeGen::accessFpu80(RegPtr address, bool store, const std::function<void(MemPtr)>& action) {
+    accessMemoryCustom(10, std::move(address), store, action, nullptr);
+}
+
+void JitWasmCodeGen::accessFpuEnvironment(RegPtr address, U32 size, bool store, const std::function<void(MemPtr)>& action) {
+    accessMemoryCustom(size, std::move(address), store, action, nullptr);
+}
+
+void JitWasmCodeGen::withFpuScratchScope(const std::function<void()>& action) {
+    auto scratch = m_scratchInUse;
+    auto f64Scratch = m_f64ScratchInUse;
+    action();
+    m_scratchInUse = scratch;
+    m_f64ScratchInUse = f64Scratch;
+}
+
 RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
                              std::function<void(MemPtr)> customOp,
                              std::function<void()> failedOp,
                              RegPtr tmp, bool checkAlignment) {
     if (!tmp) tmp = getTmpReg();
     if (customOp) {
-        m_needsWasmMemoryPageArrays = true;
-        U32 entryLocal = allocScratch();
-        U32 hostLocal = allocScratch();
-        auto savedGpDirty = m_gpDirty;
-        auto savedXmmDirty = m_xmmDirty;
-        auto savedXmmLoaded = m_xmmLoaded;
-        auto savedGpLoaded  = m_gpLoaded;
-        auto savedSegLoaded = m_segLoaded;
-
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Load((U32)offsetof(CPU, wasmReadPageBaseArray));
-        pushRegValue(addressReg);
-        m_emitter.emitI32Const(K_PAGE_SHIFT);
-        m_emitter.emitOp(WASM_I32_SHR_U);
-        m_emitter.emitI32Const(2);
-        m_emitter.emitOp(WASM_I32_SHL);
-        m_emitter.emitOp(WASM_I32_ADD);
-        m_emitter.emitI32Load(0);
-        m_emitter.emitLocalTee(entryLocal);
-        m_emitter.emitOp(WASM_I32_EQZ);
-
-        if (w != JitWidth::b8) {
-            U32 widthBytes = wasmJitWidthBytes(w);
-            pushRegValue(addressReg);
-            m_emitter.emitI32Const(K_PAGE_MASK);
-            m_emitter.emitOp(WASM_I32_AND);
-            m_emitter.emitI32Const((S32)(K_PAGE_SIZE - widthBytes));
-            m_emitter.emitOp(WASM_I32_GT_U);
-            m_emitter.emitOp(WASM_I32_OR);
-        }
-
-        m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
-        m_emitter.emitIf();
-        {
-            if (failedOp) {
-                failedOp();
-            } else {
-                emulateSingleOp();
-            }
-            // The interpreter may change any XMM register. Populate every
-            // local so the inline arm's lazy-cache state is valid at the join.
-            // This work is confined to the cold memory path.
-            syncDirtyRegsToHost();
-            m_xmmLoaded.fill(false);
-            for (U8 i = 0; i < WASM_XMM_LOCAL_COUNT; ++i) loadCpuXMMReg(i);
-        }
-        m_emitter.emitElse();
-        {
-            m_xmmLoaded = savedXmmLoaded;
-            m_xmmDirty = savedXmmDirty;
-            m_emitter.emitLocalGet(entryLocal);
-            pushRegValue(addressReg);
-            m_emitter.emitI32Const(K_PAGE_MASK);
-            m_emitter.emitOp(WASM_I32_AND);
-            m_emitter.emitOp(WASM_I32_ADD);
-            m_emitter.emitLocalSet(hostLocal);
-            customOp(createMemPtr(makeWasmReg((U8)hostLocal, 0xff), 0, false));
-        }
-        m_emitter.emitEnd();
-
-        // Keep the inline arm's XMM state: the cold arm reloaded all locals.
-        m_gpDirty   = savedGpDirty;
-        m_gpLoaded  = savedGpLoaded;
-        m_segLoaded = savedSegLoaded;
-        freeScratch(hostLocal);
-        freeScratch(entryLocal);
-        if (canReleaseScratchReg(addressReg))
-            freeScratch(addressReg->hardwareReg());
+        accessMemoryCustom(wasmJitWidthBytes(w), std::move(addressReg), false, customOp, failedOp);
         return tmp;
     }
 
@@ -10879,72 +11050,7 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
                             std::function<void(MemPtr)> customOp,
                             std::function<void()> failedOp, bool checkAlignment) {
     if (customOp) {
-        m_needsWasmMemoryPageArrays = true;
-        U32 entryLocal = allocScratch();
-        U32 hostLocal = allocScratch();
-        auto savedGpDirty = m_gpDirty;
-        auto savedXmmDirty = m_xmmDirty;
-        auto savedXmmLoaded = m_xmmLoaded;
-        auto savedGpLoaded  = m_gpLoaded;
-        auto savedSegLoaded = m_segLoaded;
-
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Load((U32)offsetof(CPU, wasmWritePageBaseArray));
-        pushRegValue(addressReg);
-        m_emitter.emitI32Const(K_PAGE_SHIFT);
-        m_emitter.emitOp(WASM_I32_SHR_U);
-        m_emitter.emitI32Const(2);
-        m_emitter.emitOp(WASM_I32_SHL);
-        m_emitter.emitOp(WASM_I32_ADD);
-        m_emitter.emitI32Load(0);
-        m_emitter.emitLocalTee(entryLocal);
-        m_emitter.emitOp(WASM_I32_EQZ);
-
-        if (w != JitWidth::b8) {
-            U32 widthBytes = wasmJitWidthBytes(w);
-            pushRegValue(addressReg);
-            m_emitter.emitI32Const(K_PAGE_MASK);
-            m_emitter.emitOp(WASM_I32_AND);
-            m_emitter.emitI32Const((S32)(K_PAGE_SIZE - widthBytes));
-            m_emitter.emitOp(WASM_I32_GT_U);
-            m_emitter.emitOp(WASM_I32_OR);
-        }
-
-        m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
-        m_emitter.emitIf();
-        {
-            if (failedOp) {
-                failedOp();
-            } else {
-                emulateSingleOp();
-            }
-            // The interpreter may change any XMM register. Populate every
-            // local so the inline arm's lazy-cache state is valid at the join.
-            // This work is confined to the cold memory path.
-            syncDirtyRegsToHost();
-            m_xmmLoaded.fill(false);
-            for (U8 i = 0; i < WASM_XMM_LOCAL_COUNT; ++i) loadCpuXMMReg(i);
-        }
-        m_emitter.emitElse();
-        {
-            m_xmmLoaded = savedXmmLoaded;
-            m_xmmDirty = savedXmmDirty;
-            m_emitter.emitLocalGet(entryLocal);
-            pushRegValue(addressReg);
-            m_emitter.emitI32Const(K_PAGE_MASK);
-            m_emitter.emitOp(WASM_I32_AND);
-            m_emitter.emitOp(WASM_I32_ADD);
-            m_emitter.emitLocalSet(hostLocal);
-            customOp(createMemPtr(makeWasmReg((U8)hostLocal, 0xff), 0, false));
-        }
-        m_emitter.emitEnd();
-
-        // Keep the inline arm's XMM state: the cold arm reloaded all locals.
-        m_gpDirty   = savedGpDirty;
-        m_gpLoaded  = savedGpLoaded;
-        m_segLoaded = savedSegLoaded;
-        freeScratch(hostLocal);
-        freeScratch(entryLocal);
+        accessMemoryCustom(wasmJitWidthBytes(w), addressReg, true, customOp, failedOp);
         return;
     }
 
@@ -12709,7 +12815,7 @@ void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitLocalGet(targetLocal);
         m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
-        m_emitter.emitReturn();
+        emitFunctionReturn();
         m_emitter.emitEnd();
         m_emitter.emitEnd();
         freeScratch(targetLocal);
@@ -12723,7 +12829,7 @@ void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitI32Const((S32)(uintptr_t)targetOp);
         m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
-        m_emitter.emitReturn();
+        emitFunctionReturn();
     } else {
         writeEip(address - cpu->seg[CS].address);
         blockExit();
@@ -12798,7 +12904,14 @@ void JitWasmCodeGen::emitProfileSampledCall(U32 helperIdx, U32 detail) {
     m_emitter.emitEnd();
 }
 #endif
+void JitWasmCodeGen::emitFunctionReturn() {
+    materializeFpuCache();
+    syncDirtyRegsToHost();
+    m_emitter.emitReturn();
+}
+
 void JitWasmCodeGen::emitBlockExitWithProfile(U32 profileHelperIdx) {
+    materializeFpuCache();
     syncDirtyRegsToHost();
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     emitProfileSampledCall(profileHelperIdx);
@@ -12854,7 +12967,7 @@ void JitWasmCodeGen::blockNext1(U32 eip, DecodedOp* op) {
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitLocalGet(targetLocal);
         m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
-        m_emitter.emitReturn();
+        emitFunctionReturn();
         m_emitter.emitEnd();
         m_emitter.emitEnd();
         m_emitter.emitEnd();
@@ -12880,7 +12993,7 @@ void JitWasmCodeGen::blockNext1(U32 eip, DecodedOp* op) {
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitLocalGet(targetLocal);
         m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
-        m_emitter.emitReturn();
+        emitFunctionReturn();
         m_emitter.emitEnd();
 
         freeScratch(targetLocal);
@@ -12922,7 +13035,7 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitLocalGet(targetLocal);
         m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
-        m_emitter.emitReturn();
+        emitFunctionReturn();
         m_emitter.emitEnd();
         m_emitter.emitEnd();
         m_emitter.emitEnd();
@@ -12941,7 +13054,7 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitLocalGet(targetLocal);
         m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
-        m_emitter.emitReturn();
+        emitFunctionReturn();
         m_emitter.emitEnd();
         freeScratch(targetLocal);
     }
@@ -12960,6 +13073,7 @@ bool JitWasmCodeGen::canJumpInBlock(U32 opEip, DecodedOp* op) {
     return JitCodeGen::canJumpInBlock(opEip, op);
 }
 void JitWasmCodeGen::onTestEnd(DecodedOp* op) {
+    materializeFpuCache();
     syncDirtyRegsToHost();
     writeCurrentEip(0);
     // Set cpu->nextOp = op (the TestEnd op)
@@ -12970,7 +13084,7 @@ void JitWasmCodeGen::onTestEnd(DecodedOp* op) {
 void JitWasmCodeGen::jmpHost(RegPtr reg)          { /* no native jumps in WASM */ }
 void JitWasmCodeGen::jmpHost(DYN_PTR_SIZE address) { /* no native jumps in WASM */ }
 void JitWasmCodeGen::nakedCall(RegPtr reg)         { /* no bare calls in WASM */ }
-void JitWasmCodeGen::nakedReturn()                 { m_emitter.emitReturn(); }
+void JitWasmCodeGen::nakedReturn()                 { emitFunctionReturn(); }
 
 void JitWasmCodeGen::dynamic_pause(DecodedOp* op) {
     (void)op;
@@ -13051,7 +13165,7 @@ void JitWasmCodeGen::hintLikelyStringLoopContinue() {
 // ---------------------------------------------------------------------------
 void JitWasmCodeGen::callHostFunction(void* address, const std::vector<DynParam>& params,
                                        bool restoreCache, bool saveCache) {
-    // WASM calling convention: all helpers have the signature void(CPU*).
+    // This legacy helper entry point accepts only the signature void(CPU*).
     // Any additional operands are pre-stored in CPU fields (dst, src, etc.) before
     // the call by the caller, so params must contain exactly one CPU entry.
     // If a future helper needs a non-CPU argument on the WASM stack, this backend
@@ -13059,6 +13173,9 @@ void JitWasmCodeGen::callHostFunction(void* address, const std::vector<DynParam>
     if (params.size() != 1 || params[0].type != JitCallParamType::CPU) {
         kpanic_fmt("JitWasmCodeGen::callHostFunction: expected a single CPU param but got %zu params", params.size());
     }
+    // Legacy x87/MMX callers have already ended their cache region. Other
+    // helpers may observe CPU state, but leave the x87 registers unchanged.
+    materializeFpuCache();
     syncDirtyRegsToHost();
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitCallIndirect(m_typeVoidI32, 0);
@@ -13106,6 +13223,11 @@ void JitWasmCodeGen::dynamic_wait(DecodedOp* op) {
 
 
 void JitWasmCodeGen::emulateSingleOp() {
+    // A helper can replace x87 state or redirect control flow. Its return path
+    // leaves this activation, while a conditional arm that skips the helper
+    // must retain its original compile-time cache mapping.
+    auto savedFpuCache = fpuStackCache;
+    flushFpuCache();
     m_emulatedCurrentOp = true;
     // Sync state, point cpu->eip.u32 at this op's offset (only when we may
     // be in a mixed JIT/emulate block — for pure-emulate blocks each
@@ -13176,6 +13298,12 @@ void JitWasmCodeGen::emulateSingleOp() {
     // Reset the compile-time cache so getCondition uses the safe runtime-read
     // path rather than emitting a guard based on a stale expected flag type.
     currentLazyFlags = FLAGS_NULL;
+    if (savedFpuCache.entryTop) {
+        // The interpreter owns CPU state now: return without writing the old
+        // cached values over its result, then restore metadata for the hot arm.
+        blockExit();
+        fpuStackCache = savedFpuCache;
+    }
 }
 
 void JitWasmCodeGen::fallbackToEmulateSingleOp(const char* family) {
@@ -13411,7 +13539,41 @@ void JitWasmCodeGen::direct_setcc(JitConditional cond, RegPtr dst) {
     auto r = getCondition(cond, dst);
     if (r != dst) mov(JitWidth::b8, dst, r);
 }
-bool JitWasmCodeGen::directDoesAffectFlags(DecodedOp* op) { return false; }
+bool JitWasmCodeGen::directDoesAffectFlags(DecodedOp* op) {
+    // A guarded x87 operation can exit through the interpreter. Do not skip it
+    // between a fused flag producer and consumer: dispatch needs guest flags,
+    // not just the producer's temporary direct-condition result.
+    switch (op->inst) {
+    case FDIV_ST0_STj:
+    case FDIVR_ST0_STj:
+    case FDIV_STi_ST0:
+    case FDIVR_STi_ST0:
+    case FDIV_STi_ST0_Pop:
+    case FDIVR_STi_ST0_Pop:
+    case FST_STi_Pop:
+        return true;
+    // FCMOV reads architectural flags. A fused producer may only retain a
+    // temporary condition for its later branch, so do not skip these reads.
+    case FCMOV_ST0_STj_CF: case FCMOV_ST0_STj_ZF:
+    case FCMOV_ST0_STj_CF_OR_ZF: case FCMOV_ST0_STj_PF:
+    case FCMOV_ST0_STj_NCF: case FCMOV_ST0_STj_NZF:
+    case FCMOV_ST0_STj_NCF_AND_NZF: case FCMOV_ST0_STj_NPF:
+        return true;
+    case Nop: case Pause:
+    case MovR8R8: case MovR16R16: case MovR32R32:
+    case MovR8I8: case MovR16I16: case MovR32I32:
+    case MovGwXzR8: case MovGwSxR8:
+    case MovGdXzR8: case MovGdSxR8:
+    case MovGdXzR16: case MovGdSxR16:
+    case LeaR16: case LeaR32:
+        return false;
+    default:
+        // Other instructions may call the interpreter. A skipped FLD can
+        // activate the cache after this lookahead begins, so this must not
+        // depend on whether a cache is active at the flag producer itself.
+        return !canCacheFpuOp(op);
+    }
+}
 
 
 // ---------------------------------------------------------------------------
@@ -13511,6 +13673,10 @@ void JitWasmCodeGen::findDirectLoopCandidate(DecodedOp* op) {
     m_directLoopToken = 0;
     m_hasDirectLoopCandidate = false;
     m_directLoopOpen = false;
+    m_directLoopTouchesFpu = false;
+    m_directLoopKeepsFpu = false;
+    m_directLoopDynamicFpuValidity = false;
+    m_directLoopFpuEntry = FpuStackCache{};
 
     U32 eip = this->startingEip;
     DecodedOp* cur = op;
@@ -13538,15 +13704,28 @@ void JitWasmCodeGen::findDirectLoopCandidate(DecodedOp* op) {
     }
 
     if (m_hasDirectLoopCandidate) {
+        bool cacheable = supportsFpuLoopCache();
+        S32 stackChange = 0;
         eip = this->startingEip;
         cur = op;
         while (cur && eip <= m_directLoopSourceEip) {
             if (eip >= m_directLoopTargetEip) {
                 m_directLoopOpCount++;
+                m_directLoopTouchesFpu |= cur->isFpuOp() || cur->isMmxOp();
+                cacheable &= canKeepFpuCache(cur);
+                if (canCacheFpuOp(cur)) stackChange += cachedFpuStackChange(cur);
+                m_directLoopDynamicFpuValidity |= cur->inst == FILD_QWORD_INTEGER ||
+                    cur->inst == FLD_EXTENDED_REAL || cur->inst == FSTP_EXTENDED_REAL || cur->inst == FBLD_PACKED_BCD ||
+                    cur->inst == FSCALE || cur->inst == FXTRACT || cur->inst == FPREM || cur->inst == FPREM_nearest ||
+                    cur->inst == F2XM1 || cur->inst == FSIN || cur->inst == FCOS || cur->inst == FPTAN ||
+                    cur->inst == FSINCOS || cur->inst == FYL2X || cur->inst == FYL2XP1 || cur->inst == FPATAN ||
+                    cur->inst == FNINIT || cur->inst == FLDENV || cur->inst == FNSAVE || cur->inst == FRSTOR;
             }
             eip += cur->len;
             cur = cur->next;
         }
+        m_directLoopKeepsFpu = m_directLoopTouchesFpu && cacheable;
+        m_directLoopDynamicFpuValidity |= (stackChange & 7) != 0;
     }
 }
 
@@ -13555,6 +13734,10 @@ bool JitWasmCodeGen::emitDirectLoopBackedge(U32 address) {
         currentEip != m_directLoopSourceEip) {
         return false;
     }
+
+    // Loops with legacy x87/MMX lowering still reload from CPU state at entry.
+    // Cacheable loops reconcile their locals only on the taken edge.
+    if (m_directLoopTouchesFpu && !m_directLoopKeepsFpu) materializeFpuCache();
 
     // Make the loop header's reloads observe all guest-register changes from
     // this iteration. EIP is also kept architecturally current for helpers,
@@ -13585,6 +13768,7 @@ bool JitWasmCodeGen::emitDirectLoopBackedge(U32 address) {
     m_emitter.emitOp(WASM_I32_ADD);
     m_emitter.emitI32Store((U32)offsetof(CPU, blockInstructionCount));
 
+    if (m_directLoopKeepsFpu) reconcileFpuCacheForLoop(m_directLoopFpuEntry);
     U32 currentDepth = m_emitter.currentCtrlDepth();
     m_emitter.emitBr(currentDepth - m_directLoopToken);
     m_emitter.emitEnd();
@@ -13636,9 +13820,20 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     m_f64ScratchInUse.fill(false);
     m_v128ScratchInUse.fill(false);
     lastCompiledOpLen = op->len;
+    if (!canKeepFpuCache(op)) {
+        flushFpuCache();
+    }
 
     if (!skippedOp && m_hasDirectLoopCandidate && !m_directLoopOpen &&
         this->currentEip == m_directLoopTargetEip) {
+            if (m_directLoopKeepsFpu) {
+                auto scratch = m_scratchInUse;
+                prepareFpuCacheForLoop(m_directLoopDynamicFpuValidity);
+                m_scratchInUse = scratch;
+                m_directLoopFpuEntry = fpuStackCache;
+            } else if (m_directLoopTouchesFpu) {
+                flushFpuCache();
+            }
             // Synchronize the one-time linear entry before opening the loop.
             // The compile-time caches are then cleared so loads emitted in
             // the body execute on every backedge and observe flushed values.
@@ -13673,6 +13868,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
 }
 
 void JitWasmCodeGen::compile(DecodedOp* op) {
+    if (compileCachedFpuOp(op)) return;
     if (op->isBranch()) {
         emitBranchBailoutCheck();
     }

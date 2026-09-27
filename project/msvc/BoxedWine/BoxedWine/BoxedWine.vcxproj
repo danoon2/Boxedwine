@@ -3830,6 +3830,7 @@
     <ClCompile Include="..\..\..\..\source\test\cpu\testCmp.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testCPU.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testFPU.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\cpu\testWasmJitFpu.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testIncDec.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testJmp.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testLoadSeg.cpp" />

@@ -178,8 +178,10 @@ public:
     void FSTT_I16(CPU* cpu, U32 addr);
     void FST_I32(CPU* cpu, U32 addr);
     void FSTT_I32(CPU* cpu, U32 addr);
+    S64 toInt64(U32 index, bool truncate);
     void FST_I64(CPU* cpu, U32 addr);
     void FSTT_I64(CPU* cpu, U32 addr);
+    void FBST(U32 index, U8 data[10]);
     void FBST(CPU* cpu, U32 addr);
     void FADD(int op1, int op2);
     void FDIV(int st, int other);
@@ -194,6 +196,8 @@ public:
     void FUCOM(CPU* cpu, int st, int other);
     void FRNDINT();
     void FPREM(bool truncate = true);
+    void FPREM(U32 st0, U32 st1, bool truncate);
+    void FPREM1(U32 st0, U32 st1);
     void FPREM1();
     void FXAM();
     void F2XM1();
@@ -203,6 +207,7 @@ public:
     void FYL2XP1();
     void FSQRT();
     void FSINCOS();
+    void FSCALE(U32 st0, U32 st1);
     void FSCALE();
     void FSIN();
     void FCOS();    
@@ -210,6 +215,7 @@ public:
     void FLDENV(CPU* cpu, U32 addr);
     void FSAVE(CPU* cpu, U32 addr);
     void FRSTOR(CPU* cpu, U32 addr);
+    void FXTRACT(U32 st0, U32 result);
     void FXTRACT();
     void FCHS();
     void FABS();

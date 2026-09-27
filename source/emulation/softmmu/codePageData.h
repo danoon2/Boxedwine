@@ -70,6 +70,9 @@ public:
 	void collectAllJitBlocks(std::vector<void*>& out);
 #endif
 	void add(DecodedOp* op, U32 address, U32 opCount);
+#ifdef __TEST
+    std::function<void(U32, DecodedOp*)> testAfterOpPublished;
+#endif
 	bool isAddressDynamic(U32 address, U32 len);
 	void clearPageWriteCounts(U32 pageIndex);
 	void threadCleanup(U32 threadId);

@@ -222,12 +222,22 @@ public:
 #ifdef BOXEDWINE_JIT
     U32 tmpReg;
 #endif
+#if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64)
+    U32 nativeFpuCacheTop = 0;
+    // Flag-neutral (entry TOP + relative slot) & 7 lookup for native spills.
+    U8 nativeFpuCacheModulo[16] = {0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7};
+#endif
 #ifdef BOXEDWINE_WASM_JIT
     // Scratch fields used only by the WASM JIT to pass
     // address/value to its per-width memory helpers without trampling
     // lazy-flag state in src.u32/dst.u32.
     U32 memHelperAddr = 0;
     U32 memHelperValue = 0;
+    // Refreshed at JIT entry for the executing worker, never the compiler's TLS.
+    U32 wasmSoftFloatRounding = 0;
+    U32 wasmSoftFloatFlags = 0;
+    U32 wasmSoftFloatTininess = 0;
+    U32 wasmSoftFloatPrecision = 0;
     // Selects a compact dedicated operation in the existing single-op helper.
     // Zero retains the normal interpreter fallback behavior.
     U32 wasmJitHelperOp = 0;
@@ -265,6 +275,8 @@ public:
     U32         oldCF = 0;
 #if defined(BOXEDWINE_JIT_ARMV8)
     U64 storedRegs[12];
+    U64 armSavedFpuRegs[8]; // Host ABI: low 64 bits of D8-D15.
+    U32 armFpuCacheTop = 0;
 #endif
     FPU         fpu;
     U64		    instructionCount = 0;
