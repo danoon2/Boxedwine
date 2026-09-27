@@ -302,6 +302,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testWasmJitMtExecDetachPreservesSharedDecodedOps, "Test MT WASM JIT exec detach preserves shared decoded ops"},
     {testWasmJitMtModuleBrokerTransport, "Test MT WASM JIT module broker transport"},
     {testWasmJitMtStandaloneModuleBroker, "Test MT WASM JIT standalone module broker"},
+    {testWasmJitMtStandaloneCompileRetry, "Test MT WASM JIT standalone compilation OOM retry", TEST_ENTRY_SERIAL},
     {testWasmJitMtGroupedModuleBroker, "Test MT WASM JIT grouped module broker"},
     {testWasmJitMtRetirementScanOrdering, "Test MT WASM JIT retirement scan ordering", TEST_ENTRY_SERIAL},
     {testWasmJitMtModuleBrokerLifecycle, "Test MT WASM JIT module broker lifecycle"},

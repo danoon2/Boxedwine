@@ -534,7 +534,17 @@
             if (forcedCompileOomIds.has(moduleId)) {
                 throw new RangeError('out of memory');
             }
-            module = new WebAssembly.Module(bytes);
+            try {
+                module = new WebAssembly.Module(bytes);
+            } catch (error) {
+                if (moduleClass !== MODULE_CLASS_STANDALONE || !isWasmOom(error)) {
+                    throw error;
+                }
+                // Firefox can report a transient OOM after many short-lived JIT
+                // modules. Retry once; persistent OOM still uses the fallback
+                // below, and grouped modules keep their existing backoff policy.
+                module = new WebAssembly.Module(bytes);
+            }
         } catch (error) {
             if (isWasmOom(error)) {
                 error.bwWasmJitBrokerOom = true;

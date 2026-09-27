@@ -74,6 +74,44 @@ EM_JS(S32, testWasmJitBrokerLookup, (U32 moduleId, U32 memoryId, U32 memoryIncar
     }
 });
 
+EM_JS(S32, testWasmJitBrokerCompileRetry, (const U8* bytes, U32 size, U32 moduleClass,
+        U32 failures, U32 errorKind, S32* attempts, S32* oom), {
+    var OriginalModule = WebAssembly.Module;
+    var count = 0;
+    var injectedError;
+    if (errorKind === 2) {
+        injectedError = new WebAssembly.CompileError('out of memory');
+    } else if (errorKind === 1) {
+        injectedError = new Error('injected unrelated failure');
+    } else if (errorKind === 3) {
+        injectedError = new RangeError('out of memory');
+    } else {
+        injectedError = new Error('out of memory');
+        injectedError.name = 'InternalError';
+    }
+    HEAP32[oom >> 2] = 0;
+    try {
+        WebAssembly.Module = function(wasmBytes) {
+            if (++count <= failures) {
+                throw injectedError;
+            }
+            return new OriginalModule(wasmBytes);
+        };
+        var result = globalThis.bwWasmJitBrokerGetOrCompile(0, 0, 0,
+            new Uint8Array(HEAPU8.buffer, bytes, size), false, moduleClass, 1);
+        if (result.source !== 1) {
+            return -2;
+        }
+        return new WebAssembly.Instance(result.module, {}).exports.execute();
+    } catch (error) {
+        HEAP32[oom >> 2] = error && error.bwWasmJitBrokerOom === true ? 1 : 0;
+        return error === injectedError ? -1 : -2;
+    } finally {
+        WebAssembly.Module = OriginalModule;
+        HEAP32[attempts >> 2] = count;
+    }
+});
+
 EM_JS(void, testWasmJitBrokerSetPublicationDelayed, (U32 moduleId, S32 delayed), {
     globalThis.bwWasmJitBrokerTestSetPublicationDelayed(moduleId, delayed !== 0);
 });
@@ -1161,6 +1199,38 @@ void testWasmJitMtModuleBrokerTransport() {
         testFail("MT WASM broker unrelated std::thread compiles locally");
     }
     wasmJitTestSetMtModuleBrokerEnabled(oldEnabled);
+}
+
+void testWasmJitMtStandaloneCompileRetry() {
+    struct TestCase {
+        const char* name;
+        U32 moduleClass;
+        U32 failures;
+        U32 errorKind;
+        S32 expectedValue;
+        S32 expectedAttempts;
+        S32 expectedOom;
+    };
+    const TestCase cases[] = {
+        {"normal compile", BROKER_MODULE_CLASS_STANDALONE, 0, 0, 42, 1, 0},
+        {"transient InternalError OOM", BROKER_MODULE_CLASS_STANDALONE, 1, 0, 42, 2, 0},
+        {"transient RangeError OOM", BROKER_MODULE_CLASS_STANDALONE, 1, 3, 42, 2, 0},
+        {"persistent OOM", BROKER_MODULE_CLASS_STANDALONE, 3, 0, -1, 2, 1},
+        {"non-OOM error", BROKER_MODULE_CLASS_STANDALONE, 3, 1, -1, 1, 0},
+        {"CompileError mentioning OOM", BROKER_MODULE_CLASS_STANDALONE, 3, 2, -1, 1, 0},
+        {"grouped OOM keeps backoff", BROKER_MODULE_CLASS_GROUPED, 3, 0, -1, 1, 1},
+    };
+    std::vector<U8> bytes = makeBrokerTestModule();
+    for (const auto& c : cases) {
+        S32 attempts = 0;
+        S32 oom = 0;
+        S32 value = testWasmJitBrokerCompileRetry(bytes.data(), (U32)bytes.size(),
+            c.moduleClass, c.failures, c.errorKind, &attempts, &oom);
+        if (value != c.expectedValue || attempts != c.expectedAttempts || oom != c.expectedOom) {
+            testFail("MT WASM standalone compile retry %s: value=%d attempts=%d oom=%d",
+                c.name, value, attempts, oom);
+        }
+    }
 }
 
 void testWasmJitMtStandaloneModuleBroker() {
@@ -2659,6 +2729,9 @@ void testWasmJitMtScheduleThreadPreload() {
 }
 
 #else
+
+void testWasmJitMtStandaloneCompileRetry() {
+}
 
 void testWasmJitMtModuleBrokerTransport() {
 }
