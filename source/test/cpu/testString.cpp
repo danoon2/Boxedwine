@@ -595,8 +595,6 @@ void runHotFlatOverlapMovsCases(int width, U32 profileCount, U32 profileElements
                 if (checkedMemory) {
                     op->exceptionCount = LINEAR_MEMORY_RECOMPILE_FAULTS;
                 }
-                startNewJIT(cpu, TEST_CODE_ADDRESS, op);
-
                 // Reuse compiled code with nonzero and zero counts.
                 // Motorhead copies twelve dwords
                 // with EDI = ESI + 4 to propagate the first value.
@@ -620,6 +618,19 @@ void runHotFlatOverlapMovsCases(int width, U32 profileCount, U32 profileElements
                         src += backward ? -width : width;
                         dst += backward ? -width : width;
                     }
+                    // ARM alignment faults can discard a compiled block. Keep
+                    // its fault profile, but compile again before the next case
+                    // so every count exercises a JIT entry, including retries.
+                    op = cpu->getNextOp();
+                    if (!op->pfnJitCode) {
+                        op->runCount = JIT_RUN_COUNT + 1;
+                        startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+                    }
+                    if (!op->pfnJitCode || (op->flags2 & OP_FLAG2_TRACED_STUB)) {
+                        failed("hot flat MOVS overlap missing compiled entry: width=%d separation=%u count=%u DF=%d",
+                            width, separation, count, backward);
+                        break;
+                    }
                     runTestCPU();
                     verifyOverlapBytes(expected, sizeof(expected), "hot flat MOVS overlap");
                     if (cpu->reg[R_CX].u32 != 0 ||
@@ -629,10 +640,6 @@ void runHotFlatOverlapMovsCases(int width, U32 profileCount, U32 profileElements
                         failed("hot flat MOVS overlap width=%d separation=%u count=%u DF=%d",
                             width, separation, count, backward);
                     }
-                }
-                op = memory->getDecodedOp(TEST_CODE_ADDRESS);
-                if (!op || !op->pfnJitCode || (op->flags2 & OP_FLAG2_TRACED_STUB)) {
-                    failed("hot flat MOVS overlap did not exercise compiled code");
                 }
                 cpu->seg[DS] = savedDs;
                 cpu->seg[ES] = savedEs;
