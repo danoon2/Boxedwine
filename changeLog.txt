@@ -1,3 +1,20 @@
+26R2
+* Added a WASM JIT CPU core for single-threaded and multi-threaded browser builds, with optimizations for CPU performance and compiled module memory usage.
+* Added Direct3D-to-WebGL support through patched Wine, allowing Direct3D 9 or lower games to run in the browser.  Direct3D 10 or higher is not supported.
+* Added a native Mac UI.
+* Mac builds now use native hardware-accelerated OpenGL by default.
+* Improved native JIT performance, memory access and OpenGL call overhead.
+* Updated Vulkan support for Wine 11 and improved compatibility with DXVK 3.1.1.  Fixed Vulkan memory management, window handling and shutdown.
+* Reduced browser audio latency with an AudioWorklet backend and improved audio buffering.  Fixed audio stuttering on Mac and Linux.
+* Fixed browser mouse scaling, pointer lock, held mouse buttons and fullscreen presentation.
+* Improved single-threaded scheduling and timer responsiveness, reducing pauses and fixing hangs such as Halo Trial startup.
+* Improved Wine compatibility with fixes to CPU instructions, file and ZIP handling, sockets, signals, process and thread cleanup, and InstallShield installers.
+
+26R1
+* Rewrote JIT CPU emulation.  It is now 50%-100% faster depending on platform and uses 20% less memory.
+* Wine 11 now supported.
+* OpenGL backend D3D12 added to Windows ARM64.
+
 25.0.0
 * Updated Wine to latest version
 * Internal change to emulate x11 rather than replace winex11 driver.
