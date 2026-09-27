@@ -46,6 +46,17 @@ bool jitCanUseLinearMemory() {
 }
 
 bool jitCanUseUnconditionalLinearMemory(DecodedOp* op) {
+#ifdef _WIN32
+    // Bulk copies can touch freshly mapped aperture aliases whose backing RAM
+    // is already resident. Windows faults those aliases into its working set
+    // separately, even though no guest/host access violation is raised. Use
+    // the MMU backing for REP MOVS so this cost does not depend on whether
+    // earlier calls happened to trigger the exception-based fallback.
+    if ((op->repZero || op->repNotZero) &&
+        (op->inst == Movsb || op->inst == Movsw || op->inst == Movsd)) {
+        return false;
+    }
+#endif
     return op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS;
 }
 

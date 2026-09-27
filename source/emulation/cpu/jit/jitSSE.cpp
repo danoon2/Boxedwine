@@ -1145,11 +1145,9 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     // 32-bit build, even with sse, can't handle this pass because it will run out of tmp registers.  8 registers on x86 just isn't enough.
     Jit::movsr(valueWidth, size, regWidth);
 #else
-    if (currentOp->STR_COUNT > 10 && currentOp->STR_TOTAL / currentOp->STR_COUNT < 16) {
-        // for small copies just do it the simple way, no need to optimize with sse
-        Jit::movsr(valueWidth, size, regWidth);
-        return;
-	}
+    // A shared memcpy/memmove can see only tiny copies during JIT warmup and
+    // large buffers later. Always retain the vector path; the scalar tail
+    // below also handles calls shorter than one vector without a wide access.
     // will use 128-bit sse instructions to do the copying in 16 byte chunks
     //
     // might be interesting to try 256-bit chunks with YMM registers on AVX capable x64 CPUs, but Arm64 doesn't support 256-bit wide registers so it would require a separate code path for that.
