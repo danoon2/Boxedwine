@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -41,7 +43,7 @@ public class Main {
     static Vector<String> extraCommands = new Vector<>();
     static boolean verbose = false;
     static String perfName = "Performance";
-    static boolean atleastOneFailed = false;
+    static volatile boolean atleastOneFailed = false;
     static final long DEFAULT_BOXEDWINE_TIMEOUT_SECONDS = TimeUnit.MINUTES.toSeconds(30);
     static final long boxedWineTimeoutSeconds = Math.max(1, Long.getLong("boxedwine.runner.timeout.seconds", DEFAULT_BOXEDWINE_TIMEOUT_SECONDS));
     static final long PROCESS_FORCED_SHUTDOWN_SECONDS = 30;
@@ -51,10 +53,12 @@ public class Main {
         boolean scriptFinished;
         String commandLine;
         int timeToComplete;
-        Vector<String> output;
+        Vector<String> output = new Vector<>();
     }
     static public void copyFolder(Path src, Path dest) throws IOException {
-        Files.walk(src).forEach(source -> copy(source, dest.resolve(src.relativize(source))));
+        try (Stream<Path> files = Files.walk(src)) {
+            files.forEach(source -> copy(source, dest.resolve(src.relativize(source))));
+        }
     }
 
     static private void copy(Path source, Path dest) {
@@ -69,10 +73,11 @@ public class Main {
         try {
             Class<?> processHandleClass = Class.forName("java.lang.ProcessHandle");
             Object processHandle = Process.class.getMethod("toHandle").invoke(process);
-            Stream<?> descendants = (Stream<?>)processHandleClass.getMethod("descendants").invoke(processHandle);
-            Object[] childHandles = descendants.toArray();
-            for (int i = childHandles.length - 1; i >= 0; i--) {
-                processHandleClass.getMethod("destroyForcibly").invoke(childHandles[i]);
+            try (Stream<?> descendants = (Stream<?>)processHandleClass.getMethod("descendants").invoke(processHandle)) {
+                Object[] childHandles = descendants.toArray();
+                for (int i = childHandles.length - 1; i >= 0; i--) {
+                    processHandleClass.getMethod("destroyForcibly").invoke(childHandles[i]);
+                }
             }
             processHandleClass.getMethod("destroyForcibly").invoke(processHandle);
             return true;
@@ -152,26 +157,39 @@ public class Main {
         builder.directory(new File(directory));
         builder.redirectErrorStream(true);
         Process process = builder.start();
-        StreamGobbler streamGobbler = new StreamGobbler(process.getInputStream(), name);
-        Thread streamGobblerThread = new Thread(streamGobbler, "BoxedWineRunner output " + name);
-        streamGobblerThread.setDaemon(true);
-        streamGobblerThread.start();
         try {
-            if (!process.waitFor(boxedWineTimeoutSeconds, TimeUnit.SECONDS)) {
-                System.out.println("Killing "+parts[1]+" after "+boxedWineTimeoutSeconds+" seconds");
-                terminateProcess(process, parts[1]);
-                results.exitCode = 1; // 111 is the valid return code
-            } else {
-                results.exitCode = process.exitValue();
+            StreamGobbler streamGobbler = new StreamGobbler(process.getInputStream(), name);
+            Thread streamGobblerThread = new Thread(streamGobbler, "BoxedWineRunner output " + name);
+            streamGobblerThread.setDaemon(true);
+            streamGobblerThread.start();
+            long start = System.nanoTime();
+            boolean timedOut = false;
+            while (!process.waitFor(250, TimeUnit.MILLISECONDS)) {
+                if (streamGobbler.failure != null) {
+                    throw new IOException("Output reader failed for " + name, streamGobbler.failure);
+                }
+                if (System.nanoTime() - start >= TimeUnit.SECONDS.toNanos(boxedWineTimeoutSeconds)) {
+                    timedOut = true;
+                    terminateProcess(process, parts[1]);
+                    System.out.println("Killing "+parts[1]+" after "+boxedWineTimeoutSeconds+" seconds");
+                    break;
+                }
             }
+            results.exitCode = timedOut || process.isAlive() ? 1 : process.exitValue();
             waitForStreamGobbler(streamGobblerThread);
+            if (streamGobbler.failure != null || streamGobblerThread.isAlive() || Thread.currentThread().isInterrupted()) {
+                throw new IOException("Output reader did not finish successfully for " + name, streamGobbler.failure);
+            }
             results.scriptFinished = streamGobbler.scriptFinished;
-            results.output = streamGobbler.lines;
+            results.output = streamGobbler.getLines();
         } catch (InterruptedException e) {
-            System.out.println("Interrupted while running "+parts[1]+", killing process");
-            terminateProcess(process, parts[1]);
             Thread.currentThread().interrupt();
             throw new IOException("Failed to run "+parts[1], e);
+        } finally {
+            // Worker exceptions must not leave a child running into the next attempt.
+            terminateProcess(process, parts[1]);
+            try { process.getOutputStream().close(); } catch (IOException ignored) {}
+            try { process.getInputStream().close(); } catch (IOException ignored) {}
         }
     }
 
@@ -204,6 +222,8 @@ public class Main {
     }
 
     public static void runTest(String name, String filesPath, String path, Results results) throws IOException {
+        Files.deleteIfExists(Paths.get(path, "perf-" + perfName + ".csv"));
+        Files.deleteIfExists(Paths.get(path, "perf-" + perfName + ".json"));
         File rootPath = new File(path+File.separator+"root");
         if (rootPath.exists()) {
             deleteDir(rootPath);
@@ -284,7 +304,7 @@ public class Main {
                         }
                     }
 
-                    if (parseFile == null) {
+                    if (parseLines == null) {
                         System.out.println("Did not find any lines");
                         results.exitCode = 1;
                     } else {
@@ -333,29 +353,33 @@ public class Main {
     }
 
     public static void runTest(String name) {
-        try {
-            Results results = null;
-            for (int i=0;i<3;i++) {
-                results = new Results();
+        Results results = null;
+        for (int i=0;i<3;i++) {
+            results = new Results();
+            try {
                 runTest(name, scriptDir + File.separator + name + File.separator + "files", scriptDir + name, results);
-                if (results.exitCode == 111) {
-                    System.out.println("OK     " + name + " completed in " + results.timeToComplete + " seconds");
+            } catch (IOException e) {
+                results.exitCode = 1;
+                e.printStackTrace();
+                if (Thread.currentThread().isInterrupted()) {
+                    atleastOneFailed = true;
                     return;
                 }
-                System.out.println("RETRY  " + name);
             }
-            System.out.println("FAILED " + name + ".  Error Code " + results.exitCode);
-            atleastOneFailed = true;
-            if (results.scriptFinished) {
-                System.out.println("    Script succeeded but Boxedwine did not exit cleanly");
+            if (results.exitCode == 111) {
+                System.out.println("OK     " + name + " completed in " + results.timeToComplete + " seconds");
+                return;
             }
-            System.out.println(results.commandLine);
-            for (String line : results.output) {
-                System.out.println("    " + line);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(4);
+            if (i < 2) System.out.println("RETRY  " + name);
+        }
+        System.out.println("FAILED " + name + ".  Error Code " + results.exitCode);
+        atleastOneFailed = true;
+        if (results.scriptFinished) {
+            System.out.println("    Script succeeded but Boxedwine did not exit cleanly");
+        }
+        System.out.println(results.commandLine);
+        for (String line : results.output) {
+            System.out.println("    " + line);
         }
     }
 
@@ -416,21 +440,40 @@ public class Main {
         }
         System.out.println("Starting automation: using " + cores + " cores.");
         ExecutorService exec = Executors.newFixedThreadPool(cores);
+        List<Future<?>> tests = new ArrayList<>();
         for (File f : scripts) {
             if (f.isDirectory()) {
-                exec.submit(() -> {
+                tests.add(exec.submit(() -> {
                     runTest(f.getName());
-                });
+                }));
             }
         }
 
         exec.shutdown();
         try {
             if (!exec.awaitTermination(60, TimeUnit.MINUTES)) {
+                atleastOneFailed = true;
+                System.err.println("Automation worker pool timed out");
                 exec.shutdownNow();
+                exec.awaitTermination(PROCESS_FORCED_SHUTDOWN_SECONDS + 5, TimeUnit.SECONDS);
+            }
+            for (Future<?> test : tests) {
+                if (!test.isDone()) {
+                    atleastOneFailed = true;
+                    continue;
+                }
+                try {
+                    test.get();
+                } catch (ExecutionException e) {
+                    atleastOneFailed = true;
+                    System.err.println("Automation worker failed:");
+                    e.getCause().printStackTrace();
+                }
             }
         } catch (InterruptedException ex) {
+            atleastOneFailed = true;
             exec.shutdownNow();
+            Thread.currentThread().interrupt();
         }
 
         int elapsedTime = (int)((System.currentTimeMillis()-startTime)/1000);

@@ -47,6 +47,7 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port) {
             trap cleanup_firefox_profile EXIT
 
             echo "Running ${BOXEDWINE_UNIT_TEST_NAME}"
+            /usr/bin/firefox --version
             cd "Build/${BOXEDWINE_UNIT_TEST_BUILD_DIR}"
             emrun --kill-exit \
                 --port "$BOXEDWINE_UNIT_TEST_PORT" \
@@ -54,6 +55,40 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port) {
                 --browser-args="--headless --no-remote --profile ${firefox_profile}" \
                 boxedwine.html
         '''
+    }
+}
+
+void buildAndRunEmscriptenUnitTest(String testName, String target, String buildDir, String port) {
+    // Each stage owns its checkout even when several targets use the same host.
+    ws("${env.WORKSPACE}@${buildDir}") {
+        gitCheckout()
+        withEnv(["BOXEDWINE_UNIT_TEST_TARGET=${target}"]) {
+            sh '''#!/bin/bash
+                set -euo pipefail
+                source ~/emsdk/emsdk_env.sh
+                cd project/emscripten
+                make clean
+                make "$BOXEDWINE_UNIT_TEST_TARGET"
+                # These workers are configured with one Jenkins executor each.
+                killall -9 python3 2>/dev/null || true
+                killall -9 firefox firefox-bin 2>/dev/null || true
+            '''
+        }
+        runEmscriptenUnitTest(testName, buildDir, port)
+    }
+}
+
+void retryCinebench(String name, Closure run) {
+    def result = "perfScripts/cinebench/cinebench/perf-${name}.csv"
+    retry(3) {
+        // A result left by an earlier attempt must not turn a failed run green.
+        writeFile file: result, text: ''
+        run()
+        def rows = readFile(result).trim().readLines()
+        // Use numeric helpers included in Jenkins' default sandbox allowlist.
+        if (rows.size() != 2 || rows[0] != name || !rows[1].isNumber() || rows[1].toDouble() <= 0) {
+            error("${name} did not produce a valid performance result")
+        }
     }
 }
 
@@ -221,39 +256,47 @@ pipeline {
         }
         stage ('Test') {
             parallel {
-                stage ('Test Emscripten') {
+                stage ('Test automation runner') {
+                    agent {
+                        label "linux64"
+                    }
+                    steps {
+                        script {
+                            gitCheckout()
+                        }
+                        sh 'java tools/BoxedWineRunner/Build.java tools/BoxedWineRunner automation-runner/bin/BoxedWineRunner.jar --test'
+                        dir('automation-runner') {
+                            stash includes: 'bin/BoxedWineRunner.jar', name: 'automationRunner'
+                        }
+                    }
+                }
+                stage ('Test Emscripten ST') {
                     agent {
                         label "emscripten"
                     }
                     steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        sh '''#!/bin/bash
-                            source ~/emsdk/emsdk_env.sh
-                            cd project/emscripten
-                            set -euo pipefail
-
-                            make clean
-                            make test
-                            make testJit
-                            make testMultiThreadedJit
-
-                            killall -9 python3 2>/dev/null || true
-                            killall -9 firefox 2>/dev/null || true
-                        '''
                         script {
-                            parallel(
-                                'Emscripten ST': {
-                                    runEmscriptenUnitTest('Emscripten ST unit tests', 'Test', '6921')
-                                },
-                                'Emscripten ST JIT': {
-                                    runEmscriptenUnitTest('Emscripten ST JIT unit tests', 'TestJit', '6922')
-                                },
-                                'Emscripten MT JIT': {
-                                    runEmscriptenUnitTest('Emscripten MT JIT unit tests', 'TestMultiThreadedJit', '6923')
-                                }
-                            )
+                            buildAndRunEmscriptenUnitTest('Emscripten ST unit tests', 'test', 'Test', '6921')
+                        }
+                    }
+                }
+                stage ('Test Emscripten ST JIT') {
+                    agent {
+                        label "emscripten"
+                    }
+                    steps {
+                        script {
+                            buildAndRunEmscriptenUnitTest('Emscripten ST JIT unit tests', 'testJit', 'TestJit', '6922')
+                        }
+                    }
+                }
+                stage ('Test Emscripten MT JIT') {
+                    agent {
+                        label "emscripten"
+                    }
+                    steps {
+                        script {
+                            buildAndRunEmscriptenUnitTest('Emscripten MT JIT unit tests', 'testMultiThreadedJit', 'TestMultiThreadedJit', '6923')
                         }
                     }
                 }
@@ -543,7 +586,8 @@ pipeline {
             parallel {
                 stage ('Emscripten AbiWord Automation') {
                     agent {
-                        label "emscripten"
+                        // This stage uses the controller's x64 Chrome/display setup.
+                        label "emscripten && linux64"
                     }
                     steps {
                         script {
@@ -629,6 +673,7 @@ pipeline {
                         }
                         dir("project/linux/automation") {
                             unstash "linux64"
+                            unstash 'automationRunner'
                             sh '''#!/bin/bash
                                 killall -9 boxedwine || true
                             '''
@@ -637,7 +682,7 @@ pipeline {
                                     java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
                                 '''
                             }
-                            retry(3) {
+                            retryCinebench('Cinebench-Linux-x64') {
                                 sh '''
                                     java -jar bin/BoxedWineRunner.jar -name \"Cinebench-Linux-x64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
                                 '''
@@ -668,12 +713,13 @@ pipeline {
                         }
                         
                         dir("project/mac-xcode/automation") {
+                            unstash 'automationRunner'
                             retry(3) {
                                 sh '''#!/bin/bash    
                                     java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
                                 '''
                             }
-                            retry(3) {
+                            retryCinebench('Cinebench-MacOSX') {
                                 sh '''#!/bin/bash    
                                     java -jar bin/BoxedWineRunner.jar -name \"Cinebench-MacOSX\" \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/perfScripts/cinebench/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
                                 '''
@@ -696,6 +742,7 @@ pipeline {
                         }
                         dir("project/linux/automation") {
                             unstash "linuxArm64"
+                            unstash 'automationRunner'
                             sh '''#!/bin/bash
                                 killall -9 boxedwine || true
                             '''
@@ -704,7 +751,7 @@ pipeline {
                                     java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/LinuxArm64/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
-                            retry(3) {
+                            retryCinebench('Cinebench-Linux-Arm64') {
                                 sh '''#!/bin/bash
                                     java -jar bin/BoxedWineRunner.jar -name \"Cinebench-Linux-Arm64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/LinuxArm64/boxedwine\" -nosound -novideo || exit 1
                                 '''
@@ -724,8 +771,9 @@ pipeline {
                             unzip automation31.zip
                         '''
                         dir("automation") {
+                            unstash 'automationRunner'
                             unstash "windows"
-                            retry(3) {
+                            retryCinebench('Cinebench-Win32') {
                                 bat '''
                                     java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-Win32\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
                                 '''
@@ -735,7 +783,7 @@ pipeline {
                                     java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
                                 '''
                             }
-                            retry(3) {
+                            retryCinebench('Cinebench-Win64') {
                                 bat '''
                                     java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-Win64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
                                 '''
@@ -760,8 +808,9 @@ pipeline {
                             tar -xf automation31.zip
                         '''
                         dir("automation") {
+                            unstash 'automationRunner'
                             unstash "windowsARM64"
-                            retry(3) {
+                            retryCinebench('Cinebench-WinArm64') {
                                 bat '''
                                     java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-WinArm64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine.exe\" -nosound -novideo
                                 '''

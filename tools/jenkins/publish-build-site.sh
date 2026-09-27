@@ -23,12 +23,31 @@ remote_ssh() {
 }
 
 cleanup() {
+    local status=$?
     if [ "$REMOTE_LOCK_ACQUIRED" = "1" ]; then
-        remote_ssh "rmdir '$REMOTE_PATH/.publish-lock'"
+        for attempt in 1 2 3; do
+            if remote_ssh "if [ -d '$REMOTE_PATH/.publish-lock' ]; then rmdir '$REMOTE_PATH/.publish-lock'; fi"; then
+                REMOTE_LOCK_ACQUIRED=0
+                break
+            fi
+            if [ "$attempt" != "3" ]; then
+                sleep 2
+            fi
+        done
+        if [ "$REMOTE_LOCK_ACQUIRED" = "1" ]; then
+            echo "Could not release publish lock on $REMOTE_HOST: $REMOTE_PATH/.publish-lock" >&2
+            echo "After confirming no publish is running, remove that empty directory with rmdir before retrying." >&2
+            if [ "$status" = "0" ]; then
+                status=1
+            fi
+        fi
     fi
-    rm -rf "$SITE_DIR"
+    rm -rf "$SITE_DIR" || true
+    exit "$status"
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 SSH_ARGS=()
 if [ -n "${BUILD_SITE_SSH_KEY:-}" ]; then
@@ -39,20 +58,38 @@ if [ "$REMOTE_HOST" != "$BUILD_SITE_REMOTE" ]; then
     remote_ssh "mkdir -p '$REMOTE_PATH'"
 
     for attempt in $(seq 1 60); do
-        if remote_ssh "mkdir '$REMOTE_PATH/.publish-lock'" 2>/dev/null; then
+        if remote_ssh "if mkdir '$REMOTE_PATH/.publish-lock' 2>/dev/null; then
+            exit 0
+        elif [ -d '$REMOTE_PATH/.publish-lock' ]; then
+            exit 75
+        else
+            echo 'Could not create remote publish lock directory.' >&2
+            exit 1
+        fi"; then
             REMOTE_LOCK_ACQUIRED=1
             break
+        else
+            status=$?
+            if [ "$status" != "75" ]; then
+                echo "Failed to contact or create publish lock on $REMOTE_HOST (exit $status)." >&2
+                exit "$status"
+            fi
         fi
         sleep 2
     done
 
     if [ "$REMOTE_LOCK_ACQUIRED" != "1" ]; then
-        echo "Could not acquire static site publish lock."
+        echo "Could not acquire static site publish lock: $REMOTE_HOST:$REMOTE_PATH/.publish-lock" >&2
+        echo "Another publish may be running, or an interrupted publish left the lock behind." >&2
+        echo "After confirming no publish is running, remove that empty directory with rmdir before retrying." >&2
         exit 1
     fi
 fi
 
-rsync -az "${SSH_ARGS[@]}" "${BUILD_SITE_REMOTE}/" "$SITE_DIR/" || true
+# Keep coordination state out of the mirrored site and preserve it during --delete.
+# A failed download must stop publication: uploading a partial mirror could delete
+# existing builds from the server.
+rsync -az --exclude=/.publish-lock "${SSH_ARGS[@]}" "${BUILD_SITE_REMOTE}/" "$SITE_DIR/"
 
 ARTIFACT_ARGS=()
 if [ -n "${BUILD_SITE_ARTIFACT:-}" ] && [ -f "$BUILD_SITE_ARTIFACT" ]; then
@@ -105,4 +142,4 @@ fi
     "${LOG_ARGS[@]}" \
     "${DEMO_ARGS[@]}"
 
-rsync -az --delete "${SSH_ARGS[@]}" "$SITE_DIR/" "$BUILD_SITE_REMOTE/"
+rsync -az --delete --exclude=/.publish-lock "${SSH_ARGS[@]}" "$SITE_DIR/" "$BUILD_SITE_REMOTE/"

@@ -17,10 +17,10 @@
  */
 package boxedwine.org;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayDeque;
 import java.util.Vector;
 
 public class StreamGobbler implements Runnable
@@ -28,7 +28,15 @@ public class StreamGobbler implements Runnable
     private final InputStream _inputStream;
     private final String name;
     public volatile boolean scriptFinished = false;
-    public Vector<String> lines = new Vector<>();
+    public volatile Throwable failure;
+    // Bound both object count and text storage (at most 1 MiB of UTF-16 text).
+    static final int MAX_LINES = 4096;
+    static final int MAX_CHARS = 512 * 1024;
+    static final int MAX_LINE_CHARS = 8192;
+    private final ArrayDeque<String> lines = new ArrayDeque<>();
+    private int retainedChars;
+    private long droppedLines;
+    private long truncatedLines;
 
     StreamGobbler(InputStream is, String name)
     {
@@ -36,32 +44,66 @@ public class StreamGobbler implements Runnable
         this.name = name;
     }
 
-    public void run()
-    {
-        InputStreamReader isr = null;
-        BufferedReader br = null;
-        try
-        {
-            isr = new InputStreamReader(_inputStream);
-            br = new BufferedReader(isr);
-            String line;
-            while ( (line=br.readLine()) != null) {
-                if (line.equals("script: success")) {
-                    scriptFinished = true;
-                }
-                lines.addElement(line);
-                if (Main.verbose) {
-                    System.out.println("  " + name + ": " +line);
+    private synchronized void addLine(String line, boolean truncated) {
+        if (!truncated && line.equals("script: success")) {
+            scriptFinished = true;
+        }
+        if (truncated) {
+            truncatedLines++;
+            line += " [line truncated]";
+        }
+        while (lines.size() >= MAX_LINES || retainedChars + line.length() + 1 > MAX_CHARS) {
+            retainedChars -= lines.removeFirst().length() + 1;
+            droppedLines++;
+        }
+        lines.addLast(line);
+        retainedChars += line.length() + 1;
+        if (Main.verbose) {
+            System.out.println("  " + name + ": " + line);
+        }
+    }
+
+    public synchronized Vector<String> getLines() {
+        Vector<String> result = new Vector<>();
+        if (droppedLines != 0 || truncatedLines != 0) {
+            result.add("Output limited: " + droppedLines + " earlier lines discarded, " + truncatedLines + " oversized lines truncated");
+        }
+        result.addAll(lines);
+        return result;
+    }
+
+    public void run() {
+        try (InputStreamReader reader = new InputStreamReader(_inputStream)) {
+            char[] buffer = new char[8192];
+            StringBuilder line = new StringBuilder();
+            boolean truncated = false;
+            boolean skipLF = false;
+            int count;
+            // readLine() can itself exhaust the heap on a single enormous line.
+            while ((count = reader.read(buffer)) != -1) {
+                for (int i = 0; i < count; i++) {
+                    char ch = buffer[i];
+                    if (skipLF && ch == '\n') {
+                        skipLF = false;
+                        continue;
+                    }
+                    skipLF = ch == '\r';
+                    if (ch == '\n' || ch == '\r') {
+                        addLine(line.toString(), truncated);
+                        line.setLength(0);
+                        truncated = false;
+                    } else if (line.length() < MAX_LINE_CHARS) {
+                        line.append(ch);
+                    } else {
+                        truncated = true;
+                    }
                 }
             }
-        }
-        catch (IOException e)
-        {
-        }
-        finally
-        {
-            if (isr!=null) try {isr.close();} catch (IOException e) {}
-            if (br!=null) try {br.close();} catch (IOException e) {}
+            if (line.length() != 0 || truncated) {
+                addLine(line.toString(), truncated);
+            }
+        } catch (IOException | RuntimeException | Error e) {
+            failure = e;
         }
     }
 }
