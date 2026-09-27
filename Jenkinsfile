@@ -85,7 +85,8 @@ void retryCinebench(String name, Closure run) {
         writeFile file: result, text: ''
         run()
         def rows = readFile(result).trim().readLines()
-        if (rows.size() != 2 || rows[0] != name || !rows[1].isBigDecimal() || rows[1].toBigDecimal() <= 0) {
+        // Use numeric helpers included in Jenkins' default sandbox allowlist.
+        if (rows.size() != 2 || rows[0] != name || !rows[1].isNumber() || rows[1].toDouble() <= 0) {
             error("${name} did not produce a valid performance result")
         }
     }
