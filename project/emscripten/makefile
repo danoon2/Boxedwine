@@ -233,6 +233,15 @@ LDFLAGS += --js-library=boxedwine-audio-worklet.js
 # the stream offset, so Halo exceeds Emscripten's default 2 MiB upload limit.
 LDFLAGS += -sGL_MAX_TEMP_BUFFER_SIZE=16777216
 
+# Threaded JIT builds intentionally grow shared memory as compiled blocks
+# accumulate. Acknowledge the SDK's generic performance advisory while
+# retaining memory growth and all source diagnostics.
+ifneq (,$(filter -pthread,$(EXTRA_LD_FLAGS)))
+ifneq (,$(filter -sALLOW_MEMORY_GROWTH,$(EXTRA_LD_FLAGS)))
+LDFLAGS += -Wno-pthreads-mem-growth
+endif
+endif
+
 # ASan substitutes its own pthread argument. Keep module-broker owner lookup
 # working in diagnostic builds while retaining sanitizer thread registration.
 ifneq (,$(findstring -fsanitize=address,$(OPTIMIZATION_FLAGS)))

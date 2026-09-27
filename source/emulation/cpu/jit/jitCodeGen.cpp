@@ -965,7 +965,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
     } else {
         OpCallback pfn = NormalCPU::getFunctionForOp(op);
         if (!pfn) {
-            kpanic_fmt("firstDynamicOp: no normal handler for instruction %u", op->inst);
+            kpanic_fmt("firstDynamicOp: no normal handler for instruction %u", static_cast<U32>(op->inst));
         }
         pfn(cpu, op);
     }

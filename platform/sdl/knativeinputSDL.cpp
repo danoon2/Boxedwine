@@ -288,7 +288,7 @@ KNativeInputSDL::KNativeInputSDL(U32 cx, U32 cy, int scaleX, int scaleY) {
 }
 
 void KNativeInputSDL::runOnUiThread(std::function<void()> callback) {
-    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         callback();
     DISPATCH_MAIN_THREAD_BLOCK_END
 }

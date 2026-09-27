@@ -389,7 +389,7 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFla
         if (addCF) {
             cf = getCF();
         }
-        auto prepareWrite = [&cf, flagType, flags, addCF, op, width, callback, this](RegPtr value) {
+        auto prepareWrite = [&cf, flagType, flags, op, width, callback, this](RegPtr value) {
             RegPtr src;
             U32 needsToSetFlags = 0;
             arithSetup(op, needsToSetFlags, flagType, cf); // must check after read/write permission in case emulateSingleOp is called, we can't update things like lazyFlags before this
@@ -828,7 +828,7 @@ void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg callback, LazyFlagTyp
             }
         }
         
-        auto prepareWrite = [&cf, needsToSetFlags, flagType, flags, op, width, callback, this](RegPtr value) {
+        auto prepareWrite = [&cf, needsToSetFlags, flagType, flags, width, callback, this](RegPtr value) {
             if (needsToSetFlags) {
                 // don't commit flags until after after read/write permission check in case emulateSingleOp is called
                 if (cf) {
@@ -965,7 +965,7 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg callback, LazyF
     }
 
     if (!needsToSetFlags) {
-        readWriteMem(width, calculateEaa(op), [cf, op, width, callback, callbackWithCF, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [cf, width, callback, callbackWithCF, this](RegPtr value) {
             if (callbackWithCF) {
                 (this->*callbackWithCF)(width, value, getReadOnlyReg8(1, true, 1), cf);
             } else {
@@ -975,7 +975,7 @@ void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg callback, LazyF
     } else {
         RegPtr src = getReadOnlyReg8(1, false, 1);
         IfTest(JitWidth::b8, src, 0x1f); {
-            readWriteMem(width, calculateEaa(op), [cf, needsToSetFlags, flagType, flags, src, op, width, callback, callbackWithCF, this](RegPtr value) {
+            readWriteMem(width, calculateEaa(op), [cf, needsToSetFlags, flagType, flags, src, width, callback, callbackWithCF, this](RegPtr value) {
                 storeLazyFlagType(flagType);
                 if (flags && flags->usesDst(needsToSetFlags)) {
                     storeLazyFlagsDest(value);
