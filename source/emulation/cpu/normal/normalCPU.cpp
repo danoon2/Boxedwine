@@ -25,6 +25,9 @@
 #include "../armv7/armv7CPU.h"
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+#include "../jit/jitCodeGen.h"
+#endif
 
 #ifdef __TEST
 thread_local U32 normalWaitCallCount = 0;
@@ -523,6 +526,12 @@ void NormalCPU::run() {
     normalDispatch(this, nextOp);
 #else
 #ifdef BOXEDWINE_JIT
+#ifndef BOXEDWINE_WASM_JIT
+    if (!nextOp->pfnJitCode && nextOp->blockStart &&
+        !(nextOp->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
+        startNewJIT(this, getEipAddress(), nextOp);
+    }
+#endif
     if (nextOp->runCount <= JIT_RUN_COUNT) {
         firstOp(this, nextOp);
     } else {

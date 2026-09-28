@@ -605,6 +605,65 @@ void testNativeJitFpuCachePressure() {
     context.cpu->nextOp = nullptr;
     testRunCPU();
     expectFp(0, 12);
+    if (!interior->pfnJitCode || !(interior->flags2 & OP_FLAG2_JUMP_TARGET))
+        testFail("native cached interior did not become an independent JIT entry");
+    DecodedOp* head = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    if (!head || !head->pfnJitCode || interior->blockStart != head)
+        testFail("native interior promotion lost the compiled prefix");
+
+    // Discover another interior after the first recompile. All entry points
+    // must read the incoming architectural stack, regardless of its TOP.
+    for (U32 top = 0; top < 8; ++top) {
+        for (U32 offset : {4u, 2u, 0u}) {
+            context.cpu->fpu.FINIT();
+            context.cpu->fpu.top = top;
+            context.cpu->fpu.FLD_I64(5, top);
+            context.cpu->fpu.tags[top] = TAG_Valid;
+            context.cpu->eip.u32 = TEST_CODE_ADDRESS + offset - context.cpu->seg[CS].address;
+            context.cpu->nextOp = nullptr;
+            testRunCPU();
+            expectFp(0, offset == 0 ? 4 : offset == 2 ? 20 : 10);
+            DecodedOp* entry = context.memory->getDecodedOp(TEST_CODE_ADDRESS + offset);
+            if (!entry->pfnJitCode || entry->blockStart != head)
+                testFail("native promoted entry or owning block was lost");
+        }
+    }
+
+    // A write into the rebuilt block must invalidate all its promoted entries.
+    context.memory->writeb(TEST_CODE_ADDRESS + 5, 0xc1); // last add uses ST(1)
+    context.cpu->fpu.FINIT();
+    context.cpu->fpu.FLD_I64(5, 0);
+    context.cpu->fpu.tags[0] = TAG_Valid;
+    context.cpu->eip.u32 = TEST_CODE_ADDRESS - context.cpu->seg[CS].address;
+    context.cpu->nextOp = nullptr;
+    testRunCPU();
+    expectFp(0, 7);
+
+    // Recompiling an existing block must not mistake its old JIT flag for a
+    // successful recursive compilation of an earlier, uncompiled jump target.
+    beginFp(0);
+    fp(0xcd, 0x97); // earlier TestEnd, deliberately left interpreted
+    fp(0xd9, 0xe8); // owning block starts at +2
+    fp(0xd8, 0xc0); // hidden entry at +4
+    fp(0xd8, 0xc0);
+    fp(0xeb, 0xf6); // jump back to TestEnd at +0
+    context.cpu->getOp(TEST_CODE_ADDRESS, 0)->flags |= OP_FLAG_NO_JIT;
+    context.cpu->eip.u32 = TEST_CODE_ADDRESS + 2 - context.cpu->seg[CS].address;
+    context.cpu->nextOp = nullptr;
+    testRunCPU();
+    expectFp(0, 4);
+    interior = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 4);
+    if (!interior || interior->pfnJitCode)
+        testFail("backward-branch test did not create a hidden FPU entry");
+    context.cpu->fpu.FINIT();
+    context.cpu->fpu.FLD_I64(3, 0);
+    context.cpu->fpu.tags[0] = TAG_Valid;
+    context.cpu->eip.u32 = TEST_CODE_ADDRESS + 4 - context.cpu->seg[CS].address;
+    context.cpu->nextOp = nullptr;
+    testRunCPU();
+    expectFp(0, 12);
+    if (!interior->pfnJitCode || !interior->blockStart->pfnJitCode)
+        testFail("native interior with uncompiled backward target was not promoted");
 
     // Legacy operations must expose the dirty cache and discard its mapping
     // before an instruction replaces the architectural FPU state.
