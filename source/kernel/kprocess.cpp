@@ -3308,39 +3308,52 @@ void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLi
 }
 U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
     BString dir;
-    U32 result = 0;
+    std::shared_ptr<FsNode> node;
+    std::shared_ptr<KFile> file;
 
-    if (path.startsWith("/") || (flags & K_AT_EMPTY_PATH)) {
-        result = getCurrentDirectoryFromDirFD(dirfd, dir);
-        if (result == 0 && (flags & K_AT_EMPTY_PATH)) {
+    if (path.isEmpty() && !(flags & K_AT_EMPTY_PATH)) {
+        return -K_ENOENT;
+    }
+
+    if (path.isEmpty() && dirfd != -100) { // AT_EMPTY_PATH on an open descriptor
+        KFileDescriptorPtr fd = this->getFileDescriptor(dirfd);
+        if (!fd) {
+            return -K_EBADF;
+        }
+        if (fd->kobject->type == KTYPE_UNIX_SOCKET) {
+            std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
+            U64 t = s->lastModifiedTime;
+            U32 seconds = (U32)(t / 1000);
+            U32 n = (U32)(t % 1000) * 1000000;
+            writeStatX(memory, buf, (s->node ? s->node->id : 0), (s->node ? s->node->rdev : 0), 1, userId, groupId, K_S_IFSOCK | K__S_IWRITE | K__S_IREAD, 0, seconds, n, seconds, n, seconds, n);
+            return 0;
+        }
+        if (fd->kobject->type != KTYPE_FILE) {
+            return -K_ENOTDIR;
+        }
+        // An open file remains valid after unlink or replacement of its pathname.
+        file = std::dynamic_pointer_cast<KFile>(fd->kobject);
+        node = file->openFile->node;
+    } else {
+        if (!path.startsWith("/")) {
+            U32 result = getCurrentDirectoryFromDirFD(dirfd, dir);
+            if (result) {
+                return result;
+            }
+        }
+        if (path.isEmpty()) { // AT_EMPTY_PATH with AT_FDCWD
             path = dir;
             dir = BString::empty;
         }
-    } else if (!path.startsWith("/")) {
-        result = getCurrentDirectoryFromDirFD(dirfd, dir);
-    }
-    if (result) {
-        if ((S32)result == -K_ENOTDIR) {
-            KFileDescriptorPtr fd = this->getFileDescriptor(dirfd);
-            if (fd->kobject->type == KTYPE_UNIX_SOCKET) {
-                std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
-                U64 t = s->lastModifiedTime;
-                U32 seconds = (U32)(t / 1000);
-                U32 n = (U32)(t % 1000) * 1000000;
-                writeStatX(memory, buf, (s->node ? s->node->id : 0), (s->node ? s->node->rdev : 0), 1, userId, groupId, K_S_IFSOCK | K__S_IWRITE | K__S_IREAD, 0, seconds, n, seconds, n, seconds, n);
-                return 0;
-            }
+        FsPathLookupOptions options;
+        options.followFinalSymlink = (flags & 0x100) == 0;
+        FsPathResult resolution = Fs::resolvePath(dir, path, options);
+        if (resolution.error) {
+            return resolution.error;
         }
-        return result;
-    }        
-    FsPathLookupOptions options;
-    options.followFinalSymlink = (flags & 0x100) == 0;
-    FsPathResult resolution = Fs::resolvePath(dir, path, options);
-    if (resolution.error) {
-        return resolution.error;
+        node = resolution.node;
     }
-    std::shared_ptr<FsNode> node = resolution.node;
-    U64 len = node->length();
+    U64 len = file ? file->length() : node->length();
     U32 mode = node->getMode();
     if (node->isLink()) {
         mode |= K__S_IFLNK;

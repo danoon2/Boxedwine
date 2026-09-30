@@ -122,6 +122,10 @@ bool FsFileNode::remove() {
     }
 
     if (!exists) {
+        this->hardLinkCount = 0;
+        if (this->hardLinkState) {
+            this->hardLinkState->linkCount = 0;
+        }
         this->removeNodeFromParent();
         return true;
     }
@@ -183,6 +187,10 @@ bool FsFileNode::remove() {
         delete[] tmpPos;
     }
     if (result) {
+        this->hardLinkCount = 0;
+        if (this->hardLinkState) {
+            this->hardLinkState->linkCount = 0;
+        }
         this->removeNodeFromParent();
     }
     return result;

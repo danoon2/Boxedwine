@@ -6313,6 +6313,68 @@ void testLinuxPathResolutionSemantics() {
     cleanupRoot(root);
 }
 
+void testStatxEmptyPathUsesOpenFile() {
+    TestContext& context = testContext();
+    KProcessPtr process = context.process;
+    KMemory* memory = context.memory;
+    const BString root = B("tmp/test-statx-open-file-root");
+    const BString path = B("/tmp/statx-file");
+    const U32 emptyPath = 0x1000; // AT_EMPTY_PATH
+
+    cleanupRoot(root);
+    initTestFileSystem(root);
+    Fs::makeLocalDirs(B("/tmp"));
+    U32 fd = process->open(path, K_O_CREAT | K_O_RDWR, 0600);
+    if ((S32)fd < 0) {
+        testFail("statx test file could not be opened");
+        cleanupRoot(root);
+        return;
+    }
+    expectZero("size original file", process->ftruncate64(fd, 8192));
+    expectZero("statx open file", process->statx(fd, B(""), emptyPath, 0x7ff, STAT_A));
+    U64 inode = memory->readq(STAT_A + 32);
+    expectZero("unlink open file", process->unlinkFile(path));
+    expectZero("statx unlinked open file", process->statx(fd, B(""), emptyPath, 0x7ff, STAT_A));
+    expectU64("unlinked file size", memory->readq(STAT_A + 40), 8192);
+    expectU64("unlinked file inode", memory->readq(STAT_A + 32), inode);
+    expectU32("unlinked file link count", memory->readd(STAT_A + 16), 0);
+
+    U32 replacement = process->open(path, K_O_CREAT | K_O_RDWR, 0600);
+    if ((S32)replacement < 0) {
+        testFail("statx replacement file could not be opened");
+    } else {
+        expectZero("size replacement file", process->ftruncate64(replacement, 123));
+        expectZero("grow unlinked original", process->ftruncate64(fd, 16384));
+        expectZero("statx descriptor after replacement", process->statx(fd, B(""), emptyPath, 0x7ff, STAT_A));
+        expectU64("descriptor keeps original inode", memory->readq(STAT_A + 32), inode);
+        expectU64("descriptor uses current open-file size", memory->readq(STAT_A + 40), 16384);
+        expectU32("original remains unlinked", memory->readd(STAT_A + 16), 0);
+        expectZero("absolute statx ignores invalid dirfd", process->statx(-1, path, 0, 0x7ff, STAT_A));
+        expectU64("absolute statx replacement size", memory->readq(STAT_A + 40), 123);
+        expectZero("nonempty absolute path with AT_EMPTY_PATH", process->statx(fd, path, emptyPath, 0x7ff, STAT_A));
+        expectU64("AT_EMPTY_PATH does not override a pathname", memory->readq(STAT_A + 40), 123);
+        process->close(replacement);
+    }
+    U32 directory = process->open(B("/tmp"), K_O_RDONLY | K_O_DIRECTORY, 0);
+    if ((S32)directory < 0) {
+        testFail("statx directory could not be opened");
+    } else {
+        expectZero("relative path with AT_EMPTY_PATH", process->statx(directory, B("statx-file"), emptyPath, 0x7ff, STAT_A));
+        expectU64("relative path selects child file", memory->readq(STAT_A + 40), 123);
+        process->close(directory);
+    }
+    expectU32("empty path requires AT_EMPTY_PATH", process->statx(fd, B(""), 0, 0x7ff, STAT_A), (U32)-K_ENOENT);
+    expectU32("invalid empty-path descriptor", process->statx(-1, B(""), emptyPath, 0x7ff, STAT_A), (U32)-K_EBADF);
+    BString previousDirectory = process->currentDirectory;
+    expectZero("set statx test current directory", process->chdir(B("/tmp")));
+    expectZero("statx current directory", process->statx(-100, B(""), emptyPath, 0x7ff, STAT_A));
+    expectU32("current directory type", statxMode(memory, STAT_A) & K_S_IFMT, K__S_IFDIR);
+    process->currentDirectory = previousDirectory;
+    process->close(fd);
+    expectU32("closed empty-path descriptor", process->statx(fd, B(""), emptyPath, 0x7ff, STAT_A), (U32)-K_EBADF);
+    cleanupRoot(root);
+}
+
 void testUtf8NamesSurviveNativeFilesystemReload() {
     BString root = B("tmp/test-utf8-native-file-name-root");
     cleanupRoot(root);

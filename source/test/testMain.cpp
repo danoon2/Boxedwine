@@ -83,6 +83,7 @@ void testExitGroupPublishesStatusAfterCleanup();
 void testTerminationPinsThreadDuringLookup();
 void testThreadStartPublishesHandleBeforeEntry();
 void testHardLinksShareIdentityDataAndXattrs();
+void testStatxEmptyPathUsesOpenFile();
 void testReadOnlyCreatePreservesZipFile();
 void testZipRandomAccess();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
@@ -1156,6 +1157,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testGuestWritePreservesPartialProgress, "Test guest write preserves partial progress"},
     {testReadOnlyCreatePreservesZipFile, "Test read-only create preserves ZIP file contents", TEST_ENTRY_SERIAL},
     {testZipRandomAccess, "Test ZIP random access and handle lifetime", TEST_ENTRY_SERIAL},
+    {testStatxEmptyPathUsesOpenFile, "Test statx empty path uses open file identity", TEST_ENTRY_SERIAL},
 };
 
 } // namespace
