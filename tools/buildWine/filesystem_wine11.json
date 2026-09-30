@@ -32,7 +32,10 @@
   },
   "psvoodoo": {
     "repo": "https://github.com/danoon2/psVoodoo.git",
-    "commit": "67fcb0a0eb1be9c5f77d04250ad715b2f481754b"
+    "commit": "67fcb0a0eb1be9c5f77d04250ad715b2f481754b",
+    "patches": [
+      "../psVoodoo/patches/0001-stabilize-saturated-w-depth.patch"
+    ]
   },
   "llvm_mingw": {
     "url": "https://github.com/mstorsjo/llvm-mingw/releases/download/20260908/llvm-mingw-20260908-ucrt-ubuntu-22.04-x86_64.tar.xz",

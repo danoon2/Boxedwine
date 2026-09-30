@@ -3,6 +3,7 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import tarfile
 import unittest
 from unittest import mock
 import zipfile
@@ -11,6 +12,39 @@ import build_filesystem as fs
 
 
 class FilesystemAssemblyTests(unittest.TestCase):
+    def test_psvoodoo_cache_inputs_track_patch_contents_and_toolchain(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / '.archive-sha256').write_text('toolchain-v1\n')
+            patch = root / 'cockpit.patch'
+            patch.write_bytes(b'first patch')
+            spec = {'commit': 'base', 'patches': [str(patch)]}
+            first = fs.psvoodoo_build_inputs(spec, root)
+            self.assertEqual(first['base_revision'], 'base')
+            self.assertEqual(first['patches'][0]['sha256'], hashlib.sha256(b'first patch').hexdigest())
+            patch.write_bytes(b'revised patch')
+            second = fs.psvoodoo_build_inputs(spec, root)
+            self.assertNotEqual(first, second)
+            (root / '.archive-sha256').write_text('toolchain-v2\n')
+            self.assertNotEqual(second, fs.psvoodoo_build_inputs(spec, root))
+
+    def test_psvoodoo_archive_contains_the_built_sources_and_rejects_stale_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            source.mkdir()
+            (source / 'Depth.cpp').write_bytes(b'patched depth')
+            (source / 'untracked.tmp').write_bytes(b'not a build input')
+            (root / 'build.json').write_text(json.dumps({'source_manifest': {
+                'Depth.cpp': hashlib.sha256(b'patched depth').hexdigest()}}))
+            fs.archive_psvoodoo_source(root, root / 'source.tar.gz')
+            with tarfile.open(root / 'source.tar.gz') as archive:
+                self.assertEqual(archive.getnames(), ['psVoodoo/Depth.cpp'])
+                self.assertEqual(archive.extractfile('psVoodoo/Depth.cpp').read(), b'patched depth')
+            (source / 'Depth.cpp').write_bytes(b'stale depth')
+            with self.assertRaisesRegex(fs.build_wine.BuildError, 'source does not match'):
+                fs.archive_psvoodoo_source(root, root / 'stale.tar.gz')
+
     def test_prefix_replacement_preserves_runtime_and_addons(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

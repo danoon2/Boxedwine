@@ -1,0 +1,420 @@
+--- a/Combine.cpp
++++ b/Combine.cpp
+@@ -258,8 +258,14 @@
+     m_detail_control[2] = maximum < 0 ? 0 : (maximum > 1 ? 1 : maximum);
+ }
+ 
+-void CCombine::PrepareCombine()
+-{
++void CCombine::PrepareCombine(bool near_depth)
++{
++    near_depth = near_depth && SupportsDepthShader();
++    if(m_color.near_depth != near_depth)
++    {
++        m_color.near_depth = near_depth;
++        m_combine_dirty = true;
++    }
+     CAlpha::CombineAlteration alteration = m_glide->GetAlphaAlteration();
+ 
+     if(m_combine_dirty || m_alteration != alteration)
+--- a/Combine.h
++++ b/Combine.h
+@@ -35,6 +35,7 @@
+     FxBool              tex_unit_on;
+     unsigned            tex_detail; // 0: local, 1: (1-detail)*local, 2: detail*local
+     FxBool              tex_invert;
++    bool                near_depth;
+ 
+     bool                zero;
+     bool                one;
+@@ -79,7 +80,8 @@
+     {
+         return m_color.Key()
+              | (m_alpha.Key() << 18)
+-             | (uint64_t(alt) << 36);
++             | (uint64_t(alt) << 36)
++             | (uint64_t(m_color.near_depth) << 38);
+     }
+ 
+     static bool OtherUsesTex(CombineState *s);
+@@ -102,7 +104,7 @@
+ 
+     bool TextureNeeded();
+ 
+-    void PrepareCombine();
++    void PrepareCombine(bool near_depth);
+ 
+     bool CombineUnsupported();
+ 
+--- a/Depth.cpp
++++ b/Depth.cpp
+@@ -40,6 +40,16 @@
+     return FXTRUE;
+ }
+ 
++bool CDepth::HasSaturatedWDepth(const GrVertex **gv, int n) const
++{
++    if(m_type != Depth_W)
++        return false;
++    for(int i = 0; i < n; ++i)
++        if(gv[i]->oow <= 0.9999f || gv[i]->oow == 65536.0f)
++            return false;
++    return true;
++}
++
+ void CDepth::FillVertex(CUSTOMVERTEX *dv, const GrVertex **gv, int n)
+ {
+     int  i;
+@@ -65,15 +75,13 @@
+     case Depth_W:
+         /* Adjust overflow only if all verticies are
+          * out of range */
+-        overflow = true;
+-        for(i= 0; i < n; i++)
+-        {
+-            if(gv[i]->oow <= 0.9999f || gv[i]->oow == 65536.0f)
+-                overflow = false;
+-        }
++        overflow = HasSaturatedWDepth(gv, n);
+ 
+         for(i= 0; i < n; i++)
+         {
++            // Keep the vertices inside the clip volume. The shader writes
++            // exact near depth for saturated triangles, avoiding XYZRHW
++            // roundoff between otherwise coplanar surfaces.
+             dv[i].z = (overflow ? 0.9999f
+                                 : gv[i]->oow != 65536.0f ? gv[i]->oow * m_wBiasScale
+                                                         : 1.0f / (float)0xfff8);
+--- a/Depth.h
++++ b/Depth.h
+@@ -41,6 +41,7 @@
+     virtual ~CDepth();
+ 
+     FxBool Create();
++    bool HasSaturatedWDepth(const GrVertex **gv, int n) const;
+     void   FillVertex(CUSTOMVERTEX *dv, const GrVertex **gv, int n);
+     void   grDepthBufferMode(GrDepthBufferMode_t mode);
+     void   grDepthBufferFunction(GrCmpFnc_t function);
+--- a/DevCombineStateShader.cpp
++++ b/DevCombineStateShader.cpp
+@@ -3,6 +3,7 @@
+ #include "log.h"
+ 
+ #include "DevCombineStateShader.h"
++#include <sstream>
+ 
+ 
+ CDevCombineStateShader::CDevCombineStateShader(LPDIRECT3DDEVICE9 dev) : CDevCombineState(dev)
+@@ -363,6 +364,50 @@
+         ps = prefix + ps + "mov oC0, r0\n";
+     }
+ 
++    if(color->near_depth)
++    {
++        // Keep saturated depths stable across XYZRHW conversion, without
++        // placing vertices exactly on the clip plane on native D3D9.
++        if(ps.find("ps_1_1\n") == 0)
++        {
++            Replace(ps, "ps_1_1\n", "");
++            Replace(ps, "tex t0\n", "");
++            bool textured = ps.find("t0") != std::string::npos;
++            bool iterated = ps.find("v0") != std::string::npos;
++            Replace(ps, "t0", "r2");
++            std::string prefix = "ps_2_0\n";
++            if(iterated) prefix += "dcl v0\n";
++            if(textured) prefix += "dcl t0.xy\ndcl_2d s0\n";
++            // Constant definitions must precede executable instructions.
++            if(textured)
++            {
++                const std::string definitions =
++                    "def c0, 0.0, 0.0, 0.0, 0.0\n"
++                    "def c1, 1.0, 1.0, 1.0, 1.0\n";
++                Replace(ps, definitions, "");
++                prefix += definitions + "texld r2, t0, s0\n";
++            }
++            ps = prefix + ps + "mov oC0, r0\n";
++        }
++        // ps_2_0 permits only one distinct constant register per instruction.
++        // The ps_1_1 combiner expressions can read two (e.g. c1 * c2), so
++        // materialize those constants in unused temporaries when promoting.
++        std::istringstream lines(ps);
++        std::string line, declarations, body;
++        while(std::getline(lines, line))
++        {
++            if(line.find("ps_") == 0 || line.find("dcl") == 0 || line.find("def ") == 0)
++                declarations += line + "\n";
++            else
++                body += line + "\n";
++        }
++        Replace(body, "c0", "r6");
++        Replace(body, "c1", "r7");
++        Replace(body, "c2", "r8");
++        ps = declarations + "mov r6, c0\nmov r7, c1\nmov r8, c2\n"
++            + body + "mov oDepth, c1.x\n";
++    }
++
+     Log::Printf("Pixel Shader:\n%s\n", ps.c_str());
+     
+     if(FAILED(D3DXAssembleShader(ps.c_str(), ps.size(), NULL, NULL, 0, &shad, &err)))
+--- a/Device.h
++++ b/Device.h
+@@ -48,6 +48,10 @@
+     FxFloat                 m_xscale;
+     FxFloat                 m_yscale;
+     bool                    m_has_ps_1_1;
++    bool SupportsDepthShader() const
++    {
++        return m_caps.PixelShaderVersion >= D3DPS_VERSION(2, 0);
++    }
+     bool SupportsDetailShader() const
+     {
+         return m_caps.PixelShaderVersion >= D3DPS_VERSION(3, 0)
+--- a/Glide.cpp
++++ b/Glide.cpp
+@@ -88,11 +88,10 @@
+     PrepareAlpha();
+ 
+     /* Prepare the combine unit */
+-    PrepareCombine();
++    gvp[0] = a; gvp[1] = b; gvp[2] = c;
++    PrepareCombine(HasSaturatedWDepth(gvp, 3));
+ 
+     CUSTOMVERTEX *vertices = AllocateTriangle();
+-
+-    gvp[0] = a; gvp[1] = b; gvp[2] = c;
+ 
+     FillVertex(&vertices[0], a, with_clip);
+     FillVertex(&vertices[1], b, with_clip);
+--- a/tests/README.md
++++ b/tests/README.md
+@@ -20,6 +20,7 @@
+ | Executable | Required result | What it checks |
+ | --- | --- | --- |
+ | `depth-probe.exe` | `W_DEPTH_BIAS_PASS panels=72 samples=648 mismatches=0` | Draw overlapping sloped planes at six distances, with positive, negative, zero, and changing bias. Checks both visibility and occlusion, including the -128/-1024 sequence used for F-16 ground/shadow draws. The old wrapper fails 192 samples; nGlide 2.10 and the fix pass all 648. |
++| `near-depth-probe.exe` | `W_NEAR_DEPTH_PASS frames=64 samples=23312 mismatches=0` | Overlap saturated W-depth surfaces with different RHWs. Checks LEQUAL/LESS, textured/untextured shaders, subpixel movement, and transitions between ordinary and saturated depth. Passes native Windows D3D9 and WineD3D OpenGL. |
+ | `clip-probe.exe` | `CLIP_ORDER_PASS mismatches=0` | Queue a red rectangle, then exclude the first two rows with a new clip rectangle. Earlier triangles must retain their original clip. The old wrapper loses exactly 1,280 pixels; nGlide 2.10 and the fix lose none. |
+ | `detail-probe.exe` | `DETAIL_BLEND_PASS mismatches=0` | Sample 48 panels varying texture gradients, detail bias/scale/maximum, alpha inversion, texture alpha, and transitions between local/zero/detail modes. The previous wrapper fails 46 panels; the fix passes all 48. RGB565 comparison allows three aggregate channel steps for quantization. |
+ | `lfb-probe.exe` | `LFB_COLORS_PASS mismatches=0` | Write all 65,536 RGB565 colors, update cyan/magenta/white regions, change guest alpha/blend state, and verify untouched background and border. |
+@@ -40,6 +41,27 @@
+ Framebuffer readback does not verify the final host presentation image. Game checks remain necessary for that stage. The detail panels use constant texels and affine gradients; perspective correctness, hardware-exact LOD rounding, mipmap selection, and other texture-combiner modes are not covered.
+ 
+ ## W-buffer bias approximation
++
++### Saturated W depths
++
++F-16's cockpit submits reciprocal W values above the depth buffer's near limit.
++The legacy wrapper clamps an entirely saturated triangle to vertex Z=0.9999.
++With differing RHWs, WineD3D/OpenGL can rasterize those nominally equal depths
++differently, incorrectly rejecting later instrument overlays. A three-triangle
++reproduction loses 6,998 of 6,998 tested overlay pixels on the affected backend.
++Changing vertex Z to 1.0 avoids that rounding but clips on the tested native
++Windows D3D9 driver, so it is not a portable fix.
++
++On shader-model-2-capable devices, saturated triangles retain the existing
++in-range vertex position and use a cached pixel shader that writes exact near
++depth. This preserves texture perspective and depth comparisons. Shader changes
++flush queued geometry first. Devices without shader model 2 retain the legacy
++path. Ordinary depths, W-bias calibration, and partially saturated triangles keep
++their existing handling. The latter can still cross the clip plane.
++
++The regression uses only numeric geometry and a generated white texture; it
++needs no game assets. `detail-probe.exe near-depth` runs the detail regression
++with W buffering enabled to exercise promoted detail shaders.
+ 
+ psVoodoo stores reciprocal W in its D3D depth buffer. An additive constant there
+ makes a Glide bias much weaker near the camera and much stronger far away.
+--- a/tests/detail-probe.c
++++ b/tests/detail-probe.c
+@@ -42,6 +42,7 @@
+ }
+ int main(int argc, char **argv) {
+     int reference = argc > 1 && strcmp(argv[1], "reference") == 0;
++    int near_depth = argc > 1 && strcmp(argv[1], "near-depth") == 0;
+     setvbuf(stdout, NULL, _IONBF, 0);
+     HMODULE dll = LoadLibraryA("glide2x.dll");
+     if (!dll) {
+@@ -78,6 +79,11 @@
+     TexCombineFn combine = (TexCombineFn)sym(dll, "grTexCombine", 28);
+     DetailFn detail = (DetailFn)sym(dll, "grTexDetailControl", 16);
+     TriangleFn tri = (TriangleFn)sym(dll, "grDrawTriangle", 12);
++    if (near_depth) {
++        ((StateFn)sym(dll, "grDepthBufferMode", 4))(2);
++        ((StateFn)sym(dll, "grDepthMask", 4))(1);
++        ((StateFn)sym(dll, "grDepthBufferFunction", 4))(7);
++    }
+     ((ClearFn)sym(dll, "grBufferClear", 12))(0x00402010, 255, 65535);
+     // Blend constant white by the texture-combined alpha, exposing it as grayscale.
+     ((CombineFn)sym(dll, "grColorCombine", 20))(1, 0, 1, 2, 0);
+--- /dev/null
++++ b/tests/near-depth-probe.c
+@@ -0,0 +1,170 @@
++/* Developer-only Glide 2 regression. Declares only the exercised public ABI;
++ * no vendor SDK headers or game assets are required. See README.md. */
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <windows.h>
++typedef struct {
++    int size;
++    void *pixels;
++    unsigned stride;
++    int mode, origin;
++} LfbInfo;
++typedef struct {
++    float x, y, z, r, g, b, ooz, a, oow;
++    struct {
++        float sow, tow, oow;
++    } tmu[3];
++} Vertex;
++typedef void(WINAPI *VoidFn)(void);
++typedef void(WINAPI *StateFn)(unsigned);
++typedef void(WINAPI *ClearFn)(unsigned, unsigned char, unsigned short);
++typedef unsigned(WINAPI *OpenFn)(unsigned, unsigned, unsigned, unsigned, unsigned, int, int);
++typedef void(WINAPI *ClipFn)(unsigned, unsigned, unsigned, unsigned);
++typedef void(WINAPI *CombineFn)(unsigned, unsigned, unsigned, unsigned, unsigned);
++typedef void(WINAPI *TriangleFn)(const Vertex *, const Vertex *, const Vertex *);
++typedef unsigned(WINAPI *LockFn)(unsigned, unsigned, unsigned, unsigned, unsigned, LfbInfo *);
++typedef unsigned(WINAPI *UnlockFn)(unsigned, unsigned);
++static FARPROC sym(HMODULE dll, const char *name, unsigned bytes) {
++    FARPROC p = GetProcAddress(dll, name);
++    if (!p) {
++        char decorated[128];
++        sprintf(decorated, "_%s@%u", name, bytes);
++        p = GetProcAddress(dll, decorated);
++    }
++    if (!p) {
++        printf("MISSING %s\n", name);
++        exit(2);
++    }
++    return p;
++}
++typedef struct {
++    float x, y, z, rhw;
++    DWORD color;
++} V;
++static const float geometry[3][3][3] = {{{640.5625f, 404.5f, 1.6224592924f},
++                                         {525.6875f, 325.875f, 1.1750488281f},
++                                         {525.6875f, 387.4375f, 1.1750488281f}},
++                                        {{589.6875f, 353, 1.6423004866f},
++                                         {555.0625f, 353, 1.6423004866f},
++                                         {600.5f, 391.75f, 1.6769274473f}},
++                                        {{588.625f, 353.75f, 1.6442782879f},
++                                         {556.375f, 353.75f, 1.6442782879f},
++                                         {594.125f, 391.4375f, 1.6779578924f}}};
++static int inside(float x, float y, V *v) {
++    float d = (v[1].y - v[2].y) * (v[0].x - v[2].x) + (v[2].x - v[1].x) * (v[0].y - v[2].y);
++    float a = ((v[1].y - v[2].y) * (x - v[2].x) + (v[2].x - v[1].x) * (y - v[2].y)) / d;
++    float b = ((v[2].y - v[0].y) * (x - v[2].x) + (v[0].x - v[2].x) * (y - v[2].y)) / d;
++    return a > .05f && b > .05f && a + b < .95f;
++}
++
++int main(void) {
++    setvbuf(stdout, NULL, _IONBF, 0);
++    HMODULE dll = LoadLibraryA("glide2x.dll");
++    if (!dll) {
++        puts("LOAD_FAIL");
++        return 2;
++    }
++    ((VoidFn)sym(dll, "grGlideInit", 0))();
++    StateFn config = (StateFn)GetProcAddress(dll, "setConfig");
++    if (config)
++        config(1);
++    WNDCLASSA wc = {0};
++    wc.lpfnWndProc = DefWindowProcA;
++    wc.hInstance = GetModuleHandleA(NULL);
++    wc.lpszClassName = "GlideNearDepthProbe";
++    RegisterClassA(&wc);
++    HWND wnd = CreateWindowA(wc.lpszClassName, "Glide near depth regression", WS_OVERLAPPEDWINDOW,
++                             20, 20, 660, 520, NULL, NULL, wc.hInstance, NULL);
++    if (!((OpenFn)sym(dll, "grSstWinOpen", 28))((unsigned)(uintptr_t)wnd, 7, 0, 1, 0, 2, 1)) {
++        puts("OPEN_FAIL");
++        return 2;
++    }
++    TriangleFn tri = (TriangleFn)sym(dll, "grDrawTriangle", 12);
++    StateFn mode = (StateFn)sym(dll, "grDepthBufferMode", 4),
++            mask = (StateFn)sym(dll, "grDepthMask", 4),
++            func = (StateFn)sym(dll, "grDepthBufferFunction", 4),
++            bias = (StateFn)sym(dll, "grDepthBiasLevel", 4),
++            color = (StateFn)sym(dll, "grConstantColorValue", 4);
++    ClearFn clear = (ClearFn)sym(dll, "grBufferClear", 12);
++    LockFn lock = (LockFn)sym(dll, "grLfbLock", 24);
++    UnlockFn unlock = (UnlockFn)sym(dll, "grLfbUnlock", 8);
++    typedef struct {
++        int smallLod, largeLod, aspect, format;
++        void *data;
++    } TexInfo;
++    typedef void(WINAPI * TextureFn)(unsigned, unsigned, unsigned, TexInfo *);
++    typedef void(WINAPI * TexCombineFn)(unsigned, unsigned, unsigned, unsigned, unsigned, unsigned,
++                                        unsigned);
++    unsigned short texels[4] = {0xffff, 0xffff, 0xffff, 0xffff};
++    TexInfo tex = {7, 7, 3, 10, texels};
++    ((TextureFn)sym(dll, "grTexDownloadMipMap", 16))(0, 0, 3, &tex);
++    ((TextureFn)sym(dll, "grTexSource", 16))(0, 0, 3, &tex);
++    ((TexCombineFn)sym(dll, "grTexCombine", 28))(0, 1, 0, 1, 0, 0, 0);
++    ((CombineFn)sym(dll, "grColorCombine", 20))(3, 1, 1, 1, 0);
++    mode(2);
++    mask(1);
++    bias((unsigned)-1024);
++    unsigned bad = 0, samples = 0;
++    for (int textured = 0; textured < 2; textured++)
++        for (int cmp = 0; cmp < 2; cmp++)
++            for (int frame = 0; frame < 16; frame++) {
++                unsigned frameBad = bad;
++                ((CombineFn)sym(dll, "grColorCombine", 20))(textured ? 3 : 1, textured ? 1 : 0, 1,
++                                                            textured ? 1 : 2, 0);
++                clear(0, 255, 65535);
++                func(cmp ? 1 : 3);
++                V final[3], behind[3];
++                for (int t = 0; t < 3; t++) {
++                    Vertex v[3] = {{0}};
++                    for (int i = 0; i < 3; i++) {
++                        v[i].x = geometry[t][i][0] - 400 + frame * .0625f + .5f;
++                        v[i].y = geometry[t][i][1] - 250 + frame * .125f + .5f;
++                        v[i].oow = geometry[t][i][2];
++                        v[i].a = 255;
++                        // Exercise shader cache transitions and flush queued ordinary geometry.
++                        if (t == 0 && (frame & 1))
++                            v[i].oow *= .1f;
++                        v[i].tmu[0].sow = v[i].tmu[0].tow = .5f * v[i].oow;
++                        v[i].tmu[0].oow = v[i].oow;
++                        final[i].x = v[i].x - .5f;
++                        final[i].y = v[i].y - .5f;
++                    }
++                    color(t == 2 ? 0xff00ff00 : 0xff0000ff);
++                    tri(v, v + 1, v + 2);
++                    if (t == 1)
++                        memcpy(behind, final, sizeof(behind));
++                }
++                LfbInfo info = {sizeof(info)};
++                if (!lock(0, 1, 0, 0, 0, &info)) {
++                    puts("READ_FAIL");
++                    return 2;
++                }
++                unsigned short expected = cmp ? 0xf800 : 0x07e0;
++                for (int y = 80; y < 160; y++)
++                    for (int x = 120; x < 220; x++)
++                        if (inside((float)x, (float)y, final) &&
++                            inside((float)x, (float)y, behind)) {
++                            unsigned short p =
++                                *(unsigned short *)((char *)info.pixels + y * info.stride + x * 2);
++                            samples++;
++                            if (p != expected) {
++                                if (bad < 8)
++                                    printf(
++                                        "BAD cmp=%d frame=%d x=%d y=%d expected=%04x actual=%04x\n",
++                                        cmp, frame, x, y, expected, p);
++                                bad++;
++                            }
++                        }
++                unlock(0, 1);
++                if (bad != frameBad)
++                    printf("FRAME textured=%d cmp=%d frame=%d mismatches=%u\n", textured, cmp,
++                           frame, bad - frameBad);
++            }
++    printf("W_NEAR_DEPTH_%s frames=64 samples=%u mismatches=%u\n", bad ? "FAIL" : "PASS", samples,
++           bad);
++    ((VoidFn)sym(dll, "grSstWinClose", 0))();
++    ((VoidFn)sym(dll, "grGlideShutdown", 0))();
++    DestroyWindow(wnd);
++    return bad ? 1 : 0;
++}

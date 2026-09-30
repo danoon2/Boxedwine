@@ -120,6 +120,69 @@ def prepare_toolchain(profile, work):
     return toolchain
 
 
+def psvoodoo_build_inputs(spec, toolchain):
+    return {'base_revision': spec['commit'], 'd3d9_only': True,
+            'toolchain_sha256': (toolchain / '.archive-sha256').read_text().strip(),
+            'patches': [{'name': Path(name).name, 'sha256': digest(HERE / name)}
+                        for name in spec.get('patches', [])]}
+
+
+def build_psvoodoo(spec, source, toolchain, work):
+    inputs = psvoodoo_build_inputs(spec, toolchain)
+    output = work / 'psvoodoo-build'
+    manifest = output / 'build.json'
+    metadata = json.loads(manifest.read_text()) if manifest.is_file() else {}
+    if metadata.get('build_inputs') != inputs:
+        if output.exists():
+            output.rename(work / ('psvoodoo-previous-' + uuid.uuid4().hex[:8]))
+        # Upstream's builder requires committed sources. Make a private snapshot
+        # from the pinned tree, never commit to or modify the source checkout.
+        snapshot = fresh_directory(work, 'psvoodoo-patched-source')
+        with tempfile.TemporaryFile() as stream:
+            run(['git', '-C', source, 'archive', spec['commit']], stdout=stream)
+            stream.seek(0)
+            with tarfile.open(fileobj=stream) as archive:
+                archive.extractall(snapshot, filter='data')
+        run(['git', 'init', '--quiet', snapshot])
+        run(['git', '-C', snapshot, 'config', 'core.autocrlf', 'false'])
+        for name in spec.get('patches', []):
+            run(['git', '-C', snapshot, 'apply', '--whitespace=nowarn', (HERE / name).resolve()])
+        run(['git', '-C', snapshot, 'add', '--all'])
+        environment = dict(os.environ, GIT_AUTHOR_NAME='Boxedwine filesystem builder',
+                           GIT_AUTHOR_EMAIL='builder@boxedwine.invalid',
+                           GIT_COMMITTER_NAME='Boxedwine filesystem builder',
+                           GIT_COMMITTER_EMAIL='builder@boxedwine.invalid',
+                           GIT_AUTHOR_DATE='2000-01-01T00:00:00+0000',
+                           GIT_COMMITTER_DATE='2000-01-01T00:00:00+0000')
+        run(['git', '-C', snapshot, '-c', 'core.hooksPath=/dev/null', 'commit',
+             '--quiet', '--no-gpg-sign', '-m', 'Boxedwine build snapshot'], env=environment)
+        sdk_aliases = work / 'psvoodoo-sdk-includes'
+        sdk_aliases.mkdir(exist_ok=True)
+        for name in ('D3D9.h', 'D3DX9.h'):
+            (sdk_aliases / name).write_text(f'#include <{name.lower()}>\n')
+        environment = dict(os.environ, CPATH=str(sdk_aliases))
+        run([sys.executable, snapshot / 'tools/build.py', '--toolchain', toolchain / 'bin',
+             '--output', output, '--d3d9-only'], env=environment)
+        metadata = json.loads(manifest.read_text())
+        # "revision" identifies the local snapshot, not an upstream commit.
+        metadata['build_inputs'] = inputs
+        write_json(manifest, metadata)
+    if digest(output / 'glide2x.dll') != metadata['dll_sha256']:
+        raise build_wine.BuildError('psVoodoo output does not match its build manifest')
+    return output
+
+
+def archive_psvoodoo_source(output, destination):
+    metadata = json.loads((output / 'build.json').read_text())
+    with tarfile.open(destination, 'w:gz') as archive:
+        for name, expected in sorted(metadata['source_manifest'].items()):
+            checked_name(name)
+            path = output / 'source' / name
+            if digest(path) != expected:
+                raise build_wine.BuildError(f'psVoodoo source does not match its build manifest: {name}')
+            archive.add(path, arcname='psVoodoo/' + name, recursive=False)
+
+
 def build_addons(profile, work, wine_repository, jobs):
     overlay = fresh_directory(work, 'addon-overlay')
     sources = work / 'sources'
@@ -161,22 +224,7 @@ def build_addons(profile, work, wine_repository, jobs):
 
     spec = profile['psvoodoo']
     source = source_checkout(spec, sources / 'psvoodoo')
-    output = work / 'psvoodoo-build'
-    if not (output / 'build.json').is_file():
-        if output.exists():
-            # Preserve failed compiler output for diagnosis; do not reuse a partial build.
-            failed = work / ('psvoodoo-failed-' + uuid.uuid4().hex[:8])
-            output.rename(failed)
-        sdk_aliases = work / 'psvoodoo-sdk-includes'
-        sdk_aliases.mkdir(exist_ok=True)
-        for name in ('D3D9.h', 'D3DX9.h'):
-            (sdk_aliases / name).write_text(f'#include <{name.lower()}>\n')
-        environment = dict(os.environ, CPATH=str(sdk_aliases))
-        run([sys.executable, source / 'tools/build.py', '--toolchain', toolchain / 'bin',
-             '--output', output, '--d3d9-only'], env=environment)
-    metadata = json.loads((output / 'build.json').read_text())
-    if metadata['revision'] != spec['commit'] or digest(output / 'glide2x.dll') != metadata['dll_sha256']:
-        raise build_wine.BuildError('psVoodoo output does not match its build manifest')
+    output = build_psvoodoo(spec, source, toolchain, work)
     destination = overlay / DRIVE / 'windows/system32/glide2x.dll'
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(output / 'glide2x.dll', destination)
@@ -194,13 +242,24 @@ def build_addons(profile, work, wine_repository, jobs):
         shutil.copy2(toolchain / 'i686-w64-mingw32/share/mingw32' / name, licenses / name)
     for name, source_name in (('GPL-2.0.txt', 'GPL-2'), ('LGPL-2.1.txt', 'LGPL-2.1')):
         shutil.copy2(Path('/usr/share/common-licenses') / source_name, docs / 'licenses' / name)
-    archive = docs / f'psVoodoo-{spec["commit"]}.tar.gz'
-    run(['git', '-C', source, 'archive', '--format=tar.gz', '--prefix=psVoodoo/', '-o', archive, spec['commit']])
+    archive = docs / f'psVoodoo-{spec["commit"]}-boxedwine.tar.gz'
+    archive_psvoodoo_source(output, archive)
+    for name in spec.get('patches', []):
+        patches = docs / 'patches'
+        patches.mkdir(exist_ok=True)
+        shutil.copy2(HERE / name, patches / Path(name).name)
     (docs / 'README.txt').write_text(
-        f'psVoodoo for Boxedwine, revision {spec["commit"]}\nSource: {spec["repo"]}\n'
+        f'psVoodoo for Boxedwine, base revision {spec["commit"]}\nSource: {spec["repo"]}\n'
         'Built with the LLVM-MinGW toolchain pinned in filesystem_wine11.json.\n'
-        'Rebuild: python3 tools/build.py --toolchain /path/to/llvm-mingw/bin --output /path/to/new-build --d3d9-only\n'
-        'The source archive, build manifest, notices, and license texts are included here.\n')
+        'The source archive contains the patched sources used to build this DLL.\n'
+        'build.json records the upstream base, patch hashes, toolchain pin, and source hashes.\n'
+        'Its revision is a local build snapshot, not an upstream commit.\n'
+        'Rebuild with Boxedwine tools/buildWine/build_filesystem.py and filesystem_wine11.json.\n'
+        'To use the standalone upstream builder, extract the source archive and initialize\n'
+        'a local Git repository: git init; git add .; git commit -m "Build snapshot"\n'
+        'Then run python3 tools/build.py --toolchain /path/to/llvm-mingw/bin --output /path/to/new-build --d3d9-only\n'
+        'On Linux, supply D3D9.h and D3DX9.h include aliases as the filesystem builder does.\n'
+        'Patch files, notices, and license texts are included here.\n')
 
     webgl_config = webgl_filesystem.load_config(HERE / profile['webgl_config'])
     patches = webgl_filesystem.verify_patch_series(webgl_config)

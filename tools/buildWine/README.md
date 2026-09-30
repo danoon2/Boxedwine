@@ -26,7 +26,11 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
-loader fix, psVoodoo `67fcb0a`, the existing v41 WebGL series, and LLVM-MinGW.
+loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the existing
+v41 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+with the profile's local patches applied. Its build cache checks the base revision,
+patch hashes, and toolchain pin. The filesystem includes the patched source archive,
+patches, and build manifest; the manifest's revision identifies the local snapshot.
 The filesystem revision is 13. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 The builder checks that its first entry matches the configured revision.
