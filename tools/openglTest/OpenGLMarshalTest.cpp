@@ -1,4 +1,13 @@
 #define WIN32_LEAN_AND_MEAN
+#ifndef GL_READ_WRITE
+#define GL_READ_WRITE 0x88BA
+#endif
+#ifndef GL_MAP_READ_BIT
+#define GL_MAP_READ_BIT 0x0001
+#endif
+#ifndef GL_BUFFER_MAP_POINTER
+#define GL_BUFFER_MAP_POINTER 0x88BD
+#endif
 #include <windows.h>
 #include <GL/gl.h>
 
@@ -11652,6 +11661,93 @@ static TestResult testMapBufferRangeWriteReadback(TestContext&) {
     return pass("mapped range write/readback matched");
 }
 
+static TestResult checkReboundMappedBuffers(bool arb) {
+    typedef void (APIENTRY* GetPointerFn)(GLenum, GLenum, void**);
+    GetPointerFn getPointer = nullptr;
+    PFNGLUNMAPBUFFERPROC unmap = nullptr;
+    PFNGLMAPBUFFERPROC map = nullptr;
+    load(getPointer, arb ? "glGetBufferPointervARB" : "glGetBufferPointerv");
+    load(unmap, arb ? "glUnmapBufferARB" : "glUnmapBuffer");
+    load(map, arb ? "glMapBufferARB" : "glMapBuffer");
+    if (!getPointer || !unmap || !map || !glx.MapBufferRange || !glx.GenBuffers ||
+        !glx.BindBuffer || !glx.BufferData || !glx.GetBufferSubData || !glx.DeleteBuffers) {
+        return skip("mapped-buffer rebinding entry points are unavailable");
+    }
+
+    const unsigned char zero[128] = {};
+    const unsigned char expected[4] = { 31, 127, 201, 255 };
+    unsigned char actual[4] = {};
+    GLuint buffers[2] = {};
+    void* pointers[2] = {};
+    bool valid[2] = {};
+    glx.GenBuffers(2, buffers);
+    for (unsigned i = 0; i < 2; ++i) {
+        glx.BindBuffer(GL_ARRAY_BUFFER, buffers[i]);
+        glx.BufferData(GL_ARRAY_BUFFER, sizeof(zero), zero, GL_DYNAMIC_DRAW);
+        pointers[i] = arb ? map(GL_ARRAY_BUFFER, GL_READ_WRITE) :
+            glx.MapBufferRange(GL_ARRAY_BUFFER, i ? 16 : 0, i ? 32 : 64,
+                              GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
+        valid[i] = pointers[i] != nullptr;
+    }
+    bool ok = valid[0] && valid[1];
+    // Rebinding the first buffer must report its pointer, not the latest map.
+    if (ok) {
+        glx.BindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+        void* queried = nullptr;
+        getPointer(GL_ARRAY_BUFFER, GL_BUFFER_MAP_POINTER, &queried);
+        ok = queried == pointers[0];
+    }
+    if (ok) {
+        ok = unmap(GL_ARRAY_BUFFER) == GL_TRUE;
+        valid[0] = false;
+        void* queried = reinterpret_cast<void*>(1);
+        getPointer(GL_ARRAY_BUFFER, GL_BUFFER_MAP_POINTER, &queried);
+        ok = ok && queried == nullptr;
+    }
+    if (ok) {
+        // Reuse the first mapping's reservation before writing the still-mapped
+        // second buffer. A target-keyed unmap would make the pointers alias.
+        pointers[0] = arb ? map(GL_ARRAY_BUFFER, GL_READ_WRITE) :
+            glx.MapBufferRange(GL_ARRAY_BUFFER, 0, 64, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
+        valid[0] = pointers[0] != nullptr;
+        ok = valid[0];
+    }
+    if (ok) {
+        std::memcpy(pointers[1], expected, sizeof(expected));
+        // Mapping identity must also survive binding through another target.
+        glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
+        void* queried = nullptr;
+        getPointer(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_MAP_POINTER, &queried);
+        ok = queried == pointers[1];
+        ok = (unmap(GL_ELEMENT_ARRAY_BUFFER) == GL_TRUE) && ok;
+        valid[1] = false;
+        glx.GetBufferSubData(GL_ELEMENT_ARRAY_BUFFER, arb ? 0 : 16, sizeof(actual), actual);
+        ok = ok && std::memcmp(actual, expected, sizeof(expected)) == 0;
+    }
+    for (unsigned i = 0; i < 2; ++i) {
+        if (valid[i]) {
+            glx.BindBuffer(GL_ARRAY_BUFFER, buffers[i]);
+            ok = (unmap(GL_ARRAY_BUFFER) == GL_TRUE) && ok;
+        }
+    }
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(2, buffers);
+    GLenum error = glGetError();
+    if (!ok || error != GL_NO_ERROR) {
+        return fail("rebound mapped buffers lost pointer identity or data, GL error " + std::to_string(error));
+    }
+    return pass("two simultaneous mappings survived rebinding, unmap/remap, and a target change");
+}
+
+static TestResult testReboundMappedBuffers(TestContext&) {
+    return checkReboundMappedBuffers(false);
+}
+
+static TestResult testReboundMappedBuffersARB(TestContext&) {
+    return checkReboundMappedBuffers(true);
+}
+
 static TestResult testClientArrayPageBoundaryRender(TestContext&) {
     PageBytes vertices;
     if (!vertices.init(6 * sizeof(float), 12)) {
@@ -15821,6 +15917,8 @@ static std::vector<TestCase> tests() {
         { "ext-named-buffer-subdata-page-boundary", testEXTNamedBufferSubDataPageBoundary },
         { "map-buffer-write-readback", testMapBufferWriteReadback },
         { "map-buffer-range-write-readback", testMapBufferRangeWriteReadback },
+        { "mapped-buffer-rebinding", testReboundMappedBuffers },
+        { "mapped-buffer-rebinding-arb", testReboundMappedBuffersARB },
         { "client-array-page-boundary-render", testClientArrayPageBoundaryRender },
         { "client-array-stride-page-boundary-render", testClientArrayStridePageBoundaryRender },
         { "interleaved-arrays-page-boundary-render", testInterleavedArraysPageBoundaryRender },

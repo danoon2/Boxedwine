@@ -112,6 +112,12 @@ when the host OpenGL driver does not expose the required functions.
 When running inside Wine/BoxedWine, use `--quiet --log opengl-test.log` if the
 console path emits cursor-control escape sequences.
 
+For F-16's missing or flickering psVoodoo overlays, run
+`mapped-buffer-rebinding` and `mapped-buffer-rebinding-arb`. These map two
+buffers through one target, unmap/remap the first, and verify that the second
+keeps its pointer and data, including when rebound through another target.
+The core test also checks partial-range mappings.
+
 ## Emscripten browser regressions
 
 `wgl-context-lifecycle` creates a secondary WGL context, switches between it

@@ -496,6 +496,10 @@ void KProcess::cleanupProcess() {
     extern void cleanupVulkanProcess(KProcess* process);
     cleanupVulkanProcess(this);
 #endif
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(glMappedBuffersMutex);
+        glMappedBuffers.clear();
+    }
     if (memory) {
         if (cloneVM) {
             // Forced exit reaches this path without exitgroup(). Detach the
@@ -1499,7 +1503,11 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
 
     // reset memory must come after we grab the args and env
     this->heap.freeAll(this->memory);
-    this->memory->execvReset(cloneVM);    
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(glMappedBuffersMutex);
+        glMappedBuffers.clear();
+    }
+    this->memory->execvReset(cloneVM);
     cloneVM = false;
 
     thread->reset();

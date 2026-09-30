@@ -396,27 +396,22 @@ U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) {
     return 0;
 }
 
-class BufferedTarget {
+class GlMappedBuffer {
 public:
-    BufferedTarget() = default;
-    BufferedTarget(U32 bufferedAddress, S8* originalBufferedAddress, U32 size) : bufferedAddress(bufferedAddress), originalBufferedAddress(originalBufferedAddress), size(size) {}
+    GlMappedBuffer(U32 bufferedAddress, U32 size) : bufferedAddress(bufferedAddress), size(size) {}
     U32 bufferedAddress = 0;
-    S8* originalBufferedAddress = nullptr;
     U32 size = 0;
 };
-typedef std::shared_ptr<BufferedTarget> BufferedTargetPtr;
-
-static BHashTable<U32, BufferedTargetPtr> bufferedTargets;
 
 U32 getMappedBufferAddress(CPU* cpu, GLenum target, GLvoid* buffer, U32 size) {
-    BufferedTargetPtr t = bufferedTargets[target];
+    if (!buffer) {
+        return 0;
+    }
+    KProcess* process = cpu->thread->process.get();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->glMappedBuffersMutex);
+    std::shared_ptr<GlMappedBuffer> t = process->glMappedBuffers.get(buffer);
     if (t) {
-        if (t->originalBufferedAddress != buffer) {
-            kwarn("glGetBufferPointerv cached buffer address does not match what was returned by the driver");
-        }
-        if (t->size != size) {
-            kwarn("glGetBufferPointerv cached buffer size does not match what was returned by the driver");
-        }
+        // A range mapping may be smaller than GL_BUFFER_SIZE.
         return t->bufferedAddress;
     } else {
         kwarn("glGetBufferPointerv failed to return mapped buffer");
@@ -428,19 +423,39 @@ U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size
     if (!buffer || !size) {
         return 0;
     }
-    if (bufferedTargets.contains(target)) {
-        kwarn("mapBufferRange already mapped");
+    KProcess* process = cpu->thread->process.get();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->glMappedBuffersMutex);
+    std::shared_ptr<GlMappedBuffer> previous = process->glMappedBuffers.get(buffer);
+    if (previous) {
+        // A deleted buffer can leave a mapping whose native address is reused.
+        cpu->memory->unmapNativeMemory(previous->bufferedAddress, previous->size);
+        process->glMappedBuffers.remove(buffer);
     }
     U32 result = cpu->memory->mapNativeMemory(buffer, size);
-    bufferedTargets.set(target, std::make_shared<BufferedTarget>(result, (S8*)buffer, size));
+    if (result) {
+        process->glMappedBuffers.set(buffer, std::make_shared<GlMappedBuffer>(result, size));
+    }
     return result;
 }
 
 void unmapBuffer(CPU* cpu, GLenum target) {
-    BufferedTargetPtr t = bufferedTargets[target];
+    // Query the buffer currently bound to the target, before the driver unmaps it.
+    // Several buffers can be mapped through one target at the same time.
+    void* buffer = nullptr;
+    if (ext_glGetBufferPointerv) {
+        GL_FUNC(ext_glGetBufferPointerv)(target, GL_BUFFER_MAP_POINTER, &buffer);
+    } else if (ext_glGetBufferPointervARB) {
+        GL_FUNC(ext_glGetBufferPointervARB)(target, GL_BUFFER_MAP_POINTER, &buffer);
+    }
+    if (!buffer) {
+        return;
+    }
+    KProcess* process = cpu->thread->process.get();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->glMappedBuffersMutex);
+    std::shared_ptr<GlMappedBuffer> t = process->glMappedBuffers.get(buffer);
     if (t) {
         cpu->memory->unmapNativeMemory(t->bufferedAddress, t->size);
-        bufferedTargets.remove(target);
+        process->glMappedBuffers.remove(buffer);
     }
 }
 

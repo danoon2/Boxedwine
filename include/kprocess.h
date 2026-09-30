@@ -28,6 +28,7 @@
 
 class MappedFileCache;
 class BoxedVulkanInfo;
+class GlMappedBuffer;
 
 struct MappedFileRetirementDiagnostic {
     std::atomic<S32> pendingError{0};
@@ -383,7 +384,10 @@ public:
     bool hasSetStackMask = false;
     bool hasSetSeg[8] = { false }; // 8 just to prevent bounds checking
 
-    BHashTable<U32, U32> glStrings;    
+    BHashTable<U32, U32> glStrings;
+    // Native mapped addresses identify buffers across bindings and shared contexts.
+    BHashTable<void*, std::shared_ptr<GlMappedBuffer>> glMappedBuffers;
+    BOXEDWINE_MUTEX glMappedBuffersMutex;
     U32 glStringsiExtensions = 0;
     std::vector<U32> glStringsiExtensionsOffset;
     U32 glxStringExtensions = 0;
