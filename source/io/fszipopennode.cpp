@@ -33,6 +33,10 @@ FsZipOpenNode::FsZipOpenNode(std::shared_ptr<FsNode> node, std::shared_ptr<FsZip
     }
 }
 
+FsZipOpenNode::~FsZipOpenNode() {
+    close();
+}
+
 S64 FsZipOpenNode::length() {
     return this->zipNode->length();
 }
@@ -48,14 +52,18 @@ S64 FsZipOpenNode::getFilePointer() {
 }
 
 S64 FsZipOpenNode::seek(S64 pos) {
-    if (pos>(S64)this->length())
-        this->pos = this->length();
-    else
-        this->pos = pos;
+    if (!open) {
+        return -K_EBADF;
+    }
+    if (pos < 0) {
+        return -K_EINVAL;
+    }
+    this->pos = pos;
     return this->pos;
 }
 
 void FsZipOpenNode::close() {
+    open = false;
     if (directHandle != 0xFFFFFFFF) {
         ::close(directHandle);
         directHandle = 0xFFFFFFFF;
@@ -63,7 +71,7 @@ void FsZipOpenNode::close() {
 }
 
 bool FsZipOpenNode::isOpen() {
-    return true;
+    return open;
 }
 
 U32 FsZipOpenNode::ioctl(KThread* thread, U32 request) {
@@ -100,39 +108,35 @@ bool FsZipOpenNode::canMap() {
 }
 
 U32 FsZipOpenNode::readNative(U8* buffer, U32 len) {
+    if (!open) {
+        return -K_EBADF;
+    }
+    if (pos >= length() || !len) {
+        return 0;
+    }
+    len = (U32)std::min<U64>(std::min<U32>(len, 0x7ffff000), length() - pos);
     if (directHandle != 0xFFFFFFFF) {
-        if (this->pos >= this->length()) {
-            return 0;
-        }
-        U64 available = this->length() - (U64)this->pos;
-        if (len > available) {
-            len = (U32)available;
-        }
-        if (!len) {
-            return 0;
-        }
         if (lseek64(directHandle, dataOffset + this->pos, SEEK_SET) < 0) {
-            return 0;
+            return -K_EIO;
         }
         S32 read = (S32)::read(directHandle, buffer, len);
         if (read <= 0) {
-            return 0;
+            return -K_EIO;
         }
         U32 result = (U32)read;
         this->pos += result;
         return result;
     }
 
-    U32 result = 0;
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(*getReadMutex());
     std::shared_ptr<FsZip> fsZip = zipNode->fsZip;
     if (fsZip) {
-        fsZip->setupZipRead(this->offset, this->pos);
-        result = unzReadCurrentFile(fsZip->zipfile, buffer, len);
-        this->pos += result;
-        fsZip->lastZipFileOffset = this->pos;
+        S32 result = fsZip->readZip(offset, pos, buffer, len);
+        if (result > 0) {
+            pos += result;
+        }
+        return result;
     }
-    return result;
+    return -K_EIO;
 }
 
 U32 FsZipOpenNode::writeNative(U8* buffer, U32 len) {
@@ -141,7 +145,12 @@ U32 FsZipOpenNode::writeNative(U8* buffer, U32 len) {
 }
 
 void FsZipOpenNode::reopen() {
+    close();
     this->pos = 0;
+    open = true;
+    if (compressionMethod == 0 && dataOffset && zipNode->fsZip) {
+        directHandle = ::open(zipNode->fsZip->zipPath.c_str(), O_RDONLY | O_BINARY);
+    }
 }
 
 BOXEDWINE_MUTEX* FsZipOpenNode::getReadMutex() {

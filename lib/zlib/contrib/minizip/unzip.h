@@ -370,6 +370,14 @@ extern int ZEXPORT unzOpenCurrentFile3 OF((unzFile file,
 */
 
 
+/* Boxedwine: in-memory DEFLATE checkpoints. A snapshot belongs to the archive
+   that created it. Free snapshots before closing that archive. These functions
+   do not support encrypted, raw, stored, or bzip2 streams. */
+typedef struct unz_file_snapshot_s* unzFileSnapshot;
+extern unzFileSnapshot ZEXPORT unzSaveCurrentFile OF((unzFile file));
+extern int ZEXPORT unzRestoreCurrentFile OF((unzFile file, unzFileSnapshot snapshot));
+extern void ZEXPORT unzFreeCurrentFileSnapshot OF((unzFileSnapshot snapshot));
+
 extern int ZEXPORT unzCloseCurrentFile OF((unzFile file));
 /*
   Close the file in zip opened with unzOpenCurrentFile

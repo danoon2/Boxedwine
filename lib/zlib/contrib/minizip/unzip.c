@@ -2001,6 +2001,101 @@ extern int ZEXPORT unzGetLocalExtrafield (unzFile file, voidp buf, unsigned len)
   Close the file in zip opened with unzOpenCurrentFile
   Return UNZ_CRCERROR if all the file was read but the CRC is not good
 */
+/* Boxedwine seek checkpoints retain the complete inflater, unread compressed
+   input, and CRC state. No pointers into a caller's output buffer are retained.
+   inflateCopy also preserves partial blocks, so checkpoints can be placed at
+   fixed uncompressed intervals without scanning for DEFLATE block boundaries. */
+struct unz_file_snapshot_s
+{
+    unzFile owner;
+    ZPOS64_T offset;
+    file_in_zip64_read_info_s* read;
+};
+
+local file_in_zip64_read_info_s* unz64local_copyReadState(file_in_zip64_read_info_s* source)
+{
+    file_in_zip64_read_info_s* copy = (file_in_zip64_read_info_s*)ALLOC(sizeof(*copy));
+    if (copy == NULL)
+        return NULL;
+    *copy = *source;
+    copy->read_buffer = (char*)ALLOC(UNZ_BUFSIZE);
+    if (copy->read_buffer == NULL)
+    {
+        TRYFREE(copy);
+        return NULL;
+    }
+    if (inflateCopy(&copy->stream, &source->stream) != Z_OK)
+    {
+        TRYFREE(copy->read_buffer);
+        TRYFREE(copy);
+        return NULL;
+    }
+    memcpy(copy->read_buffer, source->read_buffer, UNZ_BUFSIZE);
+    copy->stream.next_in = source->stream.next_in == NULL ? NULL :
+        (Bytef*)copy->read_buffer + (source->stream.next_in - (Bytef*)source->read_buffer);
+    copy->stream.next_out = NULL;
+    copy->stream.avail_out = 0;
+    return copy;
+}
+
+extern unzFileSnapshot ZEXPORT unzSaveCurrentFile(unzFile file)
+{
+    unz64_s* s = (unz64_s*)file;
+    unzFileSnapshot snapshot;
+    if (s == NULL || s->encrypted || s->pfile_in_zip_read == NULL ||
+        s->pfile_in_zip_read->raw || s->pfile_in_zip_read->stream_initialised != Z_DEFLATED)
+        return NULL;
+    snapshot = (unzFileSnapshot)ALLOC(sizeof(*snapshot));
+    if (snapshot == NULL)
+        return NULL;
+    snapshot->read = unz64local_copyReadState(s->pfile_in_zip_read);
+    if (snapshot->read == NULL)
+    {
+        TRYFREE(snapshot);
+        return NULL;
+    }
+    snapshot->owner = file;
+    /* unzSetOffset64 sets num_file to gi.number_entry, for which the public
+       unzGetOffset64 returns zero even though pos_in_central_dir is valid. */
+    snapshot->offset = s->pos_in_central_dir;
+    return snapshot;
+}
+
+extern void ZEXPORT unzFreeCurrentFileSnapshot(unzFileSnapshot snapshot)
+{
+    if (snapshot != NULL)
+    {
+        inflateEnd(&snapshot->read->stream);
+        TRYFREE(snapshot->read->read_buffer);
+        TRYFREE(snapshot->read);
+        TRYFREE(snapshot);
+    }
+}
+
+extern int ZEXPORT unzRestoreCurrentFile(unzFile file, unzFileSnapshot snapshot)
+{
+    unz64_s* s = (unz64_s*)file;
+    file_in_zip64_read_info_s* copy;
+    int err;
+    if (s == NULL || snapshot == NULL || snapshot->owner != file)
+        return UNZ_PARAMERROR;
+    copy = unz64local_copyReadState(snapshot->read);
+    if (copy == NULL)
+        return UNZ_INTERNALERROR;
+    err = s->pfile_in_zip_read ? unzCloseCurrentFile(file) : UNZ_OK;
+    if (err == UNZ_OK)
+        err = unzSetOffset64(file, snapshot->offset);
+    if (err != UNZ_OK)
+    {
+        inflateEnd(&copy->stream);
+        TRYFREE(copy->read_buffer);
+        TRYFREE(copy);
+        return err;
+    }
+    s->pfile_in_zip_read = copy;
+    return UNZ_OK;
+}
+
 extern int ZEXPORT unzCloseCurrentFile (unzFile file)
 {
     int err=UNZ_OK;

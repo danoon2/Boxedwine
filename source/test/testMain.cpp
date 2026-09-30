@@ -84,6 +84,7 @@ void testTerminationPinsThreadDuringLookup();
 void testThreadStartPublishesHandleBeforeEntry();
 void testHardLinksShareIdentityDataAndXattrs();
 void testReadOnlyCreatePreservesZipFile();
+void testZipRandomAccess();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testSharedFileMappingGrowthKeepsPagesShared();
 void testSharedFileMappingTruncateClearsResidentBytes();
@@ -1154,6 +1155,7 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
     {testGuestWritePreservesPartialProgress, "Test guest write preserves partial progress"},
     {testReadOnlyCreatePreservesZipFile, "Test read-only create preserves ZIP file contents", TEST_ENTRY_SERIAL},
+    {testZipRandomAccess, "Test ZIP random access and handle lifetime", TEST_ENTRY_SERIAL},
 };
 
 } // namespace

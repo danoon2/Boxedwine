@@ -22,6 +22,7 @@
 #define __FSZIP_H__
 
 #include "platformBoxedwine.h"
+#include <map>
 
 #undef OF
 #define STRICTUNZIP
@@ -59,7 +60,7 @@ public:
 
     BOXEDWINE_MUTEX readMutex;
 
-    void setupZipRead(U64 zipOffset, U64 zipFileOffset);
+    S32 readZip(U64 zipOffset, U64 zipFileOffset, U8* buffer, U32 len);
     void remove(BString localPath);
 
     static bool readFileFromZip(BString zipFile, BString file, BString& result);
@@ -68,6 +69,20 @@ public:
     static bool iterateFiles(BString zipFile, std::function<void(BString)> it);
     static bool doesFileExist(BString zipFile, BString file);
 private:
+    // At most 128 checkpoints (~7 MiB with zlib's 32 KiB window and 16 KiB
+    // input buffer), shared by all entries and handles in this archive.
+    static constexpr U64 checkpointSpan = 1024 * 1024;
+    static constexpr size_t maxCheckpoints = 128;
+    struct Checkpoint {
+        std::shared_ptr<unz_file_snapshot_s> state;
+        U64 used;
+    };
+    std::map<std::pair<U64, U64>, Checkpoint> checkpoints;
+    U64 checkpointClock = 0;
+    bool setupZipRead(U64 zipOffset, U64 zipFileOffset);
+    S32 readCurrent(U8* buffer, U32 len);
+    void saveCheckpoint();
+    void resetZipRead();
     BString deleteFilePath;
 };
 #endif

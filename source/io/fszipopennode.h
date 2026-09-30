@@ -26,6 +26,7 @@ class FsZipNode;
 class FsZipOpenNode : public FsOpenNode {
 public:
     FsZipOpenNode(std::shared_ptr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset, U64 dataOffset, U32 compressionMethod, BString zipPath);
+    ~FsZipOpenNode() override;
 
     // From FsOpenNode
     S64 length() override;
@@ -54,6 +55,7 @@ private:
     U64 dataOffset;
     U32 compressionMethod;
     U32 directHandle = 0xFFFFFFFF;
+    bool open = true;
 };
 
 #endif

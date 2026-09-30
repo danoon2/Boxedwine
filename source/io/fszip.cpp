@@ -29,23 +29,116 @@ extern "C"
 #include "fszipnode.h"
 #include <time.h> 
 
-void FsZip::setupZipRead(U64 zipOffset, U64 zipFileOffset) {
-#ifdef BOXEDWINE_ZLIB    
-    if (zipOffset != lastZipOffset || zipFileOffset < lastZipFileOffset) {
-        unzCloseCurrentFile(this->zipfile);
-        unzSetOffset64(this->zipfile, zipOffset);
+void FsZip::resetZipRead() {
+    auto first = checkpoints.lower_bound(std::make_pair(lastZipOffset, (U64)0));
+    while (first != checkpoints.end() && first->first.first == lastZipOffset) {
+        first = checkpoints.erase(first);
+    }
+    unzCloseCurrentFile(zipfile);
+    lastZipOffset = UINT64_MAX;
+    lastZipFileOffset = 0;
+}
+
+void FsZip::saveCheckpoint() {
+    if (!lastZipFileOffset || lastZipFileOffset % checkpointSpan) {
+        return;
+    }
+    auto key = std::make_pair(lastZipOffset, lastZipFileOffset);
+    auto found = checkpoints.find(key);
+    if (found != checkpoints.end()) {
+        found->second.used = ++checkpointClock;
+        return;
+    }
+    unzFileSnapshot state = unzSaveCurrentFile(zipfile);
+    if (!state) {
+        return; // An index is optional (unsupported compression or allocation failure).
+    }
+    if (checkpoints.size() == maxCheckpoints) {
+        auto oldest = checkpoints.begin();
+        for (auto it = checkpoints.begin(); it != checkpoints.end(); ++it) {
+            if (it->second.used < oldest->second.used) {
+                oldest = it;
+            }
+        }
+        checkpoints.erase(oldest);
+    }
+    checkpoints.emplace(key, Checkpoint{std::shared_ptr<unz_file_snapshot_s>(state, unzFreeCurrentFileSnapshot), ++checkpointClock});
+}
+
+S32 FsZip::readCurrent(U8* buffer, U32 len) {
+    // Split even large reads/skips at checkpoint boundaries. Discarded output
+    // then builds the same seek index as output returned to a caller.
+    U32 count = (U32)std::min<U64>(len, checkpointSpan - lastZipFileOffset % checkpointSpan);
+    S32 result = unzReadCurrentFile(zipfile, buffer, count);
+    if (result > 0) {
+        lastZipFileOffset += result;
+        saveCheckpoint();
+    }
+    return result;
+}
+
+bool FsZip::setupZipRead(U64 zipOffset, U64 zipFileOffset) {
+    bool currentUsable = zipOffset == lastZipOffset && lastZipFileOffset <= zipFileOffset;
+    auto point = checkpoints.upper_bound(std::make_pair(zipOffset, zipFileOffset));
+    bool havePoint = point != checkpoints.begin();
+    if (havePoint) {
+        --point;
+        havePoint = point->first.first == zipOffset;
+    }
+    if (havePoint && (!currentUsable || point->first.second > lastZipFileOffset)) {
+        if (unzRestoreCurrentFile(zipfile, point->second.state.get()) != UNZ_OK) {
+            resetZipRead();
+            return false;
+        }
+        point->second.used = ++checkpointClock;
+        lastZipOffset = zipOffset;
+        lastZipFileOffset = point->first.second;
+    } else if (!currentUsable) {
+        S32 closed = lastZipOffset != UINT64_MAX ? unzCloseCurrentFile(zipfile) : UNZ_OK;
+        lastZipOffset = UINT64_MAX;
         lastZipFileOffset = 0;
-        unzOpenCurrentFile(this->zipfile);
+        if (closed != UNZ_OK || unzSetOffset64(zipfile, zipOffset) != UNZ_OK || unzOpenCurrentFile(zipfile) != UNZ_OK) {
+            return false;
+        }
         lastZipOffset = zipOffset;
     }
-    if (zipFileOffset != lastZipFileOffset) {
-        char tmp[4096] = {};
-        U32 todo = (U32)(zipFileOffset - lastZipFileOffset);
-        while (todo) {
-            todo-=unzReadCurrentFile(this->zipfile, tmp, todo>4096?4096:todo);
+    U8 discard[16384];
+    while (lastZipFileOffset < zipFileOffset) {
+        U32 count = (U32)std::min<U64>(sizeof(discard), zipFileOffset - lastZipFileOffset);
+        if (readCurrent(discard, count) <= 0) {
+            resetZipRead();
+            return false;
         }
-    }  
-#endif
+    }
+    return true;
+}
+
+S32 FsZip::readZip(U64 zipOffset, U64 zipFileOffset, U8* buffer, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(readMutex);
+    if (!len) {
+        return 0;
+    }
+    if (!zipfile || !setupZipRead(zipOffset, zipFileOffset)) {
+        return -K_EIO;
+    }
+    U32 total = 0;
+    while (total < len) {
+        S32 count = readCurrent(buffer + total, len - total);
+        if (count <= 0) {
+            resetZipRead();
+            return total ? (S32)total : -K_EIO;
+        }
+        total += count;
+    }
+    if (unzeof(zipfile) == 1) {
+        if (unzCloseCurrentFile(zipfile) != UNZ_OK) {
+            resetZipRead();
+            return -K_EIO;
+        }
+        lastZipOffset = UINT64_MAX;
+        lastZipFileOffset = 0;
+    }
+    return (S32)total;
 }
 
 bool FsZip::init(BString zipPath, BString mount) {
@@ -60,7 +153,7 @@ bool FsZip::init(BString zipPath, BString mount) {
     }
     this->lastZipOffset = 0xFFFFFFFFFFFFFFFFl;
     if (zipPath.length()) {
-        unz_global_info global_info = {};
+        unz_global_info64 global_info = {};
 
         this->zipPath = zipPath;
         this->zipfile = unzOpen(zipPath.c_str());
@@ -69,22 +162,24 @@ bool FsZip::init(BString zipPath, BString mount) {
             return false;
         }
 
-        if (unzGetGlobalInfo( this->zipfile, &global_info ) != UNZ_OK) {
+        if (unzGetGlobalInfo64( this->zipfile, &global_info ) != UNZ_OK) {
             klog_fmt("Could not read file global info from zip file: %s", zipPath.c_str());
             unzClose( this->zipfile );
+            this->zipfile = nullptr;
             return false;
         }
         fsZipInfo* zipInfo = new fsZipInfo[global_info.number_entry];
-        for (U32 i = 0; i < global_info.number_entry; ++i) {
-            unz_file_info file_info = {};
+        for (U64 i = 0; i < global_info.number_entry; ++i) {
+            unz_file_info64 file_info = {};
             struct tm tm={0};
             char tmp[MAX_FILEPATH_LEN];
 
             tmp[0] = '/';
-            if ( unzGetCurrentFileInfo(this->zipfile, &file_info, tmp + 1, MAX_FILEPATH_LEN - 1, nullptr, 0, nullptr, 0 ) != UNZ_OK ) {
+            if ( unzGetCurrentFileInfo64(this->zipfile, &file_info, tmp + 1, MAX_FILEPATH_LEN - 1, nullptr, 0, nullptr, 0 ) != UNZ_OK || file_info.size_filename >= MAX_FILEPATH_LEN - 1 ) {
                 klog_fmt("Could not read file info from zip file: %s", zipPath.c_str());
                 delete[] zipInfo;
                 unzClose( zipfile );
+                zipfile = nullptr;
                 return false;
             }
             zipInfo[i].filename = BString::copy(tmp);
@@ -122,17 +217,24 @@ bool FsZip::init(BString zipPath, BString mount) {
         std::vector<BString> deletedLocalPaths;
         readLinesFromFile(deleteFilePath, deletedLocalPaths);
 
-        for (U32 i = 0; i < global_info.number_entry; ++i) {
+        for (U64 i = 0; i < global_info.number_entry; ++i) {
             if (zipInfo[i].filename.endsWith(EXT_LINK)) {
                 char tmp[MAX_FILEPATH_LEN];
                 zipInfo[i].filename = zipInfo[i].filename.substr(0, zipInfo[i].filename.length() - 5);
                 zipInfo[i].isLink = true;
-                unzSetOffset64(zipfile, zipInfo[i].offset);
-                unzOpenCurrentFile(zipfile);
-                U32 read = unzReadCurrentFile(this->zipfile, tmp, MAX_FILEPATH_LEN);
+                S32 read = -1;
+                if (unzSetOffset64(zipfile, zipInfo[i].offset) == UNZ_OK && unzOpenCurrentFile(zipfile) == UNZ_OK) {
+                    read = unzReadCurrentFile(zipfile, tmp, MAX_FILEPATH_LEN - 1);
+                }
+                S32 closed = unzCloseCurrentFile(zipfile);
+                if (read < 0 || (U64)read != zipInfo[i].length || closed != UNZ_OK) {
+                    delete[] zipInfo;
+                    unzClose(zipfile);
+                    zipfile = nullptr;
+                    return false;
+                }
                 tmp[read] = 0;
                 zipInfo[i].link = BString::copy(tmp);
-                unzCloseCurrentFile(this->zipfile);
             }
             BString localZipPart = zipInfo[i].filename;
             Fs::remoteNameToLocal(localZipPart);
@@ -162,7 +264,10 @@ bool FsZip::init(BString zipPath, BString mount) {
 
 FsZip::~FsZip() {
 #ifdef BOXEDWINE_ZLIB
-    unzClose(this->zipfile);
+    checkpoints.clear();
+    if (zipfile) {
+        unzClose(zipfile);
+    }
 #endif
 }
 

@@ -41,6 +41,7 @@
 
 #ifdef BOXEDWINE_ZLIB
 #include "../../io/fszip.h"
+#include "../../io/fszipnode.h"
 #define OF(args) args
 extern "C" {
 #include "../../../lib/zlib/contrib/minizip/zip.h"
@@ -519,6 +520,177 @@ void testReadOnlyCreatePreservesZipFile() {
                     file->close();
                 }
             }
+        }
+    }
+    KSystem::cacheReads = previousCacheReads;
+    cleanupRoot(root);
+#endif
+}
+
+void testZipRandomAccess() {
+#ifdef BOXEDWINE_ZLIB
+    const BString root = B("tmp/test-zip-random-access-root");
+    cleanupRoot(root);
+    initTestFileSystem(root);
+    const BString archivePath = root.stringByApppendingPath(B("fixture.zip"));
+    std::vector<U8> payload(8 * 1024 * 1024 + 123);
+    U32 random = 12345;
+    for (size_t i = 0; i < payload.size(); ++i) {
+        random = random * 1664525 + 1013904223;
+        payload[i] = (i % 31 < 20) ? (U8)(i >> 12) : (U8)(random >> 24);
+    }
+    zipFile archive = zipOpen64(archivePath.c_str(), APPEND_STATUS_CREATE);
+    if (!archive) {
+        testFail("could not create random-access ZIP fixture");
+        cleanupRoot(root);
+        return;
+    }
+    const char* names[] = {"deflated", "other", "stored", "large", "damaged"};
+    for (int i = 0; i < 5; ++i) {
+        zip_fileinfo info = {};
+        info.tmz_date.tm_year = 2026;
+        info.tmz_date.tm_mday = 1;
+        expectZero("open random-access ZIP member", zipOpenNewFileInZip64(archive,
+            names[i], &info, nullptr, 0, nullptr, 0, nullptr,
+            i == 2 ? 0 : Z_DEFLATED, Z_DEFAULT_COMPRESSION, 0));
+        if (i == 3) {
+            // Exceed the index budget without allocating a large fixture in RAM.
+            std::vector<U8> chunk(1024 * 1024, 0xAB);
+            for (int block = 0; block < 132; ++block) {
+                expectZero("write large ZIP member", zipWriteInFileInZip(archive, chunk.data(), (U32)chunk.size()));
+            }
+        } else {
+            expectZero("write random-access ZIP member", zipWriteInFileInZip(archive, payload.data(), (U32)payload.size()));
+        }
+        expectZero("close random-access ZIP member", zipCloseFileInZip(archive));
+    }
+    expectZero("close random-access ZIP", zipClose(archive, nullptr));
+    // Preserve the ZIP directory but introduce an invalid DEFLATE block type.
+    unzFile damageReader = unzOpen64(archivePath.c_str());
+    U64 firstEntry = unzGetOffset64(damageReader);
+    expectZero("locate damaged member", unzLocateFile(damageReader, "damaged", 1));
+    fsZipInfo damagedInfo;
+    damagedInfo.offset = unzGetOffset64(damageReader);
+    damagedInfo.length = payload.size();
+    damagedInfo.compressionMethod = Z_DEFLATED;
+    expectZero("open damaged member", unzOpenCurrentFile(damageReader));
+    U64 damagedOffset = unzGetCurrentFileZStreamPos64(damageReader);
+    unzClose(damageReader);
+    FILE* damageWriter = fopen(archivePath.c_str(), "r+b");
+    if (!damageWriter) {
+        testFail("could not corrupt ZIP fixture");
+    } else {
+        fseek(damageWriter, (long)damagedOffset, SEEK_SET);
+        fputc(7, damageWriter);
+        fclose(damageWriter);
+    }
+    bool previousCacheReads = KSystem::cacheReads;
+    KSystem::cacheReads = false;
+    {
+        auto zip = std::make_shared<FsZip>();
+        if (!zip->init(archivePath, B(""))) {
+            testFail("could not mount random-access ZIP");
+        } else {
+            std::vector<std::unique_ptr<FsOpenNode>> files;
+            for (int i = 0; i < 4; ++i) {
+                auto node = Fs::getNodeFromLocalPath(B("/"), BString::copy(names[i]), false);
+                files.emplace_back(node->open(K_O_RDONLY));
+            }
+            // Two independent handles on the same compressed entry plus another
+            // entry exercise both cursor changes and snapshot ownership.
+            files.emplace_back(files[0]->node->open(K_O_RDONLY));
+            auto verify = [&](FsOpenNode* file, U64 offset, U32 count) {
+                expectU64("ZIP seek", file->seek(offset), offset);
+                U32 expected = offset >= payload.size() ? 0 : (U32)std::min<U64>(count, payload.size() - offset);
+                std::vector<U8> bytes(count);
+                U32 read = file->readNative(bytes.data(), count);
+                expectU32("ZIP random read length", read, expected);
+                if (read == expected && expected && memcmp(bytes.data(), payload.data() + offset, expected)) {
+                    testFail("ZIP random read mismatch at %llu", (unsigned long long)offset);
+                }
+                expectU64("ZIP cursor after read", file->getFilePointer(), offset + expected);
+            };
+            for (U32 round = 0; round < 50; ++round) {
+                for (int index : {0, 1, 2, 4}) {
+                    verify(files[index].get(), payload.size() - 6000 - round * 17, 4096);
+                    verify(files[index].get(), 4096 + round * 7919, 4096);
+                    verify(files[index].get(), 3 * 1024 * 1024 - 19, 1024 * 1024 + 71);
+                }
+            }
+#ifdef BOXEDWINE_MULTI_THREADED
+            std::atomic<bool> concurrentFailure(false);
+            auto concurrentReads = [&](FsOpenNode* file, U32 seed) {
+                U8 bytes[4096];
+                for (U32 i = 0; i < 100; ++i) {
+                    seed = seed * 1664525 + 1013904223;
+                    U64 offset = seed % (payload.size() - sizeof(bytes));
+                    if (file->seek(offset) != (S64)offset || file->readNative(bytes, sizeof(bytes)) != sizeof(bytes) ||
+                        memcmp(bytes, payload.data() + offset, sizeof(bytes))) {
+                        concurrentFailure = true;
+                    }
+                }
+            };
+            std::thread readerA(concurrentReads, files[0].get(), 123);
+            std::thread readerB(concurrentReads, files[4].get(), 456);
+            std::thread readerC(concurrentReads, files[1].get(), 789);
+            readerA.join();
+            readerB.join();
+            readerC.join();
+            expectZero("concurrent ZIP handles preserve data", concurrentFailure.load());
+#endif
+            for (int index : {0, 1, 2, 4}) {
+                auto& file = files[index];
+                verify(file.get(), payload.size() - 10, 4096);
+                verify(file.get(), payload.size() + ((U64)1 << 32), 4096);
+                S64 before = file->getFilePointer();
+                expectU64("reject negative ZIP seek", file->seek(-1), (U64)-K_EINVAL);
+                expectU64("negative seek preserves cursor", file->getFilePointer(), before);
+                file->close();
+                expectZero("ZIP is closed", file->isOpen());
+                U8 byte;
+                expectU32("read closed ZIP handle", file->readNative(&byte, 1), -K_EBADF);
+                expectU64("seek closed ZIP handle", file->seek(0), (U64)-K_EBADF);
+                file->reopen();
+                expectU32("ZIP reopened", file->isOpen(), 1);
+                verify(file.get(), 0, 100);
+            }
+            U8 byte = 0;
+            files[3]->seek(131 * 1024 * 1024);
+            expectU32("large ZIP read after index eviction", files[3]->readNative(&byte, 1), 1);
+            expectU32("large ZIP byte", byte, 0xAB);
+            files[3]->seek(0);
+            expectU32("large ZIP rewind after eviction", files[3]->readNative(&byte, 1), 1);
+            verify(files[0].get(), 7 * 1024 * 1024, 4096);
+            // Every read so far must leave the contents exclusively in the ZIP.
+            for (auto& file : files) {
+                if (Fs::doesNativePathExist(file->node->nativePath)) {
+                    testFail("random ZIP reads extracted a member");
+                }
+            }
+#ifdef __linux__
+            auto descriptors = []() {
+                return std::distance(std::filesystem::directory_iterator("/proc/self/fd"), std::filesystem::directory_iterator());
+            };
+            auto before = descriptors();
+            for (int i = 0; i < 200; ++i) {
+                std::unique_ptr<FsOpenNode> file(files[2]->node->open(K_O_RDONLY));
+            }
+            expectU64("stored ZIP destructor closes descriptor", descriptors(), before);
+#endif
+            // A position beyond the real deflate stream used to loop forever in
+            // setupZipRead. Bypass the open-node EOF clamp to test that path.
+            expectU32("unexpected EOF while skipping", zip->readZip(firstEntry, payload.size() + 99, &byte, 1), -K_EIO);
+            verify(files[0].get(), 0, 4096);
+            auto damaged = std::dynamic_pointer_cast<FsFileNode>(Fs::getNodeFromLocalPath(B("/"), B("damaged"), false));
+            std::unique_ptr<FsOpenNode> bad(damaged->open(K_O_RDONLY));
+            expectU32("invalid deflate read", bad->readNative(&byte, 1), -K_EIO);
+            expectU64("failed read preserves cursor", bad->getFilePointer(), 0);
+            bad->seek(1024 * 1024);
+            expectU32("invalid deflate skip", bad->readNative(&byte, 1), -K_EIO);
+            auto damagedZip = std::make_shared<FsZipNode>(damagedInfo, zip);
+            expectZero("failed extraction reports failure", damagedZip->moveToFileSystem(damaged));
+            expectZero("failed extraction removes partial output", Fs::doesNativePathExist(damaged->nativePath));
+            verify(files[1].get(), 2 * 1024 * 1024, 4096);
         }
     }
     KSystem::cacheReads = previousCacheReads;

@@ -33,24 +33,36 @@ bool FsZipNode::moveToFileSystem(std::shared_ptr<FsNode> node) {
     if (node->isDirectory())
         return false;
     if (node->isLink()) {
-        U32 to = ::open((node->nativePath+EXT_LINK).c_str(), O_WRONLY | O_CREAT | O_BINARY, 0666);
-        ::write(to, node->link.c_str(), node->link.length());
+        S32 to = ::open((node->nativePath+EXT_LINK).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
+        if (to < 0) {
+            return false;
+        }
+        bool result = ::write(to, node->link.c_str(), node->link.length()) == (S32)node->link.length();
         ::close(to);
-        return true;
+        if (!result) {
+            ::remove((node->nativePath + EXT_LINK).c_str());
+        }
+        return result;
     }
 
-    FsOpenNode* from = this->open(node, K_O_RDONLY);
+    std::unique_ptr<FsOpenNode> from(this->open(node, K_O_RDONLY));
     bool result = false;
     U32 to = ::open(node->nativePath.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
     if (to != 0xFFFFFFFF) {
         U8 buffer[4096];
-        U32 read = from->readNative(buffer, 4096);
-        while (read) {
-            if (::write(to, buffer, read) != (int)read)
-                return false;
-            read = from->readNative(buffer, 4096);
+        S32 read;
+        U64 copied = 0;
+        while ((read = (S32)from->readNative(buffer, sizeof(buffer))) > 0) {
+            if (::write(to, buffer, read) != read) {
+                break;
+            }
+            copied += read;
         }
-        ::close(to);
+        S32 closed = ::close(to);
+        if (read != 0 || copied != zipInfo.length || closed != 0) {
+            ::remove(node->nativePath.c_str());
+            return false;
+        }
 
         struct utimbuf settime = { 0, 0 };
 
