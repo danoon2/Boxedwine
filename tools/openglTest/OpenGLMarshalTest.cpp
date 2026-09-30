@@ -5798,9 +5798,15 @@ static TestResult testTextureLevelUpdateMipmapRowPitch(TestContext&) {
     return pass("texture level allocation, row-pitch partial update, and mip generation matched");
 }
 
-static TestResult testTextureSubImage2DPBOOffset(TestContext&) {
+enum class TextureSubImage2DAPI { Bound, CoreDSA, ExtDSA };
+
+static TestResult checkTextureSubImage2DPBOOffset(TextureSubImage2DAPI api) {
     if (!glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
         return skip("PBO upload buffer entry points are unavailable");
+    }
+    if ((api == TextureSubImage2DAPI::CoreDSA && !glx.TextureSubImage2D) ||
+        (api == TextureSubImage2DAPI::ExtDSA && !glx.TextureSubImage2DEXT)) {
+        return skip("DSA texture subimage entry point is unavailable");
     }
 
     PageBytes readback;
@@ -5813,8 +5819,13 @@ static TestResult testTextureSubImage2DPBOOffset(TestContext&) {
         31, 62, 93, 255,
         124, 155, 186, 255
     };
+    const unsigned char zeroOffsetPixels[2 * 4] = {
+        201, 41, 81, 255,
+        51, 211, 101, 255
+    };
     const GLsizeiptr pboOffset = 40;
     std::vector<unsigned char> pboData((size_t)pboOffset + sizeof(subPixels) + 12, 0xC3);
+    std::memcpy(pboData.data(), zeroOffsetPixels, sizeof(zeroOffsetPixels));
     std::memcpy(pboData.data() + pboOffset, subPixels, sizeof(subPixels));
 
     GLuint pbo = 0;
@@ -5829,9 +5840,22 @@ static TestResult testTextureSubImage2DPBOOffset(TestContext&) {
     glx.GenBuffers(1, &pbo);
     glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
     glx.BufferData(GL_PIXEL_UNPACK_BUFFER, (GLsizeiptr)pboData.size(), pboData.data(), GL_STATIC_DRAW);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 1, 1, 2, 1, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)pboOffset);
+    if (api != TextureSubImage2DAPI::Bound) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    for (int row = 0; row < 2; ++row) {
+        const void* offset = row ? (const void*)pboOffset : nullptr;
+        if (api == TextureSubImage2DAPI::CoreDSA) {
+            glx.TextureSubImage2D(tex, 0, row, row, 2, 1, GL_RGBA, GL_UNSIGNED_BYTE, offset);
+        } else if (api == TextureSubImage2DAPI::ExtDSA) {
+            glx.TextureSubImage2DEXT(tex, GL_TEXTURE_2D, 0, row, row, 2, 1, GL_RGBA, GL_UNSIGNED_BYTE, offset);
+        } else {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, row, row, 2, 1, GL_RGBA, GL_UNSIGNED_BYTE, offset);
+        }
+    }
     GLenum uploadErr = glGetError();
     glx.BindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, tex);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, readback.data);
     GLenum readErr = glGetError();
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -5844,15 +5868,27 @@ static TestResult testTextureSubImage2DPBOOffset(TestContext&) {
     if (readErr != GL_NO_ERROR) {
         return fail("2D texture PBO subimage readback produced GL error " + std::to_string(readErr));
     }
-    if (!rgbaEquals(readback.data, 0, 0, 0, 0) ||
-        !rgbaEquals(readback.data + 4, 0, 0, 0, 0) ||
+    if (!rgbaEquals(readback.data, zeroOffsetPixels) ||
+        !rgbaEquals(readback.data + 4, zeroOffsetPixels + 4) ||
         !rgbaEquals(readback.data + 8, 0, 0, 0, 0) ||
         !rgbaEquals(readback.data + 12, 0, 0, 0, 0) ||
         !rgbaEquals(readback.data + 16, subPixels) ||
         !rgbaEquals(readback.data + 20, subPixels + 4)) {
         return fail("2D texture PBO offset subimage pixels did not match");
     }
-    return pass("PBO offset 2D texture subimage matched");
+    return pass("zero and nonzero PBO offset 2D texture subimages matched");
+}
+
+static TestResult testTextureSubImage2DPBOOffset(TestContext&) {
+    return checkTextureSubImage2DPBOOffset(TextureSubImage2DAPI::Bound);
+}
+
+static TestResult testDSATextureSubImage2DPBOOffset(TestContext&) {
+    return checkTextureSubImage2DPBOOffset(TextureSubImage2DAPI::CoreDSA);
+}
+
+static TestResult testEXTTextureSubImage2DPBOOffset(TestContext&) {
+    return checkTextureSubImage2DPBOOffset(TextureSubImage2DAPI::ExtDSA);
 }
 
 static TestResult testTextureImage2DEXTPBOOffset(TestContext&) {
@@ -15817,6 +15853,8 @@ static std::vector<TestCase> tests() {
         { "texture-subimage-page-boundary", testTextureSubImagePageBoundary },
         { "texture-level-update-mipmap-row-pitch", testTextureLevelUpdateMipmapRowPitch },
         { "texture-subimage2d-pbo-offset", testTextureSubImage2DPBOOffset },
+        { "dsa-texture-subimage2d-pbo-offset", testDSATextureSubImage2DPBOOffset },
+        { "ext-texture-subimage2d-pbo-offset", testEXTTextureSubImage2DPBOOffset },
         { "texture-image2d-ext-pbo-offset", testTextureImage2DEXTPBOOffset },
         { "multitex-image2d-ext-pbo-offset", testMultiTexImage2DEXTPBOOffset },
         { "ext-texture-storage-entry-points", testEXTTextureStorageEntryPoints },

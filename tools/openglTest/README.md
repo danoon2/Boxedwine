@@ -118,6 +118,13 @@ buffers through one target, unmap/remap the first, and verify that the second
 keeps its pointer and data, including when rebound through another target.
 The core test also checks partial-range mappings.
 
+For DSA texture uploads through pixel unpack buffers, run
+`dsa-texture-subimage2d-pbo-offset` and `ext-texture-subimage2d-pbo-offset`.
+Both test zero and nonzero offsets into a pixel unpack buffer with the texture
+unbound. Treating these offsets as guest-memory pointers breaks uploads.
+The corresponding `*-page-boundary` tests cover uploads from
+guest memory without a pixel unpack buffer bound.
+
 ## Emscripten browser regressions
 
 `wgl-context-lifecycle` creates a secondary WGL context, switches between it

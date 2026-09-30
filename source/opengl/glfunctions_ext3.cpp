@@ -1655,7 +1655,8 @@ void glcommon_glTextureSubImage2D(CPU* cpu) {
         GLsizei height = ARG6;
         GLenum format = ARG7;
         GLenum type = ARG8;
-        const void* pixels = marshalPixels(cpu, 2, width, height, 1, format, type, ARG9, xoffset, yoffset, level);
+        // With an unpack buffer bound, pixels is a byte offset, not a guest pointer.
+        const void* pixels = PIXEL_UNPACK_BUFFER() ? (const void*)pARG9 : marshalPixels(cpu, 2, width, height, 1, format, type, ARG9, xoffset, yoffset, level);
 
     GL_FUNC(ext_glTextureSubImage2D)(texture, level, xoffset, yoffset, width, height, format, type, pixels);
     GL_LOG ("glTextureSubImage2D GLuint texture=%d, GLint level=%d, GLint xoffset=%d, GLint yoffset=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%d, GLenum type=%d, const void* pixels=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8,ARG9);
@@ -1674,7 +1675,7 @@ void glcommon_glTextureSubImage2DEXT(CPU* cpu) {
         GLsizei height = ARG7;
         GLenum format = ARG8;
         GLenum type = ARG9;
-        const void* pixels = marshalPixels(cpu, 2, width, height, 1, format, type, ARG10, xoffset, yoffset, level);
+        const void* pixels = PIXEL_UNPACK_BUFFER() ? (const void*)pARG10 : marshalPixels(cpu, 2, width, height, 1, format, type, ARG10, xoffset, yoffset, level);
     GL_FUNC(ext_glTextureSubImage2DEXT)(texture, target, level, xoffset, yoffset, width, height, format, type, pixels);
     GL_LOG ("glTextureSubImage2DEXT GLuint texture=%d, GLenum target=%d, GLint level=%d, GLint xoffset=%d, GLint yoffset=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%d, GLenum type=%d, const void* pixels=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8,ARG9,ARG10);
     }
