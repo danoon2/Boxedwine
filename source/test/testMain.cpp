@@ -11,6 +11,9 @@
 
 #ifdef __TEST
 
+// Keep test bodies and fixtures under source/test, not in production .cpp files.
+// Prefer production entry points; use narrow declarations for private access.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +72,7 @@ void testWasmJitFpuFaultState();
 void testWaitPid();
 void testX11ImageIncludeInferiors();
 void testX11ImageScanlinePadding();
+void testXInputValuatorLayout();
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
 void testSDLGlWindowRemovalLockOrder();
 #endif
@@ -1158,6 +1162,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testReadOnlyCreatePreservesZipFile, "Test read-only create preserves ZIP file contents", TEST_ENTRY_SERIAL},
     {testZipRandomAccess, "Test ZIP random access and handle lifetime", TEST_ENTRY_SERIAL},
     {testStatxEmptyPathUsesOpenFile, "Test statx empty path uses open file identity", TEST_ENTRY_SERIAL},
+    {testXInputValuatorLayout, "Test XInput valuator guest ABI layout"},
 };
 
 } // namespace

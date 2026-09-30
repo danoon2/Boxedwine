@@ -1018,6 +1018,8 @@ int XWindow::moveResize(S32 x, S32 y, U32 width, U32 height) {
 	if (this->left == x && this->top == y && this->width() == width && this->height() == height) {
 		return Success;
 	}
+	this->left = x;
+	this->top = y;
 	if (width != this->width() || height != this->height()) {
 		setSize(width, height);
 	}

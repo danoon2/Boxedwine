@@ -277,6 +277,15 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_sse2.cpp">
       <Filter>source\emulation\cpu\common</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\opengl\testSDLGl.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\sdl\testStartupArgs.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\x11\testX11.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\test\testMain.cpp">
       <Filter>source\test</Filter>
     </ClCompile>
@@ -1943,6 +1952,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\platform\sdl\knativescreenSDL.h">
       <Filter>platform\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\opengl\sdl\sdlglInternal.h">
+      <Filter>source\opengl\sdl</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\opengl\sdl\sdlgl.h">
       <Filter>opengl\sdl</Filter>

@@ -29,73 +29,6 @@
 #endif
 
 std::atomic_int XServer::nextId = 0x10000;
-#ifdef __TEST
-#include "../test/cpu/testCPU.h"
-
-void XServer::testImageIncludeInferiors() {
-	// No global X server or native window is needed for these backing-store
-	// checks. The test windows retain dirty state locally.
-	class ImageWindow : public XWindow {
-	public:
-		using XWindow::XWindow;
-		void setDirty() override { isDirty = true; }
-	};
-	testNewInstruction(0);
-	VisualPtr visual = std::make_shared<Visual>();
-	visual->bits_per_rgb = 32;
-	auto parent = std::make_shared<ImageWindow>(0, nullptr, 8, 6, 32, 50, 60, InputOutput, 0, visual);
-	auto child = std::make_shared<ImageWindow>(0, parent, 4, 3, 32, 2, 1, InputOutput, 0, visual);
-	auto nested = std::make_shared<ImageWindow>(0, child, 2, 2, 32, 1, 1, InputOutput, 0, visual);
-	auto partial = std::make_shared<ImageWindow>(0, parent, 4, 3, 32, 5, 4, InputOutput, 0, visual);
-	auto unmapped = std::make_shared<ImageWindow>(0, parent, 2, 2, 32, 0, 0, InputOutput, 0, visual);
-	auto otherDepth = std::make_shared<ImageWindow>(0, parent, 2, 2, 24, 0, 0, InputOutput, 0, visual);
-	std::vector<XWindowPtr> children = {child, nested, partial, unmapped, otherDepth};
-	for (const auto& window : children) {
-		window->isMapped = window != unmapped;
-		window->addToParent();
-	}
-	XGCPtr gc = std::make_shared<XGC>(parent);
-	for (U32 y = 0; y < 8; ++y) {
-		for (U32 x = 0; x < 8; ++x) {
-			testContext().memory->writed(TEST_HEAP_ADDRESS + (y * 8 + x) * 4, 0x100000 + y * 100 + x);
-		}
-	}
-	auto upload = [&]() {
-		if (parent->copyImageData(testContext().thread, gc, TEST_HEAP_ADDRESS, 32, 32, 1, 1, 1, 1, 5, 4) != Success) {
-			testFail("X11 image upload failed");
-		}
-	};
-	upload(); // ClipByChildren must not overwrite the child backing stores.
-	for (const auto& window : children) {
-		for (U32 i = 0; i < window->getDataSize(); ++i) {
-			if (window->getData()[i]) testFail("ClipByChildren changed a child image");
-		}
-	}
-	gc->values.subwindow_mode = IncludeInferiors;
-	upload();
-	for (const auto& window : children) {
-		S32 ox = 0, oy = 0;
-		window->windowToScreen(ox, oy);
-		ox -= 50; oy -= 60;
-		for (U32 y = 0; y < window->height(); ++y) {
-			for (U32 x = 0; x < window->width(); ++x) {
-				S32 px = ox + x, py = oy + y;
-				U32 expected = window != unmapped && window != otherDepth && px >= 1 && px < 6 && py >= 1 && py < 5
-					? 0x100000 + py * 100 + px : 0;
-				U32 actual;
-				memcpy(&actual, window->getData() + y * window->getBytesPerLine() + x * 4, 4);
-				if (actual != expected) testFail("IncludeInferiors child pixel mismatch at %u,%u: %x != %x", x, y, actual, expected);
-			}
-		}
-	}
-	// Break the parent/child shared-pointer ownership in this isolated tree.
-	for (auto it = children.rbegin(); it != children.rend(); ++it) (*it)->removeFromParent();
-}
-
-void testX11ImageIncludeInferiors() {
-	XServer::testImageIncludeInferiors();
-}
-#endif
 
 XServer* XServer::server;
 
@@ -1069,7 +1002,39 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 	return result;
 }
 
-void XServer::mouseMove(S32 x, S32 y, bool relative) {	
+bool XServer::wantsRelativeMouse() {
+	if (!KSystem::forceRelativeMouse) return false;
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+	if (!isGrabbed) return false;
+	DisplayDataPtr display = getDisplayDataById(grabbedDisplayId);
+	return display && root && (display->getInput2Mask(root->id) & XI_RawMotionMask);
+}
+
+void XServer::clampPointerToGrab(S32& x, S32& y) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+	if (!isGrabbed || !grabbedConfinedId) return;
+	XWindowPtr confined = getWindow(grabbedConfinedId);
+	if (!confined || !confined->width() || !confined->height()) return;
+	confined->screenToWindow(x, y);
+	x = std::max(0, std::min(x, (S32)confined->width() - 1));
+	y = std::max(0, std::min(y, (S32)confined->height() - 1));
+	confined->windowToScreen(x, y);
+}
+
+void XServer::mouseMove(S32 x, S32 y, bool relative) {
+	if (relative) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+		if (isGrabbed && KSystem::forceRelativeMouse && root) {
+			XWindowPtr grabbed = getWindow(grabbedId);
+			DisplayDataPtr display = getDisplayDataById(grabbedDisplayId);
+			if (grabbed && display && (display->getInput2Mask(root->id) & XI_RawMotionMask) && (x || y)) {
+				grabbed->input2Notify(display, x, y, XI_RawMotion);
+			}
+		}
+		// A grab can end after SDL queues a relative event. Never interpret
+		// that stale delta as an absolute position after returning to a menu.
+		return;
+	}
 	XWindowPtr presentedWindow = getFakeFullScreenWindow();
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
@@ -1084,7 +1049,7 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 				x = x - midX;
 				y = y - midY;
 				KNativeSystem::warpMouse(midX, midY);
-				// :TODO: I'm not really sure how realitive mouse is supposed to work, it was just trial and error with vkQuake
+				// Absolute-input fallback for recorder playback and other producers.
 				grabbed->input2Notify(grabbedDisplay, x, y, XI_RawMotion);
 				return;
 			}
@@ -1094,6 +1059,7 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 			if (presentedWindow) {
 				presentedWindow->windowToScreen(x, y);
 			}
+			clampPointerToGrab(x, y);
 			grabbed->motionNotify(grabbedDisplay, x, y);
 			return;
 		} else {
@@ -1124,6 +1090,7 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 	if (presentedWindow) {
 		presentedWindow->windowToScreen(x, y);
 	}
+	clampPointerToGrab(x, y);
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 		XWindowPtr grabbed = getWindow(grabbedId);
@@ -1134,14 +1101,8 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 			if (!(grabbedMask & mask)) {
 				return;
 			}
-			if ((grabbedDisplay->getInput2Mask(root->id) & XI_RawMotionMask) && KSystem::forceRelativeMouse) {
-				KNativeInputPtr input = KNativeSystem::getCurrentInput();
-				S32 midX = input->screenWidth() / 2;
-				S32 midY = input->screenHeight() / 2;
-				x = 0;
-				y = 0;
-				KNativeSystem::warpMouse(midX, midY);
-			}
+			// XButtonEvent coordinates are absolute, even when motion is raw.
+			// Wine converts any position change here into another raw movement.
 			grabbed->buttonNotify(grabbedDisplay, button, x, y, pressed);
 			return;
 		} else {
@@ -1180,9 +1141,7 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 
 		this->grabbedId = grabbed->id;
-		if (confined) {
-			this->grabbedConfinedId = confined->id;
-		}
+		this->grabbedConfinedId = confined ? confined->id : 0;
 		this->grabbedMask = mask;
 		this->grabbedTime = time;
 		this->grabbedDisplayId = display->displayId;

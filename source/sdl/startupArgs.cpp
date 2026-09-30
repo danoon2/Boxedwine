@@ -46,9 +46,6 @@
 #include "knativeaudio.h"
 #include "knativesocket.h"
 
-#ifdef __TEST
-#include "../test/cpu/testCPU.h"
-#endif
 
 #ifndef BOXEDWINE_DISABLE_UI
 #include "../ui/data/globalSettings.h"
@@ -86,7 +83,7 @@ static void addDefaultEnvValue(std::vector<BString>& envValues, const char* valu
     }
 }
 
-static void addDefaultUtf8LocaleEnv(std::vector<BString>& envValues, bool guestHasUtf8Locale) {
+void StartUpArgs::addDefaultUtf8LocaleEnv(std::vector<BString>& envValues, bool guestHasUtf8Locale) {
     if (!guestHasUtf8Locale) {
         return;
     }
@@ -111,71 +108,6 @@ static bool guestHasUtf8Locale() {
     return false;
 }
 
-#ifdef __TEST
-static bool hasExactEnvValue(const std::vector<BString>& envValues, const char* value) {
-    for (auto& envValue : envValues) {
-        if (envValue == value) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void testStartupArgsDefaultUtf8LocaleEnvironment() {
-    std::vector<BString> unsupportedEnvValues;
-    addDefaultUtf8LocaleEnv(unsupportedEnvValues, false);
-
-    if (unsupportedEnvValues.size() != 0) {
-        testFail("default UTF-8 locale env values were added without guest locale support");
-    }
-
-    std::vector<BString> envValues;
-    addDefaultUtf8LocaleEnv(envValues, true);
-
-    if (!hasExactEnvValue(envValues, "LANG=en_US.UTF-8")) {
-        testFail("default LANG was not added");
-    }
-    if (!hasExactEnvValue(envValues, "LC_ALL=en_US.UTF-8")) {
-        testFail("default LC_ALL was not added");
-    }
-
-    std::vector<BString> explicitEnvValues;
-    explicitEnvValues.push_back(B("LANG=C"));
-    explicitEnvValues.push_back(B("LC_ALL=C"));
-    addDefaultUtf8LocaleEnv(explicitEnvValues, true);
-
-    if (explicitEnvValues.size() != 2) {
-        testFail("explicit locale env values were not preserved");
-    }
-    if (!hasExactEnvValue(explicitEnvValues, "LANG=C")) {
-        testFail("explicit LANG was overwritten");
-    }
-    if (!hasExactEnvValue(explicitEnvValues, "LC_ALL=C")) {
-        testFail("explicit LC_ALL was overwritten");
-    }
-}
-
-void testStartupArgsLinearMemoryOption() {
-    StartUpArgs startupArgs;
-    const char* argv[] = {"boxedwine", "-disableLinearMemory"};
-    if (!startupArgs.parseStartupArgs(2, argv) || !startupArgs.disableLinearMemory) {
-        testFail("-disableLinearMemory was not parsed");
-        return;
-    }
-
-    std::vector<BString> childArgs = startupArgs.buildArgs();
-    bool found = false;
-    for (const BString& arg : childArgs) {
-        if (arg == "-disableLinearMemory") {
-            found = true;
-            break;
-        }
-    }
-    if (!found) {
-        testFail("-disableLinearMemory was not propagated to a child process");
-    }
-}
-#endif
 
 FsOpenNode* openKernelCommandLine(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, B(""));

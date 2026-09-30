@@ -122,6 +122,11 @@ public:
     bool disableLinearMemory = false;
 
 private:
+    static void addDefaultUtf8LocaleEnv(std::vector<BString>& envValues, bool guestHasUtf8Locale);
+#ifdef __TEST
+    friend void testStartupArgsDefaultUtf8LocaleEnvironment();
+#endif
+
     bool workingDirSet = false;
     bool resolutionSet = false;
 

@@ -310,8 +310,14 @@ U32 KNativeInputSDL::screenHeight() {
 bool KNativeInputSDL::mouseMove(int x, int y, bool relative) {
     XServer* server = XServer::getServer(true);
 
-    x = xFromScreen(x);
-    y = yFromScreen(y);
+    if (relative) {
+        // Deltas have no screen origin or letterbox offset.
+        x = x * 100 / (int)scaleX;
+        y = y * 100 / (int)scaleY;
+    } else {
+        x = xFromScreen(x);
+        y = yFromScreen(y);
+    }
 
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
@@ -403,6 +409,9 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
     if (Player::instance) {
         *x = lastX;
         *y = lastY;
+        if (XServer* server = XServer::getServer(true)) {
+            server->clampPointerToGrab(*x, *y);
+        }
         return checkMousePos(*x, *y, false);
     }
 #endif
@@ -426,6 +435,9 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
     XWindowPtr presentedWindow = XServer::getServer(true) ? XServer::getServer()->getFakeFullScreenWindow() : nullptr;
     if (presentedWindow) {
         presentedWindow->windowToScreen(*x, *y);
+    }
+    if (XServer* server = XServer::getServer(true)) {
+        server->clampPointerToGrab(*x, *y);
     }
     return checkMousePos(*x, *y, false);
 }
@@ -557,7 +569,25 @@ bool KNativeInputSDL::key(U32 sdlScanCode, U32 key, U32 down) {
     return false;
 }
 
+void KNativeInputSDL::updateRelativeMouseMode() {
+#ifndef __EMSCRIPTEN__
+    // Browser pointer lock is controlled by a user gesture, not X11 grabs.
+    XServer* server = XServer::getServer(true);
+    bool wanted = server && server->wantsRelativeMouse() && SDL_GetKeyboardFocus();
+#ifdef BOXEDWINE_RECORDER
+    if (Player::instance) wanted = false;
+#endif
+    if (wanted && !ownsRelativeMouseMode) {
+        if (SDL_SetRelativeMouseMode(SDL_TRUE) == 0) ownsRelativeMouseMode = true;
+    } else if (!wanted && ownsRelativeMouseMode) {
+        SDL_SetRelativeMouseMode(SDL_FALSE);
+        ownsRelativeMouseMode = false;
+    }
+#endif
+}
+
 bool KNativeInputSDL::waitForEvent(U32 ms) {
+    updateRelativeMouseMode();
     SDL_Event e = { 0 };
     if (SDL_WaitEventTimeout(&e, ms) == 1) {
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -574,6 +604,7 @@ bool KNativeInputSDL::waitForEvent(U32 ms) {
 }
 
 bool KNativeInputSDL::processEvents() {
+    updateRelativeMouseMode();
     SDL_Event e = {};
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
     U64 customStart = 0;
@@ -865,7 +896,9 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         return false;
     } else if (e->type == SDL_MOUSEMOTION) {
         BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(e->motion.x, e->motion.y);
-        if (!mouseMove(e->motion.x, e->motion.y, false)) {
+        if (ownsRelativeMouseMode) {
+            mouseMove(e->motion.xrel, e->motion.yrel, true);
+        } else if (!mouseMove(e->motion.x, e->motion.y, false)) {
             onMouseMove(e->motion.x, e->motion.y, false);
         }
     } else if (e->type == SDL_MOUSEBUTTONDOWN) {    

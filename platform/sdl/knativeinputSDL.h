@@ -67,6 +67,8 @@ public:
 #endif
 
 private:
+	void updateRelativeMouseMode();
+	bool ownsRelativeMouseMode = false;
 #ifdef __EMSCRIPTEN__
     std::atomic<U32> emscriptenMouseButtons{0};
     std::atomic<U64> emscriptenMousePosition{~(U64)0};

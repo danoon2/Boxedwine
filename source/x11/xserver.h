@@ -29,13 +29,12 @@ class XServer {
 public:	
 	static XServer* getServer(bool existingOnly = false);
 	static void shutdown();
-#ifdef __TEST
-	static void testImageIncludeInferiors();
-#endif
 
 	XServer();
 	
 	void mouseMove(S32 x, S32 y, bool relative);
+	bool wantsRelativeMouse();
+	void clampPointerToGrab(S32& x, S32& y);
 	void mouseButton(U32 button, S32 x, S32 y, bool pressed);
 	void key(U32 key, bool pressed);
 

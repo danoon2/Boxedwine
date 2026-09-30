@@ -20,6 +20,7 @@
 
 #ifdef BOXEDWINE_OPENGL_SDL
 #include "sdlgl.h"
+#include "sdlglInternal.h"
 #include <SDL_opengl.h>
 #include "../glcommon.h"
 
@@ -367,41 +368,6 @@ static bool useSharedThreadWebGLCanvas(U32 width, U32 height, const XWindowPtr& 
 
 #endif
 
-class SDLGlWindow : public std::enable_shared_from_this<SDLGlWindow> {
-public:
-    SDLGlWindow(SDL_Window* window, const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, bool ownsWindow = true, const XWindowPtr& inputWindow = nullptr) : window(window), pixelFormat(pixelFormat), major(major), minor(minor), profile(profile), flags(flags), ownsWindow(ownsWindow), inputWindow(inputWindow) {}
-    ~SDLGlWindow() {
-        destroy();
-    }
-    SDL_Window* window;
-
-    const std::shared_ptr<GLPixelFormat> pixelFormat;
-    const U32 major;
-    const U32 minor;
-    const U32 profile;
-    const U32 flags;
-    const bool ownsWindow;
-    bool visible = false;
-    XDrawablePtr drawable;
-    // Context unbinding clears drawable, but the presented window still owns
-    // input until GDI or another GL window is shown.
-    std::weak_ptr<XWindow> inputWindow;
-    U32 forceForegroundUntil = 0;
-#ifndef __EMSCRIPTEN__
-    U64 nextSwapTime = 0;
-    U64 swapLogStart = 0;
-    U32 swapLogFrames = 0;
-    bool swapIntervalWarning = false;
-    void paceSwap(S32 interval);
-#endif
-
-    void destroy();
-    void showWindow(bool show);
-    static std::shared_ptr<SDLGlWindow> createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy, XWindowPtr wnd);
-};
-
-typedef std::shared_ptr<SDLGlWindow> SDLGlWindowPtr;
-
 void SDLGlWindow::destroy() {
     if (XServer::getServer(true)) {
         XServer::getServer()->clearFakeFullScreenWindow(inputWindow.lock());
@@ -543,55 +509,6 @@ public:
 #endif
 #endif
 };
-
-typedef std::shared_ptr<SDLGlContext> SDLGlContextPtr;
-
-class KOpenGLSdl : public KOpenGL {
-public:
-    ~KOpenGLSdl() override;
-
-    U32 glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFormat>& pixelFormat, int major, int minor, int profile, int flags, U32 sharedContext) override;
-    void glDestroyContext(KThread* thread, U32 contextId) override;
-    bool glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>& d, U32 contextId) override;
-#if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
-    bool glRestoreCurrentContext(KThread* thread) override;
-#endif
-    void glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>& d) override;
-    void glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd, const CLXFBConfigPtr& cfg) override;
-    void glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) override;
-    void glResizeWindow(const std::shared_ptr<XWindow>& wnd) override;
-    bool glCreatePbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer, const CLXFBConfigPtr& cfg) override;
-    void glDestroyPbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer) override;
-    bool isActive() override;
-    bool presentedSinceLastCheck() override;
-
-    GLPixelFormatPtr getFormat(U32 pixelFormatId) override;
-    void warpMouse(int x, int y) override;
-    U32 getLastUpdateTime() override;
-    void hideCurrentWindow() override;
-
-    std::weak_ptr<SDLGlWindow> currentWindow;
-    U32 lastUpdateTime = 0;
-    bool presented = false;
-
-    static U32 nextId;
-
-    static BOXEDWINE_MUTEX contextMutex;
-    static BHashTable<U32, SDLGlContextPtr> contextsById;    
-#ifdef __EMSCRIPTEN__
-    // GDI presentation runs on the UI thread. Query this without taking the
-    // context lock, which a guest thread may hold while awaiting a UI callback.
-    static std::atomic<bool> hasContexts;
-#endif
-
-    static BOXEDWINE_MUTEX windowMutex;
-    static BHashTable<U32, SDLGlWindowPtr> sdlWindowById;
-
-    static BOXEDWINE_MUTEX pbufferMutex;
-    static BHashTable<U32, void*> pbuffersById;
-};
-
-typedef std::shared_ptr<KOpenGLSdl> KOpenGLSdlPtr;
 
 U32 KOpenGLSdl::nextId = 1;
 
@@ -1101,50 +1018,6 @@ void KOpenGLSdl::glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>
     }
 }
 
-#if defined(__TEST) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
-#include "../../test/cpu/testCPU.h"
-
-void testSDLGlWindowRemovalLockOrder() {
-    extern U32 sdlCustomEvent;
-    if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0) {
-        testFail("Could not initialize SDL callback events: %s", SDL_GetError());
-        return;
-    }
-    if (!sdlCustomEvent) {
-        sdlCustomEvent = SDL_RegisterEvents(1);
-    }
-    KOpenGLSdl gl;
-    XWindowPtr wnd = std::make_shared<XWindow>(0, nullptr, 1, 1, 32, 0, 0, 0, 0, nullptr);
-    // A borrowed window is opaque here: its destructor queues the production
-    // callback but must not call SDL_DestroyWindow on this token.
-    SDL_Window* borrowed = reinterpret_cast<SDL_Window*>(&gl);
-    KOpenGLSdl::sdlWindowById.set(wnd->id,
-        std::make_shared<SDLGlWindow>(borrowed, nullptr, 0, 0, 0, 0, false));
-    std::thread worker([&]() { gl.glDestroyWindow(nullptr, wnd); });
-    SDL_Event event = {};
-    U32 start = SDL_GetTicks();
-    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, sdlCustomEvent, sdlCustomEvent) != 1) {
-        if (SDL_GetTicks() - start > 5000) {
-            // Fail boundedly instead of hanging the unit runner on a missing callback.
-            kpanic("GL window removal did not queue its SDL callback");
-        }
-        SDL_Delay(1);
-    }
-    // Reproduce the UI side of the cycle without blocking the test: the worker
-    // is waiting for this queued callback, so its map lock must be available.
-    bool unlocked = KOpenGLSdl::windowMutex.try_lock();
-    if (unlocked) {
-        KOpenGLSdl::windowMutex.unlock();
-    }
-    static_cast<SdlCallback*>(event.user.data1)->run();
-    worker.join();
-    bool removed = KOpenGLSdl::sdlWindowById.size() == 0;
-    SDL_QuitSubSystem(SDL_INIT_EVENTS);
-    if (!unlocked || !removed) {
-        testFail("GL window removal retained the map lock while awaiting its UI callback");
-    }
-}
-#endif
 
 bool KOpenGLSdl::glCreatePbuffer(KThread* thread, const std::shared_ptr<XDrawable>& pbuffer, const CLXFBConfigPtr& cfg) {
     (void)thread;

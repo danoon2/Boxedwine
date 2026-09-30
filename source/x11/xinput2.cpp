@@ -49,8 +49,8 @@ void XIValuatorClassInfo::write(KMemory* memory, U32 address, S32 type, S32 sour
 	d.d = value;
 	memory->writeq(address + 32, d.l);
 
-	memory->writed(address + 36, resolution);
-	memory->writed(address + 40, mode);
+	memory->writed(address + 40, resolution);
+	memory->writed(address + 44, mode);
 }
 
 void XIRawEvent::serialize(U32* data) {

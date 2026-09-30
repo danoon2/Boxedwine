@@ -1158,6 +1158,7 @@
     <ClInclude Include="..\..\..\..\source\opengl\glfunctions_ext.h" />
     <ClInclude Include="..\..\..\..\source\opengl\glMarshal.h" />
     <ClInclude Include="..\..\..\..\source\opengl\sdl\sdlgl.h" />
+    <ClInclude Include="..\..\..\..\source\opengl\sdl\sdlglInternal.h" />
     <ClInclude Include="..\..\..\..\source\sdl\mainloop.h" />
     <ClInclude Include="..\..\..\..\source\sdl\startupArgs.h" />
     <ClInclude Include="..\..\..\..\source\test\cpu\testAdc.h" />
@@ -3820,6 +3821,9 @@
     <ClCompile Include="..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\startupArgs.cpp" />
     <ClCompile Include="..\..\..\..\source\test\testMain.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\opengl\testSDLGl.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\sdl\testStartupArgs.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\x11\testX11.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testAdc.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testAdd.cpp" />
     <ClCompile Include="..\..\..\..\source\test\cpu\testAnd.cpp" />

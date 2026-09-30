@@ -220,6 +220,9 @@ public:
 	std::vector<std::function<void(U32 prop)>> onPropertyChanged;
 private:
 	friend class XServer;
+#ifdef __TEST
+	friend void testX11ImageIncludeInferiors();
+#endif
 
 	XWindowPtr parent;
 	S32 left;
