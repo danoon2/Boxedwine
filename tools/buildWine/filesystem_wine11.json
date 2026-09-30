@@ -5,7 +5,7 @@
   "filesystem_version": "13",
   "changes_file": "changes_wine11.txt",
   "wine_config": "wine_builds.json",
-  "webgl_config": "webgl_filesystems_v12.json",
+  "webgl_config": "webgl_filesystems_v13.json",
   "gecko": {
     "version": "2.47.4",
     "url": "https://dl.winehq.org/wine/wine-gecko/2.47.4/wine-gecko-2.47.4-x86.msi",

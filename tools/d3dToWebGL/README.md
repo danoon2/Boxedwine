@@ -1,18 +1,21 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current source series is pinned by
-[`webgl-test-divergences-v41.json`](../wineTests/webgl-test-divergences-v41.json).
-It contains 54 production patches and one separate, complete Wine graphics-test
-adaptation. The [v41 inventory](../wineTests/webgl-patch-inventory-v41.json)
+[`webgl-test-divergences-v42.json`](../wineTests/webgl-test-divergences-v42.json).
+It contains 55 production patches and one separate, complete Wine graphics-test
+adaptation. The [v42 inventory](../wineTests/webgl-patch-inventory-v42.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 40 retain earlier build and test selections for reproducing historical
+Versions 2 through 41 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 
 The published v11 filesystem is pinned to v41. Its September 19 download
 matches the candidate used for the focused regression checks; see
 [the validation and upload record](../wineTests/graphics-review-fixes-20260919.json).
+The local version 13 filesystem selects v42, which adds the persistent-GDI-buffer
+lifetime fix to its separately built PE32 `C:/webgl/wined3d.dll`. The DLL hash
+is pinned by [`webgl_filesystems_v13.json`](../buildWine/webgl_filesystems_v13.json).
 
 Production patch replay and test-policy validation establish reproducibility,
 not graphics conformance. The standalone probes in `tools/wineTests/tests/`
@@ -153,6 +156,12 @@ The manifest appends these corrections after production patch 10, in order:
 54. `webgl-ddraw-rgb10-masks-against-wine-11.0.patch`
     fixes both DirectDraw B10G10R10A2 mappings: RGB occupy bits 20..29,
     10..19 and 0..9, while alpha occupies bits 30..31.
+55. `webgl-gdi-owndc-sysmem-against-wine-11.0.patch`
+    keeps the system-memory allocation alive while persistent GDI DCs reference
+    it. The independent `tools/buildWine/probes/ddraw-flip.c` regression faults
+    after two flips with the old PE DLL when `renderer=gdi` is selected. This
+    patch carries the main Wine runtime's lifetime fix into the WebGL build;
+    it does not change Wine test policy.
 
 ## Runtime controls
 
@@ -177,7 +186,7 @@ Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
 python3 tools/wineTests/webglTestDivergences.py \
-  --manifest tools/wineTests/webgl-test-divergences-v41.json
+  --manifest tools/wineTests/webgl-test-divergences-v42.json
 ```
 
 The validator checks patch hashes, forbids production changes to Wine test
@@ -199,7 +208,7 @@ import sys
 
 repo = Path.cwd()
 source = Path(sys.argv[1]).resolve()
-manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v41.json").read_text())
+manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v42.json").read_text())
 head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
 if head != manifest["wine_source_commit"]:
     raise SystemExit("Wine checkout is not at the pinned source commit")

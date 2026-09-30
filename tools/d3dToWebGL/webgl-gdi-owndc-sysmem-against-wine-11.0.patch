@@ -1,0 +1,14 @@
+diff --git a/dlls/wined3d/texture.c b/dlls/wined3d/texture.c
+--- a/dlls/wined3d/texture.c
++++ b/dlls/wined3d/texture.c
+@@ -203,8 +203,10 @@ static void wined3d_texture_evict_sysmem(struct wined3d_texture *texture)
+     struct wined3d_texture_sub_resource *sub_resource;
+     unsigned int i, sub_count;
+ 
++    /* Persistent GDI DCs keep pointers into the system-memory allocation. */
+     if ((texture->flags & WINED3D_TEXTURE_CONVERTED)
+             || (wined3d_settings.webgl && texture->resource.format_attrs & WINED3D_FORMAT_ATTR_COMPRESSED)
++            || (texture->resource.usage & WINED3DUSAGE_OWNDC)
+             || texture->resource.pin_sysmem
+             || texture->download_count > WINED3D_TEXTURE_DYNAMIC_MAP_THRESHOLD)
+     {

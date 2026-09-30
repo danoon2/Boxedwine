@@ -146,6 +146,11 @@
       "reason": "Normalize localhost file URLs as local paths so embedded browser pages such as the Cinebench EULA load correctly"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_wined3d_owndc_sysmem.patch",
+      "reason": "Keep persistent GDI surface memory alive across DirectDraw flips, preventing the Daytona USA startup crash"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

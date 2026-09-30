@@ -27,7 +27,7 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
 loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the existing
-v41 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+v42 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
@@ -37,6 +37,19 @@ The builder checks that its first entry matches the configured revision.
 Downloads are checked against their sizes and SHA-256 values. WebGL outputs
 are checked against the existing DLL manifest. Wine includes the localhost
 file-URI fix and the existing startup, DirectInput, setupapi, and FAudio patches.
+It also keeps the system-memory allocation for WineD3D surfaces with persistent
+GDI device contexts. Without that fix, consecutive DirectDraw flips can free a
+buffer still referenced by a bitmap, then crash on a subsequent blit (Daytona USA).
+[`probes/ddraw-flip.c`](probes/ddraw-flip.c) reproduces this independently of the
+game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
+then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
+`DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
+The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
+[`webgl_filesystems_v13.json`](webgl_filesystems_v13.json) and the
+[v42 patch manifest](../wineTests/webgl-test-divergences-v42.json). To test that
+copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
+The v13 WebGL configuration pins DLLs and source patches; the complete filesystem
+is assembled by `filesystem_wine11.json`, so it has no historical ZIP profiles.
 
 After building Wine, the assembler removes the base's old prefix overlay before
 running `wineboot`. It installs Gecko through `msiexec /qn`, then explicitly
@@ -99,7 +112,17 @@ python3 -m unittest discover -s tools/buildWine -p 'test_build*.py'
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 
-### Current review fixes (v41)
+### GDI buffer lifetime (v42, filesystem version 13)
+
+[`webgl_filesystems_v13.json`](webgl_filesystems_v13.json) adds the GDI lifetime
+fix to the v41 series and pins the rebuilt PE32 WineD3D. The other seven DLLs
+retain their v12 hashes. The full source series replays cleanly on Wine 11.0.
+The packaged DLL passes the eight-iteration, sixteen-flip regression with both
+`renderer=gdi` and `webgl=1,renderer=gdi`, loaded directly from the ZIP in fresh
+roots. This checks the affected GDI path; the browser graphics matrix has not
+been rerun for v42. Older configurations retain their historical archive pins.
+
+### September 19 review fixes (v41)
 
 [`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) selects the
 [v41 patch series](../wineTests/webgl-test-divergences-v41.json). It preserves
