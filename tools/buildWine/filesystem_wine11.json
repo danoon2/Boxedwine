@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "wine_tag": "wine-11.0",
+  "wine_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+  "filesystem_version": "13",
+  "changes_file": "changes_wine11.txt",
+  "wine_config": "wine_builds.json",
+  "webgl_config": "webgl_filesystems_v12.json",
+  "gecko": {
+    "version": "2.47.4",
+    "url": "https://dl.winehq.org/wine/wine-gecko/2.47.4/wine-gecko-2.47.4-x86.msi",
+    "filename": "wine-gecko-2.47.4-x86.msi",
+    "size": 55187968,
+    "sha256": "26cecc47706b091908f7f814bddb074c61beb8063318e9efc5a7f789857793d6"
+  },
+  "dxvk": {
+    "version": "3.1.1",
+    "url": "https://github.com/doitsujin/dxvk/releases/download/v3.1.1/dxvk-3.1.1.tar.gz",
+    "filename": "dxvk-3.1.1.tar.gz",
+    "size": 18041512,
+    "sha256": "40565b4a724aadc4433fa4e010b4b23916d9b1f1baeee64e17186db94f54e608"
+  },
+  "cnc_ddraw": {
+    "version": "6.9",
+    "repo": "https://github.com/FunkyFr3sh/cnc-ddraw.git",
+    "commit": "a902db06e9830a9feafda69da05c766a81722b9b",
+    "url": "https://github.com/FunkyFr3sh/cnc-ddraw/releases/download/v6.9.0.0/cnc-ddraw.zip",
+    "filename": "cnc-ddraw-6.9.zip",
+    "size": 2678882,
+    "sha256": "f574bc380df933fd7ec4be93ae8da02a280b9cb26d25dff433937ef04c9b81bd",
+    "patch": "../cnc-ddraw/patches/0001-load-glGetIntegerv-from-opengl32.patch"
+  },
+  "psvoodoo": {
+    "repo": "https://github.com/danoon2/psVoodoo.git",
+    "commit": "67fcb0a0eb1be9c5f77d04250ad715b2f481754b"
+  },
+  "llvm_mingw": {
+    "url": "https://github.com/mstorsjo/llvm-mingw/releases/download/20260908/llvm-mingw-20260908-ucrt-ubuntu-22.04-x86_64.tar.xz",
+    "filename": "llvm-mingw-20260908-ucrt-ubuntu-22.04-x86_64.tar.xz",
+    "size": 83887116,
+    "sha256": "2258c745e3155870c80793f3e8c80b28fbde11b9ff73c4c78783635b3440b092",
+    "directory": "llvm-mingw-20260908-ucrt-ubuntu-22.04-x86_64"
+  }
+}

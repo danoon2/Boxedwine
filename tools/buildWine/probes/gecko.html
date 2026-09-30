@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><title>Boxedwine filesystem check</title></head>
+<body><h1 id="result">GECKO_HTML_OK</h1>
+<script>
+window.onload = function () {
+    var result = document.getElementById("result");
+    var initial = result.innerText;
+    result.innerText = "GECKO_JAVASCRIPT_OK";
+    var callback = new Image();
+    callback.src = "__CALLBACK_URL__?html=" + encodeURIComponent(initial) +
+        "&js=" + encodeURIComponent(result.innerText) +
+        "&width=" + result.offsetWidth + "&ua=" + encodeURIComponent(navigator.userAgent);
+    window.boxedwineCallback = callback;
+};
+</script></body></html>

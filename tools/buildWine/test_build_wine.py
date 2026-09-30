@@ -167,12 +167,14 @@ class ConfigLogAuditTests(unittest.TestCase):
             [check.checking for check in build_wine.required_config_checks(config)],
         )
 
-    def test_default_config_disables_enterprise_and_translation_extras_without_requiring_them(self):
+    def test_default_config_disables_unsupported_backends_and_enterprise_extras(self):
         config = build_wine.load_config(SCRIPT_DIR / "wine_builds.json")
         configure = build_wine.configure_command(config)
         check_names = [check.checking for check in build_wine.required_config_checks(config)]
 
-        self.assertIn("--without-capi", configure)
+        for backend in ("capi", "opencl", "pcsclite", "usb", "udev", "sane", "dbus"):
+            self.assertIn("--without-" + backend, configure)
+        self.assertNotIn("checking for clGetPlatformInfo in -lOpenCL", check_names)
         self.assertIn("--without-krb5", configure)
         self.assertIn("--without-gssapi", configure)
         self.assertIn("--without-gettextpo", configure)

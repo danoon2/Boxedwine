@@ -4,6 +4,90 @@
 
 The current supported host environment is Debian or WSL running Debian/Ubuntu-style packages.
 
+## Complete Wine 11 filesystem from WSL
+
+`build_filesystem.py` builds Wine, initializes a new prefix in Boxedwine, installs
+Wine Gecko, and adds the graphics components. It does not read an existing full
+Wine filesystem to construct the result. Its inputs are the pinned TinyCore
+runtime base, upstream sources/releases, and the patches in this repository.
+The TinyCore base supplies the Linux runtime and Boxedwine's Linux graphics
+libraries; this command rebuilds Wine and the addon DLLs, not the TinyCore OS.
+
+Use Ubuntu/Debian WSL with the dependencies below and a working WSLg display.
+Keep the build directory on WSL's Linux filesystem, even if this checkout is
+under `/mnt/c`. The complete build additionally uses Python 3.12 or later
+(safe tar extraction), `i686-w64-mingw32-gcc`, and GNU common license texts.
+It downloads a pinned Linux LLVM-MinGW toolchain for CNC DDraw and psVoodoo.
+
+```bash
+python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
+  --work-dir "$HOME/boxedwine-wine11-build" --jobs 12
+```
+
+The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
+Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
+loader fix, psVoodoo `67fcb0a`, the existing v41 WebGL series, and LLVM-MinGW.
+The filesystem revision is 13. Its `changes.txt` comes from
+[`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
+The builder checks that its first entry matches the configured revision.
+Downloads are checked against their sizes and SHA-256 values. WebGL outputs
+are checked against the existing DLL manifest. Wine includes the localhost
+file-URI fix and the existing startup, DirectInput, setupapi, and FAudio patches.
+
+After building Wine, the assembler removes the base's old prefix overlay before
+running `wineboot`. It installs Gecko through `msiexec /qn`, then explicitly
+registers `mshtml.dll`: disabling MSHTML during initial Wine setup suppresses
+its COM registration as well as its interactive download. Guest exit markers
+must report success; the mere existence of registry files is insufficient.
+After installation, the builder removes the cached Gecko MSI from
+`C:/windows/Installer`, matching its SHA-256 rather than its generated filename.
+The installed Gecko files and registration remain; installer repair/uninstall
+may require the original MSI. The downloaded MSI stays in the build cache.
+It then adds `C:/dxvk`, `C:/ddraw`, `C:/webgl`, the Glide wrapper, and notices.
+
+Boxedwine currently needs SDL video initialized when Wine probes Vulkan during
+setup, so this step uses WSLg rather than `-novideo`. No EULA or browser download
+dialog needs user input. An existing Linux runner can be supplied with
+`--boxedwine /path/to/boxedwine`; otherwise the current repository's Linux
+release runner is built. `--wine-repository /path/to/local/wine-git` uses a
+local source cache, while retaining the pinned source revision.
+
+The result is `WORK_DIR/TinyCore15Wine11.0.zip`. The work directory also contains
+`filesystem-build-result.json`, `filesystem-inventory.json`, addon hashes,
+compiler/setup logs, and `filesystem-smoke.json`. A fresh-root smoke test checks
+all eight local/network URI cases and loads `file://localhost/C:/gecko-probe.html`
+in Internet Explorer. JavaScript reports parsed HTML, changed DOM text, and a
+nonzero layout width to a temporary loopback-only HTTP listener. The builder
+closes its own test browser after receiving the result. No public website is
+needed for this test.
+
+For file-by-file comparison only, add:
+
+```bash
+  --compare-to /mnt/c/path/to/old/TinyCore15Wine11.0.zip
+```
+
+The old ZIP is opened only after assembly to write `filesystem-comparison.json`.
+The report separates missing, added, changed, and identical files. Recompiled
+binaries and fresh registry data can differ even when the file set matches.
+Modules for disabled hardware backends are intentional omissions from older
+filesystems; see the backend policy below.
+The old ZIP is never modified. The new archive is not uploaded or installed
+into any existing container automatically.
+
+Build phases can be retried independently with `--phase wine`, `addons`,
+`assemble`, or `smoke`. `assemble` also runs the smoke test. These operate on
+a dedicated build directory; source/build outputs are disposable. Previous
+prefixes and assembly overlays are renamed within that directory on retries,
+so a partial prefix cannot leak into a new candidate. `build_wine.py` remains
+available for a Wine-only build without the complete addon assembly.
+
+Run the packaging tests with:
+
+```bash
+python3 -m unittest discover -s tools/buildWine -p 'test_build*.py'
+```
+
 ## Wine 11 DirectX-to-WebGL Filesystems
 
 ### Current review fixes (v41)
@@ -252,7 +336,9 @@ The final zip includes:
 /build.txt
 ```
 
-`changes.txt` and `version.txt` come from the base filesystem and are preserved.
+For a Wine-only build, `changes.txt` and `version.txt` come from the base
+filesystem and are preserved. The complete-filesystem builder replaces them
+with the revision and changelog declared in `filesystem_wine11.json`.
 
 ## Base Filesystem Handling
 
@@ -262,8 +348,8 @@ The final zip includes:
 "base_filesystem": {
   "url": "https://boxedwine.org/v2/11/TinyCore15WineBase.zip",
   "filename": "TinyCore15WineBase.zip",
-  "size": 69911741,
-  "sha256": "93af8a5be6ede0ac7922c193ca4e9f34a52217fefd2b4b12cc9f0449ed3f57ef"
+  "size": 70212286,
+  "sha256": "84b623a3d4fb303728915e871ed2af95ce2ba10203c68b2dd3e596534e61108a"
 }
 ```
 
@@ -371,6 +457,39 @@ sudo apt install \
 ```
 
 The non-`:i386` SDL/OpenSSL/minizip/curl/zlib/OpenGL packages are for building the native Linux Boxedwine binary that runs `wineboot`. The `:i386` packages are for Wine itself.
+
+The complete-filesystem builder also needs `gcc-mingw-w64-i686` for the WebGL
+build and the URI smoke-test executable.
+
+### Backend policy
+
+The default configure options target Boxedwine's emulated devices, not the
+hardware visible on the Linux build host. Explicitly disabling these backends
+also prevents installed development packages from accidentally enabling them:
+
+| Option | Reason |
+| --- | --- |
+| `--without-capi` | No ISDN/CAPI device support. |
+| `--without-gphoto` | No host digital-camera access. |
+| `--without-sane` | No scanner backend. |
+| `--without-v4l2` | No video-capture devices. |
+| `--without-usb` | No USB device passthrough. Synthetic USB mouse sysfs entries are not libusb support. |
+| `--without-udev` | No host udev device discovery or raw HID passthrough. |
+| `--without-dbus` | No host D-Bus/BlueZ service bridge, including Wine's Bluetooth backend. |
+| `--without-pcsclite` | No PC/SC daemon or smart-card reader passthrough. |
+| `--without-pcap` | No Linux `AF_PACKET` socket support for live packet capture. |
+| `--without-opencl` | The supplied runtime has no OpenCL implementation and Boxedwine has no OpenCL host bridge. A separately packaged CPU implementation would need its own validation. |
+
+SDL controller support remains enabled, along with OSS sound, X11, OpenGL,
+Vulkan, GStreamer, and TLS. Disabling the hardware backends does not remove
+general Windows input APIs or file-based image/media decoding. Existing CUPS,
+ALSA, PulseAudio, and Wayland exclusions remain unchanged.
+
+This policy is based on Wine 11's `configure.ac` and backend sources, Boxedwine's
+device registration in `source/sdl/startupArgs.cpp`, the synthetic USB tree in
+`source/kernel/sys/sysmouse.cpp`, and socket dispatch in
+`source/kernel/ksocket.cpp`. `AF_UNIX` sockets are implemented within the guest;
+they do not provide connections to host device-service daemons.
 
 If you remove `--without-mingw` and want MinGW PE Wine builds, also install:
 

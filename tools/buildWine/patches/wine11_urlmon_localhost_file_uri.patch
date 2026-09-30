@@ -1,0 +1,28 @@
+--- a/dlls/urlmon/uri.c
++++ b/dlls/urlmon/uri.c
+@@ -2730,7 +2730,7 @@
+         } else {
+             if(!computeOnly)
+                 uri->path_start = uri->canon_len;
+-            uri->path_len = canonicalize_path_hierarchical(data->path, data->path_len, data->scheme_type, data->host_len != 0,
++            uri->path_len = canonicalize_path_hierarchical(data->path, data->path_len, data->scheme_type, uri->host_len != 0,
+                     flags, data->has_implicit_scheme, computeOnly ? NULL : uri->canon_uri+uri->canon_len);
+             uri->canon_len += uri->path_len;
+             if(!computeOnly && !uri->path_len)
+--- a/dlls/urlmon/tests/uri.c
++++ b/dlls/urlmon/tests/uri.c
+@@ -8081,6 +8081,14 @@
+     {"testing#frag",Uri_CREATE_ALLOW_RELATIVE,PARSE_DOCUMENT,0,"",S_OK,FALSE},
+ 
+     /* PARSE_PATH_FROM_URL tests. */
++    {"file://localhost/c:/test.mp3",0,PARSE_PATH_FROM_URL,0,"c:\\test.mp3",S_OK,FALSE},
++    {"file://localhost/c:/test.mp3",Uri_CREATE_FILE_USE_DOS_PATH,PARSE_PATH_FROM_URL,0,"c:\\test.mp3",S_OK,FALSE},
++    {"file://LOCALHOST/C:/test.mp3",Uri_CREATE_FILE_USE_DOS_PATH,PARSE_PATH_FROM_URL,0,"C:\\test.mp3",S_OK,FALSE},
++    {"file://localhost/C:/test dir/test.mp3",Uri_CREATE_ALLOW_RELATIVE|Uri_CREATE_ALLOW_IMPLICIT_FILE_SCHEME|Uri_CREATE_FILE_USE_DOS_PATH,
++        PARSE_PATH_FROM_URL,0,"C:\\test dir\\test.mp3",S_OK,FALSE},
++    {"file://localhost/C:/test%20dir/test.mp3",Uri_CREATE_FILE_USE_DOS_PATH,PARSE_PATH_FROM_URL,0,"C:\\test dir\\test.mp3",S_OK,FALSE},
++    {"file:///c:/test.mp3",Uri_CREATE_FILE_USE_DOS_PATH,PARSE_PATH_FROM_URL,0,"c:\\test.mp3",S_OK,FALSE},
++    {"file://server/share/test.mp3",Uri_CREATE_FILE_USE_DOS_PATH,PARSE_PATH_FROM_URL,0,"\\\\server\\share\\test.mp3",S_OK,FALSE},
+     {"file:///c:/test.mp3",0,PARSE_PATH_FROM_URL,0,"c:\\test.mp3",S_OK,FALSE},
+     {"file:///c:/t<|>est.mp3",0,PARSE_PATH_FROM_URL,0,"c:\\t<|>est.mp3",S_OK,FALSE},
+     {"file:///c:/te%XX t/",0,PARSE_PATH_FROM_URL,0,"c:\\te%XX t\\",S_OK,FALSE},
