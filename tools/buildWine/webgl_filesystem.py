@@ -483,20 +483,24 @@ def validate_archive(
             registry = _require_zip_entry(archive, infos, registry_name).decode(
                 "utf-8", errors="replace"
             )
-            direct_draw = profile.get("direct_draw_renderer")
-            wine_renderer = profile.get("wine_renderer")
-            if f'"DirectDrawRenderer"="{direct_draw}"' not in registry:
-                raise ValidationError(
-                    f"{registry_name} does not select DirectDrawRenderer={direct_draw}"
-                )
-            if f'"renderer"="{wine_renderer}"' not in registry:
-                raise ValidationError(
-                    f"{registry_name} does not select Wine renderer={wine_renderer}"
-                )
-            registry_report = {
-                "DirectDrawRenderer": direct_draw,
-                "renderer": wine_renderer,
-            }
+            registry_report = {}
+            for profile_key, registry_key in (
+                ("direct_draw_renderer", "DirectDrawRenderer"),
+                ("wine_renderer", "renderer"),
+            ):
+                if profile_key not in profile:
+                    raise ValidationError(f"profile {profile_name} must declare {profile_key}")
+                expected = profile[profile_key]
+                # Fresh Wine prefixes leave these settings unset. Explicit null
+                # pins that absence; it does not disable registry validation.
+                if expected is None:
+                    if re.search(rf'^\s*"{re.escape(registry_key)}"\s*=', registry, re.MULTILINE):
+                        raise ValidationError(f"{registry_name} must leave {registry_key} unset")
+                elif f'"{registry_key}"="{expected}"' not in registry:
+                    raise ValidationError(
+                        f"{registry_name} does not select {registry_key}={expected}"
+                    )
+                registry_report[registry_key] = expected
     finally:
         archive.close()
 

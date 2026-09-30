@@ -89,17 +89,19 @@ def write_root(
     *,
     renderer: str | None,
     include_dll: bool = True,
+    registry: str | None = None,
 ) -> None:
-    registry = (
-        "[Software\\\\Wine\\\\Direct3D]\n"
-        f'"DirectDrawRenderer"="{renderer}"\n'
-        '"renderer"="gl"\n'
-    )
+    if registry is None and renderer is not None:
+        registry = (
+            "[Software\\\\Wine\\\\Direct3D]\n"
+            f'"DirectDrawRenderer"="{renderer}"\n'
+            '"renderer"="gl"\n'
+        )
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("lib/libGL.so.1", b"GL")
         archive.writestr("lib/libGL.so.link", b"libGL.so.1")
         archive.writestr("etc/ld.so.cache", b"cache")
-        if renderer is not None:
+        if registry is not None:
             archive.writestr("home/username/.wine/user.reg", registry)
         if include_dll:
             archive.writestr(
@@ -232,6 +234,48 @@ class ZipValidationTests(unittest.TestCase):
         self.assertEqual(report["wine_version"], "11.0")
         self.assertEqual(report["build_date"], "2026-07-30")
         self.assertEqual(report["dlls"]["d3d9.dll"]["machine"], "PE32/i386")
+
+    def test_validates_fresh_prefix_with_unset_renderers(self):
+        dll_data = make_pe32(["wined3d.dll"])
+        config = minimal_config(dll_data)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "fresh.zip"
+            write_root(root, config, dll_data, renderer=None, registry="WINE REGISTRY Version 2\n")
+            set_profile(config, "fresh", root, direct_draw_renderer=None, wine_renderer=None)
+
+            report = webgl_filesystem.validate_archive(root, config, "fresh")
+
+        self.assertEqual(report["registry"], {"DirectDrawRenderer": None, "renderer": None})
+        self.assertEqual(report["result"], "ok")
+
+    def test_unset_renderer_profiles_reject_registry_overrides(self):
+        dll_data = make_pe32(["wined3d.dll"])
+        config = minimal_config(dll_data)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "fresh.zip"
+            for key in ("DirectDrawRenderer", "renderer"):
+                with self.subTest(key=key):
+                    write_root(root, config, dll_data, renderer=None, registry=f'"{key}"="gdi"\n')
+                    set_profile(config, "fresh", root, direct_draw_renderer=None, wine_renderer=None)
+                    with self.assertRaisesRegex(webgl_filesystem.ValidationError, f"leave {key} unset"):
+                        webgl_filesystem.validate_archive(root, config, "fresh")
+
+    def test_explicit_renderer_profiles_reject_unset_or_different_values(self):
+        dll_data = make_pe32(["wined3d.dll"])
+        config = minimal_config(dll_data)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "normal.zip"
+            for registry in (
+                '"renderer"="gl"\n',
+                '"DirectDrawRenderer"="gdi"\n"renderer"="gl"\n',
+                '"DirectDrawRenderer"="opengl"\n',
+                '"DirectDrawRenderer"="opengl"\n"renderer"="vulkan"\n',
+            ):
+                with self.subTest(registry=registry):
+                    write_root(root, config, dll_data, renderer=None, registry=registry)
+                    set_profile(config, "normal", root, direct_draw_renderer="opengl", wine_renderer="gl")
+                    with self.assertRaisesRegex(webgl_filesystem.ValidationError, "does not select"):
+                        webgl_filesystem.validate_archive(root, config, "normal")
 
     def test_rejects_duplicate_entries(self):
         with tempfile.TemporaryDirectory() as temporary:

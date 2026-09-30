@@ -48,8 +48,11 @@ The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned b
 [`webgl_filesystems_v13.json`](webgl_filesystems_v13.json) and the
 [v42 patch manifest](../wineTests/webgl-test-divergences-v42.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v13 WebGL configuration pins DLLs and source patches; the complete filesystem
-is assembled by `filesystem_wine11.json`, so it has no historical ZIP profiles.
+The v13 WebGL configuration pins DLLs, source patches, and the published filesystem
+ZIP in its `full-v13` profile for Jenkins demo validation. The complete filesystem
+is assembled by `filesystem_wine11.json`.
+The v13 prefix leaves the renderer registry values unset. The profile records
+these as `null`, which requires their absence during validation.
 
 After building Wine, the assembler removes the base's old prefix overlay before
 running `wineboot`. It installs Gecko through `msiexec /qn`, then explicitly

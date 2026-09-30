@@ -102,5 +102,14 @@
     "libGLESv1_CM.so.1": "/lib/libGLESv1_CM.so.1",
     "libGLESv2.so.2": "/lib/libGLESv2.so.2"
   },
-  "profiles": {}
+  "profiles": {
+    "full-v13": {
+      "filename": "TinyCore15Wine11.0.zip",
+      "filesystem_version": "13",
+      "size": 223920403,
+      "sha256": "5e0ae4efd4b48ea6293ad2c897004c7a5616e64e86a2236aca814329a06dbf29",
+      "direct_draw_renderer": null,
+      "wine_renderer": null
+    }
+  }
 }
