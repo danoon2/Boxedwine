@@ -44,6 +44,11 @@ After installation, the builder removes the cached Gecko MSI from
 The installed Gecko files and registration remain; installer repair/uninstall
 may require the original MSI. The downloaded MSI stays in the build cache.
 It then adds `C:/dxvk`, `C:/ddraw`, `C:/webgl`, the Glide wrapper, and notices.
+Packaging preserves empty directories created by Wine, including the user and
+Windows temporary folders. Installers can fail to create their CAB files when
+those folders are omitted. Archive comparisons include missing/added directories
+as well as files, and the smoke test checks that the packaged user Temp folder
+exists and accepts a temporary file.
 
 Boxedwine currently needs SDL video initialized when Wine probes Vulkan during
 setup, so this step uses WSLg rather than `-novideo`. No EULA or browser download

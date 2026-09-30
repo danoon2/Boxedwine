@@ -240,24 +240,46 @@ def zip_inventory(path):
 
 def compare_archives(reference, candidate):
     old, new = zip_inventory(reference), zip_inventory(candidate)
+    old_directories, new_directories = zip_directories(reference), zip_directories(candidate)
     return {'reference': str(reference), 'candidate': str(candidate),
             'missing': sorted(old.keys() - new.keys()), 'added': sorted(new.keys() - old.keys()),
+            'missing_directories': sorted(old_directories - new_directories),
+            'added_directories': sorted(new_directories - old_directories),
             'changed': sorted(n for n in old.keys() & new.keys() if old[n] != new[n]),
             'identical_count': sum(old[n] == new[n] for n in old.keys() & new.keys())}
 
 
+def zip_directories(path):
+    directories = set()
+    with zipfile.ZipFile(path) as archive:
+        for entry in archive.infolist():
+            parts = checked_name(entry.filename).rstrip('/').split('/')
+            # Parent directories exist implicitly even without their own ZIP entry.
+            for end in range(1, len(parts) + int(entry.is_dir())):
+                directories.add('/'.join(parts[:end]) + '/')
+    return directories
+
+
 def combine_zip(source, overlay, destination, remove_prefix=None):
-    files = {p.relative_to(overlay).as_posix(): p for p in overlay.rglob('*') if p.is_file()}
+    # Wine's initialized prefix contains required empty directories, notably the
+    # TEMP/TMP destination. Files alone cannot reconstruct those directories.
+    entries = {p.relative_to(overlay).as_posix() + ('/' if p.is_dir() else ''): p
+               for p in overlay.rglob('*') if p.is_file() or p.is_dir()}
     with tempfile.NamedTemporaryFile(dir=destination.parent, prefix=destination.name + '.', delete=False) as temp:
         temporary = Path(temp.name)
     try:
         with zipfile.ZipFile(source) as original, zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_DEFLATED) as output:
             for entry in original.infolist():
                 checked_name(entry.filename)
-                if entry.filename in files or (remove_prefix and entry.filename.startswith(remove_prefix)):
+                if entry.is_dir() and entry.filename in entries and entries[entry.filename].is_dir():
+                    # Updating a child file need not change its existing parents.
+                    output.writestr(entry, b'')
+                    del entries[entry.filename]
+                    continue
+                if entry.filename in entries or (remove_prefix and entry.filename.startswith(remove_prefix)):
                     continue
                 output.writestr(entry, original.read(entry))
-            for name, path in sorted(files.items()):
+            for name, path in sorted(entries.items()):
                 output.write(path, name)
         temporary.replace(destination)
     finally:
@@ -424,6 +446,9 @@ def smoke_test(work, boxedwine):
     script = root / 'home/username/smoke.sh'
     script.write_text(
         '#!/bin/sh\nexport WINEDLLOVERRIDES="mscoree="\n'
+        'tempdir=/home/username/.wine/drive_c/users/username/AppData/Local/Temp\n'
+        'test -d "$tempdir" && touch "$tempdir/boxedwine-temp-smoke" && rm "$tempdir/boxedwine-temp-smoke"\n'
+        'echo "$?" > /home/username/temp-directory.exit\n'
         "/opt/wine/bin/wine 'C:\\uri-probe.exe' > /home/username/uri-smoke.txt 2>&1\n"
         'echo "$?" > /home/username/uri.exit\n'
         "/opt/wine/bin/wine iexplore.exe 'file://localhost/C:/gecko-probe.html' > /home/username/iexplore.txt 2>&1\n")
@@ -451,16 +476,16 @@ def smoke_test(work, boxedwine):
         server.server_close()
         thread.join()
     report = {'root': str(root), 'browser': browser_result, 'callback_received': received.is_set()}
-    for name in ('uri.exit', 'uri-smoke.txt'):
+    for name in ('uri.exit', 'uri-smoke.txt', 'temp-directory.exit'):
         path = root / 'home/username' / name
         report[name] = path.read_text(errors='replace') if path.exists() else None
     write_json(work / 'filesystem-smoke.json', report)
-    if (report['uri.exit'] != '0\n' or not received.is_set()
+    if (report['uri.exit'] != '0\n' or report['temp-directory.exit'] != '0\n' or not received.is_set()
             or '8 tests, 0 failures' not in (report['uri-smoke.txt'] or '')
             or browser_result.get('html') != 'GECKO_HTML_OK' or browser_result.get('js') != 'GECKO_JAVASCRIPT_OK'
             or not browser_result.get('width', '').isdigit() or int(browser_result['width']) <= 0):
         raise build_wine.BuildError(f'Packaged filesystem smoke test failed; see {work / "filesystem-smoke.json"}')
-    print('Packaged URI conversion, Gecko HTML, JavaScript, and layout checks passed.', flush=True)
+    print('Packaged Temp directory, URI conversion, Gecko HTML, JavaScript, and layout checks passed.', flush=True)
     return report
 
 

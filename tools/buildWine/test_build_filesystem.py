@@ -23,9 +23,50 @@ class FilesystemAssemblyTests(unittest.TestCase):
                 archive.writestr(fs.PREFIX + 'old-profile-data', b'must not survive')
             fs.combine_zip(source, overlay, destination, remove_prefix=fs.PREFIX)
             with zipfile.ZipFile(destination) as archive:
-                self.assertEqual(set(archive.namelist()), {'lib/libc.so.6', fs.PREFIX + 'system.reg'})
+                self.assertEqual({name for name in archive.namelist() if not name.endswith('/')},
+                                 {'lib/libc.so.6', fs.PREFIX + 'system.reg'})
                 self.assertEqual(archive.read('lib/libc.so.6'), b'runtime')
                 self.assertEqual(archive.read(fs.PREFIX + 'system.reg'), b'fresh registry')
+
+    def test_prefix_packaging_preserves_empty_temp_and_shell_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, destination = root / 'source.zip', root / 'result.zip'
+            overlay = root / 'overlay'
+            required = [fs.DRIVE + 'users/username/AppData/Local/Temp/',
+                        fs.DRIVE + 'users/username/Desktop/', fs.DRIVE + 'windows/temp/']
+            for name in required:
+                (overlay / name).mkdir(parents=True)
+            (overlay / fs.PREFIX / 'system.reg').write_text('initialized prefix')
+            with zipfile.ZipFile(source, 'w') as archive:
+                archive.writestr('lib/libc.so.6', b'runtime')
+                archive.writestr(fs.PREFIX + 'obsolete-empty/', b'')
+                archive.writestr(required[0], b'')
+            fs.combine_zip(source, overlay, destination, remove_prefix=fs.PREFIX)
+            with zipfile.ZipFile(destination) as archive:
+                self.assertEqual(len(archive.namelist()), len(set(archive.namelist())))
+                for name in required:
+                    self.assertTrue(archive.getinfo(name).is_dir())
+                self.assertNotIn(fs.PREFIX + 'obsolete-empty/', archive.namelist())
+                archive.extractall(root / 'unpacked')
+            for name in required:
+                self.assertTrue((root / 'unpacked' / name).is_dir())
+
+    def test_overlay_preserves_metadata_of_existing_parent_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            overlay = root / 'overlay'
+            (overlay / 'windows').mkdir(parents=True)
+            (overlay / 'windows/glide2x.dll').write_bytes(b'patched')
+            entry = zipfile.ZipInfo('windows/', date_time=(2020, 1, 2, 3, 4, 6))
+            entry.external_attr = 0o40755 << 16
+            with zipfile.ZipFile(root / 'original.zip', 'w') as archive:
+                archive.writestr(entry, b'')
+            fs.combine_zip(root / 'original.zip', overlay, root / 'new.zip')
+            with zipfile.ZipFile(root / 'new.zip') as archive:
+                self.assertEqual(archive.getinfo('windows/').date_time, entry.date_time)
+                self.assertEqual(archive.getinfo('windows/').external_attr, entry.external_attr)
+                self.assertEqual(archive.read('windows/glide2x.dll'), b'patched')
 
     def test_corrupt_download_is_rejected_without_replacing_cache(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -62,6 +103,20 @@ class FilesystemAssemblyTests(unittest.TestCase):
             self.assertEqual(report['added'], ['added'])
             self.assertEqual(report['changed'], ['changed'])
             self.assertEqual(report['identical_count'], 1)
+
+    def test_comparison_detects_lost_empty_directories_and_infers_parents(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with zipfile.ZipFile(root / 'old.zip', 'w') as archive:
+                archive.writestr('windows/', b'')
+                archive.writestr('windows/temp/', b'')
+                archive.writestr('windows/system32/example.dll', b'dll')
+            with zipfile.ZipFile(root / 'new.zip', 'w') as archive:
+                archive.writestr('windows/system32/example.dll', b'dll')
+            report = fs.compare_archives(root / 'old.zip', root / 'new.zip')
+            self.assertEqual(report['missing'], [])
+            self.assertEqual(report['missing_directories'], ['windows/temp/'])
+            self.assertEqual(report['added_directories'], [])
 
     def test_failed_guest_wineboot_is_not_accepted_just_because_registry_exists(self):
         with tempfile.TemporaryDirectory() as directory:
