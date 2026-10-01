@@ -11,7 +11,7 @@ Run this command from the repository root. The Java installation must include
 Omit `--test` to only build the JAR. The runner uses Java 8 APIs and bytecode.
 
 Jenkins builds and tests this JAR from the current checkout, then distributes it
-to the native automation workers over the JAR bundled in `automation31.zip`.
+to the native automation workers over the JAR bundled in `automation32.zip`.
 
 Each child process has a 30-minute timeout, configurable with
 `-Dboxedwine.runner.timeout.seconds=SECONDS` before `-jar`. Failed scripts get
