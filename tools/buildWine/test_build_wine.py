@@ -291,6 +291,11 @@ class EnvironmentCheckTests(unittest.TestCase):
 
         checker.check()
 
+    def test_web_build_does_not_require_a_vulkan_linker_probe(self):
+        probe = mock.Mock(side_effect=AssertionError('Vulkan must not be probed'))
+        self._checker(vulkan_required=False, vulkan_m32_works=probe).check()
+        probe.assert_not_called()
+
     def test_non_debian_environment_reports_package_scope(self):
         checker = self._checker(
             os_release={"ID": "fedora", "ID_LIKE": ""},
@@ -708,6 +713,25 @@ class StagingTests(unittest.TestCase):
             self.assertFalse((wine_dir / "winemenubuilder.exe.so").exists())
             self.assertFalse((wine_dir / "libwine.so.1").exists())
             self.assertEqual((wine_dir / "libwine.so.1.link").read_text(encoding="utf-8"), "libwine.so.1.0")
+
+    def test_runtime_pruning_removes_sdk_but_keeps_loadable_libraries(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            stage = Path(temp_dir)
+            files = {'opt/wine/include/wine/windows/windows.h': 'header',
+                     'opt/wine/lib/wine/i386-unix/libkernel32.a': 'import library',
+                     'opt/wine/lib/wine/i386-unix/wine': 'loader',
+                     'opt/wine/lib/wine/i386-unix/kernel32.dll.so': 'runtime',
+                     'opt/wine/lib/wine/i386-windows/kernel32.dll': 'PE runtime'}
+            for name, data in files.items():
+                path = stage / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(data)
+            build_wine.prune_packaged_wine(stage)
+            self.assertFalse((stage / 'opt/wine/include').exists())
+            self.assertFalse((stage / 'opt/wine/lib/wine/i386-unix/libkernel32.a').exists())
+            for name in files:
+                if not build_wine.is_wine_development_file(name):
+                    self.assertEqual((stage / name).read_text(), files[name])
 
     def test_prune_modern_wine_11_layout_without_libwine(self):
         with tempfile.TemporaryDirectory() as temp_dir:

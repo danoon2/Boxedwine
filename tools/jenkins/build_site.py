@@ -23,7 +23,8 @@ import webgl_build_identity
 
 
 DEFAULT_PUBLIC_URL = "https://boxedwine.org/builds/"
-DEFAULT_DEMO_ROOT_ZIP = "TinyCore15Wine11.0.zip"
+DEFAULT_DEMO_ROOT_ZIP = "TinyCore15Wine11.0-web.zip"
+FULL_DEMO_ROOT_ZIP = "TinyCore15Wine11.0.zip"
 LEGACY_DEMO_ROOT_ZIP = "boxedwine.zip"
 PREVIOUS_DEMO_ROOT_ZIP = "boxedwine.3.zip"
 PREVIOUS_GDI_ROOT_ZIP = "boxedwine.gdi.3.zip"
@@ -1098,12 +1099,15 @@ def discover_demos(demo_source):
     default_root = (
         DEFAULT_DEMO_ROOT_ZIP
         if DEFAULT_DEMO_ROOT_ZIP in available_zip_names
+        else FULL_DEMO_ROOT_ZIP
+        if FULL_DEMO_ROOT_ZIP in available_zip_names
         else PREVIOUS_DEMO_ROOT_ZIP
         if PREVIOUS_DEMO_ROOT_ZIP in available_zip_names
         else LEGACY_DEMO_ROOT_ZIP
     )
     root_zip_names = {
         DEFAULT_DEMO_ROOT_ZIP.lower(),
+        FULL_DEMO_ROOT_ZIP.lower(),
         LEGACY_DEMO_ROOT_ZIP.lower(),
     }
     for manifest_entry in manifest.values():
@@ -1124,7 +1128,8 @@ def discover_demos(demo_source):
             manifest_entry.get("root", manifest_entry.get("rootZip")), default_root
         )
         renderer = manifest_entry.get("directDrawRenderer")
-        if default_root == DEFAULT_DEMO_ROOT_ZIP and root.lower() in {
+        if default_root in {DEFAULT_DEMO_ROOT_ZIP, FULL_DEMO_ROOT_ZIP} and root.lower() in {
+            FULL_DEMO_ROOT_ZIP.lower(),
             LEGACY_DEMO_ROOT_ZIP.lower(), PREVIOUS_DEMO_ROOT_ZIP.lower(),
             PREVIOUS_GDI_ROOT_ZIP.lower(), "boxedwine.2.zip", "boxedwine.gdi.2.zip",
         }:

@@ -1,0 +1,26 @@
+v13 Sep 30, 2026 This is the web version of the full Wine 11.0 file system.
+
+Removed for the web version, compared with the full v13 file system:
+
+Removed component                                      Saved (MiB)
+-----------------------------------------------------  -----------
+Gecko                                                        50.20
+Samba tools and libraries                                    28.46
+DXVK                                                          8.97
+Linux development tools and unused libraries                  6.32
+OpenSSL and Kerberos                                          4.89
+Git, SSH, curl and wget                                       3.15
+GNU coreutils                                                 2.34
+7-Zip                                                         1.63
+Bundled WebGL test executable                                  0.81
+Camera, EXIF and USB libraries                                 0.76
+Wine development tools                                        0.65
+Printing, network discovery and D-Bus                          0.61
+Vulkan loader and Wine Vulkan support                         0.23
+Winetricks and package catalog metadata                        0.23
+-----------------------------------------------------  -----------
+Total removed compressed file data                          109.25
+
+Savings are approximate compressed MiB (1 MiB = 1,048,576 bytes).
+ZIP metadata, recompression and prefix regeneration are not included.
+DirectX 10/11 and media libraries are retained.

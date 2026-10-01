@@ -352,10 +352,9 @@ def required_commands(mingw_required: bool) -> Tuple[str, ...]:
     return BASE_REQUIRED_COMMANDS
 
 
-def apt_packages(mingw_required: bool) -> Tuple[str, ...]:
-    if mingw_required:
-        return APT_PACKAGES
-    return BASE_APT_PACKAGES
+def apt_packages(mingw_required: bool, vulkan_required: bool = True) -> Tuple[str, ...]:
+    packages = APT_PACKAGES if mingw_required else BASE_APT_PACKAGES
+    return tuple(p for p in packages if vulkan_required or p != 'libvulkan-dev:i386')
 
 
 def read_os_release(path: Path = Path("/etc/os-release")) -> Dict[str, str]:
@@ -502,6 +501,7 @@ class EnvironmentChecker:
         egl_m32_works: Optional[Callable[[], bool]] = None,
         vulkan_m32_works: Optional[Callable[[], bool]] = None,
         mingw_required: bool = True,
+        vulkan_required: bool = True,
     ) -> None:
         self.os_release = dict(os_release) if os_release is not None else read_os_release()
         self.is_linux = platform.system() == "Linux" if is_linux is None else is_linux
@@ -516,6 +516,7 @@ class EnvironmentChecker:
         self.egl_m32_works = egl_m32_works or default_egl_m32_works
         self.vulkan_m32_works = vulkan_m32_works or default_vulkan_m32_works
         self.mingw_required = mingw_required
+        self.vulkan_required = vulkan_required
 
     def check(self) -> None:
         problems: List[str] = []
@@ -558,11 +559,11 @@ class EnvironmentChecker:
         if gcc_m32_ok and not self.egl_m32_works():
             problems.append("gcc -m32 could not compile and link a tiny EGL program.")
 
-        if gcc_m32_ok and not self.vulkan_m32_works():
+        if self.vulkan_required and gcc_m32_ok and not self.vulkan_m32_works():
             problems.append("gcc -m32 could not compile and link a tiny Vulkan program.")
 
         if problems:
-            packages = " ".join(apt_packages(self.mingw_required))
+            packages = " ".join(apt_packages(self.mingw_required, self.vulkan_required))
             problems.append(f"Install build dependencies with: sudo apt install {packages}")
             problems.append("If apt cannot find :i386 packages, run: sudo dpkg --add-architecture i386 && sudo apt update")
             raise BuildError("\n".join(problems))
@@ -858,7 +859,22 @@ def write_metadata(stage: Path, tag: WineTag, build_lines: Sequence[str]) -> Non
     (stage / "build.txt").write_text(build_text, encoding="utf-8")
 
 
+def is_wine_development_file(name: str) -> bool:
+    return (name.rstrip('/') == 'opt/wine/include' or name.startswith('opt/wine/include/')
+            or (name.startswith('opt/wine/lib/') and name.endswith('.a')))
+
+
 def prune_packaged_wine(stage: Path) -> None:
+    # Runtime filesystems do not need the SDK. Do not deduplicate prefix DLLs
+    # with symlinks: writes must remain independent of the /opt/wine copies.
+    include = stage / 'opt/wine/include'
+    if include.is_symlink():
+        include.unlink()
+    elif include.is_dir():
+        include.resolve().relative_to(stage.resolve())
+        shutil.rmtree(include)
+    for path in (stage / 'opt/wine/lib').rglob('*.a'):
+        path.unlink()
     modern_dir = stage / "opt" / "wine" / "lib" / "wine" / "i386-unix"
     old_lib_dir = stage / "opt" / "wine" / "lib"
     old_wine_dir = old_lib_dir / "wine"
@@ -960,11 +976,13 @@ def package_zip(base_zip: Path, stage: Path, output_zip: Path) -> None:
         with zipfile.ZipFile(base_zip, "r") as base, zipfile.ZipFile(temp_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             existing_names = set()
             for info in base.infolist():
-                if info.filename in replace_names:
+                if info.filename in replace_names or is_wine_development_file(info.filename):
                     continue
                 zf.writestr(info, base.read(info))
                 existing_names.add(info.filename)
             for path, arcname in stage_entries:
+                if is_wine_development_file(arcname):
+                    continue
                 if arcname in existing_names:
                     if path.is_dir():
                         continue
@@ -1311,7 +1329,8 @@ def build_wine(
     output_zip = work_dir / f"Wine-{tag.version}.zip"
 
     if check_environment:
-        EnvironmentChecker(work_dir=work_dir, mingw_required=build_uses_mingw(config)).check()
+        EnvironmentChecker(work_dir=work_dir, mingw_required=build_uses_mingw(config),
+                           vulkan_required='--without-vulkan' not in configure_command(config)).check()
 
     clean_patch_root(patch_root)
     patch_overrides = prepare_patch_files(operations, patches_dir, patch_root)

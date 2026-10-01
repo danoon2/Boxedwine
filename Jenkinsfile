@@ -142,11 +142,19 @@ void runEmscriptenAbiWordAutomation(String automationName, String buildDir, Stri
             }
             trap cleanup_chrome_profile EXIT
 
+            /usr/bin/google-chrome --version
             last_rc=1
             for attempt in 1 2 3
             do
                 echo "${BOXEDWINE_AUTOMATION_NAME} attempt ${attempt}/3"
                 chrome_profile="$(mktemp -d "$WORKSPACE/.chrome-${BOXEDWINE_AUTOMATION_BUILD_DIR}-${attempt}.XXXXXX")"
+                # ST advances the guest through browser timers. Chrome throttles
+                # hidden windows enough to time out Wine startup, even with an
+                # otherwise idle worker. Keep every parallel target progressing.
+                chrome_args="--user-data-dir=${chrome_profile}"
+                chrome_args+=" --disable-background-timer-throttling"
+                chrome_args+=" --disable-backgrounding-occluded-windows"
+                chrome_args+=" --disable-renderer-backgrounding"
 
                 cd "Build/${BOXEDWINE_AUTOMATION_BUILD_DIR}"
                 set +e
@@ -155,7 +163,7 @@ void runEmscriptenAbiWordAutomation(String automationName, String buildDir, Stri
                     --timeout 600 \
                     --timeout-returncode 124 \
                     --browser="/usr/bin/google-chrome" \
-                    --browser-args="--user-data-dir=${chrome_profile}" \
+                    --browser-args="$chrome_args" \
                     'boxedwine.html?root=boxedwine&overlay=abiword_auto&w=%2Ffiles&play=%2Ffiles%2Fscript.txt&p=ABIWORD.EXE&resolution=1024x768&storage=memory'
                 rc=$?
                 set -e

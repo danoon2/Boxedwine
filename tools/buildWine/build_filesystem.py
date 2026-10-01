@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
@@ -23,11 +24,38 @@ import zipfile
 
 import build_wine
 import webgl_filesystem
+import web_runtime
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 PREFIX = 'home/username/.wine/'
 DRIVE = PREFIX + 'drive_c/'
+
+
+def select_variant(profile, variant):
+    profile = copy.deepcopy(profile)
+    if variant == 'web':
+        profile.update(variant='web', gecko=None, dxvk=None)
+    return profile
+
+
+def is_web(profile):
+    return profile.get('variant') == 'web'
+
+
+def output_name(profile):
+    return 'TinyCore15Wine11.0-web.zip' if is_web(profile) else 'TinyCore15Wine11.0.zip'
+
+
+def wine_config(profile):
+    config = build_wine.load_config(HERE / profile['wine_config'])
+    if is_web(profile):
+        args = config['build']['configure_args']
+        config['build']['configure_args'] = [a for a in args if a not in ('--with-vulkan', '--without-vulkan')]
+        config['build']['configure_args'] += ['--without-vulkan', '--disable-winevulkan']
+        config['required_config_checks'] = [c for c in config['required_config_checks']
+                                           if c['checking'] != 'checking for -lvulkan']
+    return config
 
 
 def run(command, **kwargs):
@@ -189,18 +217,20 @@ def build_addons(profile, work, wine_repository, jobs):
     sources.mkdir(exist_ok=True)
     downloads = work / 'downloads'
     toolchain = prepare_toolchain(profile, work)
-    download(profile['gecko'], downloads)
+    if profile.get('gecko'):
+        download(profile['gecko'], downloads)
 
-    dxvk = profile['dxvk']
-    destination = overlay / DRIVE / 'dxvk'
-    destination.mkdir(parents=True, exist_ok=True)
-    with tarfile.open(download(dxvk, downloads)) as source:
-        for name in ('d3d8.dll', 'd3d9.dll', 'd3d10core.dll', 'd3d11.dll', 'dxgi.dll'):
-            member = source.extractfile(f'dxvk-{dxvk["version"]}/x32/{name}')
-            if member is None:
-                raise build_wine.BuildError(f'Missing DXVK {name}')
-            (destination / name).write_bytes(member.read())
-    (destination / 'version.txt').write_bytes(f'dxvk {dxvk["version"]}\r\nhttps://github.com/doitsujin/dxvk'.encode())
+    if profile.get('dxvk'):
+        dxvk = profile['dxvk']
+        destination = overlay / DRIVE / 'dxvk'
+        destination.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(download(dxvk, downloads)) as source:
+            for name in ('d3d8.dll', 'd3d9.dll', 'd3d10core.dll', 'd3d11.dll', 'dxgi.dll'):
+                member = source.extractfile(f'dxvk-{dxvk["version"]}/x32/{name}')
+                if member is None:
+                    raise build_wine.BuildError(f'Missing DXVK {name}')
+                (destination / name).write_bytes(member.read())
+        (destination / 'version.txt').write_bytes(f'dxvk {dxvk["version"]}\r\nhttps://github.com/doitsujin/dxvk'.encode())
 
     cnc = profile['cnc_ddraw']
     source = source_checkout(cnc, sources / 'cnc-ddraw')
@@ -273,7 +303,8 @@ def build_addons(profile, work, wine_repository, jobs):
     destination.mkdir(parents=True, exist_ok=True)
     for name in webgl_config['dlls']:
         shutil.copy2(dlls / name, destination / name)
-    shutil.copy2(webgl_work / 'wine-build/boxedwine-webgl-tests/ddraw_test.exe', destination / 'ddraw_test.exe')
+    if not is_web(profile):
+        shutil.copy2(webgl_work / 'wine-build/boxedwine-webgl-tests/ddraw_test.exe', destination / 'ddraw_test.exe')
     write_json(work / 'addons-manifest.json', {'profile': profile, 'files': directory_inventory(overlay),
         'cnc_patch_sha256': digest(patch_source), 'webgl_patch_manifest': webgl_config['patch_manifest']})
     return overlay
@@ -319,17 +350,23 @@ def zip_directories(path):
     return directories
 
 
-def combine_zip(source, overlay, destination, remove_prefix=None):
+def combine_zip(source, overlay, destination, remove_prefix=None, exclude=None, compresslevel=None):
     # Wine's initialized prefix contains required empty directories, notably the
     # TEMP/TMP destination. Files alone cannot reconstruct those directories.
-    entries = {p.relative_to(overlay).as_posix() + ('/' if p.is_dir() else ''): p
-               for p in overlay.rglob('*') if p.is_file() or p.is_dir()}
+    entries = {}
+    for path in overlay.rglob('*'):
+        if path.is_file() or path.is_dir():
+            name = path.relative_to(overlay).as_posix() + ('/' if path.is_dir() else '')
+            if not build_wine.is_wine_development_file(name) and not (exclude and exclude(name)):
+                entries[name] = path
     with tempfile.NamedTemporaryFile(dir=destination.parent, prefix=destination.name + '.', delete=False) as temp:
         temporary = Path(temp.name)
     try:
         with zipfile.ZipFile(source) as original, zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_DEFLATED) as output:
             for entry in original.infolist():
                 checked_name(entry.filename)
+                if build_wine.is_wine_development_file(entry.filename) or (exclude and exclude(entry.filename)):
+                    continue
                 if entry.is_dir() and entry.filename in entries and entries[entry.filename].is_dir():
                     # Updating a child file need not change its existing parents.
                     output.writestr(entry, b'')
@@ -337,9 +374,9 @@ def combine_zip(source, overlay, destination, remove_prefix=None):
                     continue
                 if entry.filename in entries or (remove_prefix and entry.filename.startswith(remove_prefix)):
                     continue
-                output.writestr(entry, original.read(entry))
+                output.writestr(entry, original.read(entry), compresslevel=compresslevel)
             for name, path in sorted(entries.items()):
-                output.write(path, name)
+                output.write(path, name, compresslevel=compresslevel)
         temporary.replace(destination)
     finally:
         temporary.unlink(missing_ok=True)
@@ -378,6 +415,11 @@ def initialize_prefix(profile, work, boxedwine, runtime_zip):
         '#!/bin/sh\nexport WINEDLLOVERRIDES="mscoree,mshtml="\n'
         '/opt/wine/bin/wine wineboot.exe -u > /home/username/wineboot.txt 2>&1\n'
         'result=$?\n/opt/wine/bin/wineserver -w\n'
+        # The first update may defer replacement of DLLs that are still loaded.
+        # A restart processes those renames without forcing another update.
+        'if [ "$result" -eq 0 ]; then\n'
+        '  /opt/wine/bin/wine wineboot.exe -r > /home/username/prefix-finalize.txt 2>&1\n'
+        '  result=$?\n  /opt/wine/bin/wineserver -w\nfi\n'
         'echo "$result" > /home/username/wineboot.exit\nexit "$result"\n')
     command = boxedwine_command(boxedwine, root, runtime_zip, work / 'wineboot.log',
                                ['/bin/sh', '/home/username/initialize-prefix.sh'])
@@ -390,7 +432,12 @@ def initialize_prefix(profile, work, boxedwine, runtime_zip):
     for name in ('system.reg', 'user.reg', 'userdef.reg'):
         if not (home / name).is_file():
             raise build_wine.BuildError(f'wineboot did not create {name}')
+    if ('"PendingFileRenameOperations"=' in (home / 'system.reg').read_text(errors='replace')
+            or list((home / 'drive_c/windows/system32').glob('dll*.tmp'))):
+        raise build_wine.BuildError('Wine prefix still has pending DLL replacements; see prefix-finalize.txt')
     build_wine.apply_window_manager_registry(home)
+    if not profile.get('gecko'):
+        return home
     installer = download(profile['gecko'], work / 'downloads')
     shutil.copy2(installer, root / 'home/username/gecko.msi')
     guest_script = root / 'home/username/install-gecko.sh'
@@ -423,11 +470,26 @@ def filesystem_changes(profile):
     changes = (HERE / profile['changes_file']).read_text(encoding='utf-8')
     if not changes.startswith(f'v{profile["filesystem_version"]} '):
         raise build_wine.BuildError('Changelog does not start with the configured filesystem version')
+    if is_web(profile):
+        web_changes = (HERE / 'changes_wine11_web.txt').read_text(encoding='utf-8')
+        if not web_changes.startswith(f'v{profile["filesystem_version"]} '):
+            raise build_wine.BuildError('Web changelog does not start with the configured filesystem version')
+        changes = web_changes.rstrip() + '\n\nFull file system history:\n\n' + changes
     return changes
 
 
 def assemble(profile, work, boxedwine, compare_to=None):
     changes = filesystem_changes(profile)
+    config = wine_config(profile)
+    exclude = None
+    if is_web(profile):
+        stamp = work / 'wine-build-config.json'
+        if not stamp.is_file() or json.loads(stamp.read_text()) != config:
+            raise build_wine.BuildError('Build Wine for the web variant first; its configuration stamp must match')
+        exclude = web_runtime.exclusions(config['base_filesystem']['sha256'])
+        header = (work / 'wine-git/include/config.h').read_text()
+        if re.search(r'^#define SONAME_LIBVULKAN\b', header, re.M):
+            raise build_wine.BuildError('The web Wine build still enables Vulkan')
     wine_zip = work / 'Wine-11.0.zip'
     if not wine_zip.is_file() or not (work / 'tmp_install/opt/wine').is_dir():
         raise build_wine.BuildError('Build Wine first; its archive and install staging tree are required')
@@ -441,14 +503,13 @@ def assemble(profile, work, boxedwine, compare_to=None):
     empty = work / 'empty-overlay'
     empty.mkdir(exist_ok=True)
     runtime_zip = work / 'wine-uninitialized.zip'
-    combine_zip(wine_zip, empty, runtime_zip, remove_prefix=PREFIX)
+    combine_zip(wine_zip, empty, runtime_zip, remove_prefix=PREFIX, exclude=exclude)
     home = initialize_prefix(profile, work, boxedwine, runtime_zip)
     # Preserve non-Wine payloads supplied by the base (e.g. Glide), then apply rebuilt addons.
-    config = build_wine.load_config(HERE / profile['wine_config'])
     base_zip = build_wine.ensure_base_filesystem(config, work)
     with zipfile.ZipFile(base_zip) as base:
         for entry in base.infolist():
-            if entry.filename.startswith(PREFIX) and not entry.is_dir():
+            if entry.filename.startswith(PREFIX) and not entry.is_dir() and not (exclude and exclude(entry.filename)):
                 target = home / entry.filename[len(PREFIX):]
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(base.read(entry))
@@ -459,6 +520,9 @@ def assemble(profile, work, boxedwine, compare_to=None):
     shutil.copytree(home, complete / PREFIX, dirs_exist_ok=True)
     (complete / 'version.txt').write_text(profile['filesystem_version'])
     (complete / 'changes.txt').write_text(changes, encoding='utf-8')
+    if is_web(profile):
+        web_runtime.write_metadata(complete, base_zip)
+        (complete / 'name.txt').write_text('Wine 11.0 Web')
     write_json(complete / 'filesystem-build.json', {
         'profile': profile, 'wine_config': config,
         'base_sha256': digest(base_zip), 'wine_archive_sha256': digest(wine_zip),
@@ -466,9 +530,14 @@ def assemble(profile, work, boxedwine, compare_to=None):
         'wine_patches': {op.value: digest(HERE / 'patches' / op.value)
                          for op in build_wine.select_operations(config, (11, 0)) if op.kind == 'apply_patch'},
     })
-    output = work / 'TinyCore15Wine11.0.zip'
-    combine_zip(runtime_zip, complete, output)
-    inventory = zip_inventory(output)  # Read every member, including CRC validation.
+    output = work / output_name(profile)
+    candidate = output.with_suffix('.candidate.zip')
+    combine_zip(runtime_zip, complete, candidate, exclude=exclude, compresslevel=9 if is_web(profile) else None)
+    if is_web(profile):
+        report = web_runtime.validate_archive(candidate)
+        write_json(work / 'web-runtime-validation.json', report)
+    inventory = zip_inventory(candidate)  # Read every member, including CRC validation.
+    candidate.replace(output)
     write_json(work / 'filesystem-inventory.json', inventory)
     write_json(work / 'filesystem-build-result.json', {'output': str(output), 'sha256': digest(output),
                'size': output.stat().st_size, 'files': len(inventory), 'profile': profile})
@@ -478,7 +547,8 @@ def assemble(profile, work, boxedwine, compare_to=None):
     return output
 
 
-def smoke_test(work, boxedwine):
+def smoke_test(work, boxedwine, profile=None):
+    profile = profile or {'gecko': True}
     root = work / ('smoke-root-' + uuid.uuid4().hex[:8])
     drive = root / DRIVE
     drive.mkdir(parents=True)
@@ -503,26 +573,31 @@ def smoke_test(work, boxedwine):
     callback = f'http://127.0.0.1:{server.server_port}{token}'
     (drive / 'gecko-probe.html').write_text((HERE / 'probes/gecko.html').read_text().replace('__CALLBACK_URL__', callback))
     script = root / 'home/username/smoke.sh'
+    overrides = 'mscoree=' if profile.get('gecko') else 'mscoree,mshtml='
     script.write_text(
-        '#!/bin/sh\nexport WINEDLLOVERRIDES="mscoree="\n'
+        f'#!/bin/sh\nexport WINEDLLOVERRIDES="{overrides}"\n'
         'tempdir=/home/username/.wine/drive_c/users/username/AppData/Local/Temp\n'
         'test -d "$tempdir" && touch "$tempdir/boxedwine-temp-smoke" && rm "$tempdir/boxedwine-temp-smoke"\n'
         'echo "$?" > /home/username/temp-directory.exit\n'
         "/opt/wine/bin/wine 'C:\\uri-probe.exe' > /home/username/uri-smoke.txt 2>&1\n"
         'echo "$?" > /home/username/uri.exit\n'
-        "/opt/wine/bin/wine iexplore.exe 'file://localhost/C:/gecko-probe.html' > /home/username/iexplore.txt 2>&1\n")
-    command = boxedwine_command(boxedwine, root, work / 'TinyCore15Wine11.0.zip',
+        + ("/opt/wine/bin/wine iexplore.exe 'file://localhost/C:/gecko-probe.html' > /home/username/iexplore.txt 2>&1\n"
+           if profile.get('gecko') else '/opt/wine/bin/wineserver -w\n'))
+    command = boxedwine_command(boxedwine, root, work / output_name(profile),
                                work / 'filesystem-smoke.log', ['/bin/sh', '/home/username/smoke.sh'])
     print('+', build_wine.command_text(command), flush=True)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     process = None
+    completed_returncode = None
     try:
         process = subprocess.Popen([str(x) for x in command])
         deadline = time.monotonic() + 180
         while not received.wait(0.5) and process.poll() is None and time.monotonic() < deadline:
             pass
     finally:
+        if process is not None and process.poll() is not None:
+            completed_returncode = process.returncode
         # The browser has no reliable script-close API; close only this owned test process.
         if process is not None and process.poll() is None:
             process.terminate()
@@ -534,23 +609,29 @@ def smoke_test(work, boxedwine):
         server.shutdown()
         server.server_close()
         thread.join()
-    report = {'root': str(root), 'browser': browser_result, 'callback_received': received.is_set()}
+    report = {'root': str(root), 'browser': browser_result, 'callback_received': received.is_set(),
+              'completed_returncode': completed_returncode}
     for name in ('uri.exit', 'uri-smoke.txt', 'temp-directory.exit'):
         path = root / 'home/username' / name
         report[name] = path.read_text(errors='replace') if path.exists() else None
     write_json(work / 'filesystem-smoke.json', report)
-    if (report['uri.exit'] != '0\n' or report['temp-directory.exit'] != '0\n' or not received.is_set()
+    if (report['uri.exit'] != '0\n' or report['temp-directory.exit'] != '0\n'
             or '8 tests, 0 failures' not in (report['uri-smoke.txt'] or '')
-            or browser_result.get('html') != 'GECKO_HTML_OK' or browser_result.get('js') != 'GECKO_JAVASCRIPT_OK'
-            or not browser_result.get('width', '').isdigit() or int(browser_result['width']) <= 0):
+            or (not profile.get('gecko') and completed_returncode not in (0, 1))
+            or (profile.get('gecko') and (not received.is_set()
+                or browser_result.get('html') != 'GECKO_HTML_OK' or browser_result.get('js') != 'GECKO_JAVASCRIPT_OK'
+                or not browser_result.get('width', '').isdigit() or int(browser_result['width']) <= 0))):
         raise build_wine.BuildError(f'Packaged filesystem smoke test failed; see {work / "filesystem-smoke.json"}')
-    print('Packaged Temp directory, URI conversion, Gecko HTML, JavaScript, and layout checks passed.', flush=True)
+    print('Packaged Temp directory and URI conversion checks passed.' +
+          (' Gecko HTML, JavaScript, and layout checks passed.' if profile.get('gecko') else ' Gecko omitted.'), flush=True)
     return report
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', type=Path, default=HERE / 'filesystem_wine11.json')
+    parser.add_argument('--variant', choices=('main', 'web'), default='main',
+                        help='Web omits Gecko, DXVK, Vulkan and unused Linux packages')
     parser.add_argument('--work-dir', type=Path, required=True, help='Dedicated WSL-native build directory')
     parser.add_argument('--phase', choices=('all', 'wine', 'addons', 'assemble', 'smoke'), default='all')
     parser.add_argument('--wine-repository', help='Optional local Wine Git cache; the pinned commit is still checked')
@@ -558,21 +639,23 @@ def main(argv=None):
     parser.add_argument('--jobs', type=build_wine.positive_int, default=min(os.cpu_count() or 1, 12))
     parser.add_argument('--compare-to', type=Path, help='Optional old full ZIP, used only for the final comparison report')
     args = parser.parse_args(argv)
-    profile = json.loads(args.profile.read_text())
+    profile = select_variant(json.loads(args.profile.read_text()), args.variant)
     if profile['schema_version'] != 1 or profile['wine_tag'] != 'wine-11.0':
         parser.error('This complete-filesystem profile currently supports Wine 11.0')
     work = args.work_dir.resolve()
     if build_wine.wsl_windows_mount_checkout(work):
         parser.error('--work-dir must be on the native Linux filesystem, not /mnt/c')
     work.mkdir(parents=True, exist_ok=True)
-    config = build_wine.load_config(HERE / profile['wine_config'])
+    config = wine_config(profile)
     wine_repo = args.wine_repository or config['wine']['repo']
     if args.phase in ('all', 'wine'):
         (work / 'oss').mkdir(exist_ok=True)
         shutil.copy2(HERE / 'oss/soundcard.h', work / 'oss/soundcard.h')
-        config['wine']['repo'] = wine_repo
-        build_wine.build_wine(profile['wine_tag'], work, config, build_wine.CommandRunner(),
+        build_config = copy.deepcopy(config)
+        build_config['wine']['repo'] = wine_repo
+        build_wine.build_wine(profile['wine_tag'], work, build_config, build_wine.CommandRunner(),
                               args.jobs, HERE / 'patches', initialize_home=False)
+        write_json(work / 'wine-build-config.json', config)
     if args.phase in ('all', 'addons'):
         build_addons(profile, work, wine_repo, args.jobs)
     if args.phase in ('all', 'assemble', 'smoke'):
@@ -582,7 +665,7 @@ def main(argv=None):
             boxedwine = REPO / 'project/linux/Build/Release/boxedwine'
         if args.phase != 'smoke':
             assemble(profile, work, boxedwine.resolve(), args.compare_to)
-        smoke_test(work, boxedwine.resolve())
+        smoke_test(work, boxedwine.resolve(), profile)
     return 0
 
 

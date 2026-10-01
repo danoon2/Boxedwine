@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "manifest_id": "wine11-webgl-filesystems-v13-gdi-lifetime-20260929",
+  "manifest_id": "wine11-webgl-filesystems-v13-web-runtime-20260930",
   "wine_version": "11.0",
-  "build_date": "2026-09-29",
+  "build_date": "2026-09-30",
   "source_date_epoch": 1768319767,
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
@@ -106,8 +106,16 @@
     "full-v13": {
       "filename": "TinyCore15Wine11.0.zip",
       "filesystem_version": "13",
-      "size": 223920403,
-      "sha256": "5e0ae4efd4b48ea6293ad2c897004c7a5616e64e86a2236aca814329a06dbf29",
+      "size": 215034929,
+      "sha256": "8363a62eac5f95f942160b82b4e25706857a99da0b46d83f7dd4c604c5bf3818",
+      "direct_draw_renderer": null,
+      "wine_renderer": null
+    },
+    "web-v13": {
+      "filename": "TinyCore15Wine11.0-web.zip",
+      "filesystem_version": "13",
+      "size": 99450694,
+      "sha256": "a14446b27adbaccd4fac25dfb4e951da2dd4978fecfbf6e16aa718871fe4b0c5",
       "direct_draw_renderer": null,
       "wine_renderer": null
     }

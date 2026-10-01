@@ -11,10 +11,10 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - One filesystem, `TinyCore15Wine11.0.zip`, is downloaded from `https://boxedwine.org/v2/13/TinyCore15Wine11.0.zip`.
+   - The web v13 filesystem, `TinyCore15Wine11.0-web.zip` (99,450,694 bytes), is downloaded from `https://boxedwine.org/v2/13/TinyCore15Wine11.0-web.zip`.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
-   - Existing `boxedwine.3.zip` and `boxedwine.gdi.3.zip` selections are migrated to the v13 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
+   - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v13 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
    - A demo can set an app-specific Wine compatibility version with `"windowsVersion": "win98"`. The generated launcher sets that version before starting the executable, without changing other demos.
 3. Validates every filesystem root referenced by `demos.json` against
    `tools/buildWine/webgl_filesystems_v13.json`.
@@ -229,13 +229,13 @@ wsl bash -lc 'ps -ef | grep "project/emscripten/server.mjs" | grep -v grep'
 Both scripts download the same filesystem:
 
 ```text
-https://boxedwine.org/v2/13/TinyCore15Wine11.0.zip
+https://boxedwine.org/v2/13/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:
 
 ```text
-demos/apps/TinyCore15Wine11.0.zip
+demos/apps/TinyCore15Wine11.0-web.zip
 ```
 
 The publish workflow passes the same pinned manifest to `build_site.py`. Root validation finishes
@@ -244,7 +244,7 @@ be published through this script.
 
 `BOXEDWINE_ZIP_URL` can override the download source for local validation before
 uploading a release. `BUILD_SITE_DEMO_ROOT_CONFIG` selects a different manifest.
-The GDI ZIP download is no longer needed. Upload the exact validated v13 archive
+The GDI ZIP download is no longer needed. Upload the exact validated web v13 archive
 before running either script against the default URL.
 
 Newly generated demo builds retain `graphics-builds.json` beside their build
@@ -275,7 +275,7 @@ with a reviewed input set; do not regenerate expected counts from CI output.
 ```json
 {
   "schema_version": 1,
-  "filesystem": "inputs/TinyCore15Wine11.0.zip",
+  "filesystem": "inputs/TinyCore15Wine11.0-web.zip",
   "tests_archive": "inputs/wine_tests_graphics.zip",
   "tests_archive_sha256": "REVIEWED_ARCHIVE_SHA256",
   "baseline": "inputs/expected.json",

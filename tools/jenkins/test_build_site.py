@@ -16,24 +16,27 @@ def create_zip(path, files=None):
 
 
 class DemoRootSelectionTests(unittest.TestCase):
-    def test_v11_migrates_old_gdi_roots_and_leaves_other_demos_at_default(self):
+    def test_web_v13_migrates_full_and_old_gdi_roots_and_defaults_other_demos(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             demo_source = Path(temp_dir)
-            for name in ("TinyCore15Wine11.0.zip", "boxedwine.3.zip", "boxedwine.gdi.3.zip"):
+            for name in ("TinyCore15Wine11.0-web.zip", "TinyCore15Wine11.0.zip",
+                         "boxedwine.3.zip", "boxedwine.gdi.3.zip"):
                 create_zip(demo_source / name)
-            for name in ("gdi.zip", "normal.zip", "explicit.zip"):
+            for name in ("gdi.zip", "normal.zip", "explicit.zip", "full.zip"):
                 create_zip(demo_source / name, {"game.exe": b""})
             (demo_source / "demos.json").write_text(json.dumps({"demos": {
                 "gdi.zip": {"exe": "game.exe", "root": "boxedwine.gdi.3.zip"},
                 "normal.zip": {"exe": "game.exe", "root": "boxedwine.3.zip"},
                 "explicit.zip": {"exe": "game.exe", "directDrawRenderer": "gdi"},
+                "full.zip": {"exe": "game.exe", "root": "TinyCore15Wine11.0.zip"},
             }}))
             demos = {demo["zip"]: demo for demo in build_site.discover_demos(demo_source)}
 
-        self.assertEqual({"gdi.zip", "normal.zip", "explicit.zip"}, set(demos))
-        for name, expected in (("gdi.zip", "gdi"), ("normal.zip", None), ("explicit.zip", "gdi")):
+        self.assertEqual({"gdi.zip", "normal.zip", "explicit.zip", "full.zip"}, set(demos))
+        for name, expected in (("gdi.zip", "gdi"), ("normal.zip", None),
+                               ("explicit.zip", "gdi"), ("full.zip", None)):
             demo = demos[name]
-            self.assertEqual("TinyCore15Wine11.0.zip", demo["root"])
+            self.assertEqual("TinyCore15Wine11.0-web.zip", demo["root"])
             self.assertEqual(expected, demo["directDrawRenderer"])
             for url in (
                 build_site.build_demo_launch_url("st", demo),
@@ -340,7 +343,7 @@ class DemoBuildIdentityTests(unittest.TestCase):
             base = Path(directory)
             source = base / 'source'
             source.mkdir()
-            root = source / 'TinyCore15Wine11.0.zip'
+            root = source / 'TinyCore15Wine11.0-web.zip'
             create_zip(root, {build_site.webgl_build_identity.WINE_DLL: b'fixture DLL'})
             create_zip(source / 'game.zip', {'game.exe': b'fixture game'})
             runners = []

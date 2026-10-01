@@ -33,6 +33,8 @@ patch hashes, and toolchain pin. The filesystem includes the patched source arch
 patches, and build manifest; the manifest's revision identifies the local snapshot.
 The filesystem revision is 13. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
+Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
+the web variant and lists the measured compressed-size savings from its removals.
 The builder checks that its first entry matches the configured revision.
 Downloads are checked against their sizes and SHA-256 values. WebGL outputs
 are checked against the existing DLL manifest. Wine includes the localhost
@@ -55,7 +57,10 @@ The v13 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
 After building Wine, the assembler removes the base's old prefix overlay before
-running `wineboot`. It installs Gecko through `msiexec /qn`, then explicitly
+running `wineboot`. It waits for the Wine server, then runs `wineboot -r` to finish
+queued DLL replacements without forcing another update. Pending replacements
+or leftover `dll*.tmp` files cause assembly to fail. The main variant installs
+Gecko through `msiexec /qn`, then explicitly
 registers `mshtml.dll`: disabling MSHTML during initial Wine setup suppresses
 its COM registration as well as its interactive download. Guest exit markers
 must report success; the mere existence of registry files is insufficient.
@@ -112,6 +117,54 @@ Run the packaging tests with:
 ```bash
 python3 -m unittest discover -s tools/buildWine -p 'test_build*.py'
 ```
+
+## Main and web runtime variants
+
+All newly packaged Wine runtimes omit `/opt/wine/include` and static/import
+libraries (`/opt/wine/lib/**/*.a`). Those files are SDK inputs, not application
+runtime dependencies. The build source and compiler outputs remain available
+in the work directory. Normal DLLs, Unix shared libraries and the independent
+copies in the initialized Wine prefix remain unchanged by this pruning.
+
+The main variant is still the default. Build the smaller web variant in a
+**separate WSL work directory**:
+
+```bash
+python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
+  --variant web --work-dir "$HOME/boxedwine-wine11-web" --jobs 12
+```
+
+This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 13.
+Use `--variant web` again when retrying individual phases. The assembler checks
+the Wine configuration stamp and the addon manifest to prevent mixing variants.
+
+The web variant:
+
+- Builds Wine with `--without-vulkan --disable-winevulkan` and removes the guest
+  Vulkan library. It neither downloads nor installs Gecko or DXVK.
+- Removes Samba, binutils/flex, Git, SSH, p7zip, GNU coreutils, camera/USB packages,
+  Kerberos, printing/discovery services, OpenSSL/curl/wget tools and their unused
+  libraries. BusyBox supplies the basic shell utilities. Winetricks and Wine SDK
+  tools are omitted. Embedded MSHTML pages requiring Gecko are unavailable.
+- Keeps GnuTLS and certificates, fonts, media libraries, DirectX 10+ modules,
+  D3DCompiler/D3DX9, CNC DDraw, Glide and the pinned WebGL DLLs. Retention does not
+  imply that every backend works in a browser; the target application's browser
+  tests are still required. The bundled DirectDraw test executable is omitted.
+- Uses DEFLATE level 9 and requires the final archive to be **below 100,000,000
+  bytes**, stricter than GitHub's 100 MiB single-file limit. An oversized candidate
+  is rejected before replacing the final output. Empty prefix directories are
+  preserved. No writable DLL or data file is deduplicated using symlinks.
+
+[`web_runtime_policy.json`](web_runtime_policy.json) records the audited removals
+against the pinned TinyCore base. No current package index or old full filesystem
+is consulted during the build. Changing the base requires updating this policy.
+The output includes filtered `installed.txt` metadata and `web-runtime.json`;
+the work directory records the size/hash/structure check in
+`web-runtime-validation.json`. The Gecko-free smoke test checks URI conversion
+and the writable packaged Temp directory; the main smoke test also checks Gecko.
+
+These commands build local candidates. They do not change published ZIPs,
+download catalog checksums, existing containers, or the Jenkins demo root pin.
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 

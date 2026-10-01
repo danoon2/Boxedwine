@@ -8,7 +8,7 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SITE_DIR="$(mktemp -d)"
-BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-https://boxedwine.org/v2/13/TinyCore15Wine11.0.zip}"
+BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-https://boxedwine.org/v2/13/TinyCore15Wine11.0-web.zip}"
 DEMO_ROOT_CONFIG="${BUILD_SITE_DEMO_ROOT_CONFIG:-$ROOT_DIR/tools/buildWine/webgl_filesystems_v13.json}"
 REMOTE_LOCK_ACQUIRED=0
 REMOTE_HOST="${BUILD_SITE_REMOTE%%:*}"
@@ -115,7 +115,7 @@ if [ -d "$SINGLE_THREADED_DIR" ] &&
     [ -d "$SINGLE_THREADED_JIT_DIR" ] &&
     [ -d "$MULTI_THREADED_JIT_DIR" ]; then
     mkdir -p "$DEMO_SOURCE"
-    wget -O "$DEMO_SOURCE/TinyCore15Wine11.0.zip" "$BOXEDWINE_ZIP_URL"
+    wget -O "$DEMO_SOURCE/TinyCore15Wine11.0-web.zip" "$BOXEDWINE_ZIP_URL"
     DEMO_ARGS+=(
         --demo-source "$DEMO_SOURCE"
         --demo-root-config "$DEMO_ROOT_CONFIG"
