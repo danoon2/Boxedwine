@@ -150,7 +150,7 @@ void runEmscriptenAbiWordAutomation(String automationName, String buildDir, Stri
                 chrome_profile="$(mktemp -d "$WORKSPACE/.chrome-${BOXEDWINE_AUTOMATION_BUILD_DIR}-${attempt}.XXXXXX")"
                 # ST advances the guest through browser timers. Chrome throttles
                 # hidden windows enough to time out Wine startup, even with an
-                # otherwise idle worker. Keep every parallel target progressing.
+                # otherwise idle worker. Keep the guest progressing when hidden.
                 chrome_args="--user-data-dir=${chrome_profile}"
                 chrome_args+=" --disable-background-timer-throttling"
                 chrome_args+=" --disable-backgrounding-occluded-windows"
@@ -650,20 +650,21 @@ pipeline {
                             killall -9 chrome 2>/dev/null || true
                         '''
                         script {
-                            parallel(
-                                'Emscripten ST': {
-                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten ST automation', 'Automation', '6931')
-                                },
-                                'Emscripten MT': {
-                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten MT automation', 'AutomationMultiThreaded', '6932')
-                                },
-                                'Emscripten ST JIT': {
-                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten ST JIT automation', 'AutomationJit', '6933')
-                                },
-                                'Emscripten MT JIT': {
-                                    runEmscriptenAbiWordAutomation('AbiWord Emscripten MT JIT automation', 'AutomationMultiThreadedJit', '6934')
-                                }
-                            )
+                            // These browsers share one worker. Run them serially:
+                            // Chrome's unthrottling flags alone do not prevent the
+                            // interpreter from missing Wine's desktop startup deadline.
+                            stage('Emscripten ST') {
+                                runEmscriptenAbiWordAutomation('AbiWord Emscripten ST automation', 'Automation', '6931')
+                            }
+                            stage('Emscripten MT') {
+                                runEmscriptenAbiWordAutomation('AbiWord Emscripten MT automation', 'AutomationMultiThreaded', '6932')
+                            }
+                            stage('Emscripten ST JIT') {
+                                runEmscriptenAbiWordAutomation('AbiWord Emscripten ST JIT automation', 'AutomationJit', '6933')
+                            }
+                            stage('Emscripten MT JIT') {
+                                runEmscriptenAbiWordAutomation('AbiWord Emscripten MT JIT automation', 'AutomationMultiThreadedJit', '6934')
+                            }
                         }
                     }
                 }
