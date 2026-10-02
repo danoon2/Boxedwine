@@ -34,8 +34,8 @@ unsigned int crc32b(unsigned char *message, int len) {
 }
 
 unsigned int crc32File(BString filePath) {
-    PLATFORM_STAT_STRUCT buf;
-    if (PLATFORM_STAT(filePath.c_str(), &buf) == 0 && buf.st_size) {
+    Platform::Stat buf;
+    if (Platform::stat(filePath.c_str(), &buf) == 0 && buf.st_size) {
         BReadFile f(filePath);
         if (f.isOpen()) {
             unsigned char* buffer = new unsigned char[(int)buf.st_size];

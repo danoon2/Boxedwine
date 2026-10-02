@@ -372,7 +372,7 @@ bool FsZip::extractFileFromZip(BString zipFile, BString file, BString path) {
                 Fs::makeNativeDirs(path);
             }
             BString outPath = path.stringByApppendingPath(Fs::getFileNameFromPath(file));
-            FILE* f = fopen(outPath.c_str(), "wb");
+            FILE* f = Platform::fopen(outPath.c_str(), "wb");
             if (f) {
                 U32 totalRead = 0;
                 U8 buffer[4096] = {};
@@ -472,12 +472,7 @@ BString FsZip::unzip(BString zipFile, BString path, std::function<void(U32, BStr
         unzOpenCurrentFile(z);        
         percentDone((U32)(compressedFileSizeProcessed * 100 / fileSize), fileName);
         BString outPath = path.stringByApppendingPath(fileName);
-#ifdef BOXEDWINE_MSVC
-        if (outPath.length() > 255) {
-            outPath = "\\\\?\\" + outPath;
-        }
-#endif
-        FILE* f = fopen(outPath.c_str(), "wb");
+        FILE* f = Platform::fopen(outPath.c_str(), "wb");
         if (f) {
             U32 totalRead = 0;
             U8 buffer[4096] = {};

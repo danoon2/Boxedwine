@@ -121,7 +121,7 @@ void FsFileOpenNode::reopen() {
         openFlags|=O_APPEND;
     }
 
-    this->handle = ::open(this->fileNode->getNativePathForData().c_str(), openFlags, 0666);
+    this->handle = Platform::open(this->fileNode->getNativePathForData().c_str(), openFlags, 0666);
     openPositionedWriteHandle();
 }
 
@@ -133,7 +133,7 @@ void FsFileOpenNode::openPositionedWriteHandle() {
     }
     BString fdPath = B("/proc/self/fd/") + BString::valueOf(this->handle);
     int access = (this->flags & K_O_ACCMODE) == K_O_WRONLY ? O_WRONLY : O_RDWR;
-    this->positionedWriteHandle = ::open(fdPath.c_str(), access | O_CLOEXEC | O_BINARY, 0666);
+    this->positionedWriteHandle = Platform::open(fdPath.c_str(), access | O_CLOEXEC | O_BINARY, 0666);
 #endif
 }
 

@@ -610,8 +610,8 @@ bool GlobalSettings::checkFileListForUpdate() {
     BString filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator;
     BString first = GlobalSettings::dataFolderLocation.stringByApppendingPath(Fs::getFileNameFromPath(GlobalSettings::fileUrls[0]));
 
-    PLATFORM_STAT_STRUCT buf;
-    if (PLATFORM_STAT(first.c_str(), &buf) == 0) {
+    Platform::Stat buf;
+    if (Platform::stat(first.c_str(), &buf) == 0) {
         U64 t = (U64)buf.st_mtime; // time as seconds
         U64 currentTime = KSystem::getSystemTimeAsMicroSeconds() / 1000000l;
         if (t + 24 * 60 * 60 < currentTime) {

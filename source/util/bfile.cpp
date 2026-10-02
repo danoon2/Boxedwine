@@ -27,11 +27,11 @@ BReadFile::BReadFile() {
 }
 
 BReadFile::BReadFile(const char* pPath) {
-	file = std::fopen(pPath, "rb");
+	file = Platform::fopen(pPath, "rb");
 }
 
 BReadFile::BReadFile(BString path) {
-	file = std::fopen(path.c_str(), "rb");
+	file = Platform::fopen(path.c_str(), "rb");
 }
 
 BReadFile::~BReadFile() {
@@ -42,7 +42,7 @@ bool BReadFile::open(const char* pPath) {
 	if (isOpen()) {
 		return false;
 	}
-	file = std::fopen(pPath, "rb");
+	file = Platform::fopen(pPath, "rb");
 	return file != nullptr;
 }
 
@@ -50,7 +50,7 @@ bool BReadFile::open(BString path) {
 	if (isOpen()) {
 		return false;
 	}
-	file = std::fopen(path.c_str(), "rb");
+	file = Platform::fopen(path.c_str(), "rb");
 	return file != nullptr;
 }
 
@@ -187,7 +187,7 @@ bool BWriteFile::createNew(const char* pPath) {
 	if (isOpen()) {
 		return false;
 	}
-	file = std::fopen(pPath, "wb");
+	file = Platform::fopen(pPath, "wb");
 	return file != nullptr;
 }
 
@@ -199,12 +199,12 @@ bool BWriteFile::createOrExisting(const char* pPath) {
 	if (isOpen()) {
 		return false;
 	}
-	if (::access(pPath, 0) != -1) {
+	if (Platform::access(pPath, 0) != -1) {
 		// this will fail to open an existing file for random access write unless it exists
-		file = std::fopen(pPath, "rb+");
+		file = Platform::fopen(pPath, "rb+");
 	} else {
 		// this will always truncate
-		file = std::fopen(pPath, "wb");
+		file = Platform::fopen(pPath, "wb");
 	}
 	return file != nullptr;
 }

@@ -18,6 +18,9 @@
 #ifndef __PLATFORM_H__
 #define __PLATFORM_H__
 
+#include <cstdio>
+#include <string>
+
 #ifdef __EMSCRIPTEN__
 #define MAX_FILEPATH_LEN 256
 #else
@@ -73,10 +76,7 @@
 #include <codeanalysis\warnings.h>
 #pragma warning(disable:26451) 
 #pragma warning(disable:6297) 
-#define PLATFORM_STAT_STRUCT struct _stat32i64
-#define PLATFORM_STAT _stat32i64
 #define OPCALL __fastcall
-#define unlink _unlink
 #define ftruncate(h, l) _chsize(h, (long)l)
 #define lseek64 _lseeki64
 #define platform_getcwd _getcwd
@@ -85,7 +85,6 @@
 #define CURDIR_INCLUDE <direct.h>
 #define MKDIR_INCLUDE <direct.h>
 #define RMDIR_INCLUDE <direct.h>
-#define MKDIR(x) mkdir(x)
 #define INLINE __inline
 #define NO_INLINE __declspec(noinline)
 #define OPENGL_CALL_TYPE __stdcall
@@ -102,8 +101,6 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #if ( __WORDSIZE == 64 )
 #define BOXEDWINE_64   1
 #endif
-#define PLATFORM_STAT_STRUCT struct stat
-#define PLATFORM_STAT stat
 // Direct-dispatch builds use preserve_none for opcode handlers. The WASM JIT can
 // too: its startJITOp is the C++ wasmStartJITOp (not generated machine code), and
 // generated blocks are reached via pfnJitCode/call_indirect (never via op->pfn), so
@@ -121,7 +118,6 @@ char* platform_strcasestr(const char* s1, const char* s2);
 #define CURDIR_INCLUDE <unistd.h>
 #define MKDIR_INCLUDE <sys/stat.h>
 #define RMDIR_INCLUDE <unistd.h>
-#define MKDIR(x) mkdir(x, 0777)
 #define O_BINARY 0
 #define INLINE inline
 #define NO_INLINE __attribute__((noinline))
@@ -137,6 +133,14 @@ char* platform_strcasestr(const char* s1, const char* s2);
 class FsNode;
 class KThread;
 
+#ifdef BOXEDWINE_MSVC
+struct _stat32i64;
+struct _utimbuf;
+#else
+struct stat;
+struct utimbuf;
+#endif
+
 #ifdef BOXEDWINE_MULTI_THREADED
 #define NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT 20
 #else 
@@ -145,6 +149,26 @@ class KThread;
 
 class Platform {
 public:
+#ifdef BOXEDWINE_MSVC
+    using Stat = struct _stat32i64;
+    using Utimbuf = struct _utimbuf;
+    // Convert only at the host API boundary; guest/native path bookkeeping stays unchanged.
+    static std::wstring nativeFilePath(const char* path);
+#else
+    using Stat = struct stat;
+    using Utimbuf = struct utimbuf;
+#endif
+    // Host filesystem operations preserve the native return value and errno.
+    static int open(const char* path, int flags, int mode = 0666);
+    static FILE* fopen(const char* path, const char* mode);
+    static int access(const char* path, int mode);
+    static int stat(const char* path, Stat* buf);
+    static int unlink(const char* path);
+    static int rename(const char* from, const char* to);
+    static int mkdir(const char* path);
+    static int rmdir(const char* path);
+    static int utime(const char* path, Utimbuf* times);
+
     class ListNodeResult {
     public:
         ListNodeResult(BString name, bool isDirectory) : name(name), isDirectory(isDirectory) {}

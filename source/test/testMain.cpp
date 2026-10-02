@@ -158,6 +158,7 @@ void testDirectoryReparseSidecarReplacedAfterRemoveAndRecreate();
 void testDotDotAfterDotResolvesToParentDirectory();
 void testLinuxPathResolutionSemantics();
 void testUtf8NamesSurviveNativeFilesystemReload();
+void testLongNativeFilePaths();
 void testTrailingDotNamesCanBeUnlinked();
 void testDirectorySeekCanStoreOpaquePosition();
 void testInotifyReportsChildDirectoryCreate();
@@ -1116,6 +1117,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testDotDotAfterDotResolvesToParentDirectory, "Test ./.. resolves to parent directory", TEST_ENTRY_SERIAL},
     {testLinuxPathResolutionSemantics, "Test Linux pathname resolution semantics", TEST_ENTRY_SERIAL},
     {testUtf8NamesSurviveNativeFilesystemReload, "Test UTF-8 file names survive native filesystem reload", TEST_ENTRY_SERIAL},
+    {testLongNativeFilePaths, "Test native file paths beyond MAX_PATH", TEST_ENTRY_SERIAL},
     {testTrailingDotNamesCanBeUnlinked, "Test trailing-dot file names can be unlinked", TEST_ENTRY_SERIAL},
     {testDirectorySeekCanStoreOpaquePosition, "Test directory seek can store opaque position", TEST_ENTRY_SERIAL},
     {testInotifyReportsChildDirectoryCreate, "Test inotify reports child directory create", TEST_ENTRY_SERIAL},

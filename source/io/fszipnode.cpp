@@ -33,21 +33,21 @@ bool FsZipNode::moveToFileSystem(std::shared_ptr<FsNode> node) {
     if (node->isDirectory())
         return false;
     if (node->isLink()) {
-        S32 to = ::open((node->nativePath+EXT_LINK).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
+        S32 to = Platform::open((node->nativePath+EXT_LINK).c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
         if (to < 0) {
             return false;
         }
         bool result = ::write(to, node->link.c_str(), node->link.length()) == (S32)node->link.length();
         ::close(to);
         if (!result) {
-            ::remove((node->nativePath + EXT_LINK).c_str());
+            Platform::unlink((node->nativePath + EXT_LINK).c_str());
         }
         return result;
     }
 
     std::unique_ptr<FsOpenNode> from(this->open(node, K_O_RDONLY));
     bool result = false;
-    U32 to = ::open(node->nativePath.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
+    U32 to = Platform::open(node->nativePath.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
     if (to != 0xFFFFFFFF) {
         U8 buffer[4096];
         S32 read;
@@ -60,15 +60,15 @@ bool FsZipNode::moveToFileSystem(std::shared_ptr<FsNode> node) {
         }
         S32 closed = ::close(to);
         if (read != 0 || copied != zipInfo.length || closed != 0) {
-            ::remove(node->nativePath.c_str());
+            Platform::unlink(node->nativePath.c_str());
             return false;
         }
 
-        struct utimbuf settime = { 0, 0 };
+        Platform::Utimbuf settime = { 0, 0 };
 
         settime.actime = this->zipInfo.lastModified / 1000;
         settime.modtime = this->zipInfo.lastModified / 1000;
-        utime(node->nativePath.c_str(), &settime);
+        Platform::utime(node->nativePath.c_str(), &settime);
 
         result = true;
     }

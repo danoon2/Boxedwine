@@ -42,8 +42,8 @@ static U64 fileTimeOverrideMillis(const FsFileTimeOverride& value) {
 }
 
 static void unlinkXAttrSidecars(const BString& nativePath) {
-    unlink((nativePath + EXT_DOSATTRIB).c_str());
-    unlink((nativePath + EXT_WINEREPARSE).c_str());
+    Platform::unlink((nativePath + EXT_DOSATTRIB).c_str());
+    Platform::unlink((nativePath + EXT_WINEREPARSE).c_str());
 }
 
 static void renameXAttrSidecarsInternal(const BString& oldNativePath, const BString& newNativePath) {
@@ -51,17 +51,17 @@ static void renameXAttrSidecarsInternal(const BString& oldNativePath, const BStr
     if (Fs::doesNativePathExist(dosAttrib)) {
         BString dosAttribDst = newNativePath + EXT_DOSATTRIB;
         if (dosAttrib != dosAttribDst) {
-            unlink(dosAttribDst.c_str());
+            Platform::unlink(dosAttribDst.c_str());
         }
-        ::rename(dosAttrib.c_str(), dosAttribDst.c_str());
+        Platform::rename(dosAttrib.c_str(), dosAttribDst.c_str());
     }
     BString wineReparse = oldNativePath + EXT_WINEREPARSE;
     if (Fs::doesNativePathExist(wineReparse)) {
         BString wineReparseDst = newNativePath + EXT_WINEREPARSE;
         if (wineReparse != wineReparseDst) {
-            unlink(wineReparseDst.c_str());
+            Platform::unlink(wineReparseDst.c_str());
         }
-        ::rename(wineReparse.c_str(), wineReparseDst.c_str());
+        Platform::rename(wineReparse.c_str(), wineReparseDst.c_str());
     }
 }
 
@@ -113,7 +113,7 @@ bool FsFileNode::remove() {
     bool exists = Fs::doesNativePathExist(this->getNativePathForData());
 
     if (this->hardLinkState) {
-        unlink((this->nativePath + EXT_HARDLINK).c_str());
+        Platform::unlink((this->nativePath + EXT_HARDLINK).c_str());
         if (this->hardLinkState->linkCount > 1) {
             this->hardLinkState->linkCount--;
             this->removeNodeFromParent();
@@ -141,7 +141,7 @@ bool FsFileNode::remove() {
 #endif
     if (exists) {
         unlinkXAttrSidecars(this->getNativePathForData());
-        result = unlink(this->getNativePathForData().c_str()) == 0;
+        result = Platform::unlink(this->getNativePathForData().c_str()) == 0;
     }
     // if the file failed to be deleted and it exists then its because someone else has it open, 
     // so we need to close all references, move the file then re-open the file for those handles
@@ -165,7 +165,7 @@ bool FsFileNode::remove() {
         BString newNativePath = FsFileNode::getNativeTmpPath();
 
         BString oldNativePath = this->getNativePathForData();
-        if (::rename(oldNativePath.c_str(), newNativePath.c_str())!=0) {
+        if (Platform::rename(oldNativePath.c_str(), newNativePath.c_str())!=0) {
             klog_fmt("could not rename %s", oldNativePath.c_str());
         }
 
@@ -201,9 +201,9 @@ U64 FsFileNode::lastModified() {
     if (timeOverride.active) {
         return fileTimeOverrideMillis(timeOverride);
     }
-    PLATFORM_STAT_STRUCT buf;
+    Platform::Stat buf;
 
-    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf)==0) {
+    if (Platform::stat(this->getNativePathForData().c_str(), &buf)==0) {
         if (buf.st_mtime == 0) {
             // I've seen this happen with the Age of Empires installer on Raspberry Pi 5
             return ((U64)buf.st_ctime) * 1000l;
@@ -224,8 +224,8 @@ U32 FsFileNode::lastModifiedNano() {
         return timeOverride.nanos;
     }
 #ifndef BOXEDWINE_MSVC
-    PLATFORM_STAT_STRUCT buf;
-    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf) == 0) {
+    Platform::Stat buf;
+    if (Platform::stat(this->getNativePathForData().c_str(), &buf) == 0) {
 #ifdef __APPLE__
         return (U32)(buf.st_mtime == 0 ? buf.st_ctimespec.tv_nsec :
             buf.st_mtimespec.tv_nsec);
@@ -250,9 +250,9 @@ U64 FsFileNode::lastAccessed() {
     if (timeOverride.active) {
         return fileTimeOverrideMillis(timeOverride);
     }
-    PLATFORM_STAT_STRUCT buf;
+    Platform::Stat buf;
 
-    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf) == 0) {
+    if (Platform::stat(this->getNativePathForData().c_str(), &buf) == 0) {
         return ((U64)buf.st_atime) * 1000l;
     }
 #ifdef BOXEDWINE_ZLIB
@@ -270,8 +270,8 @@ U32 FsFileNode::lastAccessedNano() {
         return timeOverride.nanos;
     }
 #ifndef BOXEDWINE_MSVC
-    PLATFORM_STAT_STRUCT buf;
-    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf) == 0) {
+    Platform::Stat buf;
+    if (Platform::stat(this->getNativePathForData().c_str(), &buf) == 0) {
 #ifdef __APPLE__
         return (U32)buf.st_atimespec.tv_nsec;
 #else
@@ -286,8 +286,8 @@ U64 FsFileNode::length() {
     if (this->isDirectory())
         return 4096;
 
-    PLATFORM_STAT_STRUCT buf;
-    if (PLATFORM_STAT(this->getNativePathForData().c_str(), &buf)==0) {
+    Platform::Stat buf;
+    if (Platform::stat(this->getNativePathForData().c_str(), &buf)==0) {
         return buf.st_size;
     }
 #ifdef BOXEDWINE_ZLIB
@@ -393,13 +393,7 @@ FsOpenNode* FsFileNode::open(U32 flags) {
         openFlags|=O_APPEND;
     }
     auto openHostFile = [&]() -> U32 {
-#ifdef BOXEDWINE_MSVC
-        if (dataNativePath.length() > 255) {
-            BString path = "\\\\?\\" + dataNativePath;
-            return ::open(path.c_str(), openFlags, 0666);
-        }
-#endif
-        return ::open(dataNativePath.c_str(), openFlags, 0666);
+        return Platform::open(dataNativePath.c_str(), openFlags, 0666);
     };
     U32 f;
     std::shared_ptr<MappedFileCache> cache;
@@ -566,7 +560,7 @@ U32 FsFileNode::rename(BString path) {
         BString oldMetadata = this->nativePath + EXT_HARDLINK;
         BString newMetadata = nativePath + EXT_HARDLINK;
         if (Fs::doesNativePathExist(oldMetadata)) {
-            result = ::rename(oldMetadata.c_str(), newMetadata.c_str());
+            result = Platform::rename(oldMetadata.c_str(), newMetadata.c_str());
             if (result != 0) {
                 return -translateErr(errno);
             }
@@ -630,7 +624,7 @@ U32 FsFileNode::rename(BString path) {
         if (originalPath.length()) {     
             nativePath = nativePath+EXT_MIXED;
         }    
-        result = ::rename(this->nativePath.c_str(), nativePath.c_str());
+        result = Platform::rename(this->nativePath.c_str(), nativePath.c_str());
         if (result==0) {
             FsFileNode::renameXAttrSidecars(this->nativePath, nativePath);
             this->removeNodeFromParent();
@@ -678,7 +672,7 @@ U32 FsFileNode::removeDir() {
     if (this->getChildCount()) {
         return -K_ENOTEMPTY;
     }    
-    if (Fs::doesNativePathExist(this->nativePath) && ::rmdir(this->nativePath.c_str()) < 0) {
+    if (Fs::doesNativePathExist(this->nativePath) && Platform::rmdir(this->nativePath.c_str()) < 0) {
         return -translateErr(errno);
     }
     unlinkXAttrSidecars(this->getNativePathForData());
@@ -690,13 +684,13 @@ U32 FsFileNode::removeDir() {
 }
 
 U32 FsFileNode::setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) {
-    struct utimbuf settime = {0, 0};
+    Platform::Utimbuf settime = {0, 0};
     bool shouldUpdateHost = false;
 
     this->ensurePathIsLocal(false);
     BString nativePath = this->getNativePathForData();
-    PLATFORM_STAT_STRUCT buf;
-    if (PLATFORM_STAT(nativePath.c_str(), &buf) == 0) {
+    Platform::Stat buf;
+    if (Platform::stat(nativePath.c_str(), &buf) == 0) {
         settime.actime = buf.st_atime;
         settime.modtime = buf.st_mtime;
     } else {
@@ -720,7 +714,7 @@ U32 FsFileNode::setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastMod
         shouldUpdateHost = true;
     }
     if (shouldUpdateHost) {
-        utime(nativePath.c_str(), &settime);
+        Platform::utime(nativePath.c_str(), &settime);
     }
     return 0; // no error checking, we don't care if this fails
 }
@@ -807,7 +801,7 @@ U32 FsFileNode::convertToHardLinkBacking(const std::shared_ptr<FsHardLinkState>&
         i++;
     });
 
-    if (::rename(this->nativePath.c_str(), state->nativePath.c_str()) != 0) {
+    if (Platform::rename(this->nativePath.c_str(), state->nativePath.c_str()) != 0) {
         int error = errno;
         i = 0;
         this->openNodes.for_each([&tmpPos, &i](KListNode<FsOpenNode*>* n) {

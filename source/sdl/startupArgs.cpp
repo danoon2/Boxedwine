@@ -943,7 +943,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
             if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
-                static_cast<void>(MKDIR(argv[i+1])); // return result ignored
+                static_cast<void>(Platform::mkdir(argv[i+1])); // return result ignored
                 if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
                     klog_fmt("-record path does not exist and could not be created: %s", argv[i+1]);
                     return false;

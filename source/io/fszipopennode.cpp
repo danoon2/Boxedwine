@@ -29,7 +29,7 @@
 
 FsZipOpenNode::FsZipOpenNode(std::shared_ptr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset, U64 dataOffset, U32 compressionMethod, BString zipPath) : FsOpenNode(node, flags), zipNode(zipNode), pos(0), offset(offset), dataOffset(dataOffset), compressionMethod(compressionMethod) {
     if (compressionMethod == 0 && dataOffset && zipPath.length()) {
-        directHandle = ::open(zipPath.c_str(), O_RDONLY | O_BINARY);
+        directHandle = Platform::open(zipPath.c_str(), O_RDONLY | O_BINARY);
     }
 }
 
@@ -149,7 +149,7 @@ void FsZipOpenNode::reopen() {
     this->pos = 0;
     open = true;
     if (compressionMethod == 0 && dataOffset && zipNode->fsZip) {
-        directHandle = ::open(zipNode->fsZip->zipPath.c_str(), O_RDONLY | O_BINARY);
+        directHandle = Platform::open(zipNode->fsZip->zipPath.c_str(), O_RDONLY | O_BINARY);
     }
 }
 

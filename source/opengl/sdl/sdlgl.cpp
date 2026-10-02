@@ -1480,7 +1480,26 @@ static void initSdlOpenGL() {
     if (KSystem::openglLib.length()) {
         openGL = KSystem::openglLib.c_str();
     }
+#ifdef __APPLE__
+    // -novideo starts SDL with events only. Wine 11 resolves its GL dispatch
+    // table before creating a drawable, so SDL's later implicit video init in
+    // SDL_CreateWindow is too late: it would leave every core pgl entry null.
+    KNativeSystem::getCurrentInput()->runOnUiThread([openGL]() {
+        if (!(SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO)) {
+            if (KSystem::videoOption == VIDEO_NO_WINDOW) {
+                SDL_SetHintWithPriority(SDL_HINT_MAC_BACKGROUND_APP, "1", SDL_HINT_OVERRIDE);
+            }
+            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
+                kpanic_fmt("Could not initialize SDL video for OpenGL: %s", SDL_GetError());
+            }
+        }
+        if (SDL_GL_LoadLibrary(openGL) != 0) {
+            kpanic_fmt("Could not load SDL OpenGL library: %s", SDL_GetError());
+        }
+        });
+#else
     SDL_GL_LoadLibrary(openGL);
+#endif
     
 #include "../glfunctions.h"
 

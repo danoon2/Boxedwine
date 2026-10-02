@@ -19,16 +19,55 @@
 #include "boxedwine.h"
 #include <sys/time.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <SDL.h>
 #include <sys/mman.h>
 #include "pixelformat.h"
 #include UNISTD
+#include <utime.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten/threading.h>
 #endif
+
+int Platform::open(const char* path, int flags, int mode) {
+    return ::open(path, flags, mode);
+}
+
+FILE* Platform::fopen(const char* path, const char* mode) {
+    return ::fopen(path, mode);
+}
+
+int Platform::access(const char* path, int mode) {
+    return ::access(path, mode);
+}
+
+int Platform::stat(const char* path, Stat* buf) {
+    return ::stat(path, buf);
+}
+
+int Platform::unlink(const char* path) {
+    return ::unlink(path);
+}
+
+int Platform::rename(const char* from, const char* to) {
+    return ::rename(from, to);
+}
+
+int Platform::mkdir(const char* path) {
+    return ::mkdir(path, 0777);
+}
+
+int Platform::rmdir(const char* path) {
+    return ::rmdir(path);
+}
+
+int Platform::utime(const char* path, Utimbuf* times) {
+    return ::utime(path, times);
+}
 
 unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
 	struct timeval  tv;

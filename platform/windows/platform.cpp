@@ -23,6 +23,94 @@
 #include <VersionHelpers.h>
 #include <Shlwapi.h>
 #include <winternl.h>
+#include <direct.h>
+#include <fcntl.h>
+#include <io.h>
+#include <sys/stat.h>
+#include <sys/utime.h>
+
+std::wstring Platform::nativeFilePath(const char* path) {
+    if (!path || !*path) {
+        return {};
+    }
+    // Native paths from SDL/UI are UTF-8. Retain compatibility with callers
+    // supplying a path in the system code page, as the old narrow CRT did.
+    UINT codePage = CP_UTF8;
+    int length = MultiByteToWideChar(codePage, MB_ERR_INVALID_CHARS, path, -1, nullptr, 0);
+    if (!length) {
+        codePage = CP_ACP;
+        length = MultiByteToWideChar(codePage, 0, path, -1, nullptr, 0);
+    }
+    if (!length) {
+        return {};
+    }
+    std::wstring wide(length, L'\0');
+    MultiByteToWideChar(codePage, 0, path, -1, wide.data(), length);
+    wide.resize(length - 1);
+    std::replace(wide.begin(), wide.end(), L'/', L'\\');
+    if (wide.compare(0, 4, L"\\\\?\\") == 0 || wide.compare(0, 4, L"\\\\.\\") == 0) {
+        return wide;
+    }
+
+    // Resolve relative paths and dot components before adding the extended
+    // prefix, which disables Win32 path normalization. Do not depend on the
+    // machine's LongPathsEnabled policy or the executable's manifest.
+    DWORD size = GetFullPathNameW(wide.c_str(), 0, nullptr, nullptr);
+    if (!size) {
+        return wide;
+    }
+    std::wstring absolute(size, L'\0');
+    DWORD written = GetFullPathNameW(wide.c_str(), size, absolute.data(), nullptr);
+    if (!written || written >= size) {
+        return wide;
+    }
+    absolute.resize(written);
+    // Directory creation has a lower legacy limit than file creation.
+    if (absolute.size() < MAX_PATH - 12) {
+        return wide;
+    }
+    if (absolute.compare(0, 2, L"\\\\") == 0) {
+        return L"\\\\?\\UNC\\" + absolute.substr(2);
+    }
+    return L"\\\\?\\" + absolute;
+}
+
+int Platform::open(const char* path, int flags, int mode) {
+    return _wopen(nativeFilePath(path).c_str(), flags, mode);
+}
+
+FILE* Platform::fopen(const char* path, const char* mode) {
+    std::wstring wideMode(mode, mode + strlen(mode));
+    return _wfopen(nativeFilePath(path).c_str(), wideMode.c_str());
+}
+
+int Platform::access(const char* path, int mode) {
+    return _waccess(nativeFilePath(path).c_str(), mode);
+}
+
+int Platform::stat(const char* path, Stat* buf) {
+    return _wstat32i64(nativeFilePath(path).c_str(), buf);
+}
+
+int Platform::unlink(const char* path) {
+    return _wunlink(nativeFilePath(path).c_str());
+}
+
+int Platform::rename(const char* from, const char* to) {
+    return _wrename(nativeFilePath(from).c_str(), nativeFilePath(to).c_str());
+}
+
+int Platform::mkdir(const char* path) {
+    return _wmkdir(nativeFilePath(path).c_str());
+}
+
+int Platform::rmdir(const char* path) {
+    return _wrmdir(nativeFilePath(path).c_str());
+}
+
+int Platform::utime(const char* path, Utimbuf* times) {
+    return _wutime(nativeFilePath(path).c_str(), times);
+}
 
 char* platform_strcasestr(const char* s1, const char* s2) {
     return StrStrIA(s1, s2);
@@ -355,17 +443,22 @@ ULONGLONG Platform::getSystemTimeAsMicroSeconds() {
 
 void Platform::listNodes(BString nativePath, std::vector<ListNodeResult>& results) {
     BString path;
-    WIN32_FIND_DATA findData;
+    WIN32_FIND_DATAW findData;
     HANDLE hFind;
 
-    path = nativePath+"\\*.*";;
-    hFind = FindFirstFile(path.c_str(), &findData); 
+    path = nativePath+"\\*.*";
+    hFind = FindFirstFileW(nativeFilePath(path.c_str()).c_str(), &findData);
     if(hFind != INVALID_HANDLE_VALUE)  { 		
         do  { 
-            if (strcmp(findData.cFileName, ".") && strcmp(findData.cFileName, ".."))  {
-                results.push_back(ListNodeResult(BString::copy(findData.cFileName), (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)!=0));
+            if (wcscmp(findData.cFileName, L".") && wcscmp(findData.cFileName, L"..")) {
+                int length = WideCharToMultiByte(CP_UTF8, 0, findData.cFileName, -1, nullptr, 0, nullptr, nullptr);
+                if (length) {
+                    std::string name(length, '\0');
+                    WideCharToMultiByte(CP_UTF8, 0, findData.cFileName, -1, name.data(), length, nullptr, nullptr);
+                    results.push_back(ListNodeResult(BString::copy(name.c_str()), (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)!=0));
+                }
             }
-        } while(FindNextFile(hFind, &findData)); 
+        } while(FindNextFileW(hFind, &findData));
         FindClose(hFind); 
     }
 }

@@ -54,7 +54,7 @@ bool Fs::initFileSystem(const BString& rootPath) {
         path = rootPath;
     }
 
-    if (MKDIR(rootPath.c_str())==0) {
+    if (Platform::mkdir(rootPath.c_str())==0) {
         klog_fmt("Created root directory: %s", rootPath.c_str());
     }
 
@@ -406,7 +406,7 @@ BString Fs::getFileNameFromNativePath(const BString& path) {
 }
 
 bool Fs::doesNativePathExist(const BString& path) {
-    if (::access(path.c_str(), 0)!=-1) {
+    if (Platform::access(path.c_str(), 0)!=-1) {
         return true;
     }
     return false;
@@ -422,8 +422,8 @@ bool Fs::isNativeDirectoryEmpty(const BString& path) {
 }
 
 U64 Fs::getNativeFileSize(const BString& path) {
-    PLATFORM_STAT_STRUCT buf;
-    if (PLATFORM_STAT(path.c_str(), &buf)==0) {
+    Platform::Stat buf;
+    if (Platform::stat(path.c_str(), &buf)==0) {
         return buf.st_size;
     }
     return 0;
@@ -441,17 +441,17 @@ U64 Fs::getNativeDirectorySize(const BString& path, bool recursive) {
 }
 
 bool Fs::isNativePathDirectory(const BString& path) {
-    PLATFORM_STAT_STRUCT buf = {};
+    Platform::Stat buf = {};
 
 #ifdef BOXEDWINE_MSVC
     if (path.length()<3) {
         BString msvc = path + "\\";
-        if (PLATFORM_STAT(msvc.c_str(), &buf)==0) {
+        if (Platform::stat(msvc.c_str(), &buf)==0) {
             return S_ISDIR(buf.st_mode);
         }
     }
 #endif
-    if (PLATFORM_STAT(path.c_str(), &buf)==0) {
+    if (Platform::stat(path.c_str(), &buf)==0) {
         return S_ISDIR(buf.st_mode);
     }
     return false;
@@ -481,7 +481,7 @@ U32 Fs::makeLocalDirs(const BString& path) {
     for (U32 i=0;i<nodes.size();i++) {
         std::shared_ptr<FsNode> nodePart = nodes[i];
         if (!Fs::doesNativePathExist(nodePart->nativePath)) {
-            U32 result = MKDIR(nodePart->nativePath.c_str());
+            U32 result = Platform::mkdir(nodePart->nativePath.c_str());
             if (result) {
                 return -translateErr(errno);
             }
@@ -498,7 +498,7 @@ U32 Fs::makeLocalDirs(const BString& path) {
             BString nativePath = resolution.missingComponents[i];
             Fs::localNameToRemote(nativePath);
             nativePath = node->nativePath.stringByApppendingPath(nativePath);
-            U32 result = MKDIR(nativePath.c_str());
+            U32 result = Platform::mkdir(nativePath.c_str());
             if (result) {
                 return -translateErr(errno);
             }
@@ -518,7 +518,7 @@ void Fs::splitPath(const BString& path, std::vector<BString>& parts) {
 }
 
 U32 Fs::readNativeFile(const BString& nativePath, U8* buffer, U32 bufferLen) {
-    int f = ::open(nativePath.c_str(), O_RDONLY | O_BINARY);
+    int f = Platform::open(nativePath.c_str(), O_RDONLY | O_BINARY);
     if (f>=0) {
         U32 result = (U32)::read(f, buffer, bufferLen);
         ::close(f);
@@ -552,7 +552,7 @@ bool Fs::makeNativeDirs(const BString& path) {
     for (auto& part : parts) {
         tmp = tmp.stringByApppendingPath(part);
         if (!Fs::doesNativePathExist(tmp)) {
-            U32 result = MKDIR(tmp.c_str());
+            U32 result = Platform::mkdir(tmp.c_str());
             if (result!=0) {
                 return false;
             }
@@ -562,12 +562,16 @@ bool Fs::makeNativeDirs(const BString& path) {
 }
 
 U32 Fs::deleteNativeFile(const BString& path) {
-    return unlink(path.c_str());
+    return Platform::unlink(path.c_str());
 }
 
 U32 Fs::deleteNativeDirAndAllFilesInDir(const BString& path) {
     std::error_code e; // will prevent it from throwing an error
+#ifdef BOXEDWINE_MSVC
+    return (U32)std::filesystem::remove_all(Platform::nativeFilePath(path.c_str()), e);
+#else
     return (U32)std::filesystem::remove_all(path.c_str(), e);
+#endif
 }
 
 U32 Fs::iterateAllNativeFiles(const BString& path, bool recursive, bool includeDirs, std::function<U32(BString, bool isDir)> f) {

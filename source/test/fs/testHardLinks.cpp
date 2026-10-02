@@ -6018,8 +6018,8 @@ void testUtimensatPreservesAccessTimeInStat() {
             testFail("file write did not replace explicit modification time");
         }
 #ifndef BOXEDWINE_MSVC
-        PLATFORM_STAT_STRUCT hostStat;
-        if (PLATFORM_STAT(node->getNativePathForData().c_str(), &hostStat) != 0) {
+        Platform::Stat hostStat;
+        if (Platform::stat(node->getNativePathForData().c_str(), &hostStat) != 0) {
             testFail("could not stat time file after write");
         } else {
 #ifdef __APPLE__
@@ -6373,6 +6373,71 @@ void testStatxEmptyPathUsesOpenFile() {
     process->close(fd);
     expectU32("closed empty-path descriptor", process->statx(fd, B(""), emptyPath, 0x7ff, STAT_A), (U32)-K_EBADF);
     cleanupRoot(root);
+}
+
+void testLongNativeFilePaths() {
+    // A relative root with dot components also checks normalization before
+    // Windows' extended-length prefix disables normal path processing.
+    BString base = B("tmp/test-long-native-file-path-root");
+    cleanupRoot(base);
+    initTestFileSystem(base);
+    BString root = base + "/./";
+    Fs::initFileSystem(root);
+    BString directory = B("/") + BString(100, 'a') + "/" + BString(100, 'b') + "/" + BString(100, 'c');
+    U32 result = Fs::makeLocalDirs(directory);
+    expectZero("create directories beyond MAX_PATH", result);
+    if (result) {
+        cleanupRoot(base);
+        return;
+    }
+    BString path = directory + "/file";
+    std::shared_ptr<FsNode> node = addRegularFile(path);
+    std::unique_ptr<FsOpenNode> file(node->open(K_O_CREAT | K_O_RDWR));
+    if (!file) {
+        testFail("long-path file could not be created");
+        cleanupRoot(base);
+        return;
+    }
+    U8 payload[] = {1, 2, 3, 4};
+    expectU32("write long-path file", file->writeNative(payload, sizeof(payload)), sizeof(payload));
+    file->close();
+    file->reopen();
+    U8 actual[sizeof(payload)] = {};
+    expectU32("read reopened long-path file", file->readNative(actual, sizeof(actual)), sizeof(actual));
+    if (memcmp(actual, payload, sizeof(payload))) {
+        testFail("long-path file contents changed");
+    }
+    file.reset();
+    expectZero("set long-path timestamp", node->setTimes(1600000000, 0, 1600000000, 0));
+    expectZero("write long-path metadata", Fs::setXAttr(node, B("user.WINEREPARSE"), payload, sizeof(payload)));
+    BString renamed = directory + "/renamed";
+    expectZero("rename long-path file and metadata", node->rename(renamed));
+
+    // Reload so the checks exercise directory enumeration, native stat, and
+    // metadata reads, rather than the cached FsNode state.
+    node.reset();
+    Fs::shutDown();
+    Fs::initFileSystem(root);
+    node = Fs::getNodeFromLocalPath(B(""), renamed, false);
+    if (!node) {
+        testFail("long-path file was not found after filesystem reload");
+        cleanupRoot(base);
+        return;
+    }
+    expectU64("stat long-path file size", node->length(), sizeof(payload));
+    expectU64("stat long-path timestamp", node->lastModified(), 1600000000000ULL);
+    std::vector<U8> metadata;
+    expectZero("read long-path metadata", Fs::getXAttr(node, B("user.WINEREPARSE"), metadata));
+    expectBytes("long-path metadata survived rename", metadata, payload, sizeof(payload));
+    if (!Fs::doesNativePathExist(node->nativePath) || !node->remove()) {
+        testFail("long-path file could not be accessed or deleted");
+    }
+    std::shared_ptr<FsNode> dir = Fs::getNodeFromLocalPath(B(""), directory, false);
+    expectZero("remove long-path directory and metadata", dir->removeDir());
+    cleanupRoot(base);
+    if (Fs::doesNativePathExist(base)) {
+        testFail("long-path test tree could not be removed");
+    }
 }
 
 void testUtf8NamesSurviveNativeFilesystemReload() {
