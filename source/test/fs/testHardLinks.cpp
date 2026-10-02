@@ -6383,7 +6383,9 @@ void testLongNativeFilePaths() {
     initTestFileSystem(base);
     BString root = base + "/./";
     Fs::initFileSystem(root);
-    BString directory = B("/") + BString(100, 'a') + "/" + BString(100, 'b') + "/" + BString(100, 'c');
+    // After removing the leaf, cleanup must still traverse ancestors beyond
+    // MAX_PATH even when the test starts in a short working directory.
+    BString directory = B("/") + BString(100, 'a') + "/" + BString(100, 'b') + "/" + BString(100, 'c') + "/" + BString(100, 'd');
     U32 result = Fs::makeLocalDirs(directory);
     expectZero("create directories beyond MAX_PATH", result);
     if (result) {

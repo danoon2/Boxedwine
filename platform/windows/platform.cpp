@@ -29,7 +29,7 @@
 #include <sys/stat.h>
 #include <sys/utime.h>
 
-std::wstring Platform::nativeFilePath(const char* path) {
+std::wstring Platform::nativeFilePath(const char* path, bool forceExtendedLength) {
     if (!path || !*path) {
         return {};
     }
@@ -66,7 +66,7 @@ std::wstring Platform::nativeFilePath(const char* path) {
     }
     absolute.resize(written);
     // Directory creation has a lower legacy limit than file creation.
-    if (absolute.size() < MAX_PATH - 12) {
+    if (!forceExtendedLength && absolute.size() < MAX_PATH - 12) {
         return wide;
     }
     if (absolute.compare(0, 2, L"\\\\") == 0) {

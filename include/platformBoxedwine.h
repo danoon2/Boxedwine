@@ -153,7 +153,7 @@ public:
     using Stat = struct _stat32i64;
     using Utimbuf = struct _utimbuf;
     // Convert only at the host API boundary; guest/native path bookkeeping stays unchanged.
-    static std::wstring nativeFilePath(const char* path);
+    static std::wstring nativeFilePath(const char* path, bool forceExtendedLength = false);
 #else
     using Stat = struct stat;
     using Utimbuf = struct utimbuf;

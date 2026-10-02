@@ -568,7 +568,9 @@ U32 Fs::deleteNativeFile(const BString& path) {
 U32 Fs::deleteNativeDirAndAllFilesInDir(const BString& path) {
     std::error_code e; // will prevent it from throwing an error
 #ifdef BOXEDWINE_MSVC
-    return (U32)std::filesystem::remove_all(Platform::nativeFilePath(path.c_str()), e);
+    // remove_all appends child names itself. Even a short starting path needs
+    // the extended prefix so descendants can grow beyond MAX_PATH.
+    return (U32)std::filesystem::remove_all(Platform::nativeFilePath(path.c_str(), true), e);
 #else
     return (U32)std::filesystem::remove_all(path.c_str(), e);
 #endif
