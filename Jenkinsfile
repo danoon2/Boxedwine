@@ -608,10 +608,11 @@ pipeline {
                             cd project/emscripten
                             set -euo pipefail
 
-                            ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v1.zip'
-                            ABIWORD_AUTO_SHA256='80dc5a5f99f23637e4eb29b72e4f5484e9c03d697e72e4e4777574985b351181'
-                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/1/boxedwine_v1.zip'
-                            BOXEDWINE_AUTO_SHA256='67742f667f989083a327d4405f7e4cd59cacea061a5936dbedcc5d47898de4d9'
+                            # Keep the AbiWord captures paired with the Wine 11 window theme.
+                            ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v2.zip'
+                            ABIWORD_AUTO_SHA256='362a198e377a66b13ba4aa07560e7c7d41f5a43d8c5a14d2971bc84caad796db'
+                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/13/TinyCore15Wine11.0-web.zip'
+                            BOXEDWINE_AUTO_SHA256='a14446b27adbaccd4fac25dfb4e951da2dd4978fecfbf6e16aa718871fe4b0c5'
 
                             file_matches_sha256() {
                                 local file="$1"
