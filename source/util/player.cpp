@@ -346,6 +346,24 @@ static void failAutomationTimeout(Player* player, KNativeScreenPtr screen, const
     }
     screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
 #ifdef __EMSCRIPTEN__
+#ifndef BOXEDWINE_MULTI_THREADED
+    // Guest threads are paused between slices here, so their stacks are stable.
+    KSystem::printStacks();
+#endif
+    // These files live in the browser's memory filesystem and would otherwise
+    // disappear when emrun closes the failed test. Retain the whole desktop as
+    // well as the crop and diff so startup failures can be diagnosed in CI.
+    screen->screenShot(B("failed-screen.bmp"), nullptr, 0);
+    MAIN_THREAD_EM_ASM({
+        if (typeof emrun_file_dump !== 'function') return;
+        for (const name of ['failed.bmp', 'failed_diff.bmp', 'failed-screen.bmp']) {
+            try {
+                emrun_file_dump(name, FS.readFile(name));
+            } catch (error) {
+                console.error('Could not export automation screenshot ' + name + ': ' + error);
+            }
+        }
+    });
     finishEmscriptenAutomation(2);
 #else
     player->quit();

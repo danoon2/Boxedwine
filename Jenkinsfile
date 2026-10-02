@@ -156,17 +156,21 @@ void runEmscriptenAbiWordAutomation(String automationName, String buildDir, Stri
                 chrome_args+=" --disable-backgrounding-occluded-windows"
                 chrome_args+=" --disable-renderer-backgrounding"
 
+                attempt_dir="$WORKSPACE/project/emscripten/automation-results/$BUILD_NUMBER/$BOXEDWINE_AUTOMATION_BUILD_DIR/attempt-$attempt"
+                mkdir -p "$attempt_dir"
                 cd "Build/${BOXEDWINE_AUTOMATION_BUILD_DIR}"
                 set +e
                 emrun --kill-exit \
                     --port "$BOXEDWINE_AUTOMATION_PORT" \
                     --timeout 600 \
                     --timeout-returncode 124 \
+                    --dump-out-directory "$attempt_dir" \
                     --browser="/usr/bin/google-chrome" \
                     --browser-args="$chrome_args" \
-                    'boxedwine.html?root=boxedwine&overlay=abiword_auto&w=%2Ffiles&play=%2Ffiles%2Fscript.txt&p=ABIWORD.EXE&resolution=1024x768&storage=memory'
-                rc=$?
+                    'boxedwine.html?root=boxedwine&overlay=abiword_auto&w=%2Ffiles&play=%2Ffiles%2Fscript.txt&p=ABIWORD.EXE&resolution=1024x768&storage=memory' 2>&1 | tee "$attempt_dir/console.log"
+                rc=${PIPESTATUS[0]}
                 set -e
+                printf '%s\\n' "$rc" > "$attempt_dir/exit-code.txt"
                 cd ../..
 
                 cleanup_chrome_profile
@@ -666,6 +670,11 @@ pipeline {
                             stage('Emscripten MT JIT') {
                                 runEmscriptenAbiWordAutomation('AbiWord Emscripten MT JIT automation', 'AutomationMultiThreadedJit', '6934')
                             }
+                        }
+                    }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: "project/emscripten/automation-results/${env.BUILD_NUMBER}/**/*", allowEmptyArchive: true
                         }
                     }
                 }
