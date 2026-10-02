@@ -148,10 +148,10 @@ void runEmscriptenAbiWordAutomation(String automationName, String buildDir, Stri
             do
                 echo "${BOXEDWINE_AUTOMATION_NAME} attempt ${attempt}/3"
                 chrome_profile="$(mktemp -d "$WORKSPACE/.chrome-${BOXEDWINE_AUTOMATION_BUILD_DIR}-${attempt}.XXXXXX")"
-                # ST advances the guest through browser timers. Chrome throttles
-                # hidden windows enough to time out Wine startup, even with an
-                # otherwise idle worker. Keep the guest progressing when hidden.
-                chrome_args="--user-data-dir=${chrome_profile}"
+                # Avoid dependence on the worker's desktop: headed Chrome can
+                # stall guest callbacks despite the throttling flags below.
+                # Headless Chrome still renders the guest screenshots used here.
+                chrome_args="--headless=new --user-data-dir=${chrome_profile}"
                 chrome_args+=" --disable-background-timer-throttling"
                 chrome_args+=" --disable-backgrounding-occluded-windows"
                 chrome_args+=" --disable-renderer-backgrounding"
