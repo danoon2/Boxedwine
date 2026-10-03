@@ -61,6 +61,7 @@ final class LibraryStore: ObservableObject {
     @Published var showingRemoved = false
     @Published var showingRecovery = false
     @Published var showingDemos = false
+    @Published var selectedDemoID: String?
     @Published private(set) var demos: [Demo] = []
     @Published private(set) var demoCatalogProblem: String?
     @Published private(set) var recoveryItems: [RecoveryItem] = []
