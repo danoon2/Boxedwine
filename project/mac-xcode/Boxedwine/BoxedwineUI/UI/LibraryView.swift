@@ -423,7 +423,7 @@ private struct BuiltInDownloadView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Download Wine to try \(download.program.name)").font(.title2.weight(.semibold))
-            Text("\(download.program.name) needs \(wine.name). The download is \(ByteCountFormatter.string(fromByteCount: wine.bytes, countStyle: .file)).")
+            Text("\(download.program.name) needs \(wine.wineName). The download is \(ByteCountFormatter.string(fromByteCount: wine.bytes, countStyle: .file)).")
                 .fixedSize(horizontal: false, vertical: true)
             Text("\(download.program.name) will open when setup finishes. Other apps using this Wine package can share the download.")
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -455,10 +455,15 @@ struct CatalogWinePicker: View {
                 }
             }
             #else
-            Picker("Wine version", selection: $selectedID) {
-                if store.wineVersions.isEmpty { Text("Wine list unavailable").tag(String?.none) }
-                ForEach(store.wineVersions) { Text($0.name).tag(Optional($0.id)) }
-            }.accessibilityLabel("Wine version").disabled(store.wineVersions.isEmpty)
+            if store.hasWineChoices {
+                Picker("Wine version", selection: $selectedID) {
+                    ForEach(store.wineVersions) { Text($0.wineName).tag(Optional($0.id)) }
+                }.accessibilityLabel("Wine version")
+            } else if let wine = store.defaultCatalogWine {
+                Text(wine.wineName).font(.callout)
+            } else {
+                Text("Wine list unavailable").foregroundStyle(.secondary)
+            }
             if let wine = store.wineVersions.first(where: { $0.id == selectedID }) {
                 Text(store.wineDownloadStatus(wine).message(for: wine))
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -829,12 +834,14 @@ struct AppTroubleshootingView: View {
                                 Text("Boxedwine emulates an x86 PC, which adds work even on a fast Mac. Some games will remain too demanding or have compatibility problems; a different display setting cannot fix every issue.")
                             }
                             #if !BOXEDWINE_APP_STORE
-                            Divider()
-                            topic("Try a different Wine version") {
-                                Text("Create a separate test copy with another Wine package. Compatibility can change between Wine releases; a newer version is not always better for every game.")
-                                Text("Your original app and saves stay available. Changes in the test copy do not sync back. Wine’s version is separate from the Windows version the game sees.")
-                                Button("Try Another Wine Version…") { store.tryWineFromTroubleshooting(app) }
-                                    .disabled(!store.canModify(app))
+                            if store.hasWineChoices {
+                                Divider()
+                                topic("Try a different Wine version") {
+                                    Text("Create a separate test copy with another Wine package. Compatibility can change between Wine releases; a newer version is not always better for every game.")
+                                    Text("Your original app and saves stay available. Changes in the test copy do not sync back. Wine’s version is separate from the Windows version the game sees.")
+                                    Button("Try Another Wine Version…") { store.tryWineFromTroubleshooting(app) }
+                                        .disabled(!store.canModify(app))
+                                }
                             }
                             #endif
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
@@ -963,7 +970,9 @@ struct LaunchLogView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("In App Settings, use Choose Program to check the selected .exe. You can also try a different window size there.")
 #if !BOXEDWINE_APP_STORE
-                    Text("In Troubleshooting, expand Try a different Wine version to make a separate test copy, preserving the original app and saves. Changes in the test copy do not sync back.")
+                    if store.hasWineChoices {
+                        Text("In Troubleshooting, expand Try a different Wine version to make a separate test copy, preserving the original app and saves. Changes in the test copy do not sync back.")
+                    }
 #endif
                     Text("Warnings in a log do not always mean the app failed. An exit code describes the Boxedwine runtime; it does not confirm compatibility.")
                 }.font(.callout).foregroundStyle(.secondary).padding(.top, 6)
@@ -1031,15 +1040,21 @@ struct NativeSettingsView: View {
             }
             HStack {
 #if !BOXEDWINE_APP_STORE
-                Button("Choose Wine Version…") { store.chooseRuntime() }
+                if store.hasWineChoices {
+                    Button("Choose Wine Version…") { store.chooseRuntime() }
+                } else if !store.runtimeAvailable, let wine = store.defaultCatalogWine {
+                    Button("Set Up \(wine.name)") { store.chooseRuntime() }
+                }
 #endif
                 Button("Check Again") { store.refreshRuntime() }
             }.disabled(busy)
             Text("Wine packages are shared and cleaned up automatically. Each app keeps its own Windows files, settings, and saves.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             #if !BOXEDWINE_APP_STORE
-            Text("Changing Windows support applies to apps using the library default. Apps pinned to a Wine package keep it. Close running Windows apps first.")
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if store.hasWineChoices {
+                Text("Changing Windows support applies to apps using the library default. Apps pinned to a Wine package keep it. Close running Windows apps first.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             #endif
             if store.importing { ImportProgressView(store: store) }
             Text("Package checks do not guarantee compatibility with a Windows app.")

@@ -20,6 +20,22 @@ Once installed, you can open open project\msvc\BoxedWine\BoxedWine.sln
 
 There are no dependencies.
 
+For the native Windows frontend, see [Native Windows UI](project/msvc/BoxedwineUI/README.md).
+It uses WPF and .NET 10 with Windows light/dark themes. Run
+`project\msvc\BoxedwineUI\build.ps1 -BuildRuntime -Test` in PowerShell to build its
+separate emulator and UI. The existing Windows solution above remains available.
+
+Jenkins packages the framework-dependent native UI in `Deploy/Win64` and
+`Deploy/WinARM64`, and retains the existing frontend in `Deploy/Win32`. All three
+folders go into the existing combined build ZIP. The native UI requires an installed
+[.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+matching its architecture, and offers a download prompt if it is missing.
+Windows workers now also require
+the .NET 10 SDK and NuGet.org access for publishing. Run
+`tools\jenkins\build-windows.ps1 -Platform x64` (or `ARM64` / `Win32`) to reproduce
+a target's packaging locally. See the UI README's Jenkins release section for
+the folder layout and the separate command-line executable used by automation.
+
 ## Mac
 
 The native Mac UI needs Xcode with Swift 6 and a macOS 15 or newer SDK (validated with Xcode 26.5). The current native app targets Apple Silicon and macOS 15 or later.

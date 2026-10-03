@@ -332,6 +332,7 @@ final class LibraryStore: ObservableObject {
         return runtimeChecking ? "Checking library default…" : "Library default unavailable"
     }
 
+    var hasWineChoices: Bool { wineVersions.count > 1 }
     var defaultCatalogWine: CatalogWine? {
         if let package = runtimeSupport?.package, let wine = wineVersions.first(where: { $0.matches(package) }) { return wine }
         return wineVersions.first
@@ -398,7 +399,7 @@ final class LibraryStore: ObservableObject {
 
 #if !BOXEDWINE_APP_STORE
     func prepareWineTrial(_ app: LibraryApp, name: String, wine: CatalogWine) {
-        guard canModify(app), wineTrialCandidate?.id == app.id, canSelectWine(wine.id) else { return }
+        guard hasWineChoices, canModify(app), wineTrialCandidate?.id == app.id, canSelectWine(wine.id) else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.utf8.count <= 1024 else { return }
         pendingWineTrial = (app, trimmed, wine, wineDownloadStatus(wine) == .required)
@@ -602,9 +603,9 @@ final class LibraryStore: ObservableObject {
         guard !wineVersions.isEmpty else { errorMessage = wineCatalogProblem ?? "The release Wine list is unavailable."; return }
         refreshWineDownloads()
         let alert = NSAlert()
-        alert.messageText = "Choose the library’s Wine version"
-        alert.informativeText = "Apps pinned to a Wine package keep it. Older apps that use the library default will use this version."
-        alert.addButton(withTitle: "Use Wine Version")
+        alert.messageText = hasWineChoices ? "Choose the library’s Wine version" : "Set up Windows support"
+        alert.informativeText = hasWineChoices ? "Apps pinned to a Wine package keep it. Older apps that use the library default will use this version." : "Boxedwine prepares \(wineVersions[0].name) for your apps. The package is downloaded and verified if needed."
+        alert.addButton(withTitle: hasWineChoices ? "Use Wine Version" : "Continue")
         alert.addButton(withTitle: "Cancel")
         let chooser = WineRuntimeChooser(store: self, button: alert.buttons[0])
         alert.accessoryView = chooser.view
@@ -1039,7 +1040,7 @@ final class LibraryStore: ObservableObject {
         guard canTryBuiltIn(program) else { return }
         showLibrary()
         if let existing = apps.first(where: { $0.wineProgram == program }) { revealApp(existing.id); launch(existing); return }
-        if runtimeAvailable { createBuiltIn(program); return }
+        if runtimeAvailable, let package = runtimeSupport?.package, wineVersions.contains(where: { $0.matches(package) }) { createBuiltIn(program); return }
 #if BOXEDWINE_APP_STORE
         errorMessage = WineCatalogError.downloadsUnavailable.localizedDescription
 #else
@@ -1136,7 +1137,7 @@ final class LibraryStore: ObservableObject {
 
     #if !BOXEDWINE_APP_STORE
     func tryWineFromTroubleshooting(_ app: LibraryApp) {
-        guard troubleshootingApp?.id == app.id, canModify(app), apps.contains(app) else { return }
+        guard hasWineChoices, troubleshootingApp?.id == app.id, canModify(app), apps.contains(app) else { return }
         actionAfterTroubleshootingSheet = .tryWine(app)
         troubleshootingApp = nil
     }
@@ -1150,7 +1151,7 @@ final class LibraryStore: ObservableObject {
                 launch(app, installing: true)
             #if !BOXEDWINE_APP_STORE
             case .tryWine(let app):
-                if canModify(app), apps.contains(app) { wineTrialCandidate = app }
+                if hasWineChoices, canModify(app), apps.contains(app) { wineTrialCandidate = app }
             #endif
             }
         }
@@ -1420,7 +1421,7 @@ final class LibraryStore: ObservableObject {
                 if result.stoppedByUser { self.activity[app.id] = "Stopped" }
                 else if result.signalled || result.status != 0 {
                     self.activity[app.id] = "Closed unexpectedly — see log"
-                    self.launchProblems[app.id] = "Boxedwine closed unexpectedly. Check the launch log before retrying. If this keeps happening, try a separate copy with another Wine version."
+                    self.launchProblems[app.id] = "Boxedwine closed unexpectedly. Check the launch log before retrying." + (self.hasWineChoices ? " If this keeps happening, try a separate copy with another Wine version." : "")
                 } else {
                     self.activity[app.id] = (externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "\($0) closed" } ?? (installing ? "Installer closed — choose the installed app" : "App closed")
                 }
@@ -1555,7 +1556,7 @@ private final class WineRuntimeChooser: NSObject {
         label.frame = NSRect(x: 0, y: 0, width: 320, height: 42)
         label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         label.textColor = .secondaryLabelColor
-        view.addSubview(picker)
+        if store.hasWineChoices { view.addSubview(picker) }
         view.addSubview(label)
         observation = store.$wineDownloadStatuses.sink { [weak self] statuses in self?.update(statuses) }
     }

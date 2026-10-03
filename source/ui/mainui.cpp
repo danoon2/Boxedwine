@@ -534,7 +534,7 @@ bool uiShow(BString basePath) {
         y = SDL_WINDOWPOS_CENTERED;
     }
 
-    window = SDL_CreateWindow("Boxedwine UI", x, y, cx, cy, window_flags);
+    window = SDL_CreateWindow("Boxedwine", x, y, cx, cy, window_flags);
     // when launching boxedwine as another process, if that process creates and destroys more than 1 window (changing emulated resolution), on Windows at least, when that process exits the above create window sometimes won't be on top
     SDL_RaiseWindow(window);
 #ifdef BOXEDWINE_IMGUI_DX9

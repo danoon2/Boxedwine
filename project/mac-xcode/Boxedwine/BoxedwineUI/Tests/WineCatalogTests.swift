@@ -35,13 +35,23 @@ struct WineCatalogTests {
         #expect(try WineCatalog.load(xml: Data(xml.utf8), fingerprints: fingerprints()).wines.count == 1)
     }
 
-    @Test func bundledListMatchesAllSevenReleaseEntries() throws {
+    @Test func bundledListOffersOnlyWine11V13() throws {
         let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources/WindowsSupport")
         let catalog = try WineCatalog.load(xml: Data(contentsOf: resources.appendingPathComponent("filesV2.xml")), fingerprints: Data(contentsOf: resources.appendingPathComponent("packages.json")))
-        #expect(catalog.wines.map(\.wineVersion) == ["11.0", "10.0", "9.0", "6.0", "5.0", "4.1", "3.1"])
+        #expect(catalog.wines.map(\.wineVersion) == ["11.0"])
+        #expect(catalog.wines.first?.name == "Wine 11.0 V13")
         #expect(catalog.wines.allSatisfy { $0.url.scheme == "https" })
         #expect(catalog.wines.first?.fileVersion == "13")
         #expect(catalog.wines.first?.filesystemVersion == "13")
+    }
+
+    @Test func catalogStillSupportsMultipleReleasePackages() throws {
+        let nextURL = "https://boxedwine.org/tests/Wine12.0.zip"
+        let next = "<Wine><Name>Wine 12.0 test fixture</Name><WineVersion>12.0</WineVersion><FileVersion>14</FileVersion><FileURL>\(nextURL)</FileURL><FileSizeMB>1</FileSizeMB></Wine>"
+        var pins = try JSONDecoder().decode([String: WineCatalog.Fingerprint].self, from: fingerprints())
+        pins[nextURL] = WineCatalog.Fingerprint(fileVersion: "14", filesystemVersion: "14", bytes: 100, sha256: String(repeating: "a", count: 64))
+        let catalog = try WineCatalog.load(xml: Data(xml.replacingOccurrences(of: "</XML>", with: next + "</XML>").utf8), fingerprints: JSONEncoder().encode(pins))
+        #expect(catalog.wines.map(\.wineVersion) == ["5.0", "12.0"])
     }
 
     @Test func rejectsMalformedOrUnpinnedCatalogChoices() throws {

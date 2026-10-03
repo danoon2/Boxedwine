@@ -81,6 +81,7 @@ struct LibraryDocument: Codable, Sendable {
 
 enum LibraryError: LocalizedError {
     case invalidPath, missingExecutable, missingRuntime, unsupportedVersion(Int), invalidInstaller, noProgramsInFolder
+    case multipleLibraries
 
     var errorDescription: String? {
         switch self {
@@ -95,6 +96,7 @@ enum LibraryError: LocalizedError {
         case .unsupportedVersion(let version): "This library was saved by a newer version of Boxedwine (format \(version))."
         case .invalidInstaller: "Choose a Windows installer ending in .exe or .msi."
         case .noProgramsInFolder: "This folder doesn’t contain a Windows program (.exe). Choose the folder containing the app and its supporting files."
+        case .multipleLibraries: "More than one saved Boxedwine library was found. Move the library you want to use into the Boxedwine folder in Application Support, then reopen Boxedwine."
         }
     }
 }
@@ -113,7 +115,7 @@ struct LibraryRepository: Sendable {
 #else
         let base = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                                appropriateFor: nil, create: true)
-        return LibraryRepository(directory: base.appendingPathComponent("BoxedwineNative", isDirectory: true))
+        return LibraryRepository(directory: try standardDirectory(base: base))
 #endif
     }
 
@@ -124,7 +126,34 @@ struct LibraryRepository: Sendable {
             guard override.hasPrefix("/"), !override.utf8.contains(0) else { throw LibraryError.invalidPath }
             return URL(fileURLWithPath: override, isDirectory: true)
         }
-        return home.appendingPathComponent("Library/Containers/org.boxedwine.app/Data/Library/Application Support/BoxedwineNative", isDirectory: true)
+        let base = home.appendingPathComponent("Library/Containers/org.boxedwine.app/Data/Library/Application Support", isDirectory: true)
+        return try standardDirectory(base: base)
+    }
+
+    /// Preserve a preview library when adopting the product's standard folder.
+    /// Discover it by its metadata and lock, without retaining obsolete folder names.
+    static func standardDirectory(base: URL) throws -> URL {
+        let manager = FileManager.default
+        let destination = base.appendingPathComponent("Boxedwine", isDirectory: true)
+        guard !manager.fileExists(atPath: destination.path), manager.fileExists(atPath: base.path) else { return destination }
+        let candidates = try manager.contentsOfDirectory(at: base, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey]).filter { url in
+            guard url.lastPathComponent.hasPrefix("Boxedwine") else { return false }
+            let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            guard values.isDirectory == true, values.isSymbolicLink != true,
+                  manager.fileExists(atPath: url.appendingPathComponent(".library.lock").path),
+                  manager.fileExists(atPath: url.appendingPathComponent("library.json").path) else { return false }
+            let metadata = try url.appendingPathComponent("library.json").resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+            return metadata.isRegularFile == true && metadata.isSymbolicLink != true
+        }
+        guard candidates.count <= 1 else { throw LibraryError.multipleLibraries }
+        if let previous = candidates.first {
+            let repository = LibraryRepository(directory: previous)
+            let access = try LibraryAccess(repository: repository)
+            _ = try repository.loadDocument()
+            try manager.moveItem(at: previous, to: destination)
+            withExtendedLifetime(access) {}
+        }
+        return destination
     }
 
     func prepare() throws {
@@ -608,7 +637,7 @@ final class LibraryAccess {
     enum AccessError: LocalizedError {
         case busy
         var errorDescription: String? {
-            "This library is already open in another Boxedwine UI. Close that window's application before opening it here."
+            "This library is already open in another copy of Boxedwine. Close that application before opening it here."
         }
     }
 

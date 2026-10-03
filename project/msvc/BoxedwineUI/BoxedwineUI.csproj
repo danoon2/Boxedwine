@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <SelfContained>false</SelfContained>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\BoxedWine\app.ico</ApplicationIcon>
+    <AssemblyName>Boxedwine</AssemblyName>
+    <RootNamespace>Boxedwine.UI</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="PackageReadme.txt" Link="README.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Compile Remove="Core\**;Tests\**" />
+    <Page Remove="Tests\**" />
+    <ProjectReference Include="Core\Boxedwine.Library.csproj" />
+    <Content Include="..\..\mac-xcode\Boxedwine\BoxedwineUI\Resources\WindowsSupport\*" Link="Resources\WindowsSupport\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\mac-xcode\Boxedwine\BoxedwineUI\Resources\AppIcons\*" Link="Resources\AppIcons\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\resources\demo-catalog.lock.json" Link="Resources\demo-catalog.lock.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Catalog\**\*" Link="Resources\Demos\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\license.txt" Link="Resources\license.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

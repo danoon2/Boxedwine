@@ -6,48 +6,6 @@
     <FileURL>https://boxedwine.org/v2/13/TinyCore15Wine11.0.zip</FileURL>
     <FileSizeMB>205</FileSizeMB>
   </Wine>
-  <Wine>
-    <Name>Wine 10.0</Name>
-    <FileVersion>5</FileVersion>
-    <WineVersion>10.0</WineVersion>
-    <FileURL>http://boxedwine.org/v2/5/TinyCore15Wine10.0.zip</FileURL>
-    <FileSizeMB>149</FileSizeMB>
-  </Wine>
-  <Wine>
-      <Name>Wine 9.0</Name>
-      <FileVersion>5</FileVersion>
-      <WineVersion>9.0</WineVersion>
-      <FileURL>http://boxedwine.org/v2/5/TinyCore15Wine9.0.zip</FileURL>
-      <FileSizeMB>146</FileSizeMB>
-  </Wine>
-  <Wine>
-      <Name>Wine 6.0</Name>
-      <FileVersion>2</FileVersion>
-      <WineVersion>6.0</WineVersion>
-      <FileURL>http://boxedwine.org/v2/2/TinyCore15Wine6.0.zip</FileURL>
-      <FileSizeMB>134</FileSizeMB>
-  </Wine>
-  <Wine>
-    <Name>Wine 5.0</Name>
-    <FileVersion>2</FileVersion>
-    <WineVersion>5.0</WineVersion>
-    <FileURL>http://boxedwine.org/v2/2/TinyCore15Wine5.0.zip</FileURL>
-    <FileSizeMB>129</FileSizeMB>
-  </Wine>
-  <Wine>
-    <Name>Wine 4.1</Name>
-    <FileVersion>2</FileVersion>
-    <WineVersion>4.1</WineVersion>
-    <FileURL>http://boxedwine.org/v2/2/TinyCore15Wine4.1.zip</FileURL>
-    <FileSizeMB>126</FileSizeMB>
-  </Wine>
-  <Wine>
-    <Name>Wine 3.1</Name>
-    <FileVersion>2</FileVersion>
-    <WineVersion>3.1</WineVersion>
-    <FileURL>http://boxedwine.org/v2/2/TinyCore15Wine3.1.zip</FileURL>
-    <FileSizeMB>113</FileSizeMB>
-  </Wine>
   <Demo>
         <Name>3D Mark 2001 SE (2002)</Name>
         <InstallType>Installer</InstallType>

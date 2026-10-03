@@ -5,7 +5,7 @@ import SwiftUI
 import AppKit
 
 @main
-struct BoxedwineNativeApp: App {
+struct BoxedwineApp: App {
     @NSApplicationDelegateAdaptor(NativeAppDelegate.self) private var delegate
     @StateObject private var library = LibraryStore()
 #if BOXEDWINE_APP_STORE
@@ -23,7 +23,7 @@ struct BoxedwineNativeApp: App {
         .defaultSize(width: 1040, height: 650)
         .commands { NativeLibraryCommands(store: library) }
         Settings { NativeSettingsView(store: library) }
-        Window("Boxedwine Help", id: "native-help") { NativeHelpView() }
+        Window("Boxedwine Help", id: "native-help") { NativeHelpView(store: library) }
             .defaultSize(width: 650, height: 650)
 #if BOXEDWINE_APP_STORE
         Window("Support Boxedwine", id: "support-boxedwine") { SupportView(tips: tips) }

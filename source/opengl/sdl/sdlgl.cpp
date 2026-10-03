@@ -32,6 +32,11 @@
 #include "../../platform/sdl/sdlcallback.h"
 #ifdef __APPLE__
 #include "../../../platform/mac/macOpenGL.h"
+#endif
+#ifdef BOXEDWINE_MSVC
+#include "../../../platform/windows/windowsOpenGL.h"
+#endif
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
 #include "../../sdl/startupArgs.h"
 #endif
 
@@ -383,6 +388,9 @@ void SDLGlWindow::destroy() {
                     }
                 }
                 if (ownsWindow) {
+#ifdef BOXEDWINE_MSVC
+                    windowsOpenGLDestroyWindow(window);
+#endif
                     SDL_DestroyWindow(window);
                 }
                 window = nullptr;
@@ -465,7 +473,7 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
 
     SDL_DisplayMode dm = { 0 };
     int sdlFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
     KNativeScreenSDLPtr screen = std::dynamic_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
     bool fullscreen = wnd && screen && screen->fullScreen != FULLSCREEN_NOTSET && KSystem::videoOption == VIDEO_NORMAL;
     if (fullscreen) sdlFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
@@ -490,6 +498,8 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     resizeWebGLCanvas(window, cx, cy);
 #elif defined(__APPLE__)
     if (fullscreen) macOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
+#elif defined(BOXEDWINE_MSVC)
+    if (fullscreen) windowsOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
 #endif
     return std::make_shared<SDLGlWindow>(window, pixelFormat, major, minor, profile, flags, true, wnd);
 }
@@ -720,7 +730,11 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
     // SDL_GL_CreateContext makes the temporary window current. Detach it before
     // destroying that window, otherwise SDL can retain a dangling current-window
     // pointer and skip binding the real drawable when its allocation is reused.
-    BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(previousContext ? previousWindow : nullptr, previousContext));
+    if (previousContext) {
+        windowsOpenGLMakeCurrent(previousWindow, previousContext);
+    } else {
+        BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(nullptr, nullptr));
+    }
 #endif
     window->destroy(); // will run on main thread (thus block this thread for a bit)
 
@@ -827,6 +841,10 @@ void KOpenGLSdl::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
         KNativeSystem::getCurrentInput()->runOnUiThread([&window, &wnd]() {
 #if defined(__EMSCRIPTEN__)
             resizeWebGLCanvas(window->window, wnd->width(), wnd->height());
+#elif defined(BOXEDWINE_MSVC)
+            if (!windowsOpenGLResizeFullscreen(window->window, wnd->width(), wnd->height())) {
+                SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
+            }
 #else
             SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
 #endif
@@ -957,6 +975,9 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
         if (pglFlush) {
             pglFlush();
         }
+#ifdef BOXEDWINE_MSVC
+        if (!windowsOpenGLSwapBuffers(window->window))
+#endif
         SDL_GL_SwapWindow(window->window);
 #endif
 #ifndef __EMSCRIPTEN__
@@ -1398,6 +1419,8 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             attached = macOpenGLSetWindow(context->context, window->window);
             });
         result = attached && macOpenGLMakeCurrent(context->context);
+#elif defined(BOXEDWINE_MSVC)
+        result = windowsOpenGLMakeCurrent(window->window, context->context);
 #else
         // Rebinding an already-current WGL context can force an expensive driver
         // synchronization. SDL can prove when both the context and drawable are
@@ -1469,6 +1492,9 @@ static void sdl_glFlush(CPU* cpu) {
             if (!deferGlWindowShowUntilSwap())
 #endif
             context->currentWindow->showWindow(true);
+#ifdef BOXEDWINE_MSVC
+            windowsOpenGLSwapBuffers(context->currentWindow->window, false);
+#endif
         }
     }
     pglFlush();	

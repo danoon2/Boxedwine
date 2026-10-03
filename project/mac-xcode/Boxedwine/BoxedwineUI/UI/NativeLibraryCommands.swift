@@ -208,6 +208,7 @@ struct NativeLibraryCommands: Commands {
 }
 
 struct NativeHelpView: View {
+    @ObservedObject var store: LibraryStore
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -231,7 +232,11 @@ struct NativeHelpView: View {
 #if BOXEDWINE_APP_STORE
                     Text("Wine is included with Boxedwine. Your app’s Wine package is saved when you add it; identical packages share storage.")
 #else
-                    Text("Choose a Wine version from the release list. Boxedwine downloads it if needed and saves it with this app before installation. Later changes to the library default won’t change this app’s Wine version.")
+                    if store.hasWineChoices {
+                        Text("Choose a Wine version from the release list. Boxedwine downloads it if needed and saves it with this app before installation. Later changes to the library default won’t change this app’s Wine version.")
+                    } else if let wine = store.defaultCatalogWine {
+                        Text("New apps use \(wine.wineName). Boxedwine downloads it if needed and saves it with this app before installation.")
+                    }
 #endif
                     Text("If the app requires a particular Windows version, choose it before selecting your files. Otherwise, keep Use Wine’s default. The choice takes effect before the installer or app first opens.")
                     explanation("Windows Installer", "A single .exe or .msi setup file that contains everything it needs.")
@@ -248,7 +253,9 @@ struct NativeHelpView: View {
                     Text("In App Settings, use Choose Program to make sure you selected the app rather than its setup or uninstaller. You can also try a different window size there.")
                     Text("To change the Windows version an app sees, close it and use App Settings. The change applies when you next open the app or run its installer. This setting is separate from the Wine package version.")
 #if !BOXEDWINE_APP_STORE
-                    Text("In Troubleshooting, expand Try a different Wine version and choose Try Another Wine Version to make a separate test copy. Your original app is preserved. Changes and saves in the copy do not sync back.")
+                    if store.hasWineChoices {
+                        Text("In Troubleshooting, expand Try a different Wine version and choose Try Another Wine Version to make a separate test copy. Your original app is preserved. Changes and saves in the copy do not sync back.")
+                    }
 #endif
                     Text("Open Troubleshooting for help and View Launch Log, which shows output from the latest and previous attempts. Review a log before sharing it: it may contain paths or personal app output. A warning or a successful exit alone does not tell you whether every feature works.")
                     Text("If Windows support needs attention, open Boxedwine → Settings. A complete Boxedwine Wine filesystem package is required. Unfinished Work appears in the sidebar and View menu when an interrupted file operation needs review.")

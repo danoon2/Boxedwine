@@ -29,6 +29,9 @@
 #include "../mac/macCursor.h"
 #include "../mac/macOpenGL.h"
 #endif
+#ifdef BOXEDWINE_MSVC
+#include "../windows/windowsOpenGL.h"
+#endif
 
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
 #include <thread>
@@ -317,7 +320,7 @@ bool KNativeInputSDL::mouseMove(int x, int y, bool relative) {
 
     if (relative) {
         // Deltas have no screen origin or letterbox offset.
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(openGLViewportMutex);
         if (openGLViewport.valid()) {
             x = openGLViewport.deltaX(x);
@@ -476,7 +479,7 @@ void KNativeInputSDL::setMousePos(int x, int y) {
 }
 
 int KNativeInputSDL::xToScreen(int x) {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(openGLViewportMutex);
     if (openGLViewport.valid()) return openGLViewport.toHostX(x);
 #endif
@@ -484,7 +487,7 @@ int KNativeInputSDL::xToScreen(int x) {
 }
 
 int KNativeInputSDL::xFromScreen(int x) {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(openGLViewportMutex);
     if (openGLViewport.valid()) return openGLViewport.toGuestX(x);
 #endif
@@ -492,7 +495,7 @@ int KNativeInputSDL::xFromScreen(int x) {
 }
 
 int KNativeInputSDL::yToScreen(int y) {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(openGLViewportMutex);
     if (openGLViewport.valid()) return openGLViewport.toHostY(y);
 #endif
@@ -500,7 +503,7 @@ int KNativeInputSDL::yToScreen(int y) {
 }
 
 int KNativeInputSDL::yFromScreen(int y) {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(openGLViewportMutex);
     if (openGLViewport.valid()) return openGLViewport.toGuestY(y);
 #endif
@@ -613,15 +616,21 @@ void KNativeInputSDL::updateRelativeMouseMode() {
         SDL_SetRelativeMouseMode(SDL_FALSE);
         ownsRelativeMouseMode = false;
     }
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
     // Refresh after native fullscreen/resolution transitions. Keep the last
     // mapping while unfocused so guest cursor warps still use guest coordinates.
     if (SDL_Window* window = SDL_GetKeyboardFocus()) {
-        MacOpenGLViewport viewport = macOpenGLGetViewport(window);
+#ifdef __APPLE__
+        OpenGLViewport viewport = macOpenGLGetViewport(window);
+#else
+        OpenGLViewport viewport = windowsOpenGLGetViewport(window);
+#endif
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(openGLViewportMutex);
         openGLViewport = viewport;
     }
+#ifdef __APPLE__
     macCursorUpdate();
+#endif
 #endif
 #endif
 }

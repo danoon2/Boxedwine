@@ -69,7 +69,7 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -root path : Path to the file system the emulated linux environment will used
 
--scale X : Will scale the video output by this percentage, a value of 100 is normal.  A value of 200 will scale the screen by 2x, so 640x480 will display at 1280x960.  This option doesn't work with OpenGL, so for DirectDraw games, make sure to use the Wine GDI backend option.  The GDI option can be found in the Boxedwine UI in the container section, near the top, with the label "Renderer".  Or you can use regedit to set this yourself, see the Wine web site.
+-scale X : Will scale the video output by this percentage, a value of 100 is normal.  A value of 200 will scale the screen by 2x, so 640x480 will display at 1280x960.  This option doesn't work with OpenGL, so for DirectDraw games, make sure to use the Wine GDI backend option.  The GDI option can be found in Boxedwine in the container section, near the top, with the label "Renderer".  Or you can use regedit to set this yourself, see the Wine web site.
 
 -title name : Will add name to the Boxedwine window
 

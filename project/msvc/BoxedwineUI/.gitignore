@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+Assets/Catalog/
+Assets/*.zip
+artifacts/
+.vs/
+*.user

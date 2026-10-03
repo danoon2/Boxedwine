@@ -76,10 +76,10 @@ struct DemosView: View {
         let status = store.wineDownloadStatus(wine)
         guard let total = status.downloadBytes(wine: wine, appBytes: demo.bytes) else { return "Checking total download size…" }
         let size = ByteCountFormatter.string(fromByteCount: total, countStyle: .file)
-        if status == .available { return "\(size) download. \(wine.name) is already available; no Wine download needed." }
+        if status == .available { return "\(size) download. \(wine.wineName) is already available; no Wine download needed." }
         let demoSize = ByteCountFormatter.string(fromByteCount: demo.bytes, countStyle: .file)
         let wineSize = ByteCountFormatter.string(fromByteCount: wine.bytes, countStyle: .file)
-        return "\(size) for the demo and Wine (\(demoSize) demo + \(wineSize) \(wine.name))."
+        return "\(size) for the demo and Wine (\(demoSize) demo + \(wineSize) \(wine.wineName))."
     }
     @ViewBuilder private func icon(_ demo: Demo) -> some View {
         if !demo.icon.isEmpty, let url = Bundle.main.url(forResource: demo.icon, withExtension: nil, subdirectory: "Demos"), let image = NSImage(contentsOf: url) {

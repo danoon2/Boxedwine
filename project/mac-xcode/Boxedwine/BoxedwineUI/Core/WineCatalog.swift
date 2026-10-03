@@ -29,9 +29,9 @@ enum WineDownloadStatus: Sendable, Equatable {
 
     func message(for wine: CatalogWine) -> String {
         switch self {
-        case .checking: "Checking whether \(wine.name) is available on this Mac…"
-        case .available: "\(wine.name) is available on this Mac. No Wine download needed."
-        case .required: "\(wine.name) requires a \(ByteCountFormatter.string(fromByteCount: wine.bytes, countStyle: .file)) download."
+        case .checking: "Checking whether \(wine.wineName) is available on this Mac…"
+        case .available: "\(wine.wineName) is available on this Mac. No Wine download needed."
+        case .required: "\(wine.wineName) requires a \(ByteCountFormatter.string(fromByteCount: wine.bytes, countStyle: .file)) download."
         }
     }
 }
@@ -51,14 +51,15 @@ struct CatalogWine: Identifiable, Equatable, Sendable {
     let bytes: Int64
     let sha256: String
     var id: String { url.absoluteString }
+    var wineName: String { "Wine \(wineVersion)" }
     func matches(_ package: RuntimePackage) -> Bool {
         package.info.wineVersion == wineVersion && package.info.filesystemVersion == filesystemVersion && package.stamp.size == UInt64(bytes)
     }
 }
 
 struct WineCatalog: Sendable {
-    /// This is the unchanged release XML. Exact sizes/hashes are a release-build
-    /// supplement, keyed by its URLs; they cannot add versions absent from XML.
+    /// This release's supported Wine packages and their exact sizes/hashes.
+    /// Adding a supported package to both resources re-enables version selection.
     let wines: [CatalogWine]
     struct Fingerprint: Codable, Sendable {
         let fileVersion: String

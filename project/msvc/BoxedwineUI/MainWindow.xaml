@@ -1,0 +1,72 @@
+<Window x:Class="Boxedwine.UI.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Boxedwine" Width="1220" Height="800" MinWidth="990" MinHeight="640" WindowStartupLocation="CenterScreen" AllowDrop="True" Drop="FilesDropped" DragOver="FilesDragOver" PreviewKeyDown="KeyboardShortcut" Closing="WindowClosing">
+  <DockPanel Background="{DynamicResource PageBrush}" TextOptions.TextFormattingMode="Display">
+    <Menu DockPanel.Dock="Top" Background="{DynamicResource PageBrush}" BorderThickness="0" Padding="8,3">
+      <MenuItem Header="_File"><MenuItem Header="_Add App…" InputGestureText="Ctrl+N" Click="AddAppClick"/><MenuItem Header="_Restore App Backup…" Click="RestoreBackupClick"/><Separator/><MenuItem Header="_Settings…" InputGestureText="Ctrl+," Click="SettingsClick"/><Separator/><MenuItem Header="E_xit" Click="ExitClick"/></MenuItem>
+      <MenuItem Header="_App" SubmenuOpened="AppMenuOpened" x:Name="AppMenu"><MenuItem Header="_Open App" Tag="open" InputGestureText="Ctrl+O" Click="AppActionClick"/><MenuItem Header="_Stop App" Tag="stop" InputGestureText="Ctrl+." Click="AppActionClick"/><Separator/><MenuItem Header="Run _Another Program…" Tag="another" Click="AppActionClick"/><MenuItem Header="App S_ettings…" Tag="edit" InputGestureText="Ctrl+I" Click="AppActionClick"/><MenuItem Header="_Back Up App…" Tag="backup" InputGestureText="Ctrl+Shift+S" Click="AppActionClick"/><MenuItem Header="_Troubleshooting…" Tag="trouble" Click="AppActionClick"/><MenuItem Header="View Launch _Log…" Tag="log" InputGestureText="Ctrl+Shift+L" Click="AppActionClick"/><Separator/><MenuItem Header="_Remove from Library…" Tag="remove" InputGestureText="Delete" Click="AppActionClick"/></MenuItem>
+      <MenuItem Header="_View"><MenuItem Header="All _Apps" Tag="All Apps" InputGestureText="Ctrl+1" Click="NavigateClick"/><MenuItem Header="_Recently Opened" Tag="Recently Opened" InputGestureText="Ctrl+2" Click="NavigateClick"/><MenuItem Header="_Demos" Tag="Demos" InputGestureText="Ctrl+3" Click="NavigateClick"/><MenuItem Header="Re_moved Apps" Tag="Removed Apps" Visibility="{Binding Visibility, ElementName=RemovedAppsNavigation}" InputGestureText="Ctrl+4" Click="NavigateClick"/><MenuItem Header="_Unfinished Work" Tag="Unfinished Work" Visibility="{Binding Visibility, ElementName=UnfinishedWorkNavigation}" InputGestureText="Ctrl+5" Click="NavigateClick"/><Separator/><MenuItem Header="_Find" InputGestureText="Ctrl+F" Click="FindClick"/></MenuItem>
+      <MenuItem Header="_Help"><MenuItem Header="Boxedwine _Help" InputGestureText="F1" Click="HelpClick"/><MenuItem Header="Play _Minesweeper" Tag="minesweeper" Click="BuiltInClick"/><MenuItem Header="Try _Notepad" Tag="notepad" Click="BuiltInClick"/><Separator/><MenuItem Header="_About Boxedwine" Click="AboutClick"/></MenuItem>
+    </Menu>
+    <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="16,9" Background="{DynamicResource PageBrush}">
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="200"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="Status" Text="Ready" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" AutomationProperties.LiveSetting="Polite"/>
+        <ProgressBar x:Name="Progress" Grid.Column="1" Height="5" Margin="16,0" Visibility="Collapsed" AutomationProperties.Name="File operation progress"/>
+        <Button x:Name="CancelOperation" Grid.Column="2" Content="Cancel" Visibility="Collapsed" Click="CancelClick" Padding="12,3"/>
+      </Grid>
+    </Border>
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="200"/><ColumnDefinition Width="*"/><ColumnDefinition Width="280"/></Grid.ColumnDefinitions>
+      <DockPanel Margin="12,20,12,12">
+        <StackPanel DockPanel.Dock="Top" Margin="10,0,0,24"><TextBlock Text="Boxedwine" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="Windows apps, preserved." Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0" FontSize="12"/></StackPanel>
+        <StackPanel DockPanel.Dock="Bottom"><Button Content="⚙   Settings" HorizontalContentAlignment="Left" Padding="12,9" Click="SettingsClick" Margin="0,0,0,6"/><Button Content="?   Help" HorizontalContentAlignment="Left" Padding="12,9" Click="HelpClick"/></StackPanel>
+        <StackPanel><TextBlock Text="LIBRARY" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="12,0,0,8"/>
+          <ListBox x:Name="Navigation" SelectionChanged="NavigationChanged" Background="Transparent" BorderThickness="0" SelectedIndex="0" AutomationProperties.Name="Library sections">
+            <ListBoxItem Content="All Apps" Tag="All Apps" Padding="12,11"/><ListBoxItem Content="Recently Opened" Tag="Recently Opened" Padding="12,11"/>
+            <ListBoxItem Content="Demos" Tag="Demos" Padding="12,11"/><ListBoxItem x:Name="RemovedAppsNavigation" Content="Removed Apps" Tag="Removed Apps" Padding="12,11" Visibility="Collapsed"/><ListBoxItem x:Name="UnfinishedWorkNavigation" Content="Unfinished Work" Tag="Unfinished Work" Padding="12,11" Visibility="Collapsed"/>
+          </ListBox>
+          <TextBlock Text="GET STARTED" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="12,24,0,10"/>
+          <Button Content="Play Minesweeper" Tag="minesweeper" Style="{StaticResource DetailButton}" Click="BuiltInClick"/>
+          <Button Content="Try Notepad" Tag="notepad" Style="{StaticResource DetailButton}" Click="BuiltInClick"/>
+        </StackPanel>
+      </DockPanel>
+      <Grid Grid.Column="1" Margin="16,22,20,16"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <StackPanel Margin="0,0,12,0"><TextBlock x:Name="PageTitle" Text="Your Windows apps" FontSize="28" FontWeight="SemiBold"/><TextBlock x:Name="PageSubtitle" Text="A home for old favorites." Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0" TextWrapping="Wrap"/></StackPanel>
+          <Button Grid.Column="1" x:Name="AddButton" Content="＋  Add App" Padding="15,8" VerticalAlignment="Top" Click="AddAppClick" ToolTip="Add a Windows app (Ctrl+N)"/>
+        </Grid>
+        <TextBox x:Name="Search" Grid.Row="1" Margin="0,23,0,20" Padding="12,8" TextChanged="SearchChanged" AutomationProperties.Name="Search apps" ToolTip="Search the current section (Ctrl+F)"/>
+        <TextBlock Grid.Row="1" Text="Search apps" Margin="13,31,12,28" IsHitTestVisible="False" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=Search}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+        <ScrollViewer Grid.Row="2" MaxHeight="220" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl x:Name="LaunchingApps" AutomationProperties.Name="Launching apps">
+            <ItemsControl.ItemTemplate><DataTemplate>
+              <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,9,16">
+                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Name, StringFormat=Launching {0}…}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0" AutomationProperties.LiveSetting="Polite"/>
+                  <Button Grid.Column="1" Content="Stop" Tag="{Binding}" Click="StopLaunchClick" Padding="12,4" AutomationProperties.Name="{Binding Name, StringFormat=Stop launching {0}}"/>
+                  <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" IsIndeterminate="True" Background="{DynamicResource LineBrush}" BorderBrush="Transparent" Height="6" Margin="0,12,0,0" AutomationProperties.Name="{Binding Name, StringFormat=Launching {0}}"/>
+                </Grid>
+              </Border>
+            </DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+        <ListBox x:Name="Cards" Grid.Row="3" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" SelectionChanged="SelectionChanged" MouseDoubleClick="CardDoubleClick" AutomationProperties.Name="Apps">
+          <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+          <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}"><Setter Property="Width" Value="178"/><Setter Property="Height" Value="175"/><Setter Property="Margin" Value="0,0,9,9"/><Setter Property="Padding" Value="14"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="VerticalContentAlignment" Value="Stretch"/><Setter Property="AutomationProperties.Name" Value="{Binding Name}"/></Style></ListBox.ItemContainerStyle>
+          <ListBox.ItemTemplate><DataTemplate><StackPanel>
+            <Grid Width="48" Height="48" HorizontalAlignment="Left" Margin="0,0,0,15">
+              <Border Background="{DynamicResource PanelBrush}" CornerRadius="8">
+                <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Icon}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <Image Source="{Binding Icon}" Stretch="Uniform"/>
+            </Grid>
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" MaxHeight="42" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0" TextTrimming="CharacterEllipsis"/>
+          </StackPanel></DataTemplate></ListBox.ItemTemplate>
+          <ListBox.ContextMenu><ContextMenu Opened="ContextOpened"><MenuItem Header="Open App" Tag="open" Click="AppActionClick"/><MenuItem Header="Stop App" Tag="stop" Click="AppActionClick"/><Separator/><MenuItem Header="App Settings…" Tag="edit" Click="AppActionClick"/><MenuItem Header="Run Another Program…" Tag="another" Click="AppActionClick"/><MenuItem Header="Back Up App…" Tag="backup" Click="AppActionClick"/><MenuItem Header="View Launch Log…" Tag="log" Click="AppActionClick"/><MenuItem Header="Remove from Library…" Tag="remove" Click="AppActionClick"/></ContextMenu></ListBox.ContextMenu>
+        </ListBox>
+        <StackPanel x:Name="EmptyState" Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="390" Margin="20"><TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="52" HorizontalAlignment="Center" Margin="0,0,0,22" Foreground="{DynamicResource MutedBrush}"/><TextBlock x:Name="EmptyTitle" Text="Make room for your favorites" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap"/><TextBlock x:Name="EmptyDescription" Text="Add an app folder or installer, browse a demo, or try Wine's Minesweeper to get started." Style="{StaticResource Body}" TextAlignment="Center" Margin="0,10,0,18"/><Button x:Name="EmptyButton" Content="Add your first app" Click="EmptyClick" HorizontalAlignment="Center" Padding="18,9"/></StackPanel>
+        <TextBlock x:Name="CountLabel" Grid.Row="4" Margin="0,12,0,0" FontSize="12" Foreground="{DynamicResource MutedBrush}" Text="Drop an app folder or installer here to add it"/>
+      </Grid>
+      <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="Details" Margin="22,28"/></ScrollViewer></Border>
+    </Grid>
+  </DockPanel>
+</Window>

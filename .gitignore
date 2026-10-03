@@ -1,4 +1,5 @@
 project/msvc/BoxedWine/.vs/
+project/msvc/Deploy/
 project/msvc/BoxedWine/BoxedWine/BoxedWine.vcxproj.user
 project/msvc/BoxedWine/ARM64/
 project/msvc/BoxedWine/x64/

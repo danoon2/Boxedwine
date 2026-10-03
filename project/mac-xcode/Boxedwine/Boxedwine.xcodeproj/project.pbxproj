@@ -2806,7 +2806,7 @@
 		};
 		401E5D6B41822EC45C290564 = {
 			"isa" = "PBXFileReference";
-			"path" = "UI/BoxedwineNativeApp.swift";
+			"path" = "UI/BoxedwineApp.swift";
 			"lastKnownFileType" = "sourcecode.swift";
 			"sourceTree" = "<group>";
 		};

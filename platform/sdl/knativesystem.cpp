@@ -65,6 +65,12 @@ static KVulkanPtr vulkan;
 bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
     U32 flags = SDL_INIT_EVENTS;
 
+#ifdef BOXEDWINE_MSVC
+    // GDI and GL exchange focus between two borderless fullscreen windows.
+    // SDL's default focus-loss minimization can minimize the replacement too.
+    SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
+#endif
+
 #ifdef __APPLE__
     // GDI and OpenGL use separate SDL windows for the same game. Keep them on
     // the current desktop so switching renderers does not switch fullscreen

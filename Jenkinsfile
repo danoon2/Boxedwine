@@ -1,5 +1,6 @@
 // Notes:
-// Windows build: put wget, msbuild and build tools in path (C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30037\bin\Hostx64\x64)
+// Windows workers: Visual Studio C++ tools for their targets, .NET 10 SDK,
+// and wget/unzip/java in PATH. Publishing restores apphost packs from NuGet.org.
 void gitCheckout() {
     def retryAttempt = 0
     retry(3) {
@@ -550,24 +551,13 @@ pipeline {
                         script { 
                             gitCheckout() 
                         }
-                        bat '''
-                            IF EXIST "project\\msvc\\Boxedwine\\Release\\Boxedwine.exe" DEL "project\\msvc\\Boxedwine\\Release\\Boxedwine.exe"
-                            IF EXIST "project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe" DEL "project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe"
-                            IF NOT EXIST "project\\msvc\\Deploy\\Win32" mkdir "project\\msvc\\Deploy\\Win32"
-                            if NOT EXIST "project\\msvc\\Deploy\\Win64" mkdir "project\\msvc\\Deploy\\Win64"
-                        '''
-                        bat "\"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\msbuild\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=win32"
-                        bat "\"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\MSBuild\\Current\\Bin\\msbuild\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=x64"
-                        bat '''
-                            move project\\msvc\\Boxedwine\\Release\\Boxedwine.exe project\\msvc\\Deploy\\Win32\\
-                            copy project\\msvc\\Deploy\\Win32\\Boxedwine.exe project\\msvc\\Deploy\\Win32\\Boxedwine_console.exe
-                            editbin.exe /subsystem:console project\\msvc\\Deploy\\Win32\\Boxedwine_console.exe
-                            move project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe project\\msvc\\Deploy\\Win64\\
-                            copy project\\msvc\\Deploy\\Win64\\Boxedwine.exe project\\msvc\\Deploy\\Win64\\Boxedwine_console.exe
-                            editbin.exe /subsystem:console project\\msvc\\Deploy\\Win64\\Boxedwine_console.exe
+                        powershell '''
+                            $ErrorActionPreference = 'Stop'
+                            & ./tools/jenkins/build-windows.ps1 -Platform Win32
+                            & ./tools/jenkins/build-windows.ps1 -Platform x64
                         '''
                         dir("project/msvc") {
-                            stash includes: 'Deploy/**/*', name: 'windows'
+                            stash includes: 'Deploy/Win32/**,Deploy/Win64/**', name: 'windows'
                         }
                     }
                 } 
@@ -579,16 +569,12 @@ pipeline {
                         script { 
                             gitCheckout() 
                         }
-                        bat '''
-                            IF EXIST "project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe" DEL "project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe"
-                            if NOT EXIST "project\\msvc\\Deploy\\WinARM64" mkdir "project\\msvc\\Deploy\\WinARM64"
-                        '''
-                        bat "msbuild \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=ARM64"
-                        bat '''
-                            move project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe project\\msvc\\Deploy\\WinARM64\\
+                        powershell '''
+                            $ErrorActionPreference = 'Stop'
+                            & ./tools/jenkins/build-windows.ps1 -Platform ARM64
                         '''
                         dir("project/msvc") {
-                            stash includes: 'Deploy/**/*', name: 'windowsARM64'
+                            stash includes: 'Deploy/WinARM64/**', name: 'windowsARM64'
                         }
                     }
                 } 
@@ -804,12 +790,12 @@ pipeline {
                             }
                             retryCinebench('Cinebench-Win64') {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-Win64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-Win64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine_console.exe\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine_console.exe\" -nosound -novideo
                                 '''
                             }
                             stash includes: 'perfScripts/cinebench/cinebench/perf*.csv', name: 'windowsPerf'
@@ -831,12 +817,12 @@ pipeline {
                             unstash "windowsARM64"
                             retryCinebench('Cinebench-WinArm64') {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-WinArm64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-WinArm64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine_console.exe\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine_console.exe\" -nosound -novideo
                                 '''
                             }
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-WinArm64.csv', name: 'windowsARM64Perf'
@@ -887,7 +873,21 @@ pipeline {
                     unstash "windowsARM64"
                     dir('Deploy') {
                         sh '''
-                        echo "Linux64, LinuxArm64 and Win64 use the binary translator CPU core and are much faster.  The others use the normal core or normal core + JIT." > readme.txt
+                        cat > readme.txt <<'README'
+Windows: extract the ZIP, then open Boxedwine.exe in the folder for your PC.
+Win64: x64 native Windows UI; requires .NET 10 Desktop Runtime for Windows x64.
+WinARM64: ARM64 native Windows UI; requires .NET 10 Desktop Runtime for Windows Arm64.
+Win32: existing 32-bit frontend.
+If .NET is missing, Boxedwine.exe offers to open Microsoft's download page.
+Install the matching Desktop Runtime, then open Boxedwine.exe again:
+https://dotnet.microsoft.com/en-us/download/dotnet/10.0
+The SDK is not required. The plain .NET Runtime alone does not include WPF.
+Boxedwine_console.exe in each Windows folder is the command-line/automation build.
+The console builds and Win32 frontend do not require .NET.
+The Runtime folder in Win64/WinARM64 contains the emulator; keep it with the other files.
+Wine packages are downloaded when selected in Boxedwine.
+Linux64, LinuxArm64 and Mac builds are also included in this archive.
+README
                         zip -r build-$BUILD_NUMBER.zip *
                         '''
                         archiveArtifacts artifacts: "build-${env.BUILD_NUMBER}.zip", fingerprint: true, allowEmptyArchive: true

@@ -20,8 +20,8 @@
 #define __KNATIVEWINDOW_SDL_H__
 
 #include "knativeinput.h"
-#ifdef __APPLE__
-#include "../mac/macOpenGLViewport.h"
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
+#include "openGLViewport.h"
 #endif
 
 class KNativeInputSDL : public KNativeInput {
@@ -71,8 +71,8 @@ public:
 
 private:
 
-#ifdef __APPLE__
-    MacOpenGLViewport openGLViewport;
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
+    OpenGLViewport openGLViewport;
     BOXEDWINE_MUTEX openGLViewportMutex;
 #endif
 	void updateRelativeMouseMode();

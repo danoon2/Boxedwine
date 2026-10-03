@@ -30,7 +30,7 @@
 #include <Windows.h>
 #endif
 
-#ifdef BOXEDWINE_NATIVE_RUNTIME
+#if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__APPLE__)
 extern "C" int MacPlatformAcquireRuntimeProgramFolder(void);
 extern "C" void MacPlatformReleaseRuntimeProgramFolder(void);
 #endif
@@ -48,6 +48,7 @@ int boxedmain(int argc, const char **argv) {
 
     klog("Starting ...");
 #ifdef BOXEDWINE_NATIVE_RUNTIME
+#ifdef __APPLE__
     if (!MacPlatformAcquireRuntimeProgramFolder()) {
         klog("Access to the selected program folder failed. Choose the file and folder again.");
         return 2;
@@ -55,6 +56,7 @@ int boxedmain(int argc, const char **argv) {
     struct ProgramFolderAccess {
         ~ProgramFolderAccess() { MacPlatformReleaseRuntimeProgramFolder(); }
     } programFolderAccess;
+#endif
     // A bundled helper must receive a launch request; never open the legacy UI.
     if (argc < 2) {
         klog("Launch Boxedwine through BoxedwineUI, or provide a program and its arguments.");
@@ -146,7 +148,7 @@ int boxedmain(int argc, const char **argv) {
         std::_Exit(0);
     }).detach();
 #endif
-#ifndef BOXEDWINE_DISABLE_UI
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(BOXEDWINE_NATIVE_RUNTIME)
     BoxedwineData::init(argc, argv);
 #endif
     if (!startupArgs.shouldStartUI()) {
@@ -204,7 +206,12 @@ int boxedmain(int argc, const char **argv) {
 
     klog("Boxedwine shutdown");
     KNativeSystem::cleanup();
+#if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(_WIN32)
+    // Native launchers do not use the recorder's legacy "no playback" exit code.
+    return 0;
+#else
     return BOXEDWINE_RECORDER_QUIT();
+#endif
 }
 
 #endif
