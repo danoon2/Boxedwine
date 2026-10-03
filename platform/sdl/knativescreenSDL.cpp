@@ -28,6 +28,10 @@
 #include "kopengl.h"
 #include "../../source/x11/x11.h"
 
+#ifdef __APPLE__
+#include "../mac/macCursor.h"
+#endif
+
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/html5.h>
 #endif
@@ -94,7 +98,7 @@ static bool useEmscriptenSoftwareRenderer(bool skipRenderer) {
 }
 #endif
 
-static bool skipHiddenEmscriptenRenderer(bool visible, bool showOnDraw) {
+static bool skipHiddenRenderer(bool visible, bool showOnDraw) {
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     KOpenGLPtr openGL = KNativeSystem::getOpenGL();
     // Threaded GL shares the browser presentation canvas with software frames.
@@ -105,6 +109,12 @@ static bool skipHiddenEmscriptenRenderer(bool visible, bool showOnDraw) {
     // A cached GL surface can outlive its final context and leave GDI hidden.
     // Allow the next software frame to bring the desktop back in that case.
     return false;
+#elif defined(__APPLE__)
+    // SDL's Metal renderer can wait for a drawable when its window is hidden
+    // behind a GL window. Wine flushes X11 while processing mouse input, so
+    // submitting that hidden desktop can stall both input and the game thread.
+    // Still render the first frame, which makes a new desktop visible.
+    return !visible && !showOnDraw;
 #else
     return false;
 #endif
@@ -136,6 +146,9 @@ KNativeInputPtr KNativeScreenSDL::getInput() {
 }
 
 void KNativeScreenSDL::setScreenSize(U32 cx, U32 cy) {
+    if (!cx || !cy) {
+        return;
+    }
     input->setScreenSize(cx, cy);
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     boxedwineSetWebGLPresentSize(cx, cy);
@@ -143,16 +156,16 @@ void KNativeScreenSDL::setScreenSize(U32 cx, U32 cy) {
 
     // If full screen, then we just have to change the scale
     if (fullScreen != FULLSCREEN_NOTSET) {
-        SDL_DisplayMode dm;
-        if (SDL_GetDesktopDisplayMode(0, &dm) != 0) {
+        SDL_DisplayMode dm = {};
+        if (SDL_GetDesktopDisplayMode(0, &dm) == 0 && dm.w > 0 && dm.h > 0) {
+            input->scaleXOffset = 0;
+            input->scaleYOffset = 0;
             if (fullScreen == FULLSCREEN_STRETCH) {
                 input->scaleX = dm.w * 100 / cx;
                 input->scaleY = dm.h * 100 / cy;
             } else if (fullScreen == FULLSCREEN_ASPECT) {
                 input->scaleX = dm.w * 100 / cx;
                 input->scaleY = dm.h * 100 / cy;
-                input->scaleXOffset = 0;
-                input->scaleYOffset = 0;
                 if (input->scaleY > input->scaleX) {
                     input->scaleY = input->scaleX;
                     input->scaleYOffset = (dm.h - cy * input->scaleY / 100) / 2;
@@ -289,12 +302,24 @@ void KNativeScreenSDL::clear() {
         }
     }
 #endif
-    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer && !skipHiddenEmscriptenRenderer(visible, showOnDraw)) {
-        SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
-        SDL_RenderClear(renderer);
+    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer && !skipHiddenRenderer(visible, showOnDraw)) {
+        if (fullScreen == FULLSCREEN_ASPECT) {
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+            SDL_Rect desktop = {
+                (int)input->scaleXOffset, (int)input->scaleYOffset,
+                (int)(input->width * input->scaleX / 100),
+                (int)(input->height * input->scaleY / 100)
+            };
+            SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
+            SDL_RenderFillRect(renderer, &desktop);
+        } else {
+            SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
+            SDL_RenderClear(renderer);
+        }
     }
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
-    const bool skipRenderer = skipHiddenEmscriptenRenderer(visible, showOnDraw);
+    const bool skipRenderer = skipHiddenRenderer(visible, showOnDraw);
     if (!renderer && !emscriptenSoftwareDisabled && useEmscriptenSoftwareRenderer(skipRenderer)) {
         U32 size = screenWidth() * screenHeight() * 4;
         if (emscriptenSoftwareBufferSize < size) {
@@ -332,13 +357,24 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
     U32 bpp = 32;
     U32 dstPitch = (width * ((bpp + 7) / 8) + 3) & ~3;
 
-    if (wnd->sdlTexture && (wnd->sdlTextureHeight != height || wnd->sdlTextureWidth != width)) {
+    const bool skipRenderer = skipHiddenRenderer(visible, showOnDraw);
+    if (!skipRenderer && wnd->sdlTexture && (wnd->sdlTextureHeight != height || wnd->sdlTextureWidth != width)) {
         SDL_DestroyTexture(wnd->sdlTexture);
         wnd->sdlTexture = nullptr;
         isDirty = true;
     }
-    const bool skipRenderer = skipHiddenEmscriptenRenderer(visible, showOnDraw);
+    // XWindow clears its dirty flag after drawing, including hidden frames.
+    // Retain the pending upload until this renderer can display it again.
+    if (isDirty) {
+        wnd->sdlTextureDirty = true;
+    }
+#if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
     if (isDirty && !skipRenderer) {
+#else
+    // Native GDI updates still drive the switch back from GL, even while the
+    // desktop is hidden. Only its renderer submissions are suppressed.
+    if (isDirty) {
+#endif
         lastUpdateTime = KSystem::getMilliesSinceStart();
     }
 #if defined(__EMSCRIPTEN__)
@@ -349,6 +385,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
     if (!wnd->sdlTexture) {
         if (KSystem::videoOption != VIDEO_NO_WINDOW && !skipRenderer && ensureRenderer()) {
             wnd->sdlTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
+            wnd->sdlTextureDirty = true;
         }
         wnd->sdlTextureHeight = height;
         wnd->sdlTextureWidth = width;
@@ -435,9 +472,9 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
     }    
 #endif     
 
-    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer && !skipRenderer) {
-        if (isDirty) {
-            SDL_UpdateTexture(wnd->sdlTexture, nullptr, bits, dstPitch);
+    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer && wnd->sdlTexture && !skipRenderer) {
+        if (wnd->sdlTextureDirty && SDL_UpdateTexture(wnd->sdlTexture, nullptr, bits, dstPitch) == 0) {
+            wnd->sdlTextureDirty = false;
         }
 
         SDL_Rect dstrect;
@@ -494,7 +531,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
 }
 
 void KNativeScreenSDL::present() {
-    const bool skipRenderer = skipHiddenEmscriptenRenderer(visible, showOnDraw);
+    const bool skipRenderer = skipHiddenRenderer(visible, showOnDraw);
     if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer && !skipRenderer) {
         if (showOnDraw) {
             showWindow(true);
@@ -895,6 +932,9 @@ void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
         } else {
             SDL_ShowCursor(0);
         }
+#ifdef __APPLE__
+        macCursorUpdate();
+#endif
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 

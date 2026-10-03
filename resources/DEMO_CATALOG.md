@@ -8,9 +8,12 @@ URL. An unchanged pin makes no network request when its verified ZIP is cached.
 
 The package contains `catalog.xml` and its referenced PNGs in one flat directory.
 The XML's `release` matches the lock's `version`; `schemaVersion` describes the
-recipe format separately. The current pin, `26R2-catalog-2`, contains 34 recipes and icons. It removes
-Java Solitaire and FreeCol from the original 36-entry `26R2-catalog-1`.
-The uploaded ZIP was downloaded again and matched the pinned size and SHA-256; its 34 icons passed fresh-cache validation. See the
+recipe format separately. The current pin, `26R2-catalog-3`, contains 34 recipes and icons.
+All demos now select Wine 11.0: Daytona USA and vkQuake no longer select Wine 9.0,
+and vkQuake's obsolete Wine 10 mouse-button warning has been removed.
+Java Solitaire and FreeCol were removed in `26R2-catalog-2`.
+The new ZIP is prepared locally; upload it to the pinned URL and verify a fresh
+download before merging the pin. See the
 [recipe schema](../project/mac-xcode/Boxedwine/BoxedwineUI/DEMO_CATALOG.md).
 
 `tools/demo_catalog.py` uses Python 3's standard library and is shared build
@@ -75,7 +78,7 @@ duplicates, unexpected files, malformed XML and missing icons, with size limits.
    ignores the generated receipt. Keep a backed-up authoring copy or retrieve the
    immutable published ZIP to edit it later.
 2. Edit `catalog.xml` and its PNGs. Preserve demo IDs for the same app across
-   releases. Give the XML a new `release`, for example `26R2-catalog-2`. Retain the
+   releases. Give the XML a new `release`, for example `26R2-catalog-3`. Retain the
    schema version unless the recipe format changes. Follow the native schema's
    payload verification and compatibility testing procedure.
 3. Validate recipes with `BoxedwinePackageCheck --catalog`, then pack the files
@@ -85,13 +88,13 @@ duplicates, unexpected files, malformed XML and missing icons, with size limits.
    swift run --package-path project/mac-xcode/Boxedwine/BoxedwineUI \
      BoxedwinePackageCheck --catalog tmp/catalog-edit/catalog.xml
    python3 tools/demo_catalog.py pack --source tmp/catalog-edit \
-     --version 26R2-catalog-2 \
-     --url https://boxedwine.org/catalogs/26R2-catalog-2/catalog.zip \
-     --output tmp/catalog-2.zip --lock resources/demo-catalog.lock.json
+     --version 26R2-catalog-3 \
+     --url https://boxedwine.org/catalogs/26R2-catalog-3/catalog.zip \
+     --output tmp/catalog-3.zip --lock resources/demo-catalog.lock.json
    ```
 
 4. Upload the ZIP to the exact URL printed by the packer. Never overwrite an
-   existing release URL. For testing before upload, `import --zip tmp/catalog-2.zip`
+   existing release URL. For testing before upload, `import --zip tmp/catalog-3.zip`
    verifies the ZIP against the project lock and seeds only your build cache.
 5. Verify an actual download using a fresh cache, test the catalog, and build:
 

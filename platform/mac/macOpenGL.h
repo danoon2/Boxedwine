@@ -11,6 +11,12 @@
 #define __MAC_OPENGL_H__
 
 struct SDL_Window;
+#include "macOpenGLViewport.h"
+
+// Main-thread only. Offscreen/pbuffer windows never get a presentation view.
+void macOpenGLConfigureFullscreen(SDL_Window* window, U32 width, U32 height, bool aspect);
+bool macOpenGLResizeFullscreen(SDL_Window* window, U32 width, U32 height);
+MacOpenGLViewport macOpenGLGetViewport(SDL_Window* window);
 
 // Pixel-format enumeration lives in pixelformat.cpp so that context creation
 // uses the exact CGL format that was advertised to the GLX client.

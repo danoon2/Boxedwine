@@ -27,6 +27,10 @@
 #include "../../source/x11/x11.h"
 #include "../../source/util/threadutils.h"
 
+#ifdef __APPLE__
+#include "../mac/macCursor.h"
+#endif
+
 #include UNISTD
 
 #ifdef BOXEDWINE_OPENGL_OSMESA
@@ -62,6 +66,10 @@ bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
     U32 flags = SDL_INIT_EVENTS;
 
 #ifdef __APPLE__
+    // GDI and OpenGL use separate SDL windows for the same game. Keep them on
+    // the current desktop so switching renderers does not switch fullscreen
+    // Spaces or leave the replacement window behind another application.
+    SDL_SetHint(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES, "0");
     if (videoOption == VIDEO_HIDE_WINDOW) {
         SDL_SetHintWithPriority(SDL_HINT_MAC_BACKGROUND_APP, "1", SDL_HINT_OVERRIDE);
     }
@@ -203,6 +211,9 @@ void KNativeSystem::closeVulkanWindow(U32 nativeId) {
 }
 
 void KNativeSystem::shutdown() {
+#ifdef __APPLE__
+    macCursorReset();
+#endif
     vulkan = nullptr;
     screen = nullptr;
     opengl = nullptr;

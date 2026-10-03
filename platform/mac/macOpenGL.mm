@@ -21,6 +21,63 @@
 #include <cstdio>
 #include "platformtypes.h"
 #include "macOpenGL.h"
+#import <objc/runtime.h>
+
+@interface BoxedwineGLPresentationView : NSView
+@property int guestWidth;
+@property int guestHeight;
+@property BOOL preserveAspect;
+@property(strong) NSHashTable<NSOpenGLContext*>* contexts;
+- (MacOpenGLViewport)viewport;
+- (void)updatePresentation;
+@end
+
+static bool setBackingSize(NSOpenGLContext* context, int width, int height) {
+    GLint size[] = {width, height};
+    CGLContextObj cgl = context.CGLContextObj;
+    CGLError error = CGLSetParameter(cgl, kCGLCPSurfaceBackingSize, size);
+    if (error == kCGLNoError) error = CGLEnable(cgl, kCGLCESurfaceBackingSize);
+    if (error != kCGLNoError) {
+        std::fprintf(stderr, "Could not scale the OpenGL backing surface: %s\n", CGLErrorString(error));
+        return false;
+    }
+    return true;
+}
+
+@implementation BoxedwineGLPresentationView
+- (NSView*)hitTest:(NSPoint)point {
+    // SDL's parent view continues to receive cursor and input events.
+    return nil;
+}
+- (MacOpenGLViewport)viewport {
+    NSSize size = self.superview.bounds.size;
+    return MacOpenGLViewport::fit((int)size.width, (int)size.height, self.guestWidth, self.guestHeight, self.preserveAspect);
+}
+- (void)resizeWithOldSuperviewSize:(NSSize)oldSize {
+    [self updatePresentation];
+}
+- (void)updatePresentation {
+    MacOpenGLViewport viewport = self.viewport;
+    if (!viewport.valid()) return;
+    // AppKit uses a bottom-left origin; SDL's input coordinates start at the top.
+    self.frame = NSMakeRect(viewport.x, self.superview.bounds.size.height - viewport.y - viewport.height,
+                            viewport.width, viewport.height);
+    for (NSOpenGLContext* context in self.contexts) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        if (context.view != self) continue;
+#pragma clang diagnostic pop
+        setBackingSize(context, self.guestWidth, self.guestHeight);
+        [context update];
+    }
+}
+@end
+
+static char presentationViewKey;
+
+static BoxedwineGLPresentationView* presentationView(NSView* root) {
+    return objc_getAssociatedObject(root, &presentationViewKey);
+}
 
 static NSOpenGLContext* getContext(void* context) {
     return (__bridge NSOpenGLContext*)context;
@@ -76,6 +133,48 @@ static NSView* getWindowView(SDL_Window* window) {
     return [info.info.cocoa.window contentView];
 }
 
+void macOpenGLConfigureFullscreen(SDL_Window* window, U32 width, U32 height, bool aspect) {
+    @autoreleasepool {
+        NSView* root = getWindowView(window);
+        if (!root || !width || !height) return;
+        BoxedwineGLPresentationView* view = [[BoxedwineGLPresentationView alloc] initWithFrame:root.bounds];
+        view.guestWidth = width;
+        view.guestHeight = height;
+        view.preserveAspect = aspect;
+        view.contexts = [NSHashTable weakObjectsHashTable];
+        view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        view.wantsBestResolutionOpenGLSurface = NO;
+#pragma clang diagnostic pop
+        root.window.backgroundColor = NSColor.blackColor;
+        [root addSubview:view];
+        objc_setAssociatedObject(root, &presentationViewKey, view, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [view updatePresentation];
+    }
+}
+
+bool macOpenGLResizeFullscreen(SDL_Window* window, U32 width, U32 height) {
+    @autoreleasepool {
+        BoxedwineGLPresentationView* view = presentationView(getWindowView(window));
+        if (!view) return false;
+        if (width && height) {
+            view.guestWidth = width;
+            view.guestHeight = height;
+            [view updatePresentation];
+        }
+        return true;
+    }
+}
+
+MacOpenGLViewport macOpenGLGetViewport(SDL_Window* window) {
+    @autoreleasepool {
+        if (!window) return {};
+        BoxedwineGLPresentationView* view = presentationView(getWindowView(window));
+        return view ? view.viewport : MacOpenGLViewport{};
+    }
+}
+
 bool macOpenGLSetWindow(void* context, SDL_Window* window) {
     if (!context || !window) {
         return false;
@@ -90,13 +189,26 @@ bool macOpenGLSetWindow(void* context, SDL_Window* window) {
             return false;
         }
         NSOpenGLContext* nativeContext = getContext(context);
+        BoxedwineGLPresentationView* presentation = presentationView(view);
+        if (presentation) view = presentation;
         // SDL owns this NSView; attaching the context directly preserves its window/input handling.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if ([nativeContext view] != view) {
+            NSView* oldView = [nativeContext view];
+            if ([oldView isKindOfClass:BoxedwineGLPresentationView.class]) {
+                [((BoxedwineGLPresentationView*)oldView).contexts removeObject:nativeContext];
+            }
             [nativeContext setView:view];
         }
 #pragma clang diagnostic pop
+        if (presentation) {
+            if (!setBackingSize(nativeContext, presentation.guestWidth, presentation.guestHeight)) return false;
+            [presentation.contexts addObject:nativeContext];
+        } else {
+            // A context may move from a fullscreen window to a hidden pbuffer.
+            CGLDisable(nativeContext.CGLContextObj, kCGLCESurfaceBackingSize);
+        }
         [nativeContext update];
         return true;
     }
@@ -121,6 +233,7 @@ bool macOpenGLMakeCurrentPbuffer(void* context, void* pbuffer) {
         NSOpenGLContext* nativeContext = getContext(context);
         [nativeContext clearDrawable];
         CGLContextObj cglContext = [nativeContext CGLContextObj];
+        CGLDisable(cglContext, kCGLCESurfaceBackingSize);
         CGLError error = CGLSetPBuffer(cglContext, (CGLPBufferObj)pbuffer, 0, 0, 0);
         if (error == kCGLNoError) {
             error = CGLSetCurrentContext(cglContext);

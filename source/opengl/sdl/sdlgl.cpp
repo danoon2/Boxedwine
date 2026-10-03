@@ -32,6 +32,7 @@
 #include "../../platform/sdl/sdlcallback.h"
 #ifdef __APPLE__
 #include "../../../platform/mac/macOpenGL.h"
+#include "../../sdl/startupArgs.h"
 #endif
 
 #ifdef __EMSCRIPTEN__
@@ -464,6 +465,11 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
 
     SDL_DisplayMode dm = { 0 };
     int sdlFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
+#ifdef __APPLE__
+    KNativeScreenSDLPtr screen = std::dynamic_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
+    bool fullscreen = wnd && screen && screen->fullScreen != FULLSCREEN_NOTSET && KSystem::videoOption == VIDEO_NORMAL;
+    if (fullscreen) sdlFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+#endif
 
     if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
         if (cx == (U32)dm.w && cy == (U32)dm.h) {
@@ -482,6 +488,8 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     }
 #ifdef __EMSCRIPTEN__
     resizeWebGLCanvas(window, cx, cy);
+#elif defined(__APPLE__)
+    if (fullscreen) macOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
 #endif
     return std::make_shared<SDLGlWindow>(window, pixelFormat, major, minor, profile, flags, true, wnd);
 }
@@ -583,10 +591,10 @@ void SDLGlWindow::showWindow(bool show) {
     if (show == visible) {
         if (show && KSystem::videoOption != VIDEO_NO_WINDOW && (KNativeSystem::getScreen()->isVisible() || now < forceForegroundUntil)) {
             KNativeSystem::getCurrentInput()->runOnUiThread([this]() {
-                SDL_RaiseWindow(window);
                 if (ownsWindow && KNativeSystem::getScreen()->isVisible()) {
                     KNativeSystem::showScreen(false);
                 }
+                SDL_RaiseWindow(window);
                 });
         }
         return;
@@ -615,13 +623,14 @@ void SDLGlWindow::showWindow(bool show) {
                         }
                     }
                 }
+                // Hide GDI before giving the replacement window focus.
+                if (shownGlWindows == 1) {
+                    KNativeSystem::showScreen(false);
+                }
                 if (KSystem::videoOption == VIDEO_NORMAL) {
                     SDL_ShowWindow(window);
                     SDL_RaiseWindow(window);
                     forceForegroundUntil = KSystem::getMilliesSinceStart() + 2000;
-                }
-                if (shownGlWindows == 1) {
-                    KNativeSystem::showScreen(false);
                 }
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && defined(BOXEDWINE_UI_LAUNCH_IN_PROCESS)
                 if (uiIsRunning()) {
@@ -807,7 +816,9 @@ void KOpenGLSdl::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
             }
         }
         KNativeSystem::getCurrentInput()->runOnUiThread([&window, &wnd, &contexts]() {
-            SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
+            if (!macOpenGLResizeFullscreen(window->window, wnd->width(), wnd->height())) {
+                SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
+            }
             for (auto& context : contexts) {
                 macOpenGLUpdateContext(context->context);
             }

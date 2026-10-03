@@ -31,6 +31,7 @@ public:
     SDL_Texture* sdlTexture = nullptr;
     U32 sdlTextureHeight = 0;
     U32 sdlTextureWidth = 0;
+    bool sdlTextureDirty = true;
 
     U8* bits = nullptr;
     U32 bitsSize;
@@ -52,6 +53,7 @@ public:
         sdlTexture = nullptr;
         sdlTextureHeight = 0;
         sdlTextureWidth = 0;
+        sdlTextureDirty = true;
         if (bits) {
             delete[] bits;
         }
