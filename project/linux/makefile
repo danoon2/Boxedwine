@@ -54,7 +54,7 @@ export MAKEFLAGS := -j $(cpus)
 $(info MAKEFLAGS is $(MAKEFLAGS))
 endif
 release test:
-	@$(MAKE)
+	@$(MAKE) $(if $(JOBS),-j$(JOBS))
 
 clean:
 	$(RM) -r Build

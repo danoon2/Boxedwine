@@ -2,8 +2,9 @@
 // Windows workers: Visual Studio C++ tools for their targets and wget/unzip/java
 // in PATH. Packaging bootstraps a pinned .NET 10 SDK in the workspace and restores
 // apphost packs from NuGet.org.
-// Linux workers must be Debian/Ubuntu-family systems matching their target CPU,
-// with Python 3, dpkg-dev, binutils and xz-utils for UI tests and .deb packaging.
+// Linux x64 needs Python 3, dpkg-dev, binutils and xz-utils on Debian/Ubuntu.
+// Linux ARM64 (Fedora Asahi) needs Python 3 and Podman or Docker usable by the
+// Jenkins account. Its executables and .deb are built in Ubuntu 24.04.
 // GTK/libadwaita are runtime requirements; packaging does not need their headers.
 void gitCheckout() {
     def retryAttempt = 0
@@ -599,14 +600,7 @@ pipeline {
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 set -euo pipefail
-                                make clean
-                                make release
-                                make native-runtime JOBS=8
-                                make test-ui
-                                python3 ui/build.py --console Build/Release/boxedwine
-                                mkdir -p Build/Deploy/Linux/arm64/portable
-                                cp -a Build/NativeUI/. Build/Deploy/Linux/arm64/portable/
-                                python3 package_deb.py --architecture arm64 --revision "0~ci${BUILD_NUMBER}" --output Build/Deploy/Linux/arm64
+                                python3 build_deb_container.py --architecture arm64 --revision "0~ci${BUILD_NUMBER}" --jobs 8
                             '''
                         }
                         dir("project/linux/Build") {

@@ -107,7 +107,7 @@ This stages the UI, private engine, and CLI, then creates a package in
 ```sh
 python3 ui/build.py --console Build/Release/boxedwine
 python3 package_deb.py --architecture amd64 --output Build/Deploy/Linux/x64
-# Run on the ARM64 worker with --architecture arm64 and Linux/arm64 instead.
+# On a Debian-family ARM64 host, use --architecture arm64 and Linux/arm64.
 ```
 
 The packager checks both ELF architectures and derives shared-library
@@ -122,8 +122,50 @@ The default version is `BOXEDWINE_VERSION_DISPLAY` from `include/boxedwine.h`
 plus `-1`. Jenkins uses `-0~ci<BUILD_NUMBER>`, which sorts before the corresponding
 `-1` release. Jenkins saves each `.deb` beside `portable/` and exposes the `.deb`
 files as individual artifacts as well as including them in the combined ZIP.
-Both Linux workers must have a Debian-family package database and native tools;
-this does not cross-compile an ARM64 binary on x64.
+The x64 worker builds directly on its Debian-family host. The M1 ARM64 worker
+runs Fedora Asahi and uses the Ubuntu 24.04 container described below.
+
+### Container builds on Fedora Asahi
+
+Install Podman on the M1 once:
+
+```sh
+sudo dnf install podman
+```
+
+As the account running the Jenkins agent, verify `podman info` succeeds without
+sudo. Rootless Podman needs subordinate UID/GID mappings for that account in
+`/etc/subuid` and `/etc/subgid`; configure them using the host's account-management
+tools if they are missing. Docker is also supported if the Jenkins account can
+use it. The build prefers Podman when both are available; `--engine docker` or
+`BOXEDWINE_CONTAINER_ENGINE=docker` selects Docker explicitly.
+
+From `project/linux` on the M1:
+
+```sh
+python3 build_deb_container.py --architecture arm64
+```
+
+This builds the image in `packaging/Dockerfile`, compiles both executables
+against Ubuntu 24.04 libraries, runs the backend/packaging tests, and exports
+the `.deb` beside `portable/` in `Build/Deploy/Linux/arm64`. Jenkins passes
+`--revision "0~ci${BUILD_NUMBER}" --jobs 8`. The image layers are cached by the
+container engine; first use requires network access to download Ubuntu and its
+build dependencies. GTK/Python UI runtime packages are installed by APT on the
+end user's system, not needed for the headless container build.
+
+Compilation is native ARM64, without CPU emulation. Packaging Fedora-built
+binaries inside an Ubuntu container would still risk incompatible libraries,
+so the container always builds from source. Host object files, build outputs,
+custom `linux_build` libraries and Git metadata are excluded from its input.
+Only a temporary output directory is mounted, with SELinux labelling for
+Fedora. Output files belong to the invoking account, and previous published
+artifacts are replaced only after a successful complete build. The host's
+compiler and system packages are not modified.
+
+The same helper supports `--architecture amd64` on an x64 host. It requires a
+matching CPU; it does not cross-compile. Runtime validation on target machines
+is still required, especially for the M1's 16 KiB page-size environment.
 
 ## Manual staging and installation
 
