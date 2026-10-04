@@ -1,6 +1,7 @@
 // Notes:
-// Windows workers: Visual Studio C++ tools for their targets, .NET 10 SDK,
-// and wget/unzip/java in PATH. Publishing restores apphost packs from NuGet.org.
+// Windows workers: Visual Studio C++ tools for their targets and wget/unzip/java
+// in PATH. Packaging bootstraps a pinned .NET 10 SDK in the workspace and restores
+// apphost packs from NuGet.org.
 void gitCheckout() {
     def retryAttempt = 0
     retry(3) {
@@ -14,19 +15,25 @@ void gitCheckout() {
     }
 }
 
-void runEmscriptenUnitTest(String testName, String buildDir, String port) {
+void runEmscriptenUnitTest(String testName, String buildDir, String port, String query = '') {
     withEnv([
         "BOXEDWINE_UNIT_TEST_NAME=${testName}",
         "BOXEDWINE_UNIT_TEST_BUILD_DIR=${buildDir}",
-        "BOXEDWINE_UNIT_TEST_PORT=${port}"
+        "BOXEDWINE_UNIT_TEST_PORT=${port}",
+        "BOXEDWINE_UNIT_TEST_QUERY=${query}"
     ]) {
         sh '''#!/bin/bash
-            source ~/emsdk/emsdk_env.sh
-            cd project/emscripten
             set -euo pipefail
+            source tools/jenkins/emscripten-unit-test-env.sh
+            cd project/emscripten
 
             firefox_profile="$(mktemp -d "$WORKSPACE/.firefox-${BOXEDWINE_UNIT_TEST_BUILD_DIR}.XXXXXX")"
+            browser_launcher=''
             cleanup_firefox_profile() {
+                if [ -n "$browser_launcher" ]; then
+                    rm -f -- "$browser_launcher"
+                    browser_launcher=''
+                fi
                 if [ -z "$firefox_profile" ]; then
                     return 0
                 fi
@@ -47,14 +54,50 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port) {
             }
             trap cleanup_firefox_profile EXIT
 
+            # emrun 5.0.7 falls back to pkill firefox if Firefox exits before
+            # loading the page. An exec wrapper preserves the launched PID,
+            # without enabling that browser-name fallback on a desktop Mac.
+            browser_launcher="$(mktemp /tmp/boxedwine-browser.XXXXXX)"
+            printf '%s\\n' '#!/bin/bash' 'exec "$BOXEDWINE_FIREFOX" "$@"' > "$browser_launcher"
+            chmod 700 "$browser_launcher"
+
             echo "Running ${BOXEDWINE_UNIT_TEST_NAME}"
-            /usr/bin/firefox --version
+            "$BOXEDWINE_FIREFOX" --version
             cd "Build/${BOXEDWINE_UNIT_TEST_BUILD_DIR}"
+            # A killed content process can leave Firefox and emrun alive.
+            # Bound both missing test output and the total browser runtime.
             emrun --kill-exit \
                 --port "$BOXEDWINE_UNIT_TEST_PORT" \
-                --browser="/usr/bin/firefox" \
-                --browser-args="--headless --no-remote --profile ${firefox_profile}" \
-                boxedwine.html
+                --silence-timeout 300 \
+                --timeout 840 \
+                --timeout-returncode 124 \
+                --browser="$browser_launcher" \
+                --browser-args="--headless --no-remote --profile ${firefox_profile} -url" \
+                "boxedwine.html${BOXEDWINE_UNIT_TEST_QUERY:-}" 2>&1 | tee unit-tests.log
+            # emrun can return zero when Firefox exits before the test page does.
+            if ! grep -Eq '^0 tests FAILED in [0-9]+s$' unit-tests.log; then
+                echo 'ERROR: Browser exited without a successful unit-test summary.' >&2
+                exit 1
+            fi
+        '''
+    }
+}
+
+void buildEmscriptenUnitTest(String target) {
+    gitCheckout()
+    withEnv(["BOXEDWINE_UNIT_TEST_TARGET=${target}"]) {
+        sh '''#!/bin/bash
+            set -euo pipefail
+            source tools/jenkins/emscripten-unit-test-env.sh
+            cd project/emscripten
+            make clean
+            make "$BOXEDWINE_UNIT_TEST_TARGET"
+            # Legacy Linux worker cleanup. The Mac also hosts desktop apps;
+            # there, emrun owns cleanup of its isolated browser process.
+            if [ "$(uname -s)" != Darwin ]; then
+                killall -9 python3 2>/dev/null || true
+                killall -9 firefox firefox-bin 2>/dev/null || true
+            fi
         '''
     }
 }
@@ -62,21 +105,53 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port) {
 void buildAndRunEmscriptenUnitTest(String testName, String target, String buildDir, String port) {
     // Each stage owns its checkout even when several targets use the same host.
     ws("${env.WORKSPACE}@${buildDir}") {
-        gitCheckout()
-        withEnv(["BOXEDWINE_UNIT_TEST_TARGET=${target}"]) {
-            sh '''#!/bin/bash
-                set -euo pipefail
-                source ~/emsdk/emsdk_env.sh
-                cd project/emscripten
-                make clean
-                make "$BOXEDWINE_UNIT_TEST_TARGET"
-                # These workers are configured with one Jenkins executor each.
-                killall -9 python3 2>/dev/null || true
-                killall -9 firefox firefox-bin 2>/dev/null || true
-            '''
+        buildEmscriptenUnitTest(target)
+        timeout(time: 15, unit: 'MINUTES') {
+            runEmscriptenUnitTest(testName, buildDir, port)
         }
-        runEmscriptenUnitTest(testName, buildDir, port)
     }
+}
+
+void buildAndRunShardedEmscriptenUnitTest(String testName, String target, String buildDir, String port, String artifactPrefix) {
+    def shardCount = 16
+    def stashName = "emscripten-${artifactPrefix}-tests".toString()
+    // Release the compiler's executor before queueing the batches. Holding it
+    // across parallel would prevent that machine from helping with the tests.
+    node('emscripten') {
+        ws("${env.WORKSPACE}@${buildDir}") {
+            stage("Compile Emscripten ${testName} tests") {
+                buildEmscriptenUnitTest(target)
+                stash includes: "project/emscripten/Build/${buildDir}/boxedwine.*,tools/jenkins/emscripten-unit-test-env.sh", name: stashName
+            }
+        }
+    }
+    def batches = [:]
+    for (int index = 0; index < shardCount; ++index) {
+        def shard = index
+        def name = "${testName} batch ${shard + 1}/${shardCount}".toString()
+        batches[name] = {
+            node('emscripten') {
+                ws("${env.WORKSPACE}@${buildDir}-batch-${shard}") {
+                    stage(name) {
+                        deleteDir()
+                        unstash stashName
+                        try {
+                            timeout(time: 15, unit: 'MINUTES') {
+                                runEmscriptenUnitTest(name, buildDir, port, "?-shard&${shard}&${shardCount}")
+                            }
+                        } finally {
+                            // Unique archive paths preserve logs from every target and worker.
+                            dir("project/emscripten/Build/${buildDir}") {
+                                sh "mkdir -p results; if [ -f unit-tests.log ]; then mv unit-tests.log results/${artifactPrefix}-${shard}.log; fi"
+                                archiveArtifacts artifacts: "results/${artifactPrefix}-${shard}.log", allowEmptyArchive: true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    parallel batches
 }
 
 void retryCinebench(String name, Closure run) {
@@ -294,22 +369,18 @@ pipeline {
                     }
                 }
                 stage ('Test Emscripten ST JIT') {
-                    agent {
-                        label "emscripten"
-                    }
+                    agent none
                     steps {
                         script {
-                            buildAndRunEmscriptenUnitTest('Emscripten ST JIT unit tests', 'testJit', 'TestJit', '6922')
+                            buildAndRunShardedEmscriptenUnitTest('ST JIT', 'testJit', 'TestJit', '6922', 'st-jit')
                         }
                     }
                 }
                 stage ('Test Emscripten MT JIT') {
-                    agent {
-                        label "emscripten"
-                    }
+                    agent none
                     steps {
                         script {
-                            buildAndRunEmscriptenUnitTest('Emscripten MT JIT unit tests', 'testMultiThreadedJit', 'TestMultiThreadedJit', '6923')
+                            buildAndRunShardedEmscriptenUnitTest('MT JIT', 'testMultiThreadedJit', 'TestMultiThreadedJit', '6923', 'mt-jit')
                         }
                     }
                 }
@@ -394,7 +465,8 @@ pipeline {
             parallel {
                 stage ('Build Emscripten') {
                     agent {
-                        label "emscripten"
+                        // Packaging uses /var/www/buildfiles on the Linux x64 worker.
+                        label "emscripten && linux64"
                     }
                     steps {
                         script { 

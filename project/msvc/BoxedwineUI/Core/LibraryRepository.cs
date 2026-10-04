@@ -75,6 +75,7 @@ public sealed class LibraryRepository : IDisposable
     {
         if (app.Id == Guid.Empty || string.IsNullOrWhiteSpace(app.Name) || app.Name.Length > 1024) throw new InvalidDataException("Invalid app name or identity.");
         LaunchArguments.ValidateResolution(app.Resolution);
+        if (app.PreferredWindowsOpenGL != "default" && !OpenGLDrivers.IsKnown(app.PreferredWindowsOpenGL)) throw new InvalidDataException("Unknown Windows OpenGL implementation.");
         LaunchArguments.ValidateOverrides(app.BoxedwineArguments ?? []);
         if (app.Arguments == null || app.Arguments.Count > 256 || app.Arguments.Any(a => a == null || a.Length > 8192 || a.Contains('\0'))) throw new InvalidDataException("Invalid app arguments.");
         if (app.Executable != null)

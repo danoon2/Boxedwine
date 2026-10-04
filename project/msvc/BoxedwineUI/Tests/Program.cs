@@ -10,7 +10,7 @@ var suite = new TestSuite();
 await suite.Run(args);
 return suite.Failures == 0 ? 0 : 1;
 
-sealed class TestSuite
+sealed partial class TestSuite
 {
     public int Failures { get; private set; }
     private int passes;
@@ -62,6 +62,23 @@ sealed class TestSuite
         work = Path.Combine(Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith('-')) ?? "../../../../../../tmp/native-ui-tests"), Guid.NewGuid().ToString("N")); Directory.CreateDirectory(work);
         Console.WriteLine("Test workspace: " + work);
         fixture = WineFixture("wine.zip"); wine = await Packages.ValidateWine(fixture, default);
+        await Test("Runtime app identity and icon metadata are isolated per launch", () =>
+        {
+            var first = new System.Diagnostics.ProcessStartInfo();
+            var second = new System.Diagnostics.ProcessStartInfo();
+            var app = new RuntimeIdentity(Guid.NewGuid(), new byte[64 * 64 * 4]);
+            RuntimeIdentity.Configure(first, app);
+            RuntimeIdentity.Configure(second, new(Guid.NewGuid()));
+            Check(first.Environment[RuntimeIdentity.AppIdVariable] != second.Environment[RuntimeIdentity.AppIdVariable]);
+            Check(Convert.FromBase64String(first.Environment[RuntimeIdentity.IconVariable]!).SequenceEqual(app.IconBgra!));
+            Check(first.Environment[RuntimeIdentity.IconVariable]!.Length < 32767 && !second.Environment.ContainsKey(RuntimeIdentity.IconVariable));
+            RuntimeIdentity.Configure(first, new(app.AppId, new byte[20000]));
+            Check(!first.Environment.ContainsKey(RuntimeIdentity.IconVariable), "Reject oversized icon metadata");
+            RuntimeIdentity.Configure(first, null);
+            Check(!first.Environment.ContainsKey(RuntimeIdentity.IconVariable) && !first.Environment.ContainsKey(RuntimeIdentity.AppIdVariable), "Background Wine tasks must not inherit another app's identity");
+            return Task.CompletedTask;
+        });
+        await OpenGLTests(args);
         await Test("Swift Codable metadata round trip and epoch", () =>
         {
             var app = new LibraryApp { Name = "A \"Unicode\" app 日本語", CreatedAt = 100, BuiltInProgram = "minesweeper", CustomIconPNG = [137,80,78,71,13,10,26,10] };
@@ -77,7 +94,12 @@ sealed class TestSuite
             string loop = Path.Combine(work, "loop.zip"); System.IO.File.Copy(fixture, loop);
             using (var archive = ZipFile.Open(loop, ZipArchiveMode.Update)) { archive.GetEntry("bin/wine.link")!.Delete(); Put(archive, "bin/wine.link", Encoding.UTF8.GetBytes("wine")); }
             await Throws(() => Packages.ValidateWine(loop, default), "link cycle");
-            string corrupt = Path.Combine(work, "corrupt.zip"); byte[] bytes = File.ReadAllBytes(fixture); int position = Encoding.UTF8.GetString(bytes).IndexOf("11.0\n", StringComparison.Ordinal); bytes[position] = (byte)'9'; File.WriteAllBytes(corrupt, bytes);
+            string corrupt = Path.Combine(work, "corrupt.zip"); byte[] bytes = File.ReadAllBytes(fixture);
+            // ZIP headers contain binary timestamps: a UTF-8 character offset
+            // can point into the header instead of the payload we must corrupt.
+            int position = bytes.AsSpan().IndexOf("11.0\n"u8);
+            Check(position >= 0, "The stored Wine version payload must be present.");
+            bytes[position] = (byte)'9'; File.WriteAllBytes(corrupt, bytes);
             await Throws(() => Packages.ValidateWine(corrupt, default), "CRC mismatch");
         });
         await Test("Launch verification checks SHA-256 without inspecting archive contents", async () =>

@@ -30,8 +30,8 @@ Jenkins packages the framework-dependent native UI in `Deploy/Win64` and
 folders go into the existing combined build ZIP. The native UI requires an installed
 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 matching its architecture, and offers a download prompt if it is missing.
-Windows workers now also require
-the .NET 10 SDK and NuGet.org access for publishing. Run
+Windows packaging downloads a pinned .NET 10 SDK into the workspace on first use;
+workers need access to Microsoft's .NET downloads and NuGet.org for publishing. Run
 `tools\jenkins\build-windows.ps1 -Platform x64` (or `ARM64` / `Win32`) to reproduce
 a target's packaging locally. See the UI README's Jenkins release section for
 the folder layout and the separate command-line executable used by automation.
@@ -83,6 +83,61 @@ Follow instructions for installing Emscripten on: https://emscripten.org/docs/ge
 To build, in the terminal go to the source directory and in, project/emscripten, you need to type
 
 make release
+
+### Jenkins unit tests
+
+The ST JIT and MT JIT unit-test binaries are each built once and stashed, then
+each run as 16 independent batches on the `emscripten` worker pool. Each free
+worker takes another batch from either target, including after finishing the
+unbatched ST interpreter suite. No executor is held while the batches wait for
+workers. Each batch uses a separate workspace and Firefox profile, has a
+15-minute execution timeout, and archives its own console log. The two targets
+use separate stashes and log names (`st-jit-<index>.log` and `mt-jit-<index>.log`).
+The two Linux workers and Mac M4 should each have the `emscripten` label and keep
+one Jenkins executor. Concurrent MT JIT browser runs caused memory pressure and
+timeouts during Mac validation.
+
+Unit-test workers require Emscripten **5.0.7**. The environment helper rejects a
+different active version rather than silently using a newer SDK. On Linux, it
+uses `~/emsdk` and `/usr/bin/firefox`. The Mac M4 uses the shared installation at
+`/Users/Shared/BoxedwineCI/emsdk` and the normal Firefox installation at
+`/Applications/Firefox.app` (verified with **157.0**; Linux uses **156.0.1**).
+Its SDK uses Node **22.16.0** and bundled Python **3.13.3**.
+Each Mac account keeps its writable SDK cache in
+`~/Library/Caches/Boxedwine/emscripten-5.0.7`, so Jenkins can use the shared tools
+without write access to the SSH account's home. `BOXEDWINE_EMSDK_ROOT`,
+`BOXEDWINE_FIREFOX`, and `EM_CACHE` can override the paths.
+
+From the repository root, use `source tools/jenkins/emscripten-unit-test-env.sh`
+to load the same environment as Jenkins. The helper is included in both JIT
+stashes so batches can move between Linux and macOS without checking out or
+rebuilding the source. Web packaging and AbiWord browser automation use
+`emscripten && linux64`; the packaging assets in `/var/www/buildfiles` are only
+available on the Linux x64 worker.
+
+The test runner assigns entries to batches by index modulo batch count, so every
+test runs exactly once and expensive instruction families are spread across
+batches. New tests are included automatically. Full test thoroughness is retained;
+the pipeline does not pass `-fast`.
+
+To reproduce the first ST JIT batch after `make testJit`:
+
+```sh
+cd project/emscripten/Build/TestJit
+emrun --browser=firefox 'boxedwine.html?-shard&0&16'
+```
+
+For MT JIT, use `make testMultiThreadedJit` and its build directory:
+
+```sh
+cd project/emscripten/Build/TestMultiThreadedJit
+emrun --browser=firefox 'boxedwine.html?-shard&0&16'
+```
+
+`-shard index count` uses a zero-based index. Add `&-list` to print the selected
+test indexes and names without executing them. The Windows and Linux test
+executables accept the same arguments. Existing positional `start count threads`
+arguments still work and, if combined with `-shard`, select the range to split.
 
 ### Mac App Store edition
 

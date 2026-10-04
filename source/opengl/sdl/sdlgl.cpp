@@ -35,6 +35,7 @@
 #endif
 #ifdef BOXEDWINE_MSVC
 #include "../../../platform/windows/windowsOpenGL.h"
+#include "../../../platform/windows/windowsAppIdentity.h"
 #endif
 #if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
 #include "../../sdl/startupArgs.h"
@@ -499,6 +500,7 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
 #elif defined(__APPLE__)
     if (fullscreen) macOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
 #elif defined(BOXEDWINE_MSVC)
+    windowsAppSetWindowIcon(window);
     if (fullscreen) windowsOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
 #endif
     return std::make_shared<SDLGlWindow>(window, pixelFormat, major, minor, profile, flags, true, wnd);

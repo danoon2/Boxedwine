@@ -19,17 +19,19 @@ public sealed class RuntimeSession : IDisposable
     // False means the session ended or was stopped before displaying a window.
     public Task<bool> WindowShown => windowShown.Task;
     public Task<RuntimeExit> Completion { get; }
-    public RuntimeSession(string executable, IReadOnlyList<string> arguments, string wine, string logPath, bool installing = false, bool rotate = true)
+    public RuntimeSession(string executable, IReadOnlyList<string> arguments, string wine, string logPath, bool installing = false, bool rotate = true, OpenGLRuntime? openGL = null, RuntimeIdentity? identity = null)
     {
         if (!File.Exists(executable)) throw new FileNotFoundException("Choose BoxedwineEngine.exe in Settings, or place it next to Boxedwine.exe.", executable);
         wineLease = new FileStream(wine, FileMode.Open, FileAccess.Read, FileShare.Read);
         try { log = new BoundedLog(logPath, rotate); } catch { wineLease.Dispose(); throw; }
         process = new Process { StartInfo = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = Path.GetDirectoryName(executable)! } };
+        RuntimeIdentity.Configure(process.StartInfo, identity);
+        openGL?.Configure(process.StartInfo);
         foreach (var argument in arguments) process.StartInfo.ArgumentList.Add(argument);
         try { job = new ProcessJob(); } catch { log.Dispose(); wineLease.Dispose(); process.Dispose(); throw; }
         try
         {
-            log.Write($"Boxedwine launch · {DateTimeOffset.Now:O}\n" + string.Join(" ", arguments.Select(a => a.Contains(' ') ? '"' + a + '"' : a)) + "\n");
+            log.Write($"Boxedwine launch · {DateTimeOffset.Now:O}\n" + (openGL == null ? "" : "OpenGL: " + OpenGLDrivers.Label(openGL.Implementation) + "\n") + string.Join(" ", process.StartInfo.ArgumentList.Select(a => a.Contains(' ') ? '"' + a + '"' : a)) + "\n");
             process.Start(); job.Assign(process);
             Completion = Observe(installing);
         }
@@ -146,7 +148,7 @@ internal sealed class BoundedLog : IDisposable
     public void Dispose() { lock (gate) stream.Dispose(); }
 }
 
-public sealed class WineConfiguration(string emulator)
+public sealed class WineConfiguration(string emulator, OpenGLRuntime? openGL = null)
 {
     private static readonly HashSet<string> Versions = [.. LaunchArguments.WindowsVersions.Keys.Where(k => k != "wineDefault"), "win2008r2", "win2008", "win2003", "winxp64", "nt351", "win30", "win20"];
     public static string ReadVersion(string output)
@@ -206,7 +208,7 @@ public sealed class WineConfiguration(string emulator)
             // Configuration repeatedly forks short-lived Wine tools. Use the conservative
             // memory path for this background work; app launches keep their normal settings.
             List<string> arguments = ["-root", root, "-zip", wine, "-hideWindow", "-disableLinearMemory", "-title", "Preparing Windows", "-mount", directory, "/tmp/boxedwine-configuration", "-w", "/home/username", "/bin/sh", "-c", Script(kind, value, token)];
-            using var session = new RuntimeSession(emulator, arguments, wine, log, rotate: false);
+            using var session = new RuntimeSession(emulator, arguments, wine, log, rotate: false, openGL: openGL);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation); timeout.CancelAfter(TimeSpan.FromMinutes(2));
             RuntimeExit exit;
             try { exit = await session.Completion.WaitAsync(timeout.Token); }

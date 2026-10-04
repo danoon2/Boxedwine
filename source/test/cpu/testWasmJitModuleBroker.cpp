@@ -1710,6 +1710,9 @@ void testWasmJitMtModuleBrokerLifecycle() {
     }
 
     wasmJitTestSetMtModuleBrokerEnabled(1);
+    // Earlier tests can leave retired modules in the batched release queue.
+    // Drain them before measuring this test's exact publication/purge deltas.
+    wasmJitTestReapMtRetiredSlots(testContext().memory);
     WasmJitMtBrokerMainStatsSnapshot baseline = wasmJitTestGetMtBrokerMainStats();
 
     std::vector<U8> bytes = makeBrokerTestModule();
@@ -1750,7 +1753,9 @@ void testWasmJitMtModuleBrokerLifecycle() {
     }
     WasmJitMtBrokerMainStatsSnapshot purged = wasmJitTestGetMtBrokerMainStats();
     if (purged.purgedModules != raced.purgedModules + 1 || purged.liveRegistryModules != baseline.liveRegistryModules) {
-        testFail("MT WASM broker memory purge accounting");
+        testFail("MT WASM broker memory purge accounting: purged %u->%u, live %u->%u (baseline %u)",
+            raced.purgedModules, purged.purgedModules, raced.liveRegistryModules,
+            purged.liveRegistryModules, baseline.liveRegistryModules);
     }
 
     U32 failureId = wasmJitTestReserveMtBrokerModule(owner);

@@ -25,6 +25,25 @@ An already verified download works offline. `-SkipCatalog` skips catalog prepara
 if no catalog was previously built, the Demos page offers Download Catalog.
 Wine itself is downloaded when needed.
 
+Settings → Graphics selects the default OpenGL implementation. App Settings →
+Advanced can inherit that setting or override it. x64 starts with Native; Arm64
+starts with Mesa LLVMpipe, matching the legacy Arm default. Newly installed demos
+always inherit the global OpenGL setting, including recipes that recommend Native.
+Existing apps retain their saved settings. Both targets
+offer Native, LLVMpipe and Direct3D 12; x64 also offers Vulkan/Zink. Wine's GLX/EGL
+interface and GDI/OpenGL renderer remain separate settings.
+
+Mesa downloads on the first launch that needs it, using the legacy packages
+(x64 25.0.0, Arm64 26.0.3). Downloads are pinned by size and SHA-256, extracted
+into a temporary folder and published only after validation. One package per
+architecture/version is shared under the library's `OpenGL` folder; it is not
+bundled in releases or app backups. A canceled or failed download leaves the
+selection saved for retry. The selected engine's PE architecture determines the
+package, including when using an x64 engine on Arm Windows. Unsupported saved
+choices stay visible and produce an actionable launch error. Driver environment
+variables are set only on the child process, including Wine preparation,
+installers and alternate programs. Per-app choices are included in backups.
+
 The current native UI release offers only Wine 11.0 V13. With a single catalog
 entry, Add App shows the package as text, built-in apps select it automatically,
 and version selection, ZIP import and trial-copy controls and guidance are hidden.
@@ -75,9 +94,15 @@ folder together. The `Runtime` folder contains the Boxedwine emulator, not .NET.
 Wine is downloaded on demand. The Win32 frontend and console builds do not need
 .NET. The existing Linux, Mac and Web outputs remain in the combined archive.
 
-The `windows` and `windowsARM64` workers need the .NET 10 SDK on `PATH`, Visual
-Studio C++ tools for their targets, and access to NuGet.org for architecture-specific
-apphost packs. MSBuild/editbin are discovered from `PATH` or Visual Studio;
+The `windows` and `windowsARM64` workers need Visual Studio C++ tools for their
+targets and access to Microsoft's .NET downloads and NuGet.org. Before compiling
+the native UI targets, the packaging helper installs .NET SDK 10.0.302 with
+Microsoft's `dotnet-install.ps1` into `.tools/dotnet/10.0.302/<worker-architecture>`
+at the repository root. Later builds reuse that SDK. It sets `PATH` and `DOTNET_ROOT`
+only for the build process, requires no administrator rights or preinstalled .NET,
+and keeps the SDK out of the release ZIP. Win32 packaging does not need the SDK.
+NuGet.org supplies architecture-specific apphost packs.
+MSBuild/editbin are discovered from `PATH` or Visual Studio;
 the packaging helper also accepts explicit `-MSBuildPath` and `-EditbinPath`.
 
 Run the same packaging steps locally from the repository root:
@@ -177,6 +202,10 @@ Keyboard shortcuts follow Windows conventions and are listed in Help and menus.
   button. Cards and details say “Launching…” until the emulator reports its first
   visible window, using the same readiness signal as the Mac UI. Exiting or
   stopping during startup clears the banner too.
+- Running apps use their library icon, including custom icons, in the Windows
+  title bar, Alt+Tab and taskbar. Each library app has a separate taskbar identity.
+  The icon persists through GDI/OpenGL/Vulkan window recreation; apps without a
+  readable icon keep the engine's default icon.
 
 See [architecture and sharing assessment](ARCHITECTURE.md) for the core boundary
 and a proposed route to sharing actual implementation with macOS.
@@ -193,6 +222,17 @@ dotnet restore BoxedwineUI.sln --configfile NuGet.Config
 dotnet run --project Tests/Boxedwine.Tests.csproj -c Release --no-restore -- C:\Boxedwine\tmp\native-ui-tests
 dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\native-ui-previews
 ```
+
+Native runtime icon checks (from the repository root):
+
+```powershell
+tools/test_windows_app_identity.ps1
+dotnet run --project project/msvc/BoxedwineUI/Tests/UI/Boxedwine.UIChecks.csproj -c Release -- C:\Boxedwine\tmp\native-ui-icon-checks --icon-engine C:\Boxedwine\tmp\windows-app-identity-checks\x64\identity.exe
+```
+
+These check transparency and aspect ratio, app identity isolation, malformed-icon
+fallback, repeated GDI/OpenGL window creation, and the actual launcher-to-native
+process handoff. Use `-Platform ARM64 -CompileOnly` to cross-build the native test.
 
 The UI harness renders the app's own WPF tree and opens/closes its own dialogs;
 it checks live theme switching and produces 16 preview images. It does not automate

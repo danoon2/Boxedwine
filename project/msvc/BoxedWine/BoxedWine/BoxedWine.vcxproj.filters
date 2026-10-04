@@ -728,6 +728,7 @@
       <Filter>source\x11</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\platform\windows\windowsOpenGL.cpp"><Filter>platform\windows</Filter></ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\windowsAppIdentity.cpp"><Filter>platform\windows</Filter></ClCompile>
     <ClCompile Include="..\..\..\..\platform\windows\platformOpenGL.cpp">
       <Filter>platform\windows</Filter>
     </ClCompile>
@@ -1950,6 +1951,7 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\platform\sdl\openGLViewport.h"><Filter>platform\sdl</Filter></ClInclude>
     <ClInclude Include="..\..\..\..\platform\windows\windowsOpenGL.h"><Filter>platform\windows</Filter></ClInclude>
+    <ClInclude Include="..\..\..\..\platform\windows\windowsAppIdentity.h"><Filter>platform\windows</Filter></ClInclude>
     <ClInclude Include="..\..\..\..\platform\sdl\knativeinputSDL.h">
       <Filter>platform\sdl</Filter>
     </ClInclude>

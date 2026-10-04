@@ -11,7 +11,7 @@ using System.Windows.Automation;
 using Boxedwine.Library;
 using Boxedwine.UI;
 
-internal static class Program
+internal static partial class Program
 {
     [STAThread]
     public static int Main(string[] args)
@@ -24,6 +24,7 @@ internal static class Program
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(app.Dispatcher));
             app.ThemeMode = ThemeMode.System;
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/{typeof(MainWindow).Assembly.GetName().Name};component/Styles.xaml", UriKind.Relative) });
+            CheckRuntimeIcons(destination, args);
             var catalog = Packages.Catalog(Path.Combine(AppContext.BaseDirectory, "Resources"));
             if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "13") throw new Exception("This release must offer only Wine 11 V13.");
             foreach (string theme in new[] { "Light", "Dark" })
@@ -52,6 +53,11 @@ internal static class Program
                     choices.SelectedValue = theme == "Dark" ? "Light" : "Dark";
                     if (dialog.ThemeMode != Application.Current.ThemeMode || window.ThemeMode != Application.Current.ThemeMode) throw new Exception("Theme changes did not reach every open window.");
                     choices.SelectedValue = theme;
+                    dialog.UpdateLayout();
+                    var openGL = Descendants<ComboBox>(dialog).Single(c => AutomationProperties.GetName(c) == "Default OpenGL implementation");
+                    openGL.SelectedValue = "d3d12";
+                    if (System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(library, "windows-settings.json"))).RootElement.GetProperty("openGLImplementation").GetString() != "d3d12") throw new Exception("Global OpenGL selection was not saved.");
+                    dialog.UpdateLayout(); Descendants<ScrollViewer>(dialog).First().ScrollToVerticalOffset(210);
                 });
                 CheckDialog(window, "Add", [null!], Path.Combine(destination, theme.ToLowerInvariant() + "-add.png"));
                 CheckDialog(window, "ShowHelp", [], Path.Combine(destination, theme.ToLowerInvariant() + "-help.png"), dialog =>
@@ -69,8 +75,20 @@ internal static class Program
                 CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-advanced.png"), dialog =>
                 {
                     var advanced = Descendants<Expander>(dialog).Single(); advanced.IsExpanded = true;
-                    dialog.UpdateLayout(); Descendants<ScrollViewer>(dialog).First().ScrollToVerticalOffset(340);
+                    dialog.UpdateLayout();
+                    var openGL = Descendants<ComboBox>(dialog).Single(c => AutomationProperties.GetName(c) == "OpenGL implementation");
+                    if ((string)openGL.SelectedValue != "default" || !openGL.Items.Cast<KeyValuePair<string, string>>().Single(c => c.Key == "default").Value.Contains("Direct3D 12")) throw new Exception("App OpenGL selection must show the inherited global setting.");
+                    openGL.SelectedValue = "llvmpipe";
+                    dialog.UpdateLayout(); Descendants<ScrollViewer>(dialog).First().ScrollToVerticalOffset(490);
+                }, "Save");
+                if (activeRepository.Load().Apps[0].WindowsOpenGL != "llvmpipe") throw new Exception("App OpenGL selection was not saved.");
+                CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-advanced-cancel.png"), dialog =>
+                {
+                    Descendants<Expander>(dialog).Single().IsExpanded = true;
+                    dialog.UpdateLayout();
+                    Descendants<ComboBox>(dialog).Single(c => AutomationProperties.GetName(c) == "OpenGL implementation").SelectedValue = "native";
                 });
+                if (activeRepository.Load().Apps[0].WindowsOpenGL != "llvmpipe") throw new Exception("Cancel changed the saved OpenGL selection.");
                 CheckDialog(window, "Troubleshoot", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-troubleshooting.png"));
                 window.Close();
             }
@@ -259,14 +277,18 @@ internal static class Program
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
     }
-    private static void CheckDialog(Window owner, string method, object[] args, string path, Action<Window>? inspect = null)
+    private static void CheckDialog(Window owner, string method, object[] args, string path, Action<Window>? inspect = null, string? accept = null)
     {
         Exception? failure = null;
         owner.Dispatcher.BeginInvoke(() =>
         {
             var dialog = Application.Current.Windows.Cast<Window>().Last(w => w != owner);
             Console.WriteLine($"Dialog {dialog.Title}: theme={dialog.ThemeMode}, app={Application.Current.ThemeMode}, highContrast={SystemParameters.HighContrast}");
-            try { inspect?.Invoke(dialog); Render(dialog, path, (int)dialog.ActualWidth - 16, (int)dialog.ActualHeight - 40); }
+            try
+            {
+                inspect?.Invoke(dialog); Render(dialog, path, (int)dialog.ActualWidth - 16, (int)dialog.ActualHeight - 40);
+                if (accept != null) Descendants<Button>(dialog).Single(b => b.Content as string == accept).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            }
             catch (Exception error) { failure = error; }
             finally { dialog.Close(); }
         }, DispatcherPriority.ApplicationIdle);

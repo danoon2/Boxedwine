@@ -101,22 +101,25 @@ public partial class MainWindow
         if (!CanChange(app)) return;
         if (!installing && alternate == null && external == null && app.BuiltIn == null && app.Executable == null) { ChooseMain(app); return; }
         string emulator = Emulator();
+        string implementation = OpenGLDrivers.Resolve(app, preferences, OpenGLDrivers.EngineArchitecture(emulator));
         RunOperation("Preparing " + app.Name + "…", async (token, progress) =>
         {
             string wine = repository.WinePath(app);
             var expected = app.WinePackage ?? (app.SavedWineVersion == null ? repository.DefaultWine : null);
             var reference = await checkedWine.Verify(wine, expected, token, progress);
             if (app.SavedWineVersion != null && app.SavedWineVersion != reference.WineVersion) throw new InvalidDataException("This app's Wine package is missing or has changed. Its Windows files have been kept.");
+            var openGL = await OpenGLDrivers.Ensure(repository.DirectoryPath, implementation, emulator, token, progress);
             string latest = SafeFiles.Beneath(repository.AppDirectory(app), "Logs/latest.log");
             if (File.Exists(latest)) File.Move(latest, SafeFiles.Beneath(repository.AppDirectory(app), "Logs/previous.log"), true);
-            var configured = await new WineConfiguration(emulator).Apply(repository, app, wine, token, progress);
+            var configured = await new WineConfiguration(emulator, openGL).Apply(repository, app, wine, token, progress);
             token.ThrowIfCancellationRequested();
             var arguments = LaunchArguments.Build(repository, configured, wine, installing, alternate, external);
-            return (App: configured, Wine: wine, Arguments: arguments);
+            return (App: configured, Wine: wine, Arguments: arguments, OpenGL: openGL);
         }, prepared =>
         {
             prepared.App.LastOpened = DataFormat.Now; repository.Update(prepared.App);
-            var session = new RuntimeSession(emulator, prepared.Arguments, prepared.Wine, SafeFiles.Beneath(repository.AppDirectory(app), "Logs/latest.log"), installing, rotate: false);
+            var identity = Icons.ForRuntime(repository, prepared.App, resources, demos, catalogDirectory);
+            var session = new RuntimeSession(emulator, prepared.Arguments, prepared.Wine, SafeFiles.Beneath(repository.AppDirectory(app), "Logs/latest.log"), installing, rotate: false, openGL: prepared.OpenGL, identity: identity);
             TrackSession(prepared.App, session);
         });
     }
@@ -203,7 +206,7 @@ public partial class MainWindow
     }
     private void Edit(LibraryApp app)
     {
-        var result = Dialogs.Edit(this, repository, app); if (result == null) return;
+        var result = Dialogs.Edit(this, repository, app, OpenGLArchitecture()); if (result == null) return;
         repository.Update(result.App); Refresh(app.Id.ToString()); if (result.Backup) Backup(result.App);
     }
     private void Backup(LibraryApp app)

@@ -1059,6 +1059,7 @@
     <ClInclude Include="..\..\..\..\platform\sdl\knativeinputSDL.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\openGLViewport.h" />
     <ClInclude Include="..\..\..\..\platform\windows\windowsOpenGL.h" />
+    <ClInclude Include="..\..\..\..\platform\windows\windowsAppIdentity.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\kvulkanSDL.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.h" />
@@ -3709,6 +3710,7 @@
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platformOpenGL.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\windowsOpenGL.cpp"><ExcludedFromBuild Condition="'$(Configuration)'=='Release SDL1'">true</ExcludedFromBuild></ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\windowsAppIdentity.cpp"><ExcludedFromBuild Condition="'$(Configuration)'=='Release SDL1'">true</ExcludedFromBuild></ClCompile>
     <ClCompile Include="..\..\..\..\platform\windows\platformThreads.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8\jitArmV8CodeGen.cpp" />

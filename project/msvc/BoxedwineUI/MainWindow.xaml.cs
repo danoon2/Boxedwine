@@ -91,6 +91,11 @@ public partial class MainWindow : Window
         }
         return candidates.FirstOrDefault(IsEngine) ?? throw new FileNotFoundException("BoxedwineEngine.exe was not found. Open Settings and choose the emulator executable, or place it next to Boxedwine.exe.");
     }
+    private System.Runtime.InteropServices.Architecture OpenGLArchitecture()
+    {
+        try { return OpenGLDrivers.EngineArchitecture(Emulator()); }
+        catch (Exception error) when (error is IOException or BadImageFormatException) { return System.Runtime.InteropServices.RuntimeInformation.OSArchitecture; }
+    }
     private bool Running(LibraryApp app) => sessions.ContainsKey(app.Id);
     private string AppStatus(LibraryApp app) => stopping.Contains(app.Id) ? "Stopping…" : launching.ContainsKey(app.Id) ? "Launching…" : Running(app) ? "Running" : runStatus.GetValueOrDefault(app.Id, "App closed");
     private bool HasWineChoices => wines.Count > 1;

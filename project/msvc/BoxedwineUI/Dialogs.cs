@@ -136,7 +136,7 @@ internal static class Dialogs
         form.ShowDialog(); return result;
     }
     public sealed record EditResult(LibraryApp App, bool Backup);
-    public static EditResult? Edit(Window owner, LibraryRepository repository, LibraryApp original)
+    public static EditResult? Edit(Window owner, LibraryRepository repository, LibraryApp original, System.Runtime.InteropServices.Architecture architecture)
     {
         var app = DataFormat.Clone(original); var form = new FormWindow(owner, "App settings", null, 620, 740);
         var name = FormWindow.Text(app.Name); form.Field("Name", name);
@@ -161,7 +161,11 @@ internal static class Dialogs
         iconButtons.Children.Add(image); iconButtons.Children.Add(automatic); Field("App icon", iconButtons); advanced.Children.Add(iconStatus);
         var renderer = FormWindow.Choices(new() { ["wineDefault"] = "Use Wine's default", ["openGL"] = "OpenGL", ["gdi"] = "GDI (compatibility)" }, app.PreferredRenderer); Field("Wine renderer", renderer);
         advanced.Children.Add(FormWindow.Paragraph("GDI can help older 2D games and menus, but disables Direct3D acceleration."));
-        var backend = FormWindow.Choices(new() { ["wineDefault"] = "Use Wine's default", ["glx"] = "GLX", ["egl"] = "EGL" }, app.PreferredBackend); Field("OpenGL backend", backend);
+        var implementations = new Dictionary<string, string> { ["default"] = "Use global setting (" + OpenGLDrivers.Label(OpenGLDrivers.GlobalDefault(repository.Preferences, architecture)) + ")" };
+        foreach (var choice in OpenGLDrivers.Choices(architecture, app.PreferredWindowsOpenGL)) implementations.Add(choice.Key, choice.Value);
+        var openGL = FormWindow.Choices(implementations, app.PreferredWindowsOpenGL); Field("OpenGL implementation", openGL);
+        advanced.Children.Add(FormWindow.Paragraph(OpenGLDrivers.Help(architecture)));
+        var backend = FormWindow.Choices(new() { ["wineDefault"] = "Use Wine's default", ["glx"] = "GLX", ["egl"] = "EGL" }, app.PreferredBackend); Field("Wine OpenGL interface", backend);
         var bw = FormWindow.Text(string.Join("\n", app.BoxedwineArguments ?? []), true); Field("Boxedwine arguments — one option or value per line", bw);
         var supported = new Button { Content = "Supported Options", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 6) }; supported.Click += (_, _) => Info(form, "Supported Boxedwine options", LaunchArguments.Help); advanced.Children.Add(supported);
         var args = FormWindow.Text(string.Join("\n", app.Arguments), true); Field("App arguments — one argument per line", args);
@@ -171,6 +175,7 @@ internal static class Dialogs
         {
             app.Name = name.Text.Trim(); app.Resolution = resolution.Text.Trim(); app.FullScreen = full.IsChecked == true;
             app.ChooseWindows((string)windows.SelectedValue); app.ChooseRenderer((string)renderer.SelectedValue); app.ChooseBackend((string)backend.SelectedValue);
+            app.WindowsOpenGL = (string)openGL.SelectedValue;
             app.Arguments = LaunchArguments.Lines(args.Text); app.BoxedwineArguments = LaunchArguments.Overrides(LaunchArguments.Lines(bw.Text));
             repository.ValidateApp(app); result = new(app, backup); form.DialogResult = true;
         }

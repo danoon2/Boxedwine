@@ -50,12 +50,14 @@ public sealed class LibraryApp
     public bool? OpenGLBackendPending { get; set; }
     public string? WineRenderer { get; set; }
     public bool? WineRendererPending { get; set; }
+    public string? WindowsOpenGL { get; set; }
     public byte[]? CustomIconPNG { get; set; }
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
     [JsonIgnore] public string? BuiltIn => BuiltInProgram ?? (IsNotepad ? "notepad" : null);
     [JsonIgnore] public string PreferredWindows => WindowsVersion ?? DemoSettings?.WindowsVersion ?? "wineDefault";
     [JsonIgnore] public string PreferredBackend => OpenGLBackend ?? (DemoSettings?.UseEGL is bool egl ? egl ? "egl" : "glx" : "wineDefault");
     [JsonIgnore] public string PreferredRenderer => WineRenderer ?? (DemoSettings?.Gdi is bool gdi ? gdi ? "gdi" : "openGL" : "wineDefault");
+    [JsonIgnore] public string PreferredWindowsOpenGL => WindowsOpenGL ?? (DemoSettings?.NativeOpenGL == true ? "native" : "default");
     [JsonIgnore] public bool HasPendingSettings => WindowsVersionPending == true || OpenGLBackendPending == true || WineRendererPending == true;
     public void ChooseWindows(string value) { if (value != PreferredWindows) { WindowsVersion = value; WindowsVersionPending = true; } }
     public void ChooseBackend(string value) { if (value != PreferredBackend) { OpenGLBackend = value; OpenGLBackendPending = true; } }
@@ -105,6 +107,7 @@ public sealed class LauncherPreferences
     public string Theme { get; set; } = "System";
     public string? EmulatorPath { get; set; }
     public bool DeleteImmediately { get; set; }
+    public string? OpenGLImplementation { get; set; }
 }
 public sealed record OperationProgress(string Message, long Completed = 0, long Total = 0)
 {
