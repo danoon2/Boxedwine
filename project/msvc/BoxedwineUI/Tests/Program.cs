@@ -77,7 +77,12 @@ sealed class TestSuite
             string loop = Path.Combine(work, "loop.zip"); System.IO.File.Copy(fixture, loop);
             using (var archive = ZipFile.Open(loop, ZipArchiveMode.Update)) { archive.GetEntry("bin/wine.link")!.Delete(); Put(archive, "bin/wine.link", Encoding.UTF8.GetBytes("wine")); }
             await Throws(() => Packages.ValidateWine(loop, default), "link cycle");
-            string corrupt = Path.Combine(work, "corrupt.zip"); byte[] bytes = File.ReadAllBytes(fixture); int position = Encoding.UTF8.GetString(bytes).IndexOf("11.0\n", StringComparison.Ordinal); bytes[position] = (byte)'9'; File.WriteAllBytes(corrupt, bytes);
+            string corrupt = Path.Combine(work, "corrupt.zip"); byte[] bytes = File.ReadAllBytes(fixture);
+            // ZIP headers contain binary timestamps: a UTF-8 character offset
+            // can point into the header instead of the payload we must corrupt.
+            int position = bytes.AsSpan().IndexOf("11.0\n"u8);
+            Check(position >= 0, "The stored Wine version payload must be present.");
+            bytes[position] = (byte)'9'; File.WriteAllBytes(corrupt, bytes);
             await Throws(() => Packages.ValidateWine(corrupt, default), "CRC mismatch");
         });
         await Test("Launch verification checks SHA-256 without inspecting archive contents", async () =>

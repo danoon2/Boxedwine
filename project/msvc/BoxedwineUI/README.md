@@ -75,9 +75,15 @@ folder together. The `Runtime` folder contains the Boxedwine emulator, not .NET.
 Wine is downloaded on demand. The Win32 frontend and console builds do not need
 .NET. The existing Linux, Mac and Web outputs remain in the combined archive.
 
-The `windows` and `windowsARM64` workers need the .NET 10 SDK on `PATH`, Visual
-Studio C++ tools for their targets, and access to NuGet.org for architecture-specific
-apphost packs. MSBuild/editbin are discovered from `PATH` or Visual Studio;
+The `windows` and `windowsARM64` workers need Visual Studio C++ tools for their
+targets and access to Microsoft's .NET downloads and NuGet.org. Before compiling
+the native UI targets, the packaging helper installs .NET SDK 10.0.302 with
+Microsoft's `dotnet-install.ps1` into `.tools/dotnet/10.0.302/<worker-architecture>`
+at the repository root. Later builds reuse that SDK. It sets `PATH` and `DOTNET_ROOT`
+only for the build process, requires no administrator rights or preinstalled .NET,
+and keeps the SDK out of the release ZIP. Win32 packaging does not need the SDK.
+NuGet.org supplies architecture-specific apphost packs.
+MSBuild/editbin are discovered from `PATH` or Visual Studio;
 the packaging helper also accepts explicit `-MSBuildPath` and `-EditbinPath`.
 
 Run the same packaging steps locally from the repository root:

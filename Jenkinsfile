@@ -1,6 +1,7 @@
 // Notes:
-// Windows workers: Visual Studio C++ tools for their targets, .NET 10 SDK,
-// and wget/unzip/java in PATH. Publishing restores apphost packs from NuGet.org.
+// Windows workers: Visual Studio C++ tools for their targets and wget/unzip/java
+// in PATH. Packaging bootstraps a pinned .NET 10 SDK in the workspace and restores
+// apphost packs from NuGet.org.
 void gitCheckout() {
     def retryAttempt = 0
     retry(3) {

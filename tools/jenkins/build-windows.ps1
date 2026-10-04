@@ -7,6 +7,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+if ($Platform -ne 'Win32') {
+    # Resolve build prerequisites before cleaning packages or compiling C++.
+    & (Join-Path $PSScriptRoot 'ensure-dotnet.ps1')
+}
 $folder = @{ Win32 = 'Win32'; x64 = 'Win64'; ARM64 = 'WinARM64' }[$Platform]
 $deployRoot = Join-Path $repositoryRoot 'project\msvc\Deploy'
 $destination = [IO.Path]::GetFullPath((Join-Path $deployRoot $folder))

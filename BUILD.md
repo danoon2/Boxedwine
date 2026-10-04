@@ -30,8 +30,8 @@ Jenkins packages the framework-dependent native UI in `Deploy/Win64` and
 folders go into the existing combined build ZIP. The native UI requires an installed
 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 matching its architecture, and offers a download prompt if it is missing.
-Windows workers now also require
-the .NET 10 SDK and NuGet.org access for publishing. Run
+Windows packaging downloads a pinned .NET 10 SDK into the workspace on first use;
+workers need access to Microsoft's .NET downloads and NuGet.org for publishing. Run
 `tools\jenkins\build-windows.ps1 -Platform x64` (or `ARM64` / `Win32`) to reproduce
 a target's packaging locally. See the UI README's Jenkins release section for
 the folder layout and the separate command-line executable used by automation.
