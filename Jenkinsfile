@@ -23,12 +23,17 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port, String
         "BOXEDWINE_UNIT_TEST_QUERY=${query}"
     ]) {
         sh '''#!/bin/bash
-            source ~/emsdk/emsdk_env.sh
-            cd project/emscripten
             set -euo pipefail
+            source tools/jenkins/emscripten-unit-test-env.sh
+            cd project/emscripten
 
             firefox_profile="$(mktemp -d "$WORKSPACE/.firefox-${BOXEDWINE_UNIT_TEST_BUILD_DIR}.XXXXXX")"
+            browser_launcher=''
             cleanup_firefox_profile() {
+                if [ -n "$browser_launcher" ]; then
+                    rm -f -- "$browser_launcher"
+                    browser_launcher=''
+                fi
                 if [ -z "$firefox_profile" ]; then
                     return 0
                 fi
@@ -49,8 +54,15 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port, String
             }
             trap cleanup_firefox_profile EXIT
 
+            # emrun 5.0.7 falls back to pkill firefox if Firefox exits before
+            # loading the page. An exec wrapper preserves the launched PID,
+            # without enabling that browser-name fallback on a desktop Mac.
+            browser_launcher="$(mktemp /tmp/boxedwine-browser.XXXXXX)"
+            printf '%s\\n' '#!/bin/bash' 'exec "$BOXEDWINE_FIREFOX" "$@"' > "$browser_launcher"
+            chmod 700 "$browser_launcher"
+
             echo "Running ${BOXEDWINE_UNIT_TEST_NAME}"
-            /usr/bin/firefox --version
+            "$BOXEDWINE_FIREFOX" --version
             cd "Build/${BOXEDWINE_UNIT_TEST_BUILD_DIR}"
             # A killed content process can leave Firefox and emrun alive.
             # Bound both missing test output and the total browser runtime.
@@ -59,8 +71,8 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port, String
                 --silence-timeout 300 \
                 --timeout 840 \
                 --timeout-returncode 124 \
-                --browser="/usr/bin/firefox" \
-                --browser-args="--headless --no-remote --profile ${firefox_profile}" \
+                --browser="$browser_launcher" \
+                --browser-args="--headless --no-remote --profile ${firefox_profile} -url" \
                 "boxedwine.html${BOXEDWINE_UNIT_TEST_QUERY:-}" 2>&1 | tee unit-tests.log
             # emrun can return zero when Firefox exits before the test page does.
             if ! grep -Eq '^0 tests FAILED in [0-9]+s$' unit-tests.log; then
@@ -76,13 +88,16 @@ void buildEmscriptenUnitTest(String target) {
     withEnv(["BOXEDWINE_UNIT_TEST_TARGET=${target}"]) {
         sh '''#!/bin/bash
             set -euo pipefail
-            source ~/emsdk/emsdk_env.sh
+            source tools/jenkins/emscripten-unit-test-env.sh
             cd project/emscripten
             make clean
             make "$BOXEDWINE_UNIT_TEST_TARGET"
-            # These workers are configured with one Jenkins executor each.
-            killall -9 python3 2>/dev/null || true
-            killall -9 firefox firefox-bin 2>/dev/null || true
+            # Legacy Linux worker cleanup. The Mac also hosts desktop apps;
+            # there, emrun owns cleanup of its isolated browser process.
+            if [ "$(uname -s)" != Darwin ]; then
+                killall -9 python3 2>/dev/null || true
+                killall -9 firefox firefox-bin 2>/dev/null || true
+            fi
         '''
     }
 }
@@ -106,7 +121,7 @@ void buildAndRunShardedEmscriptenUnitTest() {
         ws("${env.WORKSPACE}@${buildDir}") {
             stage('Compile Emscripten MT JIT tests') {
                 buildEmscriptenUnitTest('testMultiThreadedJit')
-                stash includes: "project/emscripten/Build/${buildDir}/boxedwine.*", name: 'emscripten-mt-jit-tests'
+                stash includes: "project/emscripten/Build/${buildDir}/boxedwine.*,tools/jenkins/emscripten-unit-test-env.sh", name: 'emscripten-mt-jit-tests'
             }
         }
     }
@@ -452,7 +467,8 @@ pipeline {
             parallel {
                 stage ('Build Emscripten') {
                     agent {
-                        label "emscripten"
+                        // Packaging uses /var/www/buildfiles on the Linux x64 worker.
+                        label "emscripten && linux64"
                     }
                     steps {
                         script { 

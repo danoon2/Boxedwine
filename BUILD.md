@@ -91,7 +91,27 @@ batches on the `emscripten` worker pool. Each free worker takes another batch,
 including after finishing the ST or ST JIT suite. No executor is held while the
 batches wait for workers. Each batch uses a separate workspace and Firefox
 profile, has a 15-minute execution timeout, and archives its own console log.
-Both Emscripten workers should keep one Jenkins executor each.
+The two Linux workers and Mac M4 should each have the `emscripten` label and keep
+one Jenkins executor. Concurrent MT JIT browser runs caused memory pressure and
+timeouts during Mac validation.
+
+Unit-test workers require Emscripten **5.0.7**. The environment helper rejects a
+different active version rather than silently using a newer SDK. On Linux, it
+uses `~/emsdk` and `/usr/bin/firefox`. The Mac M4 uses the shared installation at
+`/Users/Shared/BoxedwineCI/emsdk` and the normal Firefox installation at
+`/Applications/Firefox.app` (verified with **157.0**; Linux uses **156.0.1**).
+Its SDK uses Node **22.16.0** and bundled Python **3.13.3**.
+Each Mac account keeps its writable SDK cache in
+`~/Library/Caches/Boxedwine/emscripten-5.0.7`, so Jenkins can use the shared tools
+without write access to the SSH account's home. `BOXEDWINE_EMSDK_ROOT`,
+`BOXEDWINE_FIREFOX`, and `EM_CACHE` can override the paths.
+
+From the repository root, use `source tools/jenkins/emscripten-unit-test-env.sh`
+to load the same environment as Jenkins. The helper is included in the MT JIT
+stash so batches can move between Linux and macOS without checking out or
+rebuilding the source. Web packaging and AbiWord browser automation use
+`emscripten && linux64`; the packaging assets in `/var/www/buildfiles` are only
+available on the Linux x64 worker.
 
 The test runner assigns entries to batches by index modulo batch count, so every
 test runs exactly once and expensive instruction families are spread across
