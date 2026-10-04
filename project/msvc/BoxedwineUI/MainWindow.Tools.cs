@@ -26,6 +26,13 @@ public partial class MainWindow
         form.Body.Children.Add(deletion); form.Body.Children.Add(FormWindow.Paragraph("Skip Removed Apps and ask to permanently delete an app's files and saves. Existing Removed Apps are kept."));
         form.Body.Children.Add(FormWindow.Paragraph(repository.DirectoryPath));
         var reveal = new Button { Content = "Open Library Folder", HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(12, 7, 12, 7) }; reveal.Click += (_, _) => Safe(() => Reveal(repository.DirectoryPath)); form.Body.Children.Add(reveal);
+        form.Body.Children.Add(FormWindow.Heading("Graphics"));
+        var architecture = OpenGLArchitecture();
+        string selectedOpenGL = OpenGLDrivers.GlobalDefault(preferences, architecture);
+        var openGL = FormWindow.Choices(OpenGLDrivers.Choices(architecture, selectedOpenGL), selectedOpenGL);
+        form.Field("Default OpenGL implementation", openGL, "Used by apps set to use the global setting. Changes take effect on the next launch. Override this in App Settings → Advanced.");
+        form.Body.Children.Add(FormWindow.Paragraph(OpenGLDrivers.Help(architecture)));
+        openGL.SelectionChanged += (_, _) => Safe(() => { if (openGL.SelectedValue is string value) { preferences.OpenGLImplementation = value; repository.SavePreferences(preferences); } });
         form.Body.Children.Add(FormWindow.Heading("Windows support"));
         var current = repository.DefaultWine;
         form.Body.Children.Add(FormWindow.Paragraph(!HasWineChoices && wines.Count == 1
@@ -81,7 +88,7 @@ public partial class MainWindow
         Button("Choose Program…", "choose", CanChange(app) && app.BuiltIn == null);
         Button("Run Another Program…", "another", CanChange(app));
         form.Body.Children.Add(FormWindow.Heading("Display and compatibility"));
-        form.Body.Children.Add(FormWindow.Paragraph("Try another window size or Windows version in App Settings. GDI rendering can help older 2D apps. Try GLX or EGL if OpenGL graphics fail to start or draw correctly."));
+        form.Body.Children.Add(FormWindow.Paragraph("Try another window size or Windows version in App Settings. GDI rendering can help older 2D apps. In Advanced, try another OpenGL implementation or Wine's GLX/EGL interface if graphics fail to start or draw correctly."));
         Button("App Settings…", "edit", CanChange(app));
         if (HasWineChoices)
         {

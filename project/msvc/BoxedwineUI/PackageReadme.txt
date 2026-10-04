@@ -16,6 +16,9 @@ An existing matching .NET 10 Desktop Runtime installation is reused.
 Keep Runtime/BoxedwineEngine.exe and Resources with the app. The Runtime folder
 contains the Boxedwine emulator; it does not contain the .NET runtime.
 Wine packages are downloaded when selected in Boxedwine.
+OpenGL defaults are in Settings > Graphics; per-app overrides are in App Settings
+> Advanced. x64 defaults to Native, Arm64 to Mesa LLVMpipe. Alternative OpenGL
+drivers are downloaded when first needed and shared across apps.
 
 In the combined build ZIP, Boxedwine_console.exe is the command-line/automation
 build. That executable and the legacy Win32 frontend do not require .NET.

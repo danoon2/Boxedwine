@@ -10,7 +10,7 @@ var suite = new TestSuite();
 await suite.Run(args);
 return suite.Failures == 0 ? 0 : 1;
 
-sealed class TestSuite
+sealed partial class TestSuite
 {
     public int Failures { get; private set; }
     private int passes;
@@ -62,6 +62,7 @@ sealed class TestSuite
         work = Path.Combine(Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith('-')) ?? "../../../../../../tmp/native-ui-tests"), Guid.NewGuid().ToString("N")); Directory.CreateDirectory(work);
         Console.WriteLine("Test workspace: " + work);
         fixture = WineFixture("wine.zip"); wine = await Packages.ValidateWine(fixture, default);
+        await OpenGLTests(args);
         await Test("Swift Codable metadata round trip and epoch", () =>
         {
             var app = new LibraryApp { Name = "A \"Unicode\" app 日本語", CreatedAt = 100, BuiltInProgram = "minesweeper", CustomIconPNG = [137,80,78,71,13,10,26,10] };

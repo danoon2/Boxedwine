@@ -16,8 +16,39 @@ using ReleasePbufferDC = int (WINAPI*)(HANDLE, HDC);
 using DestroyPbuffer = BOOL (WINAPI*)(HANDLE);
 using QueryPbuffer = BOOL (WINAPI*)(HANDLE, int, int*);
 using MakeContextCurrent = BOOL (WINAPI*)(HDC, HDC, HGLRC);
+using GetDriverPixelFormat = int (WINAPI*)(HDC);
+
+// A selected Mesa library can coexist with the system opengl32.dll. Never use
+// statically imported GL/WGL functions with a context belonging to that library.
+struct GLFunctions {
+    GetDriverPixelFormat getPixelFormat = reinterpret_cast<GetDriverPixelFormat>(SDL_GL_GetProcAddress("wglGetPixelFormat"));
+#define LOAD_GL(name) decltype(&::name) name = reinterpret_cast<decltype(&::name)>(SDL_GL_GetProcAddress(#name));
+    LOAD_GL(glGetBooleanv)
+    LOAD_GL(glGetIntegerv)
+    LOAD_GL(glGetFloatv)
+    LOAD_GL(glIsEnabled)
+    LOAD_GL(glEnable)
+    LOAD_GL(glDisable)
+    LOAD_GL(glColorMask)
+    LOAD_GL(glDrawBuffer)
+    LOAD_GL(glReadBuffer)
+    LOAD_GL(glClearColor)
+    LOAD_GL(glClear)
+    LOAD_GL(glFlush)
+    LOAD_GL(wglGetCurrentDC)
+    LOAD_GL(wglGetCurrentContext)
+    LOAD_GL(wglSwapLayerBuffers)
+#undef LOAD_GL
+    bool available() const {
+        return getPixelFormat && glGetBooleanv && glGetIntegerv && glGetFloatv && glIsEnabled &&
+            glEnable && glDisable && glColorMask && glDrawBuffer && glReadBuffer &&
+            glClearColor && glClear && glFlush && wglGetCurrentDC &&
+            wglGetCurrentContext && wglSwapLayerBuffers;
+    }
+};
 
 struct Presentation {
+    GLFunctions gl;
     std::mutex mutex;
     std::atomic<int> width, height;
     int backingWidth = 0, backingHeight = 0;
@@ -48,6 +79,10 @@ struct Presentation {
 
     bool initialize(SDL_Window* window) {
         if (create) return true;
+        if (!gl.available()) {
+            SDL_SetError("The selected OpenGL library is missing fullscreen GL/WGL functions");
+            return false;
+        }
         auto createProc = (CreatePbuffer)SDL_GL_GetProcAddress("wglCreatePbufferARB");
         getDC = (GetPbufferDC)SDL_GL_GetProcAddress("wglGetPbufferDCARB");
         releaseDC = (ReleasePbufferDC)SDL_GL_GetProcAddress("wglReleasePbufferDCARB");
@@ -69,7 +104,7 @@ struct Presentation {
         colorMaskIndexed = (PFNGLCOLORMASKIPROC)SDL_GL_GetProcAddress("glColorMaski");
         srgb = SDL_GL_ExtensionSupported("GL_ARB_framebuffer_sRGB") || SDL_GL_ExtensionSupported("GL_EXT_framebuffer_sRGB");
         GLboolean doubleBuffer = GL_FALSE;
-        glGetBooleanv(GL_DOUBLEBUFFER, &doubleBuffer);
+        gl.glGetBooleanv(GL_DOUBLEBUFFER, &doubleBuffer);
         doubleBuffered = doubleBuffer != GL_FALSE;
         create = createProc;
         return true;
@@ -81,7 +116,7 @@ struct Presentation {
         if (backing) query(backing, pbufferLost, &lost);
         if (!backing || backingWidth != width || backingHeight != height || lost) {
             const int attributes[] = {0};
-            HANDLE next = create(windowDC, GetPixelFormat(windowDC), width, height, attributes);
+            HANDLE next = create(windowDC, gl.getPixelFormat(windowDC), width, height, attributes);
             HDC nextDC = next ? getDC(next) : nullptr;
             if (!nextDC || !makeCurrent(nextDC, nextDC, (HGLRC)context)) {
                 if (nextDC) releaseDC(next, nextDC);
@@ -95,19 +130,19 @@ struct Presentation {
             backingWidth = width;
             backingHeight = height;
         }
-        return wglGetCurrentDC() == backingDC || makeCurrent(backingDC, backingDC, (HGLRC)context);
+        return gl.wglGetCurrentDC() == backingDC || makeCurrent(backingDC, backingDC, (HGLRC)context);
     }
 
     bool present(SDL_Window* window, bool swap) {
-        if (!backing || wglGetCurrentDC() != backingDC) return false;
+        if (!backing || gl.wglGetCurrentDC() != backingDC) return false;
         if (!swap) {
             GLint drawBuffer = 0, drawFbo = 0;
-            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
-            glGetIntegerv(GL_DRAW_BUFFER, &drawBuffer);
+            gl.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+            gl.glGetIntegerv(GL_DRAW_BUFFER, &drawBuffer);
             // Flushing an FBO or an unfinished back buffer must not present it.
             if (drawFbo || (doubleBuffered && drawBuffer != GL_FRONT && drawBuffer != GL_FRONT_LEFT && drawBuffer != GL_FRONT_AND_BACK)) return true;
         }
-        HGLRC context = wglGetCurrentContext();
+        HGLRC context = gl.wglGetCurrentContext();
         int interval = SDL_GL_GetSwapInterval();
         int hostWidth = 0, hostHeight = 0;
         SDL_GL_GetDrawableSize(window, &hostWidth, &hostHeight);
@@ -122,48 +157,49 @@ struct Presentation {
         // WGL's swap interval belongs to the drawable, not the guest context.
         if (SDL_GL_GetSwapInterval() != interval) SDL_GL_SetSwapInterval(interval);
         GLint readFbo = 0, drawFbo = 0, readBuffer = 0, drawBuffer = 0;
-        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+        gl.glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
+        gl.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
         bindFramebuffer(GL_READ_FRAMEBUFFER, 0);
         bindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        glGetIntegerv(GL_READ_BUFFER, &readBuffer);
-        glGetIntegerv(GL_DRAW_BUFFER, &drawBuffer);
-        GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
-        GLboolean oldSrgb = srgb ? glIsEnabled(GL_FRAMEBUFFER_SRGB) : GL_FALSE;
+        gl.glGetIntegerv(GL_READ_BUFFER, &readBuffer);
+        gl.glGetIntegerv(GL_DRAW_BUFFER, &drawBuffer);
+        GLboolean scissor = gl.glIsEnabled(GL_SCISSOR_TEST);
+        GLboolean oldSrgb = srgb ? gl.glIsEnabled(GL_FRAMEBUFFER_SRGB) : GL_FALSE;
         GLboolean mask[4];
         GLfloat clear[4];
-        glGetBooleanv(GL_COLOR_WRITEMASK, mask);
-        glGetFloatv(GL_COLOR_CLEAR_VALUE, clear);
-        glDisable(GL_SCISSOR_TEST);
-        if (srgb) glDisable(GL_FRAMEBUFFER_SRGB);
+        gl.glGetBooleanv(GL_COLOR_WRITEMASK, mask);
+        gl.glGetFloatv(GL_COLOR_CLEAR_VALUE, clear);
+        gl.glDisable(GL_SCISSOR_TEST);
+        if (srgb) gl.glDisable(GL_FRAMEBUFFER_SRGB);
         if (colorMaskIndexed) colorMaskIndexed(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        else glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        glDrawBuffer(doubleBuffered ? GL_BACK : GL_FRONT);
-        glReadBuffer(doubleBuffered && swap ? GL_BACK : GL_FRONT);
-        glClearColor(0, 0, 0, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
+        else gl.glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        gl.glDrawBuffer(doubleBuffered ? GL_BACK : GL_FRONT);
+        gl.glReadBuffer(doubleBuffered && swap ? GL_BACK : GL_FRONT);
+        gl.glClearColor(0, 0, 0, 1);
+        gl.glClear(GL_COLOR_BUFFER_BIT);
         // Input has a top-left origin; OpenGL framebuffer rectangles do not.
         int bottom = hostHeight - viewport.y - viewport.height;
         blitFramebuffer(0, 0, backingWidth, backingHeight,
             viewport.x, bottom, viewport.x + viewport.width, bottom + viewport.height,
             GL_COLOR_BUFFER_BIT, GL_LINEAR);
-        if (doubleBuffered) SwapBuffers(windowDC);
-        else glFlush();
+        bool displayed = true;
+        if (doubleBuffered) displayed = gl.wglSwapLayerBuffers(windowDC, WGL_SWAP_MAIN_PLANE) != FALSE;
+        else gl.glFlush();
 
-        glReadBuffer(readBuffer);
-        glDrawBuffer(drawBuffer);
-        glClearColor(clear[0], clear[1], clear[2], clear[3]);
+        gl.glReadBuffer(readBuffer);
+        gl.glDrawBuffer(drawBuffer);
+        gl.glClearColor(clear[0], clear[1], clear[2], clear[3]);
         if (colorMaskIndexed) colorMaskIndexed(0, mask[0], mask[1], mask[2], mask[3]);
-        else glColorMask(mask[0], mask[1], mask[2], mask[3]);
-        if (scissor) glEnable(GL_SCISSOR_TEST);
-        if (oldSrgb) glEnable(GL_FRAMEBUFFER_SRGB);
+        else gl.glColorMask(mask[0], mask[1], mask[2], mask[3]);
+        if (scissor) gl.glEnable(GL_SCISSOR_TEST);
+        if (oldSrgb) gl.glEnable(GL_FRAMEBUFFER_SRGB);
         bindFramebuffer(GL_READ_FRAMEBUFFER, readFbo);
         bindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFbo);
         bool restored = makeCurrent(backingDC, backingDC, context) != FALSE;
-        if (restored && doubleBuffered && swap) wglSwapLayerBuffers(backingDC, WGL_SWAP_MAIN_PLANE);
+        if (restored && doubleBuffered && swap) displayed = gl.wglSwapLayerBuffers(backingDC, WGL_SWAP_MAIN_PLANE) != FALSE && displayed;
         // Some clients resize without another MakeCurrent. Adopt the new
         // backing after presenting the old frame so the next one has its size.
-        return restored && bind(context);
+        return restored && bind(context) && displayed;
     }
 };
 
@@ -206,7 +242,20 @@ bool windowsOpenGLMakeCurrent(SDL_Window* window, SDL_GLContext context) {
 
 bool windowsOpenGLSwapBuffers(SDL_Window* window, bool swap) {
     auto p = presentation(window);
-    if (!p) return false;
+    if (!p) {
+        if (!swap) return false;
+        // SDL2's Windows backend calls GDI SwapBuffers, which dispatches through
+        // the system OpenGL library even when SDL loaded a different one. Mesa
+        // can render/read back correctly while that call leaves a white window.
+        auto swapLayers = reinterpret_cast<decltype(&::wglSwapLayerBuffers)>(SDL_GL_GetProcAddress("wglSwapLayerBuffers"));
+        SDL_SysWMinfo info = {};
+        SDL_VERSION(&info.version);
+        if (!swapLayers || !SDL_GetWindowWMInfo(window, &info)) return false;
+        if (!swapLayers(info.info.win.hdc, WGL_SWAP_MAIN_PLANE)) {
+            SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not swap the selected OpenGL driver's buffers (Windows error %lu)", GetLastError());
+        }
+        return true;
+    }
     std::lock_guard<std::mutex> lock(p->mutex);
     if (!p->present(window, swap) && !p->warned) {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not present the fullscreen OpenGL buffer: %s (Windows error %lu)", SDL_GetError(), GetLastError());

@@ -1,4 +1,54 @@
-# Validation — 2026-10-03
+# Validation — 2026-10-04
+
+## Direct3D 12 white-screen fix
+
+- Cinebench was rendering valid frames through Mesa, but SDL2's GDI buffer swap
+  dispatched through the system OpenGL library imported by the fullscreen helper.
+  Presentation now resolves core GL/WGL calls, swaps and pixel-format queries
+  from the selected library. The rebuilt engine has no static OpenGL imports.
+- An isolated Wine 11/Cinebench R11.5 run visibly rendered the car-chase scene
+  with D3D12 on the NVIDIA RTX 4070 SUPER and completed at 23.89 fps. The test
+  used its own library and prefix; installed apps were not modified.
+- The presentation regression now loads optional Mesa libraries and verifies
+  windowed front-buffer pixels after a swap, in addition to fullscreen scaling,
+  resize, compatibility/core contexts, single buffering and GL state restoration.
+  The original engine helper fails the new front-buffer check; the fix passes.
+- Native NVIDIA, Mesa D3D12 (also with system OpenGL loaded) and Mesa LLVMpipe
+  passed. For example: `tools/test_windows_opengl_fullscreen.ps1 -OpenGLLibrary
+  <mesa-opengl32.dll> -GalliumDriver d3d12 -LoadSystemOpenGL`.
+- A separate Vulkan/Zink fullscreen probe stalled and was stopped. That path
+  is not validated by these checks. LLVMpipe tests use the engine's corrected
+  loading behavior without an additional system OpenGL library; deliberately
+  loading both libraries prevents SDL2 from creating its software drawable.
+- x64 engine/UI and ARM64 engine builds succeeded. The presentation test also
+  cross-compiled for ARM64; ARM64 execution remains unverified. Updated engines
+  are in the normal x64 UI output and both 64-bit deployment folders.
+
+## Windows OpenGL selection
+
+- Release builds and framework-dependent publishes succeeded for win-x64 and
+  win-arm64, with no build warnings or errors.
+- Core regression suite: **26 passed, 0 failed**, including both real Mesa
+  archives supplied with `--opengl-packages C:/Boxedwine/tmp/opengl-packages`.
+  Coverage includes x64/Arm64 defaults, inheritance, demo overrides, persistence,
+  backups, engine architecture, process environment isolation, shared downloads,
+  cancellation, checksum failure, incomplete caches, unsafe ZIP paths and wrong
+  library architecture. The ordinary offline suite runs 25 checks.
+- WPF harness passed in Light and Dark, including global setting persistence,
+  inherited choice text, per-app Save and Cancel, and existing launch/installer
+  checks. Rendered settings were visually inspected in
+  `tmp/opengl-ui-checks-3`.
+- A hidden SDL OpenGL context probe ran through `OpenGLDrivers.Ensure` and
+  `RuntimeSession`, downloading x64 Mesa over HTTPS on demand. Native NVIDIA,
+  LLVMpipe, D3D12 and Vulkan/Zink all reported the expected renderer, drew a green
+  pixel and exited successfully. Logs are in `tmp/opengl-driver-smoke`.
+- The actual x64 Boxedwine engine also launched Wine 11 in isolated, hidden
+  Windows environments with all four choices. Each returned the expected command
+  output and exited with code zero; logs are alongside the rendering probe logs.
+- Arm64 package checks verified its checksum and both DLL architectures/paths.
+  Rendering on Windows Arm64 hardware remains untested here.
+
+## Earlier validation
 
 The x64 Release build and tests ran on the Windows development machine.
 

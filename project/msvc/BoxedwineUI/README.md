@@ -25,6 +25,25 @@ An already verified download works offline. `-SkipCatalog` skips catalog prepara
 if no catalog was previously built, the Demos page offers Download Catalog.
 Wine itself is downloaded when needed.
 
+Settings → Graphics selects the default OpenGL implementation. App Settings →
+Advanced can inherit that setting or override it. x64 starts with Native; Arm64
+starts with Mesa LLVMpipe, matching the legacy Arm default. Newly installed demos
+always inherit the global OpenGL setting, including recipes that recommend Native.
+Existing apps retain their saved settings. Both targets
+offer Native, LLVMpipe and Direct3D 12; x64 also offers Vulkan/Zink. Wine's GLX/EGL
+interface and GDI/OpenGL renderer remain separate settings.
+
+Mesa downloads on the first launch that needs it, using the legacy packages
+(x64 25.0.0, Arm64 26.0.3). Downloads are pinned by size and SHA-256, extracted
+into a temporary folder and published only after validation. One package per
+architecture/version is shared under the library's `OpenGL` folder; it is not
+bundled in releases or app backups. A canceled or failed download leaves the
+selection saved for retry. The selected engine's PE architecture determines the
+package, including when using an x64 engine on Arm Windows. Unsupported saved
+choices stay visible and produce an actionable launch error. Driver environment
+variables are set only on the child process, including Wine preparation,
+installers and alternate programs. Per-app choices are included in backups.
+
 The current native UI release offers only Wine 11.0 V13. With a single catalog
 entry, Add App shows the package as text, built-in apps select it automatically,
 and version selection, ZIP import and trial-copy controls and guidance are hidden.

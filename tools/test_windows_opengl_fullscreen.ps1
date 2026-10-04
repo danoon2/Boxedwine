@@ -1,6 +1,12 @@
 # Copyright (C) 2026 The BoxedWine Team. GPL-2.0-or-later.
 # Requires Visual Studio C++ tools and the matching Release SDL2.lib build.
-param([ValidateSet('x64','Win32','ARM64')][string]$Platform = 'x64', [switch]$CompileOnly)
+param(
+    [ValidateSet('x64','Win32','ARM64')][string]$Platform = 'x64',
+    [switch]$CompileOnly,
+    [string]$OpenGLLibrary,
+    [ValidateSet('d3d12','llvmpipe','zink')][string]$GalliumDriver,
+    [switch]$LoadSystemOpenGL
+)
 $ErrorActionPreference = 'Stop'
 $repository = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
@@ -29,6 +35,21 @@ if (-not $CompileOnly) {
     if ($Platform -eq 'ARM64' -and $env:PROCESSOR_ARCHITECTURE -ne 'ARM64') { throw 'Run ARM64 checks on an ARM64 machine or pass -CompileOnly.' }
     & (Join-Path $output 'viewport.exe')
     if ($LASTEXITCODE) { throw 'Shared fullscreen layout/input check failed.' }
-    & (Join-Path $output 'fullscreen.exe')
-    if ($LASTEXITCODE) { throw 'Native Windows OpenGL fullscreen check failed.' }
+    $oldPath = $env:PATH
+    $oldGalliumDriver = $env:GALLIUM_DRIVER
+    try {
+        $arguments = @()
+        if ($OpenGLLibrary) {
+            $OpenGLLibrary = (Resolve-Path -LiteralPath $OpenGLLibrary).Path
+            $env:PATH = (Split-Path -Parent $OpenGLLibrary) + ';' + $env:PATH
+            $arguments += $OpenGLLibrary
+            if ($LoadSystemOpenGL) { $arguments += '--load-system-opengl' }
+        }
+        if ($GalliumDriver) { $env:GALLIUM_DRIVER = $GalliumDriver }
+        & (Join-Path $output 'fullscreen.exe') @arguments
+        if ($LASTEXITCODE) { throw 'Windows OpenGL presentation check failed.' }
+    } finally {
+        $env:PATH = $oldPath
+        $env:GALLIUM_DRIVER = $oldGalliumDriver
+    }
 }

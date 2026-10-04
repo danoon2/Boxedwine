@@ -53,7 +53,8 @@ public static class Demos
         var document = repository.Load();
         if (document.Apps.Concat(document.RemovedApps.Select(a => a.App)).Any(a => a.Demo?.Id == demo.Origin.Id)) throw new InvalidOperationException("This demo is already in the library or Removed Apps. Open or restore that copy.");
         if (wine.WineVersion != demo.WineVersion) throw new InvalidOperationException("This demo requires Wine " + demo.WineVersion);
-        var app = new LibraryApp { Name = demo.Name, Demo = demo.Origin, DemoSettings = demo.Settings, WinePackage = wine, SavedWineVersion = wine.WineVersion, Resolution = demo.Settings.Resolution ?? "1024x768" };
+        // New demos inherit the global OpenGL choice even when the catalog recommends Native.
+        var app = new LibraryApp { Name = demo.Name, Demo = demo.Origin, DemoSettings = demo.Settings, WinePackage = wine, SavedWineVersion = wine.WineVersion, Resolution = demo.Settings.Resolution ?? "1024x768", WindowsOpenGL = "default" };
         if (demo.Settings.WindowsVersion is string version) app.ChooseWindows(version);
         // Explicit pending flags are required: the preferred values already inherit the recipe.
         if (demo.Settings.Gdi != null) { app.WineRenderer = app.PreferredRenderer; app.WineRendererPending = true; }
