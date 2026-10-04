@@ -61,7 +61,7 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port, String
                 --timeout-returncode 124 \
                 --browser="/usr/bin/firefox" \
                 --browser-args="--headless --no-remote --profile ${firefox_profile}" \
-                "boxedwine.html${BOXEDWINE_UNIT_TEST_QUERY}" 2>&1 | tee unit-tests.log
+                "boxedwine.html${BOXEDWINE_UNIT_TEST_QUERY:-}" 2>&1 | tee unit-tests.log
             # emrun can return zero when Firefox exits before the test page does.
             if ! grep -Eq '^0 tests FAILED in [0-9]+s$' unit-tests.log; then
                 echo 'ERROR: Browser exited without a successful unit-test summary.' >&2
