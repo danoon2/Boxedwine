@@ -112,38 +112,38 @@ void buildAndRunEmscriptenUnitTest(String testName, String target, String buildD
     }
 }
 
-void buildAndRunShardedEmscriptenUnitTest() {
-    def buildDir = 'TestMultiThreadedJit'
+void buildAndRunShardedEmscriptenUnitTest(String testName, String target, String buildDir, String port, String artifactPrefix) {
     def shardCount = 16
+    def stashName = "emscripten-${artifactPrefix}-tests".toString()
     // Release the compiler's executor before queueing the batches. Holding it
     // across parallel would prevent that machine from helping with the tests.
     node('emscripten') {
         ws("${env.WORKSPACE}@${buildDir}") {
-            stage('Compile Emscripten MT JIT tests') {
-                buildEmscriptenUnitTest('testMultiThreadedJit')
-                stash includes: "project/emscripten/Build/${buildDir}/boxedwine.*,tools/jenkins/emscripten-unit-test-env.sh", name: 'emscripten-mt-jit-tests'
+            stage("Compile Emscripten ${testName} tests") {
+                buildEmscriptenUnitTest(target)
+                stash includes: "project/emscripten/Build/${buildDir}/boxedwine.*,tools/jenkins/emscripten-unit-test-env.sh", name: stashName
             }
         }
     }
     def batches = [:]
     for (int index = 0; index < shardCount; ++index) {
         def shard = index
-        def name = "MT JIT batch ${shard + 1}/${shardCount}".toString()
+        def name = "${testName} batch ${shard + 1}/${shardCount}".toString()
         batches[name] = {
             node('emscripten') {
                 ws("${env.WORKSPACE}@${buildDir}-batch-${shard}") {
                     stage(name) {
                         deleteDir()
-                        unstash 'emscripten-mt-jit-tests'
+                        unstash stashName
                         try {
                             timeout(time: 15, unit: 'MINUTES') {
-                                runEmscriptenUnitTest(name, buildDir, '6923', "?-shard&${shard}&${shardCount}")
+                                runEmscriptenUnitTest(name, buildDir, port, "?-shard&${shard}&${shardCount}")
                             }
                         } finally {
-                            // Unique archive paths preserve logs from both machines.
+                            // Unique archive paths preserve logs from every target and worker.
                             dir("project/emscripten/Build/${buildDir}") {
-                                sh "mkdir -p results; if [ -f unit-tests.log ]; then mv unit-tests.log results/mt-jit-${shard}.log; fi"
-                                archiveArtifacts artifacts: "results/mt-jit-${shard}.log", allowEmptyArchive: true
+                                sh "mkdir -p results; if [ -f unit-tests.log ]; then mv unit-tests.log results/${artifactPrefix}-${shard}.log; fi"
+                                archiveArtifacts artifacts: "results/${artifactPrefix}-${shard}.log", allowEmptyArchive: true
                             }
                         }
                     }
@@ -369,12 +369,10 @@ pipeline {
                     }
                 }
                 stage ('Test Emscripten ST JIT') {
-                    agent {
-                        label "emscripten"
-                    }
+                    agent none
                     steps {
                         script {
-                            buildAndRunEmscriptenUnitTest('Emscripten ST JIT unit tests', 'testJit', 'TestJit', '6922')
+                            buildAndRunShardedEmscriptenUnitTest('ST JIT', 'testJit', 'TestJit', '6922', 'st-jit')
                         }
                     }
                 }
@@ -382,7 +380,7 @@ pipeline {
                     agent none
                     steps {
                         script {
-                            buildAndRunShardedEmscriptenUnitTest()
+                            buildAndRunShardedEmscriptenUnitTest('MT JIT', 'testMultiThreadedJit', 'TestMultiThreadedJit', '6923', 'mt-jit')
                         }
                     }
                 }

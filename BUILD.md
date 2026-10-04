@@ -86,11 +86,13 @@ make release
 
 ### Jenkins unit tests
 
-The MT JIT unit-test binary is built once and stashed, then run as 16 independent
-batches on the `emscripten` worker pool. Each free worker takes another batch,
-including after finishing the ST or ST JIT suite. No executor is held while the
-batches wait for workers. Each batch uses a separate workspace and Firefox
-profile, has a 15-minute execution timeout, and archives its own console log.
+The ST JIT and MT JIT unit-test binaries are each built once and stashed, then
+each run as 16 independent batches on the `emscripten` worker pool. Each free
+worker takes another batch from either target, including after finishing the
+unbatched ST interpreter suite. No executor is held while the batches wait for
+workers. Each batch uses a separate workspace and Firefox profile, has a
+15-minute execution timeout, and archives its own console log. The two targets
+use separate stashes and log names (`st-jit-<index>.log` and `mt-jit-<index>.log`).
 The two Linux workers and Mac M4 should each have the `emscripten` label and keep
 one Jenkins executor. Concurrent MT JIT browser runs caused memory pressure and
 timeouts during Mac validation.
@@ -107,8 +109,8 @@ without write access to the SSH account's home. `BOXEDWINE_EMSDK_ROOT`,
 `BOXEDWINE_FIREFOX`, and `EM_CACHE` can override the paths.
 
 From the repository root, use `source tools/jenkins/emscripten-unit-test-env.sh`
-to load the same environment as Jenkins. The helper is included in the MT JIT
-stash so batches can move between Linux and macOS without checking out or
+to load the same environment as Jenkins. The helper is included in both JIT
+stashes so batches can move between Linux and macOS without checking out or
 rebuilding the source. Web packaging and AbiWord browser automation use
 `emscripten && linux64`; the packaging assets in `/var/www/buildfiles` are only
 available on the Linux x64 worker.
@@ -118,7 +120,14 @@ test runs exactly once and expensive instruction families are spread across
 batches. New tests are included automatically. Full test thoroughness is retained;
 the pipeline does not pass `-fast`.
 
-To reproduce the first MT JIT batch after `make testMultiThreadedJit`:
+To reproduce the first ST JIT batch after `make testJit`:
+
+```sh
+cd project/emscripten/Build/TestJit
+emrun --browser=firefox 'boxedwine.html?-shard&0&16'
+```
+
+For MT JIT, use `make testMultiThreadedJit` and its build directory:
 
 ```sh
 cd project/emscripten/Build/TestMultiThreadedJit
