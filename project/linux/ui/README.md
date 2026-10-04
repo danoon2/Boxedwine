@@ -53,14 +53,17 @@ Jenkins packages both architectures in the combined build archive:
 ```text
 Linux/
   x64/
-    boxedwine-ui
-    Runtime/boxedwine-engine
-    CommandLine/boxedwine
-    ui/                     # Python frontend and shared resources
-    org.boxedwine.Boxedwine.desktop
-    README.md
+    boxedwine_<version>_amd64.deb
+    portable/
+      boxedwine-ui
+      Runtime/boxedwine-engine
+      CommandLine/boxedwine
+      ui/                   # Python frontend and shared resources
+      org.boxedwine.Boxedwine.desktop
+      README.md
   arm64/
-    ...                     # Same layout, built on the ARM64 worker
+    boxedwine_<version>_arm64.deb
+    portable/               # Same layout, built on the ARM64 worker
 ```
 
 `x64` is Linux's `x86_64`; `arm64` is also called `aarch64`. The UI locates
@@ -68,7 +71,61 @@ Linux/
 directory or where the archive is extracted. `--emulator` and a saved custom
 engine still take precedence. `CommandLine/boxedwine` is the independent legacy
 command-line/automation build; the UI uses its separate native runtime for the
-launch/stop protocol. Keep the entire architecture folder together.
+launch/stop protocol. Keep the entire portable folder together. Portable here
+means relocatable; the host still needs the runtime dependencies listed above.
+
+## Debian packages
+
+Install the matching `.deb` from its architecture folder:
+
+```sh
+sudo apt install ./boxedwine_<version>_amd64.deb
+# On ARM64, use boxedwine_<version>_arm64.deb instead.
+```
+
+APT installs dependencies. Start Boxedwine from the applications menu or with
+`boxedwine-ui`; the independent command-line executable is `boxedwine`. Package
+files live under `/usr/lib/boxedwine`, with launchers in `/usr/bin` and the icon
+and desktop entry under `/usr/share`. User apps and Wine downloads remain in
+`~/.local/share/boxedwine` (or `$XDG_DATA_HOME/boxedwine`). Removing or upgrading
+the package does not remove that library. Installing a downloaded package does
+not subscribe the machine to an update repository; install newer `.deb` files
+with APT as they become available.
+
+Build on a Debian/Ubuntu-family machine of the target architecture, with the
+compiler dependencies above plus `python3`, `dpkg-dev`, `binutils` and `xz-utils`:
+
+```sh
+make deb
+# Optional explicit release version:
+make deb DEB_ARGS='--version 26.1.0-1'
+```
+
+This stages the UI, private engine, and CLI, then creates a package in
+`Build/Packages`. To package already-built/staged binaries:
+
+```sh
+python3 ui/build.py --console Build/Release/boxedwine
+python3 package_deb.py --architecture amd64 --output Build/Deploy/Linux/x64
+# Run on the ARM64 worker with --architecture arm64 and Linux/arm64 instead.
+```
+
+The packager checks both ELF architectures and derives shared-library
+dependencies using `dpkg-shlibdeps`, in addition to the UI's explicit minimum
+versions. It requires no root privileges and does not install anything. Build
+against the oldest supported library baseline (Ubuntu 24.04 for Ubuntu/Mint),
+then test on the supported distributions. Building on a newer system can raise
+the generated minimum library versions; renaming a package does not change its
+compatibility. Missing shared-library package information fails the build.
+
+The default version is `BOXEDWINE_VERSION_DISPLAY` from `include/boxedwine.h`
+plus `-1`. Jenkins uses `-0~ci<BUILD_NUMBER>`, which sorts before the corresponding
+`-1` release. Jenkins saves each `.deb` beside `portable/` and exposes the `.deb`
+files as individual artifacts as well as including them in the combined ZIP.
+Both Linux workers must have a Debian-family package database and native tools;
+this does not cross-compile an ARM64 binary on x64.
+
+## Manual staging and installation
 
 To include the standalone build when staging locally:
 
@@ -95,8 +152,8 @@ python3 ui/build.py --prefix /usr --destdir /tmp/boxedwine-package
 
 Put the prefix's `bin` directory on PATH for desktop launchers. A package should
 declare its GTK, libadwaita, Python GObject, SDL2, OpenGL, curl, OpenSSL and zlib
-runtime dependencies. This is a native source/build integration, not yet a
-signed Debian/RPM/Flatpak distribution package.
+runtime dependencies. For Debian-family systems, prefer the `.deb` package.
+RPM, Flatpak, and a signed APT update repository are not provided yet.
 
 ## Behavior and data
 

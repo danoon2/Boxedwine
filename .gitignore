@@ -28,6 +28,7 @@ lib/sdl2/VisualC/SDLmain/x64/
 project/msvc/BoxedWine/BoxedWine/imgui.ini
 project/linux/bin/
 project/linux/Build/
+project/linux/__pycache__/
 project/linux/linux_build/
 project/mac-xcode/bin/
 project/emscripten/Build/

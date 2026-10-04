@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test native-runtime native-ui test-ui
+.PHONY: default all clean release test native-runtime native-ui test-ui deb
 
 default all: release
 
@@ -34,6 +34,12 @@ native-runtime:
 
 native-ui: native-runtime
 	python3 ui/build.py
+
+# Build on a Debian/Ubuntu-family host of the desired architecture.
+# DEB_ARGS may set --version or --revision and --output.
+deb: release native-runtime
+	python3 ui/build.py --console Build/Release/boxedwine
+	python3 package_deb.py $(DEB_ARGS)
 
 test-ui:
 	python3 -m unittest discover -s ui/tests -v
