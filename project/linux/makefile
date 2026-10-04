@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test 
+.PHONY: default all clean release test native-runtime native-ui test-ui
 
 default all: release
 
@@ -25,6 +25,18 @@ release: export BUILD_DIR := Build/Release
 release: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS)
 test:   export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -D__TEST
+
+# Separate emulator for the libadwaita launcher. Keep the legacy targets intact.
+native-runtime: export BUILD_DIR := Build/Native
+native-runtime: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_NATIVE_RUNTIME
+native-runtime:
+	@$(MAKE) -j$(or $(JOBS),8) TARGET_EXEC=boxedwine-engine
+
+native-ui: native-runtime
+	python3 ui/build.py
+
+test-ui:
+	python3 -m unittest discover -s ui/tests -v
 
 cpus  := $(shell grep -c ^processor /proc/cpuinfo)
 ifeq ($(cpus), 0)

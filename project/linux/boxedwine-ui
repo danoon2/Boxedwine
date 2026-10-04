@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+# Copyright (C) 2026 The Boxedwine Team
+# SPDX-License-Identifier: GPL-2.0-or-later
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'ui'))
+from boxedwine.app import main
+main()

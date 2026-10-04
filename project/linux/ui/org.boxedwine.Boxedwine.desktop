@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Boxedwine
+Comment=Run Windows apps in an emulated environment
+Exec=boxedwine-ui
+Icon=org.boxedwine.Boxedwine
+Terminal=false
+Categories=System;Emulator;
+Keywords=Windows;Wine;Games;
+StartupNotify=true
+StartupWMClass=org.boxedwine.Boxedwine

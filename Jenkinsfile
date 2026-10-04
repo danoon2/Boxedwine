@@ -2,6 +2,8 @@
 // Windows workers: Visual Studio C++ tools for their targets and wget/unzip/java
 // in PATH. Packaging bootstraps a pinned .NET 10 SDK in the workspace and restores
 // apphost packs from NuGet.org.
+// Linux workers also need Python 3 for UI packaging and backend tests. GTK and
+// libadwaita are runtime requirements; packaging does not need their headers.
 void gitCheckout() {
     def retryAttempt = 0
     retry(3) {
@@ -416,7 +418,7 @@ pipeline {
                         '''
                     }
                 }
-                stage ('Test Linux (ARMv8)') {
+                stage ('Test Linux (arm64)') {
                     agent {
                         label "linuxArm64"
                     }
@@ -523,22 +525,19 @@ pipeline {
                         }
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                rm Build/Release/boxedwine
-                                rm Build/Deploy/Linux64/boxedwine
+                                set -euo pipefail
                                 make clean
                                 make release
-                                mkdir -p Build/Deploy/Linux64
-                                if [ ! -f "Build/Release/boxedwine" ] 
-                                then
-                                    echo "Build/Release/boxedwine DOES NOT exists."
-                                    exit 999
-                                fi
-                                cp Build/Release/boxedwine Build/Deploy/Linux64/
+                                make native-runtime JOBS=8
+                                make test-ui
+                                python3 ui/build.py --console Build/Release/boxedwine
+                                mkdir -p Build/Deploy/Linux/x64
+                                cp -a Build/NativeUI/. Build/Deploy/Linux/x64/
                             '''
                         }
                         
                         dir("project/linux/Build") {
-                            stash includes: 'Deploy/Linux64/boxedwine', name: 'linux64'
+                            stash includes: 'Deploy/Linux/x64/**', name: 'linux64'
                         }
                     }
                 }
@@ -587,7 +586,7 @@ pipeline {
                         }
                     }
                 }
-                stage ('Build Linux (ARMv8)') {
+                stage ('Build Linux (arm64)') {
                     agent {
                         label "linuxArm64"
                     }
@@ -597,21 +596,18 @@ pipeline {
                         }
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                rm Build/MultiThreaded/boxedwine
-                                rm Deploy/LinuxArm64/boxedwine                                
-                                mkdir -p Deploy/LinuxArm64
+                                set -euo pipefail
                                 make clean
                                 make release
-                                if [ ! -f "Build/Release/boxedwine" ] 
-                                then
-                                    echo "Build/Release/boxedwine DOES NOT exists."
-                                    exit 999
-                                fi
-                                mv Build/Release/boxedwine Deploy/LinuxArm64/
+                                make native-runtime JOBS=8
+                                make test-ui
+                                python3 ui/build.py --console Build/Release/boxedwine
+                                mkdir -p Build/Deploy/Linux/arm64
+                                cp -a Build/NativeUI/. Build/Deploy/Linux/arm64/
                             '''
                         }
-                        dir("project/linux") {
-                            stash includes: 'Deploy/LinuxArm64/boxedwine', name: 'linuxArm64'
+                        dir("project/linux/Build") {
+                            stash includes: 'Deploy/Linux/arm64/**', name: 'linuxArm64'
                         }
                     }
                 }
@@ -756,12 +752,12 @@ pipeline {
                             '''
                             retry(3) {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/x64/CommandLine/boxedwine\" -nosound -novideo
                                 '''
                             }
                             retryCinebench('Cinebench-Linux-x64') {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar -name \"Cinebench-Linux-x64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar -name \"Cinebench-Linux-x64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/x64/CommandLine/boxedwine\" -nosound -novideo
                                 '''
                             }
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-Linux-x64.csv', name: 'linux64Perf'
@@ -805,7 +801,7 @@ pipeline {
                         }                        
                     }
                 }
-                stage ('Linux (ARMv8) Automation') {
+                stage ('Linux (arm64) Automation') {
                     agent {
                         label "linuxArm64"
                     }
@@ -825,12 +821,12 @@ pipeline {
                             '''
                             retry(3) {
                                 sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/LinuxArm64/boxedwine\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/arm64/CommandLine/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
                             retryCinebench('Cinebench-Linux-Arm64') {
                                 sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar -name \"Cinebench-Linux-Arm64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/LinuxArm64/boxedwine\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar -name \"Cinebench-Linux-Arm64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/arm64/CommandLine/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-Linux-Arm64.csv', name: 'linuxArm64Perf'
@@ -958,7 +954,17 @@ Boxedwine_console.exe in each Windows folder is the command-line/automation buil
 The console builds and Win32 frontend do not require .NET.
 The Runtime folder in Win64/WinARM64 contains the emulator; keep it with the other files.
 Wine packages are downloaded when selected in Boxedwine.
-Linux64, LinuxArm64 and Mac builds are also included in this archive.
+Linux: open boxedwine-ui in Linux/x64 or Linux/arm64 for your CPU.
+arm64 is also called aarch64 by Linux tools.
+The Linux UI requires Python 3 with PyGObject, GTK 4.14+, and libadwaita 1.5+.
+Use Debian 13+, Ubuntu 24.04+, Mint 22+, or a supported Fedora with those libraries.
+Debian/Ubuntu/Mint dependencies: python3-gi gir1.2-gtk-4.0 gir1.2-adw-1
+Fedora dependencies: python3-gobject gtk4 libadwaita
+Keep Runtime and ui alongside boxedwine-ui; the launcher finds its engine automatically.
+CommandLine/boxedwine in each Linux architecture folder is the standalone app.
+The command-line app does not require Python, GTK, or libadwaita.
+See each Linux folder's README.md for full dependencies and installation options.
+Mac builds are included under Mac/.
 README
                         zip -r build-$BUILD_NUMBER.zip *
                         '''

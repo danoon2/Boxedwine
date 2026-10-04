@@ -27,6 +27,9 @@
 #include "knativesystem.h"
 #include "kopengl.h"
 #include "../../source/x11/x11.h"
+#if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
+#include "../../project/linux/nativeAppIdentity.h"
+#endif
 #ifdef BOXEDWINE_MSVC
 #include "../windows/windowsAppIdentity.h"
 #endif
@@ -1067,6 +1070,9 @@ void KNativeScreenSDL::recreateMainWindow() {
         }
 #ifdef BOXEDWINE_MSVC
         windowsAppSetWindowIcon(window);
+#endif
+#if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
+        linuxAppSetWindowIcon(window);
 #endif
         if (!(flags & SDL_WINDOW_VULKAN)) {
             ensureRenderer();

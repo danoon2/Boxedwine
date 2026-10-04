@@ -33,6 +33,9 @@
 #ifdef __APPLE__
 #include "../../../platform/mac/macOpenGL.h"
 #endif
+#if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
+#include "../../../project/linux/nativeAppIdentity.h"
+#endif
 #ifdef BOXEDWINE_MSVC
 #include "../../../platform/windows/windowsOpenGL.h"
 #include "../../../platform/windows/windowsAppIdentity.h"
@@ -502,6 +505,9 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
 #elif defined(BOXEDWINE_MSVC)
     windowsAppSetWindowIcon(window);
     if (fullscreen) windowsOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
+#endif
+#if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
+    linuxAppSetWindowIcon(window);
 #endif
     return std::make_shared<SDLGlWindow>(window, pixelFormat, major, minor, profile, flags, true, wnd);
 }

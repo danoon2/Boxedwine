@@ -26,6 +26,11 @@
 #endif
 #include "knativesystem.h"
 
+#if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
+#include "../../project/linux/nativeRuntime.h"
+#include "../../project/linux/nativeAppIdentity.h"
+#endif
+
 #ifdef BOXEDWINE_MSVC
 #include <Windows.h>
 #endif
@@ -128,6 +133,9 @@ int boxedmain(int argc, const char **argv) {
         return 2;
     }
 #endif
+#if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
+    initializeLinuxAppIcon();
+#endif
     Platform::init();
     // currently to fake sound, we really need to play it and just silence it right before it goes to speaker, 
     // this way the timing of the callback to get the audio from wine are correct.  Without this timing, things can hange.
@@ -138,6 +146,9 @@ int boxedmain(int argc, const char **argv) {
     // The launcher owns stdin. Its disappearance closes the pipe, ensuring a
     // crashed launcher cannot leave a running emulator behind. A quit command
     // is handled by SDL on the runtime's main thread.
+#ifdef __linux__
+    startLinuxNativeControl();
+#else
     std::thread([]() {
         char command[32];
         while (fgets(command, sizeof(command), stdin)) {
@@ -147,6 +158,7 @@ int boxedmain(int argc, const char **argv) {
         }
         std::_Exit(0);
     }).detach();
+#endif
 #endif
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(BOXEDWINE_NATIVE_RUNTIME)
     BoxedwineData::init(argc, argv);
@@ -206,7 +218,7 @@ int boxedmain(int argc, const char **argv) {
 
     klog("Boxedwine shutdown");
     KNativeSystem::cleanup();
-#if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(_WIN32)
+#if defined(BOXEDWINE_NATIVE_RUNTIME) && (defined(_WIN32) || defined(__linux__))
     // Native launchers do not use the recorder's legacy "no playback" exit code.
     return 0;
 #else
