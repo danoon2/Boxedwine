@@ -27,6 +27,9 @@
 #include "knativesystem.h"
 #include "kopengl.h"
 #include "../../source/x11/x11.h"
+#ifdef BOXEDWINE_MSVC
+#include "../windows/windowsAppIdentity.h"
+#endif
 
 #ifdef __APPLE__
 #include "../mac/macCursor.h"
@@ -1062,6 +1065,9 @@ void KNativeScreenSDL::recreateMainWindow() {
         if (!window) {
             klog_fmt("SDL_CreateWindow failed: %s", SDL_GetError());
         }
+#ifdef BOXEDWINE_MSVC
+        windowsAppSetWindowIcon(window);
+#endif
         if (!(flags & SDL_WINDOW_VULKAN)) {
             ensureRenderer();
         }

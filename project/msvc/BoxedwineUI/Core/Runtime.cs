@@ -19,12 +19,13 @@ public sealed class RuntimeSession : IDisposable
     // False means the session ended or was stopped before displaying a window.
     public Task<bool> WindowShown => windowShown.Task;
     public Task<RuntimeExit> Completion { get; }
-    public RuntimeSession(string executable, IReadOnlyList<string> arguments, string wine, string logPath, bool installing = false, bool rotate = true, OpenGLRuntime? openGL = null)
+    public RuntimeSession(string executable, IReadOnlyList<string> arguments, string wine, string logPath, bool installing = false, bool rotate = true, OpenGLRuntime? openGL = null, RuntimeIdentity? identity = null)
     {
         if (!File.Exists(executable)) throw new FileNotFoundException("Choose BoxedwineEngine.exe in Settings, or place it next to Boxedwine.exe.", executable);
         wineLease = new FileStream(wine, FileMode.Open, FileAccess.Read, FileShare.Read);
         try { log = new BoundedLog(logPath, rotate); } catch { wineLease.Dispose(); throw; }
         process = new Process { StartInfo = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = Path.GetDirectoryName(executable)! } };
+        RuntimeIdentity.Configure(process.StartInfo, identity);
         openGL?.Configure(process.StartInfo);
         foreach (var argument in arguments) process.StartInfo.ArgumentList.Add(argument);
         try { job = new ProcessJob(); } catch { log.Dispose(); wineLease.Dispose(); process.Dispose(); throw; }

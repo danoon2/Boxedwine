@@ -24,6 +24,9 @@
 #include "kvulkanSDL.h"
 #include "knativesystem.h"
 #include <unordered_map>
+#ifdef BOXEDWINE_MSVC
+#include "../windows/windowsAppIdentity.h"
+#endif
 
 class KVulkdanSDLImpl : public KVulkan {
 public:
@@ -165,6 +168,9 @@ void* KVulkdanSDLImpl::createVulkanSurface(const XWindowPtr& wnd, void* instance
                 flags |= SDL_WINDOW_BORDERLESS;
             SDL_Window* native = SDL_CreateWindow(title, x, y, std::max(1u, wnd->width()), std::max(1u, wnd->height()), flags);
             if (!native) { kwarn_fmt("Failed to create Vulkan window: %s", SDL_GetError()); return; }
+#ifdef BOXEDWINE_MSVC
+            windowsAppSetWindowIcon(native);
+#endif
             window = std::make_shared<NativeWindow>();
             window->window = native;
             window->guest = wnd;

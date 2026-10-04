@@ -26,6 +26,9 @@
 #include "kvulkanSDL.h"
 #include "../../source/x11/x11.h"
 #include "../../source/util/threadutils.h"
+#ifdef BOXEDWINE_MSVC
+#include "../windows/windowsAppIdentity.h"
+#endif
 
 #ifdef __APPLE__
 #include "../mac/macCursor.h"
@@ -66,6 +69,7 @@ bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
     U32 flags = SDL_INIT_EVENTS;
 
 #ifdef BOXEDWINE_MSVC
+    windowsAppInitialize();
     // GDI and GL exchange focus between two borderless fullscreen windows.
     // SDL's default focus-loss minimization can minimize the replacement too.
     SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");

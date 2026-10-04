@@ -53,6 +53,31 @@ internal static class Icons
         var image = FromFile(path) ?? throw new IOException("The image could not be read.");
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image)); using var stream = new MemoryStream(); encoder.Save(stream); return stream.ToArray();
     }
+    public static byte[]? RuntimePixels(ImageSource? image)
+    {
+        if (image == null || !double.IsFinite(image.Width) || !double.IsFinite(image.Height) || image.Width <= 0 || image.Height <= 0) return null;
+        const int size = RuntimeIdentity.IconSize;
+        double scale = Math.Min(size / image.Width, size / image.Height);
+        double width = image.Width * scale, height = image.Height * scale;
+        var visual = new DrawingVisual();
+        RenderOptions.SetBitmapScalingMode(visual, BitmapScalingMode.HighQuality);
+        using (var drawing = visual.RenderOpen()) drawing.DrawImage(image, new Rect((size - width) / 2, (size - height) / 2, width, height));
+        var bitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        // Windows icon resources use straight-alpha BGRA, not WPF's premultiplied pixels.
+        var converted = new FormatConvertedBitmap(bitmap, PixelFormats.Bgra32, null, 0);
+        byte[] pixels = new byte[size * size * 4]; converted.CopyPixels(pixels, size * 4, 0);
+        return pixels;
+    }
+    public static RuntimeIdentity ForRuntime(LibraryRepository repository, LibraryApp app, string resources, IEnumerable<DemoRecipe> demos, string catalogDirectory)
+    {
+        try { return new(app.Id, RuntimePixels(ForApp(repository, app, resources, demos, catalogDirectory))); }
+        catch (Exception error) when (error is IOException or ArgumentException or NotSupportedException or UnauthorizedAccessException)
+        {
+            // An unreadable icon must not prevent the app from launching.
+            return new(app.Id);
+        }
+    }
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] private struct ShellFileInfo { public IntPtr Icon; public int IconIndex; public uint Attributes; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string DisplayName; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)] public string TypeName; }
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr SHGetFileInfo(string path, uint attributes, out ShellFileInfo info, uint size, uint flags);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool DestroyIcon(IntPtr icon);

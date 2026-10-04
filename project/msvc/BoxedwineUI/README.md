@@ -202,6 +202,10 @@ Keyboard shortcuts follow Windows conventions and are listed in Help and menus.
   button. Cards and details say “Launching…” until the emulator reports its first
   visible window, using the same readiness signal as the Mac UI. Exiting or
   stopping during startup clears the banner too.
+- Running apps use their library icon, including custom icons, in the Windows
+  title bar, Alt+Tab and taskbar. Each library app has a separate taskbar identity.
+  The icon persists through GDI/OpenGL/Vulkan window recreation; apps without a
+  readable icon keep the engine's default icon.
 
 See [architecture and sharing assessment](ARCHITECTURE.md) for the core boundary
 and a proposed route to sharing actual implementation with macOS.
@@ -218,6 +222,17 @@ dotnet restore BoxedwineUI.sln --configfile NuGet.Config
 dotnet run --project Tests/Boxedwine.Tests.csproj -c Release --no-restore -- C:\Boxedwine\tmp\native-ui-tests
 dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\native-ui-previews
 ```
+
+Native runtime icon checks (from the repository root):
+
+```powershell
+tools/test_windows_app_identity.ps1
+dotnet run --project project/msvc/BoxedwineUI/Tests/UI/Boxedwine.UIChecks.csproj -c Release -- C:\Boxedwine\tmp\native-ui-icon-checks --icon-engine C:\Boxedwine\tmp\windows-app-identity-checks\x64\identity.exe
+```
+
+These check transparency and aspect ratio, app identity isolation, malformed-icon
+fallback, repeated GDI/OpenGL window creation, and the actual launcher-to-native
+process handoff. Use `-Platform ARM64 -CompileOnly` to cross-build the native test.
 
 The UI harness renders the app's own WPF tree and opens/closes its own dialogs;
 it checks live theme switching and produces 16 preview images. It does not automate

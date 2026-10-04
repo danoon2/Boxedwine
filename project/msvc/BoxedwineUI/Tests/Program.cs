@@ -62,6 +62,22 @@ sealed partial class TestSuite
         work = Path.Combine(Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith('-')) ?? "../../../../../../tmp/native-ui-tests"), Guid.NewGuid().ToString("N")); Directory.CreateDirectory(work);
         Console.WriteLine("Test workspace: " + work);
         fixture = WineFixture("wine.zip"); wine = await Packages.ValidateWine(fixture, default);
+        await Test("Runtime app identity and icon metadata are isolated per launch", () =>
+        {
+            var first = new System.Diagnostics.ProcessStartInfo();
+            var second = new System.Diagnostics.ProcessStartInfo();
+            var app = new RuntimeIdentity(Guid.NewGuid(), new byte[64 * 64 * 4]);
+            RuntimeIdentity.Configure(first, app);
+            RuntimeIdentity.Configure(second, new(Guid.NewGuid()));
+            Check(first.Environment[RuntimeIdentity.AppIdVariable] != second.Environment[RuntimeIdentity.AppIdVariable]);
+            Check(Convert.FromBase64String(first.Environment[RuntimeIdentity.IconVariable]!).SequenceEqual(app.IconBgra!));
+            Check(first.Environment[RuntimeIdentity.IconVariable]!.Length < 32767 && !second.Environment.ContainsKey(RuntimeIdentity.IconVariable));
+            RuntimeIdentity.Configure(first, new(app.AppId, new byte[20000]));
+            Check(!first.Environment.ContainsKey(RuntimeIdentity.IconVariable), "Reject oversized icon metadata");
+            RuntimeIdentity.Configure(first, null);
+            Check(!first.Environment.ContainsKey(RuntimeIdentity.IconVariable) && !first.Environment.ContainsKey(RuntimeIdentity.AppIdVariable), "Background Wine tasks must not inherit another app's identity");
+            return Task.CompletedTask;
+        });
         await OpenGLTests(args);
         await Test("Swift Codable metadata round trip and epoch", () =>
         {

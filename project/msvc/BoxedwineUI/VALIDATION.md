@@ -1,5 +1,28 @@
 # Validation — 2026-10-04
 
+## Running app icons and taskbar identity
+
+- The launcher uses the same icon selection as the library, including custom
+  icons, and passes a bounded 64x64 straight-alpha BGRA image through the child
+  environment. Each app receives a stable AppUserModelID derived from its library
+  ID. Background Wine configuration clears this metadata instead of inheriting it.
+- The engine consumes and clears launch metadata before creating any windows,
+  keeps one pair of native icon handles per process, and applies them to GDI,
+  OpenGL and Vulkan windows. Missing or invalid images preserve the default icon.
+- All 26 core tests passed. The WPF harness passed in Light and Dark, including
+  custom-icon priority, transparent aspect padding, alpha/color conversion and
+  fallback. A real `RuntimeSession` passed the generated icon into the native test
+  process, which checked its taskbar ID and actual Windows icon pixels.
+- Native checks passed for valid, absent, malformed and oversized metadata,
+  alternating GDI/OpenGL windows and reusing icon handles across recreation.
+  The native checks also compiled for Win32 and ARM64.
+- Visually verified the actual updated launcher with an isolated Cinebench/Wine
+  11 library: its blue icon appears on the initial GDI window and stays on the
+  replacement D3D12/OpenGL window. No installed user apps were changed.
+- x64 and ARM64 engines built, both UI packages published and both deployment
+  folders passed package validation. The normal x64 build is updated. ARM64
+  execution, pinned taskbar shortcuts and a live Vulkan guest remain untested.
+
 ## Direct3D 12 white-screen fix
 
 - Cinebench was rendering valid frames through Mesa, but SDL2's GDI buffer swap
