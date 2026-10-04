@@ -84,6 +84,32 @@ To build, in the terminal go to the source directory and in, project/emscripten,
 
 make release
 
+### Jenkins unit tests
+
+The MT JIT unit-test binary is built once and stashed, then run as 16 independent
+batches on the `emscripten` worker pool. Each free worker takes another batch,
+including after finishing the ST or ST JIT suite. No executor is held while the
+batches wait for workers. Each batch uses a separate workspace and Firefox
+profile, has a 15-minute execution timeout, and archives its own console log.
+Both Emscripten workers should keep one Jenkins executor each.
+
+The test runner assigns entries to batches by index modulo batch count, so every
+test runs exactly once and expensive instruction families are spread across
+batches. New tests are included automatically. Full test thoroughness is retained;
+the pipeline does not pass `-fast`.
+
+To reproduce the first MT JIT batch after `make testMultiThreadedJit`:
+
+```sh
+cd project/emscripten/Build/TestMultiThreadedJit
+emrun --browser=firefox 'boxedwine.html?-shard&0&16'
+```
+
+`-shard index count` uses a zero-based index. Add `&-list` to print the selected
+test indexes and names without executing them. The Windows and Linux test
+executables accept the same arguments. Existing positional `start count threads`
+arguments still work and, if combined with `-shard`, select the range to split.
+
 ### Mac App Store edition
 
 `project/mac-xcode/buildAppStore.sh [--skip-dependencies] /absolute/path/TinyCore15Wine11.0.zip TEAMID`

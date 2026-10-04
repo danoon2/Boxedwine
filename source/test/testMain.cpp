@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
 
 #include "cpu/testAdc.h"
 #include "cpu/testAdd.h"
@@ -1179,13 +1181,46 @@ struct TestRunArgs {
     U32 workerCount = 0;
     bool fast = false;
     bool disableLinearMemory = false;
+    U32 shardIndex = 0;
+    U32 shardCount = 0;
+    bool list = false;
+    bool valid = true;
 };
+
+bool parseTestShardNumber(const char* text, U32& result) {
+    if (*text < '0' || *text > '9') {
+        return false;
+    }
+    errno = 0;
+    char* end = nullptr;
+    unsigned long value = strtoul(text, &end, 10);
+    if (errno == ERANGE || *end || value > UINT_MAX) {
+        return false;
+    }
+    result = (U32)value;
+    return true;
+}
 
 TestRunArgs parseTestRunArgs(int argc, char** argv) {
     TestRunArgs args;
     int positional = 0;
 
     for (int i = 1; i < argc; ++i) {
+        if (!strcmp(argv[i], "-shard")) {
+            if (args.shardCount || i + 2 >= argc ||
+                    !parseTestShardNumber(argv[i + 1], args.shardIndex) ||
+                    !parseTestShardNumber(argv[i + 2], args.shardCount) ||
+                    !args.shardCount || args.shardIndex >= args.shardCount) {
+                args.valid = false;
+                break;
+            }
+            i += 2;
+            continue;
+        }
+        if (!strcmp(argv[i], "-list")) {
+            args.list = true;
+            continue;
+        }
         if (!strcmp(argv[i], "-fast")) {
             args.fast = true;
             continue;
@@ -1209,7 +1244,8 @@ TestRunArgs parseTestRunArgs(int argc, char** argv) {
 }
 
 int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCount = 0,
-    bool fast = false, bool disableLinearMemory = false) {
+    bool fast = false, bool disableLinearMemory = false, U32 shardIndex = 0,
+    U32 shardCount = 0, bool list = false) {
     size_t entryCount = sizeof(TEST_ENTRIES) / sizeof(TEST_ENTRIES[0]);
     totalFails = 0;
     testSetFastMode(fast);
@@ -1220,6 +1256,29 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
     size_t runCount = entryCount - startEntry;
     if (requestedCount && requestedCount < runCount) {
         runCount = requestedCount;
+    }
+
+    const TestEntry* entries = TEST_ENTRIES + startEntry;
+    std::vector<TestEntry> shardEntries;
+    if (shardCount) {
+        if (shardIndex >= shardCount || shardCount > runCount) {
+            fprintf(stderr, "Invalid shard: index must be below count, and count must not exceed the selected test count.\n");
+            return 2;
+        }
+        // Interleave expensive test families across batches. Each entry belongs
+        // to exactly one shard, independently of how many workers are available.
+        for (size_t i = shardIndex; i < runCount; i += shardCount) {
+            shardEntries.push_back(entries[i]);
+        }
+        entries = shardEntries.data();
+        runCount = shardEntries.size();
+    }
+    if (list) {
+        for (size_t i = 0; i < runCount; ++i) {
+            size_t index = startEntry + (shardCount ? shardIndex + i * shardCount : i);
+            printf("TEST_ENTRY\t%zu\t%s\n", index, entries[i].name);
+        }
+        return 0;
     }
 
 #if !defined(BOXEDWINE_MULTI_THREADED)
@@ -1247,6 +1306,9 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
     if (startEntry || runCount != entryCount) {
         printf(" starting at %zu", startEntry);
     }
+    if (shardCount) {
+        printf(" (shard %u/%u)", shardIndex + 1, shardCount);
+    }
     printf("\n");
     fflush(stdout);
     
@@ -1254,7 +1316,7 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
     KSystem::init(disableLinearMemory);
     KSystem::videoOption = VIDEO_NO_WINDOW;
     U32 startTime = KSystem::getMilliesSinceStart();
-    testRunParallel(TEST_ENTRIES + startEntry, runCount, workerCount);
+    testRunParallel(entries, runCount, workerCount);
 #if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
     stopNativeSocketsThread();
 #endif
@@ -1265,8 +1327,12 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
 
 int runTestTestsFromArgs(int argc, char** argv) {
     TestRunArgs args = parseTestRunArgs(argc, argv);
+    if (!args.valid) {
+        fprintf(stderr, "Usage: tests [start [count [threads]]] [-fast] [-disableLinearMemory] [-shard index count] [-list]\nShard indexes start at zero.\n");
+        return 2;
+    }
     return runTestTests(args.startEntry, args.requestedCount, args.workerCount, args.fast,
-        args.disableLinearMemory);
+        args.disableLinearMemory, args.shardIndex, args.shardCount, args.list);
 }
 
 #ifdef __MACH__

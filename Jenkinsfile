@@ -15,11 +15,12 @@ void gitCheckout() {
     }
 }
 
-void runEmscriptenUnitTest(String testName, String buildDir, String port) {
+void runEmscriptenUnitTest(String testName, String buildDir, String port, String query = '') {
     withEnv([
         "BOXEDWINE_UNIT_TEST_NAME=${testName}",
         "BOXEDWINE_UNIT_TEST_BUILD_DIR=${buildDir}",
-        "BOXEDWINE_UNIT_TEST_PORT=${port}"
+        "BOXEDWINE_UNIT_TEST_PORT=${port}",
+        "BOXEDWINE_UNIT_TEST_QUERY=${query}"
     ]) {
         sh '''#!/bin/bash
             source ~/emsdk/emsdk_env.sh
@@ -51,11 +52,37 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port) {
             echo "Running ${BOXEDWINE_UNIT_TEST_NAME}"
             /usr/bin/firefox --version
             cd "Build/${BOXEDWINE_UNIT_TEST_BUILD_DIR}"
+            # A killed content process can leave Firefox and emrun alive.
+            # Bound both missing test output and the total browser runtime.
             emrun --kill-exit \
                 --port "$BOXEDWINE_UNIT_TEST_PORT" \
+                --silence-timeout 300 \
+                --timeout 840 \
+                --timeout-returncode 124 \
                 --browser="/usr/bin/firefox" \
                 --browser-args="--headless --no-remote --profile ${firefox_profile}" \
-                boxedwine.html
+                "boxedwine.html${BOXEDWINE_UNIT_TEST_QUERY}" 2>&1 | tee unit-tests.log
+            # emrun can return zero when Firefox exits before the test page does.
+            if ! grep -Eq '^0 tests FAILED in [0-9]+s$' unit-tests.log; then
+                echo 'ERROR: Browser exited without a successful unit-test summary.' >&2
+                exit 1
+            fi
+        '''
+    }
+}
+
+void buildEmscriptenUnitTest(String target) {
+    gitCheckout()
+    withEnv(["BOXEDWINE_UNIT_TEST_TARGET=${target}"]) {
+        sh '''#!/bin/bash
+            set -euo pipefail
+            source ~/emsdk/emsdk_env.sh
+            cd project/emscripten
+            make clean
+            make "$BOXEDWINE_UNIT_TEST_TARGET"
+            # These workers are configured with one Jenkins executor each.
+            killall -9 python3 2>/dev/null || true
+            killall -9 firefox firefox-bin 2>/dev/null || true
         '''
     }
 }
@@ -63,21 +90,53 @@ void runEmscriptenUnitTest(String testName, String buildDir, String port) {
 void buildAndRunEmscriptenUnitTest(String testName, String target, String buildDir, String port) {
     // Each stage owns its checkout even when several targets use the same host.
     ws("${env.WORKSPACE}@${buildDir}") {
-        gitCheckout()
-        withEnv(["BOXEDWINE_UNIT_TEST_TARGET=${target}"]) {
-            sh '''#!/bin/bash
-                set -euo pipefail
-                source ~/emsdk/emsdk_env.sh
-                cd project/emscripten
-                make clean
-                make "$BOXEDWINE_UNIT_TEST_TARGET"
-                # These workers are configured with one Jenkins executor each.
-                killall -9 python3 2>/dev/null || true
-                killall -9 firefox firefox-bin 2>/dev/null || true
-            '''
+        buildEmscriptenUnitTest(target)
+        timeout(time: 15, unit: 'MINUTES') {
+            runEmscriptenUnitTest(testName, buildDir, port)
         }
-        runEmscriptenUnitTest(testName, buildDir, port)
     }
+}
+
+void buildAndRunShardedEmscriptenUnitTest() {
+    def buildDir = 'TestMultiThreadedJit'
+    def shardCount = 16
+    // Release the compiler's executor before queueing the batches. Holding it
+    // across parallel would prevent that machine from helping with the tests.
+    node('emscripten') {
+        ws("${env.WORKSPACE}@${buildDir}") {
+            stage('Compile Emscripten MT JIT tests') {
+                buildEmscriptenUnitTest('testMultiThreadedJit')
+                stash includes: "project/emscripten/Build/${buildDir}/boxedwine.*", name: 'emscripten-mt-jit-tests'
+            }
+        }
+    }
+    def batches = [:]
+    for (int index = 0; index < shardCount; ++index) {
+        def shard = index
+        def name = "MT JIT batch ${shard + 1}/${shardCount}".toString()
+        batches[name] = {
+            node('emscripten') {
+                ws("${env.WORKSPACE}@${buildDir}-batch-${shard}") {
+                    stage(name) {
+                        deleteDir()
+                        unstash 'emscripten-mt-jit-tests'
+                        try {
+                            timeout(time: 15, unit: 'MINUTES') {
+                                runEmscriptenUnitTest(name, buildDir, '6923', "?-shard&${shard}&${shardCount}")
+                            }
+                        } finally {
+                            // Unique archive paths preserve logs from both machines.
+                            dir("project/emscripten/Build/${buildDir}") {
+                                sh "mkdir -p results; if [ -f unit-tests.log ]; then mv unit-tests.log results/mt-jit-${shard}.log; fi"
+                                archiveArtifacts artifacts: "results/mt-jit-${shard}.log", allowEmptyArchive: true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    parallel batches
 }
 
 void retryCinebench(String name, Closure run) {
@@ -305,12 +364,10 @@ pipeline {
                     }
                 }
                 stage ('Test Emscripten MT JIT') {
-                    agent {
-                        label "emscripten"
-                    }
+                    agent none
                     steps {
                         script {
-                            buildAndRunEmscriptenUnitTest('Emscripten MT JIT unit tests', 'testMultiThreadedJit', 'TestMultiThreadedJit', '6923')
+                            buildAndRunShardedEmscriptenUnitTest()
                         }
                     }
                 }
