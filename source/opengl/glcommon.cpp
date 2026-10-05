@@ -300,6 +300,50 @@ bool glcommon_flushMappedBufferRange(GLenum target, GLintptr offset,
 #endif
 }
 
+bool glcommon_uploadToMappedBuffer(CPU* cpu, GLenum target, GLintptr offset,
+        GLsizeiptr size, const void* data) {
+#ifdef _WIN32
+    // Mesa D3D12 (25.0.0 through 26.2.4) rejects PIPE_MAP_DIRECTLY, which
+    // BufferSubData uses for an already mapped buffer. With Gallium threading
+    // this crashes in tc_buffer_map; without it the upload is silently lost.
+    // WineD3D uses coherent persistent mappings for its vertex streaming buffer.
+    const char* renderer = (const char*)GL_FUNC(pglGetString)(GL_RENDERER);
+    const char* version = (const char*)GL_FUNC(pglGetString)(GL_VERSION);
+    if (!renderer || strncmp(renderer, "D3D12 (", 7) || !version || !strstr(version, "Mesa") ||
+            offset < 0 || size <= 0 || !data || !ext_glGetBufferParameteriv ||
+            !ext_glGetBufferParameteri64v || !ext_glGetBufferPointerv) {
+        return false;
+    }
+    GLint access = 0, storage = 0;
+    GL_FUNC(ext_glGetBufferParameteriv)(target, GL_BUFFER_ACCESS_FLAGS, &access);
+    constexpr GLint requiredAccess = GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_MAP_WRITE_BIT;
+    if ((access & requiredAccess) != requiredAccess) {
+        return false;
+    }
+    // Preserve BufferSubData's validation: immutable storage must allow updates.
+    GL_FUNC(ext_glGetBufferParameteriv)(target, GL_BUFFER_STORAGE_FLAGS, &storage);
+    if (!(storage & GL_DYNAMIC_STORAGE_BIT)) {
+        return false;
+    }
+    GLint64 mapOffset = 0, mapLength = 0;
+    void* mapped = nullptr;
+    GL_FUNC(ext_glGetBufferParameteri64v)(target, GL_BUFFER_MAP_OFFSET, &mapOffset);
+    GL_FUNC(ext_glGetBufferParameteri64v)(target, GL_BUFFER_MAP_LENGTH, &mapLength);
+    GL_FUNC(ext_glGetBufferPointerv)(target, GL_BUFFER_MAP_POINTER, &mapped);
+    if (!mapped || mapOffset < 0 || mapLength < 0 || offset < mapOffset ||
+            size > mapLength || offset - mapOffset > mapLength - size) {
+        return false;
+    }
+    // BufferSubData orders uploads after preceding draws. A CPU write through
+    // the coherent mapping must wait for those draws before changing the data.
+    int99Callback[Finish](cpu);
+    memcpy((U8*)mapped + (offset - mapOffset), data, (size_t)size);
+    return true;
+#else
+    return false;
+#endif
+}
+
 U32 glcommon_prepareElementArrayClientDraw(GLenum type, GLsizei count, U32 offset) {
 #ifdef __EMSCRIPTEN__
     double maxIndex = boxedwine_prepare_element_array_client_draw_js(

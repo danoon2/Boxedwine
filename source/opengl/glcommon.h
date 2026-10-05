@@ -49,6 +49,8 @@ bool glcommon_getInternalformatSampleCount(GLenum target, GLenum internalformat,
     GLenum pname, GLsizei bufSize, GLint* params);
 bool glcommon_flushMappedBufferRange(GLenum target, GLintptr offset,
     GLsizeiptr length);
+bool glcommon_uploadToMappedBuffer(CPU* cpu, GLenum target, GLintptr offset,
+    GLsizeiptr size, const void* data);
 U32 glcommon_prepareElementArrayClientDraw(GLenum type, GLsizei count, U32 offset);
 #ifdef BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY
 bool glcommon_testOpenGLProcAddressAvailable(const char* name);

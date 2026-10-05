@@ -11784,6 +11784,98 @@ static TestResult testReboundMappedBuffersARB(TestContext&) {
     return checkReboundMappedBuffers(true);
 }
 
+static TestResult checkPersistentBufferSubData(bool arb) {
+    typedef void (APIENTRY* BufferStorageFn)(GLenum, GLsizeiptr, const void*, GLbitfield);
+    BufferStorageFn storage = nullptr;
+    PFNGLBUFFERSUBDATAPROC subData = nullptr;
+    load(storage, "glBufferStorage");
+    load(subData, arb ? "glBufferSubDataARB" : "glBufferSubData");
+    if (!hasExtensionString("GL_ARB_buffer_storage") || !storage || !subData ||
+            !glx.MapBufferRange || !glx.FlushMappedBufferRange || !glx.UnmapBuffer ||
+            !glx.GenBuffers || !glx.BindBuffer || !glx.GetBufferSubData || !glx.DeleteBuffers) {
+        return skip("persistent buffer storage entry points are unavailable");
+    }
+    constexpr GLbitfield persistent = 0x0040, coherent = 0x0080, dynamic = 0x0100;
+    constexpr GLintptr mapOffset = 32, uploadOffset = 64;
+    unsigned char expected[4096], actual[4096];
+    std::memset(expected, 0x5a, sizeof(expected));
+    GLuint buffer = 0;
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    storage(GL_ARRAY_BUFFER, sizeof(expected), expected,
+            GL_MAP_WRITE_BIT | persistent | coherent | dynamic);
+    void* mapped = glx.MapBufferRange(GL_ARRAY_BUFFER, mapOffset, 512,
+            GL_MAP_WRITE_BIT | persistent | coherent | GL_MAP_FLUSH_EXPLICIT_BIT | 0x0020);
+    if (!mapped || glGetError() != GL_NO_ERROR) {
+        if (mapped) glx.UnmapBuffer(GL_ARRAY_BUFFER);
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.DeleteBuffers(1, &buffer);
+        return fail("persistent buffer mapping failed");
+    }
+    glx.FlushMappedBufferRange(GL_ARRAY_BUFFER, 0, 512);
+    if (glx.UseProgram) glx.UseProgram(0);
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glDisable(GL_CULL_FACE);
+    glMatrixMode(GL_PROJECTION); glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW); glLoadIdentity();
+    glClearColor(0, 0, 0, 1);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, reinterpret_cast<void*>(uploadOffset));
+    // Reuse the same range between draws without an intervening Finish. The
+    // first draw must consume the old vertices before the CPU upload changes it.
+    for (unsigned i = 0; i < 2; ++i) {
+        float vertices[96] = { -0.95f, -0.8f, -0.05f, -0.8f, -0.5f, 0.8f };
+        for (unsigned j = 0; j < 6; j += 2) vertices[j] += float(i);
+        subData(GL_ARRAY_BUFFER, uploadOffset, sizeof(vertices), vertices);
+        std::memcpy(expected + uploadOffset, vertices, sizeof(vertices));
+        glColor3f(i ? 0.0f : 1.0f, i ? 1.0f : 0.0f, 0.0f);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+    }
+    unsigned char left[4] = {}, right[4] = {};
+    glReadPixels(16, 24, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, left);
+    glReadPixels(48, 24, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, right);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    bool ok = glx.UnmapBuffer(GL_ARRAY_BUFFER) == GL_TRUE;
+    glx.GetBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(actual), actual);
+    ok = ok && std::memcmp(actual, expected, sizeof(actual)) == 0;
+    // Ordinary uploads after unmapping must still use the normal driver path.
+    subData(GL_ARRAY_BUFFER, 0, 4, expected);
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(1, &buffer);
+    GLenum error = glGetError();
+    if (!ok || error != GL_NO_ERROR || left[0] < 180 || left[1] > 80 ||
+            right[0] > 80 || right[1] < 180) {
+        return fail("persistent uploads lost bytes, range boundaries, or draw ordering; GL error " + std::to_string(error));
+    }
+    // The workaround must not bypass immutable-storage update restrictions.
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    storage(GL_ARRAY_BUFFER, sizeof(expected), expected, GL_MAP_WRITE_BIT | persistent | coherent);
+    mapped = glx.MapBufferRange(GL_ARRAY_BUFFER, 0, sizeof(expected), GL_MAP_WRITE_BIT | persistent | coherent);
+    GLenum setupError = glGetError();
+    subData(GL_ARRAY_BUFFER, 0, 4, expected);
+    error = glGetError();
+    if (mapped) glx.UnmapBuffer(GL_ARRAY_BUFFER);
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.DeleteBuffers(1, &buffer);
+    if (!mapped || setupError != GL_NO_ERROR || error != GL_INVALID_OPERATION || glGetError() != GL_NO_ERROR) {
+        return fail("persistent upload bypassed immutable-storage validation");
+    }
+    return pass("persistent mapped uploads preserved bytes, partial-map offsets, draw ordering, and validation");
+}
+
+static TestResult testPersistentBufferSubData(TestContext&) {
+    return checkPersistentBufferSubData(false);
+}
+
+static TestResult testPersistentBufferSubDataARB(TestContext&) {
+    return checkPersistentBufferSubData(true);
+}
+
 static TestResult testClientArrayPageBoundaryRender(TestContext&) {
     PageBytes vertices;
     if (!vertices.init(6 * sizeof(float), 12)) {
@@ -15957,6 +16049,8 @@ static std::vector<TestCase> tests() {
         { "map-buffer-range-write-readback", testMapBufferRangeWriteReadback },
         { "mapped-buffer-rebinding", testReboundMappedBuffers },
         { "mapped-buffer-rebinding-arb", testReboundMappedBuffersARB },
+        { "persistent-buffer-subdata", testPersistentBufferSubData },
+        { "persistent-buffer-subdata-arb", testPersistentBufferSubDataARB },
         { "client-array-page-boundary-render", testClientArrayPageBoundaryRender },
         { "client-array-stride-page-boundary-render", testClientArrayStridePageBoundaryRender },
         { "interleaved-arrays-page-boundary-render", testInterleavedArraysPageBoundaryRender },

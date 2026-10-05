@@ -1339,7 +1339,9 @@ void glcommon_glBufferSubData(CPU* cpu) {
         kpanic("ext_glBufferSubData is NULL");
     {
     const GLvoid* data = marshalArray<GLubyte>(cpu, ARG4, ARG3);
-    GL_FUNC(ext_glBufferSubData)(ARG1, ARG2, ARG3, data);
+    if (!glcommon_uploadToMappedBuffer(cpu, ARG1, (S32)ARG2, (S32)ARG3, data)) {
+        GL_FUNC(ext_glBufferSubData)(ARG1, ARG2, ARG3, data);
+    }
     if (ARG1 == GL_ELEMENT_ARRAY_BUFFER) {
         glcommon_recordElementArrayBufferSubData(ARG2, data, ARG3);
     }
@@ -1351,7 +1353,9 @@ void glcommon_glBufferSubDataARB(CPU* cpu) {
         kpanic("ext_glBufferSubDataARB is NULL");
     {
     const GLvoid* data = marshalArray<GLubyte>(cpu, ARG4, ARG3);
-    GL_FUNC(ext_glBufferSubDataARB)(ARG1, ARG2, ARG3, data);
+    if (!glcommon_uploadToMappedBuffer(cpu, ARG1, (S32)ARG2, (S32)ARG3, data)) {
+        GL_FUNC(ext_glBufferSubDataARB)(ARG1, ARG2, ARG3, data);
+    }
     if (ARG1 == GL_ELEMENT_ARRAY_BUFFER) {
         glcommon_recordElementArrayBufferSubData(ARG2, data, ARG3);
     }

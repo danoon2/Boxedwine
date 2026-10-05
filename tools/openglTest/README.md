@@ -118,6 +118,16 @@ buffers through one target, unmap/remap the first, and verify that the second
 keeps its pointer and data, including when rebound through another target.
 The core test also checks partial-range mappings.
 
+For Motorhead's Mesa D3D12 crash or corrupted triangles, run
+`persistent-buffer-subdata` and `persistent-buffer-subdata-arb`. These upload
+vertices into a coherently and persistently mapped buffer, reuse the range
+between draws, and check pixels, byte readback, nonzero mapping offsets, and
+immutable-storage validation. Mesa D3D12 25.0.0, 26.0.3, and 26.2.4 reject the
+direct mapping used internally by BufferSubData: Gallium threading can crash,
+while disabling it can silently lose uploads. Boxedwine writes through the
+existing coherent mapping on this renderer and waits for earlier draws first.
+Other renderers and ordinary unmapped uploads keep the usual driver path.
+
 For DSA texture uploads through pixel unpack buffers, run
 `dsa-texture-subimage2d-pbo-offset` and `ext-texture-subimage2d-pbo-offset`.
 Both test zero and nonzero offsets into a pixel unpack buffer with the texture
