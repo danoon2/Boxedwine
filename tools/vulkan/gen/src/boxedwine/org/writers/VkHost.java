@@ -179,7 +179,7 @@ public class VkHost {
         }
         out.append("void vk_" + fn.name.substring(2) + "(CPU* cpu) {\n");
         if (!fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
-            out.append("    initVulkan();\n");
+            out.append("    if (!initVulkan()) { EAX = VK_ERROR_INITIALIZATION_FAILED; return; }\n");
         }/*
         out.append("    klog(\"");
         out.append(fn.name);
@@ -388,7 +388,7 @@ public class VkHost {
         out.append("#define BOXED_VK_EXTERN\n");
         out.append("#include \"vk_host.h\"\n");
         out.append("#include \"vk_host_marshal.h\"\n\n");
-        out.append("void initVulkan();\n");
+        out.append("bool initVulkan();\n");
         out.append("BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address);\n");
         out.append("void freeVulkanPtr(KMemory* memory, U32 p);\n");
         for (int i=0;i<26;i++) {

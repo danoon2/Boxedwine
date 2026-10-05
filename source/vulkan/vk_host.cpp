@@ -10,7 +10,7 @@
 #include "vk_host.h"
 #include "vk_host_marshal.h"
 
-void initVulkan();
+bool initVulkan();
 BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address);
 void freeVulkanPtr(KMemory* memory, U32 p);
 #define ARG1 cpu->peek32(1)
@@ -1427,7 +1427,7 @@ void vk_DestroyDevice(CPU* cpu) {
 }
 // return type: VkResult(4 bytes)
 void vk_EnumerateInstanceVersion(CPU* cpu) {
-    initVulkan();
+    if (!initVulkan()) { EAX = VK_ERROR_INITIALIZATION_FAILED; return; }
     uint32_t tmp_pApiVersion = (uint32_t) cpu->memory->readd(ARG1);
     uint32_t* pApiVersion = &tmp_pApiVersion;
     EAX = (U32)pvkEnumerateInstanceVersion(pApiVersion);
@@ -1435,7 +1435,7 @@ void vk_EnumerateInstanceVersion(CPU* cpu) {
 }
 // return type: VkResult(4 bytes)
 void vk_EnumerateInstanceLayerProperties(CPU* cpu) {
-    initVulkan();
+    if (!initVulkan()) { EAX = VK_ERROR_INITIALIZATION_FAILED; return; }
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG1);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
     VkLayerProperties* pProperties = NULL;

@@ -28,7 +28,7 @@
 #include <unordered_set>
 
 static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = nullptr;
-void initVulkan();
+bool initVulkan();
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -123,14 +123,18 @@ static bool bridgeCommandSupported(const BString& name) {
 }
 
 static void hasInstanceProcAddress(CPU* cpu) {
-    initVulkan();
     U32 handle = cpu->peek32(1);
     BString name = cpu->memory->readString(cpu->peek32(2));
     EAX = 0;
     if (!bridgeCommandSupported(name)) return;
     if (!handle) {
-        EAX = pvkGetInstanceProcAddr(VK_NULL_HANDLE, name.c_str()) != nullptr;
+        // Global bridge entry points exist even when no host driver is usable.
+        // Wine resolves vkCreateInstance this way before probing the driver.
+        EAX = name == "vkGetInstanceProcAddr" || name == "vkCreateInstance" ||
+            name == "vkEnumerateInstanceVersion" || name == "vkEnumerateInstanceExtensionProperties" ||
+            name == "vkEnumerateInstanceLayerProperties";
     } else {
+        if (!initVulkan()) return;
         BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, handle);
         if (name == "vkCreateXlibSurfaceKHR") EAX = pBoxedInfo->xlibSurfaceEnabled;
         else EAX = pvkGetInstanceProcAddr(pBoxedInfo->instance, name.c_str()) != nullptr;
@@ -513,7 +517,7 @@ static void BOXED_vkCreateXlibSurfaceKHR(CPU* cpu) {
 }
 
 void vk_CreateInstance(CPU* cpu) {
-    initVulkan();
+    if (!initVulkan()) { EAX = VK_ERROR_INITIALIZATION_FAILED; return; }
     if (!validateGuestExtensions(cpu->memory, cpu->memory->readd(ARG1 + 24),
         cpu->memory->readd(ARG1 + 28), true)) {
         EAX = VK_ERROR_EXTENSION_NOT_PRESENT;
@@ -588,7 +592,7 @@ void vk_DestroyInstance2(CPU* cpu) {
 }
 
 void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
-    initVulkan();
+    if (!initVulkan()) { EAX = VK_ERROR_INITIALIZATION_FAILED; return; }
     if (ARG1) { EAX = VK_ERROR_LAYER_NOT_PRESENT; return; }
     std::vector<VkExtensionProperties> properties;
     EAX = collectHostExtensions([](U32* count, VkExtensionProperties* values) {
@@ -638,7 +642,7 @@ static void vk_CreateDevice2(CPU* cpu) {
 }
 
 static void vk_EnumerateInstanceVersion2(CPU* cpu) {
-    initVulkan();
+    if (!initVulkan()) { EAX = VK_ERROR_INITIALIZATION_FAILED; return; }
     U32 version = VK_API_VERSION_1_0;
     EAX = pvkEnumerateInstanceVersion ? pvkEnumerateInstanceVersion(&version) : VK_SUCCESS;
     if (EAX == VK_SUCCESS) cpu->memory->writed(ARG1, std::min(version, (U32)VK_HEADER_VERSION_COMPLETE));
@@ -783,15 +787,19 @@ const void* marshalDescriptorTemplateData(BoxedVulkanInfo* info, KMemory* memory
 
 static bool vulkanInitialized;
 
-void initVulkan() {
+bool initVulkan() {
     if (!vulkanInitialized) {
         BOXEDWINE_CRITICAL_SECTION;
         if (vulkanInitialized) {
-            return;
+            return true;
         }        
 
         if (SDL_Vulkan_LoadLibrary(NULL)) {
-            kpanic_fmt("Failed to load vulkan: %s\n", SDL_GetError());
+            // Wine probes Vulkan while enumerating displays, even for GDI apps.
+            // -novideo may have no SDL video subsystem or usable Vulkan driver.
+            // Report an unavailable driver to the guest instead of ending it.
+            kwarn_fmt("Vulkan unavailable: %s", SDL_GetError());
+            return false;
         }
         pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
         pvkCreateInstance = (PFN_vkCreateInstance)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
@@ -806,6 +814,7 @@ void initVulkan() {
 #undef LOAD_FUNCPTR
         vulkanInitialized = true;
     }
+    return true;
 }
 
 Int99Callback int9ACallback[VK_LAST_VALUE+1];
