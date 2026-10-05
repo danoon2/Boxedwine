@@ -18,7 +18,7 @@ class AssetPackagingTests(unittest.TestCase):
                        'automation/bin/BoxedWineRunner.jar': b'old runner',
                        'automation/scripts/game/files/game.exe': b'application',
                        'automation/scripts/game/play/screenshot.bmp': b'pixels',
-                       'automation/scripts/caesar3/install/script.txt': b'old recording',
+                       'automation/scripts/game/install/script.txt': b'recording',
                        'automation/README-Wine11.txt': b'old README',
                        'automation/validation.json': b'{"old": true}'}
             with zipfile.ZipFile(source, 'w') as archive:
@@ -30,16 +30,12 @@ class AssetPackagingTests(unittest.TestCase):
                 self.assertFalse(any(name.startswith('automation/fs/') for name in archive.namelist()))
                 self.assertEqual(archive.read('automation/scripts/game/files/game.exe'), b'application')
                 self.assertEqual(archive.read('automation/scripts/game/play/screenshot.bmp'), b'pixels')
+                self.assertEqual(archive.read('automation/scripts/game/install/script.txt'), b'recording')
                 self.assertEqual(archive.read('automation/bin/BoxedWineRunner.jar'), b'new runner')
                 self.assertEqual(archive.read('automation/provenance/old-validation.json'), b'{"old": true}')
                 self.assertIn(b'PrepareFilesystem', archive.read('automation/runAll.bat'))
                 self.assertEqual(archive.read('automation/filesystem.properties'),
                                  (package_assets.HERE / 'filesystem.properties').read_bytes())
-                for path in (package_assets.HERE / 'overrides').rglob('*'):
-                    if path.is_file():
-                        name = 'automation/scripts/' + path.relative_to(package_assets.HERE / 'overrides').as_posix()
-                        self.assertEqual(archive.read(name), path.read_bytes())
-                        self.assertIn(name, report['updated_or_added'])
             self.assertTrue(report['preserved_content_verified'])
             with self.assertRaisesRegex(ValueError, 'already exists'):
                 package_assets.package(source, output, runner)

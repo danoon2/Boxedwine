@@ -28,9 +28,6 @@ def package(source, output, runner):
                     for path in sorted((HERE / 'bundle').iterdir()) if path.is_file()}
     replacements['automation/bin/BoxedWineRunner.jar'] = runner.read_bytes()
     replacements['automation/filesystem.properties'] = (HERE / 'filesystem.properties').read_bytes()
-    for path in sorted((HERE / 'overrides').rglob('*')):
-        if path.is_file():
-            replacements['automation/scripts/' + path.relative_to(HERE / 'overrides').as_posix()] = path.read_bytes()
     pin = dict(line.split('=', 1) for line in (HERE / 'filesystem.properties').read_text().splitlines()
                if line and not line.startswith('#'))
     copied = {}

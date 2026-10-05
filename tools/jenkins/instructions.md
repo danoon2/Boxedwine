@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation33.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation34.zip`. Its URL, size, and SHA-256 are
 pinned in [`../BoxedWineRunner/filesystem.properties`](../BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -11,12 +11,9 @@ and the [release checklist](../buildWine/RELEASING.md) for advancing the pin.
 
 Browser AbiWord automation keeps its separate web filesystem URL and SHA-256 in
 `Jenkinsfile`; changing the native pin does not change browser automation.
-Jenkins also builds `abiword_automation.zip` from `abiword-automation/abiword-ci`
-and loads it alongside the pinned AbiWord app ZIP. Its recording clicks the
-document to activate spell-check, then waits for the missing-dictionary dialog
-before clicking OK. That document click also leaves an already-open dialog
-intact. Existing screenshot references remain in the app ZIP; only the added
-dialog reference and recording live in the checkout.
+Recordings and screenshot references are packaged in the downloaded automation
+assets. Update those archives when recordings change; Jenkins does not patch
+individual recordings or generate additional recording overlays.
 
 # Local Build Site
 

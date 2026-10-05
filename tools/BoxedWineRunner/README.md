@@ -11,15 +11,8 @@ Run this command from the repository root. The Java installation must include
 Omit `--test` to only build the JAR. The runner uses Java 8 APIs and bytecode.
 
 Jenkins builds and tests this JAR from the current checkout, then distributes it
-to the native automation workers over the JAR bundled in `automation33.zip`.
-It also stashes the recordings in `overrides/` and overlays them onto each
-worker's extracted `automation/scripts/` directory before running tests.
-
-The Caesar III installer override handles the additional Add Bookmarks page
-shown when the full filesystem's Internet Explorer is detected. It verifies
-that page, selects DO NOT Install Bookmarks, and continues with the original
-Read Me and completion checks. For local runs from an existing bundle, copy
-the contents of `overrides/` into its `automation/scripts/` directory as well.
+to the native automation workers over the JAR bundled in `automation34.zip`.
+Recordings and screenshot references come directly from the asset bundle.
 
 ## Native filesystem
 
@@ -27,7 +20,7 @@ Native automation downloads the **full** filesystem pinned by URL, byte count,
 and SHA-256 in [filesystem.properties](filesystem.properties). Browser automation
 has its own web filesystem pin in the root Jenkinsfile.
 
-`automation33.zip` contains no filesystem. Jenkins runs this command inside
+`automation34.zip` contains no filesystem. Jenkins runs this command inside
 `automation/` after extracting the bundle and unstashing the runner and pin:
 
 ```text
@@ -77,15 +70,16 @@ and pass `-user-reg` automatically. For manual runs, update the extracted
 Use Python 3.11+ and the tested runner to create a new bundle:
 
 ```text
-python3 tools/BoxedWineRunner/package_assets.py automation32.zip automation33.zip --runner automation-runner/bin/BoxedWineRunner.jar
+python3 tools/BoxedWineRunner/package_assets.py automation34.zip automation35.zip --runner automation-runner/bin/BoxedWineRunner.jar
 ```
 
 The output must not already exist. The packager removes `automation/fs/`, embeds
 the current runner, filesystem pin and launchers from `bundle/`, and verifies
-all retained files byte-for-byte along with ZIP CRCs. Recordings and screenshots
-in `overrides/` replace the corresponding script assets; app files and all other
-assets stay unchanged. Earlier README/validation files are preserved
-under `automation/provenance/`; the new validation record describes packaging.
+all retained files byte-for-byte along with ZIP CRCs. App files, recordings,
+screenshots, and other assets stay unchanged. Update recordings in the asset
+archive before repackaging; the runner and Jenkins apply no recording patches.
+Earlier README/validation files are preserved under `automation/provenance/`;
+the new validation record describes packaging.
 It also writes SHA-256 and validation sidecars next to the archive.
 
 Run the packaging and Unix launcher checks with
