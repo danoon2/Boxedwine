@@ -21,6 +21,9 @@ void gitCheckout() {
 
 void prepareNativeAutomationFilesystem() {
     unstash 'automationRunner'
+    dir('scripts') {
+        unstash 'automationScriptOverrides'
+    }
     // The asset bundle contains no filesystem; download the pinned full ZIP.
     // Keep the checksum-addressed download cache outside the refreshed automation/.
     if (isUnix()) {
@@ -373,6 +376,9 @@ pipeline {
                         }
                         dir('automation-runner') {
                             stash includes: 'bin/BoxedWineRunner.jar,filesystem.properties', name: 'automationRunner'
+                        }
+                        dir('tools/BoxedWineRunner/overrides') {
+                            stash includes: '**/*', name: 'automationScriptOverrides'
                         }
                     }
                 }

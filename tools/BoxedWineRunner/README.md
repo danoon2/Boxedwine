@@ -12,6 +12,14 @@ Omit `--test` to only build the JAR. The runner uses Java 8 APIs and bytecode.
 
 Jenkins builds and tests this JAR from the current checkout, then distributes it
 to the native automation workers over the JAR bundled in `automation33.zip`.
+It also stashes the recordings in `overrides/` and overlays them onto each
+worker's extracted `automation/scripts/` directory before running tests.
+
+The Caesar III installer override handles the additional Add Bookmarks page
+shown when the full filesystem's Internet Explorer is detected. It verifies
+that page, selects DO NOT Install Bookmarks, and continues with the original
+Read Me and completion checks. For local runs from an existing bundle, copy
+the contents of `overrides/` into its `automation/scripts/` directory as well.
 
 ## Native filesystem
 
@@ -74,8 +82,9 @@ python3 tools/BoxedWineRunner/package_assets.py automation32.zip automation33.zi
 
 The output must not already exist. The packager removes `automation/fs/`, embeds
 the current runner, filesystem pin and launchers from `bundle/`, and verifies
-all retained files byte-for-byte along with ZIP CRCs. Apps, input recordings,
-and screenshots stay unchanged. Earlier README/validation files are preserved
+all retained files byte-for-byte along with ZIP CRCs. Recordings and screenshots
+in `overrides/` replace the corresponding script assets; app files and all other
+assets stay unchanged. Earlier README/validation files are preserved
 under `automation/provenance/`; the new validation record describes packaging.
 It also writes SHA-256 and validation sidecars next to the archive.
 
