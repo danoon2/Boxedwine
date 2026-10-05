@@ -11,6 +11,12 @@ and the [release checklist](../buildWine/RELEASING.md) for advancing the pin.
 
 Browser AbiWord automation keeps its separate web filesystem URL and SHA-256 in
 `Jenkinsfile`; changing the native pin does not change browser automation.
+Jenkins also builds `abiword_automation.zip` from `abiword-automation/abiword-ci`
+and loads it alongside the pinned AbiWord app ZIP. Its recording clicks the
+document to activate spell-check, then waits for the missing-dictionary dialog
+before clicking OK. That document click also leaves an already-open dialog
+intact. Existing screenshot references remain in the app ZIP; only the added
+dialog reference and recording live in the checkout.
 
 # Local Build Site
 

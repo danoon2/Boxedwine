@@ -261,7 +261,7 @@ void runEmscriptenAbiWordAutomation(String automationName, String buildDir, Stri
                     --dump-out-directory "$attempt_dir" \
                     --browser="/usr/bin/google-chrome" \
                     --browser-args="$chrome_args" \
-                    'boxedwine.html?root=boxedwine&overlay=abiword_auto&w=%2Ffiles&play=%2Ffiles%2Fscript.txt&p=ABIWORD.EXE&resolution=1024x768&storage=memory' 2>&1 | tee "$attempt_dir/console.log"
+                    'boxedwine.html?root=boxedwine&overlay=abiword_auto;abiword_automation&w=%2Ffiles&play=%2Fabiword-ci%2Fscript.txt&p=ABIWORD.EXE&resolution=1024x768&storage=memory' 2>&1 | tee "$attempt_dir/console.log"
                 rc=${PIPESTATUS[0]}
                 set -e
                 printf '%s\\n' "$rc" > "$attempt_dir/exit-code.txt"
@@ -715,6 +715,8 @@ pipeline {
 
                             download_checked "$ABIWORD_AUTO_URL" abiword_auto.zip "$ABIWORD_AUTO_SHA256"
                             download_checked "$BOXEDWINE_AUTO_URL" boxedwine.zip "$BOXEDWINE_AUTO_SHA256"
+                            # Keep recording fixes in the checkout while retaining the pinned app ZIP.
+                            python3 -m zipfile -c abiword_automation.zip ../../tools/jenkins/abiword-automation/abiword-ci
 
                             make clean
                             make automation
