@@ -13,9 +13,9 @@ only the test patch named by the selected manifest.
 The published v11 filesystem is pinned to v41. Its September 19 download
 matches the candidate used for the focused regression checks; see
 [the validation and upload record](../wineTests/graphics-review-fixes-20260919.json).
-The local version 13 filesystem selects v42, which adds the persistent-GDI-buffer
+The current version 14 filesystem selects v42, which adds the persistent-GDI-buffer
 lifetime fix to its separately built PE32 `C:/webgl/wined3d.dll`. The DLL hash
-is pinned by [`webgl_filesystems_v13.json`](../buildWine/webgl_filesystems_v13.json).
+is pinned by [`webgl_filesystems_v14.json`](../buildWine/webgl_filesystems_v14.json).
 
 Production patch replay and test-policy validation establish reproducibility,
 not graphics conformance. The standalone probes in `tools/wineTests/tests/`

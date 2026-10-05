@@ -478,6 +478,20 @@ def filesystem_changes(profile):
     return changes
 
 
+def stage_patch_documentation(profile, destination):
+    patches = [HERE / 'patches' / op.value
+               for op in build_wine.select_operations(wine_config(profile), (11, 0))
+               if op.kind == 'apply_patch']
+    patches += [HERE / name for name in profile.get('documentation_patches', [])]
+    docs = destination / 'usr/local/share/doc/wine/patches'
+    docs.mkdir(parents=True, exist_ok=True)
+    for patch in patches:
+        target = docs / patch.name
+        if target.exists() and target.read_bytes() != patch.read_bytes():
+            raise build_wine.BuildError(f'Conflicting patch documentation: {patch.name}')
+        shutil.copy2(patch, target)
+
+
 def assemble(profile, work, boxedwine, compare_to=None):
     changes = filesystem_changes(profile)
     config = wine_config(profile)
@@ -518,6 +532,7 @@ def assemble(profile, work, boxedwine, compare_to=None):
     complete = fresh_directory(work, 'complete-overlay')
     shutil.copytree(overlay, complete, dirs_exist_ok=True)
     shutil.copytree(home, complete / PREFIX, dirs_exist_ok=True)
+    stage_patch_documentation(profile, complete)
     (complete / 'version.txt').write_text(profile['filesystem_version'])
     (complete / 'changes.txt').write_text(changes, encoding='utf-8')
     if is_web(profile):

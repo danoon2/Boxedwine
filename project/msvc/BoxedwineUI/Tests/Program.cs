@@ -52,7 +52,7 @@ sealed partial class TestSuite
     {
         string path = Path.Combine(work, name);
         using var archive = ZipFile.Open(path, ZipArchiveMode.Create);
-        Put(archive, "wineVersion.txt", Encoding.UTF8.GetBytes("11.0\n")); Put(archive, "version.txt", Encoding.UTF8.GetBytes("13\n"));
+        Put(archive, "wineVersion.txt", Encoding.UTF8.GetBytes("11.0\n")); Put(archive, "version.txt", Encoding.UTF8.GetBytes("14\n"));
         Put(archive, "bin/wine.link", Encoding.UTF8.GetBytes("../opt/wine/bin/wine"));
         byte[] elf = new byte[64]; new byte[] {127,69,76,70,1,1,1}.CopyTo(elf, 0); elf[16] = 2; elf[18] = 3; Put(archive, "opt/wine/bin/wine", elf);
         Put(archive, "opt/wine/lib/wine/ntdll.dll", [1]); Put(archive, "opt/wine/lib/wine/kernel32.dll", [1]); extra?.Invoke(archive); return path;
@@ -88,7 +88,7 @@ sealed partial class TestSuite
         });
         await Test("Wine structure, content hash, CRC and guest links", async () =>
         {
-            Check(wine.WineVersion == "11.0" && wine.FilesystemVersion == "13"); Check(wine.Sha256 == await SafeFiles.Hash(fixture));
+            Check(wine.WineVersion == "11.0" && wine.FilesystemVersion == "14"); Check(wine.Sha256 == await SafeFiles.Hash(fixture));
             string broken = WineFixture("broken.zip", a => Put(a, "depends.txt", Encoding.UTF8.GetBytes("other.zip")));
             await Throws(() => Packages.ValidateWine(broken, default), "dependency package");
             string loop = Path.Combine(work, "loop.zip"); System.IO.File.Copy(fixture, loop);
@@ -106,7 +106,7 @@ sealed partial class TestSuite
         {
             string path = Path.Combine(work, "checksum-only.zip");
             await File.WriteAllTextAsync(path, "Previously verified package bytes; deliberately not a ZIP for this check.");
-            var expected = new WineReference(await SafeFiles.Hash(path), new FileInfo(path).Length, "11.0", "13");
+            var expected = new WineReference(await SafeFiles.Hash(path), new FileInfo(path).Length, "11.0", "14");
             await Packages.VerifyWineChecksum(path, expected, default);
             await Throws(() => Packages.VerifyWineChecksum(path, expected with { Bytes = expected.Bytes + 1 }, default), "incorrect package size");
             byte[] changed = await File.ReadAllBytesAsync(path); changed[0] ^= 1; await File.WriteAllBytesAsync(path, changed);

@@ -19,6 +19,17 @@ void gitCheckout() {
     }
 }
 
+void prepareNativeAutomationFilesystem() {
+    unstash 'automationRunner'
+    // The asset bundle contains no filesystem; download the pinned full ZIP.
+    // Keep the checksum-addressed download cache outside the refreshed automation/.
+    if (isUnix()) {
+        sh 'java -cp bin/BoxedWineRunner.jar boxedwine.org.PrepareFilesystem filesystem.properties ../automation-filesystems fs'
+    } else {
+        bat 'java -cp bin/BoxedWineRunner.jar boxedwine.org.PrepareFilesystem filesystem.properties ../automation-filesystems fs'
+    }
+}
+
 void runEmscriptenUnitTest(String testName, String buildDir, String port, String query = '') {
     withEnv([
         "BOXEDWINE_UNIT_TEST_NAME=${testName}",
@@ -357,8 +368,11 @@ pipeline {
                             gitCheckout()
                         }
                         sh 'java tools/BoxedWineRunner/Build.java tools/BoxedWineRunner automation-runner/bin/BoxedWineRunner.jar --test'
+                        script {
+                            writeFile file: 'automation-runner/filesystem.properties', text: readFile('tools/BoxedWineRunner/filesystem.properties')
+                        }
                         dir('automation-runner') {
-                            stash includes: 'bin/BoxedWineRunner.jar', name: 'automationRunner'
+                            stash includes: 'bin/BoxedWineRunner.jar,filesystem.properties', name: 'automationRunner'
                         }
                     }
                 }
@@ -666,8 +680,8 @@ pipeline {
                             # Keep the AbiWord captures paired with the Wine 11 window theme.
                             ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v2.zip'
                             ABIWORD_AUTO_SHA256='362a198e377a66b13ba4aa07560e7c7d41f5a43d8c5a14d2971bc84caad796db'
-                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/13/TinyCore15Wine11.0-web.zip'
-                            BOXEDWINE_AUTO_SHA256='a14446b27adbaccd4fac25dfb4e951da2dd4978fecfbf6e16aa718871fe4b0c5'
+                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/14/TinyCore15Wine11.0-web.zip'
+                            BOXEDWINE_AUTO_SHA256='3365e31caaf6a1fc832a0a7c4812592d25410b9f5c9536277131388c8e103a49'
 
                             file_matches_sha256() {
                                 local file="$1"
@@ -736,25 +750,25 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation32.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation33.zip
                                 rm -rf automation
-                                unzip automation32.zip
+                                unzip automation33.zip
                             '''
                         }
                         dir("project/linux/automation") {
                             unstash "linux64"
-                            unstash 'automationRunner'
+                            script { prepareNativeAutomationFilesystem() }
                             sh '''#!/bin/bash
                                 killall -9 boxedwine || true
                             '''
                             retry(3) {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/x64/portable/CommandLine/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar -user-reg fs/user.reg \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/x64/portable/CommandLine/boxedwine\" -nosound -novideo
                                 '''
                             }
                             retryCinebench('Cinebench-Linux-x64') {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar -name \"Cinebench-Linux-x64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/x64/portable/CommandLine/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar -user-reg fs/user.reg -name \"Cinebench-Linux-x64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/x64/portable/CommandLine/boxedwine\" -nosound -novideo
                                 '''
                             }
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-Linux-x64.csv', name: 'linux64Perf'
@@ -768,9 +782,9 @@ pipeline {
                     steps {
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation32.zip http://boxedwine.org/v2/1/automation32.zip --output automation32.zip
+                                curl -z automation33.zip https://boxedwine.org/v2/1/automation33.zip --output automation33.zip
                                 rm -rf automation
-                                unzip automation32.zip
+                                unzip automation33.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -783,15 +797,15 @@ pipeline {
                         }
                         
                         dir("project/mac-xcode/automation") {
-                            unstash 'automationRunner'
+                            script { prepareNativeAutomationFilesystem() }
                             retry(3) {
                                 sh '''#!/bin/bash    
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar -user-reg fs/user.reg \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
                                 '''
                             }
                             retryCinebench('Cinebench-MacOSX') {
                                 sh '''#!/bin/bash    
-                                    java -jar bin/BoxedWineRunner.jar -name \"Cinebench-MacOSX\" \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/perfScripts/cinebench/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar -user-reg fs/user.reg -name \"Cinebench-MacOSX\" \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/perfScripts/cinebench/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
                                 '''
                             }
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-MacOSX.csv', name: 'macArmv8Perf'
@@ -805,25 +819,25 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation32.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation33.zip
                                 rm -rf automation
-                                unzip automation32.zip
+                                unzip automation33.zip
                             '''
                         }
                         dir("project/linux/automation") {
                             unstash "linuxArm64"
-                            unstash 'automationRunner'
+                            script { prepareNativeAutomationFilesystem() }
                             sh '''#!/bin/bash
                                 killall -9 boxedwine || true
                             '''
                             retry(3) {
                                 sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/arm64/portable/CommandLine/boxedwine\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar -user-reg fs/user.reg \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/arm64/portable/CommandLine/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
                             retryCinebench('Cinebench-Linux-Arm64') {
                                 sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar -name \"Cinebench-Linux-Arm64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/arm64/portable/CommandLine/boxedwine\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar -user-reg fs/user.reg -name \"Cinebench-Linux-Arm64\" \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/perfScripts/cinebench/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/arm64/portable/CommandLine/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-Linux-Arm64.csv', name: 'linuxArm64Perf'
@@ -836,31 +850,31 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation32.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation33.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            unzip automation32.zip
+                            unzip automation33.zip
                         '''
                         dir("automation") {
-                            unstash 'automationRunner'
+                            script { prepareNativeAutomationFilesystem() }
                             unstash "windows"
                             retryCinebench('Cinebench-Win32') {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-Win32\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar -user-reg fs/user.reg -name \"Cinebench-Win32\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar -user-reg fs/user.reg \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
                                 '''
                             }
                             retryCinebench('Cinebench-Win64') {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-Win64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine_console.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar -user-reg fs/user.reg -name \"Cinebench-Win64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine_console.exe\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine_console.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar -user-reg fs/user.reg \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine_console.exe\" -nosound -novideo
                                 '''
                             }
                             stash includes: 'perfScripts/cinebench/cinebench/perf*.csv', name: 'windowsPerf'
@@ -873,21 +887,21 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation32.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation33.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            tar -xf automation32.zip
+                            tar -xf automation33.zip
                         '''
                         dir("automation") {
-                            unstash 'automationRunner'
+                            script { prepareNativeAutomationFilesystem() }
                             unstash "windowsARM64"
                             retryCinebench('Cinebench-WinArm64') {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar -name \"Cinebench-WinArm64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine_console.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar -user-reg fs/user.reg -name \"Cinebench-WinArm64\" \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\perfScripts\\cinebench\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine_console.exe\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine_console.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar -user-reg fs/user.reg \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine_console.exe\" -nosound -novideo
                                 '''
                             }
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-WinArm64.csv', name: 'windowsARM64Perf'

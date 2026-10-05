@@ -1,3 +1,4 @@
+v14 Oct 04, 2026 Fix lost cursor-release notifications after a popup is destroyed, preventing SimTower floor selection from leaving mouse input clipped
 v13 Sep 30, 2026 Omit Wine development headers and static/import libraries from runtime archives
 v13 Sep 29, 2026 Rebuilt Wine 11.0 in WSL; fixed localhost file URLs; installed Gecko 2.47.4 without its MSI cache; disabled unsupported ISDN, camera, packet-capture, smart-card and OpenCL backends; preserved empty Wine prefix directories required by installers; fixed psVoodoo saturated W-depth to prevent moving F-16 cockpit panels flickering over instruments; fixed WineD3D GDI buffer lifetime in both the main Wine runtime and the WebGL DLL to prevent the Daytona USA startup crash
 v12 Sep 20, 2026 update DXVK 2.5.2 to 3.1.1, add dinput patch for handlers

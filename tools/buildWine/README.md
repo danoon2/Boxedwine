@@ -4,6 +4,10 @@
 
 The current supported host environment is Debian or WSL running Debian/Ubuntu-style packages.
 
+For a patch release, start with the [filesystem release checklist](RELEASING.md).
+It covers both variants, native UI catalog hashes, web/Jenkins pins, automation
+bundles, validation, and publication order. Review it before starting builds.
+
 ## Complete Wine 11 filesystem from WSL
 
 `build_filesystem.py` builds Wine, initializes a new prefix in Boxedwine, installs
@@ -31,7 +35,7 @@ v42 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapsh
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 13. Its `changes.txt` comes from
+The filesystem revision is 14. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -47,14 +51,36 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v13.json`](webgl_filesystems_v13.json) and the
+[`webgl_filesystems_v14.json`](webgl_filesystems_v14.json) and the
 [v42 patch manifest](../wineTests/webgl-test-divergences-v42.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v13 WebGL configuration pins DLLs, source patches, and the published filesystem
-ZIP in its `full-v13` profile for Jenkins demo validation. The complete filesystem
+The v14 WebGL configuration pins DLLs, source patches, and the filesystem
+ZIP in its `full-v14` profile for Jenkins demo validation. The complete filesystem
 is assembled by `filesystem_wine11.json`.
-The v13 prefix leaves the renderer registry values unset. The profile records
+The v14 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
+
+Wine 11 builds also include `wine11_clipcursor_destroyed_popup.patch`. SimTower
+releases the cursor restriction and immediately destroys its floor-selection
+popup. Wine otherwise drops the queued release because its target window no
+longer exists, leaving subsequent mouse coordinates constrained to that popup.
+The patch redirects that release to the surviving active window in the same
+input queue. [`probes/clipcursor-popup.c`](probes/clipcursor-popup.c) exercises
+three popup creation, clipping, destruction, and release cycles. Compile it with
+`i686-w64-mingw32-gcc clipcursor-popup.c -o clipcursor-popup.exe -luser32` and run
+in Boxedwine on an interactive desktop. It must print `CLIPCURSOR_POPUP_PASS`;
+the unpatched build leaves all three released positions inside the old clip
+rectangle. A sandbox desktop that cannot warp the host pointer cannot validate
+the requested coordinates.
+The same probe was also checked in native Wine 11 against WSLg's X11 server,
+without Boxedwine: the original server failed all three releases at `(131,195)`;
+the patched server passed all three at the requested `(500,400)`. This confirms
+that the lost-release failure is reproducible independently of Boxedwine's X11
+implementation.
+
+Both variants include the applied Wine patch sources under
+`usr/local/share/doc/wine/patches`. The profile's `documentation_patches` also
+retains the separate WebGL GDI patch source that shipped with the full v13 root.
 
 After building Wine, the assembler removes the base's old prefix overlay before
 running `wineboot`. It waits for the Wine server, then runs `wineboot -r` to finish
@@ -134,7 +160,7 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
   --variant web --work-dir "$HOME/boxedwine-wine11-web" --jobs 12
 ```
 
-This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 13.
+This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 14.
 Use `--variant web` again when retrying individual phases. The assembler checks
 the Wine configuration stamp and the addon manifest to prevent mixing variants.
 

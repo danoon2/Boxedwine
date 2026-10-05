@@ -152,6 +152,7 @@ public class RunnerTests {
         checkReaderFailures();
         Path root = Files.createTempDirectory("boxedwine-runner-test-");
         try {
+            FilesystemTests.run(Files.createDirectory(root.resolve("filesystem")));
             checkProcesses(root, Paths.get(args[0]).toAbsolutePath());
         } finally {
             try (Stream<Path> paths = Files.walk(root)) {

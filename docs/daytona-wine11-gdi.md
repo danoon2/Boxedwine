@@ -77,7 +77,7 @@ The v42 series appends
 OWNDC guard. All 84 modified/new source files in the cached build matched a
 fresh replay of the complete series. Only WineD3D required recompilation;
 the other seven WebGL DLLs retain their previous hashes. The full filesystem
-builder now selects `webgl_filesystems_v13.json`.
+builder now selects `webgl_filesystems_v14.json`, retaining those v42 DLL hashes.
 
 The rebuilt PE DLL has SHA-256
 `261c38bb2f5d0c6f3bda46386c711a894354896aee2401322b6cda520243e9e1`.

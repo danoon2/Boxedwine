@@ -2,10 +2,13 @@
   "schema_version": 1,
   "wine_tag": "wine-11.0",
   "wine_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
-  "filesystem_version": "13",
+  "filesystem_version": "14",
   "changes_file": "changes_wine11.txt",
   "wine_config": "wine_builds.json",
-  "webgl_config": "webgl_filesystems_v13.json",
+  "webgl_config": "webgl_filesystems_v14.json",
+  "documentation_patches": [
+    "../d3dToWebGL/webgl-gdi-owndc-sysmem-against-wine-11.0.patch"
+  ],
   "gecko": {
     "version": "2.47.4",
     "url": "https://dl.winehq.org/wine/wine-gecko/2.47.4/wine-gecko-2.47.4-x86.msi",

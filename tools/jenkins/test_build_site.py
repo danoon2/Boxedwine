@@ -16,7 +16,7 @@ def create_zip(path, files=None):
 
 
 class DemoRootSelectionTests(unittest.TestCase):
-    def test_web_v13_migrates_full_and_old_gdi_roots_and_defaults_other_demos(self):
+    def test_web_filesystem_migrates_full_and_old_gdi_roots_and_defaults_other_demos(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             demo_source = Path(temp_dir)
             for name in ("TinyCore15Wine11.0-web.zip", "TinyCore15Wine11.0.zip",

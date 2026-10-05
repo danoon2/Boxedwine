@@ -44,13 +44,13 @@ choices stay visible and produce an actionable launch error. Driver environment
 variables are set only on the child process, including Wine preparation,
 installers and alternate programs. Per-app choices are included in backups.
 
-The current native UI release offers only Wine 11.0 V13. With a single catalog
+The current native UI release offers only Wine 11.0 V14. With a single catalog
 entry, Add App shows the package as text, built-in apps select it automatically,
 and version selection, ZIP import and trial-copy controls and guidance are hidden.
 Settings still offers setup of the supported package when needed. Existing apps
 retain their pinned package records. The shared native catalog lives in the Mac
-UI's `Resources/WindowsSupport/filesV2.xml` and `packages.json`; add a validated
-future package to both files to restore multiple-version controls in both UIs.
+UI's `Resources/WindowsSupport/packages.json`; add a validated future package
+to that catalog and verify package selection in each UI before release.
 
 The native runtime is built separately as `BoxedwineEngine.exe`, with intermediate
 files in `artifacts/runtime-obj` and output in `artifacts/runtime`. The script copies
@@ -248,6 +248,6 @@ dotnet run --project Tests/Boxedwine.Tests.csproj -c Release --no-restore -- C:\
 
 `--network` downloads and verifies Bang! Bang! and NetSurf into a disposable library.
 `--emulator` checks Wine configuration and defaults, runs a Wine command, and starts
-and gracefully stops hidden Notepad. The current Wine 11/filesystem 13 pin was used
-for real-runtime validation. All 34 recipes parse; this is not a gameplay/installer
+and gracefully stops hidden Notepad. The previous Wine 11/filesystem 13 pin was used
+for the recorded real-runtime validation. All 34 recipes parse; this is not a gameplay/installer
 compatibility test of all 34 demos. x64 was exercised; ARM64 was not.

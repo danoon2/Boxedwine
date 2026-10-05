@@ -38,6 +38,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class Main {
     static String wineZip;
+    static Path userRegistry;
     static String scriptDir;
     static String boxedWineExe = "boxedwine";
     static Vector<String> extraCommands = new Vector<>();
@@ -229,6 +230,11 @@ public class Main {
             deleteDir(rootPath);
         }
         rootPath.mkdir();
+        if (userRegistry != null) {
+            Path registry = rootPath.toPath().resolve(PrepareFilesystem.USER_REG);
+            Files.createDirectories(registry.getParent());
+            Files.copy(userRegistry, registry, REPLACE_EXISTING);
+        }
         File copiedFilesPath = new File(path+File.separator+"root"+File.separator+"files");
         copyFolder(new File(filesPath).toPath(), copiedFilesPath.toPath());
 
@@ -400,6 +406,12 @@ public class Main {
             } else if (args[index].equals("-name")) {
                 perfName = args[index + 1];
                 index++;
+                continue;
+            } else if (args[index].equals("-user-reg")) {
+                userRegistry = Paths.get(args[++index]).toAbsolutePath();
+                if (!Files.isRegularFile(userRegistry)) {
+                    throw new IllegalArgumentException("Missing automation registry: " + userRegistry);
+                }
                 continue;
             } else {
                 break;

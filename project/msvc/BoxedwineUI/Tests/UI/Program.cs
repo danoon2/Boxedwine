@@ -26,7 +26,7 @@ internal static partial class Program
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/{typeof(MainWindow).Assembly.GetName().Name};component/Styles.xaml", UriKind.Relative) });
             CheckRuntimeIcons(destination, args);
             var catalog = Packages.Catalog(Path.Combine(AppContext.BaseDirectory, "Resources"));
-            if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "13") throw new Exception("This release must offer only Wine 11 V13.");
+            if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "14") throw new Exception("This release must offer only Wine 11 V14.");
             foreach (string theme in new[] { "Light", "Dark" })
             {
                 string library = Path.Combine(destination, "library-" + theme);
@@ -34,7 +34,7 @@ internal static partial class Program
                 {
                     if (repository.Load().Apps.Count == 0)
                     {
-                        var fakeWine = new WineReference(new string('a', 64), 100, "11.0", "13");
+                        var fakeWine = new WineReference(new string('a', 64), 100, "11.0", "14");
                         repository.AddBuiltIn("notepad", fakeWine); repository.AddBuiltIn("minesweeper", fakeWine);
                     }
                 }
@@ -111,14 +111,14 @@ internal static partial class Program
             {
                 if (HasButton(dialog, "Choose Wine Version…") != multiple || HasButton(dialog, "Import Wine ZIP…") != multiple) throw new Exception("Wine selection settings do not match catalog availability.");
                 if (!multiple && !HasButton(dialog, "Set Up Windows Support")) throw new Exception("The sole supported package must still be available for setup.");
-                if (!multiple && !Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("Wine 11.0 V13"))) throw new Exception("Settings should retain the filesystem revision.");
+                if (!multiple && !Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("Wine 11.0 V14"))) throw new Exception("Settings should retain the filesystem revision.");
             });
             CheckDialog(window, "Add", [null!], Path.Combine(destination, $"{theme}-{suffix}-add.png"), dialog =>
             {
                 var picker = Descendants<ComboBox>(dialog).SingleOrDefault(c => AutomationProperties.GetName(c) == "Wine version");
                 if ((picker != null) != multiple) throw new Exception("The Wine picker must be hidden for a single release.");
                 if (picker != null && (picker.Items.Count != 2 || ((CatalogWine)picker.SelectedItem).WineVersion != "11.0")) throw new Exception("Multiple versions or the supported default were lost.");
-                if (!multiple && (!Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("Wine 11.0")) || Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("V13")))) throw new Exception("App screens should show the Wine version without the filesystem revision.");
+                if (!multiple && (!Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("Wine 11.0")) || Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("V14")))) throw new Exception("App screens should show the Wine version without the filesystem revision.");
             });
             CheckDialog(window, "Troubleshoot", [repository.Load().Apps[0]], Path.Combine(destination, $"{theme}-{suffix}-troubleshooting.png"), dialog =>
             {

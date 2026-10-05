@@ -28,7 +28,7 @@ from boxedwine.icons import Reader
 def wine_fixture(path):
     elf = bytearray(64); elf[:7] = b'\x7fELF\x01\x01\x01'; elf[16] = 3; elf[18] = 3
     with zipfile.ZipFile(path, 'w') as archive:
-        for name, data in {'wineVersion.txt': '11.0', 'version.txt': '13', 'bin/wine.link': '../opt/wine/bin/wine',
+        for name, data in {'wineVersion.txt': '11.0', 'version.txt': '14', 'bin/wine.link': '../opt/wine/bin/wine',
                            'opt/wine/bin/wine': elf, 'opt/wine/lib/ntdll.dll': b'MZ', 'opt/wine/lib/kernel32.dll': b'MZ',
                            DRIVE_C + '/windows/system32/glide2x.dll': b'MZ', DRIVE_C + '/ddraw/ddraw.ini': '[ddraw]\nrenderer=auto\n'}.items():
             archive.writestr(name, data)
@@ -203,7 +203,7 @@ class CoreTests(unittest.TestCase):
         for target in ['wine', '../../../../escape']:
             path = self.directory / 'loop.zip'
             with zipfile.ZipFile(path, 'w') as archive:
-                archive.writestr('wineVersion.txt', '11.0'); archive.writestr('version.txt', '13')
+                archive.writestr('wineVersion.txt', '11.0'); archive.writestr('version.txt', '14')
                 archive.writestr('bin/wine.link', target)
             with self.assertRaises(ValueError):
                 validate_wine(path)

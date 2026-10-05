@@ -12,6 +12,21 @@ import build_filesystem as fs
 
 
 class FilesystemAssemblyTests(unittest.TestCase):
+    def test_patch_documentation_preserves_applied_and_additional_sources(self):
+        profile = json.loads((fs.HERE / 'filesystem_wine11.json').read_text())
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fs.stage_patch_documentation(profile, root)
+            docs = root / 'usr/local/share/doc/wine/patches'
+            for name in ('wine11_clipcursor_destroyed_popup.patch', 'wine11_wined3d_owndc_sysmem.patch'):
+                self.assertEqual((docs / name).read_bytes(), (fs.HERE / 'patches' / name).read_bytes())
+            for name in profile['documentation_patches']:
+                self.assertEqual((docs / Path(name).name).read_bytes(), (fs.HERE / name).read_bytes())
+            # Packaging must not silently choose between different patches sharing a name.
+            (docs / 'wine11_clipcursor_destroyed_popup.patch').write_bytes(b'wrong source')
+            with self.assertRaisesRegex(fs.build_wine.BuildError, 'Conflicting patch documentation'):
+                fs.stage_patch_documentation(profile, root)
+
     def test_psvoodoo_cache_inputs_track_patch_contents_and_toolchain(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

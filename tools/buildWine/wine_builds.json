@@ -151,6 +151,11 @@
       "reason": "Keep persistent GDI surface memory alive across DirectDraw flips, preventing the Daytona USA startup crash"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_clipcursor_destroyed_popup.patch",
+      "reason": "Deliver cursor-release notifications after a popup is destroyed so SimTower floor selection does not leave mouse coordinates clipped"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

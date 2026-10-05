@@ -1,0 +1,26 @@
+SimTower releases ClipCursor and immediately destroys its floor-selection popup.
+The asynchronous WM_WINE_CLIPCURSOR release still targets that popup, so Wine
+drops it when retrieving hardware messages and leaves the X11 clipping window
+grabbed. Subsequent clicks are constrained to the vanished popup's rectangle.
+
+If the release target has disappeared, deliver the release to the surviving
+active window in the same input queue. Keep ordinary input and live targets
+unchanged, and do not redirect requests that enable clipping.
+
+diff --git a/server/queue.c b/server/queue.c
+--- a/server/queue.c
++++ b/server/queue.c
+@@ -1845,6 +1845,13 @@ static user_handle_t find_hardware_message_window( struct desktop *desktop, struct
+ 
+     if (!*thread)
+         *thread = get_window_thread( win );
++    if (!*thread && input && msg->msg == WM_WINE_CLIPCURSOR && (msg->wparam & SET_CURSOR_NOCLIP))
++    {
++        /* A popup may be destroyed before its queued cursor release is handled. */
++        win = input_shm->active;
++        *thread = get_window_thread( win );
++    }
++
+     return win;
+ }
+ 

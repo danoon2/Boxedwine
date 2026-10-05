@@ -128,7 +128,7 @@ struct DemoTests {
         #expect(!FileManager.default.fileExists(atPath: f.repository.directory.appendingPathComponent("Applications").path))
     }
 
-    @Test(arguments: ["11", "12", "13"]) func glideRecipePreparesInstallerWithoutRendererOverrides(filesystemVersion: String) async throws {
+    @Test(arguments: ["11", "12", "13", "14"]) func glideRecipePreparesInstallerWithoutRendererOverrides(filesystemVersion: String) async throws {
         let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
         var files = ZipFixture.files
         files[1].data = Data(filesystemVersion.utf8)
