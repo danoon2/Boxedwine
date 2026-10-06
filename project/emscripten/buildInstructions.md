@@ -3,6 +3,10 @@
 The four browser targets are `release`, `jit`, `multiThreaded`, and
 `multiThreadedJit`. Each target retains its own object directory.
 
+All four browser targets and their automation variants start with 512 MiB of
+Wasm memory and allow growth up to 3 GiB. They share `RUNTIME_MEMORY_FLAGS` in
+the makefile; memory is grown on demand.
+
 The configuration dependency records compiler paths/versions, make flags,
 `EMCC_CFLAGS`, and `SOURCE_DATE_EPOCH`. Changing or removing either environment
 setting recompiles and relinks; unchanged settings preserve the existing
@@ -247,6 +251,13 @@ installer with real WASM modules and memory, stubbing broker bookkeeping.
 It checks compilation, table reservation, output slots, and execution with
 both low and high addresses. The test reserves just over 2 GiB of shared
 linear address space but touches only a few pages.
+
+Run `node testWebGLHighMemory.mjs` to check the WebGL buffer readback helper
+with low and high addresses before and after memory growth, using both shared
+and unshared memory. Pass a compiled runtime path, for example
+`node testWebGLHighMemory.mjs Build/Release/boxedwine.js`, to check the emitted
+helper instead. The test uses a stub WebGL context to verify the destination
+offset and copied bytes; it does not require a browser or GPU.
 
 
 ## Running The Multi-Threaded OpenGL Bootstrap Regression

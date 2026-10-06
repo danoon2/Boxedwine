@@ -36,7 +36,8 @@ EM_JS(void, boxedwineGetBufferSubDataJS,
             GL.recordError(0x0502); // GL_INVALID_OPERATION
             return;
         }
-        GLctx.getBufferSubData(target, offset, HEAPU8, data, size);
+        // Wasm i32 pointers above 2 GiB arrive in JavaScript as signed values.
+        GLctx.getBufferSubData(target, offset, HEAPU8, data >>> 0, size);
     });
 
 static void OPENGL_CALL_TYPE boxedwineGetBufferSubData(
