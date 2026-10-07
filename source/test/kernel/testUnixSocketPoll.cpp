@@ -430,6 +430,31 @@ void testNativeSocketRecvmsgReceivesOobData() {
         return;
     }
 
+    // On macOS 27, urgent data sent as the first payload after a nonblocking connect
+    // can fail to become readable. Complete a normal transfer before testing MSG_OOB.
+    memory->writeb(SEND_NORMAL, 'n');
+    U32 setupSendResult = ksend(thread, client, SEND_NORMAL, 1, 0);
+    if (setupSendResult != 1) {
+        testFail("native TCP setup send expected 1, got %d (0x%X)", (S32)setupSendResult, setupSendResult);
+        context.process->close(server);
+        context.process->close(client);
+        return;
+    }
+    if (!waitForNativeSocketRead(context, server, "TCP OOB setup")) {
+        context.process->close(server);
+        context.process->close(client);
+        return;
+    }
+    memory->writeb(RECV_DATA, 0);
+    U32 setupRecvResult = krecv(thread, server, RECV_DATA, 1, 0);
+    if (setupRecvResult != 1 || memory->readb(RECV_DATA) != 'n') {
+        testFail("native TCP setup receive expected byte 'n', got result=%d data=0x%02X",
+            (S32)setupRecvResult, memory->readb(RECV_DATA));
+        context.process->close(server);
+        context.process->close(client);
+        return;
+    }
+
     memory->writeb(SEND_OOB, '!');
     memory->writeb(SEND_NORMAL, 'n');
     U32 sendOobResult = ksend(thread, client, SEND_OOB, 1, K_MSG_OOB);
