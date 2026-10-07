@@ -133,7 +133,7 @@ static void writeLastRecvSockAddr(KMemory* memory, U32 browserSocket, U32 addres
             (ipv4 >> 8) & 0xff,
             (ipv4 >> 16) & 0xff,
             (ipv4 >> 24) & 0xff,
-            port);
+            (U32)port);
     }
     memory->writed(addressLen, 16);
 }

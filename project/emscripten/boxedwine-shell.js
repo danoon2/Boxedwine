@@ -141,8 +141,14 @@
         function configureBrowserStorage() {
             // IDBFS names databases after their mount points. Keep each game's
             // Wine prefix and D: drive together, independent of build or root ZIP.
+            // storageKey= overrides the per-game key so separate launches can share
+            // one store; storageKey=default selects the desktop/upload storage.
+            let storageKey = allowParameterOverride() ? decodeUrlValue(getParameter("storageKey")).trim() : "";
             let key = "";
-            if (Config.appZipFile.length > 0) {
+            if (storageKey.length > 0) {
+                key = storageKey.toLowerCase() === "default" ? "" : "key/" + encodeURIComponent(storageKey);
+                console.log("setting storage key to: " + (key || "default"));
+            } else if (Config.appZipFile.length > 0) {
                 key = "app/" + encodeURIComponent(decodeUrlValue(Config.appZipFile));
             } else if (Config.extraZipFiles.length > 0) {
                 key = "overlay/" + Config.extraZipFiles.map(function(name) {

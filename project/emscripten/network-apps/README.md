@@ -186,6 +186,11 @@ Use persistent storage for this browser peer when you want to launch Boxedwine
 afterward, run Explorer, and browse `Y:`. In other words, omit
 `storage=memory` for the join step. The host can still use `storage=memory`
 because it only needs to serve the overlay-provided files during that session.
+Boxedwine gives each `app=`/`overlay=` launch its own persistent store, so the
+join URLs below pass `storageKey=default` to write the mirror into the same
+store that a default Boxedwine launch (no `app=`) opens. Without it, `Y:` is
+empty in the later Explorer session. Any other `storageKey=` value selects a
+named shared store; pass the same value to the later launch.
 The current proof app buffers archives up to 8 MiB; larger shares report
 `network-share-join: archive incomplete or too large` and do not remap `Y:`.
 
@@ -214,25 +219,25 @@ fetched. A failed delta falls back to the full archive path.
 Run URL:
 
 ```text
-http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join&p=network-share-join&linux=true&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network
+http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join&storageKey=default&p=network-share-join&linux=true&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network
 ```
 
 Win32 run URL:
 
 ```text
-http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join-win32&p=network-share-join.exe&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network
+http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join-win32&storageKey=default&p=network-share-join.exe&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network
 ```
 
 Configured run URL:
 
 ```text
-http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join&p=network-share-join&linux=true&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network&args=--mirror-root%20/home/username/.wine/dosdevices/c:/share-mirror%20--drive%20y%20--beacon-port%2019201
+http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join&storageKey=default&p=network-share-join&linux=true&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network&args=--mirror-root%20/home/username/.wine/dosdevices/c:/share-mirror%20--drive%20y%20--beacon-port%2019201
 ```
 
 Configured live-polling run URL:
 
 ```text
-http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join&p=network-share-join&linux=true&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network&args=--mirror-root%20/home/username/.wine/dosdevices/c:/share-mirror%20--drive%20y%20--beacon-port%2019201%20--poll-seconds%2030
+http://127.0.0.1:8000/boxedwine.html?app=network-apps/network-share-join&storageKey=default&p=network-share-join&linux=true&network=websocket&networkDebug=true&networkGateway=ws://127.0.0.1:8001/boxedwine-network&args=--mirror-root%20/home/username/.wine/dosdevices/c:/share-mirror%20--drive%20y%20--beacon-port%2019201%20--poll-seconds%2030
 ```
 
 End-to-end manual test:
@@ -240,7 +245,8 @@ End-to-end manual test:
 1. Start the web server that hosts `boxedwine.html`.
 2. Start `network-gateway.mjs`.
 3. Launch `network-share-host` with `overlay=home.zip`.
-4. Launch `network-share-join` in a second browser without `storage=memory`.
+4. Launch `network-share-join` in a second browser without `storage=memory`
+   and with `storageKey=default`.
    Keep this browser running if you want the mirror to refresh every poll
    interval.
 5. Launch Boxedwine in the second browser with the default persistent storage,

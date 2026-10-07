@@ -219,11 +219,15 @@ $(SOFT_OBJS): INCLUDES := $(SOFTFLOAT_INCLUDES)
 CXXFLAGS ?= -std=c++20
 OPTIMIZATION_FLAGS ?= -O2
 TAIL_CALL_FLAG ?= -mtail-call
-COMPILE_EXCEPTION_FLAG ?= -fwasm-exceptions
-LINK_EXCEPTION_FLAG ?= -fwasm-exceptions
+# Native wasm exception handling, emitted in the standardized (exnref) encoding
+# rather than Emscripten's legacy default. WASM_LEGACY_EXCEPTIONS is a
+# compile+link setting, so it travels with every -fwasm-exceptions.
+WASM_EXCEPTIONS_FLAG ?= -fwasm-exceptions -sWASM_LEGACY_EXCEPTIONS=0
+COMPILE_EXCEPTION_FLAG ?= $(WASM_EXCEPTIONS_FLAG)
+LINK_EXCEPTION_FLAG ?= $(WASM_EXCEPTIONS_FLAG)
 LONGJMP_FLAG ?= -sSUPPORT_LONGJMP=0
 EXCEPTION_CATCHING_ALLOWED ?= ["_Z8mainloopv","_ZN3CPU15runNextSingleOpEv","_ZL14platformThreadP3CPU"]
-EXCEPTION_CATCHING_FLAG ?= -sWASM_LEGACY_EXCEPTIONS=0
+EXCEPTION_CATCHING_FLAG ?=
 CPPFLAGS ?= $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s USE_SDL=2 -s USE_ZLIB=1 -DBOXEDWINE_ZLIB -DSDL2=1 -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_OPENGL_SDL -D'GLH=<GL/gl.h>' -DSIMDE_SSE2_NO_NATIVE $(GCC_EXTRA_FLAGS) -Wall -Wno-deprecated-pragma -Wno-format-security -Wno-unused-private-field -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) $(EXTRA_CPP_FLAGS)
 
 SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE),)
@@ -363,7 +367,7 @@ $(BUILD_DIR)/%.cpp.o: %.cpp $(COMPILE_CONFIG)
 # for all code, triggering RAII destructors that weren't firing before).
 # These explicit rules take precedence over the pattern rule above in GNU make.
 ifneq (,$(findstring BOXEDWINE_WASM_JIT,$(EXTRA_CPP_FLAGS)))
-WASM_EXCEPTION_CPPFLAGS = $(filter-out $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG),$(CPPFLAGS)) -fwasm-exceptions -sSUPPORT_LONGJMP=wasm
+WASM_EXCEPTION_CPPFLAGS = $(filter-out $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG),$(CPPFLAGS)) $(WASM_EXCEPTIONS_FLAG) -sSUPPORT_LONGJMP=wasm
 else
 WASM_EXCEPTION_CPPFLAGS = $(CPPFLAGS)
 endif
