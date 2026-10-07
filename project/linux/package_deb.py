@@ -123,7 +123,7 @@ def build_package(stage, destination, architecture, version):
         (bin_dir / 'boxedwine-ui').symlink_to('../lib/boxedwine/boxedwine-ui')
         (bin_dir / 'boxedwine').symlink_to('../lib/boxedwine/CommandLine/boxedwine')
         desktop = root / 'usr/share/applications'; desktop.mkdir(parents=True)
-        shutil.copy2(stage / 'org.boxedwine.Boxedwine.desktop', desktop)
+        shutil.copy2(LINUX / 'ui/org.boxedwine.Boxedwine.desktop', desktop)
         icons = root / 'usr/share/icons/hicolor/256x256/apps'; icons.mkdir(parents=True)
         shutil.copy2(stage / 'ui/resources/org.boxedwine.Boxedwine.png', icons)
         docs = root / 'usr/share/doc/boxedwine'

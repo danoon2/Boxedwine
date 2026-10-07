@@ -26,7 +26,8 @@ class DebianPackagingTests(unittest.TestCase):
         self.stage = self.root / 'stage'; self.stage.mkdir()
         self.destination = self.root / 'output'
         shutil.copy2(LINUX / 'boxedwine-ui', self.stage)
-        shutil.copy2(LINUX / 'ui/org.boxedwine.Boxedwine.desktop', self.stage)
+        shutil.copy2(LINUX / 'ui/org.boxedwine.Boxedwine.portable.desktop',
+                     self.stage / 'org.boxedwine.Boxedwine.desktop')
         shutil.copy2(LINUX / 'ui/README.md', self.stage)
         shutil.copytree(LINUX / 'ui/boxedwine', self.stage / 'ui/boxedwine',
                         ignore=shutil.ignore_patterns('__pycache__'))
@@ -72,6 +73,9 @@ class DebianPackagingTests(unittest.TestCase):
                 extracted = self.root / architecture
                 subprocess.run(['dpkg-deb', '-x', str(package), str(extracted)], check=True)
                 install = extracted / 'usr/lib/boxedwine'
+                desktop_text = (extracted / 'usr/share/applications/org.boxedwine.Boxedwine.desktop').read_text()
+                self.assertIn('\nExec=boxedwine-ui\n', desktop_text)
+                self.assertNotIn('%k', desktop_text)
                 self.assertTrue((extracted / 'usr/bin/boxedwine-ui').read_text().startswith('#!/usr/bin/python3\n'))
                 # Import the installed module from an unrelated cwd, without GTK.
                 result = subprocess.check_output([sys.executable, '-c',
