@@ -606,10 +606,10 @@
       }
       const rows = peers.map((peer) => {
         const bindings = (peer.udpBindings || []).map((binding) =>
-          `<div class="mono">#${binding.socketId} ${binding.host}:${binding.port}</div>`
+          `<div class="mono">#${escapeHtml(binding.socketId)} ${escapeHtml(binding.host)}:${escapeHtml(binding.port)}</div>`
         ).join("") || '<span class="subtitle">none</span>';
         return `<tr>
-          <td class="mono">${peer.ip}</td>
+          <td class="mono">${escapeHtml(peer.ip)}</td>
           <td>${numberFormat.format(peer.udpSockets || 0)}</td>
           <td>${numberFormat.format((peer.tcpSockets || 0) + (peer.virtualTcpLinks || 0))}</td>
           <td>${numberFormat.format(peer.tcpServers || 0)}</td>
