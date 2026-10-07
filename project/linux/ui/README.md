@@ -73,6 +73,13 @@ engine still take precedence. `CommandLine/boxedwine` is the independent legacy
 command-line/automation build; the UI uses its separate native runtime for the
 launch/stop protocol. Keep the entire portable folder together. Portable here
 means relocatable; the host still needs the runtime dependencies listed above.
+Install those dependencies before launching the portable copy. In particular,
+having GTK/libadwaita libraries installed does not guarantee that their Python
+introspection packages (`gir1.2-gtk-4.0` and `gir1.2-adw-1`) are installed.
+The portable `.desktop` file finds `boxedwine-ui` beside itself; keep the shortcut
+inside the portable folder. Your file manager may require **Allow Launching** or
+**Trust and Launch** the first time. Installing the `.deb` handles dependencies
+and adds a regular application-menu entry instead.
 
 ## Debian packages
 

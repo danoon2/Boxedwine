@@ -58,7 +58,11 @@ def main():
         shutil.copy2(cached, resources / 'catalog.zip')
     else:
         print('Demo catalog is not cached; the UI will offer to download the pinned catalog.')
-    shutil.copy2(HERE / 'org.boxedwine.Boxedwine.desktop', output)
+    # %k lets the portable shortcut find its neighboring launcher after moving
+    # the folder. Installed shortcuts instead find boxedwine-ui on PATH.
+    portable_desktop = output / 'org.boxedwine.Boxedwine.desktop'
+    shutil.copy2(HERE / 'org.boxedwine.Boxedwine.portable.desktop', portable_desktop)
+    portable_desktop.chmod(0o755)
     shutil.copy2(HERE / 'README.md', output)
     print('Staged ' + str(output / 'boxedwine-ui'))
     if options.prefix:

@@ -7,6 +7,7 @@ import io
 import os
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -67,6 +68,25 @@ class PackagingTests(unittest.TestCase):
         wrapper = self.root / 'package/usr/bin/boxedwine-ui'
         self.assertTrue(os.access(wrapper, os.X_OK))
         self.assertIn('/usr/lib/boxedwine/boxedwine-ui', wrapper.read_text())
+        desktop = self.root / 'package/usr/share/applications/org.boxedwine.Boxedwine.desktop'
+        self.assertIn('\nExec=boxedwine-ui\n', desktop.read_text())
+
+    def test_portable_shortcut_resolves_neighbor_after_move_with_path_or_uri(self):
+        self.stage()
+        destination = self.root / "moved folder 'quoted' $dollar %percent café"
+        shutil.move(self.output, destination)
+        shortcut = destination / 'org.boxedwine.Boxedwine.desktop'
+        self.assertTrue(os.access(shortcut, os.X_OK))
+        launcher = destination / 'boxedwine-ui'
+        launcher.write_text('from pathlib import Path\np = Path(__file__).resolve()\np.with_name("launched").write_text(str(p))\n')
+        command = next(line[5:] for line in shortcut.read_text().splitlines() if line.startswith('Exec='))
+        # %k is expanded by the desktop as a single argument, either a path or URI.
+        # Paths are passed as data, never interpolated into a shell command.
+        for location in (str(shortcut), shortcut.as_uri()):
+            arguments = [location if word == '%k' else word for word in shlex.split(command)]
+            subprocess.run(arguments, cwd=self.root, check=True)
+            self.assertEqual((destination / 'launched').read_text(), str(launcher))
+            (destination / 'launched').unlink()
 
     def test_source_and_older_bundle_fallback_do_not_choose_standalone_cli(self):
         standalone = self.linux / 'CommandLine/boxedwine'; standalone.parent.mkdir()
