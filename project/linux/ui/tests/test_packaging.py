@@ -68,13 +68,16 @@ class PackagingTests(unittest.TestCase):
         self.assertTrue(os.access(wrapper, os.X_OK))
         self.assertIn('/usr/lib/boxedwine/boxedwine-ui', wrapper.read_text())
 
-    def test_source_and_older_bundle_fallback_do_not_choose_standalone_cli(self):
+    def test_missing_bundled_engine_never_falls_back_to_other_builds(self):
         standalone = self.linux / 'CommandLine/boxedwine'; standalone.parent.mkdir()
         shutil.copy2(self.console, standalone)
-        self.assertEqual(default_emulator(self.linux), self.engine)
+        native = self.linux / 'Runtime/boxedwine-engine'
+        self.assertEqual(default_emulator(self.linux), native)
+        self.assertFalse(native.exists())
         old_bundle = self.linux / 'boxedwine-engine'; shutil.copy2(self.engine, old_bundle)
-        self.assertEqual(default_emulator(self.linux), old_bundle)
-        native = self.linux / 'Runtime/boxedwine-engine'; native.parent.mkdir(); shutil.copy2(self.engine, native)
+        self.assertEqual(default_emulator(self.linux), native)
+        self.assertFalse(native.exists())
+        native.parent.mkdir(); shutil.copy2(self.engine, native)
         self.assertEqual(default_emulator(self.linux), native)
 
     def test_invalid_binary_does_not_replace_an_existing_stage(self):

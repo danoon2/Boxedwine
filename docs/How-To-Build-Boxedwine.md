@@ -55,6 +55,19 @@ Go to the directory at `project/mac-xcode` in Finder and open the `Boxedwine.xcw
 
 The Boxedwine target uses the binary translator for x64 or Armv8 depending on your system.
 
+The native macOS UI uses its bundled engine at
+`Boxedwine.app/Contents/Helpers/BoxedwineEngine.app/Contents/MacOS/Boxedwine`.
+The engine location is not a saved preference. For debugging a different build,
+launch a new UI process with an explicit override:
+
+```bash
+open -n /path/to/Boxedwine.app --args --emulator /path/to/BoxedwineEngine.app/Contents/MacOS/Boxedwine
+```
+
+The override applies to app launches and Wine configuration for that process
+only. An invalid path produces an error without falling back to another engine;
+launch logs record the selected engine path.
+
 ## Emscripten Build
 
 Follow the [official Emscripten SDK instructions](https://emscripten.org/docs/getting_started/downloads.html) to install and activate the toolchain. The commands below assume the SDK is installed at `~/emsdk`.

@@ -931,6 +931,7 @@ void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cursorsMutex);
         cursors.set(cursor->id, sdlCursor);
     }
+    if (XServer* server = XServer::getServer(true)) server->setMouseCursorVisible(sdlCursor != nullptr);
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         if (sdlCursor) {
             SDL_ShowCursor(1);

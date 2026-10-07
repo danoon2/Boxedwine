@@ -16,6 +16,56 @@
 
 extern void x11_init();
 
+void testCapturedMouseSensitivity() {
+    CapturedMouse mouse;
+    auto position = [&](int rawX, int rawY, int expectedX, int expectedY) {
+        int x = rawX, y = rawY;
+        mouse.map(x, y);
+        if (x != expectedX || y != expectedY) testFail("Captured mouse %d,%d -> %d,%d, expected %d,%d", rawX, rawY, x, y, expectedX, expectedY);
+    };
+    mouse.configure(true, false, true, 50);
+    position(321, 238, 321, 238); // A grab alone is not relative input.
+    mouse.warp(319, 239); // Alice's recenter point.
+    position(329, 229, 324, 234);
+    position(329, 229, 324, 234); // Queries and events must not count twice.
+    mouse.warp(319, 239);
+    for (int i = 0; i < 100; ++i) {
+        position(320, 238, 319 + i % 2, 239 - i % 2);
+        position(320, 238, 319 + i % 2, 239 - i % 2);
+        mouse.warp(319, 239);
+        position(319, 239, 319, 239); // Warp event contributes no movement.
+    }
+    // Both signs, direction changes, and changing the warp target.
+    position(318, 240, 319, 239);
+    mouse.warp(500, 400);
+    position(501, 399, 500, 400);
+    mouse.configure(true, false, true, 200);
+    mouse.warp(319, 239);
+    position(324, 236, 329, 233);
+    for (int i = 0; i < 100; ++i) {
+        mouse.warp(319, 239);
+        position(319, 239, 319, 239);
+    }
+    // Visible menus, release, focus loss, and 100% all bypass the transform.
+    for (int mode = 0; mode < 4; ++mode) {
+        mouse.configure(mode != 0, mode == 1, mode != 2, mode == 3 ? 100 : 50);
+        mouse.warp(319, 239);
+        position(329, 229, 329, 229);
+        mouse.configure(true, false, true, 50);
+        position(329, 229, 329, 229); // No old anchor on reentry.
+        mouse.warp(319, 239);
+        position(320, 238, 319, 239); // No old remainder either.
+    }
+    mouse.reset(); // Resolution/presentation change.
+    position(329, 229, 329, 229);
+    mouse.configure(true, false, true, 0); // Legacy default.
+    mouse.warp(319, 239);
+    position(329, 229, 329, 229);
+    mouse.configure(true, false, true, 1000);
+    mouse.warp(0, 0);
+    position(INT32_MAX, INT32_MIN, INT32_MAX, INT32_MIN); // Saturate, never wrap.
+}
+
 void testX11ImageIncludeInferiors() {
 	// No global X server or native window is needed for these backing-store
 	// checks. The test windows retain dirty state locally.

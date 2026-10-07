@@ -89,7 +89,7 @@ final class LibraryStore: ObservableObject {
     enum Transfer { case importing, backup, restoring, checkingRuntime, deleting, configuring, organizingWine }
     @Published private(set) var transfer: Transfer = .importing
     @Published private(set) var backingUpID: UUID?
-    private let wineConfiguration = WineConfiguration(executable: RuntimeSession.bundledExecutable())
+    private var wineConfiguration: WineConfiguration?
     private var savedPackages: [URL: RuntimePackage] = [:]
     private var importControl: ImportControl?
     private let operationGate = LibraryOperationGate()
@@ -1357,10 +1357,15 @@ final class LibraryStore: ObservableObject {
         guard canLaunch(app), apps.contains(app), let repository else { return }
         if app.hasPendingWineSettings {
             guard !importing else { return }
-            let configuration = wineConfiguration
             let control = beginImport(name: app.name, runtime: true, transfer: .configuring)
             Task {
                 do {
+                    let configuration: WineConfiguration
+                    if let cached = wineConfiguration { configuration = cached }
+                    else {
+                        configuration = WineConfiguration(executable: try RuntimeSession.executable())
+                        wineConfiguration = configuration
+                    }
                     let ready = try await Task.detached { try repository.applyPendingWineSettings(app, runtime: zip, configuration: configuration, control: control) }.value
                     apps = apps.map { $0.id == app.id ? ready : $0 }
                     finishImport()
@@ -1401,10 +1406,7 @@ final class LibraryStore: ObservableObject {
         do {
             let request = LaunchRequest(app: app, repository: repository, wineZip: zip, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram)
             let arguments = try request.arguments()
-            let executable = RuntimeSession.bundledExecutable()
-            guard FileManager.default.isExecutableFile(atPath: executable.path) else {
-                throw NSError(domain: "Boxedwine", code: 1, userInfo: [NSLocalizedDescriptionKey: "The Boxedwine runtime is missing from this app. Rebuild or reinstall Boxedwine."])
-            }
+            let executable = try RuntimeSession.executable()
             try repository.prepare(app)
             let session = RuntimeSession()
             try session.start(executable: executable, arguments: arguments, log: logURL(app), dockIcon: dockIcon, programFolderBookmark: externalProgram?.folderBookmark, onWindowShown: { [weak self, weak session] in

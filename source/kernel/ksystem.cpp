@@ -63,6 +63,7 @@ std::shared_ptr<FsNode> KSystem::procNode;
 U32 KSystem::wineMajorVersion;
 bool KSystem::disableHideCursor = false;
 bool KSystem::forceRelativeMouse = false;
+U32 KSystem::relativeMouseSensitivity = 100;
 bool KSystem::cacheReads = false;
 bool KSystem::disableWasmJitForWrittenCode = false;
 BString KSystem::showWindowTimestamp;

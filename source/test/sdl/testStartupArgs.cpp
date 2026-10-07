@@ -13,6 +13,29 @@
 #include "../cpu/testCPU.h"
 #include "../../sdl/startupArgs.h"
 
+void testStartupArgsMouseSensitivity() {
+    for (const char* value : {"0", "1", "50", "100", "200", "1000"}) {
+        StartUpArgs startup;
+        const char* argv[] = {"boxedwine", "-rel_mouse_sensitivity", value};
+        if (!startup.parseStartupArgs(3, argv) || startup.rel_mouse_sensitivity != (U32)atoi(value)) {
+            testFail("Mouse sensitivity percentage was not parsed: %s", value);
+        }
+        auto child = startup.buildArgs();
+        auto option = std::find(child.begin(), child.end(), B("-rel_mouse_sensitivity"));
+        if (atoi(value) && (option == child.end() || ++option == child.end() || *option != value)) {
+            testFail("Mouse sensitivity was not preserved in child arguments: %s", value);
+        }
+    }
+    for (const char* value : {"", "-1", "1001", "50.5", "abc", "50percent", "4294967296"}) {
+        StartUpArgs startup;
+        const char* argv[] = {"boxedwine", "-rel_mouse_sensitivity", value};
+        if (startup.parseStartupArgs(3, argv)) testFail("Invalid mouse sensitivity accepted: %s", value);
+    }
+    StartUpArgs startup;
+    const char* missing[] = {"boxedwine", "-rel_mouse_sensitivity"};
+    if (startup.parseStartupArgs(2, missing)) testFail("Missing mouse sensitivity accepted");
+}
+
 static bool hasExactEnvValue(const std::vector<BString>& envValues, const char* value) {
     for (auto& envValue : envValues) {
         if (envValue == value) {

@@ -115,9 +115,13 @@ class Library:
 
     def settings(self):
         path = self.directory / 'linux-settings.json'
-        return read_json(path) if path.exists() else {'theme': 'System', 'deleteImmediately': False}
+        settings = read_json(path) if path.exists() else {'theme': 'System', 'deleteImmediately': False}
+        settings.pop('emulator', None)  # Ignore engine paths saved by older launchers.
+        return settings
 
     def save_settings(self, settings):
+        settings = dict(settings)
+        settings.pop('emulator', None)
         atomic_json(self.directory / 'linux-settings.json', settings)
 
     def validate_app(self, app):

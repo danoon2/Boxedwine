@@ -141,14 +141,15 @@ final class RuntimeLogCapture: @unchecked Sendable {
     private var windowMarker = RuntimeWindowMarker()
     private var onWindowShown: (@Sendable () -> Void)?
 
-    init(url: URL, onWindowShown: (@Sendable () -> Void)? = nil) throws {
+    init(url: URL, executable: URL? = nil, onWindowShown: (@Sendable () -> Void)? = nil) throws {
         self.onWindowShown = onWindowShown
         let descriptor = pipe.fileHandleForReading.fileDescriptor
         guard fcntl(descriptor, F_SETFL, O_NONBLOCK) != -1 else {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
         file = try LaunchLog.prepare(url)
-        let header = "Boxedwine launch — \(ISO8601DateFormatter().string(from: Date()))\n\n"
+        let header = "Boxedwine launch — \(ISO8601DateFormatter().string(from: Date()))\n" +
+            (executable.map { "Engine: \($0.path)\n" } ?? "") + "\n"
         try file.write(contentsOf: Data(header.utf8))
         size = header.utf8.count
     }

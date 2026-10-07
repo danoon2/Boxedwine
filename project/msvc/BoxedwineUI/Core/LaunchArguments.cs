@@ -6,6 +6,7 @@ namespace Boxedwine.Library;
 
 public static class LaunchArguments
 {
+    public const string MouseSensitivityOption = "-rel_mouse_sensitivity";
     public static readonly Dictionary<string, string> WindowsVersions = new()
     {
         ["wineDefault"] = "Use Wine's default", ["win11"] = "Windows 11", ["win10"] = "Windows 10", ["win81"] = "Windows 8.1",
@@ -26,7 +27,35 @@ public static class LaunchArguments
     public static string Help => "Put each option and each value on a separate line. Spaces inside a value are preserved; do not add shell quotes.\n\n" +
         string.Join(", ", Flags) + "\n\n" + string.Join("\n", Ranges.Select(p => $"{p.Key}: {p.Value.Min}–{p.Value.Max}")) +
         "\n\n" + string.Join("\n", Choices.Select(p => p.Key + ": " + string.Join(", ", p.Value))) +
-        "\n-env: NAME=value\n-glext: allowed OpenGL extensions\n\nPaths, Wine packages, window size and mounts are managed by Boxedwine. The obsolete -opengl osmesa option is accepted when importing Mac metadata and omitted at launch.";
+        "\n-env: NAME=value\n-glext: allowed OpenGL extensions\n\n-rel_mouse_sensitivity is a percentage for captured, hidden mouse input that the game recenters; 100 is normal, and legacy 0 also means normal. It is synchronized with the Mouse sensitivity slider.\n\nPaths, Wine packages, window size and mounts are managed by Boxedwine. The obsolete -opengl osmesa option is accepted when importing Mac metadata and omitted at launch.";
+    public static int MouseSensitivity(IReadOnlyList<string> args)
+    {
+        ValidateOverrides(args);
+        int percent = 100;
+        for (int i = 0; i < args.Count; i++)
+        {
+            string option = args[i];
+            if (Flags.Contains(option)) continue;
+            string value = args[++i];
+            if (option == MouseSensitivityOption) percent = int.Parse(value);
+        }
+        return percent == 0 ? 100 : percent;
+    }
+    public static List<string> WithMouseSensitivity(IReadOnlyList<string> args, int percent)
+    {
+        if (percent is < 1 or > 1000) throw new InvalidDataException("Mouse sensitivity must be from 1% to 1000%.");
+        ValidateOverrides(args);
+        List<string> result = [];
+        for (int i = 0; i < args.Count; i++)
+        {
+            string option = args[i];
+            if (option == MouseSensitivityOption) { i++; continue; }
+            result.Add(option);
+            if (!Flags.Contains(option)) result.Add(args[++i]);
+        }
+        if (percent != 100) result.AddRange([MouseSensitivityOption, percent.ToString()]);
+        return result;
+    }
     public static List<string> Lines(string text) => text.Replace("\r\n", "\n").Split('\n').Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
     public static void ValidateResolution(string resolution)
     {

@@ -68,8 +68,10 @@ Linux/
 
 `x64` is Linux's `x86_64`; `arm64` is also called `aarch64`. The UI locates
 `Runtime/boxedwine-engine` relative to its own launcher, regardless of the working
-directory or where the archive is extracted. `--emulator` and a saved custom
-engine still take precedence. `CommandLine/boxedwine` is the independent legacy
+directory or where the archive is extracted. This is the only default engine
+location; old saved engine paths and development-output fallbacks are ignored.
+`--emulator` overrides it for one UI process and is never saved.
+`CommandLine/boxedwine` is the independent legacy
 command-line/automation build; the UI uses its separate native runtime for the
 launch/stop protocol. Keep the entire portable folder together. Portable here
 means relocatable; the host still needs the runtime dependencies listed above.
@@ -180,7 +182,7 @@ python3 ui/build.py --console Build/Release/boxedwine
 Run directly from the source tree after `make native-runtime`:
 
 ```sh
-./boxedwine-ui
+./boxedwine-ui --emulator Build/Native/boxedwine-engine
 ./boxedwine-ui --library /tmp/boxedwine-test-library --emulator /path/to/boxedwine-engine
 ```
 
@@ -200,8 +202,11 @@ RPM, Flatpak, and a signed APT update repository are not provided yet.
 ## Behavior and data
 
 The default library is `$XDG_DATA_HOME/boxedwine`, or
-`~/.local/share/boxedwine`. `--library` selects a separate library. The engine can
-be selected with `--emulator` or in Settings. A file lock prevents concurrent
+`~/.local/share/boxedwine`. `--library` selects a separate library. The engine
+defaults to the bundled `Runtime/boxedwine-engine`; `--emulator PATH` provides a
+temporary debugging override. Missing or non-executable engines produce an error
+with the selected path, without searching for another build. Launch logs record
+the engine path. A file lock prevents concurrent
 Linux frontends from editing the same library. Reopening a library activates its
 existing window; `--open APP_ID` also opens that saved app through the running
 launcher.

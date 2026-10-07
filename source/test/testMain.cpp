@@ -75,6 +75,7 @@ void testWaitPid();
 void testX11ImageIncludeInferiors();
 void testX11ImageScanlinePadding();
 void testXInputValuatorLayout();
+void testCapturedMouseSensitivity();
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
 void testSDLGlWindowRemovalLockOrder();
 #endif
@@ -177,6 +178,7 @@ void testInotifyPollReportsChildDirectoryDelete();
 void testInotifyAsyncSignalsSigioOnDelete();
 void testStartupArgsDefaultUtf8LocaleEnvironment();
 void testStartupArgsLinearMemoryOption();
+void testStartupArgsMouseSensitivity();
 void testTerminatingThreadDoesNotEnterFutexWait();
 void testUnixSocketPollOutClearsPeerCondition();
 void testUnixSocketSendmsgStreamPayloadCanBeRead();
@@ -1136,6 +1138,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testInotifyAsyncSignalsSigioOnDelete, "Test inotify async signals SIGIO on delete", TEST_ENTRY_SERIAL},
     {testStartupArgsDefaultUtf8LocaleEnvironment, "Test startup args default UTF-8 locale environment"},
     {testStartupArgsLinearMemoryOption, "Test startup args linear-memory option", TEST_ENTRY_SERIAL},
+    {testStartupArgsMouseSensitivity, "Test startup args mouse sensitivity", TEST_ENTRY_SERIAL},
+    {testCapturedMouseSensitivity, "Test captured mouse sensitivity and recentering"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testTerminatingThreadDoesNotEnterFutexWait, "Test terminating thread does not enter futex wait"},
 #endif

@@ -153,6 +153,7 @@ public:
     static BString exePath;
     static bool disableHideCursor;
     static bool forceRelativeMouse;
+    static U32 relativeMouseSensitivity;
     static bool cacheReads;
     static bool disableWasmJitForWrittenCode;
     static bool useF64;

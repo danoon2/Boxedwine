@@ -62,16 +62,8 @@ public partial class MainWindow
             if (wine != current) throw new InvalidDataException("The saved Wine package no longer matches its identity."); return wine;
         }, _ => Dialogs.Info(this, "Windows support checked", "The Wine package passed its integrity and structure checks. Compatibility still depends on the Windows app.")));
         ActionButton("Clean Unused Wine Packages", () => RunOperation("Cleaning unused Wine packages…", (_, _) => { repository.PruneWine(); return Task.FromResult(true); }, _ => Dialogs.Info(this, "Wine storage organized", "Packages used by apps, Removed Apps, unfinished copies, and the library default were kept.")));
-        if (!canChange) form.Body.Children.Add(FormWindow.Paragraph("Close running apps before changing Windows support or the emulator."));
+        if (!canChange) form.Body.Children.Add(FormWindow.Paragraph("Close running apps before changing Windows support."));
         else if (HasWineChoices) form.Body.Children.Add(FormWindow.Paragraph("Changing the default affects apps that use the library default. Apps pinned to a package keep that package."));
-        form.Body.Children.Add(FormWindow.Heading("Emulator"));
-        string emulatorPath; try { emulatorPath = Emulator(); } catch { emulatorPath = "BoxedwineEngine.exe was not found."; }
-        form.Body.Children.Add(FormWindow.Paragraph(emulatorPath));
-        ActionButton("Choose BoxedwineEngine.exe…", () =>
-        {
-            string? path = Dialogs.File(this, "Choose the Boxedwine emulator", "Boxedwine executable|*.exe"); if (path == null) return;
-            preferences.EmulatorPath = path; repository.SavePreferences(preferences); checkedWine.Clear();
-        });
         form.Button("Done", () => form.DialogResult = true, true); form.ShowDialog(); Refresh();
     }
     private void Troubleshoot(LibraryApp app)

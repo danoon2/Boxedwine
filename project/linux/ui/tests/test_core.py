@@ -55,6 +55,16 @@ class CoreTests(unittest.TestCase):
         (source / 'save.dat').write_bytes(b'saved progress')
         return self.library.import_app(source, 'folder', self.wine, Work())
 
+    def test_saved_engine_path_is_ignored_and_removed_when_settings_are_saved(self):
+        path = self.library.directory / 'linux-settings.json'
+        old = {'theme': 'Dark', 'deleteImmediately': True, 'emulator': '/another/build/boxedwine-engine'}
+        atomic_json(path, old)
+        settings = self.library.settings()
+        self.assertEqual(settings, {'theme': 'Dark', 'deleteImmediately': True})
+        self.library.save_settings(old)
+        self.assertNotIn('emulator', json.loads(path.read_text()))
+        self.assertIn('emulator', old)  # Saving must not mutate the caller's object.
+
     def test_import_remove_restore_and_permanent_delete(self):
         app = self.portable()
         self.assertTrue(app['executable'].endswith('/Game.exe'))

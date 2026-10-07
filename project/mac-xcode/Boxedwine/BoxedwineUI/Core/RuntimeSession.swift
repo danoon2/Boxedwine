@@ -23,6 +23,30 @@ final class RuntimeSession {
         bundle.bundleURL.appendingPathComponent("Contents/Helpers/BoxedwineEngine.app/Contents/MacOS/Boxedwine")
     }
 
+    static func executable(in bundle: Bundle = .main, arguments: [String] = CommandLine.arguments) throws -> URL {
+        var executable = bundledExecutable(in: bundle)
+        if let index = arguments.firstIndex(of: "--emulator") {
+            guard index + 1 < arguments.count, !arguments[index + 1].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !arguments[index + 1].hasPrefix("--") else {
+                throw engineError("--emulator requires a path to the Boxedwine engine.")
+            }
+            executable = URL(fileURLWithPath: arguments[index + 1]).standardizedFileURL
+        }
+        guard executable.resolvingSymlinksInPath() != bundle.executableURL?.resolvingSymlinksInPath() else {
+            throw engineError("--emulator must name the engine executable, not the Boxedwine UI.")
+        }
+        var directory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: executable.path, isDirectory: &directory), !directory.boolValue,
+              FileManager.default.isExecutableFile(atPath: executable.path) else {
+            throw engineError("The Boxedwine engine is missing or not executable: \(executable.path). Rebuild or reinstall Boxedwine, or check the --emulator path.")
+        }
+        return executable
+    }
+
+    private static func engineError(_ message: String) -> NSError {
+        NSError(domain: "Boxedwine", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
+    }
+
     private let process = Process()
     private let input = Pipe()
     private var stopRequested = false
@@ -41,7 +65,7 @@ final class RuntimeSession {
         guard fcntl(input.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1) != -1 else {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
-        let output = try RuntimeLogCapture(url: log) { [weak self] in
+        let output = try RuntimeLogCapture(url: log, executable: executable) { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self, self.onExit != nil, !self.stopRequested, self.process.isRunning else { return }
                 let callback = self.onWindowShown

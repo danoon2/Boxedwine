@@ -241,7 +241,7 @@ struct WineConfigurationProcess: WineConfigurationRunning {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
         let arguments = try Self.arguments(request, job: job, token: token)
-        let output = try RuntimeLogCapture(url: request.log)
+        let output = try RuntimeLogCapture(url: request.log, executable: executable)
         process.executableURL = executable
         process.arguments = arguments
         process.currentDirectoryURL = job

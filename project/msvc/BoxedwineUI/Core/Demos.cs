@@ -55,6 +55,8 @@ public static class Demos
         if (wine.WineVersion != demo.WineVersion) throw new InvalidOperationException("This demo requires Wine " + demo.WineVersion);
         // New demos inherit the global OpenGL choice even when the catalog recommends Native.
         var app = new LibraryApp { Name = demo.Name, Demo = demo.Origin, DemoSettings = demo.Settings, WinePackage = wine, SavedWineVersion = wine.WineVersion, Resolution = demo.Settings.Resolution ?? "1024x768", WindowsOpenGL = "default" };
+        // Seed an editable per-app value only on first install.
+        if (demo.Origin.Id == "alice") app.BoxedwineArguments = LaunchArguments.WithMouseSensitivity([], 200);
         if (demo.Settings.WindowsVersion is string version) app.ChooseWindows(version);
         // Explicit pending flags are required: the preferred values already inherit the recipe.
         if (demo.Settings.Gdi != null) { app.WineRenderer = app.PreferredRenderer; app.WineRendererPending = true; }

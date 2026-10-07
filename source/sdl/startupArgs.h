@@ -85,7 +85,7 @@ public:
         
     U32 pentiumLevel = 4;
 
-    U32 rel_mouse_sensitivity = 0;        
+    U32 rel_mouse_sensitivity = 0; // Percentage; legacy zero means 100%.
     int pollRate = DEFAULT_POLL_RATE;
 
     int userId = UID;

@@ -109,6 +109,9 @@ def install(library, recipe, wine, work):
         raise ValueError('This demo requires Wine ' + recipe['wineVersion'])
     app = new_app(recipe['name'], wine)
     app.update(demo=recipe['origin'], demoSettings=recipe['settings'], resolution=recipe['settings'].get('resolution', '1024x768'))
+    # Seed an editable per-app value only on first install.
+    if recipe['origin']['id'] == 'alice':
+        app['boxedwineArguments'] = ['-rel_mouse_sensitivity', '200']
     for setting, field in [('windowsVersion', 'windowsVersion'), ('gdi', 'wineRenderer'), ('useEGL', 'openGLBackend')]:
         if setting in recipe['settings']:
             app[field] = preference(app, field)

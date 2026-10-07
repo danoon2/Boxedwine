@@ -21,7 +21,7 @@ public sealed class RuntimeSession : IDisposable
     public Task<RuntimeExit> Completion { get; }
     public RuntimeSession(string executable, IReadOnlyList<string> arguments, string wine, string logPath, bool installing = false, bool rotate = true, OpenGLRuntime? openGL = null, RuntimeIdentity? identity = null)
     {
-        if (!File.Exists(executable)) throw new FileNotFoundException("Choose BoxedwineEngine.exe in Settings, or place it next to Boxedwine.exe.", executable);
+        if (!File.Exists(executable)) throw new FileNotFoundException($"The Boxedwine engine was not found: {executable}", executable);
         wineLease = new FileStream(wine, FileMode.Open, FileAccess.Read, FileShare.Read);
         try { log = new BoundedLog(logPath, rotate); } catch { wineLease.Dispose(); throw; }
         process = new Process { StartInfo = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = Path.GetDirectoryName(executable)! } };
@@ -31,7 +31,7 @@ public sealed class RuntimeSession : IDisposable
         try { job = new ProcessJob(); } catch { log.Dispose(); wineLease.Dispose(); process.Dispose(); throw; }
         try
         {
-            log.Write($"Boxedwine launch · {DateTimeOffset.Now:O}\n" + (openGL == null ? "" : "OpenGL: " + OpenGLDrivers.Label(openGL.Implementation) + "\n") + string.Join(" ", process.StartInfo.ArgumentList.Select(a => a.Contains(' ') ? '"' + a + '"' : a)) + "\n");
+            log.Write($"Boxedwine launch · {DateTimeOffset.Now:O}\nEngine: {Path.GetFullPath(executable)}\n" + (openGL == null ? "" : "OpenGL: " + OpenGLDrivers.Label(openGL.Implementation) + "\n") + string.Join(" ", process.StartInfo.ArgumentList.Select(a => a.Contains(' ') ? '"' + a + '"' : a)) + "\n");
             process.Start(); job.Assign(process);
             Completion = Observe(installing);
         }

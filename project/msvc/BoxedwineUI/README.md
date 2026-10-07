@@ -6,6 +6,17 @@ file/folder pickers, keyboard navigation, drag and drop, and .NET's Fluent theme
 Settings supports the Windows appearance setting, Light, and Dark, with live
 changes across open windows. System high-contrast colors are respected.
 
+App Settings includes a per-app mouse sensitivity slider (25%–400%, with 100%
+normal and a Reset button). It adjusts hidden, captured cursor movement after a
+game recenters the pointer, including games using cursor-position polling.
+Changes apply on the next launch. Ordinary visible pointer movement and
+programmatic cursor warps are unchanged; `-forceRelativeMouse` input is excluded.
+The setting is saved in the existing `boxedwineArguments` list as
+`-rel_mouse_sensitivity` plus a percentage, so backups retain it. Advanced values
+from 1%–1000% expand the slider's range; legacy 0 means 100%. The advanced argument
+editor and slider stay synchronized. This requires an engine built with the
+sensitivity implementation; older engines parse the option but ignore it.
+
 ## Build and run
 
 Install the .NET 10 SDK and Visual Studio's C++ desktop build tools. The complete
@@ -134,10 +145,10 @@ overrides the destination. Publishing rejects folders containing an old bundled
 `NuGet.Publish.Config` enables apphost-pack restores only for publishing; ordinary
 development builds still use the offline config.
 
-The launcher first checks its saved emulator preference, then its bundled
-`Runtime/BoxedwineEngine.exe`, then known development outputs. Settings can select
-another emulator executable. Prefer the native runtime built by this script;
-older emulator binaries may be incompatible with current Wine filesystems.
+The launcher uses only `Runtime/BoxedwineEngine.exe` beneath its own directory.
+It does not search adjacent executables or development outputs, and old saved
+engine preferences are ignored. A missing engine produces an error with the
+expected path. Build with `-BuildRuntime`, or package an engine with `-Emulator`.
 
 For an isolated development library:
 
@@ -145,7 +156,10 @@ For an isolated development library:
 ./project/msvc/BoxedwineUI/bin/Release/net10.0-windows/Boxedwine.exe --library C:\Boxedwine\tmp\my-test-library --theme Dark
 ```
 
-`--emulator` overrides the emulator path for that launch. The library can also be
+`--emulator C:\path\BoxedwineEngine.exe` overrides the engine for that UI process
+only and is never saved, even when other settings change. An invalid override
+fails rather than falling back to the bundled engine. Launch logs record the
+resolved engine path. The library can also be
 selected through `BOXEDWINE_LIBRARY_DIRECTORY`. The normal library is
 `%LOCALAPPDATA%\Boxedwine`. The library location in Help opens that folder in
 File Explorer, or the selected library folder when an override is used.

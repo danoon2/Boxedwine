@@ -25,6 +25,8 @@ extension LibraryRepository {
         }
         var app = LibraryApp(name: demo.name)
         app.demo = demo.origin
+        // Seed an editable per-app value only on first install.
+        if demo.id == "alice" { app.boxedwineArguments = ["-rel_mouse_sensitivity", "200"] }
         app.savedWineVersion = demo.wineVersion
         try demo.settings?.validate()
         guard (demo.cncDDrawRenderer == nil && !demo.cncDDrawUncapped && demo.cncDDrawMode == nil) || demo.settings?.cncDDraw == true else { throw DemoError.catalog("CNC DDraw configuration requires CNCDDraw.") }

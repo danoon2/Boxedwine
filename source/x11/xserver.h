@@ -19,6 +19,8 @@
 #ifndef __X_SERVER_H__
 #define __X_SERVER_H__
 
+#include "capturedMouse.h"
+
 #define XI_DEVICE_ID 1
 
 #define XServerPtr std::shared_ptr<XServer>
@@ -35,6 +37,11 @@ public:
 	void mouseMove(S32 x, S32 y, bool relative);
 	bool wantsRelativeMouse();
 	void clampPointerToGrab(S32& x, S32& y);
+    void mapCapturedMouse(S32& x, S32& y);
+    void warpCapturedMouse(S32 x, S32 y);
+    void resetCapturedMouse();
+    void setMouseCursorVisible(bool visible);
+    void setMouseFocused(bool focused);
 	void mouseButton(U32 button, S32 x, S32 y, bool pressed);
 	void key(U32 key, bool pressed);
 
@@ -47,16 +54,26 @@ public:
 	XWindowPtr createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual);
 	XWindowPtr getWindow(U32 window);
 	void setFakeFullScreenWindow(const XWindowPtr& wnd) {
-		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fakeFullScreenMutex);
-		fakeFullScreenWnd = wnd;
+        bool changed;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fakeFullScreenMutex);
+            changed = fakeFullScreenWnd != wnd;
+            fakeFullScreenWnd = wnd;
+        }
+        if (changed) resetCapturedMouse();
 	}
 	XWindowPtr getFakeFullScreenWindow() {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fakeFullScreenMutex);
 		return fakeFullScreenWnd;
 	}
 	void clearFakeFullScreenWindow(const XWindowPtr& wnd) {
-		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fakeFullScreenMutex);
-		if (fakeFullScreenWnd == wnd) fakeFullScreenWnd = nullptr;
+        bool changed;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fakeFullScreenMutex);
+            changed = fakeFullScreenWnd == wnd;
+            if (changed) fakeFullScreenWnd = nullptr;
+        }
+        if (changed) resetCapturedMouse();
 	}
 	int destroyWindow(U32 window);
 	bool requestCloseWindow(const XWindowPtr& wnd);
@@ -145,6 +162,10 @@ private:
 	bool isGrabbed = false;
 	U32 grabbedMask;
 	U32 grabbedTime;
+    CapturedMouse capturedMouse;
+    bool mouseCursorVisible = true;
+    bool mouseFocused = true;
+    void configureCapturedMouse(); // Caller holds grabbedMutex.
 
 	U32 extensionXinput2;
 	U32 extensionGLX;

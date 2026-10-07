@@ -746,6 +746,7 @@ U32 XServer::openDisplay(KThread* thread) {
 }
 
 void XServer::changeScreen(U32 width, U32 height) {
+    resetCapturedMouse();
 	KNativeSystem::changeScreenSize(width, height);
 	root->moveResize(0, 0, width, height);
 
@@ -1010,6 +1011,40 @@ bool XServer::wantsRelativeMouse() {
 	return display && root && (display->getInput2Mask(root->id) & XI_RawMotionMask);
 }
 
+void XServer::configureCapturedMouse() {
+    capturedMouse.configure(isGrabbed && !KSystem::forceRelativeMouse,
+        mouseCursorVisible, mouseFocused, KSystem::relativeMouseSensitivity);
+}
+
+void XServer::mapCapturedMouse(S32& x, S32& y) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+    configureCapturedMouse();
+    capturedMouse.map(x, y);
+}
+
+void XServer::warpCapturedMouse(S32 x, S32 y) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+    configureCapturedMouse();
+    capturedMouse.warp(x, y);
+}
+
+void XServer::resetCapturedMouse() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+    capturedMouse.reset();
+}
+
+void XServer::setMouseCursorVisible(bool visible) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+    mouseCursorVisible = visible;
+    configureCapturedMouse();
+}
+
+void XServer::setMouseFocused(bool focused) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+    mouseFocused = focused;
+    configureCapturedMouse();
+}
+
 void XServer::clampPointerToGrab(S32& x, S32& y) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 	if (!isGrabbed || !grabbedConfinedId) return;
@@ -1059,6 +1094,7 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 			if (presentedWindow) {
 				presentedWindow->windowToScreen(x, y);
 			}
+			mapCapturedMouse(x, y);
 			clampPointerToGrab(x, y);
 			grabbed->motionNotify(grabbedDisplay, x, y);
 			return;
@@ -1090,6 +1126,7 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 	if (presentedWindow) {
 		presentedWindow->windowToScreen(x, y);
 	}
+    mapCapturedMouse(x, y);
 	clampPointerToGrab(x, y);
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
@@ -1140,6 +1177,10 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 
+        if (!isGrabbed || grabbedId != grabbed->id || grabbedDisplayId != display->displayId ||
+                grabbedConfinedId != (confined ? confined->id : 0)) {
+            capturedMouse.reset();
+        }
 		this->grabbedId = grabbed->id;
 		this->grabbedConfinedId = confined ? confined->id : 0;
 		this->grabbedMask = mask;
@@ -1175,6 +1216,7 @@ U32 XServer::ungrabPointer(U32 time) {
 		this->grabbedDisplayId = 0;
 		this->grabbedConfinedId = 0;
 		this->isGrabbed = false;
+        capturedMouse.reset();
 	}
 	S32 x = 0;
 	S32 y = 0;

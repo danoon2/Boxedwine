@@ -915,15 +915,6 @@ class Window(Adw.ApplicationWindow):
     def show_logs(self, app):
         dialogs.logs(self, app)
 
-    def set_emulator(self, path):
-        if not self.can_modify(all_apps=True):
-            return
-        if not path.is_file() or not os.access(path, os.X_OK):
-            raise ValueError('Choose an executable Boxedwine engine.')
-        self.emulator = path
-        preferences = self.library.settings(); preferences['emulator'] = str(path); self.library.save_settings(preferences)
-        self.toast('Emulator updated')
-
     def open_uri(self, uri):
         Gtk.UriLauncher.new(uri).launch(self, None, self.uri_finished)
 
@@ -1024,7 +1015,7 @@ class Application(Adw.Application):
             self.library = Library(self.options.library)
             resources = Resources(self.options.resources)
             desktop.setup_launcher(self.library, resources, self.get_application_id())
-            emulator = self.options.emulator or self.library.settings().get('emulator') or default_emulator()
+            emulator = self.options.emulator or default_emulator()
             self.window = Window(self, self.library, resources, emulator)
             css = Gtk.CssProvider()
             css.load_from_data(b'.app-card { padding: 0; } .selected-app { outline: 2px solid @accent_color; outline-offset: -2px; }')
@@ -1052,7 +1043,8 @@ class Application(Adw.Application):
 def main():
     parser = argparse.ArgumentParser(description='Native GTK/libadwaita Boxedwine UI')
     parser.add_argument('--library', type=Path, default=Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share')) / 'boxedwine')
-    parser.add_argument('--emulator', type=Path, help='Path to the native Boxedwine engine')
+    parser.add_argument('--emulator', type=lambda value: Path(value).expanduser().absolute(),
+                        help='Use this native engine for this launch only (debugging; never saved)')
     parser.add_argument('--resources', type=Path, help='Application resource directory')
     parser.add_argument('--open', metavar='APP_ID', help='Open a saved app (also works with a running launcher)')
     options = parser.parse_args()

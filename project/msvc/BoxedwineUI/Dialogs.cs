@@ -149,6 +149,14 @@ internal static class Dialogs
         var resolution = new ComboBox { IsEditable = true, ItemsSource = new[] { "640x480", "800x600", "1024x768", "1280x720", "1920x1080" }, Text = app.Resolution, MinHeight = 34 };
         form.Field("Window size", resolution);
         var full = new CheckBox { Content = "Open in full screen", IsChecked = app.FullScreen, Margin = new Thickness(0, 0, 0, 16) }; form.Body.Children.Add(full);
+        int mousePercent = LaunchArguments.MouseSensitivity(app.BoxedwineArguments ?? []);
+        var mouse = new Slider { Minimum = Math.Min(25, mousePercent), Maximum = Math.Max(400, mousePercent), Value = mousePercent, TickFrequency = 1, IsSnapToTickEnabled = true, SmallChange = 1, LargeChange = 10, VerticalAlignment = VerticalAlignment.Center };
+        AutomationProperties.SetName(mouse, "Mouse sensitivity");
+        var mouseValue = new TextBlock { Text = mousePercent + "%", MinWidth = 52, Margin = new Thickness(12, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        var mouseReset = new Button { Content = "Reset", Padding = new Thickness(10, 4, 10, 4) };
+        AutomationProperties.SetName(mouseReset, "Reset mouse sensitivity");
+        var mouseRow = new DockPanel(); DockPanel.SetDock(mouseReset, Dock.Right); mouseRow.Children.Add(mouseReset); DockPanel.SetDock(mouseValue, Dock.Right); mouseRow.Children.Add(mouseValue); mouseRow.Children.Add(mouse);
+        form.Field("Mouse sensitivity", mouseRow, "100% is normal. Adjusts mouse movement while a game captures the cursor. Applies the next time you launch the app.");
         form.Body.Children.Add(FormWindow.Paragraph("Wine " + (app.SavedWineVersion ?? repository.DefaultWine?.WineVersion ?? "not configured") + " · " + (app.SavedWineVersion != null ? "saved for this app" : "library default")));
         var windows = FormWindow.Choices(LaunchArguments.WindowsVersions, app.PreferredWindows); form.Field("Windows version", windows, "Changes apply and are checked before the next app or installer launch.");
         var advanced = new StackPanel(); var expander = new Expander { Header = "Advanced", Content = advanced, Margin = new Thickness(0, 0, 0, 8) }; form.Body.Children.Add(expander);
@@ -167,6 +175,30 @@ internal static class Dialogs
         advanced.Children.Add(FormWindow.Paragraph(OpenGLDrivers.Help(architecture)));
         var backend = FormWindow.Choices(new() { ["wineDefault"] = "Use Wine's default", ["glx"] = "GLX", ["egl"] = "EGL" }, app.PreferredBackend); Field("Wine OpenGL interface", backend);
         var bw = FormWindow.Text(string.Join("\n", app.BoxedwineArguments ?? []), true); Field("Boxedwine arguments — one option or value per line", bw);
+        bool updatingMouse = false;
+        bw.TextChanged += (_, _) =>
+        {
+            if (updatingMouse) return;
+            try
+            {
+                int percent = LaunchArguments.MouseSensitivity(LaunchArguments.Lines(bw.Text));
+                updatingMouse = true;
+                mouse.Minimum = Math.Min(25, percent); mouse.Maximum = Math.Max(400, percent); mouse.Value = percent;
+                mouseValue.Text = percent + "%"; mouse.IsEnabled = mouseReset.IsEnabled = true;
+            }
+            catch (InvalidDataException) { mouse.IsEnabled = mouseReset.IsEnabled = false; }
+            finally { updatingMouse = false; }
+        };
+        mouse.ValueChanged += (_, _) =>
+        {
+            if (updatingMouse) return;
+            int percent = (int)Math.Round(mouse.Value);
+            mouseValue.Text = percent + "%";
+            updatingMouse = true;
+            try { bw.Text = string.Join("\n", LaunchArguments.WithMouseSensitivity(LaunchArguments.Lines(bw.Text), percent)); }
+            finally { updatingMouse = false; }
+        };
+        mouseReset.Click += (_, _) => mouse.Value = 100;
         var supported = new Button { Content = "Supported Options", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 6) }; supported.Click += (_, _) => Info(form, "Supported Boxedwine options", LaunchArguments.Help); advanced.Children.Add(supported);
         var args = FormWindow.Text(string.Join("\n", app.Arguments), true); Field("App arguments — one argument per line", args);
         advanced.Children.Add(FormWindow.Paragraph("Spaces inside each line are preserved. Do not add surrounding quotes."));
@@ -176,7 +208,9 @@ internal static class Dialogs
             app.Name = name.Text.Trim(); app.Resolution = resolution.Text.Trim(); app.FullScreen = full.IsChecked == true;
             app.ChooseWindows((string)windows.SelectedValue); app.ChooseRenderer((string)renderer.SelectedValue); app.ChooseBackend((string)backend.SelectedValue);
             app.WindowsOpenGL = (string)openGL.SelectedValue;
-            app.Arguments = LaunchArguments.Lines(args.Text); app.BoxedwineArguments = LaunchArguments.Overrides(LaunchArguments.Lines(bw.Text));
+            app.Arguments = LaunchArguments.Lines(args.Text);
+            var overrides = LaunchArguments.Overrides(LaunchArguments.Lines(bw.Text));
+            app.BoxedwineArguments = LaunchArguments.WithMouseSensitivity(overrides, LaunchArguments.MouseSensitivity(overrides));
             repository.ValidateApp(app); result = new(app, backup); form.DialogResult = true;
         }
         form.Button("Save and Back Up…", () => Save(true)); form.Cancel(); form.Button("Save", () => Save(false), true); form.ShowDialog(); return result;

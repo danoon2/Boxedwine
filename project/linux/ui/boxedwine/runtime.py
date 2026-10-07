@@ -163,21 +163,17 @@ class WindowMarker:
 
 
 def default_emulator(directory=None):
-    """Resolve relative to the launcher, independent of the working directory."""
+    """Use only the bundled engine, independent of the working directory."""
     directory = Path(directory) if directory is not None else Path(__file__).resolve().parents[2]
-    for relative in ('Runtime/boxedwine-engine', 'boxedwine-engine'):
-        candidate = directory / relative
-        if candidate.is_file():
-            return candidate
-    # Direct source-tree launches use the native-runtime build output.
-    return directory / 'Build/Native/boxedwine-engine'
+    return directory / 'Runtime/boxedwine-engine'
 
 
 class Session:
     def __init__(self, emulator, arguments, wine, log, installing=False, rotate=True, on_window=None, on_exit=None, environment=None):
         emulator = Path(emulator).absolute()
         if not emulator.is_file() or not os.access(emulator, os.X_OK):
-            raise ValueError('Choose an executable Boxedwine engine in Settings, or run make native-ui.')
+            raise ValueError(f'The Boxedwine engine is missing or not executable: {emulator}. '
+                             'Rebuild with make native-ui or reinstall Boxedwine. For debugging, use --emulator PATH.')
         self.installing, self.stopped, self.code = installing, False, None
         self.error = None
         self.done, self.window = threading.Event(), threading.Event()
@@ -193,7 +189,7 @@ class Session:
                 os.replace(self.log_path, no_links(self.log_path.parent / 'previous.log'))
             self.log = self.log_path.open('wb' if rotate else 'ab')
             self.count = self.log.tell()
-            self.write(('Boxedwine launch · ' + time.strftime('%Y-%m-%d %H:%M:%S') + '\n' + shlex.join(arguments) + '\n').encode())
+            self.write(('Boxedwine launch · ' + time.strftime('%Y-%m-%d %H:%M:%S') + '\nEngine: ' + str(emulator) + '\n' + shlex.join(arguments) + '\n').encode())
             self.process = subprocess.Popen([str(emulator), *arguments], cwd=emulator.parent, stdin=subprocess.PIPE,
                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,
                                             env={**os.environ, **(environment or {})})

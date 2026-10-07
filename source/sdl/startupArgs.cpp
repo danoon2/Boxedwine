@@ -319,6 +319,10 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->forceRelativeMouse) {
         args.push_back(B("-forceRelativeMouse"));
     }
+    if (this->rel_mouse_sensitivity) {
+        args.push_back(B("-rel_mouse_sensitivity"));
+        args.push_back(BString::valueOf(this->rel_mouse_sensitivity));
+    }
     if (this->cacheReads) {
         args.push_back(B("-cacheReads"));
     }
@@ -345,6 +349,7 @@ bool StartUpArgs::apply() {
 #endif
     KSystem::disableHideCursor = this->disableHideCursor;
     KSystem::forceRelativeMouse = this->forceRelativeMouse;
+    KSystem::relativeMouseSensitivity = this->rel_mouse_sensitivity ? this->rel_mouse_sensitivity : 100;
     KSystem::cacheReads = this->cacheReads;
     KSystem::disableWasmJitForWrittenCode = this->disableWasmJitForWrittenCode;
     KSystem::pentiumLevel = this->pentiumLevel;
@@ -879,8 +884,23 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->setAllowedGlExtension(BString::copy(argv[i+1]));
             i++;
         } else if (!strcmp(argv[i], "-rel_mouse_sensitivity")) {
-            this->rel_mouse_sensitivity = atoi(argv[i+1]);
-            i++;
+            if (i + 1 >= argc || !argv[i + 1][0] || strlen(argv[i + 1]) > 4) {
+                klog("-rel_mouse_sensitivity needs a percentage from 0 to 1000 (0 means 100%)");
+                return false;
+            }
+            U32 value = 0;
+            for (const char* digit = argv[++i]; *digit; ++digit) {
+                if (*digit < '0' || *digit > '9') {
+                    klog("-rel_mouse_sensitivity needs a whole-number percentage");
+                    return false;
+                }
+                value = value * 10 + (*digit - '0');
+            }
+            if (value > 1000) {
+                klog("-rel_mouse_sensitivity must be at most 1000%");
+                return false;
+            }
+            this->rel_mouse_sensitivity = value;
         } else if (!strcmp(argv[i], "-mount_drive")) {
             if (strlen(argv[i+2])!=1) {
                 klog("-mount_drive expects 2 parameters: <host directory to mount> <drive letter to use for wine>");

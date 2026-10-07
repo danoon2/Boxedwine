@@ -105,7 +105,6 @@ public sealed class DemoSettings
 public sealed class LauncherPreferences
 {
     public string Theme { get; set; } = "System";
-    public string? EmulatorPath { get; set; }
     public bool DeleteImmediately { get; set; }
     public string? OpenGLImplementation { get; set; }
 }

@@ -427,6 +427,7 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
         *x = lastX;
         *y = lastY;
         if (XServer* server = XServer::getServer(true)) {
+            server->mapCapturedMouse(*x, *y);
             server->clampPointerToGrab(*x, *y);
         }
         return checkMousePos(*x, *y, false);
@@ -454,14 +455,17 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
         presentedWindow->windowToScreen(*x, *y);
     }
     if (XServer* server = XServer::getServer(true)) {
+        server->mapCapturedMouse(*x, *y);
         server->clampPointerToGrab(*x, *y);
     }
     return checkMousePos(*x, *y, false);
 }
 
 void KNativeInputSDL::setMousePos(int x, int y) {
+    const int guestX = x, guestY = y;
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
+        if (XServer* server = XServer::getServer(true)) server->warpCapturedMouse(x, y);
         lastX = x;
         lastY = y;
         return;
@@ -475,7 +479,12 @@ void KNativeInputSDL::setMousePos(int x, int y) {
     x = xToScreen(x);
     y = yToScreen(y);
 
-    KNativeSystem::warpMouse(x, y);
+    // Update the anchor on the SDL thread together with the physical warp, so
+    // earlier queued movement is processed against the previous anchor.
+    runOnUiThread([x, y, guestX, guestY]() {
+        if (XServer* server = XServer::getServer(true)) server->warpCapturedMouse(guestX, guestY);
+        KNativeSystem::warpMouse(x, y);
+    });
 }
 
 int KNativeInputSDL::xToScreen(int x) {
@@ -987,14 +996,18 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         if (e->window.event == SDL_WINDOWEVENT_CLOSE) {
             KNativeSystem::closeVulkanWindow(e->window.windowID);
         } else if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+            if (XServer* server = XServer::getServer(true)) server->setMouseFocused(true);
             KNativeSystem::focusVulkanWindow(e->window.windowID);
             for (auto& callback : onFocusGained) {
                 callback();
             }
         } else if (e->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+            if (XServer* server = XServer::getServer(true)) server->setMouseFocused(false);
             for (auto& callback : onFocusLost) {
                 callback();
             }
+        } else if (e->window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+            if (XServer* server = XServer::getServer(true)) server->resetCapturedMouse();
         }
     }
     return true;

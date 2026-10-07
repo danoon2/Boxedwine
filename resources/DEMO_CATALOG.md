@@ -16,6 +16,10 @@ The new ZIP is prepared locally; upload it to the pinned URL and verify a fresh
 download before merging the pin. See the
 [recipe schema](../project/mac-xcode/Boxedwine/BoxedwineUI/DEMO_CATALOG.md).
 
+The native launchers initialize newly installed Alice demos (ID `alice`) with
+200% mouse sensitivity. This is saved as an editable per-app Boxedwine argument;
+existing installations retain their saved settings.
+
 `tools/demo_catalog.py` uses Python 3's standard library and is shared build
 infrastructure for future native frontends. The old OpenGL UI still uses its
 existing XML. Other platforms must implement the recipe schema before using

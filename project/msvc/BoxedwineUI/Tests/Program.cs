@@ -62,6 +62,30 @@ sealed partial class TestSuite
         work = Path.Combine(Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith('-')) ?? "../../../../../../tmp/native-ui-tests"), Guid.NewGuid().ToString("N")); Directory.CreateDirectory(work);
         Console.WriteLine("Test workspace: " + work);
         fixture = WineFixture("wine.zip"); wine = await Packages.ValidateWine(fixture, default);
+        await Test("Engine location stays with each UI; overrides never fall back or enter preferences", async () =>
+        {
+            string first = Path.Combine(work, "first portable UI"), second = Path.Combine(work, "second portable UI");
+            foreach (string folder in new[] { first, second })
+            {
+                Directory.CreateDirectory(Path.Combine(folder, "Runtime"));
+                File.WriteAllText(Path.Combine(folder, "Runtime", "BoxedwineEngine.exe"), "engine fixture");
+                File.WriteAllText(Path.Combine(folder, "Boxedwine.exe"), "UI fixture");
+                File.WriteAllText(Path.Combine(folder, "BoxedwineEngine.exe"), "old adjacent engine fixture");
+            }
+            string firstEngine = EngineLocation.Resolve(first), secondEngine = EngineLocation.Resolve(second);
+            Check(firstEngine == Path.Combine(first, "Runtime", "BoxedwineEngine.exe") && firstEngine != secondEngine);
+            string? alternate = EngineLocation.CommandLineOverride(["--emulator", secondEngine]);
+            Check(EngineLocation.Resolve(first, alternate) == secondEngine && EngineLocation.Resolve(first) == firstEngine);
+            await Throws(() => Task.FromResult(EngineLocation.CommandLineOverride(["--emulator"])), "missing override argument");
+            await Throws(() => Task.FromResult(EngineLocation.CommandLineOverride(["--emulator", "--theme", "Dark"])), "option used as engine path");
+            await Throws(() => Task.FromResult(EngineLocation.Resolve(first, Path.Combine(first, "missing.exe"))), "invalid override must not use bundled engine");
+            await Throws(() => Task.FromResult(EngineLocation.Resolve(first, Path.Combine(first, "Boxedwine.exe"))), "UI cannot launch itself as engine");
+            File.Delete(firstEngine);
+            await Throws(() => Task.FromResult(EngineLocation.Resolve(first)), "missing bundled engine must not use adjacent legacy engine");
+            var preferences = JsonSerializer.Deserialize<LauncherPreferences>("{\"theme\":\"Dark\",\"deleteImmediately\":true,\"emulatorPath\":\"old-engine.exe\"}", DataFormat.Json)!;
+            Check(preferences.Theme == "Dark" && preferences.DeleteImmediately);
+            Check(!JsonSerializer.Serialize(preferences, DataFormat.Json).Contains("emulatorPath"), "Retired engine preference must not be saved again");
+        });
         await Test("Runtime app identity and icon metadata are isolated per launch", () =>
         {
             var first = new System.Diagnostics.ProcessStartInfo();
@@ -185,12 +209,36 @@ sealed partial class TestSuite
             using var repository = Repository("arguments"); var app = repository.AddBuiltIn("notepad", wine); app.Arguments = ["one argument with spaces", "$(not-a-shell)"]; var launch = LaunchArguments.Build(repository, app, fixture); Check(launch.TakeLast(2).SequenceEqual(app.Arguments));
             app.WindowsVersionPending = true; await Throws(() => Task.FromResult(LaunchArguments.Build(repository, app, fixture)), "pending configuration");
         });
+        await Test("Mouse sensitivity defaults, overrides, persistence and launch", async () =>
+        {
+            const string option = LaunchArguments.MouseSensitivityOption;
+            Check(LaunchArguments.MouseSensitivity([]) == 100);
+            Check(LaunchArguments.MouseSensitivity([option, "0"]) == 100);
+            Check(LaunchArguments.MouseSensitivity([option, "50", option, "200"]) == 200);
+            var updated = LaunchArguments.WithMouseSensitivity(["-env", "NAME=one two", option, "50", "-nosound", option, "200"], 75);
+            Check(updated.SequenceEqual(["-env", "NAME=one two", "-nosound", option, "75"]));
+            Check(LaunchArguments.WithMouseSensitivity(updated, 100).SequenceEqual(["-env", "NAME=one two", "-nosound"]));
+            foreach (int value in new[] {1, 25, 50, 100, 200, 400, 750, 1000})
+                Check(LaunchArguments.MouseSensitivity(LaunchArguments.WithMouseSensitivity([], value)) == value);
+            foreach (string value in new[] {"-1", "1001", "50.5", "oops"})
+                await Throws(() => { LaunchArguments.MouseSensitivity([option, value]); return Task.CompletedTask; }, "invalid sensitivity");
+            await Throws(() => { LaunchArguments.MouseSensitivity([option]); return Task.CompletedTask; }, "missing sensitivity");
+            using var repository = Repository("mouse-sensitivity");
+            var app = repository.AddBuiltIn("notepad", wine);
+            app.BoxedwineArguments = updated; repository.Update(app);
+            var saved = repository.Load().Apps.Single();
+            Check(LaunchArguments.MouseSensitivity(saved.BoxedwineArguments!) == 75);
+            var launch = LaunchArguments.Build(repository, saved, fixture);
+            Check(launch[launch.IndexOf(option) + 1] == "75" && !launch.Contains("-forceRelativeMouse"));
+        });
         await Test("Backup verifies contents and restore gets a new identity", async () =>
         {
             using var repository = Repository("backups"); var saved = await Packages.Import(repository, fixture, default, null); var app = repository.AddBuiltIn("minesweeper", saved);
+            app.BoxedwineArguments = LaunchArguments.WithMouseSensitivity([], 75); repository.Update(app);
             File.WriteAllText(Path.Combine(repository.Root(app), "save.dat"), "Important save"); string backup = Path.Combine(work, "test.boxedwinebackup");
             await Backups.Export(repository, app, backup, default, null); var restored = await Backups.Restore(repository, backup, default, null);
             Check(app.Id != restored.Id && restored.WinePackage == app.WinePackage); Check(File.ReadAllText(Path.Combine(repository.Root(restored), "save.dat")) == "Important save");
+            Check(LaunchArguments.MouseSensitivity(restored.BoxedwineArguments!) == 75, "Backup lost mouse sensitivity");
             File.WriteAllText(Path.Combine(backup, "Application/root/save.dat"), "Changed"); await Throws(() => Backups.Restore(repository, backup, default, null), "changed backup"); Check(repository.Load().Apps.Count == 2);
         });
         await Test("Wine trial preserves source and shared package collection", async () =>

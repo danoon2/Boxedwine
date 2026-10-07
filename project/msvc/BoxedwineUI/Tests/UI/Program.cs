@@ -49,6 +49,8 @@ internal static partial class Program
                 new WindowInteropHelper(window).EnsureHandle();
                 CheckDialog(window, "ShowSettings", [], Path.Combine(destination, theme.ToLowerInvariant() + "-settings.png"), dialog =>
                 {
+                    if (Descendants<Button>(dialog).Any(b => b.Content is string label && label.Contains("BoxedwineEngine")) ||
+                        Descendants<TextBlock>(dialog).Any(t => t.Text == "Emulator")) throw new Exception("Settings must not expose an engine picker.");
                     var choices = Descendants<ComboBox>(dialog).Single(c => AutomationProperties.GetName(c) == "App theme");
                     choices.SelectedValue = theme == "Dark" ? "Light" : "Dark";
                     if (dialog.ThemeMode != Application.Current.ThemeMode || window.ThemeMode != Application.Current.ThemeMode) throw new Exception("Theme changes did not reach every open window.");
@@ -71,6 +73,7 @@ internal static partial class Program
                 CheckWineChoices(window, activeRepository, destination, theme);
                 CheckLaunching(window, activeRepository.Load().Apps[0], destination, theme);
                 CheckInstallerCompletion(window, activeRepository, destination, theme);
+                CheckMouseSensitivity(window, activeRepository, destination, theme);
                 CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-app-settings.png"));
                 CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-advanced.png"), dialog =>
                 {
@@ -95,6 +98,48 @@ internal static partial class Program
             Console.WriteLine("Rendered both themes and verified launch readiness, early exit, stop during startup and installer program selection."); return 0;
         }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }
+    }
+    private static void CheckMouseSensitivity(MainWindow window, LibraryRepository repository, string destination, string theme)
+    {
+        Slider Slider(Window dialog) => Descendants<Slider>(dialog).Single(s => AutomationProperties.GetName(s) == "Mouse sensitivity");
+        TextBox Arguments(Window dialog)
+        {
+            Descendants<Expander>(dialog).Single().IsExpanded = true; dialog.UpdateLayout();
+            return Descendants<TextBox>(dialog).Single(t => AutomationProperties.GetName(t) == "Boxedwine arguments — one option or value per line");
+        }
+        int Saved() => LaunchArguments.MouseSensitivity(repository.Load().Apps[0].BoxedwineArguments ?? []);
+        void Check(string suffix, Action<Window> action, string? accept = null) => CheckDialog(window, "Edit", [repository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-mouse-" + suffix + ".png"), action, accept);
+        Check("save", dialog =>
+        {
+            var slider = Slider(dialog);
+            if (slider.Value != 100) throw new Exception("Mouse sensitivity must default to 100%.");
+            slider.Value = 50;
+            if (LaunchArguments.MouseSensitivity(LaunchArguments.Lines(Arguments(dialog).Text)) != 50) throw new Exception("Slider did not update arguments.");
+        }, "Save");
+        if (Saved() != 50) throw new Exception("Mouse sensitivity was not saved.");
+        Check("cancel", dialog => Slider(dialog).Value = 200);
+        if (Saved() != 50) throw new Exception("Cancel changed mouse sensitivity.");
+        Check("advanced", dialog =>
+        {
+            Descendants<Expander>(dialog).Single().IsExpanded = true; dialog.UpdateLayout();
+            var text = Arguments(dialog); var slider = Slider(dialog);
+            text.Text = "-nosound\n-rel_mouse_sensitivity\n750";
+            if (slider.Value != 750 || slider.Maximum < 750) throw new Exception("Advanced sensitivity was clamped or not reflected in the slider.");
+            text.Text += "\n-env";
+            if (slider.IsEnabled) throw new Exception("Incomplete advanced options must not be replaced by a slider edit.");
+            text.Text += "\nNAME=value";
+            if (!slider.IsEnabled || slider.Value != 750) throw new Exception("Slider did not recover after completing advanced options.");
+            dialog.UpdateLayout();
+        }, "Save");
+        if (Saved() != 750) throw new Exception("Advanced sensitivity was not saved.");
+        Check("reset", dialog =>
+        {
+            Descendants<Button>(dialog).Single(b => AutomationProperties.GetName(b) == "Reset mouse sensitivity").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            if (Slider(dialog).Value != 100 || Arguments(dialog).Text.Contains(LaunchArguments.MouseSensitivityOption)) throw new Exception("Reset did not restore default mouse sensitivity.");
+            if (!Arguments(dialog).Text.Contains("NAME=value")) throw new Exception("Reset lost unrelated arguments.");
+        }, "Save");
+        if (Saved() != 100) throw new Exception("Mouse sensitivity reset was not saved.");
+        Console.WriteLine($"PASS {theme} mouse sensitivity: save, cancel, advanced synchronization and reset");
     }
     private static void CheckWineChoices(MainWindow window, LibraryRepository repository, string destination, string theme)
     {

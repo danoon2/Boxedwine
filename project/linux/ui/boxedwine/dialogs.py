@@ -322,8 +322,6 @@ def settings(owner):
                    'Check Again' if current == ref else 'Set Up', lambda r=release: (dialog.close(), owner.setup_wine(r)))
     action_row(owner, support, 'Use a downloaded package', 'Import the matching release ZIP for offline setup.', 'Choose ZIP…',
                lambda: choose_file(owner, 'Choose Wine Package', lambda p: (dialog.close(), owner.import_wine(p)), patterns=['*.zip']))
-    engine = group(general, 'Emulator')
-    action_row(owner, engine, 'Boxedwine engine', str(owner.emulator), 'Choose…', lambda: choose_file(owner, 'Choose Boxedwine Engine', owner.set_emulator))
     dialog.present(owner)
     return dialog
 

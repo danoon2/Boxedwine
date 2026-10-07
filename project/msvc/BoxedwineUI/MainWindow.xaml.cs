@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private readonly Queue<(Guid AppId, RuntimeExit Exit)> pendingProgramChoices = new();
     private readonly WineLaunchChecks checkedWine = new();
     private LauncherPreferences preferences;
+    private readonly string? emulatorOverride;
     private CancellationTokenSource? operationCancellation;
     private Task? currentOperation;
     private bool busy, refreshing, shuttingDown, shutdownComplete, ready;
@@ -50,7 +51,7 @@ public partial class MainWindow : Window
         string? Argument(string name) { int i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
         string directory = Argument("--library") ?? Environment.GetEnvironmentVariable("BOXEDWINE_LIBRARY_DIRECTORY") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Boxedwine");
         repository = new(directory); preferences = repository.Preferences;
-        if (Argument("--emulator") is string emulator) preferences.EmulatorPath = Path.GetFullPath(emulator);
+        emulatorOverride = EngineLocation.CommandLineOverride(args);
         if (Argument("--theme") is string theme) preferences.Theme = theme;
         App.ApplyTheme(preferences.Theme);
         wines = Packages.Catalog(resources);
@@ -77,20 +78,7 @@ public partial class MainWindow : Window
         }
         catch (Exception error) { catalogError = error.Message; }
     }
-    private string Emulator()
-    {
-        string launcher = Path.Combine(AppContext.BaseDirectory, "Boxedwine.exe");
-        bool IsEngine(string path) => File.Exists(path) && !Path.GetFullPath(path).Equals(launcher, StringComparison.OrdinalIgnoreCase);
-        if (preferences.EmulatorPath is string saved && IsEngine(saved)) return Path.GetFullPath(saved);
-        string architecture = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? "ARM64" : "x64";
-        var candidates = new List<string> { Path.Combine(AppContext.BaseDirectory, "Runtime", "BoxedwineEngine.exe"), Path.Combine(AppContext.BaseDirectory, "BoxedwineEngine.exe"), Path.Combine(AppContext.BaseDirectory, "Runtime", "BoxedWine.exe") };
-        for (var parent = new DirectoryInfo(AppContext.BaseDirectory); parent != null; parent = parent.Parent)
-        {
-            candidates.Add(Path.Combine(parent.FullName, "project", "msvc", "BoxedWine", architecture, "Release", "BoxedWine.exe"));
-            candidates.Add(Path.Combine(parent.FullName, "BoxedWine", architecture, "Release", "BoxedWine.exe"));
-        }
-        return candidates.FirstOrDefault(IsEngine) ?? throw new FileNotFoundException("BoxedwineEngine.exe was not found. Open Settings and choose the emulator executable, or place it next to Boxedwine.exe.");
-    }
+    private string Emulator() => EngineLocation.Resolve(AppContext.BaseDirectory, emulatorOverride);
     private System.Runtime.InteropServices.Architecture OpenGLArchitecture()
     {
         try { return OpenGLDrivers.EngineArchitecture(Emulator()); }
