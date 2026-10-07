@@ -57,6 +57,26 @@ def combo(group, title, values, selected, subtitle=None):
     return result, lambda: keys[result.get_selected()]
 
 
+def editable_combo(group, title, values, selected):
+    result = Adw.EntryRow(title=title, text=selected)
+    menu = Gio.Menu()
+    action = Gio.SimpleAction.new_stateful('choose', GLib.VariantType.new('s'), GLib.Variant('s', selected))
+    action.connect('activate', lambda _, value: result.set_text(value.get_string()))
+    result.connect('notify::text', lambda *_: action.set_state(GLib.Variant('s', result.get_text())))
+    actions = Gio.SimpleActionGroup(); actions.add_action(action)
+    result.insert_action_group('presets', actions)
+    for value in values:
+        item = Gio.MenuItem.new(value, None)
+        item.set_action_and_target_value('presets.choose', GLib.Variant('s', value))
+        menu.append_item(item)
+    dropdown = Gtk.MenuButton(icon_name='pan-down-symbolic', menu_model=menu,
+                              valign=Gtk.Align.CENTER, tooltip_text='Choose a preset')
+    dropdown.add_css_class('flat')
+    result.add_suffix(dropdown)
+    group.add(result)
+    return result
+
+
 def page(dialog, title, icon):
     result = Adw.PreferencesPage(title=title, icon_name=icon, name=title)
     dialog.add(result)
@@ -197,7 +217,8 @@ def app_settings(owner, app):
             program_picker(owner, saved, selected)
         program_row = action_row(owner, identity_group, 'Program', 'C:/' + saved['executable'][len(DRIVE_C) + 1:] if saved.get('executable') else 'Choose after installation', 'Choose…', select_program)
     display = group(general, 'Display')
-    size = Adw.EntryRow(title='Window size', text=saved.get('resolution', '1024x768')); display.add(size)
+    size = editable_combo(display, 'Window size', ['640x480', '800x600', '1024x768', '1280x720', '1920x1080'],
+                          saved.get('resolution', '1024x768'))
     fullscreen = Adw.SwitchRow(title='Open in Full Screen', active=saved.get('fullScreen', False)); display.add(fullscreen)
     compatibility = group(general, 'Windows Compatibility', 'Changes apply before the next app or installer launch.')
     row(compatibility, 'Windows support', 'Wine ' + (saved.get('savedWineVersion') or 'default') + ' · Pinned for this app')

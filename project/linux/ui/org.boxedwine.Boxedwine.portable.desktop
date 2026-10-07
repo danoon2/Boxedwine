@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Boxedwine
+Comment=Run Windows apps in an emulated environment
+Exec=/usr/bin/python3 -c "import os, pathlib, sys, urllib.parse; location = sys.argv[1]; parsed = urllib.parse.urlparse(location); path = pathlib.Path(urllib.parse.unquote(parsed.path) if parsed.scheme == 'file' else location); launcher = path.resolve().with_name('boxedwine-ui'); os.execv(sys.executable, [sys.executable, str(launcher)])" %k
+Icon=org.boxedwine.Boxedwine
+Terminal=false
+Categories=System;Emulator;
+Keywords=Windows;Wine;Games;
+StartupNotify=true
+StartupWMClass=org.boxedwine.Boxedwine
