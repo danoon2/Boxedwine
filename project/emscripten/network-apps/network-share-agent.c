@@ -1333,6 +1333,7 @@ static int fetch_manifest(RemoteShare* remote, u32* manifest_hash) {
         return -1;
     }
     *manifest_hash = parse_uint(manifest_buffer + pos + 5);
+    sys1(SYS_CLOSE, fd);
     return 0;
 }
 

@@ -33,16 +33,27 @@ node network-gateway.mjs --port 8001
 
 The default allowlist permits `127.0.0.1:*` and `localhost:*`.
 
+The gateway also only accepts WebSocket connections from pages served at
+`http://127.0.0.1:8000` or `http://localhost:8000`. When Boxedwine is served
+from another origin, allow it explicitly (repeat for several origins):
+
+```sh
+node network-gateway.mjs --port 8001 --allow-origin http://192.168.1.20:8080
+```
+
+`--allow-origin none` additionally accepts clients that send no `Origin`
+header (non-browser tools), and `--allow-origin '*'` accepts any origin.
+
 ## Gateway Dashboard Authentication
 
 `network-gateway.mjs` can protect its dashboard and HTTP API with browser-native
 Basic Auth. The WebSocket path remains unauthenticated so existing Boxedwine
 clients can continue to connect with the normal `networkGateway=` URL.
 
-Generate a password hash:
+Generate a password hash (from `project/emscripten`):
 
 ```sh
-node network-apps/gateway-password-hash.mjs admin
+node network-gateway-password-hash.mjs admin
 ```
 
 Then export the printed value before starting the gateway:
@@ -52,8 +63,10 @@ export BOXEDWINE_GATEWAY_AUTH='admin:scrypt:v1:...'
 node network-gateway.mjs --port 8001
 ```
 
-For local scripting, the helper also accepts `--auth`, but interactive entry
-is preferred so the password is not stored in shell history.
+For local scripting, the helper also accepts `--password <password>`, and the
+gateway accepts the printed value as `--auth '<value>'` instead of the
+environment variable. Interactive entry is preferred so the password is not
+stored in shell history.
 
 ## Guest Apps
 

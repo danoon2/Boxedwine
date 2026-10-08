@@ -1157,7 +1157,7 @@ class WebSocketPeer {
     }
 }
 
-const server = createHttpServer(async (request, response) => {
+async function handleHttpRequest(request, response) {
     const { pathname } = new URL(request.url || "/", `http://${host}:${port}`);
     if (request.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
         if (!(await requireDashboardAuth(request, response))) {
@@ -1191,6 +1191,19 @@ const server = createHttpServer(async (request, response) => {
         return;
     }
     writeText(response, 404, "Boxedwine network gateway");
+}
+
+// The server does not await the handler, so a rejection would otherwise be
+// unhandled and stop the gateway for every connected peer.
+const server = createHttpServer((request, response) => {
+    handleHttpRequest(request, response).catch((error) => {
+        console.warn(`HTTP handler error: ${error && error.message}`);
+        if (!response.headersSent) {
+            writeText(response, 500, "Internal error");
+        } else {
+            response.destroy();
+        }
+    });
 });
 
 server.on("upgrade", (request, socket) => {

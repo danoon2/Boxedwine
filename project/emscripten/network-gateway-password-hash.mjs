@@ -8,8 +8,8 @@ const scryptOptions = {
 
 function usage() {
     console.log(`Usage:
-  node network-apps/gateway-password-hash.mjs <username>
-  node network-apps/gateway-password-hash.mjs <username> --password <password>
+  node network-gateway-password-hash.mjs <username>
+  node network-gateway-password-hash.mjs <username> --password <password>
 
 Prints a BOXEDWINE_GATEWAY_AUTH value for network-gateway.mjs dashboard Basic Auth.`);
 }
