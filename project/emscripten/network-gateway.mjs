@@ -1,4 +1,4 @@
-import { createHash, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, scrypt, timingSafeEqual } from "node:crypto";
 import { createSocket as createDatagramSocket } from "node:dgram";
 import { readFileSync } from "node:fs";
 import { createServer as createHttpServer } from "node:http";
@@ -23,7 +23,9 @@ const roomPeersByIp = new Map();
 const roomTcpListeners = new Map();
 const startedAt = Date.now();
 const maxActivityEntries = 200;
+const maxFrameBytes = 4 * 1024 * 1024;
 const activity = [];
+const allowedOrigins = new Set(["http://127.0.0.1:8000", "http://localhost:8000"]);
 const dashboardHtml = readFileSync(new URL("./network-gateway/index.html", import.meta.url));
 const gatewayStats = {
     hostTcpConnections: 0,
@@ -76,6 +78,8 @@ for (let i = 2; i < process.argv.length; i += 1) {
         allowRules.push(parseAllowRule(process.argv[++i]));
     } else if (argument === "--allow-all") {
         allowRules.push({ host: "*", port: "*" });
+    } else if (argument === "--allow-origin") {
+        allowedOrigins.add(process.argv[++i] || "");
     } else if (argument === "--room-subnet") {
         roomSubnet = process.argv[++i];
     } else if (argument === "--debug") {
@@ -92,6 +96,9 @@ if (!/^\d+\.\d+\.\d+\.$/.test(roomSubnet)) {
 }
 
 const dashboardAuth = parseDashboardAuth(dashboardAuthSpec);
+const dashboardAuthCache = {
+    digest: null,
+};
 
 function parseAllowRule(rule) {
     const split = rule.lastIndexOf(":");
@@ -156,6 +163,29 @@ function debugLog(message) {
     }
 }
 
+function requestOrigin(request) {
+    return String(request.headers.origin || "");
+}
+
+function requestOwnOrigin(request) {
+    return `http://${request.headers.host || `${host}:${port}`}`;
+}
+
+function isAllowedWebSocketOrigin(origin) {
+    if (allowedOrigins.has("*")) {
+        return true;
+    }
+    if (!origin) {
+        return allowedOrigins.has("none");
+    }
+    return allowedOrigins.has(origin);
+}
+
+function isSameOriginRequest(request) {
+    const origin = requestOrigin(request);
+    return !origin || origin === requestOwnOrigin(request);
+}
+
 function writeJson(response, status, payload) {
     const body = JSON.stringify(payload);
     response.writeHead(status, {
@@ -195,12 +225,34 @@ function parseDashboardAuth(spec) {
     };
 }
 
-function verifyDashboardAuth(header) {
+function scryptAsync(password, salt, keylen, options) {
+    return new Promise((resolve, reject) => {
+        scrypt(password, salt, keylen, options, (error, derivedKey) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(derivedKey);
+            }
+        });
+    });
+}
+
+function digestAuthorizationHeader(header) {
+    return createHash("sha256").update(header).digest();
+}
+
+async function verifyDashboardAuth(header) {
     if (!dashboardAuth) {
         return true;
     }
     if (!header || !header.startsWith("Basic ")) {
         return false;
+    }
+    const headerDigest = digestAuthorizationHeader(header);
+    if (dashboardAuthCache.digest &&
+            headerDigest.length === dashboardAuthCache.digest.length &&
+            timingSafeEqual(headerDigest, dashboardAuthCache.digest)) {
+        return true;
     }
     let decoded;
     try {
@@ -219,7 +271,7 @@ function verifyDashboardAuth(header) {
     }
     let candidate;
     try {
-        candidate = scryptSync(password, dashboardAuth.salt, dashboardAuth.hash.length, {
+        candidate = await scryptAsync(password, dashboardAuth.salt, dashboardAuth.hash.length, {
             N: 16384,
             r: 8,
             p: 1,
@@ -227,11 +279,15 @@ function verifyDashboardAuth(header) {
     } catch {
         return false;
     }
-    return candidate.length === dashboardAuth.hash.length && timingSafeEqual(candidate, dashboardAuth.hash);
+    const ok = candidate.length === dashboardAuth.hash.length && timingSafeEqual(candidate, dashboardAuth.hash);
+    if (ok) {
+        dashboardAuthCache.digest = headerDigest;
+    }
+    return ok;
 }
 
-function requireDashboardAuth(request, response) {
-    if (verifyDashboardAuth(request.headers.authorization || "")) {
+async function requireDashboardAuth(request, response) {
+    if (await verifyDashboardAuth(request.headers.authorization || "")) {
         return true;
     }
     response.writeHead(401, {
@@ -297,9 +353,10 @@ function makeUdpFrame(socketId, host, port, payload) {
 }
 
 function registerRoomPeer(peer) {
-    while (nextRoomHost < 255) {
-        const ip = `${roomSubnet}${nextRoomHost}`;
-        nextRoomHost += 1;
+    for (let attempt = 0; attempt < 253; attempt += 1) {
+        const hostId = nextRoomHost;
+        nextRoomHost = nextRoomHost >= 254 ? 2 : nextRoomHost + 1;
+        const ip = `${roomSubnet}${hostId}`;
         if (!roomPeersByIp.has(ip)) {
             peer.virtualIp = ip;
             roomPeers.add(peer);
@@ -310,7 +367,9 @@ function registerRoomPeer(peer) {
             return;
         }
     }
-    throw new Error("No room virtual IPs available");
+    console.warn("No room virtual IPs available");
+    peer.socket.destroy();
+    peer.closeAll();
 }
 
 function unregisterRoomPeer(peer) {
@@ -447,6 +506,11 @@ class WebSocketPeer {
         return this.socket.write(encodeWebSocketFrame(2, payload));
     }
 
+    closePeer() {
+        this.socket.destroy();
+        this.closeAll();
+    }
+
     onData(chunk) {
         this.buffer = Buffer.concat([this.buffer, chunk]);
         while (this.buffer.length >= 2) {
@@ -468,8 +532,8 @@ class WebSocketPeer {
                     return;
                 }
                 const bigLength = this.buffer.readBigUInt64BE(offset);
-                if (bigLength > BigInt(Number.MAX_SAFE_INTEGER)) {
-                    this.socket.destroy();
+                if (bigLength > BigInt(maxFrameBytes)) {
+                    this.closePeer();
                     return;
                 }
                 payloadLength = Number(bigLength);
@@ -477,6 +541,10 @@ class WebSocketPeer {
             }
 
             const maskLength = masked ? 4 : 0;
+            if (payloadLength > maxFrameBytes || this.buffer.length > maxFrameBytes + offset + maskLength) {
+                this.closePeer();
+                return;
+            }
             if (this.buffer.length < offset + maskLength + payloadLength) {
                 return;
             }
@@ -492,9 +560,26 @@ class WebSocketPeer {
             this.buffer = this.buffer.subarray(offset + maskLength + payloadLength);
 
             if (opcode === 0x1) {
-                this.onControl(JSON.parse(payload.toString("utf8")));
+                let message;
+                try {
+                    message = JSON.parse(payload.toString("utf8"));
+                    if (!message || typeof message !== "object") {
+                        throw new Error("Invalid control message");
+                    }
+                    this.onControl(message);
+                } catch (error) {
+                    console.warn(`Closing peer after invalid control frame: ${error.message}`);
+                    this.closePeer();
+                    return;
+                }
             } else if (opcode === 0x2) {
-                this.onBinary(payload);
+                try {
+                    this.onBinary(payload);
+                } catch (error) {
+                    console.warn(`Closing peer after binary frame error: ${error.message}`);
+                    this.closePeer();
+                    return;
+                }
             } else if (opcode === 0x8) {
                 this.socket.end(encodeWebSocketFrame(0x8, Buffer.alloc(0)));
                 this.closeAll();
@@ -1057,10 +1142,10 @@ class WebSocketPeer {
     }
 }
 
-const server = createHttpServer((request, response) => {
+const server = createHttpServer(async (request, response) => {
     const { pathname } = new URL(request.url || "/", `http://${host}:${port}`);
     if (request.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
-        if (!requireDashboardAuth(request, response)) {
+        if (!(await requireDashboardAuth(request, response))) {
             return;
         }
         response.writeHead(200, {
@@ -1072,14 +1157,18 @@ const server = createHttpServer((request, response) => {
         return;
     }
     if (request.method === "GET" && pathname === "/api/status") {
-        if (!requireDashboardAuth(request, response)) {
+        if (!(await requireDashboardAuth(request, response))) {
             return;
         }
         writeJson(response, 200, snapshotStatus());
         return;
     }
     if (request.method === "POST" && pathname === "/api/reset") {
-        if (!requireDashboardAuth(request, response)) {
+        if (!isSameOriginRequest(request)) {
+            writeText(response, 403, "Forbidden");
+            return;
+        }
+        if (!(await requireDashboardAuth(request, response))) {
             return;
         }
         resetGateway("dashboard");
@@ -1092,6 +1181,12 @@ const server = createHttpServer((request, response) => {
 server.on("upgrade", (request, socket) => {
     const { pathname } = new URL(request.url || "/", "http://localhost");
     if (pathname !== path) {
+        socket.destroy();
+        return;
+    }
+    const origin = requestOrigin(request);
+    if (!isAllowedWebSocketOrigin(origin)) {
+        console.warn(`Rejecting WebSocket from origin=${origin || "none"}`);
         socket.destroy();
         return;
     }
@@ -1117,6 +1212,7 @@ server.on("upgrade", (request, socket) => {
 
 server.listen(port, host, () => {
     const allowText = allowRules.map((rule) => `${rule.host}:${rule.port}`).join(", ");
+    const originText = [...allowedOrigins].join(", ");
     console.log(`Boxedwine network gateway listening at ws://${host}:${port}${path}`);
     console.log(`Dashboard available at http://${host}:${port}/`);
     if (dashboardAuth) {
@@ -1125,4 +1221,5 @@ server.listen(port, host, () => {
         console.warn("Dashboard authentication disabled. Set BOXEDWINE_GATEWAY_AUTH to protect it.");
     }
     console.log(`Allowed TCP/UDP destinations: ${allowText}`);
+    console.log(`Allowed WebSocket origins: ${originText}`);
 });
