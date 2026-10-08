@@ -541,7 +541,7 @@ class WebSocketPeer {
             }
 
             const maskLength = masked ? 4 : 0;
-            if (payloadLength > maxFrameBytes || this.buffer.length > maxFrameBytes + offset + maskLength) {
+            if (payloadLength > maxFrameBytes) {
                 this.closePeer();
                 return;
             }

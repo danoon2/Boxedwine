@@ -200,9 +200,23 @@ addToLibrary({
         sockets: {},
         connecting: false,
         highWaterMark: 1024 * 1024,
+        reconnectDelay: 0,
+        reconnectAt: 0,
+        reconnectTimer: null,
 
         ensureGateway: function () {
           if (this.ws || this.connecting) {
+            return;
+          }
+          // Back off after a lost gateway so every socket call does not retry.
+          var wait = this.reconnectAt - Date.now();
+          if (wait > 0) {
+            if (!this.reconnectTimer) {
+              this.reconnectTimer = setTimeout(function () {
+                transport.reconnectTimer = null;
+                transport.ensureGateway();
+              }, wait);
+            }
             return;
           }
           this.connecting = true;
@@ -211,28 +225,61 @@ addToLibrary({
             ws.binaryType = "arraybuffer";
             this.ws = ws;
             ws.onopen = function () {
+              if (transport.ws !== ws) {
+                return;
+              }
               transport.connecting = false;
               transport.wsOpen = true;
+              transport.reconnectDelay = 0;
               transport.flushQueues();
               Object.keys(transport.sockets).forEach(function (handle) {
                 transport.setEvents(transport.sockets[handle]);
               });
             };
             ws.onerror = function () {
-              transport.failAll(BoxedWineNetwork.ENETUNREACH);
+              transport.onGatewayLost(ws);
             };
             ws.onclose = function () {
-              transport.connecting = false;
-              transport.wsOpen = false;
-              transport.failAll(BoxedWineNetwork.ENETUNREACH);
+              transport.onGatewayLost(ws);
             };
             ws.onmessage = function (event) {
-              transport.onMessage(event.data);
+              if (transport.ws === ws) {
+                transport.onMessage(event.data);
+              }
             };
           } catch (error) {
+            this.ws = null;
             this.connecting = false;
+            this.scheduleReconnect();
             this.failAll(BoxedWineNetwork.ENETUNREACH);
           }
+        },
+
+        onGatewayLost: function (ws) {
+          if (this.ws !== ws) {
+            return;
+          }
+          BoxedWineNetwork.debugLog("gateway connection lost");
+          this.ws = null;
+          this.wsOpen = false;
+          this.connecting = false;
+          // Queued frames belong to sockets that are about to fail, and the
+          // gateway hands out a fresh room address on the next connection.
+          this.controlQueue = [];
+          this.dataQueue = [];
+          this.virtualIp = "";
+          this.roomPeers = [];
+          this.scheduleReconnect();
+          this.failAll(BoxedWineNetwork.ENETUNREACH);
+          try {
+            ws.close();
+          } catch (error) {
+          }
+        },
+
+        scheduleReconnect: function () {
+          this.reconnectDelay = this.reconnectDelay ? Math.min(this.reconnectDelay * 2, 10000) : 500;
+          this.reconnectAt = Date.now() + this.reconnectDelay;
         },
 
         flushQueues: function () {
