@@ -24,6 +24,7 @@ typedef unsigned char u8;
 #define SYS_SOCKETCALL 102
 #define SYS_NANOSLEEP 162
 #define SYS_GETDENTS 141
+#define SYS_POLL 168
 
 #define SC_SOCKET 1
 #define SC_BIND 2
@@ -45,12 +46,22 @@ typedef unsigned char u8;
 #define O_CREAT 0x40
 #define O_TRUNC 0x200
 #define O_NONBLOCK 0x800
+#define POLLIN 0x001
+#define POLLOUT 0x004
+#define EINTR 4
+#define EINPROGRESS 115
+#define EISCONN 106
+#define MSG_NOSIGNAL 0x4000
 #define SEEK_SET 0
 #define SEEK_END 2
 #define MAX_REMOTES 8
 #define ARCHIVE_BUFFER_SIZE (8 * 1024 * 1024)
 #define MANIFEST_BUFFER_SIZE (256 * 1024)
 #define RECV_CHUNK_SIZE 4096
+#define REL_PATH_MAX 512
+#define PEER_WAIT_MS 250
+#define PEER_IDLE_TIMEOUT_MS 15000
+#define SERVE_REQUEST_TIMEOUT_MS 2000
 
 typedef struct RemoteShare {
     int used;
@@ -93,7 +104,6 @@ static u32 serve_cooldown_ticks = 0;
 static const u32 file_serve_cooldown_ticks = 4;
 
 static RemoteShare remotes[MAX_REMOTES];
-static char dents_buffer[4096];
 static char probe_buffer[256];
 static char file_buffer[8192];
 static char line_buffer[1024];
@@ -103,6 +113,23 @@ static char manifest_buffer[MANIFEST_BUFFER_SIZE];
 static char archive_buffer[ARCHIVE_BUFFER_SIZE];
 static int manifest_len = 0;
 static int manifest_build_truncated = 0;
+
+/*
+ * The agent is single threaded, so two agents fetching from each other at the
+ * same time would each block, in connect (the gateway completes it only when
+ * the peer accepts) or waiting for a reply the other never serves. Until a
+ * request has had reply data, the agent also watches its own listener; if a
+ * peer request is pending and this agent's share name sorts lower, it abandons
+ * the sync and returns to serving. Every wait cycle contains a lowest name, so
+ * one agent always backs off. An idle timeout is the fallback.
+ */
+static int agent_listener_fd = -1;
+static int sync_aborted = 0;
+static int sync_abort_jitter = 0;
+static int request_may_yield = 0;
+static int request_tie = 0;
+static int request_received = 0;
+static u32 random_state = 0;
 
 static int sys1(int n, int a) {
     int r;
@@ -302,12 +329,22 @@ static void copy_n(char* dst, const char* src, int n) {
     dst[n] = 0;
 }
 
-static void join_path(char* dst, const char* base, const char* rel) {
+static int join_path_n(char* dst, int cap, const char* base, const char* rel, int rel_len) {
     int pos = 0;
+    int i;
+    if (strlen0(base) + 1 + rel_len >= cap) {
+        dst[0] = 0;
+        return 0;
+    }
     append_str(dst, &pos, base);
     if (pos > 0 && dst[pos - 1] != '/') append_char(dst, &pos, '/');
-    append_str(dst, &pos, rel);
+    for (i = 0; i < rel_len; i++) append_char(dst, &pos, rel[i]);
     dst[pos] = 0;
+    return 1;
+}
+
+static int join_path(char* dst, int cap, const char* base, const char* rel) {
+    return join_path_n(dst, cap, base, rel, strlen0(rel));
 }
 
 static void make_dir(const char* path) {
@@ -413,7 +450,7 @@ static int send_all(int fd, const char* data, int len) {
         args[0] = (u32)fd;
         args[1] = (u32)(data + sent);
         args[2] = (u32)(len - sent);
-        args[3] = 0;
+        args[3] = MSG_NOSIGNAL;
         r = socketcall(SC_SEND, args);
         if (r <= 0) return r;
         sent += r;
@@ -477,9 +514,11 @@ static void hash_dir_tree(u32* hash, const char* full_dir, const char* rel_dir, 
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (path_is_dir(child_full)) hash_dir_tree(hash, child_full, child_rel, depth + 1);
                 else hash_file(hash, child_full, child_rel);
             }
@@ -498,6 +537,7 @@ static u32 calculate_share_hash(void) {
 }
 
 static void walk_dir(int client_fd, const char* full_dir, const char* rel_dir, int depth) {
+    char dents_buffer[4096];
     int fd;
     if (depth > 6) return;
     fd = sys3(SYS_OPEN, (int)full_dir, O_RDONLY, 0);
@@ -513,9 +553,11 @@ static void walk_dir(int client_fd, const char* full_dir, const char* rel_dir, i
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (!path_is_dir(child_full)) send_file(client_fd, child_full, child_rel);
             }
             offset += reclen;
@@ -535,9 +577,11 @@ static void walk_dir(int client_fd, const char* full_dir, const char* rel_dir, i
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (path_is_dir(child_full)) {
                     int pos = 0;
                     append_str(line_buffer, &pos, "dir path=");
@@ -570,6 +614,7 @@ static void send_manifest_file(int client_fd, const char* full_path, const char*
 }
 
 static void send_manifest_entries(int client_fd, const char* full_dir, const char* rel_dir, int depth) {
+    char dents_buffer[4096];
     int fd;
     if (depth > 6) return;
     fd = sys3(SYS_OPEN, (int)full_dir, O_RDONLY, 0);
@@ -585,9 +630,11 @@ static void send_manifest_entries(int client_fd, const char* full_dir, const cha
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (!path_is_dir(child_full)) send_manifest_file(client_fd, child_full, child_rel);
             }
             offset += reclen;
@@ -607,9 +654,11 @@ static void send_manifest_entries(int client_fd, const char* full_dir, const cha
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (path_is_dir(child_full)) {
                     int pos = 0;
                     append_str(line_buffer, &pos, "dir path=");
@@ -661,6 +710,7 @@ static void build_manifest_file(const char* full_path, const char* rel_path) {
 }
 
 static void build_manifest_entries(const char* full_dir, const char* rel_dir, int depth) {
+    char dents_buffer[4096];
     int fd;
     if (depth > 6 || manifest_build_truncated) return;
     fd = sys3(SYS_OPEN, (int)full_dir, O_RDONLY, 0);
@@ -676,9 +726,11 @@ static void build_manifest_entries(const char* full_dir, const char* rel_dir, in
             char child_rel[512];
             if (!reclen || manifest_build_truncated) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (!path_is_dir(child_full)) build_manifest_file(child_full, child_rel);
             }
             offset += reclen;
@@ -698,9 +750,11 @@ static void build_manifest_entries(const char* full_dir, const char* rel_dir, in
             char child_rel[512];
             if (!reclen || manifest_build_truncated) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (path_is_dir(child_full)) {
                     append_manifest_str("dir path=");
                     append_manifest_str(child_rel);
@@ -734,12 +788,38 @@ static void send_archive(int client_fd) {
     send_text(client_fd, "END\n");
 }
 
+/* Paths from peers, in requests or in archives/manifests, must stay inside
+ * the share or mirror root. */
+static int valid_rel_path(const char* path, int len) {
+    int i;
+    int seg = 0;
+    if (len <= 0 || len >= REL_PATH_MAX || path[0] == '/') return 0;
+    for (i = 0; i <= len; i++) {
+        char c = i < len ? path[i] : '/';
+        if (c == '/') {
+            int n = i - seg;
+            if (n == 0) return 0;
+            if (n == 1 && path[seg] == '.') return 0;
+            if (n == 2 && path[seg] == '.' && path[seg + 1] == '.') return 0;
+            seg = i + 1;
+        } else if ((u8)c < 32 || c == 127 || c == '\\') {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static int safe_rel_path(const char* path) {
-    int i = 0;
-    if (!path[0] || path[0] == '/') return 0;
-    while (path[i]) {
-        if (path[i] == '.' && path[i + 1] == '.' && (!i || path[i - 1] == '/') && (!path[i + 2] || path[i + 2] == '/')) return 0;
-        i++;
+    return valid_rel_path(path, strlen0(path));
+}
+
+static int mirror_path(RemoteShare* remote, const char* rel, int rel_len) {
+    if (!valid_rel_path(rel, rel_len) ||
+            !join_path_n(path_buffer, (int)sizeof(path_buffer), remote->mirror_root, rel, rel_len)) {
+        print("network-share-agent: rejected unsafe path from ");
+        print(remote->safe_name);
+        print("\n");
+        return 0;
     }
     return 1;
 }
@@ -754,7 +834,7 @@ static void send_one_file_archive(int client_fd, const char* rel_path) {
     clean_path[i] = 0;
     send_archive_header(client_fd);
     if (safe_rel_path(clean_path)) {
-        join_path(path_buffer, share_root, clean_path);
+        join_path(path_buffer, (int)sizeof(path_buffer), share_root, clean_path);
         if (!path_is_dir(path_buffer)) send_file(client_fd, path_buffer, clean_path);
     }
     send_text(client_fd, "END\n");
@@ -775,7 +855,7 @@ static void send_file_data(int client_fd, const char* rel_path) {
         send_text(client_fd, "BW-SHARE-FILE/1\nstatus=bad-path\nsize=0\n\n");
         return;
     }
-    join_path(path_buffer, share_root, clean_path);
+    join_path(path_buffer, (int)sizeof(path_buffer), share_root, clean_path);
     if (path_is_dir(path_buffer)) {
         send_text(client_fd, "BW-SHARE-FILE/1\nstatus=not-file\nsize=0\n\n");
         return;
@@ -853,7 +933,7 @@ static void remove_tree(const char* path, int depth) {
                 char child_path[768];
                 if (!reclen) break;
                 if (!skip_dirent_name(name)) {
-                    join_path(child_path, path, name);
+                    join_path(child_path, (int)sizeof(child_path), path, name);
                     remove_tree(child_path, depth + 1);
                 }
                 offset += reclen;
@@ -924,9 +1004,11 @@ static void prune_deleted_entries(RemoteShare* remote, const char* full_dir, con
             int is_dir;
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 is_dir = path_is_dir(child_full);
                 if (!manifest_contains_path(child_rel, is_dir)) {
                     remove_tree(child_full, 0);
@@ -963,21 +1045,22 @@ static void parse_archive_into(RemoteShare* remote, int len) {
     while ((line = next_line(&cursor, end))) {
         if (starts_with(line, "END")) break;
         if (starts_with(line, "dir path=")) {
-            join_path(path_buffer, remote->mirror_root, line + 9);
+            if (!mirror_path(remote, line + 9, strlen0(line + 9))) continue;
             make_parent_dirs(path_buffer);
             make_dir(path_buffer);
         } else if (starts_with(line, "file path=")) {
             int size_pos = find_token(line, " size=");
             if (size_pos > 10) {
-                char rel_path[512];
-                u32 size;
-                int fd;
-                copy_n(rel_path, line + 10, size_pos - 10);
-                size = parse_uint(line + size_pos + 6);
-                if (cursor + size <= end) {
-                    join_path(path_buffer, remote->mirror_root, rel_path);
-                    make_parent_dirs(path_buffer);
-                    fd = sys3(SYS_OPEN, (int)path_buffer, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                char rel_path[REL_PATH_MAX];
+                u32 size = parse_uint(line + size_pos + 6);
+                int fd = -1;
+                if (size <= (u32)(end - cursor)) {
+                    /* Unsafe entries are skipped, but their data is consumed. */
+                    if (mirror_path(remote, line + 10, size_pos - 10)) {
+                        copy_n(rel_path, line + 10, size_pos - 10);
+                        make_parent_dirs(path_buffer);
+                        fd = sys3(SYS_OPEN, (int)path_buffer, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                    }
                     if (fd >= 0) {
                         u32 written = 0;
                         while (written < size) {
@@ -1013,21 +1096,97 @@ static void set_sockaddr_ip(u8* sockaddr, const u8 ip[4]) {
     sockaddr[7] = ip[3];
 }
 
+static u32 read_tsc(void) {
+    u32 lo;
+    u32 hi;
+    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    return lo ^ hi;
+}
+
+static u32 next_random(void) {
+    random_state = random_state * 1103515245u + 12345u;
+    return random_state >> 16;
+}
+
+static void prepare_request_yield(RemoteShare* remote) {
+    int order = strcmp0(share_name, remote->raw_name);
+    request_received = 0;
+    /* With equal names both sides yield and retry after random delays. */
+    request_tie = order == 0;
+    request_may_yield = order <= 0;
+}
+
+static void abort_sync(const char* reason, int jitter) {
+    sync_aborted = 1;
+    sync_abort_jitter = jitter;
+    print("network-share-agent: ");
+    print(reason);
+    print("\n");
+}
+
+/* Waits for events on a peer request socket, giving way to pending peer requests. */
+static int peer_wait(int fd, u32 events) {
+    u32 waited = 0;
+    if (sync_aborted) return -1;
+    for (;;) {
+        u32 fds[4];
+        int watch_listener = agent_listener_fd >= 0 && request_may_yield && !request_received;
+        int ready;
+        fds[0] = (u32)fd;
+        fds[1] = events; /* events in the low half, revents in the high half */
+        fds[2] = (u32)agent_listener_fd;
+        fds[3] = POLLIN;
+        ready = sys3(SYS_POLL, (int)fds, watch_listener ? 2 : 1, PEER_WAIT_MS);
+        if (ready > 0 && (fds[1] >> 16)) return 1;
+        if (ready > 0 && watch_listener && ((fds[3] >> 16) & POLLIN)) {
+            abort_sync("peer request pending, yielding", request_tie);
+            return -1;
+        }
+        if (ready < 0 && ready != -EINTR) return ready;
+        waited += PEER_WAIT_MS;
+        if (waited >= PEER_IDLE_TIMEOUT_MS) {
+            abort_sync("peer timed out", 1);
+            return -1;
+        }
+    }
+}
+
+static int peer_recv(u32* recv_args) {
+    int got;
+    if (peer_wait((int)recv_args[0], POLLIN) < 0) return -1;
+    got = socketcall(SC_RECV, recv_args);
+    if (got > 0) request_received += got;
+    return got;
+}
+
 static int connect_to_remote(RemoteShare* remote) {
     u32 socket_args[3] = {AF_INET, SOCK_STREAM, 0};
     u8 sockaddr[16] = {2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     u32 connect_args[3];
-    int fd = socketcall(SC_SOCKET, socket_args);
+    int fd;
+    int result;
+    if (sync_aborted) return -1;
+    fd = socketcall(SC_SOCKET, socket_args);
     if (fd < 0) return fd;
     set_sockaddr_port(sockaddr, remote->port);
     set_sockaddr_ip(sockaddr, remote->ip);
     connect_args[0] = (u32)fd;
     connect_args[1] = (u32)sockaddr;
     connect_args[2] = 16;
-    if (socketcall(SC_CONNECT, connect_args) < 0) {
+    prepare_request_yield(remote);
+    /* Connect without blocking so a pending peer request can still be served. */
+    sys3(SYS_FCNTL, fd, F_SETFL, O_NONBLOCK);
+    result = socketcall(SC_CONNECT, connect_args);
+    while (result == -EINPROGRESS) {
+        if (peer_wait(fd, POLLOUT) < 0) break;
+        result = socketcall(SC_CONNECT, connect_args);
+        if (result == -EISCONN) result = 0;
+    }
+    if (result < 0) {
         sys1(SYS_CLOSE, fd);
         return -1;
     }
+    sys3(SYS_FCNTL, fd, F_SETFL, 0);
     return fd;
 }
 
@@ -1035,6 +1194,7 @@ static int fetch_archive_with_request(RemoteShare* remote, const char* request) 
     int fd;
     int total = 0;
     fd = connect_to_remote(remote);
+    if (fd < 0 && sync_aborted) return -1;
     if (fd < 0) {
         print("network-share-agent: connect failed ");
         print(remote->safe_name);
@@ -1051,7 +1211,7 @@ static int fetch_archive_with_request(RemoteShare* remote, const char* request) 
         recv_args[1] = (u32)(archive_buffer + total);
         recv_args[2] = (u32)want;
         recv_args[3] = 0;
-        got = socketcall(SC_RECV, recv_args);
+        got = peer_recv(recv_args);
         if (got <= 0) break;
         total += got;
         if (buffer_has_end_marker(archive_buffer, total)) break;
@@ -1072,7 +1232,7 @@ static int recv_one_byte(int fd, char* c) {
     recv_args[1] = (u32)c;
     recv_args[2] = 1;
     recv_args[3] = 0;
-    return socketcall(SC_RECV, recv_args);
+    return peer_recv(recv_args);
 }
 
 static int recv_response_header(int fd, char* dst, int max_len);
@@ -1087,7 +1247,7 @@ static int recv_exact_to_buffer(int fd, char* dst, u32 size) {
         recv_args[1] = (u32)(dst + total);
         recv_args[2] = (u32)want;
         recv_args[3] = 0;
-        got = socketcall(SC_RECV, recv_args);
+        got = peer_recv(recv_args);
         if (got <= 0) return 0;
         total += (u32)got;
     }
@@ -1102,6 +1262,7 @@ static int fetch_manifest(RemoteShare* remote, u32* manifest_hash) {
     int size_pos;
     u32 advertised_size;
     fd = connect_to_remote(remote);
+    if (fd < 0 && sync_aborted) return -1;
     if (fd < 0) {
         print("network-share-agent: manifest connect failed ");
         print(remote->safe_name);
@@ -1178,7 +1339,7 @@ static int fetch_manifest(RemoteShare* remote, u32* manifest_hash) {
 static int local_file_matches(RemoteShare* remote, const char* rel_path, u32 expected_size, u32 expected_hash) {
     u32 size;
     u32 hash;
-    join_path(path_buffer, remote->mirror_root, rel_path);
+    if (!mirror_path(remote, rel_path, strlen0(rel_path))) return 0;
     if (path_is_dir(path_buffer)) return 0;
     hash = calculate_file_hash(path_buffer, &size);
     return size == expected_size && hash == expected_hash;
@@ -1217,7 +1378,7 @@ static int recv_exact_to_file(int fd, int out_fd, u32 size) {
         recv_args[1] = (u32)file_buffer;
         recv_args[2] = (u32)want;
         recv_args[3] = 0;
-        got = socketcall(SC_RECV, recv_args);
+        got = peer_recv(recv_args);
         if (got <= 0) return 0;
         if (sys3(SYS_WRITE, out_fd, (int)file_buffer, got) != got) return 0;
         remaining -= (u32)got;
@@ -1237,6 +1398,7 @@ static int fetch_file_data(RemoteShare* remote, const char* rel_path, u32 expect
     append_str(line_buffer, &pos, "\n\n");
     line_buffer[pos] = 0;
     fd = connect_to_remote(remote);
+    if (fd < 0 && sync_aborted) return 0;
     if (fd < 0) {
         print("network-share-agent: file connect failed ");
         print(remote->safe_name);
@@ -1285,7 +1447,10 @@ static int fetch_file_data(RemoteShare* remote, const char* rel_path, u32 expect
         print("\n");
         return 0;
     }
-    join_path(path_buffer, remote->mirror_root, rel_path);
+    if (!mirror_path(remote, rel_path, strlen0(rel_path))) {
+        sys1(SYS_CLOSE, fd);
+        return 0;
+    }
     make_parent_dirs(path_buffer);
     out_fd = sys3(SYS_OPEN, (int)path_buffer, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (out_fd < 0) {
@@ -1331,16 +1496,17 @@ static int apply_manifest_delta(RemoteShare* remote, int prune_existing) {
     while ((line = next_line(&cursor, end))) {
         if (starts_with(line, "END")) break;
         if (starts_with(line, "dir path=")) {
-            join_path(path_buffer, remote->mirror_root, line + 9);
+            if (!mirror_path(remote, line + 9, strlen0(line + 9))) continue;
             make_parent_dirs(path_buffer);
             make_dir(path_buffer);
         } else if (starts_with(line, "file path=")) {
             int size_pos = find_token(line, " size=");
             int hash_pos = find_token(line, " hash=");
             if (size_pos > 10 && hash_pos > size_pos) {
-                char rel_path[512];
+                char rel_path[REL_PATH_MAX];
                 u32 size;
                 u32 hash;
+                if (!mirror_path(remote, line + 10, size_pos - 10)) continue;
                 copy_n(rel_path, line + 10, size_pos - 10);
                 size = parse_uint(line + size_pos + 6);
                 hash = parse_uint(line + hash_pos + 6);
@@ -1467,7 +1633,7 @@ static void make_unique_safe_name(int index) {
 }
 
 static void build_remote_mirror_root(RemoteShare* remote) {
-    join_path(remote->mirror_root, mirror_base, remote->safe_name);
+    join_path(remote->mirror_root, (int)sizeof(remote->mirror_root), mirror_base, remote->safe_name);
 }
 
 static void map_remote_drive(RemoteShare* remote) {
@@ -1590,7 +1756,7 @@ static void process_beacons(int udp_fd) {
     }
 }
 
-static void sync_remote(RemoteShare* remote) {
+static void sync_remote_once(RemoteShare* remote) {
     u32 hash = 0;
     if (remote->first_sync) {
         if (remote->defer_ticks) {
@@ -1602,6 +1768,7 @@ static void sync_remote(RemoteShare* remote) {
         print("\n");
         if (fetch_manifest(remote, &hash) < 0) {
             int total;
+            if (sync_aborted) return;
             print("network-share-agent: first manifest failed, refreshing archive ");
             print(remote->safe_name);
             print("\n");
@@ -1619,7 +1786,7 @@ static void sync_remote(RemoteShare* remote) {
             return;
         }
         if (!apply_manifest_delta(remote, 0)) {
-            remote->defer_ticks = 16;
+            if (!sync_aborted) remote->defer_ticks = 16;
             return;
         }
         remote->first_sync = 0;
@@ -1631,6 +1798,7 @@ static void sync_remote(RemoteShare* remote) {
     }
     if (fetch_manifest(remote, &hash) < 0) {
         int total;
+        if (sync_aborted) return;
         print("network-share-agent: manifest failed, refreshing archive ");
         print(remote->safe_name);
         print("\n");
@@ -1648,7 +1816,9 @@ static void sync_remote(RemoteShare* remote) {
     }
     if (remote->have_hash && !remote->first_sync && remote->last_hash == hash) return;
     if (!apply_manifest_delta(remote, 1)) {
-        int total = fetch_archive_with_request(remote, archive_request);
+        int total;
+        if (sync_aborted) return;
+        total = fetch_archive_with_request(remote, archive_request);
         if (total < 0) {
             remote->defer_ticks = 16;
             return;
@@ -1664,11 +1834,25 @@ static void sync_remote(RemoteShare* remote) {
     map_remote_drive(remote);
 }
 
+static void sync_remote(RemoteShare* remote) {
+    sync_aborted = 0;
+    sync_remote_once(remote);
+    if (sync_aborted) {
+        /* Not a failure: retry soon, keeping the mirror and last hash. */
+        remote->defer_ticks = 2 + (sync_abort_jitter ? next_random() % 8 : 0);
+        remote->poll_now = 1;
+    }
+}
+
 static void poll_remotes(int force_all) {
     int i;
     for (i = 0; i < MAX_REMOTES; i++) {
         if (remotes[i].used && remotes[i].defer_ticks) remotes[i].defer_ticks--;
-        if (!serve_cooldown_ticks && remotes[i].used && !remotes[i].defer_ticks && (force_all || remotes[i].poll_now)) sync_remote(&remotes[i]);
+        if (!serve_cooldown_ticks && remotes[i].used && !remotes[i].defer_ticks && (force_all || remotes[i].poll_now)) {
+            sync_remote(&remotes[i]);
+            /* Return to the main loop so the waiting peer gets served. */
+            if (sync_aborted) break;
+        }
     }
 }
 
@@ -1742,9 +1926,15 @@ static void serve_pending_clients(int listener_fd) {
         {
             char request[768];
             u32 recv_args[4] = {(u32)client_fd, (u32)request, sizeof(request) - 1, 0};
-            int received = socketcall(SC_RECV, recv_args);
-            if (received > 0) request[received] = 0;
-            else request[0] = 0;
+            u32 fds[2] = {(u32)client_fd, POLLIN};
+            int received = -1;
+            /* A peer that backed off may never send its request; don't wait forever. */
+            if (sys3(SYS_POLL, (int)fds, 1, SERVE_REQUEST_TIMEOUT_MS) > 0) received = socketcall(SC_RECV, recv_args);
+            if (received <= 0) {
+                sys1(SYS_CLOSE, client_fd);
+                continue;
+            }
+            request[received] = 0;
             if (starts_with(request, "GET manifest")) {
                 send_manifest(client_fd);
             } else if (starts_with(request, "GET file-data path=")) {
@@ -1789,6 +1979,8 @@ static void agent_run(int argc, char** argv) {
         print("network-share-agent: listen failed\n");
         sys1(SYS_EXIT, 1);
     }
+    agent_listener_fd = listener_fd;
+    random_state = fnv1a_update(2166136261u, share_name, strlen0(share_name)) ^ read_tsc();
     udp_fd = create_udp_beacon_socket();
     if (udp_fd < 0) {
         print("network-share-agent: udp failed\n");

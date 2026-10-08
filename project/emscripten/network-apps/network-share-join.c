@@ -42,6 +42,7 @@ typedef unsigned char u8;
 #define SEEK_END 2
 #define ARCHIVE_BUFFER_SIZE (8 * 1024 * 1024)
 #define MANIFEST_BUFFER_SIZE (256 * 1024)
+#define REL_PATH_MAX 512
 
 static const char default_mirror_root[] = "/home/username/.wine/dosdevices/c:/share-mirror";
 static const char default_drive[] = "y";
@@ -149,10 +150,11 @@ static void append_uint(char* dst, int* pos, u32 value) {
 }
 
 static void print_uint(u32 value) {
+    char tmp[12];
     int pos = 0;
-    append_uint(path_buffer, &pos, value);
-    path_buffer[pos] = 0;
-    print(path_buffer);
+    append_uint(tmp, &pos, value);
+    tmp[pos] = 0;
+    print(tmp);
 }
 
 static u32 parse_uint(const char* s) {
@@ -250,12 +252,50 @@ static void copy_n(char* dst, const char* src, int n) {
     dst[n] = 0;
 }
 
-static void join_path(char* dst, const char* base, const char* rel) {
+static int join_path_n(char* dst, int cap, const char* base, const char* rel, int rel_len) {
     int pos = 0;
+    int i;
+    if (strlen0(base) + 1 + rel_len >= cap) {
+        dst[0] = 0;
+        return 0;
+    }
     append_str(dst, &pos, base);
     if (pos > 0 && dst[pos - 1] != '/') dst[pos++] = '/';
-    append_str(dst, &pos, rel);
+    for (i = 0; i < rel_len; i++) dst[pos++] = rel[i];
     dst[pos] = 0;
+    return 1;
+}
+
+static int join_path(char* dst, int cap, const char* base, const char* rel) {
+    return join_path_n(dst, cap, base, rel, strlen0(rel));
+}
+
+/* Remote archive and manifest paths must stay inside the mirror root. */
+static int valid_rel_path(const char* path, int len) {
+    int i;
+    int seg = 0;
+    if (len <= 0 || len >= REL_PATH_MAX || path[0] == '/') return 0;
+    for (i = 0; i <= len; i++) {
+        char c = i < len ? path[i] : '/';
+        if (c == '/') {
+            int n = i - seg;
+            if (n == 0) return 0;
+            if (n == 1 && path[seg] == '.') return 0;
+            if (n == 2 && path[seg] == '.' && path[seg + 1] == '.') return 0;
+            seg = i + 1;
+        } else if ((u8)c < 32 || c == 127 || c == '\\') {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int mirror_path(const char* rel, int rel_len) {
+    if (!valid_rel_path(rel, rel_len) || !join_path_n(path_buffer, (int)sizeof(path_buffer), mirror_root, rel, rel_len)) {
+        print("network-share-join: rejected unsafe path\n");
+        return 0;
+    }
+    return 1;
 }
 
 static void make_dir(const char* path) {
@@ -374,10 +414,9 @@ static void prune_deleted_entries(const char* full_dir, const char* rel_dir, int
             char child_rel[512];
             int is_dir;
             if (!reclen) break;
-            if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_n(child_rel, name, strlen0(name));
+            if (!skip_dirent_name(name) &&
+                    join_path(child_full, (int)sizeof(child_full), full_dir, name) &&
+                    join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
                 is_dir = path_is_dir(child_full);
                 if (!manifest_contains_path(child_rel, is_dir)) {
                     remove_tree(child_full, 0);
@@ -418,8 +457,7 @@ static void remove_tree(const char* path, int depth) {
                 char* name = dents_buffer + offset + 10;
                 char child_path[768];
                 if (!reclen) break;
-                if (!skip_dirent_name(name)) {
-                    join_path(child_path, path, name);
+                if (!skip_dirent_name(name) && join_path(child_path, (int)sizeof(child_path), path, name)) {
                     remove_tree(child_path, depth + 1);
                 }
                 offset += reclen;
@@ -448,8 +486,7 @@ static void prune_mirror_root(void) {
             char* name = dents_buffer + offset + 10;
             char child_path[768];
             if (!reclen) break;
-            if (!skip_dirent_name(name)) {
-                join_path(child_path, mirror_root, name);
+            if (!skip_dirent_name(name) && join_path(child_path, (int)sizeof(child_path), mirror_root, name)) {
                 remove_tree(child_path, 0);
             }
             offset += reclen;
@@ -460,7 +497,7 @@ static void prune_mirror_root(void) {
 
 static void mirror_file(const char* rel_path, const char* data, u32 size) {
     int fd;
-    join_path(path_buffer, mirror_root, rel_path);
+    if (!mirror_path(rel_path, strlen0(rel_path))) return;
     make_parent_dirs(path_buffer);
     fd = sys3(SYS_OPEN, (int)path_buffer, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd >= 0) {
@@ -538,7 +575,7 @@ static void parse_archive(int len) {
     while ((line = next_line(&cursor, end))) {
         if (starts_with(line, "END")) break;
         if (starts_with(line, "dir path=")) {
-            join_path(path_buffer, mirror_root, line + 9);
+            if (!mirror_path(line + 9, strlen0(line + 9))) continue;
             make_parent_dirs(path_buffer);
             make_dir(path_buffer);
             print("network-share-join: mirrored dir ");
@@ -547,12 +584,16 @@ static void parse_archive(int len) {
         } else if (starts_with(line, "file path=")) {
             int size_pos = find_token(line, " size=");
             if (size_pos > 10) {
-                char rel_path[512];
-                u32 size;
-                copy_n(rel_path, line + 10, size_pos - 10);
-                size = parse_uint(line + size_pos + 6);
-                if (cursor + size <= end) {
-                    mirror_file(rel_path, cursor, size);
+                char rel_path[REL_PATH_MAX];
+                u32 size = parse_uint(line + size_pos + 6);
+                if (size <= (u32)(end - cursor)) {
+                    /* Unsafe entries are skipped, but their data is consumed. */
+                    if (valid_rel_path(line + 10, size_pos - 10)) {
+                        copy_n(rel_path, line + 10, size_pos - 10);
+                        mirror_file(rel_path, cursor, size);
+                    } else {
+                        print("network-share-join: rejected unsafe path\n");
+                    }
                     cursor += size;
                     if (cursor < end && *cursor == '\n') cursor++;
                     line = next_line(&cursor, end);
@@ -741,7 +782,7 @@ static int fetch_manifest(u8* server_sockaddr, u32* manifest_hash) {
 static int local_file_matches(const char* rel_path, u32 expected_size, u32 expected_hash) {
     u32 size;
     u32 hash;
-    join_path(path_buffer, mirror_root, rel_path);
+    if (!mirror_path(rel_path, strlen0(rel_path))) return 0;
     if (path_is_dir(path_buffer)) return 0;
     hash = calculate_file_hash(path_buffer, &size);
     return size == expected_size && hash == expected_hash;
@@ -771,16 +812,20 @@ static int apply_manifest_delta(u8* server_sockaddr) {
     while ((line = next_line(&cursor, end))) {
         if (starts_with(line, "END")) break;
         if (starts_with(line, "dir path=")) {
-            join_path(path_buffer, mirror_root, line + 9);
+            if (!mirror_path(line + 9, strlen0(line + 9))) continue;
             make_parent_dirs(path_buffer);
             make_dir(path_buffer);
         } else if (starts_with(line, "file path=")) {
             int size_pos = find_token(line, " size=");
             int hash_pos = find_token(line, " hash=");
             if (size_pos > 10 && hash_pos > size_pos) {
-                char rel_path[512];
+                char rel_path[REL_PATH_MAX];
                 u32 size;
                 u32 hash;
+                if (!valid_rel_path(line + 10, size_pos - 10)) {
+                    print("network-share-join: rejected unsafe path\n");
+                    continue;
+                }
                 copy_n(rel_path, line + 10, size_pos - 10);
                 size = parse_uint(line + size_pos + 6);
                 hash = parse_uint(line + hash_pos + 6);

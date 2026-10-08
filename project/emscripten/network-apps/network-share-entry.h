@@ -7,8 +7,32 @@
  */
 
 #ifdef _WIN32
+/*
+ * i386 MSVC-target code calls this with the frame size in eax for frames over
+ * a page. Like compiler-rt's i386 _chkstk, it touches each new page in order
+ * and returns with esp already lowered by eax; the caller does not adjust esp.
+ */
 __attribute__((used, naked)) void _chkstk(void) {
-    __asm__ volatile("ret");
+    __asm__ volatile(
+        "pushl %ecx\n"
+        "cmpl $0x1000, %eax\n"
+        "leal 8(%esp), %ecx\n"
+        "jb 2f\n"
+        "1:\n"
+        "subl $0x1000, %ecx\n"
+        "testl %ecx, (%ecx)\n"
+        "subl $0x1000, %eax\n"
+        "cmpl $0x1000, %eax\n"
+        "ja 1b\n"
+        "2:\n"
+        "subl %eax, %ecx\n"
+        "testl %ecx, (%ecx)\n"
+        "leal 4(%esp), %eax\n"
+        "movl %ecx, %esp\n"
+        "movl -4(%eax), %ecx\n"
+        "pushl (%eax)\n"
+        "subl %esp, %eax\n"
+        "ret\n");
 }
 
 static int pe_copy_command_line(char* dst, int cap) {

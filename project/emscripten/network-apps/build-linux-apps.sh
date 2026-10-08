@@ -15,9 +15,27 @@ copy_to_release() {
   fi
 }
 
+# LLVM tools come from emsdk ($EMSDK/upstream/bin, or next to emcc on PATH)
+# when available, else PATH.
+find_llvm_tool() {
+  local name="$1"
+  local emcc_path
+  emcc_path="$(command -v emcc 2>/dev/null || true)"
+  if [[ -n "${EMSDK:-}" && -x "${EMSDK}/upstream/bin/${name}" ]]; then
+    echo "${EMSDK}/upstream/bin/${name}"
+  elif [[ -n "${emcc_path}" && -x "$(dirname "${emcc_path}")/../bin/${name}" ]]; then
+    echo "$(cd "$(dirname "${emcc_path}")/../bin" && pwd)/${name}"
+  elif command -v "${name}" >/dev/null 2>&1; then
+    command -v "${name}"
+  else
+    echo "error: ${name} not found; set EMSDK or add ${name} to PATH" >&2
+    return 1
+  fi
+}
+
 clang_bin="${CLANG:-clang}"
-lld_bin="${LLD:-/Users/ai/Desktop/projects/emsdk/upstream/bin/lld}"
-strip_bin="${STRIP:-/Users/ai/Desktop/projects/emsdk/upstream/bin/llvm-strip}"
+lld_bin="${LLD:-$(find_llvm_tool lld)}"
+strip_bin="${STRIP:-$(find_llvm_tool llvm-strip)}"
 
 build_elf() {
   local name="$1"

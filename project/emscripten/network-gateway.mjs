@@ -372,6 +372,19 @@ function registerRoomPeer(peer) {
     peer.closeAll();
 }
 
+// A room connect stays pending until the target accepts it. If the opener closes
+// first, drop the pending entry so the target never accepts a dead connection.
+function dropPendingAcceptsFrom(openerPeer, openerSocketId) {
+    for (const targetPeer of roomPeers) {
+        for (const [token, pending] of targetPeer.pendingTcpAccepts.entries()) {
+            if (pending.kind === "virtual" && pending.openerPeer === openerPeer &&
+                    (openerSocketId === undefined || pending.openerSocketId === openerSocketId)) {
+                targetPeer.pendingTcpAccepts.delete(token);
+            }
+        }
+    }
+}
+
 function unregisterRoomPeer(peer) {
     if (!peer.virtualIp || !roomPeers.has(peer)) {
         return;
@@ -1082,6 +1095,7 @@ class WebSocketPeer {
     }
 
     closeSocket(socketId) {
+        dropPendingAcceptsFrom(this, Number(socketId));
         this.closeTcp(socketId);
         this.closeUdp(socketId);
         const server = this.tcpServers.get(Number(socketId));
@@ -1109,6 +1123,7 @@ class WebSocketPeer {
             return;
         }
         this.closed = true;
+        dropPendingAcceptsFrom(this);
         unregisterRoomPeer(this);
         for (const tcpSocket of this.tcpSockets.values()) {
             tcpSocket.destroy();

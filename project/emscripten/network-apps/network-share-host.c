@@ -38,6 +38,7 @@ typedef unsigned char u8;
 #define O_NONBLOCK 0x800
 #define SEEK_SET 0
 #define SEEK_END 2
+#define REL_PATH_MAX 512
 
 static const char default_share_root[] = "/home/username/.wine/dosdevices/c:/host";
 static const char default_share_name[] = "c-host";
@@ -54,7 +55,6 @@ static u32 listen_port = 19200;
 static u32 beacon_port = 19201;
 static u8 broadcast_ip[4] = {10, 0, 3, 255};
 
-static char dents_buffer[4096];
 static char probe_buffer[256];
 static char file_buffer[8192];
 static char line_buffer[768];
@@ -213,10 +213,11 @@ static void append_uint(char* dst, int* pos, u32 value) {
 }
 
 static void print_uint(u32 value) {
+    char tmp[12];
     int pos = 0;
-    append_uint(line_buffer, &pos, value);
-    line_buffer[pos] = 0;
-    print(line_buffer);
+    append_uint(tmp, &pos, value);
+    tmp[pos] = 0;
+    print(tmp);
 }
 
 static void copy_str(char* dst, const char* src) {
@@ -228,12 +229,22 @@ static void copy_str(char* dst, const char* src) {
     dst[i] = 0;
 }
 
-static void join_path(char* dst, const char* base, const char* name) {
+static int join_path_n(char* dst, int cap, const char* base, const char* rel, int rel_len) {
     int pos = 0;
+    int i;
+    if (strlen0(base) + 1 + rel_len >= cap) {
+        dst[0] = 0;
+        return 0;
+    }
     append_str(dst, &pos, base);
     if (pos > 0 && dst[pos - 1] != '/') append_char(dst, &pos, '/');
-    append_str(dst, &pos, name);
+    for (i = 0; i < rel_len; i++) append_char(dst, &pos, rel[i]);
     dst[pos] = 0;
+    return 1;
+}
+
+static int join_path(char* dst, int cap, const char* base, const char* rel) {
+    return join_path_n(dst, cap, base, rel, strlen0(rel));
 }
 
 static void set_sockaddr_port(u8* sockaddr, u32 port) {
@@ -392,9 +403,11 @@ static void hash_dir_tree(u32* hash, const char* full_dir, const char* rel_dir, 
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (path_is_dir(child_full)) hash_dir_tree(hash, child_full, child_rel, depth + 1);
                 else hash_file(hash, child_full, child_rel);
             }
@@ -413,6 +426,7 @@ static u32 calculate_share_hash(void) {
 }
 
 static void walk_dir(int client_fd, const char* full_dir, const char* rel_dir, int depth) {
+    char dents_buffer[4096];
     int fd;
     if (depth > 6) return;
     fd = sys3(SYS_OPEN, (int)full_dir, O_RDONLY, 0);
@@ -429,9 +443,11 @@ static void walk_dir(int client_fd, const char* full_dir, const char* rel_dir, i
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (!path_is_dir(child_full)) {
                     send_file(client_fd, child_full, child_rel);
                 }
@@ -455,9 +471,11 @@ static void walk_dir(int client_fd, const char* full_dir, const char* rel_dir, i
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (path_is_dir(child_full)) {
                     int pos = 0;
                     append_str(line_buffer, &pos, "dir path=");
@@ -490,6 +508,7 @@ static void send_manifest_file(int client_fd, const char* full_path, const char*
 }
 
 static void send_manifest_entries(int client_fd, const char* full_dir, const char* rel_dir, int depth) {
+    char dents_buffer[4096];
     int fd;
     if (depth > 6) return;
     fd = sys3(SYS_OPEN, (int)full_dir, O_RDONLY, 0);
@@ -506,9 +525,11 @@ static void send_manifest_entries(int client_fd, const char* full_dir, const cha
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (!path_is_dir(child_full)) {
                     send_manifest_file(client_fd, child_full, child_rel);
                 }
@@ -532,9 +553,11 @@ static void send_manifest_entries(int client_fd, const char* full_dir, const cha
             char child_rel[512];
             if (!reclen) break;
             if (!skip_dirent_name(name)) {
-                join_path(child_full, full_dir, name);
-                if (rel_dir[0]) join_path(child_rel, rel_dir, name);
-                else copy_str(child_rel, name);
+                if (!join_path(child_full, (int)sizeof(child_full), full_dir, name) ||
+                        !join_path(child_rel, (int)sizeof(child_rel), rel_dir, name)) {
+                    offset += reclen;
+                    continue;
+                }
                 if (path_is_dir(child_full)) {
                     int pos = 0;
                     append_str(line_buffer, &pos, "dir path=");
@@ -571,12 +594,23 @@ static void send_archive(int client_fd) {
     send_text(client_fd, "END\n");
 }
 
+/* Requested paths must stay inside the share root. */
 static int safe_rel_path(const char* path) {
-    int i = 0;
-    if (!path[0] || path[0] == '/') return 0;
-    while (path[i]) {
-        if (path[i] == '.' && path[i + 1] == '.' && (!i || path[i - 1] == '/') && (!path[i + 2] || path[i + 2] == '/')) return 0;
-        i++;
+    int len = strlen0(path);
+    int i;
+    int seg = 0;
+    if (len <= 0 || len >= REL_PATH_MAX || path[0] == '/') return 0;
+    for (i = 0; i <= len; i++) {
+        char c = i < len ? path[i] : '/';
+        if (c == '/') {
+            int n = i - seg;
+            if (n == 0) return 0;
+            if (n == 1 && path[seg] == '.') return 0;
+            if (n == 2 && path[seg] == '.' && path[seg + 1] == '.') return 0;
+            seg = i + 1;
+        } else if ((u8)c < 32 || c == 127 || c == '\\') {
+            return 0;
+        }
     }
     return 1;
 }
@@ -592,7 +626,7 @@ static void send_one_file_archive(int client_fd, const char* rel_path) {
     clean_path[i] = 0;
     send_archive_header(client_fd);
     if (safe_rel_path(clean_path)) {
-        join_path(full_path, share_root, clean_path);
+        join_path(full_path, (int)sizeof(full_path), share_root, clean_path);
         if (!path_is_dir(full_path)) send_file(client_fd, full_path, clean_path);
     }
     send_text(client_fd, "END\n");
