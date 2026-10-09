@@ -22,6 +22,23 @@
 KObject::KObject(U32 type) : type(type) {
 }
 
+U32 KObject::getPollEvents(U32 events) {
+    U32 result = 0;
+    if (!isOpen()) {
+        result |= K_POLLHUP;
+    }
+    if ((events & K_POLLPRI) && isPriorityReadReady()) {
+        result |= K_POLLPRI;
+    }
+    if ((events & K_POLLIN) && isReadReady()) {
+        result |= K_POLLIN;
+    }
+    if ((events & K_POLLOUT) && isWriteReady()) {
+        result |= K_POLLOUT;
+    }
+    return result;
+}
+
 U32 KObject::writev(KThread* thread, U32 iov, S32 iovcnt) {
     U32 len=0;
     KMemory* memory = thread->memory;

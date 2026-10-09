@@ -31,6 +31,7 @@
         Config.persist_d_drive = true;
         Config.showUploadDownload = false;
         Config.showSaveJITCache = true;
+        Config.runLinux = false;
         Config.WorkingDir = "";
         Config.PlayScript = "";
         Config.loadDesktop = false;
@@ -119,6 +120,7 @@
             Config.ProgramArgs = getProgramArgs();
             Config.WorkingDir = getWorkingDir();
             Config.PlayScript = getPlayScript();
+            Config.runLinux = getRunLinux();
             Config.isSoundEnabled = getSound();
             Config.recordJITCache = getJitRecord();
             Config.wasmModuleBrokerEnabled = getWasmModuleBrokerEnabled();
@@ -132,14 +134,21 @@
 			Config.frameSkip = getFrameSkip();
 			Config.resolution = getResolution();
 			Config.ddrawOverridePath = getDDrawOverridePath();
+			Config.networking = getNetworkingConfig();
 			Config.payloadZipFile = "app.zip";
             configureBrowserStorage();
         }
         function configureBrowserStorage() {
             // IDBFS names databases after their mount points. Keep each game's
             // Wine prefix and D: drive together, independent of build or root ZIP.
+            // storageKey= overrides the per-game key so separate launches can share
+            // one store; storageKey=default selects the desktop/upload storage.
+            let storageKey = allowParameterOverride() ? decodeUrlValue(getParameter("storageKey")).trim() : "";
             let key = "";
-            if (Config.appZipFile.length > 0) {
+            if (storageKey.length > 0) {
+                key = storageKey.toLowerCase() === "default" ? "" : "key/" + encodeURIComponent(storageKey);
+                console.log("setting storage key to: " + (key || "default"));
+            } else if (Config.appZipFile.length > 0) {
                 key = "app/" + encodeURIComponent(decodeUrlValue(Config.appZipFile));
             } else if (Config.extraZipFiles.length > 0) {
                 key = "overlay/" + Config.extraZipFiles.map(function(name) {
@@ -224,6 +233,31 @@
                 }
             }
             return null;
+        }
+        function getNetworkingConfig() {
+            var mode = getParameter("network").trim().toLowerCase();
+            if (!allowParameterOverride() || mode.length == 0 || mode == "false" || mode == "off") {
+                console.log("networking disabled");
+                return { enabled: false };
+            }
+            if (mode != "true" && mode != "websocket" && mode != "tcp") {
+                console.log("networking mode not recognized: " + mode);
+                return { enabled: false };
+            }
+            var gatewayUrl = decodeUrlValue(getParameter("networkGateway").trim());
+            var debug = getParameter("networkDebug").trim().toLowerCase();
+            if (gatewayUrl.length == 0) {
+                var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+                var hostname = window.location.hostname || "127.0.0.1";
+                gatewayUrl = protocol + "//" + hostname + ":8001/boxedwine-network";
+            }
+            console.log("networking enabled through gateway: " + gatewayUrl);
+            return {
+                enabled: true,
+                mode: "websocket",
+                gatewayUrl: gatewayUrl,
+                debug: debug == "true" || debug == "1"
+            };
         }
         function getEnvProp() {
             var property = getParameter("env").trim();
@@ -475,6 +509,17 @@
             playScript = decodeUrlValue(playScript);
             console.log("setting automation play script to: " + playScript);
             return playScript;
+        }
+        function getRunLinux() {
+            var linux = getParameter("linux");
+            if (!allowParameterOverride()) {
+                linux = "false";
+            }
+            var result = linux == "true" || linux == "1";
+            if (result) {
+                console.log("running program directly as Linux executable");
+            }
+            return result;
         }
         function getAppZipFile(param) {
 
@@ -753,6 +798,7 @@
         var initialSetup = function(){
             console.log("running initial setup");
             setConfiguration();
+            Module["boxedwineNetworking"] = Config.networking;
             if (Config.emEnvProps.length > 0) {
             	Config.emEnvProps.forEach(function(prop){
             		ENV[prop.key] = prop.value;
@@ -965,19 +1011,26 @@
                 params.push("-play");
                 params.push(Config.PlayScript);
             }
-        	params.push("/bin/wine");
-            if(Config.Program.length > 0 && !Config.loadDesktop){
-                if (Config.Program.endsWith('.bat')) {
-                    params.push("cmd");
-                    params.push("/c");
-                }
+            if (Config.runLinux && Config.Program.length > 0 && !Config.loadDesktop) {
                 params.push(Config.Program);
                 for (let i = 0; i < Config.ProgramArgs.length; i++) {
                     params.push(Config.ProgramArgs[i]);
                 }
-            }else{
-	            params.push("explorer");
-    	        params.push("/desktop=shell");
+            } else {
+                params.push("/bin/wine");
+                if(Config.Program.length > 0 && !Config.loadDesktop){
+                    if (Config.Program.endsWith('.bat')) {
+                        params.push("cmd");
+                        params.push("/c");
+                    }
+                    params.push(Config.Program);
+                    for (let i = 0; i < Config.ProgramArgs.length; i++) {
+                        params.push(Config.ProgramArgs[i]);
+                    }
+                }else{
+	                params.push("explorer");
+                    params.push("/desktop=shell");
+                }
             }
             console.log("Emulator params:" + params);
             return params;
@@ -986,6 +1039,7 @@
         preRun: [initialSetup],
         arguments: [],
         postRun: [],
+        boxedwineNetworking: { enabled: false },
         // Called by Emscripten after runtimeInitialized=true, just before main().
         // By this point all run-dependencies (including wasm-jit-cache) have been
         // resolved, so the persistence-mode decision is final: latch it into C++

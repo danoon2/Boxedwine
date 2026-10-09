@@ -38,6 +38,7 @@
 #define K_O_ASYNC     0x002000
 #define K_O_LARGEFILE 0x008000
 #define K_O_DIRECTORY 0x010000
+#define K_O_NOFOLLOW  0x020000
 #define K_O_CLOEXEC   0x080000	
 #define K_O_TMPFILE   0x400000
 

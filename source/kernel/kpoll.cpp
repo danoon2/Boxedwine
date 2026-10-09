@@ -77,18 +77,7 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
                         fd = thread->process->getFileDescriptor_nolock(data->fd);
                     }
                     if (fd) {
-                        if (!fd->kobject->isOpen()) {
-                            data->revents |= K_POLLHUP;
-                        }
-                        if ((data->events & K_POLLPRI) && fd->kobject->isPriorityReadReady()) {
-                            data->revents |= K_POLLPRI;
-                        }
-                        if ((data->events & K_POLLIN) != 0 && fd->kobject->isReadReady()) {
-                            data->revents |= K_POLLIN;
-                        }
-                        if ((data->events & K_POLLOUT) != 0 && fd->kobject->isWriteReady()) {
-                            data->revents |= K_POLLOUT;
-                        }
+                        data->revents |= fd->kobject->getPollEvents(data->events);
                         if (data->revents != 0) {
                             result++;
                         }
@@ -262,13 +251,13 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
         FD fd = pollData[i].fd;
         U32 revent = pollData[i].revents;
 
-        if (readfds!=0 && ((revent & K_POLLIN) || (revent & K_POLLHUP))) {
+        if (readfds!=0 && (pollData[i].events & K_POLLIN) && (revent & (K_POLLIN | K_POLLHUP | K_POLLERR))) {
             U8 v = memory->readb(readfds + fd / 8);
             v |= 1 << (fd % 8);
             memory->writeb(readfds + fd / 8, v);
             found = 1;
         }
-        if (writefds!=0 && (revent & K_POLLOUT)) {
+        if (writefds!=0 && (pollData[i].events & K_POLLOUT) && (revent & (K_POLLOUT | K_POLLERR))) {
             U8 v = memory->readb(writefds + fd / 8);
             v |= 1 << (fd % 8);
             memory->writeb(writefds + fd / 8, v);

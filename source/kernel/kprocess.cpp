@@ -1018,10 +1018,13 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
     bool createdNode = false;
 
     FsPathLookupOptions lookupOptions;
-    lookupOptions.followFinalSymlink = true;
+    lookupOptions.followFinalSymlink = (accessFlags & K_O_NOFOLLOW) == 0;
     lookupOptions.requireDirectory = trailingSlashRequiresDirectory || (accessFlags & K_O_DIRECTORY);
     FsPathResult resolution = Fs::resolvePath(currentDirectory, localPath, lookupOptions);
     node = resolution.node;
+    if (node && node->isLink() && (accessFlags & K_O_NOFOLLOW)) {
+        return -K_ELOOP;
+    }
     if (!node && resolution.error != -K_ENOENT) {
         return resolution.error;
     }
