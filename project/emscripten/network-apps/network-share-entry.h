@@ -87,8 +87,8 @@ static int pe_build_argv(char* cmd, int cmd_cap, char** argv, int argv_cap, char
             if (!quoted && (*src == ' ' || *src == '\t')) break;
             *dst++ = *src++;
         }
-        *dst++ = 0;
         while (*src == ' ' || *src == '\t') src++;
+        *dst++ = 0;
     }
     if (argc == 0) {
         argv[0] = fallback_argv0;

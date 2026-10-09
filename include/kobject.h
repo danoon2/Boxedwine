@@ -50,6 +50,7 @@ public:
     virtual bool isReadReady()=0;
     virtual bool isPriorityReadReady() { return isReadReady(); }
     virtual bool isWriteReady()=0;
+    virtual U32 getPollEvents(U32 events);
     virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events)=0;
     virtual U32 write(KThread* thread, U32 buffer, U32 len);
     virtual U32 writeNative(U8* buffer, U32 len)=0;

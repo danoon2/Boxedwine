@@ -23,6 +23,30 @@ path internally. That keeps the networking proof close to the already-tested
 Linux apps and avoids a separate WinSock/Win32 filesystem port. Use the
 `*-win32.zip` app zips and omit `linux=true` in the Boxedwine URL.
 
+## Regression tests
+
+From the repository root, run the transport and gateway tests with Node.js 22 or newer:
+
+```sh
+node --test project/emscripten/boxedwine-net.test.mjs project/emscripten/network-gateway.test.mjs
+```
+
+These cover WebSocket backpressure, empty UDP datagrams, ephemeral UDP reply
+routing, TCP half-close, refused connections, malformed control messages, and
+room address exhaustion/reuse. The gateway tests use temporary localhost ports.
+
+`network-share-path-test.c` uses the share apps' freestanding i386 ELF compiler
+and linker flags. Run it with a fresh writable directory as its first argument;
+repeat with `-DTEST_AGENT` when compiling. Both variants check valid nested files,
+path traversal, and file/directory symlinks. They also run as Linux guest apps in
+Boxedwine, which exercises the emulator's `O_NOFOLLOW` implementation.
+
+Build `network-poll-test.c` with those same ELF flags and launch it with
+networking enabled. Keep another room peer at `10.0.3.2` without a TCP listener
+on port 18659. The test checks refused-connect readiness through `poll` and
+`select`, including preservation of the requested descriptor sets, followed by
+`SO_ERROR`. Run it in both Release and MultiThreaded browser builds.
+
 ## Required Gateway
 
 Most apps need the WebSocket gateway:

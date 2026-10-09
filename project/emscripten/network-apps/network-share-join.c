@@ -92,6 +92,7 @@ static int socketcall(int call, u32* args) {
 }
 
 #include "network-share-entry.h"
+#include "network-share-path.h"
 
 static int strlen0(const char* s) {
     int n = 0;
@@ -326,7 +327,7 @@ static void make_parent_dirs(const char* path) {
 
 static int path_is_dir(const char* path) {
     char probe_buffer[256];
-    int fd = sys3(SYS_OPEN, (int)path, O_RDONLY, 0);
+    int fd = sys3(SYS_OPEN, (int)path, O_RDONLY | SHARE_O_DIRECTORY | SHARE_O_NOFOLLOW, 0);
     int result;
     if (fd < 0) return 0;
     result = sys3(SYS_GETDENTS, fd, (int)probe_buffer, (int)sizeof(probe_buffer));
@@ -345,10 +346,9 @@ static u32 fnv1a_update(u32 hash, const char* data, int len) {
     return hash;
 }
 
-static u32 calculate_file_hash(const char* full_path, u32* size_out) {
+static u32 calculate_open_file_hash(int fd, u32* size_out) {
     char hash_buffer[4096];
     u32 hash = 2166136261u;
-    int fd = sys3(SYS_OPEN, (int)full_path, O_RDONLY, 0);
     int size;
     int remaining;
     *size_out = 0;
@@ -400,7 +400,7 @@ static void prune_deleted_entries(const char* full_dir, const char* rel_dir, int
     char dents_buffer[4096];
     int fd;
     if (depth > 8) return;
-    fd = sys3(SYS_OPEN, (int)full_dir, O_RDONLY, 0);
+    fd = sys3(SYS_OPEN, (int)full_dir, O_RDONLY | SHARE_O_DIRECTORY | SHARE_O_NOFOLLOW, 0);
     if (fd < 0) return;
 
     for (;;) {
@@ -446,7 +446,7 @@ static void remove_tree(const char* path, int depth) {
         return;
     }
 
-    fd = sys3(SYS_OPEN, (int)path, O_RDONLY, 0);
+    fd = sys3(SYS_OPEN, (int)path, O_RDONLY | SHARE_O_DIRECTORY | SHARE_O_NOFOLLOW, 0);
     if (fd >= 0) {
         for (;;) {
             int nread = sys3(SYS_GETDENTS, fd, (int)dents_buffer, (int)sizeof(dents_buffer));
@@ -473,7 +473,7 @@ static void prune_mirror_root(void) {
     int fd;
     make_parent_dirs(mirror_root);
     make_dir(mirror_root);
-    fd = sys3(SYS_OPEN, (int)mirror_root, O_RDONLY, 0);
+    fd = sys3(SYS_OPEN, (int)mirror_root, O_RDONLY | SHARE_O_DIRECTORY | SHARE_O_NOFOLLOW, 0);
     if (fd < 0) return;
 
     print("network-share-join: pruning mirror root\n");
@@ -498,8 +498,7 @@ static void prune_mirror_root(void) {
 static void mirror_file(const char* rel_path, const char* data, u32 size) {
     int fd;
     if (!mirror_path(rel_path, strlen0(rel_path))) return;
-    make_parent_dirs(path_buffer);
-    fd = sys3(SYS_OPEN, (int)path_buffer, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    fd = share_open_file(mirror_root, rel_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd >= 0) {
         u32 written = 0;
         while (written < size) {
@@ -576,8 +575,7 @@ static void parse_archive(int len) {
         if (starts_with(line, "END")) break;
         if (starts_with(line, "dir path=")) {
             if (!mirror_path(line + 9, strlen0(line + 9))) continue;
-            make_parent_dirs(path_buffer);
-            make_dir(path_buffer);
+            if (share_make_dir(mirror_root, line + 9) < 0) continue;
             print("network-share-join: mirrored dir ");
             print(line + 9);
             print("\n");
@@ -784,7 +782,9 @@ static int local_file_matches(const char* rel_path, u32 expected_size, u32 expec
     u32 hash;
     if (!mirror_path(rel_path, strlen0(rel_path))) return 0;
     if (path_is_dir(path_buffer)) return 0;
-    hash = calculate_file_hash(path_buffer, &size);
+    int fd = share_open_file(mirror_root, rel_path, O_RDONLY, 0);
+    if (fd < 0) return 0;
+    hash = calculate_open_file_hash(fd, &size);
     return size == expected_size && hash == expected_hash;
 }
 
@@ -813,8 +813,7 @@ static int apply_manifest_delta(u8* server_sockaddr) {
         if (starts_with(line, "END")) break;
         if (starts_with(line, "dir path=")) {
             if (!mirror_path(line + 9, strlen0(line + 9))) continue;
-            make_parent_dirs(path_buffer);
-            make_dir(path_buffer);
+            if (share_make_dir(mirror_root, line + 9) < 0) continue;
         } else if (starts_with(line, "file path=")) {
             int size_pos = find_token(line, " size=");
             int hash_pos = find_token(line, " hash=");
@@ -827,6 +826,7 @@ static int apply_manifest_delta(u8* server_sockaddr) {
                     continue;
                 }
                 copy_n(rel_path, line + 10, size_pos - 10);
+                if (!share_valid_path(rel_path)) continue;
                 size = parse_uint(line + size_pos + 6);
                 hash = parse_uint(line + hash_pos + 6);
                 if (local_file_matches(rel_path, size, hash)) {

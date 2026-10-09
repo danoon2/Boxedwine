@@ -10,6 +10,7 @@ addToLibrary({
     EAFNOSUPPORT: 97,
     EADDRINUSE: 98,
     ENETUNREACH: 101,
+    ECONNABORTED: 103,
     ECONNRESET: 104,
     EISCONN: 106,
     ENOTCONN: 107,
@@ -90,6 +91,10 @@ addToLibrary({
     },
 
     notify: function (handle) {
+      var socket = BoxedWineNetwork.socketState(handle);
+      if (socket) {
+        socket.pendingNotification = true;
+      }
       var notify = Module["_boxedwine_browser_socket_notify"];
       if (typeof notify === "function") {
         notify(handle);
@@ -203,6 +208,22 @@ addToLibrary({
         reconnectDelay: 0,
         reconnectAt: 0,
         reconnectTimer: null,
+        drainTimer: null,
+
+        watchDrain: function () {
+          if (this.drainTimer !== null || !this.wsOpen) {
+            return;
+          }
+          this.drainTimer = setTimeout(function () {
+            transport.drainTimer = null;
+            if (!transport.wsOpen) {
+              return;
+            }
+            Object.keys(transport.sockets).forEach(function (handle) {
+              transport.setEvents(transport.sockets[handle]);
+            });
+          }, 10);
+        },
 
         ensureGateway: function () {
           if (this.ws || this.connecting) {
@@ -340,13 +361,15 @@ addToLibrary({
           if (socket.error) {
             events |= BoxedWineNetwork.POLLERR;
           }
-          if (socket.rxBytes > 0 || socket.remoteClosed || (socket.pendingAccepts && socket.pendingAccepts.length > 0)) {
+          if ((socket.kind === "udp" ? socket.rx.length > 0 : socket.rxBytes > 0) || socket.remoteClosed || socket.inClosed || (socket.pendingAccepts && socket.pendingAccepts.length > 0)) {
             events |= BoxedWineNetwork.POLLIN;
           }
           if (socket.state === "open" && !socket.outClosed && this.wsOpen && this.ws && this.ws.bufferedAmount < this.highWaterMark) {
             events |= BoxedWineNetwork.POLLOUT;
+          } else if (socket.state === "open" && !socket.outClosed && this.wsOpen) {
+            this.watchDrain();
           }
-          if (socket.remoteClosed || socket.state === "closed") {
+          if (socket.state === "closed") {
             events |= BoxedWineNetwork.POLLHUP;
           }
           socket.events = events;
@@ -360,6 +383,10 @@ addToLibrary({
         },
 
         failAll: function (error) {
+          if (this.drainTimer !== null) {
+            clearTimeout(this.drainTimer);
+            this.drainTimer = null;
+          }
           this.wsError = error || BoxedWineNetwork.ENETUNREACH;
           Object.keys(this.sockets).forEach(function (handle) {
             transport.failSocket(transport.sockets[handle], transport.wsError);
@@ -392,6 +419,9 @@ addToLibrary({
             return;
           }
           var payload = bytes.slice(5);
+          if (socket.inClosed) {
+            return;
+          }
           if (payload.length) {
             BoxedWineNetwork.debugLog("ws recv socket=" + socketId + " len=" + payload.length + " bytes=" + BoxedWineNetwork.previewBytes(payload));
             socket.rx.push(payload);
@@ -409,6 +439,9 @@ addToLibrary({
           if (!socket || socket.kind !== "udp") {
             BoxedWineNetwork.debugLog("udp recv dropped socket=" + socketId + " reason=" + (!socket ? "missing" : ("kind=" + socket.kind)));
             this.sendTrace("udp-drop", "socket=" + socketId + " reason=" + (!socket ? "missing" : ("kind=" + socket.kind)) + " len=" + bytes.length);
+            return;
+          }
+          if (socket.inClosed) {
             return;
           }
           var ipv4 = (bytes[5] | (bytes[6] << 8) | (bytes[7] << 16) | (bytes[8] << 24)) >>> 0;
@@ -429,7 +462,9 @@ addToLibrary({
             this.sendTrace("room", "ip=" + this.virtualIp + " peers=" + this.roomPeers.map(function (peer) { return peer.ip; }).join(","));
             return;
           }
-          var socket = this.getSocket(message.id);
+          // An accept acknowledgement belongs to the new socket even if the
+          // guest has already closed its listening socket.
+          var socket = this.getSocket(message.type === "accept" ? message.acceptedId : message.id);
           if (!socket) {
             BoxedWineNetwork.debugLog("control dropped type=" + message.type + " socket=" + message.id + " reason=missing");
             this.sendTrace("control-drop", "type=" + message.type + " socket=" + message.id);
@@ -451,10 +486,18 @@ addToLibrary({
             socket.remoteClosed = true;
             socket.state = "closed";
             this.setEvents(socket);
+          } else if (message.type === "shutdown") {
+            socket.remoteClosed = true;
+            this.setEvents(socket);
           } else if (message.type === "udp-open") {
             if (message.status === 0) {
               socket.state = "open";
               socket.error = 0;
+              // bind() may already have reserved a different port locally.
+              if (socket.bindPort === undefined) {
+                socket.localIpv4 = BoxedWineNetwork.ipv4FromString(message.host);
+                socket.localPort = message.port || socket.localPort || 0;
+              }
               BoxedWineNetwork.debugLog("udp open ok socket=" + message.id);
             } else {
               socket.error = -(message.status || -BoxedWineNetwork.EIO);
@@ -465,8 +508,10 @@ addToLibrary({
           } else if (message.type === "udp-bind") {
             if (message.status === 0) {
               socket.error = 0;
-              socket.localIpv4 = BoxedWineNetwork.ipv4FromString(message.host);
-              socket.localPort = message.port || socket.localPort || 0;
+              if (message.port === socket.bindPort) {
+                socket.localIpv4 = BoxedWineNetwork.ipv4FromString(message.host);
+                socket.localPort = message.port;
+              }
               BoxedWineNetwork.debugLog("udp bind ok socket=" + message.id + " host=" + message.host + " port=" + message.port);
             } else {
               socket.error = -(message.status || -BoxedWineNetwork.EIO);
@@ -497,8 +542,13 @@ addToLibrary({
             });
             BoxedWineNetwork.debugLog("accept pending socket=" + message.id + " token=" + message.token + " from=" + (message.host || "0.0.0.0") + ":" + (message.port || 0));
             this.setEvents(socket);
+          } else if (message.type === "pending-cancel") {
+            socket.pendingAccepts = (socket.pendingAccepts || []).filter(function (pending) {
+              return pending.token !== message.token;
+            });
+            this.setEvents(socket);
           } else if (message.type === "accept") {
-            var acceptedSocket = this.getSocket(message.acceptedId);
+            var acceptedSocket = socket;
             if (acceptedSocket) {
               if (message.status === 0) {
                 acceptedSocket.state = "open";
@@ -510,6 +560,11 @@ addToLibrary({
               } else {
                 acceptedSocket.state = "error";
                 acceptedSocket.error = -(message.status || -BoxedWineNetwork.EIO);
+                // Older gateways reject a canceled accept with EAGAIN. The fd
+                // has already been returned, so reads must fail permanently.
+                if (acceptedSocket.error === BoxedWineNetwork.EAGAIN) {
+                  acceptedSocket.error = BoxedWineNetwork.ECONNABORTED;
+                }
               }
               this.setEvents(acceptedSocket);
             }
@@ -521,10 +576,24 @@ addToLibrary({
           }
         },
 
+        udpPortInUse: function (handle, port) {
+          return Object.keys(this.sockets).some(function (id) {
+            var socket = transport.sockets[id];
+            return socket.handle !== handle && socket.kind === "udp" && socket.localPort === port;
+          });
+        },
+
         socket: function (domain, type, protocol) {
           if (type !== 1 && type !== 2) {
             BoxedWineNetwork.debugLog("socket rejected domain=" + domain + " type=" + type + " protocol=" + protocol);
             return -BoxedWineNetwork.EAFNOSUPPORT;
+          }
+          var localPort = 0;
+          if (type === 2) {
+            for (localPort = 49152; localPort <= 65535; localPort++) {
+              if (!this.udpPortInUse(0, localPort)) break;
+            }
+            if (localPort > 65535) return -BoxedWineNetwork.EADDRINUSE;
           }
           var handle = BoxedWineNetwork.allocateSocket(domain, type, protocol);
           this.sockets[handle] = {
@@ -540,7 +609,7 @@ addToLibrary({
             peerIpv4: 0,
             peerPort: 0,
             localIpv4: 0,
-            localPort: 0,
+            localPort: localPort,
             remoteClosed: false,
             outClosed: false,
             kind: type === 2 ? "udp" : "tcp",
@@ -552,7 +621,7 @@ addToLibrary({
           BoxedWineNetwork.debugLog("socket handle=" + handle + " domain=" + domain + " type=" + type + " protocol=" + protocol);
           this.ensureGateway();
           if (type === 2) {
-            this.sendControl({ type: "udp-open", id: handle });
+            this.sendControl({ type: "udp-open", id: handle, port: localPort });
             this.setEvents(this.sockets[handle]);
           }
           return handle;
@@ -566,6 +635,10 @@ addToLibrary({
           this.sendControl({ type: "close", id: handle });
           socket.state = "closed";
           delete this.sockets[handle];
+          if (Object.keys(this.sockets).length === 0 && this.drainTimer !== null) {
+            clearTimeout(this.drainTimer);
+            this.drainTimer = null;
+          }
           return 0;
         },
 
@@ -632,6 +705,7 @@ addToLibrary({
           if (!this.wsOpen || !this.ws || this.ws.bufferedAmount >= this.highWaterMark) {
             socket.events &= ~BoxedWineNetwork.POLLOUT;
             BoxedWineNetwork.setEvents(handle, socket.events, socket.rxBytes);
+            this.watchDrain();
             BoxedWineNetwork.debugLog("tcp send backpressure socket=" + handle + " len=" + len);
             return -BoxedWineNetwork.EAGAIN;
           }
@@ -643,6 +717,9 @@ addToLibrary({
         },
 
         sendUdp: function (socket, buffer, len, flags, ipv4, port) {
+          if (socket.outClosed) {
+            return -BoxedWineNetwork.ESHUTDOWN;
+          }
           if (socket.error) {
             BoxedWineNetwork.debugLog("udp send rejected socket=" + socket.handle + " error=" + socket.error);
             return -socket.error;
@@ -657,6 +734,7 @@ addToLibrary({
           if (this.ws && this.ws.bufferedAmount >= this.highWaterMark) {
             socket.events &= ~BoxedWineNetwork.POLLOUT;
             BoxedWineNetwork.setEvents(socket.handle, socket.events, socket.rxBytes);
+            this.watchDrain();
             BoxedWineNetwork.debugLog("udp send backpressure socket=" + socket.handle + " len=" + len);
             return -BoxedWineNetwork.EAGAIN;
           }
@@ -674,6 +752,9 @@ addToLibrary({
           }
           if (socket.kind === "udp") {
             return this.recvUdp(socket, buffer, len, flags, address, addressLen);
+          }
+          if (socket.inClosed) {
+            return 0;
           }
           if (socket.rxBytes === 0) {
             if (socket.error) {
@@ -714,7 +795,10 @@ addToLibrary({
         },
 
         recvUdp: function (socket, buffer, len, flags, address, addressLen) {
-          if (socket.rxBytes === 0) {
+          if (socket.inClosed) {
+            return 0;
+          }
+          if (socket.rx.length === 0) {
             if (socket.error) {
               return -socket.error;
             }
@@ -743,6 +827,14 @@ addToLibrary({
           if (!socket) {
             return -BoxedWineNetwork.ENOTCONN;
           }
+          if (how < 0 || how > 2) {
+            return -BoxedWineNetwork.EINVAL;
+          }
+          if (how === 0 || how === 2) {
+            socket.inClosed = true;
+            socket.rx = [];
+            socket.rxBytes = 0;
+          }
           if (how === 1 || how === 2) {
             socket.outClosed = true;
           }
@@ -757,6 +849,12 @@ addToLibrary({
             return -BoxedWineNetwork.EAFNOSUPPORT;
           }
           if (socket.kind === "udp") {
+            // Reserve in the browser so bind() can return synchronously. The
+            // gateway checks the same constraint for other protocol clients.
+            port = port || socket.localPort;
+            if (this.udpPortInUse(handle, port)) {
+              return -BoxedWineNetwork.EADDRINUSE;
+            }
             socket.bindIpv4 = ipv4 >>> 0;
             socket.bindHost = BoxedWineNetwork.ipv4ToString(socket.bindIpv4);
             socket.bindPort = port;
@@ -881,16 +979,19 @@ addToLibrary({
   },
 
   bw_net_is_enabled__deps: ["$BoxedWineNetwork"],
+  bw_net_is_enabled__proxy: "sync",
   bw_net_is_enabled: function () {
     return BoxedWineNetwork.enabled() ? 1 : 0;
   },
 
   bw_net_is_debug_enabled__deps: ["$BoxedWineNetwork"],
+  bw_net_is_debug_enabled__proxy: "sync",
   bw_net_is_debug_enabled: function () {
     return BoxedWineNetwork.debugEnabled() ? 1 : 0;
   },
 
   bw_net_socket__deps: ["$BoxedWineNetwork"],
+  bw_net_socket__proxy: "sync",
   bw_net_socket: function (domain, type, protocol) {
     if (!BoxedWineNetwork.enabled()) {
       return 0;
@@ -905,12 +1006,14 @@ addToLibrary({
   },
 
   bw_net_close__deps: ["$BoxedWineNetwork"],
+  bw_net_close__proxy: "sync",
   bw_net_close: function (handle) {
     BoxedWineNetwork.callTransport("close", [handle], 0);
     delete BoxedWineNetwork.sockets[handle];
   },
 
   bw_net_get_events__deps: ["$BoxedWineNetwork"],
+  bw_net_get_events__proxy: "sync",
   bw_net_get_events: function (handle) {
     var transportEvents = BoxedWineNetwork.callTransport("getEvents", [handle], null);
     if (typeof transportEvents === "number") {
@@ -920,7 +1023,19 @@ addToLibrary({
     return socket ? socket.events : 0;
   },
 
+  bw_net_take_notification__deps: ["$BoxedWineNetwork"],
+  bw_net_take_notification__proxy: "sync",
+  bw_net_take_notification: function (handle) {
+    var socket = BoxedWineNetwork.socketState(handle);
+    if (!socket || !socket.pendingNotification) {
+      return 0;
+    }
+    socket.pendingNotification = false;
+    return 1;
+  },
+
   bw_net_get_error__deps: ["$BoxedWineNetwork"],
+  bw_net_get_error__proxy: "sync",
   bw_net_get_error: function (handle) {
     var transportError = BoxedWineNetwork.callTransport("getError", [handle], null);
     if (typeof transportError === "number") {
@@ -931,6 +1046,7 @@ addToLibrary({
   },
 
   bw_net_readable_bytes__deps: ["$BoxedWineNetwork"],
+  bw_net_readable_bytes__proxy: "sync",
   bw_net_readable_bytes: function (handle) {
     var transportBytes = BoxedWineNetwork.callTransport("readableBytes", [handle], null);
     if (typeof transportBytes === "number") {
@@ -941,26 +1057,31 @@ addToLibrary({
   },
 
   bw_net_get_peer_ipv4__deps: ["$BoxedWineNetwork"],
+  bw_net_get_peer_ipv4__proxy: "sync",
   bw_net_get_peer_ipv4: function (handle) {
     return BoxedWineNetwork.callTransport("getPeerIpv4", [handle], 0) >>> 0;
   },
 
   bw_net_get_peer_port__deps: ["$BoxedWineNetwork"],
+  bw_net_get_peer_port__proxy: "sync",
   bw_net_get_peer_port: function (handle) {
     return BoxedWineNetwork.callTransport("getPeerPort", [handle], 0);
   },
 
   bw_net_get_local_ipv4__deps: ["$BoxedWineNetwork"],
+  bw_net_get_local_ipv4__proxy: "sync",
   bw_net_get_local_ipv4: function (handle) {
     return BoxedWineNetwork.callTransport("getLocalIpv4", [handle], 0) >>> 0;
   },
 
   bw_net_get_local_port__deps: ["$BoxedWineNetwork"],
+  bw_net_get_local_port__proxy: "sync",
   bw_net_get_local_port: function (handle) {
     return BoxedWineNetwork.callTransport("getLocalPort", [handle], 0);
   },
 
   bw_net_get_room_ipv4__deps: ["$BoxedWineNetwork"],
+  bw_net_get_room_ipv4__proxy: "sync",
   bw_net_get_room_ipv4: function () {
     var transport = BoxedWineNetwork.transport();
     if (!transport || !transport.virtualIp) {
@@ -970,6 +1091,7 @@ addToLibrary({
   },
 
   bw_net_connect__deps: ["$BoxedWineNetwork"],
+  bw_net_connect__proxy: "sync",
   bw_net_connect: function (handle, ipv4, port) {
     return BoxedWineNetwork.callTransport(
       "connect",
@@ -981,6 +1103,7 @@ addToLibrary({
   },
 
   bw_net_bind__deps: ["$BoxedWineNetwork"],
+  bw_net_bind__proxy: "sync",
   bw_net_bind: function (handle, ipv4, port) {
     return BoxedWineNetwork.callTransport(
       "bind",
@@ -992,6 +1115,7 @@ addToLibrary({
   },
 
   bw_net_listen__deps: ["$BoxedWineNetwork"],
+  bw_net_listen__proxy: "sync",
   bw_net_listen: function (handle, backlog) {
     return BoxedWineNetwork.callTransport(
       "listen",
@@ -1003,6 +1127,7 @@ addToLibrary({
   },
 
   bw_net_accept__deps: ["$BoxedWineNetwork"],
+  bw_net_accept__proxy: "sync",
   bw_net_accept: function (handle) {
     return BoxedWineNetwork.callTransport(
       "accept",
@@ -1014,6 +1139,7 @@ addToLibrary({
   },
 
   bw_net_send__deps: ["$BoxedWineNetwork"],
+  bw_net_send__proxy: "sync",
   bw_net_send: function (handle, buffer, len, flags, ipv4, port) {
     return BoxedWineNetwork.callTransport(
       "send",
@@ -1025,6 +1151,7 @@ addToLibrary({
   },
 
   bw_net_recv__deps: ["$BoxedWineNetwork"],
+  bw_net_recv__proxy: "sync",
   bw_net_recv: function (handle, buffer, len, flags, address, addressLen) {
     return BoxedWineNetwork.callTransport(
       "recv",
@@ -1036,6 +1163,7 @@ addToLibrary({
   },
 
   bw_net_get_last_recv_ipv4__deps: ["$BoxedWineNetwork"],
+  bw_net_get_last_recv_ipv4__proxy: "sync",
   bw_net_get_last_recv_ipv4: function (handle) {
     var transport = BoxedWineNetwork.transport();
     var socket = transport && typeof transport.getSocket === "function" ? transport.getSocket(handle) : null;
@@ -1043,6 +1171,7 @@ addToLibrary({
   },
 
   bw_net_get_last_recv_port__deps: ["$BoxedWineNetwork"],
+  bw_net_get_last_recv_port__proxy: "sync",
   bw_net_get_last_recv_port: function (handle) {
     var transport = BoxedWineNetwork.transport();
     var socket = transport && typeof transport.getSocket === "function" ? transport.getSocket(handle) : null;
@@ -1050,6 +1179,7 @@ addToLibrary({
   },
 
   bw_net_shutdown__deps: ["$BoxedWineNetwork"],
+  bw_net_shutdown__proxy: "sync",
   bw_net_shutdown: function (handle, how) {
     return BoxedWineNetwork.callTransport(
       "shutdown",
@@ -1061,6 +1191,7 @@ addToLibrary({
   },
 
   bw_net_setsockopt__deps: ["$BoxedWineNetwork"],
+  bw_net_setsockopt__proxy: "sync",
   bw_net_setsockopt: function (handle, level, name, value, len) {
     return BoxedWineNetwork.callTransport(
       "setsockopt",

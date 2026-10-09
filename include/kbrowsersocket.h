@@ -22,8 +22,10 @@
 #ifdef __EMSCRIPTEN__
 
 #include "ksocketobject.h"
+#include <atomic>
 
 bool isBrowserNetworkDebugEnabled();
+void checkBrowserSocketEvents();
 
 #define BROWSER_NET_DEBUG_LOG(...) do { if (isBrowserNetworkDebugEnabled()) klog_fmt(__VA_ARGS__); } while (0)
 
@@ -60,6 +62,7 @@ public:
     // from KSocketObject
     U32 accept(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len, U32 flags) override;
     U32 bind(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) override;
+    bool allowsRepeatedConnect() const override { return true; }
     U32 connect(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) override;
     U32 getpeername(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) override;
     U32 getsockname(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) override;
@@ -73,6 +76,8 @@ public:
     U32 shutdown(KThread* thread, const KFileDescriptorPtr& fd, U32 how) override;
 
     U32 getBrowserSocket() const;
+    void registerSocket();
+    U32 getPollEvents(U32 events) override;
     void signalBrowserEvents();
 
 private:
@@ -82,8 +87,8 @@ private:
     U16 peerPort = 0;
     U32 localIpv4 = 0;
     U16 localPort = 0;
-    U32 asyncProcessId = 0;
-    FD asyncProcessFd = 0;
+    std::atomic<U32> asyncProcessId{0};
+    std::atomic<FD> asyncProcessFd{0};
     bool async = false;
     bool connecting = false;
 

@@ -36,6 +36,7 @@ extern int bw_net_is_debug_enabled();
 extern int bw_net_socket(int domain, int type, int protocol);
 extern void bw_net_close(int socket);
 extern int bw_net_get_events(int socket);
+extern int bw_net_take_notification(int socket);
 extern int bw_net_get_error(int socket);
 extern int bw_net_readable_bytes(int socket);
 extern int bw_net_connect(int socket, unsigned int ipv4, int port);
@@ -68,33 +69,58 @@ extern int bw_net_setsockopt(int socket, int level, int name, unsigned int value
 #define K_IFREQ_SIZE 40
 
 static BOXEDWINE_MUTEX browserSocketsMutex;
-static std::vector<KBrowserSocketObject*> browserSockets;
+static std::vector<std::weak_ptr<KBrowserSocketObject>> browserSockets;
+static std::atomic<bool> browserEventsPending{false};
 
 bool isBrowserNetworkDebugEnabled() {
     return bw_net_is_debug_enabled() != 0;
 }
 
-static void registerBrowserSocket(KBrowserSocketObject* socket) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(browserSocketsMutex);
-    browserSockets.push_back(socket);
+std::shared_ptr<KSocketObject> KSocketObject::createInetSocket(U32 domain, U32 type, U32 protocol) {
+    auto socket = std::make_shared<KBrowserSocketObject>(domain, type, protocol);
+    if (!socket->error) {
+        socket->registerSocket();
+    }
+    return socket;
 }
 
-static void unregisterBrowserSocket(KBrowserSocketObject* socket) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(browserSocketsMutex);
-    for (U32 i = 0; i < browserSockets.size(); i++) {
-        if (browserSockets[i] == socket) {
-            browserSockets.erase(browserSockets.begin() + i);
-            break;
-        }
+void KBrowserSocketObject::registerSocket() {
+    if (!this->browserSocket) {
+        return;
     }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(browserSocketsMutex);
+    browserSockets.push_back(std::static_pointer_cast<KBrowserSocketObject>(shared_from_this()));
+    browserEventsPending.store(true);
 }
 
 extern "C" EMSCRIPTEN_KEEPALIVE void boxedwine_browser_socket_notify(int browserSocket) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(browserSocketsMutex);
-    for (KBrowserSocketObject* socket : browserSockets) {
-        if (socket->getBrowserSocket() == (U32)browserSocket) {
+    // Called on the browser thread, including during synchronous worker proxies.
+    // Never acquire guest locks here: the worker may hold them while waiting for us.
+    browserEventsPending.store(true);
+}
+
+void checkBrowserSocketEvents() {
+    if (!browserEventsPending.exchange(false)) {
+        return;
+    }
+    std::vector<std::shared_ptr<KBrowserSocketObject>> pending;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(browserSocketsMutex);
+        for (auto it = browserSockets.begin(); it != browserSockets.end();) {
+            auto socket = it->lock();
+            if (socket) {
+                pending.push_back(std::move(socket));
+                ++it;
+            } else {
+                it = browserSockets.erase(it);
+            }
+        }
+    }
+    // The emulation main loop runs on a worker in pthread builds. Keep sockets
+    // alive while waking their waiters, without holding the registry mutex.
+    for (const auto& socket : pending) {
+        if (bw_net_take_notification((int)socket->getBrowserSocket())) {
             socket->signalBrowserEvents();
-            break;
         }
     }
 }
@@ -169,9 +195,6 @@ KBrowserSocketObject::KBrowserSocketObject(U32 domain, U32 type, U32 protocol) :
             this->error = result;
         } else {
             this->browserSocket = (U32)result;
-            if (this->browserSocket) {
-                registerBrowserSocket(this);
-            }
         }
     }
 }
@@ -181,13 +204,11 @@ KBrowserSocketObject::KBrowserSocketObject(U32 domain, U32 type, U32 protocol, U
     readingCond(std::make_shared<BoxedWineCondition>(B("KBrowserSocketObject::readingCond"))),
     writingCond(std::make_shared<BoxedWineCondition>(B("KBrowserSocketObject::writingCond"))) {
     if (this->browserSocket) {
-        registerBrowserSocket(this);
         this->connected = true;
     }
 }
 
 KBrowserSocketObject::~KBrowserSocketObject() {
-    unregisterBrowserSocket(this);
     if (this->browserSocket) {
         bw_net_close((int)this->browserSocket);
         this->browserSocket = 0;
@@ -211,26 +232,29 @@ U32 KBrowserSocketObject::getBrowserSocket() const {
 }
 
 void KBrowserSocketObject::signalBrowserEvents() {
-    this->updateEvents();
-    if (this->asyncProcessId && (this->eventMask & (K_POLLIN | K_POLLOUT | K_POLLERR | K_POLLHUP))) {
-        KProcessPtr process = KSystem::getProcess(this->asyncProcessId);
+    // Notification delivery must not mutate the guest thread's connection state.
+    U32 events = (U32)bw_net_get_events((int)this->browserSocket);
+    U32 processId = this->asyncProcessId.load();
+    FD processFd = this->asyncProcessFd.load();
+    if (processId && (events & (K_POLLIN | K_POLLOUT | K_POLLERR | K_POLLHUP))) {
+        KProcessPtr process = KSystem::getProcess(processId);
         if (process) {
-            U32 code = (this->eventMask & K_POLLIN) ? K_POLL_IN : K_POLL_OUT;
+            U32 code = (events & K_POLLIN) ? K_POLL_IN : K_POLL_OUT;
             S32 band = 0;
-            if (this->eventMask & K_POLLERR) {
+            if (events & K_POLLERR) {
                 code = K_POLL_ERR;
-            } else if (this->eventMask & K_POLLHUP) {
+            } else if (events & K_POLLHUP) {
                 code = K_POLL_HUP;
             }
-            BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] async signal socket=%d fd=%d events=0x%x code=%d", this->browserSocket, this->asyncProcessFd, this->eventMask, code);
-            process->signalIO(code, band, this->asyncProcessFd);
+            BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] async signal socket=%d fd=%d events=0x%x code=%d", this->browserSocket, processFd, events, code);
+            process->signalIO(code, band, processFd);
         }
     }
-    if (this->eventMask & (K_POLLIN | K_POLLERR | K_POLLHUP)) {
+    if (events & (K_POLLIN | K_POLLERR | K_POLLHUP)) {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->readingCond);
     }
-    if (this->eventMask & (K_POLLOUT | K_POLLERR | K_POLLHUP)) {
+    if (events & (K_POLLOUT | K_POLLERR | K_POLLHUP)) {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->writingCond);
     }
@@ -410,9 +434,9 @@ void KBrowserSocketObject::setAsync(bool isAsync) {
     if (isAsync && thread) {
         this->asyncProcessId = thread->process->id;
         this->asyncProcessFd = thread->cpu->reg[3].u32;
-        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] async enabled socket=%d fd=%d process=%d", this->browserSocket, this->asyncProcessFd, this->asyncProcessId);
+        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] async enabled socket=%d fd=%d process=%d", this->browserSocket, this->asyncProcessFd.load(), this->asyncProcessId.load());
     } else if (!isAsync && thread && this->asyncProcessId == thread->process->id) {
-        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] async disabled socket=%d fd=%d process=%d", this->browserSocket, this->asyncProcessFd, this->asyncProcessId);
+        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] async disabled socket=%d fd=%d process=%d", this->browserSocket, this->asyncProcessFd.load(), this->asyncProcessId.load());
         this->asyncProcessId = 0;
         this->asyncProcessFd = 0;
     }
@@ -455,13 +479,17 @@ bool KBrowserSocketObject::isWriteReady() {
     return (this->updateEvents() & K_POLLOUT) != 0;
 }
 
+U32 KBrowserSocketObject::getPollEvents(U32 events) {
+    return this->updateEvents() & (events | K_POLLERR | K_POLLHUP);
+}
+
 void KBrowserSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
-    if (events & K_POLLIN) {
+    if (events & (K_POLLIN | K_POLLERR | K_POLLHUP)) {
         BOXEDWINE_CONDITION_ADD_PARENT(this->readingCond, parentCondition);
     } else {
         BOXEDWINE_CONDITION_REMOVE_PARENT(this->readingCond, parentCondition);
     }
-    if (events & K_POLLOUT) {
+    if (events & (K_POLLOUT | K_POLLERR | K_POLLHUP)) {
         BOXEDWINE_CONDITION_ADD_PARENT(this->writingCond, parentCondition);
     } else {
         BOXEDWINE_CONDITION_REMOVE_PARENT(this->writingCond, parentCondition);
@@ -474,11 +502,11 @@ U32 KBrowserSocketObject::writeNative(U8* buffer, U32 len) {
     }
     BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] write socket=%d len=%d", this->browserSocket, len);
     while (true) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
         S32 result = bw_net_send((int)this->browserSocket, (U32)(uintptr_t)buffer, len, 0, 0, 0);
         if (result != -K_EWOULDBLOCK || !this->blocking) {
             return this->finishBrowserResult(result);
         }
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
         BOXEDWINE_CONDITION_WAIT(this->writingCond);
     }
 }
@@ -488,11 +516,11 @@ U32 KBrowserSocketObject::readNative(U8* buffer, U32 len) {
         return this->networkUnavailable();
     }
     while (true) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
         S32 result = bw_net_recv((int)this->browserSocket, (U32)(uintptr_t)buffer, len, 0, 0, 0);
         if (result != -K_EWOULDBLOCK || !this->blocking) {
             return this->finishBrowserResult(result);
         }
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
         BOXEDWINE_CONDITION_WAIT(this->readingCond);
     }
 }
@@ -519,9 +547,11 @@ U32 KBrowserSocketObject::accept(KThread* thread, const KFileDescriptorPtr& fd, 
         return this->networkUnavailable();
     }
     while (true) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
         S32 result = bw_net_accept((int)this->browserSocket);
         if (result > 0) {
             std::shared_ptr<KBrowserSocketObject> acceptedSocket = std::make_shared<KBrowserSocketObject>(this->domain, this->type, this->protocol, (U32)result);
+            acceptedSocket->registerSocket();
             acceptedSocket->refreshAddressMetadata();
             KFileDescriptorPtr acceptedFd = thread->process->allocFileDescriptor(acceptedSocket, K_O_RDWR, 0, -1, 0);
 
@@ -544,7 +574,6 @@ U32 KBrowserSocketObject::accept(KThread* thread, const KFileDescriptorPtr& fd, 
         if (result != -K_EWOULDBLOCK || !this->blocking) {
             return this->finishBrowserResult(result);
         }
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
         BOXEDWINE_CONDITION_WAIT(this->readingCond);
     }
 }
@@ -578,6 +607,7 @@ U32 KBrowserSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd,
     this->peerIpv4 = ipv4;
     this->peerPort = port;
     while (true) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
         S32 result = bw_net_connect((int)this->browserSocket, ipv4, port);
         if (result == 0) {
             this->connecting = false;
@@ -594,12 +624,12 @@ U32 KBrowserSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd,
         }
         this->connecting = true;
         BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] connect blocking wait socket=%d", this->browserSocket);
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
         BOXEDWINE_CONDITION_WAIT(this->writingCond);
     }
 }
 
 U32 KBrowserSocketObject::getpeername(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) {
+    this->updateEvents();
     if (!this->connected) {
         return -K_ENOTCONN;
     }
@@ -710,6 +740,7 @@ U32 KBrowserSocketObject::recvfrom(KThread* thread, const KFileDescriptorPtr& fd
     }
     std::vector<U8> nativeBuffer(length);
     while (true) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
         S32 result = bw_net_recv((int)this->browserSocket, (U32)(uintptr_t)nativeBuffer.data(), length, (int)flags, address, address_len);
         if (result != -K_EWOULDBLOCK || !this->blocking) {
             if (result > 0) {
@@ -720,7 +751,6 @@ U32 KBrowserSocketObject::recvfrom(KThread* thread, const KFileDescriptorPtr& fd
             }
             return this->finishBrowserResult(result);
         }
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
         BOXEDWINE_CONDITION_WAIT(this->readingCond);
     }
 }
@@ -746,6 +776,7 @@ U32 KBrowserSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd,
 
     std::vector<U8> nativeBuffer(totalLen);
     while (true) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
         S32 result = bw_net_recv((int)this->browserSocket, (U32)(uintptr_t)nativeBuffer.data(), totalLen, (int)flags, 0, 0);
         if (result != -K_EWOULDBLOCK || !this->blocking) {
             if (result > 0) {
@@ -769,7 +800,6 @@ U32 KBrowserSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd,
             memory->writed(address + 20, 0);
             return this->finishBrowserResult(result);
         }
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->readingCond);
         BOXEDWINE_CONDITION_WAIT(this->readingCond);
     }
 }
@@ -820,11 +850,11 @@ U32 KBrowserSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd,
     }
 
     while (true) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
         S32 result = bw_net_send((int)this->browserSocket, (U32)(uintptr_t)nativeBuffer.data(), totalLen, (int)flags, ipv4, port);
         if (result != -K_EWOULDBLOCK || !this->blocking) {
             return this->finishBrowserResult(result);
         }
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
         BOXEDWINE_CONDITION_WAIT(this->writingCond);
     }
 }
@@ -851,11 +881,11 @@ U32 KBrowserSocketObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, 
         port = readSockAddrPort(thread->memory, dest_addr);
     }
     while (true) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
         S32 result = bw_net_send((int)this->browserSocket, (U32)(uintptr_t)nativeBuffer.data(), length, (int)flags, ipv4, port);
         if (result != -K_EWOULDBLOCK || !this->blocking) {
             return this->finishBrowserResult(result);
         }
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->writingCond);
         BOXEDWINE_CONDITION_WAIT(this->writingCond);
     }
 }

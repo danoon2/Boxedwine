@@ -32,8 +32,11 @@ public:
 
     KSocketObject(U32 objectType, U32 domain, U32 type, U32 protocol) : KObject(objectType), domain(domain), type(type), protocol(protocol) {}
 
+    static std::shared_ptr<KSocketObject> createInetSocket(U32 domain, U32 type, U32 protocol);
+
     virtual U32 accept(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len, U32 flags) = 0;
     virtual U32 bind(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) = 0;
+    virtual bool allowsRepeatedConnect() const { return false; }
     virtual U32 connect(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) = 0;
     virtual U32 getpeername(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) = 0;
     virtual U32 getsockname(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) = 0;

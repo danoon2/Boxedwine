@@ -20,6 +20,7 @@
 #include <emscripten/emscripten.h>
 #include "boxedwine.h"
 #include "knativesocket.h"
+#include "kbrowsersocket.h"
 #include "knativesystem.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -53,6 +54,7 @@ static BString getSize(int pages)
 extern int allocatedRamPages;
 void mainloop() {
     isMainThread = true;
+    checkBrowserSocketEvents();
         U32 t = KSystem::getMilliesSinceStart();
         U32 nextTimer = getNextTimer();
         if (nextTimer == 0) {
@@ -142,6 +144,7 @@ bool isMainthread() {
 
 void mainloop() {
     U64 startTime = KSystem::getMicroCounter();
+    checkBrowserSocketEvents();
     bool idle = false;
     U32 t;
     U32 count=0;

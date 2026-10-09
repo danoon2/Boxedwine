@@ -368,7 +368,7 @@ function registerRoomPeer(peer) {
         }
     }
     console.warn("No room virtual IPs available");
-    peer.socket.destroy();
+    peer.socket.end(encodeWebSocketFrame(0x8, Buffer.from([0x03, 0xf5]))); // 1013: try again later
     peer.closeAll();
 }
 
@@ -380,6 +380,7 @@ function dropPendingAcceptsFrom(openerPeer, openerSocketId) {
             if (pending.kind === "virtual" && pending.openerPeer === openerPeer &&
                     (openerSocketId === undefined || pending.openerSocketId === openerSocketId)) {
                 targetPeer.pendingTcpAccepts.delete(token);
+                targetPeer.sendControl({ type: "pending-cancel", id: pending.listenerId, token });
             }
         }
     }
@@ -604,6 +605,9 @@ class WebSocketPeer {
     }
 
     onControl(message) {
+        if (!message || typeof message !== "object" || Array.isArray(message) || typeof message.type !== "string") {
+            throw new Error("Invalid control message");
+        }
         if (message.type === "open") {
             this.openTcp(message);
         } else if (message.type === "close") {
@@ -650,7 +654,7 @@ class WebSocketPeer {
             return;
         }
         const virtualTcpLink = this.virtualTcpLinks.get(socketId);
-        if (virtualTcpLink) {
+        if (virtualTcpLink && !virtualTcpLink.outClosed) {
             const body = payload.subarray(5);
             gatewayStats.roomTcpBytes += body.length;
             virtualTcpLink.peer.sendBinary(makeDataFrame(virtualTcpLink.socketId, body));
@@ -750,16 +754,17 @@ class WebSocketPeer {
 
     forwardRoomUdp(sourceSocketId, targetPeer, targetPort, body) {
         const sourceBinding = this.udpBindings.get(sourceSocketId);
-        const sourcePort = sourceBinding && sourceBinding.port ? sourceBinding.port : targetPort;
+        if (!sourceBinding) {
+            return;
+        }
+        const sourcePort = sourceBinding.port;
         const boundTargetSocketIds = [];
         for (const [targetSocketId, binding] of targetPeer.udpBindings.entries()) {
             if (binding.port === targetPort && targetPeer.udpSockets.has(targetSocketId)) {
                 boundTargetSocketIds.push(targetSocketId);
             }
         }
-        const targetSocketIds = boundTargetSocketIds.length > 0
-            ? boundTargetSocketIds
-            : [...targetPeer.udpSockets.keys()].filter((targetSocketId) => !targetPeer.udpBindings.has(targetSocketId));
+        const targetSocketIds = boundTargetSocketIds;
         if (targetSocketIds.length === 0) {
             debugLog(`Room UDP target unavailable from=${this.virtualIp} sourceSocket=${sourceSocketId} target=${targetPeer.virtualIp}:${targetPort}`);
             recordActivity("udp", `Room UDP target unavailable ${targetPeer.virtualIp}:${targetPort}`, {
@@ -815,7 +820,7 @@ class WebSocketPeer {
 
         console.log(`Opening TCP id=${socketId} host=${targetHost} port=${targetPort}`);
         recordActivity("tcp", `Opening TCP ${targetHost}:${targetPort}`, { from: this.virtualIp, socketId });
-        const tcpSocket = connectTcp({ host: targetHost, port: targetPort });
+        const tcpSocket = connectTcp({ host: targetHost, port: targetPort, allowHalfOpen: true });
         this.attachTcpSocket(socketId, tcpSocket, `host=${targetHost} port=${targetPort}`);
         tcpSocket.on("connect", () => {
             gatewayStats.hostTcpConnections += 1;
@@ -855,7 +860,7 @@ class WebSocketPeer {
             this.sendBinary(makeDataFrame(socketId, chunk));
         });
         tcpSocket.on("end", () => {
-            this.sendControl({ type: "close", id: socketId });
+            this.sendControl({ type: "shutdown", id: socketId, how: 1 });
         });
         tcpSocket.on("close", () => {
             this.tcpSockets.delete(socketId);
@@ -870,14 +875,21 @@ class WebSocketPeer {
     }
 
     shutdownTcp(socketId, how) {
+        socketId = Number(socketId);
+        const virtualTcpLink = this.virtualTcpLinks.get(socketId);
+        if (virtualTcpLink) {
+            if (how === 1 || how === 2) {
+                virtualTcpLink.outClosed = true;
+                virtualTcpLink.peer.sendControl({ type: "shutdown", id: virtualTcpLink.socketId, how: 1 });
+            }
+            return;
+        }
         const tcpSocket = this.tcpSockets.get(Number(socketId));
         if (!tcpSocket) {
             return;
         }
-        if (how === 1) {
+        if (how === 1 || how === 2) {
             tcpSocket.end();
-        } else {
-            tcpSocket.destroy();
         }
     }
 
@@ -926,7 +938,7 @@ class WebSocketPeer {
             return;
         }
 
-        const server = createTcpServer((tcpSocket) => {
+        const server = createTcpServer({ allowHalfOpen: true }, (tcpSocket) => {
             const token = this.nextAcceptToken++;
             const remoteHost = tcpSocket.remoteAddress && tcpSocket.remoteAddress.startsWith("::ffff:")
                 ? tcpSocket.remoteAddress.substring(7)
@@ -965,7 +977,7 @@ class WebSocketPeer {
         const pending = this.pendingTcpAccepts.get(token);
         if (!pending || pending.listenerId !== listenerId || !Number.isInteger(acceptedId)) {
             console.warn(`Rejecting TCP accept listener=${listenerId} token=${token} accepted=${acceptedId}: no pending connection`);
-            this.sendControl({ type: "accept", id: listenerId, acceptedId, status: -11 });
+            this.sendControl({ type: "accept", id: listenerId, acceptedId, status: -103 });
             return;
         }
 
@@ -1041,8 +1053,18 @@ class WebSocketPeer {
             return;
         }
 
+        const virtualPort = Number(message.port || this.allocateUdpPort());
+        if (!Number.isInteger(virtualPort) || virtualPort < 1 || virtualPort > 65535) {
+            this.sendControl({ type: "error", id: socketId, status: -98 });
+            return;
+        }
+        if (this.udpPortInUse(socketId, virtualPort)) {
+            this.sendControl({ type: "error", id: socketId, status: -98 });
+            return;
+        }
         const udpSocket = createDatagramSocket("udp4");
         this.udpSockets.set(socketId, udpSocket);
+        this.udpBindings.set(socketId, { host: "0.0.0.0", port: virtualPort });
 
         udpSocket.on("message", (messageBuffer, rinfo) => {
             const frame = makeUdpFrame(socketId, rinfo.address, rinfo.port, messageBuffer);
@@ -1056,27 +1078,57 @@ class WebSocketPeer {
             console.warn(`UDP error id=${socketId} code=${error && error.code ? error.code : "unknown"}`);
             recordActivity("error", "UDP socket error", { socketId, code: error && error.code ? error.code : "unknown" });
             this.udpSockets.delete(socketId);
+            this.udpBindings.delete(socketId);
             udpSocket.close();
             this.sendControl({ type: "error", id: socketId, status: -errnoForNodeError(error) });
         });
         udpSocket.bind(0, () => {
+            const binding = this.udpBindings.get(socketId);
+            if (!binding || this.udpSockets.get(socketId) !== udpSocket) return;
             const address = udpSocket.address();
             debugLog(`Opened UDP id=${socketId} local=${address.address}:${address.port}`);
             recordActivity("udp", `Opened UDP socket ${socketId}`, { ip: this.virtualIp, address: address.address, port: address.port });
-            this.sendControl({ type: "udp-open", id: socketId, status: 0 });
+            this.sendControl({ type: "udp-open", id: socketId, status: 0, host: binding.host, port: binding.port });
         });
+    }
+
+    udpPortInUse(socketId, port) {
+        for (const [id, binding] of this.udpBindings) {
+            if (id !== socketId && binding.port === port) return true;
+        }
+        return false;
+    }
+
+    allocateUdpPort() {
+        for (let port = 49152; port <= 65535; port += 1) {
+            if (!this.udpPortInUse(undefined, port)) {
+                return port;
+            }
+        }
+        return 0;
     }
 
     bindUdp(message) {
         const socketId = Number(message.id);
         const bindHost = String(message.host || "0.0.0.0");
-        const bindPort = Number(message.port || 0);
+        let bindPort = Number(message.port || 0);
         if (!Number.isInteger(socketId) || !Number.isInteger(bindPort) || bindPort < 0 || bindPort > 65535) {
             this.sendControl({ type: "udp-bind", id: socketId, status: -22 });
             return;
         }
         if (!this.udpSockets.has(socketId)) {
             this.sendControl({ type: "udp-bind", id: socketId, status: -107 });
+            return;
+        }
+        if (!bindPort) {
+            bindPort = this.udpBindings.get(socketId)?.port || this.allocateUdpPort();
+            if (!bindPort) {
+                this.sendControl({ type: "udp-bind", id: socketId, status: -98 });
+                return;
+            }
+        }
+        if (this.udpPortInUse(socketId, bindPort)) {
+            this.sendControl({ type: "udp-bind", id: socketId, status: -98 });
             return;
         }
         this.udpBindings.set(socketId, { host: bindHost, port: bindPort });

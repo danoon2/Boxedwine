@@ -20,36 +20,6 @@
 
 #include "kpoll.h"
 #include "kscheduler.h"
-#ifdef __EMSCRIPTEN__
-#include "kbrowsersocket.h"
-#endif
-
-#ifdef __EMSCRIPTEN__
-static bool isBrowserSocketFd(KThread* thread, FD fd) {
-    KFileDescriptorPtr descriptor = thread->process->getFileDescriptor(fd);
-    if (!descriptor) {
-        return false;
-    }
-    return std::dynamic_pointer_cast<KBrowserSocketObject>(descriptor->kobject) != nullptr;
-}
-
-static bool hasBrowserSocketPollData(KThread* thread, KPollData* data, U32 count) {
-    for (U32 i = 0; i < count; i++) {
-        if (data[i].fd >= 0 && isBrowserSocketFd(thread, data[i].fd)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static void logBrowserSocketPollData(const char* prefix, KPollData* data, U32 count, S32 result) {
-    for (U32 i = 0; i < count; i++) {
-        if (data[i].fd >= 0) {
-            BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] %s fd=%d events=0x%x revents=0x%x result=%d", prefix, data[i].fd, data[i].events, data[i].revents, result);
-        }
-    }
-}
-#endif
 
 static void clearPollData(KThread* thread, KPollData* data, U32 count) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->fdsMutex);
@@ -107,18 +77,7 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
                         fd = thread->process->getFileDescriptor_nolock(data->fd);
                     }
                     if (fd) {
-                        if (!fd->kobject->isOpen()) {
-                            data->revents |= K_POLLHUP;
-                        }
-                        if ((data->events & K_POLLPRI) && fd->kobject->isPriorityReadReady()) {
-                            data->revents |= K_POLLPRI;
-                        }
-                        if ((data->events & K_POLLIN) != 0 && fd->kobject->isReadReady()) {
-                            data->revents |= K_POLLIN;
-                        }
-                        if ((data->events & K_POLLOUT) != 0 && fd->kobject->isWriteReady()) {
-                            data->revents |= K_POLLOUT;
-                        }
+                        data->revents |= fd->kobject->getPollEvents(data->events);
                         if (data->revents != 0) {
                             result++;
                         }
@@ -192,21 +151,7 @@ U32 kpoll(KThread* thread, U32 pfds, U32 nfds, U32 timeout) {
         pollData[i].revents = memory->readw(address); address += 2;
     }
 
-#ifdef __EMSCRIPTEN__
-    bool traceBrowserSocket = hasBrowserSocketPollData(thread, pollData, nfds);
-    if (traceBrowserSocket) {
-        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] poll enter nfds=%d timeout=%u", nfds, timeout);
-        logBrowserSocketPollData("poll in", pollData, nfds, 0);
-    }
-#endif
-
     S32 result = internal_poll(thread, pollData, nfds, timeout);
-#ifdef __EMSCRIPTEN__
-    if (traceBrowserSocket) {
-        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] poll leave result=%d", result);
-        logBrowserSocketPollData("poll out", pollData, nfds, result);
-    }
-#endif
     if (result >= 0) {
         pfds+=6;
         for (U32 i=0;i<nfds;i++) {
@@ -273,14 +218,7 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
                 pollCount++;
             }
         }
-    }
-#ifdef __EMSCRIPTEN__
-    bool traceBrowserSocket = hasBrowserSocketPollData(thread, pollData, pollCount);
-    if (traceBrowserSocket) {
-        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] select enter nfds=%d pollCount=%d timeout=%u", nfds, pollCount, timeout);
-        logBrowserSocketPollData("select in", pollData, pollCount, 0);
-    }
-#endif
+    }    
     if (sigmask) {
         U32 mask = thread->memory->readd(sigmask);
         U64 oldMask = thread->sigMask;
@@ -291,12 +229,6 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
     } else {
         result = internal_poll(thread, pollData, pollCount, timeout);
     }
-#ifdef __EMSCRIPTEN__
-    if (traceBrowserSocket) {
-        BROWSER_NET_DEBUG_LOG("[boxedwine-net-cpp] select leave result=%d", result);
-        logBrowserSocketPollData("select out", pollData, pollCount, result);
-    }
-#endif
     if (result == -K_WAIT || result == -K_CONTINUE) {
         delete[] pollData;
         return result;
@@ -319,13 +251,13 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
         FD fd = pollData[i].fd;
         U32 revent = pollData[i].revents;
 
-        if (readfds!=0 && ((revent & K_POLLIN) || (revent & K_POLLHUP))) {
+        if (readfds!=0 && (pollData[i].events & K_POLLIN) && (revent & (K_POLLIN | K_POLLHUP | K_POLLERR))) {
             U8 v = memory->readb(readfds + fd / 8);
             v |= 1 << (fd % 8);
             memory->writeb(readfds + fd / 8, v);
             found = 1;
         }
-        if (writefds!=0 && (revent & K_POLLOUT)) {
+        if (writefds!=0 && (pollData[i].events & K_POLLOUT) && (revent & (K_POLLOUT | K_POLLERR))) {
             U8 v = memory->readb(writefds + fd / 8);
             v |= 1 << (fd % 8);
             memory->writeb(writefds + fd / 8, v);

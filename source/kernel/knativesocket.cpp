@@ -551,6 +551,12 @@ S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool 
     return result;
 }
 
+#ifndef __EMSCRIPTEN__
+std::shared_ptr<KSocketObject> KSocketObject::createInetSocket(U32 domain, U32 type, U32 protocol) {
+    return std::make_shared<KNativeSocketObject>(domain, type, protocol);
+}
+#endif
+
 KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_NATIVE_SOCKET, domain, type, protocol),
     connecting(false),
     readingCond(std::make_shared<BoxedWineCondition>(B("KNativeSocketObject::readingCond"))),
