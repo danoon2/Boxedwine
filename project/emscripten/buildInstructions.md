@@ -13,6 +13,18 @@ setting recompiles and relinks; unchanged settings preserve the existing
 objects and outputs. Keep a fixed `SOURCE_DATE_EPOCH` when comparing cold and
 incremental builds, since the executable embeds `__DATE__` and `__TIME__`.
 
+## Browser Requirements
+
+All targets use native Wasm exception handling in the standardized (exnref)
+encoding (`WASM_EXCEPTIONS_FLAG` in the makefile). Browsers need exnref
+support: Chrome/Edge 137+, Firefox 131+, or Safari 18.4+. Older browsers fail
+to compile the module. To build for them with Emscripten's legacy exception
+encoding instead:
+
+```sh
+make release WASM_EXCEPTIONS_FLAG=-fwasm-exceptions
+```
+
 
 ## Build
 

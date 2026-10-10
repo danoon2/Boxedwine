@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Two agents</title>
+<style>
+  body { margin: 0; display: flex; height: 100vh; background: #fff; }
+  iframe { flex: 1; border: 0; border-right: 1px solid #ccc; }
+</style>
+</head>
+<body>
+<script>
+  const params = new URLSearchParams(location.search);
+  const app = params.get("app") || "network-share-agent";
+  const poll = params.get("poll") || "10";
+  for (const name of ["alice", "bob"]) {
+    const frame = document.createElement("iframe");
+    frame.id = name;
+    frame.src = "boxedwine.html?app=" + app + "&p=network-share-agent&linux=true&storage=memory&overlay=host.zip" +
+      "&network=websocket&networkGateway=ws://127.0.0.1:8001/boxedwine-network" +
+      "&args=--name%20" + name + "%20--poll-seconds%20" + poll;
+    document.body.appendChild(frame);
+  }
+  window.agentLog = (name) => {
+    const out = document.getElementById(name).contentDocument.getElementById("output");
+    return (out.value || out.textContent).split("\n").filter((l) => l.startsWith("network-share")).join("\n");
+  };
+</script>
+</body>
+</html>

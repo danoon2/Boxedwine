@@ -22,7 +22,7 @@
 #include "kstat.h"
 #include "kscheduler.h"
 #include "kunixsocket.h"
-#include "knativesocket.h"
+#include "ksocketobject.h"
 #include "knetlink.h"
 
 #include <string.h>
@@ -61,7 +61,7 @@ U32 ksocket(U32 domain, U32 type, U32 protocol) {
         KFileDescriptorPtr result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
         return result->handle;
     } else if (domain == K_AF_INET) {
-        std::shared_ptr<KNativeSocketObject> s = std::make_shared<KNativeSocketObject>(domain, type, protocol);
+        std::shared_ptr<KSocketObject> s = KSocketObject::createInetSocket(domain, type, protocol);
         if (s->error) {
             return s->error;
         } else {
@@ -97,10 +97,10 @@ U32 kconnect(KThread* thread, U32 socket, U32 address, U32 len) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    if (s->connected) {
+    if (s->connected && !s->allowsRepeatedConnect()) {
         return -K_EISCONN;
     }		
-    return s->connect(thread, fd, address, len);        
+    return s->connect(thread, fd, address, len);
 }
 
 U32 klisten(KThread* thread, U32 socket, U32 backlog) {
@@ -269,7 +269,7 @@ U32 kgetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->getsockopt(thread, fd, level, name, value, len_address);    
+    return s->getsockopt(thread, fd, level, name, value, len_address);
 }
 
 #define K_SOL_SOCKET 1

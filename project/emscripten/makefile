@@ -219,8 +219,12 @@ $(SOFT_OBJS): INCLUDES := $(SOFTFLOAT_INCLUDES)
 CXXFLAGS ?= -std=c++20
 OPTIMIZATION_FLAGS ?= -O2
 TAIL_CALL_FLAG ?= -mtail-call
-COMPILE_EXCEPTION_FLAG ?= -fwasm-exceptions
-LINK_EXCEPTION_FLAG ?= -fwasm-exceptions
+# Native wasm exception handling, emitted in the standardized (exnref) encoding
+# rather than Emscripten's legacy default. WASM_LEGACY_EXCEPTIONS is a
+# compile+link setting, so it travels with every -fwasm-exceptions.
+WASM_EXCEPTIONS_FLAG ?= -fwasm-exceptions -sWASM_LEGACY_EXCEPTIONS=0
+COMPILE_EXCEPTION_FLAG ?= $(WASM_EXCEPTIONS_FLAG)
+LINK_EXCEPTION_FLAG ?= $(WASM_EXCEPTIONS_FLAG)
 LONGJMP_FLAG ?= -sSUPPORT_LONGJMP=0
 EXCEPTION_CATCHING_ALLOWED ?= ["_Z8mainloopv","_ZN3CPU15runNextSingleOpEv","_ZL14platformThreadP3CPU"]
 EXCEPTION_CATCHING_FLAG ?=
@@ -229,6 +233,7 @@ CPPFLAGS ?= $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) $(COMPILE_EXCEPTION_FLAG) $(
 SHELL_LDFLAGS := $(if $(filter %.html,$(TARGET_EXEC)),--shell-file $(SHELL_FILE),)
 LDFLAGS = $(OPTIMIZATION_FLAGS) $(TAIL_CALL_FLAG) -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 -sFULL_ES3 -s STACK_SIZE=1048576 $(LINK_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG) -s INITIAL_MEMORY=536870912 $(SHELL_LDFLAGS) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES","ccall","FS"]' $(EXTRA_LD_FLAGS)
 LDFLAGS += --js-library=boxedwine-audio-worklet.js
+LDFLAGS += --js-library=boxedwine-net.js
 # Wine's WebGL streaming buffers start at 16 MiB. Client-array draws include
 # the stream offset, so Halo exceeds Emscripten's default 2 MiB upload limit.
 LDFLAGS += -sGL_MAX_TEMP_BUFFER_SIZE=16777216
@@ -362,7 +367,7 @@ $(BUILD_DIR)/%.cpp.o: %.cpp $(COMPILE_CONFIG)
 # for all code, triggering RAII destructors that weren't firing before).
 # These explicit rules take precedence over the pattern rule above in GNU make.
 ifneq (,$(findstring BOXEDWINE_WASM_JIT,$(EXTRA_CPP_FLAGS)))
-WASM_EXCEPTION_CPPFLAGS = $(filter-out $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG),$(CPPFLAGS)) -fwasm-exceptions -sSUPPORT_LONGJMP=wasm
+WASM_EXCEPTION_CPPFLAGS = $(filter-out $(COMPILE_EXCEPTION_FLAG) $(LONGJMP_FLAG) $(EXCEPTION_CATCHING_FLAG),$(CPPFLAGS)) $(WASM_EXCEPTIONS_FLAG) -sSUPPORT_LONGJMP=wasm
 else
 WASM_EXCEPTION_CPPFLAGS = $(CPPFLAGS)
 endif
