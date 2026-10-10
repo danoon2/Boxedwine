@@ -69,7 +69,9 @@ void verifyOnlyXmmChanged(int changed, U64 low, U64 high, const char* name) {
     for (int i = 0; i < 8; ++i) {
         if (i == changed) {
             if (cpu->xmm[i].pi.u64[0] != low || cpu->xmm[i].pi.u64[1] != high) {
-                failed("%s xmm value", name);
+                failed("%s xmm%d value %016llx:%016llx expected %016llx:%016llx", name, i,
+                    (unsigned long long)cpu->xmm[i].pi.u64[1], (unsigned long long)cpu->xmm[i].pi.u64[0],
+                    (unsigned long long)high, (unsigned long long)low);
             }
         } else if (cpu->xmm[i].pi.u64[0] != XMM_DEFAULT_LOW || cpu->xmm[i].pi.u64[1] != XMM_DEFAULT_HIGH) {
             failed("%s xmm unchanged", name);
@@ -273,7 +275,29 @@ void runSse128(U8 prefix1, U8 prefix2, U8 opcode, U64 dstLow, U64 dstHigh, U64 s
         writeXmmMem(MEM_SRC, srcLow, srcHigh);
         emitSseRegMem(prefix1, prefix2, opcode, dst, MEM_SRC);
         runTestCPU();
-        verifyOnlyXmmChanged(dst, expectedLow, expectedHigh, name);
+        U64 memExpectedLow = expectedLow, memExpectedHigh = expectedHigh;
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        DecodedOp* memoryOp = memory->getDecodedOp(TEST_CODE_ADDRESS);
+        if (!prefix1 && (opcode == 0x52 || opcode == 0x53) && memoryOp && memoryOp->exceptionCount) {
+            // A host memory fault executes this instruction through SIMDe.
+            // Its reciprocal estimates need not match the native JIT's bits.
+            // Keep exact checks for that path, including preserved SS lanes.
+            simde__m128 input;
+            input.u64[0] = srcLow;
+            input.u64[1] = srcHigh;
+            simde__m128 result;
+            if (prefix2 == 0xf3) {
+                result = opcode == 0x52 ? simde_mm_rsqrt_ss(input) : simde_mm_rcp_ss(input);
+                memExpectedLow = (dstLow & 0xffffffff00000000ULL) | result.u32[0];
+                memExpectedHigh = dstHigh;
+            } else {
+                result = opcode == 0x52 ? simde_mm_rsqrt_ps(input) : simde_mm_rcp_ps(input);
+                memExpectedLow = result.u64[0];
+                memExpectedHigh = result.u64[1];
+            }
+        }
+#endif
+        verifyOnlyXmmChanged(dst, memExpectedLow, memExpectedHigh, name);
     }
 }
 

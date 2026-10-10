@@ -929,6 +929,16 @@ void runSharedMovsdCases() {
     memory->unmap(alias, K_PAGE_SIZE);
 }
 
+#ifdef BOXEDWINE_JIT
+bool movsCodeChangedWithoutHostFault(DecodedOp* op, void* compiledCode) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    // A host fault can replace linear/unaligned accesses with checked ones.
+    if (op->exceptionCount) return false;
+#endif
+    return op->pfnJitCode != compiledCode;
+}
+#endif
+
 void runHotFlatMovsdMixedCounts() {
 #ifdef BOXEDWINE_JIT
     // A memcpy site can receive very different lengths on successive calls.
@@ -977,7 +987,9 @@ void runHotFlatMovsdMixedCounts() {
             }
             void* previousCode = op->pfnJitCode;
             runTestCPU();
-            if (op->pfnJitCode != previousCode) {
+            // Native alignment/aperture faults may legitimately replace the
+            // block with checked accesses; changing the count alone may not.
+            if (movsCodeChangedWithoutHostFault(op, previousCode)) {
                 failed("flat REP MOVSD invalidated its block after a count change");
             }
             memory->memcpy(actual.data(), arena, length);
@@ -1965,8 +1977,13 @@ void runHotMovsDirectionSwitch(int width) {
                     verifyOverlapBytes(expected, sizeof(expected), "MOVS changed direction at same site");
                     if (cpu->reg[R_CX].u32 || cpu->reg[R_SI].u32 != TEST_HEAP_ADDRESS + OVERLAP_BASE + src ||
                             cpu->reg[R_DI].u32 != TEST_HEAP_ADDRESS + OVERLAP_BASE + dst ||
-                            (actualFlags(cpu, true) & FLAG_MASK) != flags || op->pfnJitCode != entry) {
-                        failed("MOVS direction switch width=%d count=%u profileDF=%d actualDF=%d", width, count, profileBackward, backward);
+                            (actualFlags(cpu, true) & FLAG_MASK) != flags ||
+                            movsCodeChangedWithoutHostFault(op, entry)) {
+                        failed("MOVS direction switch width=%d count=%u profileDF=%d actualDF=%d separation=%u ecx=%x esi=%x/%x edi=%x/%x flags=%x/%x sameEntry=%u",
+                            width, count, profileBackward, backward, separation, cpu->reg[R_CX].u32,
+                            cpu->reg[R_SI].u32, TEST_HEAP_ADDRESS + OVERLAP_BASE + src,
+                            cpu->reg[R_DI].u32, TEST_HEAP_ADDRESS + OVERLAP_BASE + dst,
+                            actualFlags(cpu, true) & FLAG_MASK, flags, op->pfnJitCode == entry);
                     }
                 }
             }

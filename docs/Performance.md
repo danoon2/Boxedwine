@@ -437,6 +437,8 @@ ARM host D8-D15 preservation is checked as well.
 The M4 full suite passed 805 of 809 tests in baseline and candidate. The same
 four pre-existing failures were reproduced: Movsb 2a4, Movsw 0a5, Movsd 2a5
 direction-switch cases, and SSE Movmsk/Approx 350/351/352/353 (rsqrt approximation).
+These were present before this FPU experiment, not necessarily before the
+performance branch. They were subsequently resolved in the Jenkins repair below.
 All six focused FPU tests passed. No game, browser UI or graphical app was launched.
 
 MSVC x64 also passed all 811 fast tests and six focused FPU tests. Its 17
@@ -741,3 +743,45 @@ Artifacts: `tmp/jit-read-groups-20261009/` contains `before/`, frozen
 broad candidate; preserve its binaries and obtain a fresh quiet confirmation
 before rerunning. `modules/narrowed-comparison.json` records final identity.
 The source changes remain unstaged. No game or browser UI was launched.
+
+### ARM Jenkins test repairs (2026-10-09)
+
+Jenkins `james/performance_work` build 1 at `faa513985` compiled successfully,
+but ARM test execution failed: two tests on Windows ARM64, three on Linux
+ARM64, and four on Mac ARM64. The current tree reproduced all four Mac
+failures in a full serial run on the M4.
+
+Two production string issues originated in `7e2547fe0`:
+
+- The REP MOVSB/MOVSW direction/count guard modified `getReadOnlyFlags()`.
+  ARM returns its live flags register. Copying it to a temporary preserves
+  flags and the direction used by the fallback helper.
+- Unrolled MOVSD committed multiple overlapping elements before updating
+  registers. An ARM LDAPR/STLUR alignment fault could restart that copy from
+  the original registers and change its result. The shared guard now asks
+  the backend for RAM-access alignment and uses the existing helper when
+  alignment can fault. Other backends return alignment 1.
+
+The tests also assumed that native host faults never replace compiled code,
+and that reciprocal approximations always have native JIT result bits.
+Code-identity checks now allow fault-driven recompilation while retaining
+byte, register and flag checks. SSE memory tests use the exact SIMDe result
+when a recorded host fault caused interpreter execution; native JIT checks
+remain exact. The SSE test failure predates this performance branch.
+
+Final validation:
+
+| Target | Tests | Result |
+|---|---:|---|
+| Mac M4 ARM64, full serial | 809 | 0 failed, 80 seconds |
+| Mac M4 ARM64, full, 4 workers | 809 | 0 failed, 28 seconds |
+| Linux x64, fast, WSL `/tmp` | 811 | 0 failed, 7 seconds |
+| Wasm ST JIT, string/approximate, branch hints enabled | 21 | 0 failed |
+| Wasm MT JIT, string/approximate, branch hints enabled | 21 | 0 failed |
+
+Artifacts and exact commands are in `tmp/jenkins-performance-build-1/`:
+`mac-test.py`, `validate.py`, `state.json`, and the build/test logs. Mac
+baseline and final applications remain in the isolated
+`/private/tmp/boxedwine-jenkins-performance-build-1` directory. The Windows
+ARM64 and Linux ARM64 Jenkins agents were not rerun. No commit or push was
+performed, and the preceding Wasm performance changes were preserved.

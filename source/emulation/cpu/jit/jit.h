@@ -342,6 +342,9 @@ public:
     virtual void withRamPage(RegPtr address, bool store, const std::function<void(RegPtr)>& action,
         const std::function<void()>& failed) = 0;
 
+    // Alignment needed to avoid a host fault after validating a RAM page.
+    virtual U32 ramAccessAlignment(JitWidth width) { return 1; }
+
     virtual RegPtr read(JitWidth width, MemPtr address, RegPtr result = nullptr) = 0;
     virtual void write(JitWidth width, MemPtr address, RegPtr src) = 0;
     virtual void write(JitWidth width, MemPtr address, U32 imm) = 0;

@@ -367,6 +367,7 @@ public:
     void jmpHost(RegPtr reg) override;
     void jmpHost(DYN_PTR_SIZE address) override;
     RegPtr getReadOnlyFlags(RegPtr tmp = nullptr) override;
+    U32 ramAccessAlignment(JitWidth width) override;
     void storeLazyFlagType(LazyFlagType flags) override;
     void storeLazyFlagsResult(RegPtr reg) override;
     void storeLazyFlagsDest(RegPtr reg) override;
@@ -4660,6 +4661,17 @@ RegPtr JitArmV8CodeGen::getLazyFlagTypeInTmp() {
 
 RegPtr JitArmV8CodeGen::getReadOnlyFlags(RegPtr tmp) {
     return std::make_shared<JitReg>(regFlags, 0xff);
+}
+
+U32 JitArmV8CodeGen::ramAccessAlignment(JitWidth width) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    // LDAPR/STLUR can fault on unaligned accesses even to accessible RAM.
+    if (width <= JitWidth::b64 && tsoMode == TSOMode::FEAT_LRCPC2 &&
+            currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        return 1u << (U32)width;
+    }
+#endif
+    return 1;
 }
 
 void JitArmV8CodeGen::comissXmmXmm(SSERegPtr dst, SSERegPtr src) {

@@ -74,7 +74,10 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             {
                 RegPtr count = getStringRegEcx();
                 if (currentOp->DF0 != currentOp->DF1) {
-                    RegPtr direction = getReadOnlyFlags();
+                    // ARM64 keeps flags in a live register; never modify the
+                    // read-only view while constructing the helper guard.
+                    RegPtr direction = getTmpReg();
+                    mov(JitWidth::b32, direction, getReadOnlyFlags());
                     if (currentOp->DF1) xorValue(JitWidth::b32, direction, DF);
                     andValue(JitWidth::b32, direction, DF);
                     shlValue(JitWidth::b32, direction, 21);
@@ -359,6 +362,16 @@ void Jit::movsd32rUnrolled(U32 base, U32 expected) {
     const U32 bytes = expected * 4;
     mov(JitWidth::b32, guard, ecx);
     xorValue(JitWidth::b32, guard, expected);
+    const U32 alignment = ramAccessAlignment(JitWidth::b32);
+    if (alignment > 1) {
+        // An unrolled overlapping copy cannot restart after committing an
+        // element. Use the helper if the host may fault on its alignment.
+        RegPtr misaligned = getTmpReg();
+        mov(JitWidth::b32, misaligned, esi);
+        orReg(JitWidth::b32, misaligned, edi);
+        andValue(JitWidth::b32, misaligned, alignment - 1);
+        orReg(JitWidth::b32, guard, misaligned);
+    }
     {
         RegPtr direction = getTmpReg();
         mov(JitWidth::b32, direction, getReadOnlyFlags());
