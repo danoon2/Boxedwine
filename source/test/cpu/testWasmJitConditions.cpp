@@ -809,7 +809,7 @@ static void testWasmForwardRegionState() {
     // The root is acyclic. Both paths consume GP/XMM values at each join,
     // including inputs that the untaken path never writes. The memory case
     // crosses page boundaries and uses the nonzero test DS segment.
-    for (U32 mask = 0; mask < 8; ++mask) for (bool crossPage : {false, true}) {
+    for (U32 span : {1u, 2u, 3u}) for (U32 mask = 0; mask < 8; ++mask) for (bool crossPage : {false, true}) {
         testNewInstruction(CF);
         auto& ctx = testContext(); CPU* cpu = ctx.cpu;
         const U32 src = crossPage ? 0xffe : 0x100, dst = crossPage ? 0x2ffe : 0x200;
@@ -830,7 +830,8 @@ static void testWasmForwardRegionState() {
         U32 interior = ctx.codeIp; patch(first, interior);
         testMask(2); U32 second = branch(0x84);
         testPushCode8(0x03); testPushCode8(0x06); // add eax,[esi]
-        extraJoin(); // Publish the loaded value; the store starts a new span.
+        if (span == 1) extraJoin(); // Original one-operation spans.
+        if (span == 3) { testPushCode8(0x03); testPushCode8(0x06); } // a second load before the store
         testPushCode8(0x89); testPushCode8(0x07); // mov [edi],eax
         patch(second, ctx.codeIp);
         testMask(4); U32 third = branch(0x84);
@@ -840,7 +841,7 @@ static void testWasmForwardRegionState() {
         testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x7e); testPushCode8(0xc2);
         nearJump(end); ctx.codeIp = end;
         compileAt(TEST_CODE_ADDRESS); testRunCPU(); cpu->fillFlags();
-        U32 eax = 10 + ((mask & 1) ? 3 : 0) + ((mask & 2) ? 7 : 0);
+        U32 eax = 10 + ((mask & 1) ? 3 : 0) + ((mask & 2) ? (span == 3 ? 14 : 7) : 0);
         U32 xmm = ((mask & 1) ? 13 : 11) + ((mask & 4) ? 2 : 0);
         if (cpu->reg[0].u32 != eax || cpu->reg[2].u32 != xmm ||
             cpu->reg[6].u32 != src || cpu->reg[7].u32 != dst ||
@@ -856,7 +857,7 @@ static void testWasmForwardRegionState() {
         // state rather than inheriting locals from the original function.
         seed(6, 100, 50); cpu->eip.u32 = interior - TEST_CODE_ADDRESS; cpu->nextOp = nullptr;
         compileAt(interior); testRunCPU();
-        if (cpu->reg[0].u32 != 107 || cpu->reg[2].u32 != 52)
+        if (cpu->reg[0].u32 != (span == 3 ? 114u : 107u) || cpu->reg[2].u32 != 52)
             testFail("WASM forward region interior entry reused stale locals");
         // Changing the parent retires overlapping interior publications too.
         ctx.memory->writeb(increment, 5);
@@ -884,10 +885,13 @@ static void testWasmForwardRegionState() {
     }
     // Fault before a potential write to EBP, with dirty or untouched values
     // arriving at the preceding join. Validate the saved guest signal frame.
+    for (U32 prefix : {0u,1u,2u}) for (bool prefixStore : {false,true})
     for (U32 mask : {2u,3u}) for (bool store : {false,true}) for (bool crossPage : {false,true}) {
         testNewInstruction(0); auto& ctx = testContext(); CPU* cpu = ctx.cpu;
         cpu->reg[0].u32 = 10; cpu->reg[3].u32 = mask; cpu->reg[5].u32 = 0x12345678;
         cpu->reg[6].u32 = crossPage ? 0x1ffe : 0x2000;
+        cpu->reg[7].u32 = crossPage ? 0x4ffe : 0x4000;
+        ctx.memory->writed(TEST_HEAP_ADDRESS + cpu->reg[7].u32, 3);
         cpu->xmm[0].pi.u32[0] = 11;
         extraJoin(); extraJoin();
         testMask(1); U32 first = branch(0x84);
@@ -897,6 +901,17 @@ static void testWasmForwardRegionState() {
         // These writes happen after the last guest-edge publication. The
         // faulting helper must still publish them, with EBP unmodified.
         testPushCode8(0x83); testPushCode8(0xc0); testPushCode8(5); movXmm();
+        // Successful memory operations precede the fault in the same span.
+        // Cross-page accesses also take a helper before the later fault;
+        // dirty GP/SIMD state must still be published at that later point.
+        for (U32 i=0; i<prefix; ++i) {
+            if (prefixStore) {
+                testPushCode8(0x83); testPushCode8(0xc0); testPushCode8(3);
+                testPushCode8(0x89); testPushCode8(0x07); // mov [edi],eax
+            } else { testPushCode8(0x03); testPushCode8(0x07); } // add eax,[edi]
+            movXmm();
+        }
+        const U32 expected = ((mask&1) ? 18u : 15u) + 3*prefix;
         U32 fault=ctx.codeIp;
         testPushCode8(store ? 0x89 : 0x8b); testPushCode8(store ? 0x06 : 0x2e);
         patch(second,ctx.codeIp); nearJump(end); ctx.codeIp=end;
@@ -907,10 +922,12 @@ static void testWasmForwardRegionState() {
         testRunCPU();
         ctx.memory->mprotect(ctx.thread,TEST_HEAP_ADDRESS+0x2000,K_PAGE_SIZE,K_PROT_READ|K_PROT_WRITE);
         U32 uc=action.sigInfo[0]==K_SIGSEGV?cpu->reg[2].u32:0;
-        if (!uc || ctx.memory->readd(uc+0x40)!=((mask&1)?18u:15u) ||
+        if (!uc || ctx.memory->readd(uc+0x40)!=expected ||
             ctx.memory->readd(uc+0x2c)!=0x12345678 || ctx.memory->readd(uc+0x4c)!=fault-TEST_CODE_ADDRESS ||
-            cpu->xmm[0].pi.u32[0]!=((mask&1)?18u:15u))
-            testFail("WASM forward region fault state mask=%u store=%u cross=%u",mask,store,crossPage);
+            cpu->xmm[0].pi.u32[0]!=expected ||
+            ctx.memory->readd(TEST_HEAP_ADDRESS + (crossPage ? 0x4ffe : 0x4000)) !=
+                ((prefixStore && prefix) ? expected : 3u))
+            testFail("WASM forward region fault state mask=%u store=%u cross=%u prefix=%u writes=%u",mask,store,crossPage,prefix,prefixStore);
         ctx.process->sigActions[K_SIGSEGV]=oldAction;
     }
     // A store to this region's own code must exit before using its old

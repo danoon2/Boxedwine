@@ -239,6 +239,10 @@ public:
         code.set_error_handler(this);
     }
 
+    // Start with forward guards; backward exits retain their polling path.
+#ifdef BOXEDWINE_JIT_X64
+    bool supportsConditionalSideExit(U32 sourceEip, U32 targetEip) const override { return targetEip > sourceEip; }
+#endif
     void preOp(DecodedOp* op) override;
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void postCompile(DecodedOp* op) override;
@@ -3545,6 +3549,12 @@ void JitX86CodeGen::clearMMUPermissionIfSpansPage(JitWidth width, RegPtr offset,
 }
 
 void JitX86CodeGen::JumpIfCondition(JitConditional condition, U32 address) {
+    if (!isBlockOpBoundary(address)) {
+        IfCondition(condition);
+        branchToSideExit(address);
+        EndIf();
+        return;
+    }
     Label label;
 
     bool negative = false;
@@ -6104,6 +6114,13 @@ void JitX86CodeGen::direct_setcc(JitConditional condition, RegPtr dst) {
 }
 
 void JitX86CodeGen::direct_jump(JitConditional condition, U32 address) {
+    if (!isBlockOpBoundary(address)) {
+        Label fallthrough = compiler.new_label();
+        compiler.j(asmjit::x86::negate_cond(getCondCode(condition)), fallthrough);
+        branchToSideExit(address);
+        compiler.bind(fallthrough);
+        return;
+    }
     Label label;
 
     if (!opLabels.get(address, label)) {

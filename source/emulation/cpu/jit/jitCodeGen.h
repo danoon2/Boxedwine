@@ -43,7 +43,7 @@ public:
     bool canJumpInBlock(U32 opEip, DecodedOp* op) override {
         // Side-exit backends may keep compiling the fall-through even when
         // the taken target is outside this block or not an instruction start.
-        return opEip < lastOpEip && ((supportsConditionalSideExits() && op->isJumpCC()) ||
+        return opEip < lastOpEip && ((supportsConditionalSideExit(opEip, opEip + op->len + op->imm) && op->isJumpCC()) ||
             isBlockOpBoundary(opEip + op->len + op->imm));
     }
 
@@ -68,7 +68,7 @@ public:
     // target compiled as its own block-start entry.
     virtual bool shouldStopBlockBefore(U32 eip, DecodedOp* op) { return false; }
     // Permit conditional exits without ending the compiled fall-through path.
-    virtual bool supportsConditionalSideExits() const { return false; }
+    virtual bool supportsConditionalSideExit(U32 sourceEip, U32 targetEip) const { return false; }
     virtual void readMMU(RegPtr dest, RegPtr index, U32 offset = 0) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
     virtual RegPtr getLinearMemoryBase(RegPtr tmp = nullptr) { kpanic("JitCodeGen::getLinearMemoryBase"); return nullptr; }
@@ -179,12 +179,12 @@ public:
 private:
     void writeMemory(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment, bool forceMmuCheck);
 
-    bool isBlockOpBoundary(U32 eip) const {
-        return findBlockInstruction(eip) != blockInstructions.size();
-    }
     void analyzeBlockControlFlow(DecodedOp* op);
 
 protected:
+    bool isBlockOpBoundary(U32 eip) const {
+        return findBlockInstruction(eip) != blockInstructions.size();
+    }
     struct BlockInstruction {
         U32 eip;
         DecodedOp* op;
@@ -207,6 +207,8 @@ protected:
         U32 span = 0, count = 0;
     };
     bool findReadGroup(U32 eip, ReadGroup& group) const;
+    // Taken conditional edge that leaves the contiguous compiled region.
+    void branchToSideExit(U32 address);
     struct LoopRegisterUsage {
         U8 gp = 0;
         U8 gpWritten = 0;
@@ -220,8 +222,8 @@ protected:
     // memory API, whose slow paths must publish dirty state and preserve locals.
     bool accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage) const;
     // A bounded acyclic region with enough forward joins to amortize
-    // preloading its GP/XMM inputs. Memory spans currently permit only one
-    // memory op between boundaries and require publication at guest joins.
+    // preloading its GP/XMM inputs. Small memory spans use target-specific
+    // bounds and require publication at guest joins.
     bool findForwardRegisterRegion(LoopRegisterUsage& usage) const;
     // Adjacent register-only producer/consumer eligibility, independent of
     // the backend's storage for the forwarded result.

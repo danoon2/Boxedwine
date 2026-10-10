@@ -949,7 +949,7 @@ public:
     void compile(DecodedOp* op) override;
     void postCompile(DecodedOp* op) override;
     bool shouldStopBlockBefore(U32 eip, DecodedOp* op) override;
-    bool supportsConditionalSideExits() const override { return true; }
+    bool supportsConditionalSideExit(U32, U32) const override { return true; }
 
     // Per-block exit metadata recorded while compiling, exported with the
     // saved module as boxedwine-jit-manifest.json so the offline cache

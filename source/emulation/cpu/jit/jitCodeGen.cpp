@@ -407,7 +407,7 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             if (nextOp->isDirectJumpBranch()) {
                 U32 target = this->lastOpEip + nextOp->len + nextOp->imm;
                 if ((target >= lastFurthestEip || target < this->startingEip) &&
-                        !(supportsConditionalSideExits() && nextOp->isJumpCC())) {
+                        !(supportsConditionalSideExit(this->lastOpEip, target) && nextOp->isJumpCC())) {
                     break;
                 }
             }
@@ -444,6 +444,9 @@ void JitCodeGen::analyzeBlockControlFlow(DecodedOp* op) {
     forwardBranches.clear();
     U32 eip = startingEip;
     for (DecodedOp* cur = op; cur && eip <= lastOpEip; cur = cur->next) {
+        // Done caps a decoded chain; compileOps exits before emitting it.
+        // A jump to its address must dispatch to the real guest instruction.
+        if (cur->inst == Done) break;
         blockInstructions.push_back({eip, cur});
         if (!cur->len || eip + cur->len < eip) break;
         eip += cur->len;
@@ -1191,26 +1194,30 @@ bool JitCodeGen::findForwardRegisterRegion(LoopRegisterUsage& usage) const {
     // improve in paired Wasm tests; cap the analysis and eager input set.
     if (forwardBranches.size() < 4 || blockInstructions.size() > 128) return false;
     LoopRegisterUsage registers;
-    bool memorySinceBoundary = false;
+    // Longer spans improved ST, especially mixed GP/SIMD work. MT did not
+    // improve consistently with its ordered memory accesses, so keep its
+    // established bound. Four-operation spans remain on the original path.
+#ifdef BOXEDWINE_MULTI_THREADED
+    constexpr U32 maxMemoryOps = 1;
+#else
+    constexpr U32 maxMemoryOps = 3;
+#endif
+    U32 memoryOpsSinceBoundary = 0;
     for (const auto& entry : blockInstructions) {
-        if (memorySinceBoundary) {
+        if (memoryOpsSinceBoundary) {
             for (const auto& branch : forwardBranches) {
                 if (branch.targetEip == entry.eip) {
-                    memorySinceBoundary = false;
+                    memoryOpsSinceBoundary = 0;
                     break;
                 }
             }
         }
         const auto& info = instructionInfo[entry.op->inst];
         if (info.readMemWidth || info.writeMemWidth) {
-            // One memory operation per straight-line span improved both
-            // Wasm modes. Longer spans were neutral or slower despite smaller
-            // code, even with branch hints; keep their established lowering.
-            if (memorySinceBoundary) return false;
-            memorySinceBoundary = true;
+            if (++memoryOpsSinceBoundary > maxMemoryOps) return false;
         }
         if (entry.op->isDirectJumpBranch()) {
-            memorySinceBoundary = false;
+            memoryOpsSinceBoundary = 0;
             U32 target = entry.eip + entry.op->len + entry.op->imm;
             if (target <= entry.eip && isBlockOpBoundary(target)) return false;
         }
@@ -1295,6 +1302,14 @@ bool JitCodeGen::jumpToCachedJitEntry(U32 eip) {
     (void)eip;
 #endif
     return false;
+}
+
+void JitCodeGen::branchToSideExit(U32 address) {
+    size_t index = findBlockInstruction(currentEip);
+    if (index == blockInstructions.size()) kpanic("JitCodeGen::branchToSideExit missing branch");
+    // Reuse normal chaining, signal/scheduling checks and uncached fallback.
+    // The branch may have been fused with a preceding flag producer.
+    blockNext1(address, blockInstructions[index].op);
 }
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else

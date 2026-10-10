@@ -3616,4 +3616,188 @@ void testWasmJitSignalPendingDispatch() {
 #endif
 }
 
+
+void testJitDecodedChainBoundary() {
+#ifdef BOXEDWINE_JIT
+    auto& ctx = testContext();
+    CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    for (bool fused : {true, false}) for (bool taken : {false, true}) {
+        testNewInstruction(taken ? ZF : 0);
+        cpu->reg[0].u32 = taken ? 0 : 1;
+        cpu->reg[2].u32 = 0;
+        cpu->reg[3].u32 = 42;
+        cpu->reg[6].u32 = 0;
+        if (fused) bytes({0x39, 0xd0}); // cmp eax,edx
+        U32 branchAddress = ctx.codeIp;
+        bytes({0x0f, 0x84}); testPushCode32(5); // jz to the decoded chain's end
+        U32 fallthrough = ctx.codeIp;
+        bytes({0x31, 0xdb}); // xor ebx,ebx: flags dead on fall-through
+        U32 tailAddress = ctx.codeIp;
+        bytes({0x8d, 0x76, 1}); // lea esi,[esi+1]
+        U32 target = ctx.codeIp;
+        bytes({0x31, 0xd2}); // xor edx,edx: flags dead on taken path
+        bytes({0xbf}); testPushCode32(0x12345678);
+        bytes({0xcd, 0x97});
+        DecodedOp* entry = cpu->getOp(TEST_CODE_ADDRESS, 0);
+        cpu->getOp(fallthrough, 0);
+        DecodedOp* targetOp = cpu->getOp(target, 0);
+        DecodedOp* tail = ctx.memory->getDecodedOp(tailAddress);
+        DecodedOp* savedNext = tail->next;
+        // The decoder uses this sentinel to cap long normal-core chains.
+        // The real guest instruction at this address is independently cached.
+        tail->next = DecodedOp::allocDone();
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+        if (!entry->pfnJitCode) testFail("JIT did not compile a chain ending at Done");
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+        if (fused && !(ctx.memory->getDecodedOp(branchAddress)->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE))
+            testFail("Done boundary test did not exercise a fused branch");
+#endif
+        testRunCPU();
+        if (cpu->reg[3].u32 != (taken ? 42u : 0u) || cpu->reg[6].u32 != (taken ? 0u : 1u) ||
+                cpu->reg[7].u32 != 0x12345678 || cpu->reg[4].u32 != 4096)
+            testFail("JIT chain boundary lost branch state fused=%u taken=%u", fused, taken);
+        if (targetOp == tail->next) testFail("test lost its decoded chain sentinel");
+        tail->next = savedNext;
+    }
+#endif
+}
+
+void testNativeJitConditionalSideExits() {
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    auto& ctx = testContext();
+    CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    auto compileAt = [&](U32 address) {
+        DecodedOp* op = cpu->getOp(address, 0);
+        if (!op->pfnJitCode) startNewJIT(cpu, address, op);
+        if (!op->pfnJitCode) testFail("native side exit failed to compile");
+    };
+    constexpr U32 target = TEST_CODE_ADDRESS + 0x4000;
+    auto branch = [&](U8 condition) {
+        bytes({0x0f, (U8)(0x80 + condition)});
+        testPushCode32(target - ctx.codeIp - 4);
+    };
+    auto finish = [&](U32 value, bool liveFlags) {
+        if (liveFlags) bytes({0x9c, 0x5f}); // pushfd; pop edi
+        else bytes({0x39, 0xc0}); // replace flags on both successors, permitting fusion
+        bytes({0xbb}); testPushCode32(value);
+        bytes({0xdd, 0x1d}); testPushCode32(0x100); // fstp qword [100h]
+        bytes({0xcd, 0x97});
+    };
+    // All materialized flag combinations, plus arithmetic producers with dead
+    // and live outgoing flags. Both paths must preserve dirty GP/SIMD/x87 state.
+    for (U32 mode = 0; mode < 3; ++mode) for (U8 condition = 0; condition < 16; ++condition)
+    for (U32 sample = 0; sample < (mode ? 8u : 64u); ++sample) {
+        U32 flags = 0, ignored;
+        const U32 bits[] = {CF, PF, AF, ZF, SF, OF};
+        for (U32 i = 0; i < 6; ++i) if (sample & (1u << i)) flags |= bits[i];
+        if (mode) flags = directArithmeticFlags(DirectArithmeticTestOp::Sub,
+            DIRECT_ARITHMETIC_CASES[sample][0], DIRECT_ARITHMETIC_CASES[sample][1], ignored);
+        testNewInstruction(flags);
+        cpu->fpu.FINIT();
+        cpu->reg[0].u32 = mode ? DIRECT_ARITHMETIC_CASES[sample][0] : 0x12345678;
+        cpu->reg[2].u32 = mode ? DIRECT_ARITHMETIC_CASES[sample][1] : 0x87654321;
+        for (U32 lane = 0; lane < 4; ++lane) {
+            cpu->xmm[0].pi.u32[lane] = 10 + lane;
+            cpu->xmm[1].pi.u32[lane] = 20 + lane;
+        }
+        bytes({0x8d, 0x76, 0x01}); // lea esi,[esi+1]
+        bytes({0x66, 0x0f, 0xfe, 0xc1}); // paddd xmm0,xmm1
+        bytes({0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1}); // fld1; fld1; faddp
+        if (mode) bytes({0x39, 0xd0}); // cmp eax,edx
+        U32 branchAddress = ctx.codeIp;
+        branch(condition);
+        U32 fallthrough = ctx.codeIp;
+        finish(10, mode != 1);
+        ctx.codeIp = target;
+        finish(20, mode != 1);
+        if (mode == 1) compileAt(target); // expose both successors to flag liveness
+        compileAt(TEST_CODE_ADDRESS);
+        DecodedOp* entry = ctx.memory->getDecodedOp(TEST_CODE_ADDRESS);
+        DecodedOp* interior = ctx.memory->getDecodedOp(fallthrough);
+        if (!interior || interior->blockStart != entry)
+            testFail("native side exit did not retain fall-through");
+        if (mode == 1 && condition != 10 && condition != 11) {
+            DecodedOp* branchOp = ctx.memory->getDecodedOp(branchAddress);
+            if (!branchOp || !(branchOp->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE))
+                testFail("native side exit did not exercise fused compare/branch");
+        }
+        testRunCPU(); // modes 0 and 2 exercise an initially uncompiled target
+        bool taken = directArithmeticCondition(condition, flags);
+        if (cpu->reg[3].u32 != (taken ? 20u : 10u) || cpu->reg[6].u32 != 1 || cpu->reg[4].u32 != 4096 ||
+                ctx.memory->readq(TEST_HEAP_ADDRESS + 0x100) != 0x4000000000000000ull || cpu->fpu.top != 0)
+            testFail("native side exit state mode=%u condition=%u sample=%u", mode, condition, sample);
+        if (mode != 1 && ((cpu->reg[7].u32 ^ flags) & FMASK_TEST))
+            testFail("native side exit live flags mode=%u condition=%u sample=%u", mode, condition, sample);
+        for (U32 lane = 0; lane < 4; ++lane) if (cpu->xmm[0].pi.u32[lane] != 30 + lane * 2)
+            testFail("native side exit lost SIMD state");
+    }
+
+    // Cold/warm targets, target-only invalidation, owner invalidation, and an
+    // independent entry into the retained fall-through must all use fresh code.
+    testNewInstruction(0);
+    bytes({0x40, 0x83, 0xfa, 0x00}); // inc eax; cmp edx,0
+    branch(4);
+    U32 interior = ctx.codeIp;
+    bytes({0xbb}); testPushCode32(10); bytes({0xcd, 0x97});
+    ctx.codeIp = target;
+    bytes({0xbb}); testPushCode32(20); bytes({0xcd, 0x97});
+    for (U32 pass = 0; pass < 6; ++pass) {
+        if (pass == 3) ctx.memory->writed(target + 1, 30);
+        if (pass == 4) ctx.memory->writeb(TEST_CODE_ADDRESS, 0x46); // inc esi
+        U32 address = pass == 5 ? interior : TEST_CODE_ADDRESS;
+        compileAt(address);
+        cpu->reg[0].u32 = cpu->reg[6].u32 = 0;
+        cpu->reg[2].u32 = pass == 0 ? 1 : 0;
+        cpu->eip.u32 = address - TEST_CODE_ADDRESS;
+        cpu->nextOp = nullptr;
+        testRunCPU();
+        U32 expected = pass == 0 || pass == 5 ? 10 : pass >= 3 ? 30 : 20;
+        if (cpu->reg[3].u32 != expected || cpu->reg[0].u32 != (pass < 4 ? 1u : 0u) ||
+                cpu->reg[6].u32 != (pass == 4 ? 1u : 0u))
+            testFail("native side exit invalidation/interior entry pass=%u", pass);
+    }
+
+    // A fault on either successor must report that instruction, retain the
+    // completed prefix, and leave the faulting destination untouched.
+    for (bool taken : {false, true}) for (bool store : {false, true}) for (bool cross : {false, true}) {
+        testNewInstruction(CF | OF);
+        cpu->reg[0].u32 = 101;
+        cpu->reg[2].u32 = taken ? 0 : 1;
+        cpu->reg[6].u32 = cross ? 0x1ffe : 0x2000;
+        ctx.memory->writed(TEST_HEAP_ADDRESS + cpu->reg[6].u32, 0x12345678);
+        bytes({0x66, 0x0f, 0x6e, 0xc0}); // movd xmm0,eax
+        bytes({0x83, 0xfa, 0x00}); // cmp edx,0
+        branch(4);
+        U32 fault = 0;
+        auto emitFault = [&](bool side) {
+            bytes({0xbf}); testPushCode32(side ? 20 : 10);
+            if (side == taken) fault = ctx.codeIp;
+            bytes({(U8)(store ? 0x89 : 0x8b), 0x06}); // mov [esi],eax / mov eax,[esi]
+            bytes({0xcd, 0x97});
+        };
+        emitFault(false); ctx.codeIp = target; emitFault(true);
+        U32 handler = TEST_CODE_ADDRESS + 0x6000;
+        ctx.codeIp = handler;
+        bytes({0xcd, 0x97});
+        auto old = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = handler;
+        compileAt(TEST_CODE_ADDRESS); compileAt(target);
+        ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, store ? K_PROT_READ : 0);
+        testRunCPU();
+        ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        U32 uc = action.sigInfo[0] == K_SIGSEGV ? cpu->reg[2].u32 : 0;
+        if (!uc || ctx.memory->readd(uc + 0x4c) != fault - TEST_CODE_ADDRESS ||
+                ctx.memory->readd(uc + 0x40) != 101 || ctx.memory->readd(uc + 0x24) != (taken ? 20u : 10u) ||
+                cpu->xmm[0].pi.u32[0] != 101 || ctx.memory->readd(TEST_HEAP_ADDRESS + (cross ? 0x1ffe : 0x2000)) != 0x12345678)
+            testFail("native side exit fault state taken=%u store=%u cross=%u", taken, store, cross);
+        if (uc && (ctx.memory->readd(uc + 0x54) & FMASK_TEST) != (taken ? ZF | PF : 0))
+            testFail("native side exit fault flags");
+        ctx.process->sigActions[K_SIGSEGV] = old;
+    }
+#endif
+}
+
 #endif

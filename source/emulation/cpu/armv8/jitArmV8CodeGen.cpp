@@ -179,6 +179,8 @@ public:
 
     static void initTSOMode();
 
+    // Start with forward guards; backward exits retain their polling path.
+    bool supportsConditionalSideExit(U32 sourceEip, U32 targetEip) const override { return targetEip > sourceEip; }
     void preOp(DecodedOp* op) override;
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void postCompile(DecodedOp* op) override;
@@ -3651,7 +3653,13 @@ void JitArmV8CodeGen::clearIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg
     clearMMUPermissionIfSpansPage(width, offset, reg);
 }
 
-void JitArmV8CodeGen::JumpIfCondition(JitConditional condition, U32 address) {    
+void JitArmV8CodeGen::JumpIfCondition(JitConditional condition, U32 address) {
+    if (!isBlockOpBoundary(address)) {
+        IfCondition(condition);
+        branchToSideExit(address);
+        EndIf();
+        return;
+    }
     Label label;
 
     bool negative = false;
@@ -7351,6 +7359,13 @@ asmjit::a64::CondCode JitArmV8CodeGen::getCondCode(JitConditional condition) {
 }
 
 void JitArmV8CodeGen::direct_jump(JitConditional condition, U32 address) {
+    if (!isBlockOpBoundary(address)) {
+        Label fallthrough = compiler.new_label();
+        compiler.b(asmjit::arm::negate_cond(getCondCode(condition)), fallthrough);
+        branchToSideExit(address);
+        compiler.bind(fallthrough);
+        return;
+    }
     Label label;
 
     if (!opLabels.get(address, label)) {

@@ -828,3 +828,322 @@ Node runs used `--experimental-wasm-exnref --no-liftoff
 --experimental-wasm-branch-hinting`. The full failing shard used
 `-shard 3 16`; final concurrency coverage used `769 14 1`. Browser CI will
 rerun after the push; these local results use Node, not Firefox.
+
+## Wasm ST locals across two/three-access spans (2026-10-10)
+
+Extend the shared `JitCodeGen::findForwardRegisterRegion` policy to allow
+three memory instructions per straight-line span in ST. MT retains its
+one-instruction limit: the broader prototype did not give consistent gains
+with the current MT memory-ordering repair. No Wasm lowering changes are
+needed, and native lowering is unchanged. The existing minimum four forward
+branches, maximum 128 instructions, operation whitelist, and exclusion of
+internal backedges still apply. This keeps locals across existing forward
+joins; it does not fuse separately owned/noncontiguous blocks.
+
+### Measurements
+
+Baseline is `e7ef373af`, including the MT fences. The initial ST/MT batch
+used five alternating process pairs, 80 shapes per process, and five samples
+per shape (8,000 samples). ST mixed scalar-memory/SIMD work improved 6.4-8.1%,
+but two unchanged ST controls moved +14.9%/+20.3% consistently despite
+identical generated code. Executable layout/runtime effects were a suspected
+confound, not a proven cause. MT changed-case medians ranged -1.1% to +0.8%,
+mostly inconsistent across pairs, so no MT expansion was retained.
+
+A second ST batch used one identical executable for both limits, selected
+only during JIT compilation. A temporary environment override was removed
+from production source after freezing this harness. All generated functions
+were checked against the original baseline/candidate; only verified embedded
+DecodedOp addresses were normalized. This batch again used five alternating
+pairs and five samples per shape (4,000 samples).
+
+Both batches ran after fresh user quiet confirmation and ten idle seconds,
+with no competing build/test jobs: WSL x64, CPU 2, Node 22.16.0, Emscripten
+5.0.7, `--experimental-wasm-exnref --no-liftoff
+--experimental-wasm-branch-hinting`. Timed batches target 12 ms. Setup,
+compilation, calibration, warmup and verification are outside the samples;
+module counts must remain constant during timing. Every shape checks counts
+1, 2, 15, 16, 17 and 65 before timing and verifies each measured result.
+The guest driver varies all branch combinations over sixteen invocations.
+
+Same-executable results below are nanoseconds per region invocation including
+normal compiled dispatch through a separate driver. Negative change means
+less execution time. Reads use accumulating dword ADDs; stores follow integer
+ADDs; mixed work feeds scalar ADD loads through MOVD into PADDD arithmetic.
+
+| Work | Joins | Accesses/span | Baseline ns | Candidate ns | Time change |
+|---|---:|---:|---:|---:|---:|
+| Reads | 4 | 2 | 19.54 | 18.77 | -3.95% |
+| Reads | 4 | 3 | 20.35 | 19.79 | -2.75% |
+| Reads | 8 | 2 | 25.15 | 24.49 | -2.62% |
+| Reads | 8 | 3 | 27.63 | 26.71 | -3.31% |
+| Stores | 4 | 2 | 20.08 | 19.23 | -4.24% |
+| Stores | 4 | 3 | 20.90 | 20.01 | -4.26% |
+| Stores | 8 | 2 | 25.76 | 25.00 | -2.97% |
+| Stores | 8 | 3 | 27.69 | 27.33 | -1.32% |
+| Mixed GP/SIMD | 4 | 2 | 20.88 | 19.35 | -7.36% |
+| Mixed GP/SIMD | 4 | 3 | 22.38 | 20.61 | -7.90% |
+| Mixed GP/SIMD | 8 | 2 | 26.88 | 24.94 | -7.21% |
+| Mixed GP/SIMD | 8 | 3 | 28.95 | 27.66 | -4.45% |
+
+All five pairs improved for each mixed case. Ordinary reads/stores improved
+in the aggregate but had occasional reversed pairs; their smaller gains are
+less certain. The 68 unchanged-code controls moved a median -0.61%, ranging
+-4.91% to +1.54%; the two former outliers became -1.83%/+0.10%. Some timing
+drift remains: median control shifts by pair were +1.84%, -0.20%, -0.70%,
+-1.34%, and -3.19%. Several fifth-pair baseline samples were unusually slow.
+Do not interpret those individual double-digit gains as the expected benefit.
+The mixed gains remain in the other four pairs. These synthetic measurements
+do not predict MDK/game FPS or claim results for other browsers/host CPUs.
+
+Retain the three-access ST limit. Changed functions shrink by 98-482 Wasm
+bytes; this is not a measurement of V8 native-code size. Four-access spans
+remain unchanged, as earlier wider-span experiments were neutral or slower.
+The final ST functions match the measured candidate and MT functions match
+the original baseline for all 160 functions per target (80 regions plus
+drivers), including branch hints. No second executable-specific speedup is
+assumed from this identity check.
+
+### Validation and artifacts
+
+The broad prototype passed 787 selected Wasm tests per target with hints on,
+plus ten focused tests per target with hints off. The final ST-only policy
+passed ten focused tests per target with hints on/off, all 80 benchmark
+shapes at six checked counts, and generated-code identity checks. The forward
+region state test expands from 157 to 293 executions, covering branch
+combinations, GP/SIMD values, flags, interior entry, invalidation, successful
+reads/stores preceding a later fault, and cross-page helpers. Fault checks
+verify saved EIP/register progress, SIMD state and earlier committed stores.
+Final native x64 passed all 811 fast tests from WSL `/tmp` in seven seconds.
+No new compiler warnings; the existing make jobserver warning remains.
+
+`tmp/jit-forward-spans-20261010/` contains source snapshots, `baseline/`,
+`candidate/`, `isolated/`, `narrowed/`, raw logs, disassembled modules,
+`state.json`, `timing/results.json`, and `timing-isolated/results.json`.
+Reproduction: `build.py baseline`, `prototype.py`, `build.py candidate`,
+`validate.py candidate --full`, `inspect-code.py`, `time.py`,
+`prepare-isolated.py`, `fix-isolated-environment.py`,
+`build-isolated.py isolated`, `verify-isolated.py`, `narrow.py`,
+`build.py narrowed`, `validate.py narrowed`, `verify-narrowed-code.py`,
+`time-isolated.py`, `summarize-isolated.py`. These scripts intentionally edit
+experimental source; preserve the frozen binaries/results. Obtain a fresh
+quiet confirmation before either timing script. No application/browser UI
+was launched, and nothing was staged, committed or pushed in this pass.
+
+## Native forward conditional side exits (2026-10-10)
+
+Retain contiguous fall-through code after a conditional branch to an external
+forward target on x64 and ARM64. Previously that branch truncated the compiled
+block even when it was not taken. Block selection and taken-exit chaining stay
+in `JitCodeGen`; the native backends emit either a materialized condition or a
+fused host compare/branch around the existing `blockNext1` path. That path
+retains its signal/scheduling checks, cached-target lookup, invalidation and
+uncompiled-target fallback. External backward edges keep their previous
+lowering. This does not join separately owned/noncontiguous code or change the
+first-pass decoder's reach. Wasm's existing side exits keep their behavior;
+only the capability signature changes. The 32-bit x86 backend is unchanged.
+
+### Measurements
+
+Frozen baseline: `e7ef373af` plus the preceding unstaged Wasm ST memory-span
+policy, which does not change native lowering. Both hosts use their normal
+native multithreaded test configuration: Intel Core i7-14700 under WSL x64
+(CPU 2 affinity), and Apple M4 ARM64 on macOS 27.0.1. No native ST or Windows
+MSVC timings were performed.
+
+After fresh quiet-machine confirmation and ten idle seconds, run five
+alternating process pairs per host, baseline/candidate then candidate/baseline.
+Each process covers 72 shapes: integer ADD, accumulating memory ADD, PADDD,
+and ADD with live CF consumed by ADC; zero/two/eight forward guards; one/eight
+work instructions per span; and never/1-in-16/half/always-taken exits. All
+guards in one invocation share their outcome. The no-guard controls have
+one span. A separate guest driver counts invocations and loops to the entry.
+
+Preflight counts are 1, 2, 15, 16, 17 and 65. Five timed samples per shape
+target 12 ms, for 3,600 samples per host (7,200 total). Compilation, setup,
+calibration, warmup and verification are outside the sample intervals.
+Samples include normal generated execution and dispatch, verify architectural
+results afterward, and reject changed compiled-entry pointers. Every run
+passed. These benchmarks mainly exercise materialized flags; separate
+correctness cases explicitly require fused compare/branch lowering.
+
+For each shape, take the median time/invocation within each process, form
+the candidate/baseline ratio for each pair, then take the median of five
+ratios. The table aggregates the sixteen shapes at each exit rate; controls
+aggregate eight shapes. Negative changes mean less execution time.
+
+| Exit rate | x64 median time change | ARM64 median time change |
+|---|---:|---:|
+| Never | -30.79% | -24.11% |
+| Once per sixteen invocations | -33.84% | -23.61% |
+| Half | -16.95% | -9.56% |
+| Always | -0.12% | +0.03% |
+| Unchanged no-guard controls | +0.70% | +0.57% |
+
+Short spans benefit most. Two guards with one integer ADD per span and no
+taken exits improved 30.29%/26.67% on x64/ARM64; eight such guards improved
+57.22%/41.05%, consistently across all five pairs. Heavier work can hide the
+dispatch savings: eight spans of eight memory ADDs improved 4.92%/6.54%,
+while eight spans of eight PADDDs were effectively unchanged (-0.86%/+0.09%).
+These focused synthetic results do not predict game FPS.
+
+The x64 controls ranged -1.69% to +2.92%, and ARM64 controls -0.20% to +2.17%
+by five-pair median. Individual ARM64 pairs contained larger outliers; do not
+interpret every small per-shape improvement as a reliable gain. Code byte
+counts for the controls are unchanged, but exact relocated-code identity
+was not established.
+
+One consistent regression remains: x64 live-CF work with eight guards and
+eight ADDs/span, taking the first exit on every invocation, used 7.41% more
+time (five pairs: +7.4%, +3.4%, +3.9%, +8.5%, +9.1%). ARM64 changed +0.42%
+for that case. Other x64 always-taken case medians ranged -4.36% to +1.62%.
+The cause of the outlier is not established; branch/code-layout effects are
+a follow-up to investigate, not an explanation proven by these timings.
+Retain the prototype for the clear fall-through gains, recording this
+always-taken tradeoff rather than claiming a universal improvement.
+
+Eight-guard shapes now have three compiled owners instead of ten, counting
+the separate driver and taken target. For eight short integer spans with
+untaken exits, total generated code fell from 2,740 to 2,077 bytes on x64 and
+2,988 to 2,232 bytes on ARM64. Existing native fixed-register caching remains
+in place; the gains come from removing intervening block transitions.
+
+### Validation and artifacts
+
+| Check | Result |
+|---|---|
+| Final x64 full fast suite, WSL `/tmp` | 812 / 812 passed |
+| Final ARM64 full fast suite, isolated Mac `/private/tmp` | 810 / 810 passed |
+| x64 MMU-only focused JIT tests | 25 / 25 passed |
+| Baseline/candidate benchmark preflights, each native host | 72 shapes x 6 counts passed per build |
+| Candidate x64 MMU benchmark preflight | 72 shapes x 6 counts passed |
+| Wasm ST/MT compatibility, hints on and off | 10 / 10 passed per target/setting (40 total) |
+| Timed native runs | 20 / 20 passed, all 7,200 samples verified |
+
+The new native regression entry runs 1,294 executions: all 16 conditions
+with all 64 materialized flag combinations, arithmetic producers with dead
+and live flags, explicit fused-branch checks, dirty GP/SIMD/x87 state, cold
+and warm targets, target/owner invalidation, independent interior entry,
+and exact fault EIP/register/flag progress on both successors, including
+cross-page loads/stores. CS and DS use the test harness's nonzero bases.
+Existing overlap, chaining, arithmetic, signal and fault tests also pass.
+Native ST scheduling behavior was not separately exercised in this pass.
+
+Artifacts: `tmp/jit-native-side-exits-20261010/` contains `before/` snapshots,
+frozen x64 binaries, `benchmark.inc`, build and validation scripts/logs,
+`timing/manifest.json`, twenty raw timing logs, `timing-summary.json`,
+`timing-summary.txt` and `state.json`. ARM64 apps remain in
+`/private/tmp/boxedwine-native-side-exits-20261010/` on the authorized Mac.
+Use `time.py` only after fresh quiet confirmation; it includes the ten-second
+wait. `summarize.py` recomputes the per-case results. The experiment scripts
+mutate sources; do not rerun baseline builds against the retained candidate.
+No applications, games or browser UI were launched. Nothing was staged,
+committed or pushed.
+
+### Interpreter branch history and adaptive cold exits (2026-10-10, rejected)
+
+Evaluated conditional-branch direction profiles collected during normal-core
+warmup, shared across x64, ARM64 and Wasm ST/MT. The prototype used one byte
+of existing `DecodedOp` padding, with two atomic saturating four-bit counters.
+Only a forward conditional edge with at least 12 observations in one direction
+and none in the other qualified. Compiled hot paths did not update counters.
+An unobserved edge emulated the branch; its fourth miss invalidated the owning
+region, retained the now-mixed profile, and recompiled without the stub on its
+next entry. Branch guards remained conditional, so an unseen outcome was
+always handled correctly. Persistent Wasm modules excluded this policy because
+their code shape and relocation layout must not depend on previous sessions.
+
+The adaptation mechanism passed correctness testing, but this first lowering
+was **not retained**: no repeatable broad JIT improvement justified its startup
+cost and x64 regressions. The earlier native forward side exits and Wasm region
+changes remain intact. Candidate sources, regression tests, binaries and a
+reapplicable `prototype.patch` are preserved under
+`tmp/jit-branch-profile-20261010/`.
+
+Five alternating baseline/candidate pairs on each architecture covered 72
+integer, memory, SIMD and live-flags shapes. Each case had five calibrated
+samples near 12 ms. Guest code was interpreted for 64 iterations before JIT
+compilation; setup, compilation, calibration and result verification were
+outside the reported times. Compiled-entry identity was checked after every
+sample. Native x64 and Node were pinned to WSL CPU 2; ARM64 used the authorized
+Apple M4. Timings began after the user's quiet confirmation, completion of all
+build/tests, and a ten-second wait. Node 22.16.0 used `--no-liftoff`,
+`--experimental-wasm-exnref` and `--experimental-wasm-branch-hinting`.
+
+Median paired change in execution time (negative is faster), then median
+across the cases in each group:
+
+| Target | No extra guards | Never taken | Rare (1/16) | Half taken | Always taken |
+|---|---:|---:|---:|---:|---:|
+| Native x64 | -0.51% | +2.68% | +0.30% | +0.14% | -0.16% |
+| Native ARM64 | +0.41% | +0.00% | -0.06% | +0.03% | +0.13% |
+| Wasm ST | +0.13% | -0.30% | +0.16% | -0.33% | +0.46% |
+| Wasm MT | +0.22% | +0.49% | -0.23% | +0.01% | +0.55% |
+
+Do not treat the small aggregate differences as wins. The x64 integer case
+with eight guards and one addition per span regressed **32.25%** for never-taken
+guards (all five pairs +29.66% to +35.79%; 5.15 to 6.84 ns/iteration), **23.44%**
+for rare exits and **14.75%** for half-taken exits. Later guards in the latter
+cases are never taken because the first guard already filters that outcome.
+For the never-taken case, generated code actually shrank from 2,037 to 1,452
+bytes. This demonstrates that smaller code is not sufficient: this lowering
+disabled producer/Jcc fusion at profiled sites so the interpreter could
+re-evaluate the branch with valid flags. That is a likely contributor to the
+regression; it was not isolated with a same-executable policy switch.
+
+A separate interpreter-only comparison linked the same candidate harness
+against collectors on/off. Every batch reset profiles and interpreted a fresh
+50-visit native or 200-visit Wasm warmup; all guest results were verified and
+no JIT compilation was allowed. Five alternating pairs, nine shapes, five
+samples near 20 ms each:
+
+| Collector cost | No extra guards | Never taken | Half taken | Always taken |
+|---|---:|---:|---:|---:|
+| Native x64 | +15.96% | +21.37% | +20.42% | +12.45% |
+| Wasm ST | +1.87% | +3.35% | +3.95% | +1.93% |
+| Wasm MT | -0.57% | +0.71% | +1.24% | -0.26% |
+
+These are intentionally branch-heavy interpreter warmups, not application
+startup percentages or steady-state JIT overhead. Small changes near zero are
+noise. ARM64 collector overhead was not separately measured.
+
+Validation before reverting the experiment:
+
+| Check | Outcome |
+|---|---|
+| Native x64 full fast suite from WSL `/tmp` | 813/813 passed |
+| Native ARM64 full fast suite from isolated `/private/tmp` | 811/811 passed |
+| x64 MMU-only adaptive branch test | Passed |
+| Wasm ST and MT selected broad fast suites, hints enabled | 788 tests per target passed |
+| Adaptive branch test, hints enabled and disabled | Passed on ST and MT |
+| Baseline/candidate benchmark correctness on all four targets | 72 shapes x 6 counts per build passed |
+| Interpreter on/off warmup correctness, x64/ST/MT | All passed |
+| Paired JIT timings | 40 runs, 14,400 verified samples passed |
+| Paired interpreter timings | 30 runs, 1,350 verified samples passed |
+
+The adaptive test covers all 16 conditions, materialized flags and a lazy
+CMP/JZ case, both 16/32-bit displacement forms, both initial directions,
+dirty GP/SIMD/x87 state, the first three misses remaining emulated, the fourth
+invalidating, and the next entry compiling an ordinary branch. It also covers
+atomic saturation/concurrency, mixed and insufficient history, backward-edge
+exclusion, zero-displacement outcomes, profile reset after guest code changes,
+and the MT persistent-cache exclusion. A prototype bug found on Wasm was fixed:
+after invalidating the region, return to dispatch with the branch's selected
+EIP instead of treating the invalidation as an ordinary SMC instruction and
+resuming at fall-through. That fix belongs to this rejected prototype.
+
+Further work should preserve fused comparisons and use profiles where they
+actually remove dispatch or keep useful registers across connected regions.
+The existing external side exits in this benchmark were already efficient;
+replacing them with interpreter stubs alone did not improve them. A cheaper
+direction-seen bitmap is worth considering before sampling frequency counters.
+Do not claim an internal cold-code-omission benefit from these external-guard
+benchmarks; that needs its own representative case.
+
+`timing/manifest.json` records commands and binary hashes; `timing/summary.json`
+contains per-case/pair results. `analyze.py` regenerates the tables. The
+`validation-*.json` files and logs retain exact test commands/outcomes.
+`before/` preserves the earlier accepted work, and `prototype/` preserves this
+experiment. Candidate build outputs are test artifacts, not the restored source
+state; do not mistake them for retained builds. No application or browser UI
+was launched. Nothing was staged, committed or pushed.

@@ -160,6 +160,8 @@ void testVulkanDirectStackABI();
 void testArmJitEntryInvalidatedBeforeDispatch();
 void testJitEntryCacheInvalidation();
 void testJitDirectTargetInvalidation();
+void testNativeJitConditionalSideExits();
+void testJitDecodedChainBoundary();
 void testNativeJitRunCountWraps();
 void testNativeJitCooperativeScheduling();
 void testJitDirectArithmeticFlags();
