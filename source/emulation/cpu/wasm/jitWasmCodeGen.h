@@ -233,7 +233,10 @@ static constexpr U32 WASM_FPU_TAG_BASE = WASM_FPU_CACHE_BASE + 8;
 static constexpr U32 WASM_FPU_TOP_LOCAL = WASM_FPU_TAG_BASE + 8;
 // Total WASM local slots, including parameters.
 static constexpr U32 WASM_FPU_VALID_BASE = WASM_FPU_TOP_LOCAL + 1;
-static constexpr U32 WASM_LOCAL_COUNT = WASM_FPU_VALID_BASE + 8;
+// Adjacent flag consumers may reuse this value across scratch-pool resets.
+static constexpr U32 WASM_FLAG_RESULT_LOCAL = WASM_FPU_VALID_BASE + 8;
+static constexpr U32 WASM_LOOP_CARRY_LOCAL = WASM_FLAG_RESULT_LOCAL + 1;
+static constexpr U32 WASM_LOCAL_COUNT = WASM_LOOP_CARRY_LOCAL + 1;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
@@ -497,7 +500,7 @@ public:
     RegPtr getFpuCacheTagReg(U8 index) override;
     RegPtr getFpuCacheTopReg() override;
     void moveFpuReg(FPURegPtr dst, FPURegPtr src) override;
-    void loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
+    bool loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
     void fpuMath(FpuMath op, FPURegPtr dst, FPURegPtr src) override;
     void fpuAtan2(FPURegPtr dst, FPURegPtr y, FPURegPtr x) override;
     RegPtr classifyFpu(FPURegPtr value) override;
@@ -539,6 +542,7 @@ public:
     void fpuDiv(FPURegPtr dst, FPURegPtr src) override;
     void fpuXor(FPURegPtr dst, FPURegPtr src) override;
     void fpuAnd(FPURegPtr dst, FPURegPtr src) override;
+    void fpuAbs(FPURegPtr dst) override;
     void fpuSqrt(FPURegPtr dst, FPURegPtr src) override;
     void doFCOM(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) override;
     void doFCOMI(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) override;
@@ -969,7 +973,10 @@ public:
         bool touchesFpu = false;
         bool keepsFpu = false;
         bool dynamicFpuValidity = false;
+        U8 fixedFpuSlots = 0;
+        bool fixedFpuLazyInputs = false;
         bool keepsRegisters = true;
+        bool keepsCarry = false;
         LoopRegisterUsage registers;
         std::vector<ForwardTarget> forwardTargets;
     };
@@ -1147,6 +1154,8 @@ protected:
     std::array<bool, WASM_GP_LOCAL_COUNT> m_gpLoaded{};
     std::array<bool, WASM_GP_LOCAL_COUNT> m_gpDirty{};
     bool m_preserveCpuRegisterState = false;
+    DecodedOp* m_forwardedResultConsumer = nullptr;
+    void pushLazyFlagResult();
     std::array<bool, 4> m_segLoaded{};
     std::array<bool, WASM_XMM_LOCAL_COUNT> m_xmmLoaded{};
     std::array<bool, WASM_XMM_LOCAL_COUNT> m_xmmDirty{};

@@ -210,6 +210,12 @@ protected:
     // registers through the JIT register API. Memory operations use the JIT
     // memory API, whose slow paths must publish dirty state and preserve locals.
     bool accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage) const;
+    // Adjacent register-only producer/consumer eligibility, independent of
+    // the backend's storage for the forwarded result.
+    bool canForwardFlagResult(DecodedOp* op) const;
+    // True when the entire region preserves carry and replaces other live
+    // flags. The caller must initialize cached carry on every region entry.
+    bool canCacheLoopCarry(U32 firstEip, U32 lastEip) const;
 
     virtual U32 getBufferSize() = 0;
     virtual U32 markBufferLocation() = 0;

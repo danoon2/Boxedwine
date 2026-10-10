@@ -21,6 +21,84 @@
 #ifdef BOXEDWINE_JIT
 #include "jitFPU.h"
 
+std::vector<JitFPU::FpuRegisterLoop> JitFPU::findFpuRegisterLoops(U8 maxValues) const {
+    std::vector<FpuRegisterLoop> result;
+    if (!supportsFpuStackCache()) return result;
+    bool touchesFpu = false;
+    for (const auto& entry : blockInstructions) touchesFpu |= entry.op->isFpuOp();
+    if (!touchesFpu) return result;
+    for (const auto& edge : findLoopBackedges()) {
+        U8 slots = 0;
+        U8 eagerSlots = 0;
+        bool readsMemory = false;
+        bool accepted = true;
+        for (const auto& entry : blockInstructions) {
+            DecodedOp* op = entry.op;
+            // Other compiled edges must not bypass the header initialization.
+            if (entry.eip != edge.sourceEip && op->isDirectBranch()) {
+                U32 target = entry.eip + op->len + op->imm;
+                if (target >= edge.targetEip && target <= edge.sourceEip) accepted = false;
+            }
+            if (entry.eip < edge.targetEip || entry.eip > edge.sourceEip) continue;
+            if (op->lock || instructionInfo[op->inst].writeMemWidth ||
+                (entry.eip != edge.targetEip && (op->flags2 & OP_FLAG2_JUMP_TARGET))) {
+                accepted = false;
+                continue;
+            }
+            if (entry.eip == edge.sourceEip) {
+                accepted &= op->isJumpCC();
+                continue;
+            }
+            if (op->isBranch()) {
+                accepted = false;
+                continue;
+            }
+            switch (op->inst) {
+            case FADD_SINGLE_REAL: case FADD_DOUBLE_REAL:
+            case FMUL_SINGLE_REAL: case FMUL_DOUBLE_REAL:
+            case FSUB_SINGLE_REAL: case FSUB_DOUBLE_REAL:
+            case FSUBR_SINGLE_REAL: case FSUBR_DOUBLE_REAL:
+            case FIADD_DWORD_INTEGER: case FIADD_WORD_INTEGER:
+            case FIMUL_DWORD_INTEGER: case FIMUL_WORD_INTEGER:
+            case FISUB_DWORD_INTEGER: case FISUB_WORD_INTEGER:
+            case FISUBR_DWORD_INTEGER: case FISUBR_WORD_INTEGER:
+                slots |= 1;
+                readsMemory = true;
+                break;
+            case FADD_ST0_STj: case FADD_STi_ST0:
+            case FMUL_ST0_STj: case FMUL_STi_ST0:
+            case FSUB_ST0_STj: case FSUB_STi_ST0:
+            case FSUBR_ST0_STj: case FSUBR_STi_ST0:
+                slots |= 1u | (1u << op->reg);
+                break;
+            case FCHS: case FABS:
+                slots |= 1;
+                break;
+            default:
+                LoopRegisterUsage registers;
+                accepted &= !instructionInfo[op->inst].readMemWidth && accumulateLoopRegisters(op, registers);
+                break;
+            }
+            if (!readsMemory) eagerSlots = slots;
+        }
+        U8 count = 0;
+        for (U8 i = 0; i < 8; ++i) if (slots & (1u << i)) ++count;
+        if (!accepted || !count || count > maxValues) continue;
+        bool overlaps = false;
+        for (const auto& loop : result)
+            overlaps |= edge.targetEip <= loop.backedge && edge.sourceEip >= loop.header;
+        if (!overlaps) result.push_back({edge.targetEip, edge.sourceEip, slots, readsMemory && (slots & ~eagerSlots) != 0});
+    }
+    return result;
+}
+
+void JitFPU::prepareFpuRegisterLoop(U8 slots) {
+    beginFpuCache();
+    // Import only the unconditionally used values. Fixed stack slots avoid
+    // the all-eight-slot validity/tag register file needed by rotating loops.
+    for (U8 i = 0; i < 8; ++i) if (slots & (1u << i)) cachedFpuValue(i);
+}
+
 // Slots are indexed relative to the TOP at entry, not the current logical ST(0).
 // Push/pop and FXCH change only this compile-time mapping. Unknown incoming
 // values are imported lazily; a region need not start with an empty x87 stack.
@@ -28,6 +106,7 @@ void JitFPU::beginFpuCache() {
     if (fpuStackCache.entryTop) return;
     fpuStackCache.entryTop = getFpuCacheTopReg();
     readCPU(JitWidth::b32, offsetof(CPU, fpu.top), fpuStackCache.entryTop);
+    preserveFpuCacheTop(fpuStackCache.entryTop);
     for (U8 i = 0; i < 8; ++i) {
         fpuStackCache.slots[i].value = getFpuCacheReg(i);
         fpuStackCache.slots[i].tag = getFpuCacheTagReg(i);
@@ -42,10 +121,10 @@ FPURegPtr JitFPU::cachedFpuValue(U8 relativeIndex) {
     auto& slot = cachedFpuSlot(relativeIndex);
     if (!slot.loaded || slot.needsValidation) {
         RegPtr index = calculateIndexReg(fpuStackCache.entryTop, (fpuStackCache.top + relativeIndex) & 7);
-        loadFpuValue(slot.value, index, slot.loaded ? slot.valid : nullptr);
-        // Conversion now produces a local value, without spilling other slots
-        // or updating CPU TOP. Write it back only when this cache is exposed.
-        slot.loaded = slot.dirty = true;
+        // Keep prior dirty state. A backend may leave an import clean when
+        // CPU storage is already current; local conversions require writeback.
+        slot.dirty |= loadFpuValue(slot.value, index, slot.loaded ? slot.valid : nullptr);
+        slot.loaded = true;
         if (slot.valid) movValue(JitWidth::b32, slot.valid, 1);
         slot.needsValidation = false;
     }
@@ -109,9 +188,10 @@ void JitFPU::flushFpuCache() {
 // Populate the loop's register file without converting unused extended values.
 // All slots may have been changed by an earlier iteration when a cold exit is
 // taken near the start of this iteration, so writeback must track them all.
-void JitFPU::prepareFpuCacheForLoop(bool dynamicValidity) {
+void JitFPU::prepareFpuCacheForLoop(bool dynamicValidity, U8 slots, bool trackTags) {
     beginFpuCache();
     for (U8 i = 0; i < 8; ++i) {
+        if (!(slots & (1u << ((i - fpuStackCache.top) & 7)))) continue;
         auto& slot = fpuStackCache.slots[i];
         RegPtr index = calculateIndexReg(fpuStackCache.entryTop, i);
         slot.valid = getFpuCacheValidReg(i);
@@ -127,8 +207,11 @@ void JitFPU::prepareFpuCacheForLoop(bool dynamicValidity) {
         // TOP rotation or an extended load can make a header position lazy
         // on a later iteration, even if it initially contained a valid double.
         slot.needsValidation |= dynamicValidity;
-        if (!slot.tagLoaded) mov(JitWidth::b32, slot.tag, readFPUTag(index));
-        slot.loaded = slot.dirty = slot.tagLoaded = slot.tagDirty = true;
+        if (trackTags) {
+            if (!slot.tagLoaded) mov(JitWidth::b32, slot.tag, readFPUTag(index));
+            slot.tagLoaded = slot.tagDirty = true;
+        }
+        slot.loaded = slot.dirty = true;
     }
 }
 
@@ -975,10 +1058,8 @@ bool JitFPU::compileCachedFpuOp(DecodedOp* op) {
     case FCHS: case FABS:
         {
             FPURegPtr value = cachedFpuValue(0);
-            FPURegPtr mask = getFPUTmp();
-            loadCpuFpuRegConst(mask, op->inst == FCHS ? offsetof(CPU, fNeg) : offsetof(CPU, fAbs));
-            if (op->inst == FCHS) fpuXor(value, mask);
-            else fpuAnd(value, mask);
+            if (op->inst == FCHS) fpuNeg(value);
+            else fpuAbs(value);
             cachedFpuSlot(0).dirty = true;
         }
         break;
@@ -1914,21 +1995,29 @@ void JitFPU::dynamic_FICOM_WORD_INTEGER_Pop(DecodedOp* op) {
     });
 }
 
+void JitFPU::fpuNeg(FPURegPtr dst) {
+    FPURegPtr mask = getFPUTmp();
+    loadCpuFpuRegConst(mask, offsetof(CPU, fNeg));
+    fpuXor(dst, mask);
+}
+
+void JitFPU::fpuAbs(FPURegPtr dst) {
+    FPURegPtr mask = getFPUTmp();
+    loadCpuFpuRegConst(mask, offsetof(CPU, fAbs));
+    fpuAnd(dst, mask);
+}
+
 void JitFPU::dynamic_FCHS(DecodedOp* op) {
     RegPtr top = getTopReg();
     FPUReg dst(this, top, 0);
-    FPURegPtr tmp = getFPUTmp();
-    loadCpuFpuRegConst(tmp, offsetof(CPU, fNeg));
-    fpuXor(dst.reg, tmp);
+    fpuNeg(dst.reg);
     syncXmmToCPU(top, dst.reg, 0);
 }
 
 void JitFPU::dynamic_FABS(DecodedOp* op) {
     RegPtr top = getTopReg();
     FPUReg dst(this, top, 0);
-    FPURegPtr tmp = getFPUTmp();
-    loadCpuFpuRegConst(tmp, offsetof(CPU, fAbs));
-    fpuAnd(dst.reg, tmp);
+    fpuAbs(dst.reg);
     syncXmmToCPU(top, dst.reg, 0);
 }
 

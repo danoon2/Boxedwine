@@ -58,13 +58,17 @@ public:
     virtual RegPtr getFpuCacheValidReg(U8 index) { kpanic("FPU loop cache unsupported"); return nullptr; }
     virtual FPURegPtr getFpuCacheReg(U8 index) { kpanic("FPU cache unsupported"); return nullptr; }
     virtual RegPtr getFpuCacheTagReg(U8 index) { kpanic("FPU cache unsupported"); return nullptr; }
+    // Native entry TOP is immutable for a cache region. Backends may publish
+    // its spill copy here, before conditional conversions can need a reload.
+    virtual void preserveFpuCacheTop(RegPtr value) {}
     virtual RegPtr getFpuCacheTopReg() { kpanic("FPU cache unsupported"); return nullptr; }
     virtual void moveFpuReg(FPURegPtr dst, FPURegPtr src) { kpanic("FPU cache unsupported"); }
-    // Import one physical slot, converting raw extended precision if necessary.
+    // Import one physical slot. Return whether to request local-value writeback.
+    // Native getF64 imports also update CPU storage; Wasm converts only locally.
     // With valid supplied, dst already contains the loop-carried double value.
     // Raw transcendental inputs use the current SoftFloat rounding mode;
     // ordinary cache validation matches getF64's nearest-even conversion.
-    virtual void loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) { kpanic("FPU conversion unsupported"); }
+    virtual bool loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) { kpanic("FPU conversion unsupported"); return false; }
     virtual void storeDoubleAsExtended(FPURegPtr value, RegPtr index) { kpanic("FPU extended result unsupported"); }
     // Access one physical CPU slot without changing TOP or other cached slots.
     virtual void loadInt64ToExtended(MemPtr address, RegPtr index) { kpanic("FPU extended load unsupported"); }
@@ -121,8 +125,20 @@ protected:
         RegPtr entryTop;
         U8 top = 0;
     } fpuStackCache;
+    struct FpuRegisterLoop {
+        U32 header;
+        U32 backedge;
+        U8 slots;
+        // Import eagerly only when every value is used before a fault can
+        // occur. Otherwise preserve raw inputs until their operand is read.
+        bool lazyInputs;
+    };
+    // Straight-line loops with fixed stack slots and supported memory reads,
+    // and no entry into the body except through its header initialization.
+    std::vector<FpuRegisterLoop> findFpuRegisterLoops(U8 maxValues) const;
+    void prepareFpuRegisterLoop(U8 slots);
     void beginFpuCache();
-    void prepareFpuCacheForLoop(bool dynamicValidity);
+    void prepareFpuCacheForLoop(bool dynamicValidity, U8 slots = 0xff, bool trackTags = true);
     void reconcileFpuCacheForLoop(const FpuStackCache& entry);
     S32 cachedFpuStackChange(DecodedOp* op) const;
     CachedFpuSlot& cachedFpuSlot(U8 relativeIndex);
@@ -181,6 +197,8 @@ public:
     virtual void fpuDiv(FPURegPtr dst, FPURegPtr src) = 0;
     virtual void fpuXor(FPURegPtr dst, FPURegPtr src) = 0;
     virtual void fpuAnd(FPURegPtr dst, FPURegPtr src) = 0;
+    virtual void fpuAbs(FPURegPtr dst);
+    virtual void fpuNeg(FPURegPtr dst);
     virtual void fpuSqrt(FPURegPtr dst, FPURegPtr src) = 0;
     virtual void fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) = 0;
 

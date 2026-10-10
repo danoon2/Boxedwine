@@ -6819,7 +6819,7 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitSSE(cpu) {
         { 1,  WasmType::I32 },  // direct-loop budget (local 67)
         { WASM_XMM_LOCAL_COUNT, WasmType::V128 }, // cached XMM registers (locals 68-75)
         { 8, WasmType::F64 },  // persistent x87 values (locals 76-83)
-        { 17, WasmType::I32 }, // x87 tags, entry TOP, and validity (locals 84-100)
+        { 19, WasmType::I32 }, // x87 metadata (84-100), flag result (101), loop carry (102)
     });
 
     m_gpLoaded.fill(false);
@@ -9533,7 +9533,7 @@ void JitWasmCodeGen::moveFpuReg(FPURegPtr dst, FPURegPtr src) {
     m_emitter.emitLocalSet(dst->hardwareReg());
 }
 
-void JitWasmCodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
+bool JitWasmCodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
     if (valid) pushRegValue(valid);
     else {
         m_emitter.emitLocalGet(WASM_CPU_LOCAL); pushRegValue(index);
@@ -9547,6 +9547,7 @@ void JitWasmCodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, boo
     m_emitter.emitElse();
         convertExtendedFpu(dst, index, nearest);
     m_emitter.emitEnd();
+    return true;
 }
 
 FPURegPtr JitWasmCodeGen::getFPUTmp() {
@@ -9981,6 +9982,12 @@ void JitWasmCodeGen::fpuAnd(FPURegPtr dst, FPURegPtr src) {
     m_emitter.emitOp(WASM_I64_REINTERPRET_F64);
     m_emitter.emitOp(WASM_I64_AND);
     m_emitter.emitOp(WASM_F64_REINTERPRET_I64);
+    m_emitter.emitLocalSet(dst->hardwareReg());
+}
+
+void JitWasmCodeGen::fpuAbs(FPURegPtr dst) {
+    m_emitter.emitLocalGet(dst->hardwareReg());
+    m_emitter.emitOp(WASM_F64_ABS);
     m_emitter.emitLocalSet(dst->hardwareReg());
 }
 
@@ -12147,6 +12154,21 @@ void JitWasmCodeGen::storeLazyFlagsSrc(U32 value) {
 void JitWasmCodeGen::storeLazyFlagsResult(RegPtr reg) {
     writeCPU(reg->isHigh ? JitWidth::b8 : JitWidth::b32,
              (U32)offsetof(CPU, result.u32), reg);
+    if (canForwardFlagResult(currentOp)) {
+        // Keep the architectural store for faults, exits, and later flag
+        // consumers. The dedicated local cannot alias the next op's scratch.
+        pushRegValue(reg);
+        m_emitter.emitLocalSet(WASM_FLAG_RESULT_LOCAL);
+        m_forwardedResultConsumer = currentOp->next;
+    }
+}
+void JitWasmCodeGen::pushLazyFlagResult() {
+    if (m_forwardedResultConsumer == currentOp) {
+        m_emitter.emitLocalGet(WASM_FLAG_RESULT_LOCAL);
+    } else {
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load((U32)offsetof(CPU, result.u32));
+    }
 }
 void JitWasmCodeGen::storeLazyFlagsOldCF(RegPtr reg) {
     writeCPU(JitWidth::b32, (U32)offsetof(CPU, oldCF), reg);
@@ -12178,6 +12200,13 @@ RegPtr JitWasmCodeGen::getZF() {
 }
 RegPtr JitWasmCodeGen::getCF() {
     auto r = getTmpReg();
+    if (m_directLoopOpen && m_directLoop->keepsCarry) {
+        // Every path through this region preserves CF, including joins.
+        // The normal lazy-state stores still publish it for faults and exits.
+        m_emitter.emitLocalGet(WASM_LOOP_CARRY_LOCAL);
+        m_emitter.emitLocalSet(r->hardwareReg());
+        return r;
+    }
 
     auto emitHelperFallback = [this, &r]() {
         // The helper only reads lazy-flag fields and writes cpu->tmpReg; GP
@@ -12394,8 +12423,7 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
         emitProfileSampledCall(HELPER_PROFILE_INLINE_COND);
 #endif
         U32 condLocal = allocScratch();
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Load((U32)offsetof(CPU, result.u32));
+        pushLazyFlagResult();
         m_emitter.emitI32Const((S32)resultSignMask);
         m_emitter.emitOp(WASM_I32_AND);
         if (cond == JitConditional::S) {
@@ -12440,8 +12468,7 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
             U32 resultLocal = allocScratch();
             U32 valueMask = inlineLogicCond8 ? 0xff : 0xffffffffu;
             U32 signMask = inlineLogicCond8 ? 0x80 : 0x80000000u;
-            m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-            m_emitter.emitI32Load((U32)offsetof(CPU, result.u32));
+            pushLazyFlagResult();
             m_emitter.emitI32Const((S32)valueMask);
             m_emitter.emitOp(WASM_I32_AND);
             m_emitter.emitLocalSet(resultLocal);
@@ -12625,8 +12652,7 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
         emitProfileSampledCall(HELPER_PROFILE_INLINE_COND);
 #endif
         U32 condLocal = allocScratch();
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Load((U32)offsetof(CPU, result.u32));
+        pushLazyFlagResult();
         if (inlineZeroCond16 || inlineZeroCond8) {
             m_emitter.emitI32Const(inlineZeroCond8 ? 0xff : 0xffff);
             m_emitter.emitOp(WASM_I32_AND);
@@ -13782,6 +13808,7 @@ void JitWasmCodeGen::findDirectLoopCandidates() {
     m_directLoopFpuEntry = FpuStackCache{};
 
     auto candidates = findLoopBackedges();
+    const auto fixedFpuLoops = findFpuRegisterLoops(8);
 
     // Preserve the previous choice (highest header, first backedge), then
     // add disjoint integer loops before it. Nested and overlapping loops
@@ -13817,10 +13844,18 @@ void JitWasmCodeGen::findDirectLoopCandidates() {
         // The four segment locals alias FS/GS with ES/CS. Keep those loops
         // on the existing path rather than carrying an aliased segment base.
         loop.keepsRegisters &= (loop.registers.segments & ((1u << FS) | (1u << GS))) == 0;
+        loop.keepsCarry = loop.keepsRegisters && canCacheLoopCarry(loop.targetEip, loop.sourceEip);
         if (!m_directLoops.empty() && loop.touchesFpu) {
             continue;
         }
         loop.keepsFpu = loop.touchesFpu && cacheable;
+        if (loop.keepsFpu) for (const auto& fixed : fixedFpuLoops) {
+            if (fixed.header == loop.targetEip && fixed.backedge == loop.sourceEip) {
+                loop.fixedFpuSlots = fixed.slots;
+                loop.fixedFpuLazyInputs = fixed.lazyInputs;
+                break;
+            }
+        }
         loop.dynamicFpuValidity |= (stackChange & 7) != 0;
         // Forward edges can use nested Wasm blocks within this loop. Keep
         // x87/MMX loops on their existing path: joining their cached stack
@@ -13982,6 +14017,9 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     // warmup state, just as they do in the native backends.
     currentOp = op;
     m_currentWasmOp = op;
+    if (m_forwardedResultConsumer != op || (op->flags2 & OP_FLAG2_JUMP_TARGET)) {
+        m_forwardedResultConsumer = nullptr;
+    }
     m_scratchInUse.fill(false);
     m_f64ScratchInUse.fill(false);
     m_v128ScratchInUse.fill(false);
@@ -14004,6 +14042,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
                 m_emitter.emitEnd();
                 target.token = 0;
                 currentLazyFlags = FLAGS_NULL;
+                m_forwardedResultConsumer = nullptr;
             }
         }
     }
@@ -14013,6 +14052,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
             m_emitter.emitEnd();
             target.token = 0;
             currentLazyFlags = FLAGS_NULL;
+            m_forwardedResultConsumer = nullptr;
         }
     }
     if (!canKeepFpuCache(op)) {
@@ -14035,7 +14075,15 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
         }
         if (m_directLoop->keepsFpu) {
             auto scratch = m_scratchInUse;
-            prepareFpuCacheForLoop(m_directLoop->dynamicFpuValidity);
+            // Fixed-stack loops use only these unconditionally accessed slots.
+            // Preserve any other dirty prefix values; rotating/conditional
+            // stacks still need the full value/tag/validity register file.
+            if (m_directLoop->fixedFpuLazyInputs) {
+                // A first-iteration load can fault before using ST0. Keep raw
+                // extended values lazy until their memory operand is loaded.
+                prepareFpuCacheForLoop(false, m_directLoop->fixedFpuSlots, false);
+            } else if (m_directLoop->fixedFpuSlots) prepareFpuRegisterLoop(m_directLoop->fixedFpuSlots);
+            else prepareFpuCacheForLoop(m_directLoop->dynamicFpuValidity);
             m_scratchInUse = scratch;
             m_directLoopFpuEntry = fpuStackCache;
         } else if (m_directLoop->touchesFpu) {
@@ -14045,6 +14093,15 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
         // Supported loops preload every referenced local before opening
         // the loop; all incoming paths then share the same local mappings.
         branchBoundary();
+        if (m_directLoop->keepsCarry) {
+            // This is outside the Wasm loop and after incoming forward labels.
+            // Budget exits and faults re-enter through a fresh initialization;
+            // only the internal backedge reuses the saved value.
+            RegPtr carry = getCF();
+            pushRegValue(carry);
+            m_emitter.emitLocalSet(WASM_LOOP_CARRY_LOCAL);
+            if (canReleaseScratchReg(carry)) freeScratch(carry->hardwareReg());
+        }
         if (m_directLoop->keepsRegisters) {
             // The measured memory-loop gain depends on the engine honoring
             // our branch hints: otherwise V8 can spill these locals on the
@@ -14096,6 +14153,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
             m_segLoaded.fill(false);
         }
         currentLazyFlags = FLAGS_NULL;
+        m_forwardedResultConsumer = nullptr;
     }
     JitCodeGen::preCompile(op, skippedOp);
 }

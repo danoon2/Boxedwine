@@ -78,9 +78,193 @@ void runConsumers(U32 condition, U32 expectedFlags, bool crossBlock) {
     }
 }
 
+
+void testForwardedFlagResults() {
+    // Exercise byte (including AH), word, and dword results with upper
+    // register bits set. Check both the immediate consumer and saved EFLAGS.
+    for (U32 width : {8u, 16u, 32u}) for (bool high : {false, true}) {
+        if (high && width != 8) continue;
+        const U32 mask = width == 32 ? 0xffffffffu : (1u << width) - 1;
+        const U32 sign = 1u << (width - 1);
+        for (U32 kind = 0; kind < 6; ++kind) for (U32 a : {0u, 1u, mask, sign, sign - 1}) {
+            // ADD, SUB, TEST, INC, DEC, XOR, all with an operand of one.
+            bool sub = kind == 1 || kind == 4;
+            bool logic = kind == 2 || kind == 5;
+            U32 value = logic ? (kind == 2 ? a & 1 : a ^ 1) : (sub ? a - 1 : a + 1);
+            value &= mask;
+            U32 flags = DF;
+            if (!value) flags |= ZF;
+            if (value & sign) flags |= SF;
+            U32 parity = value & 0xff;
+            parity ^= parity >> 4; parity ^= parity >> 2; parity ^= parity >> 1;
+            if (!(parity & 1)) flags |= PF;
+            if (!logic) {
+                if ((a ^ 1 ^ value) & 0x10) flags |= AF;
+                if (sub ? ((a ^ 1) & (a ^ value) & sign) : (~(a ^ 1) & (a ^ value) & sign)) flags |= OF;
+                if (kind == 3 || kind == 4 || (sub ? a < 1 : a == mask)) flags |= CF;
+            }
+            const U32 initialEax = (0xa5b6c7d8u & ~(mask << (high ? 8 : 0))) | (a << (high ? 8 : 0));
+            const U32 expectedEax = kind == 2 ? initialEax :
+                (initialEax & ~(mask << (high ? 8 : 0))) | (value << (high ? 8 : 0));
+            for (U32 cond : {4u, 5u, 8u, 9u, 6u, 7u, 12u, 13u, 14u, 15u}) for (U32 consumer = 0; consumer < 3; ++consumer) {
+                testNewInstruction(CF | DF);
+                CPU* cpu = testContext().cpu;
+                cpu->reg[0].u32 = initialEax;
+                cpu->reg[2].u32 = 0xabcdef00;
+                cpu->reg[6].u32 = 1;
+                if (width == 16) testPushCode8(0x66);
+                if (kind == 3 || kind == 4) {
+                    testPushCode8(width == 8 ? 0xfe : 0xff);
+                    testPushCode8(0xc0 | (kind == 4 ? 8 : 0) | (high ? 4 : 0));
+                } else {
+                    testPushCode8(kind == 2 ? (width == 8 ? 0xf6 : 0xf7) : (width == 8 ? 0x80 : 0x81));
+                    testPushCode8(0xc0 | (kind == 1 ? 5 << 3 : kind == 5 ? 6 << 3 : 0) | (high ? 4 : 0));
+                    if (width == 8) testPushCode8(1);
+                    else if (width == 16) testPushCode16(1);
+                    else testPushCode32(1);
+                }
+                if (consumer == 0) {
+                    testPushCode8(0x0f); testPushCode8(0x90 + cond); testPushCode8(0xc2); // setcc dl
+                } else if (consumer == 1) {
+                    testPushCode8(0x0f); testPushCode8(0x40 + cond); testPushCode8(0xfe); // cmovcc edi,esi
+                } else {
+                    testPushCode8(0x70 + cond); testPushCode8(5);
+                    emitMov(7, 1);
+                }
+                testPushCode8(0x9c); testPushCode8(0x5d); // preserve all flags after the consumer
+                testRunCPU();
+                U32 taken = conditionExpected(cond, flags);
+                U32 checkedFlags = CF | PF | ZF | SF | OF | DF | (logic ? 0 : AF);
+                if (cpu->reg[0].u32 != expectedEax ||
+                    cpu->reg[2].u32 != (0xabcdef00u | (consumer == 0 ? taken : 0)) ||
+                    cpu->reg[7].u32 != (consumer == 0 ? 0 : consumer == 1 ? taken : !taken) ||
+                    ((cpu->reg[5].u32 ^ flags) & checkedFlags)) {
+                    testFail("WASM forwarded flags width=%u high=%u kind=%u a=%x cond=%u consumer=%u", width, high, kind, a, cond, consumer);
+                }
+            }
+        }
+    }
+    // A join can bypass the immediately preceding producer. A zero-count
+    // shift and an intervening helper must also keep using incoming flags.
+    for (U32 mode = 0; mode < 4; ++mode) for (U32 take = 0; take < 2; ++take) {
+        testNewInstruction(0);
+        CPU* cpu = testContext().cpu;
+        cpu->reg[0].u32 = take;
+        testPushCode8(0x85); testPushCode8(0xc0); // test eax,eax
+        if (mode == 0) {
+            testPushCode8(0x74); testPushCode8(3); // bypass ADD when ZF=1
+            testPushCode8(0x83); testPushCode8(0xc0); testPushCode8(1);
+        } else if (mode == 1) {
+            testPushCode8(0xd3); testPushCode8(0xe0); // shl eax,cl (cl=0)
+        } else if (mode == 2) {
+            testPushCode8(0x9c); testPushCode8(0x5d); // materialize flags
+        } else {
+            emitIndirectBoundary();
+        }
+        testPushCode8(0x0f); testPushCode8(0x94); testPushCode8(0xc3); // setz bl
+        testRunCPU();
+        if (cpu->reg[3].u32 != !take) testFail("WASM flag forwarding boundary mode=%u take=%u", mode, take);
+    }
+}
+
+
+void testInvariantLoopCarry() {
+    for (U32 incoming = 0; incoming < 4; ++incoming) for (U32 carry : {0u, (U32)CF}) {
+        for (U32 count : {1u, 2u, 63u, 64u, 65u, 130u}) for (U32 exitAt : {0u, 1u, count}) {
+            testNewInstruction(carry | DF);
+            auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+            if (incoming) {
+                // Materialized CF deliberately disagrees with the lazy state.
+                cpu->flags ^= CF;
+                cpu->src.u32 = 1;
+                if (incoming == 1) {
+                    cpu->lazyFlagType = FLAGS_ADD32;
+                    cpu->dst.u32 = carry ? 0xffffffffu : 1;
+                    cpu->result.u32 = carry ? 0 : 2;
+                } else if (incoming == 2) {
+                    cpu->lazyFlagType = FLAGS_SUB32;
+                    cpu->dst.u32 = carry ? 0 : 2;
+                    cpu->result.u32 = carry ? 0xffffffffu : 1;
+                } else {
+                    cpu->lazyFlagType = FLAGS_DEC32;
+                    cpu->oldCF = carry;
+                    cpu->dst.u32 = 2; cpu->result.u32 = 1;
+                }
+            }
+            cpu->reg[1].u32 = count;
+            cpu->reg[2].u32 = exitAt;
+            cpu->reg[6].u32 = 4093; // cross-page read helper preserves carry
+            ctx.memory->writed(TEST_HEAP_ADDRESS + 4093, 0x12345678);
+            for (U32 lane = 0; lane < 4; ++lane) {
+                cpu->xmm[0].pi.u32[lane] = 0;
+                cpu->xmm[1].pi.u32[lane] = lane + 1;
+            }
+            const U32 loop = ctx.codeIp;
+            testPushCode8(0x8b); testPushCode8(0x1e); // mov ebx,[esi]
+            testPushCode8(0x40); testPushCode8(0x4a); // inc eax; dec edx
+            testPushCode8(0x74); U32 exit = ctx.codeIp; testPushCode8(0);
+            testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0xfe); testPushCode8(0xc1);
+            testPushCode8(0x49); testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+            ctx.memory->writeb(exit, (U8)(ctx.codeIp - exit - 1));
+            testPushCode8(0x9c); testPushCode8(0x5d); // pushfd; pop ebp
+            testRunCPU();
+            U32 executed = exitAt ? exitAt : count;
+            U32 vectorIterations = exitAt ? executed - 1 : executed;
+            if (cpu->reg[0].u32 != executed || cpu->reg[1].u32 != (exitAt ? count - executed + 1 : 0) ||
+                cpu->reg[2].u32 != (exitAt ? 0 : 0u - count) || cpu->reg[3].u32 != 0x12345678 ||
+                (cpu->reg[5].u32 & (CF | PF | AF | ZF | SF | OF | DF)) != (carry | PF | ZF | DF)) {
+                testFail("WASM invariant loop carry incoming=%u carry=%u count=%u exit=%u", incoming, carry, count, exitAt);
+            }
+            for (U32 lane = 0; lane < 4; ++lane)
+                if (cpu->xmm[0].pi.u32[lane] != vectorIterations * (lane + 1)) testFail("WASM invariant carry XMM state");
+        }
+    }
+    // Consecutive loops must each initialize carry, including budget re-entry.
+    for (U32 carry : {0u, (U32)CF}) for (U32 count : {1u, 65u, 130u}) {
+        testNewInstruction(carry);
+        auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+        emitMov(1, count);
+        U32 loop = ctx.codeIp;
+        testPushCode8(0x40); testPushCode8(0x49);
+        testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+        testPushCode8(carry ? 0xf8 : 0xf9); // CLC/STC changes the second loop's input
+        emitMov(2, count);
+        loop = ctx.codeIp;
+        testPushCode8(0x40); testPushCode8(0x4a);
+        testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+        testRunCPU(); cpu->fillFlags();
+        if (cpu->reg[0].u32 != 2 * count || cpu->reg[1].u32 || cpu->reg[2].u32 ||
+            (cpu->flags & (CF | PF | AF | ZF | SF | OF)) != ((carry ^ CF) | PF | ZF))
+            testFail("WASM disjoint loops reused stale carry");
+    }
+    // These instructions are allowed by register caching, but change CF.
+    // Their loops must retain the regular carry calculation.
+    for (U32 kind = 0; kind < 4; ++kind) for (U32 count : {1u, 65u, 130u}) {
+        const U32 expectedCarry = kind < 2 ? CF : 0;
+        testNewInstruction(expectedCarry ^ CF);
+        auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+        cpu->reg[0].u32 = kind == 0 ? count - 1 : 0;
+        cpu->reg[1].u32 = count;
+        U32 loop = ctx.codeIp;
+        if (kind == 3) {
+            testPushCode8(0x85); testPushCode8(0xc0); // test eax,eax
+        } else {
+            testPushCode8(0x83);
+            testPushCode8(kind == 0 ? 0xe8 : kind == 1 ? 0xf8 : 0xe0); // sub/cmp/and eax,1
+            testPushCode8(1);
+        }
+        testPushCode8(0x47); testPushCode8(0x49);
+        testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+        testRunCPU(); cpu->fillFlags();
+        if (cpu->reg[1].u32 || cpu->reg[7].u32 != count || (cpu->flags & CF) != expectedCarry)
+            testFail("WASM carry-changing loop was treated as invariant kind=%u count=%u", kind, count);
+    }
+}
+
 } // namespace
 
 void testWasmJitMaterializedConditions() {
+    testForwardedFlagResults();
     const U32 bits[] = {CF, PF, ZF, SF, OF};
     for (U32 pattern = 0; pattern < 32; ++pattern) {
         U32 flags = AF | DF;
@@ -115,6 +299,7 @@ void testWasmJitMaterializedConditions() {
 }
 
 void testWasmJitLoopRegisterState() {
+    testInvariantLoopCarry();
     for (U32 count : {1u, 2u, 63u, 64u, 65u, 130u}) {
         for (U32 exitAt : {0u, count, count / 2}) {
             testNewInstruction(CF);
@@ -260,8 +445,8 @@ void testWasmJitLoopRegisterState() {
 void testWasmJitLoopRegisterFaults() {
     // The fault is at the header, before this iteration has written any GP
     // or XMM register. State from the previous iteration must still be saved.
-    for (U32 completed : {0u, 1u, 2u, 63u, 64u, 65u}) for (bool store : {false, true}) {
-        testNewInstruction(CF);
+    for (bool invariant : {false, true}) for (U32 carry : {0u, (U32)CF}) for (U32 completed : {0u, 1u, 2u, 63u, 64u, 65u}) for (bool store : {false, true}) {
+        testNewInstruction(carry);
         auto& ctx = testContext();
         CPU* cpu = ctx.cpu;
         const U32 page = TEST_HEAP_ADDRESS + 0x2000;
@@ -272,9 +457,9 @@ void testWasmJitLoopRegisterFaults() {
         for (U32 i = 0; i < completed; ++i) ctx.memory->writed(page - 4 * completed + i * 4, 0x12345678);
         const U32 loop = ctx.codeIp;
         testPushCode8(store ? 0x89 : 0x8b); testPushCode8(0x1e); // mov [esi],ebx / mov ebx,[esi]
-        testPushCode8(0x83); testPushCode8(0xc0); testPushCode8(3);
+        testPushCode8(invariant ? 0x8d : 0x83); testPushCode8(invariant ? 0x40 : 0xc0); testPushCode8(3);
         testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x6e); testPushCode8(0xc0);
-        testPushCode8(0x83); testPushCode8(0xc6); testPushCode8(4);
+        testPushCode8(invariant ? 0x8d : 0x83); testPushCode8(invariant ? 0x76 : 0xc6); testPushCode8(4);
         testPushCode8(0x49); testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
         auto oldAction = ctx.process->sigActions[K_SIGSEGV];
         auto& action = ctx.process->sigActions[K_SIGSEGV];
@@ -291,9 +476,9 @@ void testWasmJitLoopRegisterFaults() {
         if (!uc || ctx.memory->readd(uc + 0x40) != completed * 3 ||
                 ctx.memory->readd(uc + 0x3c) != 2 || ctx.memory->readd(uc + 0x28) != 0x2000 ||
                 ctx.memory->readd(uc + 0x34) != 0x12345678 || ctx.memory->readd(uc + 0x4c) != 0 ||
-                (ctx.memory->readd(uc + 0x54) & (CF | PF | AF | ZF | SF | OF)) != (completed ? 0u : CF) ||
+                (ctx.memory->readd(uc + 0x54) & (CF | PF | AF | ZF | SF | OF)) != (invariant || !completed ? carry : 0u) ||
                 cpu->xmm[0].pi.u32[0] != completed * 3) {
-            testFail("WASM loop fault lost carried state completed=%u store=%u", completed, store);
+            testFail("WASM loop fault lost carried state completed=%u store=%u invariant=%u carry=%u", completed, store, invariant, carry);
         }
         ctx.process->sigActions[K_SIGSEGV] = oldAction;
     }

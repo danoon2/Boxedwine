@@ -1119,6 +1119,37 @@ void JitCodeGen::jumpInBlock(U32 address) {
     JumpInBlock(address);
 }
 
+bool JitCodeGen::canCacheLoopCarry(U32 firstEip, U32 lastEip) const {
+    LoopRegisterUsage registers;
+    bool preservesLiveCarry = false;
+    for (const auto& entry : blockInstructions) {
+        if (entry.eip < firstEip) continue;
+        if (entry.eip > lastEip) break;
+        // Use the same conservative operation contract as register caching:
+        // no guest calls or unmodelled helpers that could change EFLAGS.
+        if (!accumulateLoopRegisters(entry.op, registers)) return false;
+        const auto& info = instructionInfo[entry.op->inst];
+        if ((info.flagsSets | info.flagsUndefined) & CF) return false;
+        // INC/DEC may need to save incoming carry when replacing lazy flags.
+        // Avoid an entry calculation if no instruction needs that value.
+        preservesLiveCarry |= (info.flagsSets & FMASK_TEST) && entry.op->getNeededFlagsAfter(CF);
+    }
+    return preservesLiveCarry;
+}
+
+bool JitCodeGen::canForwardFlagResult(DecodedOp* op) const {
+    const auto& info = instructionInfo[op->inst];
+    DecodedOp* next = op->next;
+    // Limit forwarding to unconditional register arithmetic immediately
+    // followed by a consumer with no other incoming edge. MAYBE includes
+    // zero-count shifts and repeated strings, whose flags may be unchanged.
+    return !op->lock && !info.branch && !info.readMemWidth && !info.writeMemWidth &&
+        (info.flagsSets & (ZF | SF | MAYBE)) == (ZF | SF) &&
+        next && !(next->flags2 & OP_FLAG2_JUMP_TARGET) &&
+        !instructionInfo[next->inst].readMemWidth && !instructionInfo[next->inst].writeMemWidth &&
+        (next->isJumpCC() || next->isSetCC() || next->isCMovCC());
+}
+
 bool JitCodeGen::accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage) const {
     auto gp = [&](U8 reg, bool written = false) {
         if (reg < 8) {

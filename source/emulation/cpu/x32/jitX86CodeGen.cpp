@@ -253,11 +253,12 @@ public:
     RegPtr getFpuCacheTagReg(U8 index) override;
     FPURegPtr getFpuCacheReg(U8 index) override;
     void moveFpuReg(FPURegPtr dst, FPURegPtr src) override;
-    void loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
+    bool loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
     void materializeFpuCache(U8 slotMask = 0xff) override;
     void nativeFpuIndex(U8 index, const std::function<void(asmjit::x86::Gp)>& action, U8 scratch = 0);
     void spillFpuValue(U8 index);
     void spillFpuTag(U8 index);
+    void preserveFpuCacheTop(RegPtr top) override;
     void spillFpuTop();
     bool spillFpuTmp(bool needs8bitReg);
     U8 allocateFpuValue(FPURegInternal* value, bool load = true);
@@ -267,6 +268,8 @@ public:
     U32 saveNativeFpuRegisters();
     void restoreNativeFpuRegisters(U32 mask);
     std::set<U32> fpuInternalEntries;
+    std::vector<FpuRegisterLoop> fpuRegisterLoops;
+    const FpuRegisterLoop* fpuRegisterLoop = nullptr;
     RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) override;
     RegPtr getReg8(U8 reg, bool load = true) override;
     RegPtr getReadOnlyReg(U8 reg, bool delayed = false, S8 hint = -1) override;
@@ -914,9 +917,28 @@ bool JitX86CodeGen::canCacheFpuOp(DecodedOp* op) const {
 }
 
 void JitX86CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
-    // Known control-flow entries and legacy FPU/MMX operations start clean.
-    // Memory faults expose CPU state, but successful accesses retain the cache.
-    if (op->isBranch() || !canKeepFpuCache(op) || (op->flags2 & OP_FLAG2_JUMP_TARGET)) flushFpuCache();
+#ifdef BOXEDWINE_JIT_X64
+    if (!blockOpCount) fpuRegisterLoops = findFpuRegisterLoops(4);
+#endif
+    if (fpuRegisterLoop && currentEip > fpuRegisterLoop->backedge) {
+        flushFpuCache();
+        fpuRegisterLoop = nullptr;
+    }
+    bool loopHeader = false;
+    if (!skippedOp) for (const auto& loop : fpuRegisterLoops) {
+        if (loop.lazyInputs || loop.backedge >= lastOpEip) continue; // native lowering requires an internal branch
+        if (currentEip == loop.header) {
+            flushFpuCache();
+            fpuRegisterLoop = &loop;
+            loopHeader = true;
+            break;
+        }
+    }
+    const bool cachedBackedge = fpuRegisterLoop && currentEip == fpuRegisterLoop->backedge;
+    // Only the proved backedge can carry cached values. Other branch targets
+    // and legacy FPU/MMX operations retain the existing clean-entry contract.
+    if ((op->isBranch() && !cachedBackedge) || !canKeepFpuCache(op) ||
+        ((op->flags2 & OP_FLAG2_JUMP_TARGET) && !loopHeader)) flushFpuCache();
     else if (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth) {
         materializeFpuCache();
         // This writeback runs unconditionally on the fall-through path. Cold
@@ -1019,10 +1041,19 @@ void JitX86CodeGen::spillFpuTag(U8 index) {
     slot.tagDirty = false;
 }
 
+void JitX86CodeGen::preserveFpuCacheTop(RegPtr top) {
+    // Fixed-slot loops already import once in their preheader. Preserve their
+    // measured instruction layout; other regions benefit from a single save.
+    if (!fpuRegisterLoop)
+        compiler.mov(Mem32(HOST_CPU, offsetof(CPU, nativeFpuCacheTop)), R32(top));
+}
+
 void JitX86CodeGen::spillFpuTop() {
     auto& top = fpuStackCache.entryTop;
     if (!top || !top->isLoaded()) return;
-    compiler.mov(Mem32(HOST_CPU, offsetof(CPU, nativeFpuCacheTop)), R32(top));
+    // Stack pushes/pops change the relative mapping, not the saved entry TOP.
+    if (fpuRegisterLoop)
+        compiler.mov(Mem32(HOST_CPU, offsetof(CPU, nativeFpuCacheTop)), R32(top));
     regUsed[top->hardwareReg()] = false;
     top->invalidateHardwareReg();
 }
@@ -1152,12 +1183,15 @@ static void nativeCacheFpuValue(CPU* cpu, U32 index) {
     cpu->fpu.getF64(index);
 }
 
-void JitX86CodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
+bool JitX86CodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
     if (valid || !nearest) kpanic("unsupported native x87 cache validation");
     IfNotRegCached(index);
     callHostFunction((void*)nativeCacheFpuValue, {DynParam(JitCallParamType::CPU), DynParam(JitCallParamType::REG_32, index)});
     EndIf();
     loadCpuFpuReg(dst, index);
+    // Retain conservative writeback on x64; skipping these stores regressed
+    // existing register-loop benchmarks despite reducing generated code size.
+    return true;
 }
 
 U32 JitX86CodeGen::saveNativeFpuRegisters() {
@@ -1196,6 +1230,14 @@ void JitX86CodeGen::preOp(DecodedOp* op) {
     if (!opLabels.get(currentEip, label)) {
         label = compiler.new_label();
         opLabels.set(currentEip, label);
+    }
+    if (fpuRegisterLoop && currentEip == fpuRegisterLoop->header) {
+        // The public entry recorded by preCompile includes initialization;
+        // the private backedge label skips it. Interior entries remain hidden.
+        prepareFpuRegisterLoop(fpuRegisterLoop->slots);
+        // Metadata uses scratch GP registers that later instructions reuse.
+        // Values alone keep their assignments around the backedge.
+        spillFpuTop();
     }
     compiler.bind(label);
     pendingLabels.remove(currentEip);

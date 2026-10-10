@@ -193,10 +193,11 @@ public:
     RegPtr getFpuCacheTagReg(U8 index) override;
     FPURegPtr getFpuCacheReg(U8 index) override;
     void moveFpuReg(FPURegPtr dst, FPURegPtr src) override;
-    void loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
+    bool loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
     void materializeFpuCache(U8 slotMask = 0xff) override;
     void nativeFpuIndex(U8 index);
     void spillFpuTag(U8 index);
+    void preserveFpuCacheTop(RegPtr top) override;
     void spillFpuTop();
     bool spillFpuTmp();
     U8 allocateFpuTag(JitReg* tag, bool load = true);
@@ -204,6 +205,8 @@ public:
     std::pair<U32, U32> saveFpuTemporaries(U8 result = INVALID_REG);
     void restoreFpuTemporaries(std::pair<U32, U32> saved);
     std::set<U32> fpuInternalEntries;
+    std::vector<FpuRegisterLoop> fpuRegisterLoops;
+    const FpuRegisterLoop* fpuRegisterLoop = nullptr;
     RegPtr getReadOnlyRegInLower(JitWidth width, U8 reg);
     RegPtr getReg(JitWidth width, U8 reg);
     RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) override;
@@ -423,6 +426,8 @@ public:
     void fpuDiv(FPURegPtr dst, FPURegPtr src) override;
     void fpuXor(FPURegPtr dst, FPURegPtr src) override;
     void fpuAnd(FPURegPtr dst, FPURegPtr src) override;
+    void fpuAbs(FPURegPtr dst) override;
+    void fpuNeg(FPURegPtr dst) override;
     void fpuSqrt(FPURegPtr dst, FPURegPtr src) override;
     void fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) override;
    
@@ -911,7 +916,26 @@ bool JitArmV8CodeGen::canCacheFpuOp(DecodedOp* op) const {
 
 
 void JitArmV8CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
-    if (op->isBranch() || !canKeepFpuCache(op) || (op->flags2 & OP_FLAG2_JUMP_TARGET)) flushFpuCache();
+    if (!blockOpCount) fpuRegisterLoops = findFpuRegisterLoops(8);
+    if (fpuRegisterLoop && currentEip > fpuRegisterLoop->backedge) {
+        flushFpuCache();
+        fpuRegisterLoop = nullptr;
+    }
+    bool loopHeader = false;
+    if (!skippedOp) for (const auto& loop : fpuRegisterLoops) {
+        if (loop.lazyInputs || loop.backedge >= lastOpEip) continue;
+        if (currentEip == loop.header) {
+            flushFpuCache();
+            fpuRegisterLoop = &loop;
+            loopHeader = true;
+            break;
+        }
+    }
+    const bool cachedBackedge = fpuRegisterLoop && currentEip == fpuRegisterLoop->backedge;
+    // D8-D15 carry only the proved fixed-slot loop state. Other entries and
+    // branch paths retain the normal published CPU-state contract.
+    if ((op->isBranch() && !cachedBackedge) || !canKeepFpuCache(op) ||
+        ((op->flags2 & OP_FLAG2_JUMP_TARGET) && !loopHeader)) flushFpuCache();
     else if (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth) {
         materializeFpuCache();
         for (auto& slot : fpuStackCache.slots) slot.dirty = slot.tagDirty = false;
@@ -986,10 +1010,14 @@ void JitArmV8CodeGen::spillFpuTag(U8 index) {
     slot.tagDirty = false;
 }
 
+void JitArmV8CodeGen::preserveFpuCacheTop(RegPtr top) {
+    compiler.str(R32(top), Mem(xCPU, offsetof(CPU, armFpuCacheTop)));
+}
+
 void JitArmV8CodeGen::spillFpuTop() {
     auto& top = fpuStackCache.entryTop;
     if (!top || !top->isLoaded()) return;
-    compiler.str(R32(top), Mem(xCPU, offsetof(CPU, armFpuCacheTop)));
+    // Stack pushes/pops change the relative mapping, not the saved entry TOP.
     regUsed[top->hardwareReg()] = false;
     top->invalidateHardwareReg();
 }
@@ -1069,12 +1097,13 @@ void JitArmV8CodeGen::moveFpuReg(FPURegPtr dst, FPURegPtr src) {
 
 static void armCacheFpuValue(CPU* cpu, U32 index) { cpu->fpu.getF64(index); }
 
-void JitArmV8CodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
+bool JitArmV8CodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
     if (valid || !nearest) kpanic("unsupported ARM x87 cache validation");
     IfNotRegCached(index);
     callHostFunction((void*)armCacheFpuValue, {DynParam(JitCallParamType::CPU), DynParam(JitCallParamType::REG_32, index)});
     EndIf();
     loadCpuFpuReg(dst, index);
+    return false;
 }
 
 std::pair<U32, U32> JitArmV8CodeGen::saveFpuTemporaries(U8 result) {
@@ -1106,6 +1135,12 @@ void JitArmV8CodeGen::preOp(DecodedOp* op) {
     if (!opLabels.get(currentEip, label)) {
         label = compiler.new_label();
         opLabels.set(currentEip, label);
+    }
+    if (fpuRegisterLoop && currentEip == fpuRegisterLoop->header) {
+        // The public entry includes imports; the private backedge skips them.
+        // GP scratch metadata is reloaded per instruction, unlike D8-D15.
+        prepareFpuRegisterLoop(fpuRegisterLoop->slots);
+        spillFpuTop();
     }
     compiler.bind(label);
     pendingLabels.remove(currentEip);
@@ -5881,6 +5916,14 @@ void JitArmV8CodeGen::fpuXor(FPURegPtr dst, FPURegPtr src) {
 
 void JitArmV8CodeGen::fpuAnd(FPURegPtr dst, FPURegPtr src) {
     compiler.and_(toVec(dst), toVec(dst), toVec(src));
+}
+
+void JitArmV8CodeGen::fpuAbs(FPURegPtr dst) {
+    compiler.fabs(toVec(dst), toVec(dst));
+}
+
+void JitArmV8CodeGen::fpuNeg(FPURegPtr dst) {
+    compiler.fneg(toVec(dst), toVec(dst));
 }
 
 void JitArmV8CodeGen::fpuSqrt(FPURegPtr dst, FPURegPtr src) {
