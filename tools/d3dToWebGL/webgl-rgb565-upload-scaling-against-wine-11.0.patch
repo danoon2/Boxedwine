@@ -1,0 +1,79 @@
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -32,6 +32,10 @@
+ #include "wined3d_private.h"
+ #include "wined3d_gl.h"
+ 
++#ifdef __SSE2__
++#include <emmintrin.h>
++#endif
++
+ WINE_DEFAULT_DEBUG_CHANNEL(d3d);
+ WINE_DECLARE_DEBUG_CHANNEL(d3d_perf);
+ 
+@@ -1682,6 +1686,23 @@
+     }
+ }
+ 
++#ifdef __SSE2__
++/* Compact four RGBA byte lanes to twelve RGB bytes without overwriting the row. */
++static inline void wined3d_texture_gl_store_webgl_rgb4(uint8_t *dst, __m128i rgba)
++{
++    /* Each 64-bit lane becomes R G B R G B 0 0. */
++    __m128i pairs = _mm_or_si128(_mm_and_si128(rgba, _mm_set_epi32(0, 0x00ffffff, 0, 0x00ffffff)),
++            _mm_srli_epi64(_mm_and_si128(rgba, _mm_set_epi32(0x00ffffff, 0, 0x00ffffff, 0)), 8));
++    __m128i packed = _mm_or_si128(_mm_unpacklo_epi64(pairs, _mm_setzero_si128()),
++            _mm_srli_si128(_mm_unpackhi_epi64(_mm_setzero_si128(), pairs), 2));
++    uint32_t tail;
++
++    _mm_storel_epi64((__m128i *)dst, packed);
++    tail = _mm_cvtsi128_si32(_mm_srli_si128(packed, 8));
++    memcpy(dst + 8, &tail, sizeof(tail));
++}
++#endif
++
+ /* Dispatch once per row. Keeping the format switch inside the nested pixel
+  * loops makes GCC 13's -O3 loop unswitching drop some low-valued format cases,
+  * leaving the upload buffer uninitialized (including A4R4G4B4). */
+@@ -1745,12 +1766,36 @@
+             break;
+ 
+         case WINED3DFMT_B5G6R5_UNORM:
+-            for (x = 0; x < width; ++x)
++            x = 0;
++#ifdef __SSE2__
++            /* Expand eight pixels with exact rounded UNORM scaling. */
++            for (; width - x >= 8; x += 8)
++            {
++                __m128i pixels = _mm_loadu_si128((const __m128i *)(src_row + x * 2));
++                __m128i red = _mm_srli_epi16(pixels, 11);
++                __m128i green = _mm_and_si128(_mm_srli_epi16(pixels, 5), _mm_set1_epi16(63));
++                __m128i blue = _mm_and_si128(pixels, _mm_set1_epi16(31));
++                __m128i rg, b0;
++
++                red = _mm_srli_epi16(_mm_add_epi16(_mm_mullo_epi16(red, _mm_set1_epi16(527)),
++                        _mm_set1_epi16(23)), 6);
++                green = _mm_srli_epi16(_mm_add_epi16(_mm_mullo_epi16(green, _mm_set1_epi16(259)),
++                        _mm_set1_epi16(33)), 6);
++                blue = _mm_srli_epi16(_mm_add_epi16(_mm_mullo_epi16(blue, _mm_set1_epi16(527)),
++                        _mm_set1_epi16(23)), 6);
++                rg = _mm_unpacklo_epi8(_mm_packus_epi16(red, red), _mm_packus_epi16(green, green));
++                b0 = _mm_unpacklo_epi8(_mm_packus_epi16(blue, blue), _mm_setzero_si128());
++                wined3d_texture_gl_store_webgl_rgb4(upload_row + x * 3, _mm_unpacklo_epi16(rg, b0));
++                wined3d_texture_gl_store_webgl_rgb4(upload_row + x * 3 + 12, _mm_unpackhi_epi16(rg, b0));
++            }
++#endif
++            for (; x < width; ++x)
+             {
+                 v = ((const uint16_t *)src_row)[x];
+-                upload_row[x * 3 + 0] = (((v >> 11) & 0x1f) * 255 + 15) / 31;
+-                upload_row[x * 3 + 1] = (((v >> 5) & 0x3f) * 255 + 31) / 63;
+-                upload_row[x * 3 + 2] = ((v & 0x1f) * 255 + 15) / 31;
++                /* Exact rounded UNORM scaling for 5- and 6-bit channels. */
++                upload_row[x * 3 + 0] = (((v >> 11) & 0x1f) * 527 + 23) >> 6;
++                upload_row[x * 3 + 1] = (((v >> 5) & 0x3f) * 259 + 33) >> 6;
++                upload_row[x * 3 + 2] = ((v & 0x1f) * 527 + 23) >> 6;
+             }
+             break;
+ 

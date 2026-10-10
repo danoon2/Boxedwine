@@ -1,0 +1,60 @@
+diff --git a/dlls/wined3d/cs.c b/dlls/wined3d/cs.c
+--- a/dlls/wined3d/cs.c
++++ b/dlls/wined3d/cs.c
+@@ -32,6 +32,8 @@
+ static NTSTATUS (WINAPI *pNtWaitForAlertByThreadId)(void *addr, const LARGE_INTEGER *timeout);
+ 
+ #define WINED3D_INITIAL_CS_SIZE 4096
++
++static const struct wined3d_device_context_ops wined3d_cs_st_ops;
+ 
+ static unsigned int wined3d_profile_box_pixels(const struct wined3d_box *box)
+ {
+@@ -2551,18 +2553,25 @@
+     /* We might end up invalidating the resource on the CS thread. */
+     invalidate_client_address(resource);
+ 
+-    if (!(op = wined3d_device_context_require_space(context, sizeof(*op), WINED3D_CS_QUEUE_MAP)))
+-        return E_OUTOFMEMORY;
+-    op->opcode = WINED3D_CS_OP_MAP;
+-    op->resource = resource;
+-    op->sub_resource_idx = sub_resource_idx;
+-    op->map_ptr = &map_desc->data;
+-    op->box = box;
+-    op->flags = flags;
+-    op->hr = &hr;
+-
+-    wined3d_device_context_submit(context, WINED3D_CS_QUEUE_MAP);
+-    wined3d_device_context_finish(context, WINED3D_CS_QUEUE_MAP);
++    /* The immediate WebGL context executes commands synchronously. */
++    if (wined3d_settings.webgl && context->ops == &wined3d_cs_st_ops)
++        hr = resource->resource_ops->resource_sub_resource_map(resource,
++                sub_resource_idx, &map_desc->data, box, flags);
++    else
++    {
++        if (!(op = wined3d_device_context_require_space(context, sizeof(*op), WINED3D_CS_QUEUE_MAP)))
++            return E_OUTOFMEMORY;
++        op->opcode = WINED3D_CS_OP_MAP;
++        op->resource = resource;
++        op->sub_resource_idx = sub_resource_idx;
++        op->map_ptr = &map_desc->data;
++        op->box = box;
++        op->flags = flags;
++        op->hr = &hr;
++
++        wined3d_device_context_submit(context, WINED3D_CS_QUEUE_MAP);
++        wined3d_device_context_finish(context, WINED3D_CS_QUEUE_MAP);
++    }
+ 
+     if (SUCCEEDED(hr))
+         wined3d_resource_get_sub_resource_map_pitch(resource, sub_resource_idx,
+@@ -2599,6 +2608,9 @@
+     wined3d_not_from_cs(context->device->cs);
+ 
+     TRACE_(d3d_perf)("Unmapping resource %p (type %u) through the CS.\n", resource, resource->type);
++
++    if (wined3d_settings.webgl && context->ops == &wined3d_cs_st_ops)
++        return resource->resource_ops->resource_sub_resource_unmap(resource, sub_resource_idx);
+ 
+     if (!(op = wined3d_device_context_require_space(context, sizeof(*op), WINED3D_CS_QUEUE_MAP)))
+         return E_OUTOFMEMORY;

@@ -156,6 +156,30 @@
       "reason": "Deliver cursor-release notifications after a popup is destroyed so SimTower floor selection does not leave mouse coordinates clipped"
     },
     {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_wined3d_fog_uniform_cache.patch",
+      "reason": "Cache identical fixed-function fog uniforms per linked OpenGL program"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_wined3d_projection_constant_cache.patch",
+      "reason": "Avoid redundant fixed-function projection constant uploads while invalidating on reset and full state changes"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_wined3d_direct_map_dispatch.patch",
+      "reason": "Dispatch immediate single-threaded resource map and unmap callbacks directly after upload-buffer and synchronization handling"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

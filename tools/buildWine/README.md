@@ -194,6 +194,27 @@ download catalog checksums, existing containers, or the Jenkins demo root pin.
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 
+### WineD3D performance (v43 source series)
+
+Both regular Wine variants include the fog uniform cache, projection constant
+cache and direct immediate map/unmap dispatch patches. The cache compares exact
+float bits and is invalidated when programs or device state are recreated.
+Only the single-threaded immediate dispatcher takes the direct map path.
+The WebGL override contains the same optimizations and additionally expands
+RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
+the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
+The four WebGL patches are applied automatically by the v43 source manifest.
+
+[`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
+pixels while changing fog values, shader variants and viewports, and exercises
+dynamic vertex-buffer discard/no-overwrite maps. Compile it with
+`i686-w64-mingw32-gcc -O2 -o performance.exe tools/buildWine/probes/wined3d-performance.c -ld3d9 -luser32`.
+Run it from a fresh root with `WINE_D3D_CONFIG=renderer=gl,csmt=0`, then with
+`csmt=1`. It must report 1,655 checks and zero failures. The same executable can
+run through the browser's WebGL overrides; these are correctness checks, not
+performance measurements.
+
+
 ### GDI buffer lifetime (v42, filesystem version 13)
 
 [`webgl_filesystems_v13.json`](webgl_filesystems_v13.json) adds the GDI lifetime

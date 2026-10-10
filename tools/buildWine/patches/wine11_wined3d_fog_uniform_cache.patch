@@ -1,0 +1,52 @@
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -249,9 +249,11 @@
+     GLuint id;
+     DWORD constant_update_mask;
+     unsigned int constant_version;
++    struct wined3d_ffp_fog_constants fog_constants;
+     DWORD shader_controlled_clip_distances : 1;
+     DWORD clip_distance_mask : 8; /* WINED3D_MAX_CLIP_DISTANCES, 8 */
+-    DWORD padding : 23;
++    DWORD fog_constants_valid : 1;
++    DWORD padding : 22;
+ };
+ 
+ struct glsl_program_key
+@@ -1686,11 +1688,19 @@
+             context_gl->c.device->push_constants[WINED3D_PUSH_CONSTANTS_PS_FFP], &context_gl->c);
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+ 
++    /* Uniform values belong to the linked program and survive program switches. */
++    if (prog->fog_constants_valid
++            && !memcmp(&prog->fog_constants, &constants->fog, sizeof(constants->fog)))
++        return;
++
+     GL_EXTCALL(glUniform4fv(prog->ps.fog_color_location, 1, &constants->fog.colour.r));
+     GL_EXTCALL(glUniform1f(prog->ps.fog_density_location, constants->fog.density));
+     GL_EXTCALL(glUniform1f(prog->ps.fog_end_location, constants->fog.end));
+     GL_EXTCALL(glUniform1f(prog->ps.fog_scale_location, constants->fog.scale));
+     checkGLcall("fog emulation uniforms");
++
++    prog->fog_constants = constants->fog;
++    prog->fog_constants_valid = 1;
+ }
+ 
+ static void ffp_vertex_update_clip_plane_constants(const struct wined3d_gl_info *gl_info,
+@@ -10262,6 +10272,7 @@
+     entry->cs.id = shader_id;
+     entry->constant_version = 0;
+     entry->shader_controlled_clip_distances = 0;
++    entry->fog_constants_valid = 0;
+     add_glsl_program_entry(priv, entry);
+ 
+     TRACE("Attaching GLSL shader object %u to program %u.\n", shader_id, program_id);
+@@ -10478,6 +10489,7 @@
+     entry->cs.id = 0;
+     entry->constant_version = 0;
+     entry->shader_controlled_clip_distances = 0;
++    entry->fog_constants_valid = 0;
+     /* Add the hash table entry */
+     add_glsl_program_entry(priv, entry);
+ 

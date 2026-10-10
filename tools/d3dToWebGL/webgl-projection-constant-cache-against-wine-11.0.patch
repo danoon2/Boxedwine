@@ -1,0 +1,77 @@
+diff --git a/dlls/wined3d/stateblock.c b/dlls/wined3d/stateblock.c
+--- a/dlls/wined3d/stateblock.c
++++ b/dlls/wined3d/stateblock.c
+@@ -90,6 +90,9 @@
+ 
+     struct wined3d_stateblock_state stateblock_state;
+     struct wined3d_light_state light_state;
++
++    struct wined3d_matrix projection_constants;
++    bool projection_constants_valid;
+ 
+     unsigned int contained_render_states[WINEHIGHEST_RENDER_STATE + 1];
+     unsigned int num_contained_render_states;
+@@ -322,6 +325,7 @@
+     struct wined3d_saved_states *states = &stateblock->changed;
+     struct wined3d_light_info *light;
+ 
++    stateblock->projection_constants_valid = false;
+     stateblock_savedstates_set_all(states, d3d_info->limits.vs_uniform_count, d3d_info->limits.ps_uniform_count);
+     states->ffp_ps_constants = 1;
+     states->texture_matrices = 1;
+@@ -2520,6 +2524,7 @@
+  * context or resetting. */
+ static void wined3d_stateblock_invalidate_initial_states(struct wined3d_stateblock *stateblock)
+ {
++    stateblock->projection_constants_valid = false;
+     stateblock->changed.ffp_ps_constants = 1;
+     stateblock->changed.lights = 1;
+     stateblock->changed.texture_matrices = 1;
+@@ -3107,6 +3112,25 @@
+     state.offset = 0;
+     state.size = device->push_constants[type]->resource.size,
+     wined3d_device_context_set_constant_buffers(&device->cs->c, shader_type, shader_binding, 1, &state);
++}
++
++static void stateblock_push_projection_constants(struct wined3d_stateblock *stateblock,
++        struct wined3d_device_context *context, const struct wined3d_matrix *matrix)
++{
++    /* DirectDraw surface synchronization can invalidate the RHW projection
++     * after every draw, even when neither the viewport nor depth mode changed. */
++    if (wined3d_settings.webgl && stateblock->projection_constants_valid
++            && !memcmp(&stateblock->projection_constants, matrix, sizeof(*matrix)))
++        return;
++
++    wined3d_device_context_push_constants(context, WINED3D_PUSH_CONSTANTS_VS_FFP, WINED3D_SHADER_CONST_FFP_PROJ,
++            offsetof(struct wined3d_ffp_vs_constants, projection_matrix), sizeof(*matrix), matrix);
++
++    if (wined3d_settings.webgl && context->device->push_constants[WINED3D_PUSH_CONSTANTS_VS_FFP])
++    {
++        memcpy(&stateblock->projection_constants, matrix, sizeof(*matrix));
++        stateblock->projection_constants_valid = true;
++    }
+ }
+ 
+ void CDECL wined3d_device_apply_stateblock(struct wined3d_device *device,
+@@ -3714,8 +3738,7 @@
+                 x_offset, y_offset,    0.0f, 1.0f,
+             };
+ 
+-            wined3d_device_context_push_constants(context, WINED3D_PUSH_CONSTANTS_VS_FFP, WINED3D_SHADER_CONST_FFP_PROJ,
+-                    offsetof(struct wined3d_ffp_vs_constants, projection_matrix), sizeof(matrix), &matrix);
++            stateblock_push_projection_constants(stateblock, context, &matrix);
+         }
+     }
+     else if (changed->transforms)
+@@ -3728,10 +3751,7 @@
+         }
+ 
+         if (wined3d_bitmap_is_set(changed->transform, WINED3D_TS_PROJECTION) || changed->position_transformed)
+-            wined3d_device_context_push_constants(context,
+-                    WINED3D_PUSH_CONSTANTS_VS_FFP, WINED3D_SHADER_CONST_FFP_PROJ,
+-                    offsetof(struct wined3d_ffp_vs_constants, projection_matrix),
+-                    sizeof(state->transforms[WINED3D_TS_PROJECTION]), &state->transforms[WINED3D_TS_PROJECTION]);
++            stateblock_push_projection_constants(stateblock, context, &state->transforms[WINED3D_TS_PROJECTION]);
+     }
+ 
+     if (changed->indices)
