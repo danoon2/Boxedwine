@@ -876,6 +876,42 @@ void testJitOverlappingDirectJumpTarget() {
 #endif
 }
 
+void testJitBranchTargetBoundaries() {
+#ifdef BOXEDWINE_JIT
+    for (bool taken : {false, true}) {
+        testNewInstruction(CF);
+        auto& context = testContext();
+        CPU* cpu = context.cpu;
+        cpu->reg[0].u32 = taken ? 0 : 1;
+        cpu->reg[3].u32 = 0;
+        testPushCode8(0x68); // push return address
+        U32 returnAddress = context.codeIp;
+        testPushCode32(0);
+        testPushCode8(0x83); testPushCode8(0xf8); testPushCode8(0); // cmp eax,0
+        testPushCode8(0x74); testPushCode8(1); // jz final ret
+        testPushCode8(0x43); // inc ebx on fall-through
+        U32 targetAddress = context.codeIp;
+        testPushCode8(0xc3); // terminal RET is included in the compiled block
+        context.memory->writed(returnAddress, context.codeIp - TEST_CODE_ADDRESS);
+        testPushCode8(0xcd); testPushCode8(0x97);
+
+        DecodedOp* entry = cpu->getNextOp();
+        std::unique_ptr<JitCodeGen> jit(startNewJIT(cpu));
+        jit->doJIT(TEST_CODE_ADDRESS, entry);
+        DecodedOp* target = context.memory->getDecodedOp(targetAddress);
+        if (!entry->pfnJitCode || jit->lastOpEip != targetAddress || !target ||
+                !(target->flags2 & OP_FLAG2_JUMP_TARGET)) {
+            testFail("JIT must mark an exact target at the final block instruction");
+            return;
+        }
+        testRunCPU();
+        if (cpu->reg[3].u32 != (taken ? 0u : 1u) || cpu->reg[4].u32 != 4096) {
+            testFail("JIT final-instruction branch lost its path or stack state");
+        }
+    }
+#endif
+}
+
 void testNativeJitRunCountWraps() {
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
     DecodedOp op;

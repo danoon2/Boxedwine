@@ -225,6 +225,11 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},
+    {testWasmJitForwardLoopBranches, "Test WASM JIT forward branches within loops"},
+    {testWasmJitForwardBranches, "Test WASM JIT forward branches across blocks and loops"},
+    {testWasmJitLoopReachability, "Test WASM JIT loop reachability and cleanup jumps"},
+    {testWasmJitMultipleLoops, "Test WASM JIT multiple separate loops"},
+    {testWasmJitConditionalSideExits, "Test WASM JIT conditional side exits"},
     {testWasmJitSseCompareConditions, "Test WASM JIT SSE compare conditions"},
     {testWasmJitFpuCache, "Test WASM JIT x87 stack cache"},
     {testWasmJitFpuMemory, "Test WASM JIT x87 cache memory paths"},
@@ -337,6 +342,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testFlagsAcrossIndirectJitBlockBoundary, "Test flags across indirect JIT block boundary"},
 #ifdef BOXEDWINE_JIT
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
+    {testJitBranchTargetBoundaries, "Test JIT branch target at block end"},
 #ifndef BOXEDWINE_WASM_JIT
     {testJitDirectTargetInvalidation, "Test JIT direct target invalidation"},
 #ifdef BOXEDWINE_JIT_ARMV8

@@ -12780,16 +12780,18 @@ void JitWasmCodeGen::IfCondition(JitConditional cond) {
     freeScratch(r->hardwareReg());
 }
 void JitWasmCodeGen::JumpIfCondition(JitConditional cond, U32 address) {
-    // Called when canJumpInBlock() is true. Native backends do a direct
-    // branch inside the generated code; we don't have structural
-    // intra-block jumps, so treat it as a block exit to the target. The
-    // `address` parameter is the *linear* EIP (CS.address + offset), but
-    // cpu->eip.u32 stores only the offset relative to CS — subtract here.
+    IfCondition(cond);
+    if (emitForwardBranch(address)) {
+        EndIf();
+        return;
+    }
+    // Other intra-block edges still use the dispatcher unless selected as
+    // the bounded loop's backedge. Targets are linear addresses, whereas
+    // cpu->eip.u32 is relative to CS.
     m_manifestJumpCount++;
     if (!m_manifestJumpTarget) {
         m_manifestJumpTarget = address - cpu->seg[CS].address;
     }
-    IfCondition(cond);
     emitDirectLoopBackedge(address);
     DecodedOp* targetOp = cpu->memory->getDecodedOp(address);
     if (wasmJitPersistenceActive()) {
@@ -12865,6 +12867,9 @@ void JitWasmCodeGen::EndIf() {
     m_emitter.emitEnd();
 }
 void JitWasmCodeGen::JumpInBlock(U32 address) {
+    if (emitForwardBranch(address)) {
+        return;
+    }
     // A selected hot backward edge can remain in this WASM activation for a
     // bounded number of iterations. Other intra-block jumps retain the
     // dispatcher exit used by the general, unstructured control-flow case.
@@ -13065,12 +13070,6 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
 void JitWasmCodeGen::jumpEip(RegPtr reg) {
     writeEip(reg);
     blockExit();
-}
-bool JitWasmCodeGen::canJumpInBlock(DecodedOp* op) {
-    return JitCodeGen::canJumpInBlock(op);
-}
-bool JitWasmCodeGen::canJumpInBlock(U32 opEip, DecodedOp* op) {
-    return JitCodeGen::canJumpInBlock(opEip, op);
 }
 void JitWasmCodeGen::onTestEnd(DecodedOp* op) {
     materializeFpuCache();
@@ -13666,78 +13665,122 @@ U8* JitWasmCodeGen::createStartJITCode() {
 // ---------------------------------------------------------------------------
 // Compilation lifecycle
 // ---------------------------------------------------------------------------
-void JitWasmCodeGen::findDirectLoopCandidate(DecodedOp* op) {
-    m_directLoopTargetEip = 0;
-    m_directLoopSourceEip = 0;
-    m_directLoopOpCount = 0;
+void JitWasmCodeGen::findDirectLoopCandidates() {
+    m_directLoops.clear();
+    m_directLoop = nullptr;
     m_directLoopToken = 0;
-    m_hasDirectLoopCandidate = false;
     m_directLoopOpen = false;
-    m_directLoopTouchesFpu = false;
-    m_directLoopKeepsFpu = false;
-    m_directLoopDynamicFpuValidity = false;
     m_directLoopFpuEntry = FpuStackCache{};
 
-    U32 eip = this->startingEip;
-    DecodedOp* cur = op;
-    while (cur && eip <= this->lastOpEip) {
-        if (cur->isDirectJumpBranch()) {
-            U32 targetEip = eip + cur->len + cur->imm;
-            if (targetEip >= this->startingEip && targetEip < eip &&
-                targetEip <= this->lastOpEip &&
-                (!m_hasDirectLoopCandidate || targetEip > m_directLoopTargetEip)) {
-                U32 checkEip = this->startingEip;
-                DecodedOp* check = op;
-                while (check && checkEip < targetEip) {
-                    checkEip += check->len;
-                    check = check->next;
-                }
-                if (check && checkEip == targetEip) {
-                    m_directLoopTargetEip = targetEip;
-                    m_directLoopSourceEip = eip;
-                    m_hasDirectLoopCandidate = true;
-                }
-            }
-        }
-        eip += cur->len;
-        cur = cur->next;
-    }
+    auto candidates = findLoopBackedges();
 
-    if (m_hasDirectLoopCandidate) {
+    // Preserve the previous choice (highest header, first backedge), then
+    // add disjoint integer loops before it. Nested and overlapping loops
+    // still use one selected backedge; they need separate cache/budget state.
+    std::sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) {
+        return a.targetEip != b.targetEip ? a.targetEip > b.targetEip : a.sourceEip < b.sourceEip;
+    });
+    for (const auto& candidate : candidates) {
+        DirectLoop loop;
+        loop.targetEip = candidate.targetEip;
+        loop.sourceEip = candidate.sourceEip;
+        if (!m_directLoops.empty() && loop.sourceEip >= m_directLoops.back().targetEip) {
+            continue;
+        }
         bool cacheable = supportsFpuLoopCache();
         S32 stackChange = 0;
-        eip = this->startingEip;
-        cur = op;
-        while (cur && eip <= m_directLoopSourceEip) {
-            if (eip >= m_directLoopTargetEip) {
-                m_directLoopOpCount++;
-                m_directLoopTouchesFpu |= cur->isFpuOp() || cur->isMmxOp();
-                cacheable &= canKeepFpuCache(cur);
-                if (canCacheFpuOp(cur)) stackChange += cachedFpuStackChange(cur);
-                m_directLoopDynamicFpuValidity |= cur->inst == FILD_QWORD_INTEGER ||
-                    cur->inst == FLD_EXTENDED_REAL || cur->inst == FSTP_EXTENDED_REAL || cur->inst == FBLD_PACKED_BCD ||
-                    cur->inst == FSCALE || cur->inst == FXTRACT || cur->inst == FPREM || cur->inst == FPREM_nearest ||
-                    cur->inst == F2XM1 || cur->inst == FSIN || cur->inst == FCOS || cur->inst == FPTAN ||
-                    cur->inst == FSINCOS || cur->inst == FYL2X || cur->inst == FYL2XP1 || cur->inst == FPATAN ||
-                    cur->inst == FNINIT || cur->inst == FLDENV || cur->inst == FNSAVE || cur->inst == FRSTOR;
-            }
-            eip += cur->len;
-            cur = cur->next;
+        for (const auto& entry : blockInstructions) {
+            if (entry.eip < loop.targetEip) continue;
+            if (entry.eip > loop.sourceEip) break;
+            DecodedOp* cur = entry.op;
+            loop.opCount++;
+            loop.touchesFpu |= cur->isFpuOp() || cur->isMmxOp();
+            cacheable &= canKeepFpuCache(cur);
+            if (canCacheFpuOp(cur)) stackChange += cachedFpuStackChange(cur);
+            loop.dynamicFpuValidity |= cur->inst == FILD_QWORD_INTEGER ||
+                cur->inst == FLD_EXTENDED_REAL || cur->inst == FSTP_EXTENDED_REAL || cur->inst == FBLD_PACKED_BCD ||
+                cur->inst == FSCALE || cur->inst == FXTRACT || cur->inst == FPREM || cur->inst == FPREM_nearest ||
+                cur->inst == F2XM1 || cur->inst == FSIN || cur->inst == FCOS || cur->inst == FPTAN ||
+                cur->inst == FSINCOS || cur->inst == FYL2X || cur->inst == FYL2XP1 || cur->inst == FPATAN ||
+                cur->inst == FNINIT || cur->inst == FLDENV || cur->inst == FNSAVE || cur->inst == FRSTOR;
         }
-        m_directLoopKeepsFpu = m_directLoopTouchesFpu && cacheable;
-        m_directLoopDynamicFpuValidity |= (stackChange & 7) != 0;
+        if (!m_directLoops.empty() && loop.touchesFpu) {
+            continue;
+        }
+        loop.keepsFpu = loop.touchesFpu && cacheable;
+        loop.dynamicFpuValidity |= (stackChange & 7) != 0;
+        // Forward edges can use nested Wasm blocks within this loop. Keep
+        // x87/MMX loops on their existing path: joining their cached stack
+        // mappings requires more than invalidating the GP/XMM local caches.
+        if (!loop.touchesFpu) {
+            for (const auto& branch : forwardBranches) {
+                if (branch.sourceEip >= loop.targetEip && branch.targetEip <= loop.sourceEip) {
+                    loop.forwardTargets.push_back({branch.targetEip, 0});
+                }
+            }
+            // Open the furthest destination first, so labels close in guest
+            // instruction order. Multiple branches can share one label.
+            std::sort(loop.forwardTargets.begin(), loop.forwardTargets.end(),
+                [](const auto& a, const auto& b) { return a.eip > b.eip; });
+            loop.forwardTargets.erase(std::unique(loop.forwardTargets.begin(), loop.forwardTargets.end(),
+                [](const auto& a, const auto& b) { return a.eip == b.eip; }), loop.forwardTargets.end());
+        }
+        m_directLoops.push_back(std::move(loop));
     }
+    std::reverse(m_directLoops.begin(), m_directLoops.end());
+}
+
+void JitWasmCodeGen::findForwardTargets() {
+    m_forwardTargets.clear();
+    // General joins initially support integer/SSE blocks only. Cached x87
+    // stack mappings need separate reconciliation on every incoming path.
+    for (const auto& entry : blockInstructions) {
+        if (entry.op->isFpuOp() || entry.op->isMmxOp()) return;
+    }
+    for (const auto& branch : forwardBranches) {
+        bool insideLoop = false;
+        for (const auto& loop : m_directLoops) {
+            // A header is allowed: its label closes before the loop's budget
+            // initialization. Interior labels require an existing loop entry.
+            if (branch.targetEip > loop.targetEip && branch.targetEip <= loop.sourceEip) {
+                insideLoop = true;
+                break;
+            }
+        }
+        if (!insideLoop) m_forwardTargets.push_back({branch.targetEip, 0});
+    }
+    std::sort(m_forwardTargets.begin(), m_forwardTargets.end(),
+        [](const auto& a, const auto& b) { return a.eip > b.eip; });
+    m_forwardTargets.erase(std::unique(m_forwardTargets.begin(), m_forwardTargets.end(),
+        [](const auto& a, const auto& b) { return a.eip == b.eip; }), m_forwardTargets.end());
+}
+
+bool JitWasmCodeGen::emitForwardBranch(U32 address) {
+    auto emit = [&](const std::vector<ForwardTarget>& targets) {
+        for (const auto& target : targets) {
+            if (target.eip == address && target.token && address > currentEip) {
+                // Both incoming paths publish their dirty locals before the
+                // join; the destination forgets path-specific caches/flags.
+                branchBoundary();
+                writeEip(address - cpu->seg[CS].address);
+                m_emitter.emitBr(m_emitter.currentCtrlDepth() - target.token);
+                return true;
+            }
+        }
+        return false;
+    };
+    return (m_directLoopOpen && emit(m_directLoop->forwardTargets)) || emit(m_forwardTargets);
 }
 
 bool JitWasmCodeGen::emitDirectLoopBackedge(U32 address) {
-    if (!m_directLoopOpen || address != m_directLoopTargetEip ||
-        currentEip != m_directLoopSourceEip) {
+    if (!m_directLoopOpen || address != m_directLoop->targetEip ||
+        currentEip != m_directLoop->sourceEip) {
         return false;
     }
 
     // Loops with legacy x87/MMX lowering still reload from CPU state at entry.
     // Cacheable loops reconcile their locals only on the taken edge.
-    if (m_directLoopTouchesFpu && !m_directLoopKeepsFpu) materializeFpuCache();
+    if (m_directLoop->touchesFpu && !m_directLoop->keepsFpu) materializeFpuCache();
 
     // Make the loop header's reloads observe all guest-register changes from
     // this iteration. EIP is also kept architecturally current for helpers,
@@ -13764,11 +13807,11 @@ bool JitWasmCodeGen::emitDirectLoopBackedge(U32 address) {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Load((U32)offsetof(CPU, blockInstructionCount));
-    m_emitter.emitI32Const((S32)m_directLoopOpCount);
+    m_emitter.emitI32Const((S32)m_directLoop->opCount);
     m_emitter.emitOp(WASM_I32_ADD);
     m_emitter.emitI32Store((U32)offsetof(CPU, blockInstructionCount));
 
-    if (m_directLoopKeepsFpu) reconcileFpuCacheForLoop(m_directLoopFpuEntry);
+    if (m_directLoop->keepsFpu) reconcileFpuCacheForLoop(m_directLoopFpuEntry);
     U32 currentDepth = m_emitter.currentCtrlDepth();
     m_emitter.emitBr(currentDepth - m_directLoopToken);
     m_emitter.emitEnd();
@@ -13789,7 +13832,12 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
         m_manifestNext1Count = 0;
         m_manifestNext2Count = 0;
         m_manifestJumpCount = 0;
-        findDirectLoopCandidate(op);
+        findDirectLoopCandidates();
+        findForwardTargets();
+        for (auto& target : m_forwardTargets) {
+            m_emitter.emitBlock();
+            target.token = m_emitter.currentCtrlDepth();
+        }
         if (m_profileSplitBlockStartEip != this->startingEip) {
             m_profileSplitTargetOp = nullptr;
             m_profileSplitBlockStartEip = 0;
@@ -13820,50 +13868,93 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     m_f64ScratchInUse.fill(false);
     m_v128ScratchInUse.fill(false);
     lastCompiledOpLen = op->len;
+    if (m_directLoopOpen && this->currentEip > m_directLoop->sourceEip) {
+        // Forward labels end no later than the backedge. Closing this loop
+        // here lets the next disjoint loop reuse the budget local safely.
+        m_emitter.emitEnd();
+        m_directLoopOpen = false;
+        m_directLoop = nullptr;
+    }
+    if (m_directLoopOpen) {
+        for (auto& target : m_directLoop->forwardTargets) {
+            if (target.eip == this->currentEip && target.token) {
+                // Flush only the fall-through path before ending the label;
+                // branches to it have already stored their own live values.
+                branchBoundary();
+                m_emitter.emitEnd();
+                target.token = 0;
+                currentLazyFlags = FLAGS_NULL;
+            }
+        }
+    }
+    for (auto& target : m_forwardTargets) {
+        if (target.eip == this->currentEip && target.token) {
+            branchBoundary();
+            m_emitter.emitEnd();
+            target.token = 0;
+            currentLazyFlags = FLAGS_NULL;
+        }
+    }
     if (!canKeepFpuCache(op)) {
         flushFpuCache();
     }
 
-    if (!skippedOp && m_hasDirectLoopCandidate && !m_directLoopOpen &&
-        this->currentEip == m_directLoopTargetEip) {
-            if (m_directLoopKeepsFpu) {
-                auto scratch = m_scratchInUse;
-                prepareFpuCacheForLoop(m_directLoopDynamicFpuValidity);
-                m_scratchInUse = scratch;
-                m_directLoopFpuEntry = fpuStackCache;
-            } else if (m_directLoopTouchesFpu) {
-                flushFpuCache();
+    if (!skippedOp && !m_directLoopOpen) {
+        for (auto& loop : m_directLoops) {
+            if (this->currentEip == loop.targetEip) {
+                m_directLoop = &loop;
+                break;
             }
-            // Synchronize the one-time linear entry before opening the loop.
-            // The compile-time caches are then cleared so loads emitted in
-            // the body execute on every backedge and observe flushed values.
-            branchBoundary();
-            m_emitter.emitI32Const((S32)WASM_DIRECT_LOOP_ITERATIONS);
-            m_emitter.emitLocalSet(WASM_DIRECT_LOOP_BUDGET_LOCAL);
-            m_emitter.emitLoop();
-            m_directLoopToken = m_emitter.currentCtrlDepth();
-            m_directLoopOpen = true;
-#ifdef BOXEDWINE_WASM_JIT_PROFILE
-            g_wasmJitProfileDirectLoopsCreated.fetch_add(1, std::memory_order_relaxed);
-            g_wasmJitProfileDirectLoopOps.fetch_add(m_directLoopOpCount, std::memory_order_relaxed);
-            g_wasmJitProfileDirectLoopIterations.fetch_add(WASM_DIRECT_LOOP_ITERATIONS, std::memory_order_relaxed);
-            if (m_directLoopOpCount <= 4) {
-                g_wasmJitProfileDirectLoopOps1To4.fetch_add(1, std::memory_order_relaxed);
-            } else if (m_directLoopOpCount <= 8) {
-                g_wasmJitProfileDirectLoopOps5To8.fetch_add(1, std::memory_order_relaxed);
-            } else if (m_directLoopOpCount <= 16) {
-                g_wasmJitProfileDirectLoopOps9To16.fetch_add(1, std::memory_order_relaxed);
-            } else {
-                g_wasmJitProfileDirectLoopOps17Plus.fetch_add(1, std::memory_order_relaxed);
-            }
-#endif
-            m_gpDirty.fill(false);
-            m_xmmDirty.fill(false);
-            m_gpLoaded.fill(false);
-            m_xmmLoaded.fill(false);
-            m_segLoaded.fill(false);
-            currentLazyFlags = FLAGS_NULL;
         }
+    }
+    if (!skippedOp && m_directLoop && !m_directLoopOpen) {
+        if (!m_directLoop->forwardTargets.empty()) {
+            // An integer loop may follow cached x87 work in its prefix.
+            // Publish that state once, before any path can skip a join.
+            flushFpuCache();
+        }
+        if (m_directLoop->keepsFpu) {
+            auto scratch = m_scratchInUse;
+            prepareFpuCacheForLoop(m_directLoop->dynamicFpuValidity);
+            m_scratchInUse = scratch;
+            m_directLoopFpuEntry = fpuStackCache;
+        } else if (m_directLoop->touchesFpu) {
+            flushFpuCache();
+        }
+        // Synchronize the one-time linear entry before opening the loop.
+        // The compile-time caches are then cleared so loads emitted in
+        // the body execute on every backedge and observe flushed values.
+        branchBoundary();
+        m_emitter.emitI32Const((S32)WASM_DIRECT_LOOP_ITERATIONS);
+        m_emitter.emitLocalSet(WASM_DIRECT_LOOP_BUDGET_LOCAL);
+        m_emitter.emitLoop();
+        m_directLoopToken = m_emitter.currentCtrlDepth();
+        m_directLoopOpen = true;
+        for (auto& target : m_directLoop->forwardTargets) {
+            m_emitter.emitBlock();
+            target.token = m_emitter.currentCtrlDepth();
+        }
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+        g_wasmJitProfileDirectLoopsCreated.fetch_add(1, std::memory_order_relaxed);
+        g_wasmJitProfileDirectLoopOps.fetch_add(m_directLoop->opCount, std::memory_order_relaxed);
+        g_wasmJitProfileDirectLoopIterations.fetch_add(WASM_DIRECT_LOOP_ITERATIONS, std::memory_order_relaxed);
+        if (m_directLoop->opCount <= 4) {
+            g_wasmJitProfileDirectLoopOps1To4.fetch_add(1, std::memory_order_relaxed);
+        } else if (m_directLoop->opCount <= 8) {
+            g_wasmJitProfileDirectLoopOps5To8.fetch_add(1, std::memory_order_relaxed);
+        } else if (m_directLoop->opCount <= 16) {
+            g_wasmJitProfileDirectLoopOps9To16.fetch_add(1, std::memory_order_relaxed);
+        } else {
+            g_wasmJitProfileDirectLoopOps17Plus.fetch_add(1, std::memory_order_relaxed);
+        }
+#endif
+        m_gpDirty.fill(false);
+        m_xmmDirty.fill(false);
+        m_gpLoaded.fill(false);
+        m_xmmLoaded.fill(false);
+        m_segLoaded.fill(false);
+        currentLazyFlags = FLAGS_NULL;
+    }
     JitCodeGen::preCompile(op, skippedOp);
 }
 
@@ -13935,6 +14026,9 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     if (m_directLoopOpen) {
         m_emitter.emitEnd();
         m_directLoopOpen = false;
+    }
+    for (auto target = m_forwardTargets.rbegin(); target != m_forwardTargets.rend(); ++target) {
+        if (target->token) m_emitter.emitEnd();
     }
     m_emitter.endFunction();
 #ifdef BOXEDWINE_WASM_JIT_NAMES

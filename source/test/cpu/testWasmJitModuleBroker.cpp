@@ -2589,9 +2589,15 @@ void testWasmJitMtScheduleThreadPreload() {
 
     U32 firstAddress = testContext().codeIp;
     testPushCode8(0x40); // inc eax
-    testPushCode8(0xe9); // jmp to the next block
+    // Force entry through the second slot: an in-block direct jump can stay
+    // inside the first Wasm function and would not exercise instance reuse.
+    testPushCode8(0xba); // mov edx,secondAddress (relative to CS)
+    U32 secondAddressImmediate = testContext().codeIp;
     testPushCode32(0);
+    testPushCode8(0xff); testPushCode8(0xe2); // jmp edx
     U32 secondAddress = testContext().codeIp;
+    testContext().memory->writed(secondAddressImmediate,
+        secondAddress - testContext().cpu->seg[CS].address);
     testPushCode8(0x41); // inc ecx
     testPushCode8(0xcd);
     testPushCode8(0x97);

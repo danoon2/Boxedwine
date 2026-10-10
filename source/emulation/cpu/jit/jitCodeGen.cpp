@@ -393,7 +393,8 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         }
 #endif
     }
-    // find longest block where all direction jumps don't go past the block
+    // Trim branches whose lowering requires both successors to end the block.
+    // Backends with conditional side exits can retain the fall-through path.
     U32 lastFurthestEip = eip;
     while (true) {
         nextOp = op;
@@ -405,7 +406,8 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             }
             if (nextOp->isDirectJumpBranch()) {
                 U32 target = this->lastOpEip + nextOp->len + nextOp->imm;
-                if (target >= lastFurthestEip || target < this->startingEip) {
+                if ((target >= lastFurthestEip || target < this->startingEip) &&
+                        !(supportsConditionalSideExits() && nextOp->isJumpCC())) {
                     break;
                 }
             }
@@ -426,36 +428,90 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         lastFurthestEip = lastEip;
     }
 
-    BHashTable<U32, DecodedOp*> ops;
-
-    nextOp = op;
-    eip = this->startingEip;
-    while (nextOp && eip < this->lastOpEip) {
-        ops.set(eip, nextOp);
-        eip += nextOp->len;
-        nextOp = nextOp->next;
-    }
-
-    nextOp = op;
-    eip = this->startingEip;
-    while (nextOp && eip < this->lastOpEip) {
-        if (nextOp->isDirectBranch()) {
-            // MW3 preview will jump to this jnz, which means the cmp/jnz pair should not be optimized as direct, see Jit::dynamic_cmpr32r32
-            // without this check, MW3 will have weird drawing/camera
-            // 4d7d1e Cmp EBX, ESI
-            // 4d7d20 JNZ 7 -> 4d7d29
-            // ...
-            // 4d7d3e JLE ffffffe0 -> 4d7d20
-            U32 target = eip + nextOp->len + nextOp->imm;
-            DecodedOp* targetOp = nullptr;
-            if (ops.get(target, targetOp)) {
-                targetOp->flags2 |= OP_FLAG2_JUMP_TARGET;
-            }
-        }
-        eip += nextOp->len;
-        nextOp = nextOp->next;
-    }
+    analyzeBlockControlFlow(op);
     return true;
+}
+
+size_t JitCodeGen::findBlockInstruction(U32 eip) const {
+    auto found = std::lower_bound(blockInstructions.begin(), blockInstructions.end(), eip,
+        [](const BlockInstruction& entry, U32 address) { return entry.eip < address; });
+    return found != blockInstructions.end() && found->eip == eip ?
+        found - blockInstructions.begin() : blockInstructions.size();
+}
+
+void JitCodeGen::analyzeBlockControlFlow(DecodedOp* op) {
+    blockInstructions.clear();
+    forwardBranches.clear();
+    U32 eip = startingEip;
+    for (DecodedOp* cur = op; cur && eip <= lastOpEip; cur = cur->next) {
+        blockInstructions.push_back({eip, cur});
+        if (!cur->len || eip + cur->len < eip) break;
+        eip += cur->len;
+    }
+    for (const auto& entry : blockInstructions) {
+        if (!entry.op->isDirectBranch()) continue;
+        U32 target = entry.eip + entry.op->len + entry.op->imm;
+        size_t index = findBlockInstruction(target);
+        if (index == blockInstructions.size()) continue;
+        // A branch may enter the consumer of a compare/branch pair. Mark
+        // every destination, including the final instruction, before fusion.
+        blockInstructions[index].op->flags2 |= OP_FLAG2_JUMP_TARGET;
+        if (entry.op->isDirectJumpBranch() && entry.eip < lastOpEip && target > entry.eip) {
+            forwardBranches.push_back({entry.eip, target});
+        }
+    }
+}
+
+std::vector<JitCodeGen::BlockBranch> JitCodeGen::findLoopBackedges() const {
+    std::vector<size_t> pending;
+    std::vector<bool> visited;
+    auto canReachBackedge = [&](size_t header, size_t backedge) {
+        pending.clear();
+        visited.assign(blockInstructions.size(), false);
+        auto enqueue = [&](size_t index) {
+            if (!visited[index]) {
+                visited[index] = true;
+                pending.push_back(index);
+            }
+        };
+        enqueue(header);
+        while (!pending.empty()) {
+            size_t index = pending.back();
+            pending.pop_back();
+            if (index == backedge) return true;
+            const auto& entry = blockInstructions[index];
+            DecodedOp* current = entry.op;
+            if (current->isRet()) continue;
+            if (current->isDirectJumpBranch()) {
+                size_t target = findBlockInstruction(entry.eip + current->len + current->imm);
+                // Unknown paths may re-enter the block. Incomplete analysis
+                // must not rule out a loop; only proven dead ends can do so.
+                if (target == blockInstructions.size()) return true;
+                enqueue(target);
+                if (!current->isDirectBranchWithNext()) continue;
+            } else if (current->isBranch() && !current->isCall()) {
+                return true;
+            }
+            // Calls may return. A return above ends its path; falling off
+            // the known instruction stream leaves reachability uncertain.
+            if (index + 1 == blockInstructions.size()) return true;
+            enqueue(index + 1);
+        }
+        return false;
+    };
+    std::vector<BlockBranch> backedges;
+    for (size_t index = 0; index < blockInstructions.size(); ++index) {
+        const auto& entry = blockInstructions[index];
+        if (!entry.op->isDirectJumpBranch()) continue;
+        U32 target = entry.eip + entry.op->len + entry.op->imm;
+        if (target >= entry.eip) continue;
+        size_t header = findBlockInstruction(target);
+        // A backward jump into cleanup ending in RET is not a loop.
+        if (header != blockInstructions.size() && canReachBackedge(header, index)) {
+            backedges.push_back({entry.eip, target});
+        }
+    }
+    return backedges;
 }
 
 static DecodedOp* removeJITBlock(DecodedOp* op) {

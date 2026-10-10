@@ -419,8 +419,6 @@ public:
     void blockNext1(U32 eip, DecodedOp* op) override;
     void blockNext2(U32 eip, DecodedOp* op) override;
     void jumpEip(RegPtr reg) override;
-    bool canJumpInBlock(DecodedOp* op) override;
-    bool canJumpInBlock(U32 opEip, DecodedOp* op) override;
     void onTestEnd(DecodedOp* op) override;
 
     // --- Memory access (JitCodeGen pure virtuals) ---
@@ -942,6 +940,7 @@ public:
     void compile(DecodedOp* op) override;
     void postCompile(DecodedOp* op) override;
     bool shouldStopBlockBefore(U32 eip, DecodedOp* op) override;
+    bool supportsConditionalSideExits() const override { return true; }
 
     // Per-block exit metadata recorded while compiling, exported with the
     // saved module as boxedwine-jit-manifest.json so the offline cache
@@ -954,15 +953,26 @@ public:
     U32 m_manifestNext1Count = 0;
     U32 m_manifestNext2Count = 0;
     U32 m_manifestJumpCount = 0;
-    U32 m_directLoopTargetEip = 0;
-    U32 m_directLoopSourceEip = 0;
-    U32 m_directLoopOpCount = 0;
+    struct ForwardTarget {
+        U32 eip;
+        U32 token;
+    };
+    struct DirectLoop {
+        U32 targetEip = 0;
+        U32 sourceEip = 0;
+        U32 opCount = 0;
+        bool touchesFpu = false;
+        bool keepsFpu = false;
+        bool dynamicFpuValidity = false;
+        std::vector<ForwardTarget> forwardTargets;
+    };
+    // Labels surrounding the function's selected loops, for forward edges
+    // that stay outside them or leave/skip a loop.
+    std::vector<ForwardTarget> m_forwardTargets;
+    std::vector<DirectLoop> m_directLoops;
+    DirectLoop* m_directLoop = nullptr;
     U32 m_directLoopToken = 0;
-    bool m_hasDirectLoopCandidate = false;
     bool m_directLoopOpen = false;
-    bool m_directLoopTouchesFpu = false;
-    bool m_directLoopKeepsFpu = false;
-    bool m_directLoopDynamicFpuValidity = false;
     FpuStackCache m_directLoopFpuEntry;
     // Profile-guided split bookkeeping: set when shouldStopBlockBefore ends a
     // block early because a grouped-manifest split hint named an interior
@@ -1000,8 +1010,10 @@ protected:
     void dynamic_cmpxchgMem32(DecodedOp* op);
     void loadGPReg(U8 emulatedReg);   // emit: local.get cpu; i32.load; local.set localN
     void storeGPReg(U8 emulatedReg);  // emit: local.get cpu; local.get localN; i32.store
-    void findDirectLoopCandidate(DecodedOp* op);
+    void findDirectLoopCandidates();
+    void findForwardTargets();
     bool emitDirectLoopBackedge(U32 address);
+    bool emitForwardBranch(U32 address);
 
     // Emit cpu_ptr onto WASM stack (local.get 0)
     void pushCpuPtr();

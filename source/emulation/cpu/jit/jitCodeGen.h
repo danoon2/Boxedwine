@@ -37,11 +37,14 @@ public:
     
     // per instruction, not per block.  
     bool canJumpInBlock(DecodedOp* op) override {
-        return currentEip < lastOpEip && isBlockOpBoundary(currentEip + op->len + op->imm);
+        return canJumpInBlock(currentEip, op);
     }
 
     bool canJumpInBlock(U32 opEip, DecodedOp* op) override {
-        return opEip < lastOpEip && isBlockOpBoundary(opEip + op->len + op->imm);
+        // Side-exit backends may keep compiling the fall-through even when
+        // the taken target is outside this block or not an instruction start.
+        return opEip < lastOpEip && ((supportsConditionalSideExits() && op->isJumpCC()) ||
+            isBlockOpBoundary(opEip + op->len + op->imm));
     }
 
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
@@ -64,6 +67,8 @@ public:
     // backend can honor profile-guided split hints that want a hot interior
     // target compiled as its own block-start entry.
     virtual bool shouldStopBlockBefore(U32 eip, DecodedOp* op) { return false; }
+    // Permit conditional exits without ending the compiled fall-through path.
+    virtual bool supportsConditionalSideExits() const { return false; }
     virtual void readMMU(RegPtr dest, RegPtr index, U32 offset = 0) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
     virtual RegPtr getLinearMemoryBase(RegPtr tmp = nullptr) { kpanic("JitCodeGen::getLinearMemoryBase"); return nullptr; }
@@ -172,26 +177,26 @@ public:
 private:
     void writeMemory(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment, bool forceMmuCheck);
 
-    bool isBlockOpBoundary(U32 eip) {
-        if (eip < startingEip || eip > lastOpEip) {
-            return false;
-        }
-        U32 opEip = startingEip;
-        DecodedOp* nextOp = firstOp;
-        while (nextOp && opEip <= lastOpEip) {
-            if (opEip == eip) {
-                return true;
-            }
-            if (!nextOp->len) {
-                break;
-            }
-            opEip += nextOp->len;
-            nextOp = nextOp->next;
-        }
-        return false;
+    bool isBlockOpBoundary(U32 eip) const {
+        return findBlockInstruction(eip) != blockInstructions.size();
     }
+    void analyzeBlockControlFlow(DecodedOp* op);
 
 protected:
+    struct BlockInstruction {
+        U32 eip;
+        DecodedOp* op;
+    };
+    struct BlockBranch {
+        U32 sourceEip;
+        U32 targetEip;
+    };
+    // Built once after selecting the block. Forward branches have an exact
+    // instruction target inside it; these contain no host labels or tokens.
+    std::vector<BlockInstruction> blockInstructions;
+    std::vector<BlockBranch> forwardBranches;
+    size_t findBlockInstruction(U32 eip) const;
+    std::vector<BlockBranch> findLoopBackedges() const;
 
     virtual U32 getBufferSize() = 0;
     virtual U32 markBufferLocation() = 0;
