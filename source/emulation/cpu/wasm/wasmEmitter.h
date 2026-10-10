@@ -428,6 +428,7 @@ public:
     void emitF64Store(U32 offset, U32 align = 3);
 
     void emitOp(U8 op);   // emit a standalone opcode
+    void emitAtomicFence();
     void emitI64TruncSatF64S();
     void emitSimdOp(U32 op);
     // For SIMD ops whose lane immediate directly follows the opcode.

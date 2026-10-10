@@ -14261,6 +14261,15 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
         m_forwardedResultConsumer = nullptr;
     }
     JitCodeGen::preCompile(op, skippedOp);
+#ifdef BOXEDWINE_MULTI_THREADED
+    // Order ordinary guest memory instructions as well as locked operations.
+    // A plain Wasm load/store can otherwise observe a publication flag before
+    // its data on ARM64. Emit inside the labels so loop/branch entries execute
+    // the fence too, and cover both the inline MMU and helper paths here.
+    if (!skippedOp && (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth)) {
+        m_emitter.emitAtomicFence();
+    }
+#endif
 }
 
 void JitWasmCodeGen::compile(DecodedOp* op) {

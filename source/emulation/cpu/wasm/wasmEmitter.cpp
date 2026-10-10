@@ -267,6 +267,12 @@ void WasmEmitter::emitF64Store(U32 offset, U32 align) {
 
 void WasmEmitter::emitOp(U8 op) { m_currentBody.push_back(op); }
 
+void WasmEmitter::emitAtomicFence() {
+    m_currentBody.push_back(0xfe); // atomic instruction prefix
+    m_currentBody.push_back(0x03); // atomic.fence (sequentially consistent)
+    m_currentBody.push_back(0x00); // reserved ordering byte
+}
+
 void WasmEmitter::emitI64TruncSatF64S() {
     m_currentBody.push_back(0xfc);
     appendULEB128(m_currentBody, 6);

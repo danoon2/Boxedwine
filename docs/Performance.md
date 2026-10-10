@@ -785,3 +785,46 @@ baseline and final applications remain in the isolated
 `/private/tmp/boxedwine-jenkins-performance-build-1` directory. The Windows
 ARM64 and Linux ARM64 Jenkins agents were not rerun. No commit or push was
 performed, and the preceding Wasm performance changes were preserved.
+
+### MT Wasm memory ordering repair (2026-10-10)
+
+Jenkins build 2 compiled successfully and passed the native ARM tests, but
+MT JIT shard 4/16 failed `locked cmpxchg against plain store` on Linux ARM64.
+The same failure reproduced with Node 22.16 on the Mac ARM64 host: the
+current build failed repetition 24 (phase 152), and the snapshot from before
+forward-region retention failed repetition 42 (phase 228). This predates
+the latest forward-region and adjacent-read changes.
+
+The locked helper already uses atomic compare/exchange, but ordinary Wasm
+loads/stores do not supply the surrounding x86 memory ordering. Emit
+`atomic.fence` before guest memory instructions in the MT Wasm JIT, inside
+branch/loop entry labels and before either the MMU fast path or helper path.
+Apply the same boundary during interpreter warmup and single-op fallback.
+This leaves native and ST Wasm code unchanged. The fence uses the
+[standard sequentially consistent encoding](https://webassembly.github.io/threads/core/binary/instructions.html#atomic-memory-instructions).
+
+This is a correctness repair, with a cost to MT memory-heavy workloads.
+No performance improvement is claimed. A future optimization can replace
+conservative fences with ordered accesses or prove some fences redundant;
+removing them based only on passing races on x64 is insufficient. This
+change orders instruction boundaries, not individual elements inside bulk
+string helpers, and does not turn unlocked read/modify/write instructions
+into atomic operations.
+
+The unchanged 1,000-phase race passed 200 consecutive ARM64 processes with
+the repair. The final test now runs 10,000 phases and passed another 50
+ARM64 processes (500,000 phases). Tests and exact commands are recorded in
+`tmp/jenkins-performance-build-2/`, including `reproduce.py`, `validate.py`,
+`final-validate.py`, and per-target logs.
+
+| Validation | Result |
+|---|---|
+| Original failing shard, Node ARM64 / x64, full mode | 57 / 57 passed on each host |
+| Final concurrency tests, Node ARM64 / x64 | 14 / 14 passed on each host |
+| Final Wasm MT / ST selected regressions, fast mode | 787 / 787 passed per target |
+| Native x64, fast mode, WSL `/tmp` | 811 / 811 passed |
+
+Node runs used `--experimental-wasm-exnref --no-liftoff
+--experimental-wasm-branch-hinting`. The full failing shard used
+`-shard 3 16`; final concurrency coverage used `769 14 1`. Browser CI will
+rerun after the push; these local results use Node, not Firefox.

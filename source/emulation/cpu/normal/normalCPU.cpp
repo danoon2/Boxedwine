@@ -33,7 +33,17 @@
 thread_local U32 normalWaitCallCount = 0;
 #endif
 
-#ifdef BOXEDWINE_MULTI_THREADED
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_WASM_JIT)
+static inline void normalOrderMemoryInstruction(DecodedOp* op) {
+    // Match the JIT's guest-memory instruction boundaries during warmup and
+    // single-op fallback. Ordinary Wasm loads/stores do not provide x86 TSO
+    // on weakly ordered hosts, even when another access uses a locked op.
+    if (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth) {
+        std::atomic_thread_fence(std::memory_order_seq_cst);
+    }
+}
+#define START_OP(cpu, op) normalOrderMemoryInstruction(op)
+#elif defined(BOXEDWINE_MULTI_THREADED)
 #ifdef _DEBUG
 //#define START_OP(cpu, op) op->log(cpu)
 #define START_OP(cpu, op)
