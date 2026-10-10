@@ -199,17 +199,30 @@ protected:
     std::vector<BlockBranch> forwardBranches;
     size_t findBlockInstruction(U32 eip) const;
     std::vector<BlockBranch> findLoopBackedges() const;
+    // Consecutive scalar reads sharing an unchanged effective-address base.
+    // The backend must guard the entire span and refresh it on every entry.
+    struct ReadGroup {
+        U32 firstEip = 0, lastEip = 0, firstDisp = 0;
+        S32 minOffset = 0;
+        U32 span = 0, count = 0;
+    };
+    bool findReadGroup(U32 eip, ReadGroup& group) const;
     struct LoopRegisterUsage {
         U8 gp = 0;
         U8 gpWritten = 0;
         U8 xmm = 0;
         U8 xmmWritten = 0;
         U8 segments = 0;
+        bool touchesMemory = false;
     };
     // Conservative region contract: these operations access architectural
     // registers through the JIT register API. Memory operations use the JIT
     // memory API, whose slow paths must publish dirty state and preserve locals.
     bool accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage) const;
+    // A bounded acyclic region with enough forward joins to amortize
+    // preloading its GP/XMM inputs. Memory spans currently permit only one
+    // memory op between boundaries and require publication at guest joins.
+    bool findForwardRegisterRegion(LoopRegisterUsage& usage) const;
     // Adjacent register-only producer/consumer eligibility, independent of
     // the backend's storage for the forwarded result.
     bool canForwardFlagResult(DecodedOp* op) const;

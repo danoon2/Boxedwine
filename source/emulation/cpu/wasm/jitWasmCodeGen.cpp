@@ -6859,10 +6859,14 @@ void JitWasmCodeGen::storeGPReg(U8 emulatedReg) {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitLocalGet(local);
     m_emitter.emitI32Store(cpuRegOffset32(emulatedReg));
-    // A spill on one path or iteration does not make the other incoming
-    // paths clean. Every loop-written local remains potentially dirty.
-    m_gpDirty[emulatedReg] = keepsLoopRegisters() &&
-        (m_directLoop->registers.gpWritten & (1u << emulatedReg));
+    // A conditional spill cannot make other incoming paths clean. Loops
+    // and register-only regions retain their whole possible write mask.
+    const auto* usage = keptRegisterUsage();
+    // Memory regions start clean and publish at guest control-flow edges.
+    // A helper's conditional spill must not clear the other runtime path.
+    if (!keepsForwardMemoryRegisters()) {
+        m_gpDirty[emulatedReg] = usage && (usage->gpWritten & (1u << emulatedReg));
+    }
 }
 
 void JitWasmCodeGen::syncDirtyRegsToHost() {
@@ -6874,8 +6878,10 @@ void JitWasmCodeGen::syncDirtyRegsToHost() {
             m_emitter.emitLocalGet(WASM_CPU_LOCAL);
             m_emitter.emitLocalGet(WASM_XMM_LOCAL_BASE + i);
             m_emitter.emitV128Store((U32)(offsetof(CPU, xmm) + i * sizeof(cpu->xmm[0])));
-            m_xmmDirty[i] = keepsLoopRegisters() &&
-                (m_directLoop->registers.xmmWritten & (1u << i));
+            const auto* usage = keptRegisterUsage();
+            if (!keepsForwardMemoryRegisters()) {
+                m_xmmDirty[i] = usage && (usage->xmmWritten & (1u << i));
+            }
         }
     }
 }
@@ -10990,7 +10996,67 @@ RegPtr JitWasmCodeGen::read(JitWidth w, RegPtr addressReg,
     return readMemoryValue(w, std::move(addressReg), std::move(tmp));
 }
 
-RegPtr JitWasmCodeGen::readMemoryValue(JitWidth w, RegPtr addressReg, RegPtr tmp, bool signExtend) {
+void JitWasmCodeGen::prepareReadGroupAddress(RegPtr address) {
+    if (m_readGroupReady) return;
+    m_readGroupReady = true;
+    m_needsWasmMemoryPageArrays = true;
+    U32 minimum = allocScratch();
+    pushRegValue(address);
+    if (m_readGroup.minOffset) {
+        m_emitter.emitI32Const(m_readGroup.minOffset);
+        m_emitter.emitOp(WASM_I32_ADD);
+    }
+    m_emitter.emitLocalSet(minimum);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmReadPageBaseArray));
+    m_emitter.emitLocalGet(minimum);
+    m_emitter.emitI32Const(K_PAGE_SHIFT);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitI32Const(2);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load(0);
+    m_emitter.emitLocalTee(READ_GROUP_LOCAL);
+    m_emitter.emitOp(WASM_I32_EQZ);
+    m_emitter.emitLocalGet(minimum);
+    m_emitter.emitI32Const(K_PAGE_MASK);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitI32Const(K_PAGE_SIZE - m_readGroup.span);
+    m_emitter.emitOp(WASM_I32_GT_U);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+    m_emitter.emitIf();
+    m_emitter.emitI32Const(0);
+    m_emitter.emitLocalSet(READ_GROUP_LOCAL);
+    m_emitter.emitElse();
+    m_emitter.emitLocalGet(READ_GROUP_LOCAL);
+    m_emitter.emitLocalGet(minimum);
+    m_emitter.emitI32Const(K_PAGE_MASK);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitLocalSet(READ_GROUP_LOCAL);
+    m_emitter.emitEnd();
+    freeScratch(minimum);
+}
+
+RegPtr JitWasmCodeGen::readMemoryValue(JitWidth w, RegPtr addressReg, RegPtr tmp, bool signExtend, bool allowGroup) {
+    if (allowGroup && m_readGroupActive) {
+        prepareReadGroupAddress(addressReg);
+        m_emitter.emitLocalGet(READ_GROUP_LOCAL);
+        m_emitter.emitOp(WASM_I32_EQZ);
+        m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+        m_emitter.emitIf();
+        // Keep ordinary fast paths when the range crosses a page. Each
+        // actual fault still publishes the state of its own instruction.
+        readMemoryValue(w, addressReg, tmp, signExtend, false);
+        m_emitter.emitElse();
+        m_emitter.emitLocalGet(READ_GROUP_LOCAL);
+        U32 offset = currentOp->data.disp - m_readGroup.firstDisp - (U32)m_readGroup.minOffset;
+        m_emitter.emitI32Load(offset, 0);
+        m_emitter.emitLocalSet(tmp->hardwareReg());
+        m_emitter.emitEnd();
+        return tmp;
+    }
     m_needsWasmMemoryPageArrays = true;
     U32 entryLocal = allocScratch();
     auto savedGpDirty = m_gpDirty;
@@ -12720,9 +12786,9 @@ void JitWasmCodeGen::branchBoundary() {
     // The enclosing scope preloads its inputs and preserves local mappings
     // on returning paths; failure paths synchronize before leaving the block.
     if (m_preserveCpuRegisterState) return;
-    if (keepsLoopRegisters()) {
-        // All used locals were initialized before the loop. Branches can
-        // therefore join without spills, including a path that never writes.
+    if (keptRegisterUsage()) {
+        // Every region input was preloaded before any internal branch.
+        // Joins also cover paths that never write a particular register.
         return;
     }
     syncDirtyRegsToHost();
@@ -13878,6 +13944,37 @@ void JitWasmCodeGen::findDirectLoopCandidates() {
     std::reverse(m_directLoops.begin(), m_directLoops.end());
 }
 
+void JitWasmCodeGen::syncForwardMemoryJoin() {
+    if (!keepsForwardMemoryRegisters()) return;
+    // Run before a guest branch on both outcomes, and on fallthrough before
+    // closing a join label. Every incoming edge then agrees CPU is current.
+    // Locals remain valid, avoiding the reloads of a full branchBoundary().
+    syncDirtyRegsToHost();
+    m_gpDirty.fill(false);
+    m_xmmDirty.fill(false);
+}
+
+void JitWasmCodeGen::prepareForwardRegisterRegion() {
+    if (!m_directLoops.empty() || !findForwardRegisterRegion(m_forwardRegionRegisters) ||
+        (m_forwardRegionRegisters.segments & ((1u << FS) | (1u << GS)))) return;
+    // This initialization precedes all forward labels. Only the function
+    // entry is callable; an external interior entry compiles its own region.
+    for (U8 reg = 0; reg < 8; ++reg) {
+        if (m_forwardRegionRegisters.gp & (1u << reg)) loadGPReg(reg);
+        if (m_forwardRegionRegisters.xmm & (1u << reg)) loadCpuXMMReg(reg);
+    }
+    for (U8 seg = 0; seg < 4; ++seg) {
+        if (m_forwardRegionRegisters.segments & (1u << seg)) getReadOnlySegAddress(seg);
+    }
+    m_keepsForwardRegisters = true;
+    for (U8 reg = 0; reg < 8; ++reg) {
+        m_gpDirty[reg] = !m_forwardRegionRegisters.touchesMemory &&
+            (m_forwardRegionRegisters.gpWritten & (1u << reg));
+        m_xmmDirty[reg] = !m_forwardRegionRegisters.touchesMemory &&
+            (m_forwardRegionRegisters.xmmWritten & (1u << reg));
+    }
+}
+
 void JitWasmCodeGen::findForwardTargets() {
     m_forwardTargets.clear();
     // General joins initially support integer/SSE blocks only. Cached x87
@@ -13907,8 +14004,8 @@ bool JitWasmCodeGen::emitForwardBranch(U32 address) {
     auto emit = [&](const std::vector<ForwardTarget>& targets) {
         for (const auto& target : targets) {
             if (target.eip == address && target.token && address > currentEip) {
-                // Internal loop joins share preloaded locals. Other joins
-                // publish their dirty locals and forget path-specific caches.
+                // Eligible loops and acyclic regions share preloaded locals.
+                // Other joins publish dirty state and forget cached mappings.
                 branchBoundary();
                 if (keepsLoopRegisters() && address > m_directLoop->sourceEip) {
                     // An edge leaving the loop joins code using CPU state.
@@ -13986,6 +14083,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
         m_manifestJumpCount = 0;
         findDirectLoopCandidates();
         findForwardTargets();
+        prepareForwardRegisterRegion();
         for (auto& target : m_forwardTargets) {
             m_emitter.emitBlock();
             target.token = m_emitter.currentCtrlDepth();
@@ -14021,6 +14119,11 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
         m_forwardedResultConsumer = nullptr;
     }
     m_scratchInUse.fill(false);
+    if (skippedOp || !m_readGroupActive || currentEip > m_readGroup.lastEip) {
+        m_readGroupActive = !skippedOp && findReadGroup(currentEip, m_readGroup);
+        m_readGroupReady = false;
+    }
+    if (m_readGroupActive) m_scratchInUse[READ_GROUP_LOCAL - WASM_TMP_LOCAL_BASE] = true;
     m_f64ScratchInUse.fill(false);
     m_v128ScratchInUse.fill(false);
     lastCompiledOpLen = op->len;
@@ -14048,6 +14151,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     }
     for (auto& target : m_forwardTargets) {
         if (target.eip == this->currentEip && target.token) {
+            syncForwardMemoryJoin();
             branchBoundary();
             m_emitter.emitEnd();
             target.token = 0;
@@ -14055,6 +14159,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
             m_forwardedResultConsumer = nullptr;
         }
     }
+    if (op->isDirectJumpBranch()) syncForwardMemoryJoin();
     if (!canKeepFpuCache(op)) {
         flushFpuCache();
     }

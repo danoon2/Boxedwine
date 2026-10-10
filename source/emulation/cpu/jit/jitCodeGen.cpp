@@ -1150,6 +1150,79 @@ bool JitCodeGen::canForwardFlagResult(DecodedOp* op) const {
         (next->isJumpCC() || next->isSetCC() || next->isCMovCC());
 }
 
+bool JitCodeGen::findReadGroup(U32 eip, ReadGroup& group) const {
+    size_t index = findBlockInstruction(eip);
+    if (index == blockInstructions.size()) return false;
+    DecodedOp* first = blockInstructions[index].op;
+    ReadGroup found;
+    found.firstEip = eip;
+    found.firstDisp = first->data.disp;
+    S64 low = 0, high = 0;
+    // No branches, stores or other helpers may intervene. In particular, a
+    // failed read must not reuse a translation prepared before its helper.
+    // Four to eight neighboring dword reads amortize the guard/code cost in
+    // paired Wasm tests. Two-read gains were marginal. Limit the span to 32
+    // bytes; scattered reads and other widths retain their existing path.
+    for (; index < blockInstructions.size() && found.count < 8; ++index) {
+        const auto& entry = blockInstructions[index];
+        DecodedOp* op = entry.op;
+        if ((op->inst != MovR32E32 && op->inst != AddR32E32) ||
+                op->lock || op->ea16 || op->base >= 4 ||
+                (found.count && (op->flags2 & OP_FLAG2_JUMP_TARGET)) ||
+                op->base != first->base || op->rm != first->rm ||
+                op->sibIndex != first->sibIndex || op->sibScale != first->sibScale ||
+                op->reg == first->rm || op->reg == first->sibIndex) break;
+        S64 delta = (S32)(op->data.disp - first->data.disp);
+        S64 nextLow = std::min(low, delta), nextHigh = std::max(high, delta + 4);
+        if (nextHigh - nextLow > 32) break;
+        low = nextLow; high = nextHigh;
+        found.lastEip = entry.eip;
+        ++found.count;
+    }
+    if (found.count < 4) return false;
+    found.minOffset = (S32)low;
+    found.span = (U32)(high - low);
+    group = found;
+    return true;
+}
+
+bool JitCodeGen::findForwardRegisterRegion(LoopRegisterUsage& usage) const {
+    // Preloading pays off across several joins. Shorter regions did not
+    // improve in paired Wasm tests; cap the analysis and eager input set.
+    if (forwardBranches.size() < 4 || blockInstructions.size() > 128) return false;
+    LoopRegisterUsage registers;
+    bool memorySinceBoundary = false;
+    for (const auto& entry : blockInstructions) {
+        if (memorySinceBoundary) {
+            for (const auto& branch : forwardBranches) {
+                if (branch.targetEip == entry.eip) {
+                    memorySinceBoundary = false;
+                    break;
+                }
+            }
+        }
+        const auto& info = instructionInfo[entry.op->inst];
+        if (info.readMemWidth || info.writeMemWidth) {
+            // One memory operation per straight-line span improved both
+            // Wasm modes. Longer spans were neutral or slower despite smaller
+            // code, even with branch hints; keep their established lowering.
+            if (memorySinceBoundary) return false;
+            memorySinceBoundary = true;
+        }
+        if (entry.op->isDirectJumpBranch()) {
+            memorySinceBoundary = false;
+            U32 target = entry.eip + entry.op->len + entry.op->imm;
+            if (target <= entry.eip && isBlockOpBoundary(target)) return false;
+        }
+#ifdef __TEST
+        if (entry.op->inst == TestEnd && entry.eip == lastOpEip) continue;
+#endif
+        if (!accumulateLoopRegisters(entry.op, registers)) return false;
+    }
+    usage = registers;
+    return true;
+}
+
 bool JitCodeGen::accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage) const {
     auto gp = [&](U8 reg, bool written = false) {
         if (reg < 8) {
@@ -1158,6 +1231,7 @@ bool JitCodeGen::accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage
         }
     };
     auto memoryAddress = [&]() {
+        usage.touchesMemory = true;
         gp(op->rm); gp(op->sibIndex);
         if (op->base < 6 && (op->ea16 || cpu->thread->process->hasSetSeg[op->base])) {
             usage.segments |= 1u << op->base;

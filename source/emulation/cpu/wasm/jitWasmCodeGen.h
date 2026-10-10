@@ -988,6 +988,8 @@ public:
     U32 m_directLoopToken = 0;
     bool m_directLoopOpen = false;
     FpuStackCache m_directLoopFpuEntry;
+    LoopRegisterUsage m_forwardRegionRegisters;
+    bool m_keepsForwardRegisters = false;
     // Profile-guided split bookkeeping: set when shouldStopBlockBefore ends a
     // block early because a grouped-manifest split hint named an interior
     // target; cleared once the prefix block commits.
@@ -1013,7 +1015,13 @@ protected:
 
     // Helpers used internally during code generation
     void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
-    RegPtr readMemoryValue(JitWidth width, RegPtr address, RegPtr result, bool signExtend = false);
+    RegPtr readMemoryValue(JitWidth width, RegPtr address, RegPtr result, bool signExtend = false, bool allowGroup = true);
+    void prepareReadGroupAddress(RegPtr address);
+    ReadGroup m_readGroup;
+    bool m_readGroupActive = false;
+    bool m_readGroupReady = false;
+    // Reserve one existing scratch local only while a group is being emitted.
+    static constexpr U32 READ_GROUP_LOCAL = WASM_TMP_LOCAL_BASE + WASM_TMP_LOCAL_COUNT - 1;
     void accessMemoryCustom(U32 widthBytes, RegPtr addressReg, bool store,
         const std::function<void(MemPtr)>& customOp, const std::function<void()>& failedOp);
     void scalarSseFromMemory(DecodedOp* op, JitWidth width, U8 instruction, bool unary = false);
@@ -1027,6 +1035,15 @@ protected:
     bool keepsLoopRegisters() const {
         return m_directLoopOpen && m_directLoop->keepsRegisters;
     }
+    const LoopRegisterUsage* keptRegisterUsage() const {
+        if (m_keepsForwardRegisters) return &m_forwardRegionRegisters;
+        return keepsLoopRegisters() ? &m_directLoop->registers : nullptr;
+    }
+    bool keepsForwardMemoryRegisters() const {
+        return m_keepsForwardRegisters && m_forwardRegionRegisters.touchesMemory;
+    }
+    void syncForwardMemoryJoin();
+    void prepareForwardRegisterRegion();
     void findDirectLoopCandidates();
     void findForwardTargets();
     bool emitDirectLoopBackedge(U32 address);
