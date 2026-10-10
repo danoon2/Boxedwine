@@ -1729,6 +1729,23 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Me
     return tmp;
 }
 
+void JitCodeGen::withRamPage(RegPtr address, bool store, const std::function<void(RegPtr)>& action,
+        const std::function<void()>& failed) {
+    RegPtr host = getTmpReg();
+    shrValueWithDest(JitWidth::b32, host, address, K_PAGE_SHIFT);
+    readMMU(host, host);
+    IfNotTestBit(JitWidth::b32, host, store ? 1 : 0); {
+        failed();
+    } EndIf();
+    andValueNative(host, ~K_PAGE_MASK);
+    {
+        RegPtr offset = getTmpReg();
+        andValueWithDest(JitWidth::b32, offset, address, K_PAGE_MASK);
+        addReg(DYN_PTR, host, offset);
+    }
+    action(std::move(host));
+}
+
 RegPtr JitCodeGen::calculateAddress(MemPtr mem) {
     RegPtr tmp = getTmpReg();
     if (mem->sib && mem->lsl) {

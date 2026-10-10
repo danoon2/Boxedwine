@@ -19,8 +19,7 @@
 void OPCALL normal_movsb_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
 #ifdef BOXEDWINE_JIT
-    op->STR_COUNT++;
-    op->STR_TOTAL += ECX;
+    profileMovsCount(op, op->ea16 ? CX : ECX);
     if (cpu->flags & DF) {
         op->DF1 = 1;
     } else {
@@ -45,8 +44,7 @@ void OPCALL normal_movsb_op(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_movsw_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
 #ifdef BOXEDWINE_JIT
-    op->STR_COUNT++;
-    op->STR_TOTAL += ECX;
+    profileMovsCount(op, op->ea16 ? CX : ECX);
     if (cpu->flags & DF) {
         op->DF1 = 1;
     } else {
@@ -71,8 +69,9 @@ void OPCALL normal_movsw_op(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_movsd_op(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
 #ifdef BOXEDWINE_JIT
-    op->STR_COUNT++;
-    op->STR_TOTAL += ECX;
+    if (!op->ea16 && (op->repZero || op->repNotZero)) {
+        profileMovsdCount(op, ECX, !(cpu->flags & DF));
+    }
     if (cpu->flags & DF) {
         op->DF1 = 1;
     } else {

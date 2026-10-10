@@ -95,6 +95,8 @@ public:
     void writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
 
     RegPtr read(JitWidth width, MemPtr address, RegPtr result = nullptr) override;
+    void withRamPage(RegPtr address, bool store, const std::function<void(RegPtr)>& action,
+        const std::function<void()>& failed) override;
     void write(JitWidth width, MemPtr address, RegPtr src) override;
     void write(JitWidth width, MemPtr address, U32 imm) override;
 

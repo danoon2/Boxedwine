@@ -335,6 +335,13 @@ public:
     virtual void write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
     virtual void writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) = 0;
 
+    // Resolve ordinary RAM with an explicit permission check, even on hosts
+    // using fault-based memory access. The caller must first check that its
+    // entire span fits in this page. The host pointer lives only in action;
+    // failed must leave the block. Update guest registers after the callback.
+    virtual void withRamPage(RegPtr address, bool store, const std::function<void(RegPtr)>& action,
+        const std::function<void()>& failed) = 0;
+
     virtual RegPtr read(JitWidth width, MemPtr address, RegPtr result = nullptr) = 0;
     virtual void write(JitWidth width, MemPtr address, RegPtr src) = 0;
     virtual void write(JitWidth width, MemPtr address, U32 imm) = 0;
@@ -407,6 +414,16 @@ public:
     };
     virtual void callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache = true, bool saveCache = true) = 0;
     virtual void callHostFunctionWithResult(RegPtr result, void* address, const std::vector<DynParam>& params) = 0;
+
+    // The masks declare all GP inputs and outputs of body (bit 0 = EAX, etc.).
+    // Only declared GP registers may change on returning paths. Flags, segments,
+    // XMM and x87 state must be preserved. Other paths must leave the block.
+    // Backends can retain cached locals across the body's internal branches.
+    virtual void withCpuRegisterState(U32 readRegs, U32 writtenRegs, const std::function<void()>& body) { body(); }
+    // The helper may read flags/segments and the declared GP registers, and may
+    // update writtenRegs and ordinary RAM. It must not fault, invoke callbacks,
+    // invalidate code, or change flags/FPU state. Wasm helpers must be imported.
+    virtual void callNonFaultingCpuHelper(void (*helper)(CPU*, U32), U32 arg, U32 readRegs, U32 writtenRegs);
 
     virtual void emulateSingleOp() = 0;
 
@@ -484,12 +501,20 @@ protected:
     void dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFlagType flags);
     void arithSetup(DecodedOp* op, U32& needsToSetFlags, LazyFlagType flags, RegPtr cf);
     void movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth);
-    virtual void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
+    void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
+    virtual void movsrLoop(JitWidth valueWidth, U32 size, JitWidth regWidth);
+    void movs32rWithSegments(U32 base, U32 size);
+    void movsd32rUnrolled(U32 base, U32 expected);
+    void fillLoad32r(U32 base, U32 size, bool store);
     void stos(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void stosr(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void lods(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth);
     void lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth);
     void cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType lazyFlags);
+    void compareStringR(JitWidth valueWidth, U32 size, U32 repZero, LazyFlagType lazyFlags, bool scan);
+    virtual void compareStringPrefix(U32 size, bool scan, bool backward, bool repZero,
+        RegPtr accumulator, RegPtr scratch, bool useHelper,
+        const std::function<void()>& helper, const std::function<void()>& onFailure);
     void cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags);
     void scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType lazyFlags);
     void scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags);

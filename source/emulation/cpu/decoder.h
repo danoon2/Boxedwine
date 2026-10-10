@@ -1661,6 +1661,13 @@ public:
 #define DF1 sibIndex
 #define STR_COUNT imm
 #define STR_TOTAL data.disp
+// String instructions have no ModRM operand; reuse it for sticky JIT policy.
+#define STR_FLAGS rm
+#define STR_LARGE_COPY 1
+#define STR_WIDE_COPY 2
+#define STR_UNROLLED_COPY 4
+// REP MOVSD uses the displacement as two 16-bit hit counters, not a sum.
+#define MOVSD_SIZE_HITS data.disp
 
     U8 runCount;
 #endif

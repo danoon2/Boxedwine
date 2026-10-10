@@ -227,6 +227,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},
     {testWasmJitForwardLoopBranches, "Test WASM JIT forward branches within loops"},
     {testWasmJitForwardBranches, "Test WASM JIT forward branches across blocks and loops"},
+    {testWasmJitRepMovsdState, "Test WASM JIT REP MOVSD cached state"},
     {testWasmJitLoopReachability, "Test WASM JIT loop reachability and cleanup jumps"},
     {testWasmJitMultipleLoops, "Test WASM JIT multiple separate loops"},
     {testWasmJitConditionalSideExits, "Test WASM JIT conditional side exits"},

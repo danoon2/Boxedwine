@@ -4577,6 +4577,7 @@ static void wasmHelper_movsdE64Xmm(CPU* cpu) {
 }
 
 static void wasmHelper_movsd32r(CPU* cpu) {
+    // Retain this import for saved modules generated before typed RAM helpers.
     WASM_JIT_HELPER_STAT(Movsd32r);
     WASM_JIT_HELPER_DETAIL(Movsd32r);
     movsd32r(cpu, cpu->memHelperValue);
@@ -4646,6 +4647,22 @@ static const void* g_wasmHelperTable[] = {
     (void*)wasmHelper_profileInlineCond,
     (void*)wasmHelper_profileRmw,
 #endif
+    // Typed non-faulting CPU helpers: void(CPU*, U32).
+    (void*)movsd32rRam,
+    (void*)movsb32rRam,
+    (void*)movsw32rRam,
+    (void*)stosb32rRam,
+    (void*)stosw32rRam,
+    (void*)stosd32rRam,
+    (void*)lodsb32rRam,
+    (void*)lodsw32rRam,
+    (void*)lodsd32rRam,
+    (void*)cmpsb32rPrefix,
+    (void*)cmpsw32rPrefix,
+    (void*)cmpsd32rPrefix,
+    (void*)scasb32rPrefix,
+    (void*)scasw32rPrefix,
+    (void*)scasd32rPrefix,
 };
 static constexpr int WASM_HELPER_COUNT = (int)(sizeof(g_wasmHelperTable) / sizeof(g_wasmHelperTable[0]));
 
@@ -6764,7 +6781,8 @@ JitWasmCodeGen::JitWasmCodeGen(CPU* cpu) : JitSSE(cpu) {
         char name[16];
         snprintf(name, sizeof(name), "fn_%d", i);
         U32 type = i >= HELPER_FPU_SIN && i <= HELPER_FPU_LOG ? unaryMathType :
-            i == HELPER_FPU_POW || i == HELPER_FPU_ATAN2 ? binaryMathType : m_typeVoidI32;
+            i == HELPER_FPU_POW || i == HELPER_FPU_ATAN2 ? binaryMathType :
+            i >= HELPER_CPU_FIRST ? m_typeVoidI32I32 : m_typeVoidI32;
         m_emitter.addFunctionImport("helpers", name, type);
     }
     // Map well-known helpers to their import indices.
@@ -10895,6 +10913,11 @@ void JitWasmCodeGen::accessMemoryCustom(U32 widthBytes, RegPtr addressReg, bool 
     }
     m_emitter.emitElse();
     {
+        // Generating the failure arm may invalidate the cache trackers, but
+        // the fast arm still has its original GP locals, including dirty ones.
+        m_gpDirty = savedGpDirty;
+        m_gpLoaded = savedGpLoaded;
+        m_segLoaded = savedSegLoaded;
         fpuStackCache = savedFpuCache;
         m_xmmLoaded = savedXmmLoaded;
         m_xmmDirty = savedXmmDirty;
@@ -10916,6 +10939,15 @@ void JitWasmCodeGen::accessMemoryCustom(U32 widthBytes, RegPtr addressReg, bool 
     freeScratch(entryLocal);
     if (!store && canReleaseScratchReg(addressReg))
         freeScratch(addressReg->hardwareReg());
+}
+
+void JitWasmCodeGen::withRamPage(RegPtr address, bool store, const std::function<void(RegPtr)>& action,
+        const std::function<void()>& failed) {
+    // The shared emitter has already checked both full spans. These arrays
+    // exclude special pages, COW and code writes, just like scalar accesses.
+    accessMemoryCustom(1, std::move(address), store, [&](MemPtr host) {
+        action(calculateAddress(std::move(host)));
+    }, failed);
 }
 
 void JitWasmCodeGen::accessFpu80(RegPtr address, bool store, const std::function<void(MemPtr)>& action) {
@@ -11051,6 +11083,14 @@ void JitWasmCodeGen::write(JitWidth w, RegPtr addressReg, RegPtr src,
                             std::function<void()> failedOp, bool checkAlignment) {
     if (customOp) {
         accessMemoryCustom(wasmJitWidthBytes(w), addressReg, true, customOp, failedOp);
+        return;
+    }
+
+    if (failedOp) {
+        // Honor the caller's fallback before writing. A repeated instruction
+        // must commit its remaining progress before a code-write bailout.
+        accessMemoryCustom(wasmJitWidthBytes(w), addressReg, true,
+            [this, w, src](MemPtr host) { writeHost(w, host, src, false); }, failedOp);
         return;
     }
 
@@ -12647,6 +12687,9 @@ void JitWasmCodeGen::finishIf() {
 }
 
 void JitWasmCodeGen::branchBoundary() {
+    // The enclosing scope preloads its inputs and preserves local mappings
+    // on returning paths; failure paths synchronize before leaving the block.
+    if (m_preserveCpuRegisterState) return;
     syncDirtyRegsToHost();
     m_gpLoaded.fill(false);
     m_xmmLoaded.fill(false);
@@ -12698,26 +12741,34 @@ void JitWasmCodeGen::IfTestBit(JitWidth w, RegPtr reg, U32 bitPos) {
 void JitWasmCodeGen::IfEqual(JitWidth w, RegPtr reg, DYN_PTR_SIZE value) {
     branchBoundary();
     pushRegValue(reg);
+    maskToWidth(w);
     m_emitter.emitI32Const((S32)value);
+    maskToWidth(w);
     m_emitter.emitOp(WASM_I32_EQ);
     finishIf();
 }
 void JitWasmCodeGen::IfEqual(JitWidth w, RegPtr r1, RegPtr r2) {
     branchBoundary();
-    pushRegValue(r1); pushRegValue(r2);
+    pushRegValue(r1);
+    maskToWidth(w); pushRegValue(r2);
+    maskToWidth(w);
     m_emitter.emitOp(WASM_I32_EQ);
     finishIf();
 }
 void JitWasmCodeGen::IfNotEqual(JitWidth w, RegPtr reg, DYN_PTR_SIZE value) {
     branchBoundary();
     pushRegValue(reg);
+    maskToWidth(w);
     m_emitter.emitI32Const((S32)value);
+    maskToWidth(w);
     m_emitter.emitOp(WASM_I32_NE);
     finishIf();
 }
 void JitWasmCodeGen::IfNotEqual(JitWidth w, RegPtr reg, RegPtr r2) {
     branchBoundary();
-    pushRegValue(reg); pushRegValue(r2);
+    pushRegValue(reg);
+    maskToWidth(w); pushRegValue(r2);
+    maskToWidth(w);
     m_emitter.emitOp(WASM_I32_NE);
     finishIf();
 }
@@ -13190,6 +13241,55 @@ void JitWasmCodeGen::callHostFunctionWithResult(RegPtr result, void* address,
         m_emitter.emitLocalGet(WASM_CPU_LOCAL);
         m_emitter.emitI32Load((U32)offsetof(CPU, dst.u32));
         m_emitter.emitLocalSet(result->hardwareReg());
+    }
+}
+
+void JitWasmCodeGen::withCpuRegisterState(U32 readRegs, U32 writtenRegs, const std::function<void()>& body) {
+    for (U8 reg = 0; reg < WASM_GP_LOCAL_COUNT; ++reg) {
+        if ((readRegs | writtenRegs) & (1u << reg)) loadGPReg(reg);
+    }
+    const auto gpDirty = m_gpDirty;
+    const auto xmmDirty = m_xmmDirty;
+    const auto gpLoaded = m_gpLoaded;
+    const auto xmmLoaded = m_xmmLoaded;
+    const auto segLoaded = m_segLoaded;
+    const auto savedFpu = fpuStackCache;
+    const auto savedLazyFlags = currentLazyFlags;
+    const bool wasPreserving = m_preserveCpuRegisterState;
+    m_preserveCpuRegisterState = true;
+    body();
+    m_preserveCpuRegisterState = wasPreserving;
+    // Exiting arms may have spilled or invalidated the cache. Returning arms
+    // retain the entry mappings, including a conditional arm that did no work.
+    m_gpDirty = gpDirty;
+    m_xmmDirty = xmmDirty;
+    m_gpLoaded = gpLoaded;
+    m_xmmLoaded = xmmLoaded;
+    m_segLoaded = segLoaded;
+    fpuStackCache = savedFpu;
+    currentLazyFlags = savedLazyFlags;
+    for (U8 reg = 0; reg < WASM_GP_LOCAL_COUNT; ++reg) {
+        if (writtenRegs & (1u << reg)) m_gpDirty[reg] = true;
+    }
+}
+
+void JitWasmCodeGen::callNonFaultingCpuHelper(void (*helper)(CPU*, U32), U32 arg, U32 readRegs, U32 writtenRegs) {
+    U32 index = HELPER_CPU_FIRST;
+    while (index < WASM_HELPER_COUNT && g_wasmHelperTable[index] != (const void*)helper) ++index;
+    if (index == WASM_HELPER_COUNT) kpanic("Non-faulting CPU helper is not imported");
+    // No fault or callback can observe the rest of the architectural state.
+    for (U8 reg = 0; reg < WASM_GP_LOCAL_COUNT; ++reg) {
+        if ((readRegs & (1u << reg)) && m_gpDirty[reg]) storeGPReg(reg);
+    }
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(arg);
+    m_emitter.emitCall(index);
+    for (U8 reg = 0; reg < WASM_GP_LOCAL_COUNT; ++reg) {
+        if (writtenRegs & (1u << reg)) {
+            m_gpLoaded[reg] = false;
+            m_gpDirty[reg] = false;
+            loadGPReg(reg);
+        }
     }
 }
 
@@ -13855,6 +13955,7 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
             // decoded-op hash.
             op->STR_COUNT = 0;
             op->STR_TOTAL = 0;
+            if (op->inst == Movsd) op->STR_FLAGS = 0;
             op->DF0 = 0;
             op->DF1 = 0;
         }

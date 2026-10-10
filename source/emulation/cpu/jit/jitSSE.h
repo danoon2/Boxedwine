@@ -626,7 +626,10 @@ public:
 	virtual void IfSseLessThan(SSERegPtr src1, SSERegPtr src2) = 0;
 
 	void createHelpers() override;
-	void movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) override;
+    void compareStringPrefix(U32 size, bool scan, bool backward, bool repZero,
+        RegPtr accumulator, RegPtr scratch, bool useHelper,
+        const std::function<void()>& helper, const std::function<void()>& onFailure) override;
+	void movsrLoop(JitWidth valueWidth, U32 size, JitWidth regWidth) override;
 private:
 	U8* createJitF64ToF80();
 	U8* createJitCosSub();

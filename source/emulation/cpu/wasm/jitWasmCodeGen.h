@@ -456,6 +456,8 @@ public:
     // --- Function calls ---
     void callHostFunction(void* address, const std::vector<DynParam>& params,
                           bool restoreCache = true, bool saveCache = true) override;
+    void withCpuRegisterState(U32 readRegs, U32 writtenRegs, const std::function<void()>& body) override;
+    void callNonFaultingCpuHelper(void (*helper)(CPU*, U32), U32 arg, U32 readRegs, U32 writtenRegs) override;
     void callHostFunctionWithResult(RegPtr result, void* address,
                                     const std::vector<DynParam>& params) override;
     void emulateSingleOp() override;
@@ -652,6 +654,9 @@ public:
     // String ops (movs/cmps/stos/lods/scas, all widths) now use the
     // base-class native codegen; the rep'd loops route through
     // LoopBegin/LoopEnd which emit a structural WASM `loop`/`end` pair.
+
+    void withRamPage(RegPtr address, bool store, const std::function<void(RegPtr)>& action,
+        const std::function<void()>& failed) override;
 
     // --- SSE hook surface ---
     SSERegPtr getTmpSSE() override;
@@ -1136,6 +1141,7 @@ protected:
     // Tracks which GP locals are loaded and which are dirty (need writeback)
     std::array<bool, WASM_GP_LOCAL_COUNT> m_gpLoaded{};
     std::array<bool, WASM_GP_LOCAL_COUNT> m_gpDirty{};
+    bool m_preserveCpuRegisterState = false;
     std::array<bool, 4> m_segLoaded{};
     std::array<bool, WASM_XMM_LOCAL_COUNT> m_xmmLoaded{};
     std::array<bool, WASM_XMM_LOCAL_COUNT> m_xmmDirty{};

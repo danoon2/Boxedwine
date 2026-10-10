@@ -42,6 +42,11 @@
 #include "jitCallFpu.h"
 #include "jitLock.h"
 
+void Jit::callNonFaultingCpuHelper(void (*helper)(CPU*, U32), U32 arg, U32 readRegs, U32 writtenRegs) {
+    callHostFunction((void*)helper, {DynParam(JitCallParamType::CPU),
+        DynParam(JitCallParamType::CONST_32, arg)}, true, true);
+}
+
 U8 JitReg::hardwareReg() {
     if (reg != 0xff) {
         return reg;

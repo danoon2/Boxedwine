@@ -63,8 +63,57 @@ void Jit::movs(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth) {
     } EndIf();
 }
 
+static constexpr U32 MOVS_REGS = (1u << 1) | (1u << 6) | (1u << 7); // ECX, ESI, EDI
+
 // Note that this is only used when there are no segments involved
 void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
+    withCpuRegisterState(MOVS_REGS, MOVS_REGS, [&]() {
+        if (size != 4 && regWidth == JitWidth::b32) {
+            // Fold an unexpected direction into a large count so both guards
+            // share one cold helper arm, without duplicating either copy loop.
+            {
+                RegPtr count = getStringRegEcx();
+                if (currentOp->DF0 != currentOp->DF1) {
+                    RegPtr direction = getReadOnlyFlags();
+                    if (currentOp->DF1) xorValue(JitWidth::b32, direction, DF);
+                    andValue(JitWidth::b32, direction, DF);
+                    shlValue(JitWidth::b32, direction, 21);
+                    orReg(JitWidth::b32, direction, count);
+                    count = direction;
+                }
+                IfGreaterThan(JitWidth::b32, ComparisonType::Unsigned, count, MOVS_RAM_MIN_BYTES / size - 1);
+            }
+            {
+                movs32rWithSegments(currentOp->base, size);
+            } StartElse(); {
+                withCpuRegisterState(MOVS_REGS, MOVS_REGS, [&]() {
+                    movsrLoop(valueWidth, size, regWidth);
+                });
+            } EndIf();
+            return;
+        }
+        // A direction observed during warmup is a hint, not an invariant.
+        // Keep its compact loop and handle a later direction change safely.
+        if (regWidth == JitWidth::b32 && currentOp->DF0 != currentOp->DF1) {
+            auto specialized = [&]() {
+                withCpuRegisterState(MOVS_REGS, MOVS_REGS, [&]() {
+                    movsrLoop(valueWidth, size, regWidth);
+                });
+            };
+            if (currentOp->DF1) IfDF();
+            else IfNotTestBit(JitWidth::b32, getReadOnlyFlags(), 10);
+            {
+                specialized();
+            } StartElse(); {
+                movs32rWithSegments(currentOp->base, size);
+            } EndIf();
+        } else {
+            movsrLoop(valueWidth, size, regWidth);
+        }
+    });
+}
+
+void Jit::movsrLoop(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     if (currentOp->runCount == 0) {
         currentOp->flags2 |= OP_FLAG2_TRACED_STUB;
         emulateSingleOp(); // since this was never run, just stub it out so that we save jit code cache since its a lot of code
@@ -84,7 +133,9 @@ void Jit::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     };
 
 #ifdef BOXEDWINE_64
-    if (currentOp->STR_COUNT > 10 && currentOp->STR_TOTAL / currentOp->STR_COUNT < 8) {
+    const bool smallCopy = currentOp->inst == Movsd ? !(currentOp->STR_FLAGS & STR_WIDE_COPY) :
+        currentOp->STR_TOTAL / (currentOp->STR_COUNT ? currentOp->STR_COUNT : 1) < 8;
+    if (currentOp->STR_COUNT > 10 && smallCopy) {
 #endif
     bool doDF1 = currentOp->DF1 || (currentOp->DF1 == 0 && currentOp->DF0 == 0);
     bool doDF0 = currentOp->DF0 || (currentOp->DF1 == 0 && currentOp->DF0 == 0);
@@ -257,7 +308,7 @@ void Jit::dynamic_movsb_op(DecodedOp* op) {
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
-                emulateSingleOp();
+                movs32rWithSegments(op->base, 1);
             } else {
                 movsr(JitWidth::b8, 1, JitWidth::b32);
             }
@@ -276,7 +327,7 @@ void Jit::dynamic_movsw_op(DecodedOp* op) {
     } else {
         if (op->repZero || op->repNotZero) {
             if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
-                emulateSingleOp();
+                movs32rWithSegments(op->base, 2);
             } else {
                 movsr(JitWidth::b16, 2, JitWidth::b32);
             }
@@ -285,7 +336,86 @@ void Jit::dynamic_movsw_op(DecodedOp* op) {
         }
     }
 }
+void Jit::movs32rWithSegments(U32 base, U32 size) {
+    withCpuRegisterState(MOVS_REGS, MOVS_REGS, [&]() {
+        If(JitWidth::b32, getStringRegEcx()); {
+            // Ordinary RAM copies return here without faulting or invalidating
+            // code. Only unfinished special accesses need the interpreter.
+            callNonFaultingCpuHelper(size == 1 ? movsb32rRam : size == 2 ? movsw32rRam : movsd32rRam,
+                base, MOVS_REGS, MOVS_REGS);
+            If(JitWidth::b32, getStringRegEcx()); {
+                emulateSingleOp();
+                blockExit();
+            } EndIf();
+        } EndIf();
+    });
+}
+
+void Jit::movsd32rUnrolled(U32 base, U32 expected) {
+    RegPtr esi = getStringRegEsi();
+    RegPtr edi = getStringRegEdi();
+    RegPtr ecx = getStringRegEcx();
+    RegPtr guard = getTmpReg();
+    const U32 bytes = expected * 4;
+    mov(JitWidth::b32, guard, ecx);
+    xorValue(JitWidth::b32, guard, expected);
+    {
+        RegPtr direction = getTmpReg();
+        mov(JitWidth::b32, direction, getReadOnlyFlags());
+        andValue(JitWidth::b32, direction, DF);
+        orReg(JitWidth::b32, guard, direction);
+    }
+    if (cpu->thread->process->hasSetSeg[base])
+        orReg(JitWidth::b32, guard, getTmpSegAddress(base));
+    if (cpu->thread->process->hasSetSeg[ES])
+        orReg(JitWidth::b32, guard, getTmpSegAddress(ES));
+    {
+        RegPtr debug = readCPU(JitWidth::b8, offsetof(CPU, debugTrapActive));
+        andValue(JitWidth::b32, debug, 0xff);
+        orReg(JitWidth::b32, guard, debug);
+    }
+    {
+        RegPtr srcEnd = getTmpReg(), dstEnd = getTmpReg();
+        andValueWithDest(JitWidth::b32, srcEnd, esi, K_PAGE_MASK);
+        andValueWithDest(JitWidth::b32, dstEnd, edi, K_PAGE_MASK);
+        addValue(JitWidth::b32, srcEnd, bytes - 1);
+        addValue(JitWidth::b32, dstEnd, bytes - 1);
+        orReg(JitWidth::b32, srcEnd, dstEnd);
+        andValue(JitWidth::b32, srcEnd, K_PAGE_SIZE);
+        orReg(JitWidth::b32, guard, srcEnd);
+    }
+    IfNot(JitWidth::b32, guard); {
+        guard = nullptr;
+        auto onFailure = [esi, edi, ecx, this]() {
+            forceSyncBackIfNotCached(esi);
+            forceSyncBackIfNotCached(edi);
+            forceSyncBackIfNotCached(ecx);
+            emulateSingleOp();
+            blockExit();
+        };
+        withRamPage(esi, false, [&](RegPtr srcHost) {
+            withRamPage(edi, true, [&](RegPtr dstHost) {
+                RegPtr value = getTmpReg();
+                // Preserve x86 element order, including overlapping aliases.
+                for (U32 i = 0; i < expected; ++i) {
+                    read(JitWidth::b32, createMemPtr(srcHost, i * 4, false), value);
+                    write(JitWidth::b32, createMemPtr(dstHost, i * 4, false), value);
+                }
+            }, onFailure);
+        }, onFailure);
+        // Update guest registers outside the callbacks: the Wasm callback
+        // join restores its saved register-cache metadata. Failure exits
+        // this activation, so only a fully successful batch reaches here.
+        addValue(JitWidth::b32, esi, bytes);
+        addValue(JitWidth::b32, edi, bytes);
+        movValue(JitWidth::b32, ecx, 0);
+    } StartElse(); {
+        movs32rWithSegments(base, 4);
+    } EndIf();
+}
+
 void Jit::dynamic_movsd_op(DecodedOp* op) {
+    op->STR_FLAGS &= ~STR_UNROLLED_COPY;
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             emulateSingleOp();
@@ -294,8 +424,13 @@ void Jit::dynamic_movsd_op(DecodedOp* op) {
         }
     } else {
         if (op->repZero || op->repNotZero) {
-            if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base]) {
-                emulateSingleOp();
+            const U32 expected = movsdExpectedCount(op);
+            if (expected) {
+                op->STR_FLAGS |= STR_UNROLLED_COPY;
+                movsd32rUnrolled(op->base, expected);
+            } else if (cpu->thread->process->hasSetSeg[ES] || cpu->thread->process->hasSetSeg[op->base] ||
+                    (op->STR_FLAGS & STR_LARGE_COPY) || op->STR_COUNT <= 10) {
+                movs32rWithSegments(op->base, 4);
             } else {
                 movsr(JitWidth::b32, 4, JitWidth::b32);
             }
@@ -366,7 +501,120 @@ void Jit::cmps(U32 base, JitWidth valueWidth, U32 size, JitWidth regWidth, LazyF
     } EndIf();
 }
 
-void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags) {    
+// The prefix leaves at least one element for scalar subtraction and flags.
+// The base implementation is also usable by backends without vector emitters.
+void Jit::compareStringPrefix(U32 size, bool scan, bool backward, bool repZero,
+        RegPtr accumulator, RegPtr scratch, bool useHelper,
+        const std::function<void()>& helper, const std::function<void()>& onFailure) {
+    helper();
+}
+
+void Jit::compareStringR(JitWidth valueWidth, U32 size, U32 repZero,
+        LazyFlagType lazyFlags, bool scan) {
+    const U32 readRegs = (1u << 1) | (1u << 7) | (1u << (scan ? 0 : 6));
+    const U32 writtenRegs = scan ? readRegs & ~(1u << 0) : readRegs;
+    auto prefixHelper = scan ? (size == 1 ? scasb32rPrefix : size == 2 ? scasw32rPrefix : scasd32rPrefix)
+        : (size == 1 ? cmpsb32rPrefix : size == 2 ? cmpsw32rPrefix : cmpsd32rPrefix);
+    withCpuRegisterState(readRegs, writtenRegs, [&]() {
+        RegPtr edi = getStringRegEdi(), ecx = getStringRegEcx();
+        RegPtr esi = scan ? nullptr : getStringRegEsi();
+        RegPtr dest = scan ? (size == 1 ? getTmpReg8(0) : getTmpReg(0)) : getTmpReg8();
+        RegPtr src = getTmpReg8();
+        auto onFailure = [&]() {
+            forceSyncBackIfNotCached(ecx);
+            forceSyncBackIfNotCached(edi);
+            if (!scan) forceSyncBackIfNotCached(esi);
+            emulateSingleOp();
+            blockExit();
+        };
+        auto helper = [&]() {
+            withCpuRegisterState(readRegs, writtenRegs, [&]() {
+                callNonFaultingCpuHelper(prefixHelper, currentOp->base | (repZero ? 8 : 0), readRegs, writtenRegs);
+            });
+        };
+        auto compare = [&](bool backward) {
+            if (!scan) read(valueWidth, esi, nullptr, onFailure, dest);
+            read(valueWidth, edi, nullptr, onFailure, src);
+            if (backward) {
+                subValue(JitWidth::b32, edi, size);
+                if (!scan) subValue(JitWidth::b32, esi, size);
+            } else {
+                addValue(JitWidth::b32, edi, size);
+                if (!scan) addValue(JitWidth::b32, esi, size);
+            }
+            decReg(JitWidth::b32, ecx);
+        };
+        auto continuing = [&]() {
+            if (repZero) IfEqual(valueWidth, dest, src);
+            else IfNotEqual(valueWidth, dest, src);
+        };
+        auto direction = [&](bool backward) {
+            withCpuRegisterState(readRegs, writtenRegs, [&]() {
+                If(JitWidth::b32, ecx); {
+                    // Check the common immediate-stop case before any prefix.
+                    compare(backward);
+                    continuing(); {
+                        withCpuRegisterState(readRegs, writtenRegs, [&]() {
+                            // Native libc wins equal/byte scans; Wasm CMPS
+                            // wins with page checks outside its inner loop.
+                            // Pure vector loops also benefit at smaller counts.
+                            const bool useHelper = scan ? sizeof(void*) == 8 && size == 1 && !repZero && !backward
+                                : sizeof(void*) == 4 || repZero;
+                            IfGreaterThan(JitWidth::b32, ComparisonType::Unsigned, ecx, useHelper ? 16 : 16 / size); {
+                                auto prefix = [&]() {
+                                    compareStringPrefix(size, scan, backward, repZero != 0, dest, src, useHelper, helper, onFailure);
+                                };
+                                if (sizeof(void*) == 4) {
+                                    // A wide access near a page edge need not exit the JIT.
+                                    // The RAM helper can span pages and return to the scalar tail.
+                                    RegPtr guard = getTmpReg();
+                                    auto span = [&](RegPtr result, RegPtr address) {
+                                        andValueWithDest(JitWidth::b32, result, address, K_PAGE_MASK);
+                                        if (backward) subValue(JitWidth::b32, result, 16 - size);
+                                        else addValue(JitWidth::b32, result, 15);
+                                        andValue(JitWidth::b32, result, K_PAGE_SIZE);
+                                    };
+                                    span(guard, edi);
+                                    if (!scan) {
+                                        RegPtr sourceGuard = getTmpReg();
+                                        span(sourceGuard, esi);
+                                        orReg(JitWidth::b32, guard, sourceGuard);
+                                    }
+                                    If(JitWidth::b32, guard); {
+                                        guard = nullptr;
+                                        helper();
+                                    } StartElse(); {
+                                        prefix();
+                                    } EndIf();
+                                } else {
+                                    prefix();
+                                }
+                            } EndIf();
+                        });
+                        If(JitWidth::b32, ecx); {
+                            U32 label = LoopBegin();
+                            hintLikelyStringLoopContinue();
+                            compare(backward);
+                            If(JitWidth::b32, ecx); {
+                                continuing(); { Goto(label); } EndIf();
+                            } EndIf();
+                            LoopEnd();
+                        } EndIf();
+                    } EndIf();
+                    storeLazyFlagsDest(dest);
+                    storeLazyFlagsSrc(src);
+                    subReg(valueWidth, dest, src);
+                    storeLazyFlagsResult(dest);
+                    storeLazyFlagType(lazyFlags);
+                } EndIf();
+            });
+        };
+        IfDF(); { direction(true); } StartElse(); { direction(false); } EndIf();
+    });
+}
+
+void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags) {
+#ifdef BOXEDWINE_JIT_X86
     // U32 dBase = cpu->seg[ES].address;
     // U32 sBase = cpu->seg[base].address;
     // S32 inc = cpu->getDirection();
@@ -457,6 +705,9 @@ void Jit::cmpsr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
         } EndIf();
     }
     EndIf();
+#else
+    compareStringR(valueWidth, size, rep_zero, lazyFlags, false);
+#endif
 }
 
 void Jit::dynamic_cmpsb_op(DecodedOp* op) {
@@ -532,6 +783,35 @@ void Jit::dynamic_cmpsd_op(DecodedOp* op) {
     }
 }
 
+void Jit::fillLoad32r(U32 base, U32 size, bool store) {
+    const U32 readRegs = (1u << 0) | (1u << 1) | (1u << (store ? 7 : 6));
+    const U32 writtenRegs = store ? readRegs & ~(1u << 0) : readRegs;
+    const bool segmented = cpu->thread->process->hasSetSeg[base];
+    // Measured x64/Wasm crossovers. Tiny calls keep the existing scalar loop;
+    // the runtime guard also handles sites whose counts change after warmup.
+    const U32 inlineCount = segmented ? 0 : sizeof(void*) == 8 ? (store ? 32 : 16) : 4;
+    const JitWidth width = size == 1 ? JitWidth::b8 : size == 2 ? JitWidth::b16 : JitWidth::b32;
+    auto helper = store ? (size == 1 ? stosb32rRam : size == 2 ? stosw32rRam : stosd32rRam)
+        : (size == 1 ? lodsb32rRam : size == 2 ? lodsw32rRam : lodsd32rRam);
+    withCpuRegisterState(readRegs, writtenRegs, [&]() {
+        IfGreaterThan(JitWidth::b32, ComparisonType::Unsigned, getStringRegEcx(), inlineCount); {
+            // Restore the entry cache mapping before generating the small arm.
+            withCpuRegisterState(readRegs, writtenRegs, [&]() {
+                callNonFaultingCpuHelper(helper, base, readRegs, writtenRegs);
+                If(JitWidth::b32, getStringRegEcx()); {
+                    emulateSingleOp();
+                    blockExit();
+                } EndIf();
+            });
+        } StartElse(); {
+            if (!segmented) {
+                if (store) stosr(width, size, JitWidth::b32);
+                else lodsr(width, size, JitWidth::b32);
+            }
+        } EndIf();
+    });
+}
+
 void Jit::stos(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     // cpu->memory->writeb(cpu->seg[ES].address + EDI, AL);
     // EDI += cpu->getDirection();    
@@ -576,6 +856,7 @@ void Jit::stosr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         forceSyncBackIfNotCached(ecx);
         forceSyncBackIfNotCached(edi);
         emulateSingleOp();
+        blockExit();
     };
 
     IfDF(); {
@@ -611,11 +892,7 @@ void Jit::dynamic_stosb_op(DecodedOp* op) {
         }
     } else {
         if (op->repZero || op->repNotZero) {
-            if (cpu->thread->process->hasSetSeg[ES]) {
-                emulateSingleOp();
-            } else {
-                stosr(JitWidth::b8, 1, JitWidth::b32);
-            }
+            fillLoad32r(ES, 1, true);
         } else {
             stos(JitWidth::b8, 1, JitWidth::b32);
         }
@@ -630,11 +907,7 @@ void Jit::dynamic_stosw_op(DecodedOp* op) {
         }
     } else {
         if (op->repZero || op->repNotZero) {
-            if (cpu->thread->process->hasSetSeg[ES]) {
-                emulateSingleOp();
-            } else {
-                stosr(JitWidth::b16, 2, JitWidth::b32);
-            }
+            fillLoad32r(ES, 2, true);
         } else {
             stos(JitWidth::b16, 2, JitWidth::b32);
         }
@@ -649,11 +922,7 @@ void Jit::dynamic_stosd_op(DecodedOp* op) {
         }
     } else {
         if (op->repZero || op->repNotZero) {
-            if (cpu->thread->process->hasSetSeg[ES]) {
-                emulateSingleOp();
-            } else {
-                stosr(JitWidth::b32, 4, JitWidth::b32);
-            }
+            fillLoad32r(ES, 4, true);
         } else {
             stos(JitWidth::b32, 4, JitWidth::b32);
         }
@@ -712,6 +981,7 @@ void Jit::lodsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         forceSyncBackIfNotCached(esi);
         forceSyncBackIfNotCached(al);
         emulateSingleOp();
+        blockExit();
     };
 
     IfDF(); {
@@ -747,11 +1017,7 @@ void Jit::dynamic_lodsb_op(DecodedOp* op) {
         }
     } else {
         if (op->repZero || op->repNotZero) {
-            if (cpu->thread->process->hasSetSeg[op->base]) {
-                emulateSingleOp();
-            } else {
-                lodsr(JitWidth::b8, 1, JitWidth::b32);
-            }
+            fillLoad32r(op->base, 1, false);
         } else {
             lods(op->base, JitWidth::b8, 1, JitWidth::b32);
         }
@@ -766,11 +1032,7 @@ void Jit::dynamic_lodsw_op(DecodedOp* op) {
         }
     } else {
         if (op->repZero || op->repNotZero) {
-            if (cpu->thread->process->hasSetSeg[op->base]) {
-                emulateSingleOp();
-            } else {
-                lodsr(JitWidth::b16, 2, JitWidth::b32);
-            }
+            fillLoad32r(op->base, 2, false);
         } else {
             lods(op->base, JitWidth::b16, 2, JitWidth::b32);
         }
@@ -785,11 +1047,7 @@ void Jit::dynamic_lodsd_op(DecodedOp* op) {
         }
     } else {
         if (op->repZero || op->repNotZero) {
-            if (cpu->thread->process->hasSetSeg[op->base]) {
-                emulateSingleOp();
-            } else {
-                lodsr(JitWidth::b32, 4, JitWidth::b32);
-            }
+            fillLoad32r(op->base, 4, false);
         } else {
             lods(op->base, JitWidth::b32, 4, JitWidth::b32);
         }
@@ -838,6 +1096,7 @@ void Jit::scas(JitWidth valueWidth, U32 size, JitWidth regWidth, LazyFlagType la
 }
 
 void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, LazyFlagType lazyFlags) {
+#ifdef BOXEDWINE_JIT_X86
     // U32 dBase = cpu->seg[ES].address;
     // S32 inc = cpu->getDirection();
     // U32 count = ECX;
@@ -919,6 +1178,9 @@ void Jit::scasr(JitWidth valueWidth, U32 size, JitWidth regWidth, U32 rep_zero, 
         } EndIf();
     }
     EndIf();
+#else
+    compareStringR(valueWidth, size, rep_zero, lazyFlags, true);
+#endif
 }
 
 void Jit::dynamic_scasb_op(DecodedOp* op) {

@@ -12,10 +12,14 @@
 #ifdef __TEST
 
 #include "testString.h"
+#include "ksignal.h"
+#include "../../emulation/softmmu/kmemory_soft.h"
+#include "../../emulation/cpu/normal/normal_strings.h"
+#include "../../emulation/cpu/normal/normalCPU.h"
 #include "testCPU.h"
 #include "testX86Util.h"
 #include "testAsmJit.h"
-#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+#ifdef BOXEDWINE_JIT
 #include "../../emulation/cpu/jit/jitCodeGen.h"
 #endif
 
@@ -564,7 +568,7 @@ void runHotMovsCases(int width, bool address32) {
 // Segment-based overlap cases use the interpreter fallback. Exercise the
 // compiled flat-address copy too, including the small-overlap scalar loop.
 void runHotFlatOverlapMovsCases(int width, U32 profileCount, U32 profileElements = 12, bool checkedMemory = false) {
-#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+#ifdef BOXEDWINE_JIT
     for (U8 prefix : {PREFIX_REPE, PREFIX_REPNE}) {
         for (bool backward : {false, true}) {
             for (U32 separation : {0u, (U32)width, 7u, 8u, 24u, 128u}) {
@@ -588,13 +592,19 @@ void runHotFlatOverlapMovsCases(int width, U32 profileCount, U32 profileElements
                 // These profiles previously selected scalar or 64-bit loops.
                 // Later calls must work for all sizes, including overlap,
                 // when the same compiled instruction retains a vector path.
-                op->STR_COUNT = profileCount;
-                op->STR_TOTAL = profileElements * profileCount;
+                if (width == 4) {
+                    for (U32 i = 0; i < profileCount; ++i) profileMovsdCount(op, profileElements, !backward);
+                } else {
+                    op->STR_COUNT = profileCount;
+                    op->STR_TOTAL = profileElements * profileCount;
+                }
                 op->DF0 = !backward;
                 op->DF1 = backward;
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
                 if (checkedMemory) {
                     op->exceptionCount = LINEAR_MEMORY_RECOMPILE_FAULTS;
                 }
+#endif
                 // Reuse compiled code with nonzero and zero counts.
                 // Motorhead copies twelve dwords
                 // with EDI = ESI + 4 to propagate the first value.
@@ -844,6 +854,1130 @@ size_t caseCount(const T(&)[N]) {
     return N;
 }
 
+// Compare the shared helper against instruction-by-instruction copying. The
+// deliberately overlapping cases must not become memmove semantics.
+void runSharedMovsdCases() {
+    newInstruction(0);
+    const U32 arena = TEST_HEAP_ADDRESS + 0x10000;
+    const U32 length = 0x9000;
+    std::vector<U8> initial(length), expected(length), actual(length);
+    for (U32 i = 0; i < length; ++i) initial[i] = (U8)(i * 37 + (i >> 8));
+    for (bool backward : {false, true}) for (U32 offset : {0u, 1u, 3u})
+    for (S32 separation : {-9, -4, -1, 0, 1, 4, 9, 0x4000})
+    for (U32 count : {0u, 1u, 12u, 1025u}) {
+        expected = initial;
+        memory->memcpy(arena, initial.data(), length);
+        const U32 last = backward && count ? (count - 1) * 4 : 0;
+        U32 src = 0x2000 + offset + last, dst = src + separation;
+        const U32 step = backward ? (U32)-4 : 4;
+        cpu->seg[DS].address = arena;
+        cpu->seg[ES].address = arena + 0x1000;
+        cpu->reg[R_SI].u32 = count ? src : 0xfffffff0;
+        cpu->reg[R_DI].u32 = count ? dst - 0x1000 : 0xfffffff0;
+        cpu->reg[R_CX].u32 = count;
+        const U32 flags = ARITH_FLAG_MASK | (backward ? DF : 0);
+        cpu->setFlags(flags, FMASK_ALL);
+        for (U32 i = 0; i < count; ++i) {
+            U32 value;
+            ::memcpy(&value, expected.data() + src, 4);
+            ::memcpy(expected.data() + dst, &value, 4);
+            src += step;
+            dst += step;
+        }
+        movsd32r(cpu, DS);
+        memory->memcpy(actual.data(), arena, length);
+        if (actual != expected || cpu->reg[R_CX].u32 ||
+                cpu->reg[R_SI].u32 != (count ? src : 0xfffffff0) ||
+                cpu->reg[R_DI].u32 != (count ? dst - 0x1000 : 0xfffffff0) ||
+                (actualFlags(cpu, true) & FLAG_MASK) != flags) {
+            failed("shared REP MOVSD count=%u offset=%u separation=%d DF=%u", count, offset, separation, backward);
+        }
+    }
+
+    // Distinct guest addresses can reference overlapping host RAM.
+    const U32 alias = 0x30000000;
+    const RamPage ram = getMemData(memory)->mmu[arena >> K_PAGE_SHIFT].getRamPageIndex();
+    if (memory->mapPages(testContext().thread, alias >> K_PAGE_SHIFT, {ram}, PAGE_READ | PAGE_WRITE) != alias) {
+        failed("shared REP MOVSD alias mapping");
+        return;
+    }
+    for (bool backward : {false, true}) for (U32 separation : {1u, 3u, 4u}) {
+        memory->memcpy(arena, initial.data(), K_PAGE_SIZE);
+        expected = initial;
+        U32 src = 0x100 + (backward ? 31 * 4 + separation : 0);
+        U32 dst = src + (backward ? -separation : separation);
+        cpu->seg[DS].address = arena;
+        cpu->seg[ES].address = alias;
+        cpu->reg[R_SI].u32 = src;
+        cpu->reg[R_DI].u32 = dst;
+        cpu->reg[R_CX].u32 = 32;
+        cpu->setFlags(backward ? DF : 0, FMASK_ALL);
+        for (U32 i = 0; i < 32; ++i) {
+            U32 value;
+            ::memcpy(&value, expected.data() + src, 4);
+            ::memcpy(expected.data() + dst, &value, 4);
+            src += backward ? -4 : 4;
+            dst += backward ? -4 : 4;
+        }
+        movsd32r(cpu, DS);
+        memory->memcpy(actual.data(), arena, K_PAGE_SIZE);
+        if (::memcmp(actual.data(), expected.data(), K_PAGE_SIZE) || cpu->reg[R_CX].u32 ||
+                cpu->reg[R_SI].u32 != src || cpu->reg[R_DI].u32 != dst) {
+            failed("shared REP MOVSD aliased overlap separation=%u DF=%u", separation, backward);
+        }
+    }
+    memory->unmap(alias, K_PAGE_SIZE);
+}
+
+void runHotFlatMovsdMixedCounts() {
+#ifdef BOXEDWINE_JIT
+    // A memcpy site can receive very different lengths on successive calls.
+    // Count changes must reuse the same compiled code, including zero,
+    // short and multi-page copies with overlap.
+    for (U32 average : {1u, 6u, 7u, 2048u})
+    for (bool backward : {false, true}) for (bool overlap : {false, true}) {
+        newInstruction(CF | ZF | (backward ? DF : 0));
+        cpu->seg[DS].address = cpu->seg[ES].address = 0;
+        cpu->thread->process->hasSetSeg[DS] = false;
+        cpu->thread->process->hasSetSeg[ES] = false;
+        pushCode8(0xf3); pushCode8(0xa5);
+        pushCode8(0xb8); testPushCode32(0x12345678);
+        pushCode8(0xcd); pushCode8(0x97);
+        DecodedOp* op = cpu->getNextOp();
+        op->runCount = JIT_RUN_COUNT + 1;
+        for (U32 i = 0; i < 20; ++i) profileMovsdCount(op, average, true);
+        op->DF0 = !backward;
+        op->DF1 = backward;
+        startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+        if (!op->pfnJitCode || (op->flags2 & OP_FLAG2_TRACED_STUB)) {
+            failed("flat REP MOVSD profile case did not compile");
+            return;
+        }
+        const U32 arena = TEST_HEAP_ADDRESS + 0x10000, length = 0x6000;
+        std::vector<U8> initial(length), expected(length), actual(length);
+        for (U32 i = 0; i < length; ++i) initial[i] = (U8)(i * 37 + (i >> 8));
+        for (U32 count : {0u, 1u, 6u, 7u, 8u, 15u, 16u, 17u, 511u, 512u, 513u, 1025u, 0u, 1u}) {
+            expected = initial;
+            memory->memcpy(arena, initial.data(), length);
+            const U32 last = backward && count ? (count - 1) * 4 : 0;
+            U32 src = 0x1003 + last + (overlap && backward ? 1 : 0);
+            U32 dst = overlap ? src + (backward ? -1 : 1) : 0x3001 + last;
+            cpu->eip.u32 = 0;
+            const U32 flags = CF | ZF | (backward ? DF : 0);
+            cpu->setFlags(flags, FMASK_ALL);
+            cpu->reg[R_SI].u32 = arena + src;
+            cpu->reg[R_DI].u32 = arena + dst;
+            cpu->reg[R_CX].u32 = count;
+            for (U32 i = 0; i < count; ++i) {
+                U32 value;
+                ::memcpy(&value, expected.data() + src, 4);
+                ::memcpy(expected.data() + dst, &value, 4);
+                src += backward ? -4 : 4;
+                dst += backward ? -4 : 4;
+            }
+            void* previousCode = op->pfnJitCode;
+            runTestCPU();
+            if (op->pfnJitCode != previousCode) {
+                failed("flat REP MOVSD invalidated its block after a count change");
+            }
+            memory->memcpy(actual.data(), arena, length);
+            if (actual != expected || cpu->reg[R_CX].u32 ||
+                    cpu->reg[R_SI].u32 != arena + src || cpu->reg[R_DI].u32 != arena + dst ||
+                    cpu->reg[R_AX].u32 != 0x12345678 || (actualFlags(cpu, true) & FLAG_MASK) != flags) {
+                failed("flat REP MOVSD profile=%u count=%u DF=%u overlap=%u", average, count, backward, overlap);
+            }
+        }
+    }
+#endif
+}
+
+
+void runHotFlatMovsAliasedOverlap(U32 width, bool helper = false) {
+#ifdef BOXEDWINE_JIT
+    // Guest mappings may look disjoint while their RAM overlaps. Cover both
+    // overlap directions, vector tails, and copies spanning aliased pages.
+    const U32 vectorElements = 16 / width;
+    for (U32 count : {0u, 1u, vectorElements - 1, vectorElements, vectorElements + 1, 512u})
+    for (bool backward : {false, true}) for (U32 offset : {0x100u, K_PAGE_SIZE - 3u})
+    for (S32 separation : {-17, -16, -15, -4, -1, 0, 1, 4, 15, 16, 17}) {
+        newInstruction(CF | ZF | (backward ? DF : 0));
+        cpu->seg[DS].address = cpu->seg[ES].address = 0;
+        cpu->thread->process->hasSetSeg[DS] = false;
+        cpu->thread->process->hasSetSeg[ES] = false;
+        const U32 arena = TEST_HEAP_ADDRESS + 0x10000, alias = 0x30000000;
+        const U32 length = 3 * K_PAGE_SIZE;
+        std::vector<U8> initial(length), expected(length), actual(length);
+        for (U32 i = 0; i < length; ++i) initial[i] = (U8)(i * 37 + (i >> 8));
+        memory->memcpy(arena, initial.data(), length);
+        std::vector<RamPage> pages;
+        for (U32 page = 0; page < 3; ++page) {
+            pages.push_back(getMemData(memory)->mmu[(arena >> K_PAGE_SHIFT) + page].getRamPageIndex());
+        }
+        if (memory->mapPages(testContext().thread, alias >> K_PAGE_SHIFT, pages, PAGE_READ | PAGE_WRITE) != alias) {
+            failed("flat REP MOVS alias mapping");
+            return;
+        }
+        U32 src = offset + (backward && count ? (count - 1) * width : 0);
+        U32 dst = src + separation;
+        cpu->reg[R_SI].u32 = arena + src;
+        cpu->reg[R_DI].u32 = alias + dst;
+        cpu->reg[R_CX].u32 = count;
+        expected = initial;
+        for (U32 i = 0; i < count; ++i) {
+            U32 value = 0;
+            ::memcpy(&value, expected.data() + src, width);
+            ::memcpy(expected.data() + dst, &value, width);
+            src += backward ? -width : width;
+            dst += backward ? -width : width;
+        }
+        if (width == 2) pushCode8(0x66);
+        emitCode(STRING_MOVS, width, PREFIX_REPE);
+        pushCode8(0xb8); testPushCode32(0x12345678);
+        pushCode8(0xcd); pushCode8(0x97);
+        DecodedOp* op = cpu->getNextOp();
+        op->runCount = JIT_RUN_COUNT + 1;
+        if (width == 4) {
+            for (U32 i = 0; i < 20; ++i) profileMovsdCount(op, helper ? 2048 : 1, !backward);
+        } else {
+            op->STR_COUNT = 20;
+            op->STR_TOTAL = 20 * (helper ? 2048 : 1);
+        }
+        op->DF0 = !backward;
+        op->DF1 = backward;
+        startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+        if (!op->pfnJitCode) failed("flat REP MOVS alias case did not compile");
+        runTestCPU();
+        memory->memcpy(actual.data(), arena, length);
+        if (actual != expected || cpu->reg[R_CX].u32 ||
+                cpu->reg[R_SI].u32 != arena + src || cpu->reg[R_DI].u32 != alias + dst ||
+                cpu->reg[R_AX].u32 != 0x12345678 ||
+                (actualFlags(cpu, true) & FLAG_MASK) != (CF | ZF | (backward ? DF : 0))) {
+            failed("flat REP MOVS aliased overlap width=%u count=%u DF=%u offset=%u separation=%d",
+                width, count, backward, offset, separation);
+        }
+        memory->unmap(alias, length);
+    }
+#endif
+}
+
+
+void runSharedMovsFaultCases(U32 width, bool flat = false, bool helper = false) {
+    for (bool backward : {false, true}) for (bool sourceFault : {false, true})
+    for (U32 unaligned : {0u, 1u, 2u, 3u}) {
+        newInstruction(CF | ZF | (backward ? DF : 0));
+        auto& ctx = testContext();
+        cpu->seg[ES].address = TEST_HEAP_ADDRESS;
+        ctx.process->hasSetSeg[ES] = true;
+        const U32 flatBase = flat ? TEST_HEAP_ADDRESS : 0;
+        const U32 count = flat ? 1025 : 64;
+        if (flat) {
+            cpu->seg[DS].address = cpu->seg[ES].address = 0;
+            ctx.process->hasSetSeg[DS] = ctx.process->hasSetSeg[ES] = false;
+        }
+        const U32 src = (backward ? 0x200cu : 0x1ff0u) + unaligned;
+        const U32 dst = (backward ? 0x600cu : 0x5ff0u) + unaligned;
+        for (U32 i = 0; i < 0x2000; ++i) {
+            memory->writeb(TEST_HEAP_ADDRESS + 0x1000 + i, (U8)(i * 37 + 9));
+            memory->writeb(TEST_HEAP_ADDRESS + 0x5000 + i, 0x55);
+        }
+        cpu->reg[R_SI].u32 = src + flatBase;
+        cpu->reg[R_DI].u32 = dst + flatBase;
+        cpu->reg[R_CX].u32 = count;
+        cpu->reg[R_BX].u32 = 0x12345678;
+        const U32 repAddress = ctx.codeIp;
+        if (width == 2) pushCode8(0x66);
+        pushCode8(0xf3); pushCode8(width == 1 ? 0xa4 : 0xa5);
+        pushCode8(0xbb); testPushCode32(0xbad);
+        auto oldAction = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset();
+        action.flags = K_SA_SIGINFO;
+        action.handlerAndSigAction = ctx.codeIp;
+        pushCode8(0xcd); pushCode8(0x97);
+#ifdef BOXEDWINE_JIT
+        {
+            DecodedOp* op = cpu->getNextOp();
+            op->runCount = JIT_RUN_COUNT + 1;
+            // Exercise the inline loop for flat copies and the RAM helper
+            // followed by interpreter fallback for segmented copies.
+            if (width == 4) {
+                for (U32 i = 0; i < 20; ++i) profileMovsdCount(op, flat && !helper ? 1 : 2048, !backward);
+            } else {
+                op->STR_COUNT = 20;
+                op->STR_TOTAL = 20 * (flat && !helper ? 1 : 2048);
+            }
+            op->DF0 = !backward;
+            op->DF1 = backward;
+            startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+            if (!op->pfnJitCode) failed("REP MOVS fault case did not compile");
+        }
+#endif
+        const U32 page = TEST_HEAP_ADDRESS + (sourceFault
+            ? (backward ? 0x1000 : 0x2000) : (backward ? 0x5000 : 0x6000));
+        memory->mprotect(ctx.thread, page, K_PAGE_SIZE, sourceFault ? 0 : K_PROT_READ);
+        runTestCPU();
+        memory->mprotect(ctx.thread, page, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        const U32 completed = backward ? (src - 0x2000) / width + 1 : (0x2000 - src) / width;
+        const U32 advance = backward ? -completed * width : completed * width;
+        const U32 uc = cpu->reg[R_DX].u32;
+        if (action.sigInfo[0] != K_SIGSEGV || !uc || memory->readd(uc + 0x28) != src + flatBase + advance ||
+                memory->readd(uc + 0x24) != dst + flatBase + advance || memory->readd(uc + 0x3c) != count - completed ||
+                memory->readd(uc + 0x4c) != repAddress - TEST_CODE_ADDRESS ||
+                memory->readd(uc + 0x34) != 0x12345678 ||
+                (memory->readd(uc + 0x54) & (CF | ZF | DF)) != (CF | ZF | (backward ? DF : 0))) {
+            failed("shared REP MOVS partial fault width=%u source=%u DF=%u offset=%u", width, sourceFault, backward, unaligned);
+        }
+        std::vector<U8> expected(0x2000, 0x55);
+        for (U32 i = 0; i < completed; ++i) for (U32 j = 0; j < width; ++j) {
+            const U32 delta = backward ? -i * width : i * width;
+            expected[dst + delta + j - 0x5000] = memory->readb(TEST_HEAP_ADDRESS + src + delta + j);
+        }
+        std::vector<U8> actual(0x2000);
+        memory->memcpy(actual.data(), TEST_HEAP_ADDRESS + 0x5000, 0x2000);
+        if (actual != expected) failed("shared REP MOVS fault changed uncommitted bytes");
+        ctx.process->sigActions[K_SIGSEGV] = oldAction;
+    }
+}
+
+#ifdef BOXEDWINE_JIT
+#undef cpu
+#undef memory
+
+DecodedOp* compileMovsdSpanCase(CPU* cpu, U32 expected) {
+    DecodedOp* entry = cpu->getNextOp();
+    for (DecodedOp* op = entry; op; op = op->next) {
+        op->runCount = JIT_RUN_COUNT + 1;
+        if (op->inst == Movsd) {
+            for (U32 i = 0; i < 20; ++i) profileMovsdCount(op, expected, true);
+            op->DF0 = op->DF1 = 1;
+        }
+        if (op->isBranch()) break;
+    }
+    startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+    if (!entry->pfnJitCode || !(entry->STR_FLAGS & STR_UNROLLED_COPY)) {
+        testFail("REP MOVSD span case did not specialize");
+    }
+    return entry;
+}
+
+void setMovsdFlatSegments() {
+    auto& ctx = testContext();
+    ctx.cpu->seg[DS].address = ctx.cpu->seg[ES].address = 0;
+    ctx.process->hasSetSeg[DS] = ctx.process->hasSetSeg[ES] = true;
+}
+
+void runMovsdCountSelection() {
+    // Real interpreter warmup: fixed counts, a dominant size with occasional
+    // large copies, a polymorphic site, and backward-only copies.
+    for (U32 expected : {6u, 7u}) for (U32 mode : {0u, 1u, 2u, 3u}) {
+        testNewInstruction(mode == 3 ? DF : 0);
+        setMovsdFlatSegments();
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        testPushCode8(0xf3); testPushCode8(0xa5);
+        testPushCode8(0xcd); testPushCode8(0x97);
+        DecodedOp* op = cpu->getNextOp();
+        for (U32 i = 0; i < 100; ++i) {
+            cpu->eip.u32 = 0;
+            cpu->reg[R_SI].u32 = TEST_HEAP_ADDRESS + 0x1000;
+            cpu->reg[R_DI].u32 = TEST_HEAP_ADDRESS + 0x3000;
+            cpu->reg[R_CX].u32 = mode == 1 && i == 0 ? 1025 :
+                mode == 2 && (i & 1) ? 13 - expected : expected;
+            NormalCPU::getFunctionForOp(op)(cpu, op);
+        }
+        if (op->STR_COUNT != 100 || movsdExpectedCount(op) != (MOVSD_UNROLL_SUPPORTED && mode < 2 ? expected : 0)) {
+            testFail("REP MOVSD interpreter count profile expected=%u mode=%u", expected, mode);
+        }
+        op->runCount = JIT_RUN_COUNT + 1;
+        startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+        if (!op->pfnJitCode || bool(op->STR_FLAGS & STR_UNROLLED_COPY) != (MOVSD_UNROLL_SUPPORTED && mode < 2)) {
+            testFail("REP MOVSD profile selected wrong JIT body");
+        }
+    }
+    // Saturation cannot carry the six-dword hit count into the seven counter.
+    DecodedOp op;
+    for (U32 i = 0; i < 0x10010; ++i) profileMovsdCount(&op, 6, true);
+    if (op.STR_COUNT != 0xffff || op.MOVSD_SIZE_HITS != 0xffff || movsdExpectedCount(&op) != (MOVSD_UNROLL_SUPPORTED ? 6u : 0u)) {
+        testFail("REP MOVSD profile counter saturation");
+    }
+}
+
+void runRepSpanSafety() {
+    for (U32 count : {6u, 7u}) for (bool backward : {false, true})
+    for (bool sourceFault : {false, true}) for (bool firstPage : {false, true})
+    for (U32 unaligned : {0u, 1u, 2u, 3u}) {
+        testNewInstruction(CF | ZF | (backward ? DF : 0));
+        setMovsdFlatSegments();
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        KMemory* memory = ctx.memory;
+        const U32 src = (firstPage ? 0x1800 : backward ? 0x200c : 0x1ff0) + unaligned;
+        const U32 dst = (firstPage ? 0x5800 : backward ? 0x600c : 0x5ff0) + unaligned;
+        for (U32 i = 0; i < 0x2000; ++i) {
+            memory->writeb(TEST_HEAP_ADDRESS + 0x1000 + i, (U8)(i * 37 + 9));
+            memory->writeb(TEST_HEAP_ADDRESS + 0x5000 + i, 0x55);
+        }
+        cpu->reg[R_SI].u32 = TEST_HEAP_ADDRESS + src;
+        cpu->reg[R_DI].u32 = TEST_HEAP_ADDRESS + dst;
+        cpu->reg[R_CX].u32 = count;
+        cpu->reg[R_BX].u32 = 0x12345678;
+        const U32 repAddress = ctx.codeIp;
+        testPushCode8(0xf3); testPushCode8(0xa5);
+        testPushCode8(0xbb); testPushCode32(0xbad);
+        auto oldAction = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset();
+        action.flags = K_SA_SIGINFO;
+        action.handlerAndSigAction = ctx.codeIp;
+        testPushCode8(0xcd); testPushCode8(0x97);
+        compileMovsdSpanCase(cpu, count);
+        const U32 page = TEST_HEAP_ADDRESS + (firstPage ? ((sourceFault ? src : dst) & ~K_PAGE_MASK) :
+            sourceFault ? (backward ? 0x1000 : 0x2000) : (backward ? 0x5000 : 0x6000));
+        memory->mprotect(ctx.thread, page, K_PAGE_SIZE, sourceFault ? 0 : K_PROT_READ);
+        testRunCPU();
+        memory->mprotect(ctx.thread, page, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        const U32 completed = firstPage ? 0 : backward ? 4 : unaligned ? 3 : 4;
+        const U32 advance = backward ? -completed * 4 : completed * 4;
+        const U32 uc = cpu->reg[R_DX].u32;
+        if (action.sigInfo[0] != K_SIGSEGV || !uc ||
+                memory->readd(uc + 0x28) != TEST_HEAP_ADDRESS + src + advance ||
+                memory->readd(uc + 0x24) != TEST_HEAP_ADDRESS + dst + advance ||
+                memory->readd(uc + 0x3c) != count - completed ||
+                memory->readd(uc + 0x4c) != repAddress - TEST_CODE_ADDRESS ||
+                memory->readd(uc + 0x34) != 0x12345678 ||
+                (memory->readd(uc + 0x54) & (CF | ZF | DF)) != (CF | ZF | (backward ? DF : 0))) {
+            testFail("REP MOVSD span fault count=%u DF=%u source=%u first=%u offset=%u",
+                count, backward, sourceFault, firstPage, unaligned);
+        }
+        std::vector<U8> expected(0x2000, 0x55), actual(0x2000);
+        for (U32 i = 0; i < completed; ++i) for (U32 j = 0; j < 4; ++j) {
+            const U32 delta = backward ? -i * 4 : i * 4;
+            expected[dst + delta + j - 0x5000] = memory->readb(TEST_HEAP_ADDRESS + src + delta + j);
+        }
+        memory->memcpy(actual.data(), TEST_HEAP_ADDRESS + 0x5000, 0x2000);
+        if (actual != expected) testFail("REP MOVSD span fault wrote uncommitted bytes");
+        ctx.process->sigActions[K_SIGSEGV] = oldAction;
+    }
+    for (U32 count : {6u, 7u}) for (S32 separation : {-4, -1, 0, 1, 4})
+    for (bool backward : {false, true}) {
+        testNewInstruction(CF | ZF | (backward ? DF : 0));
+        setMovsdFlatSegments();
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        KMemory* memory = ctx.memory;
+        const U32 page = TEST_HEAP_ADDRESS + 0x10000, alias = 0x30000000;
+        std::vector<U8> initial(K_PAGE_SIZE), actual(K_PAGE_SIZE);
+        for (U32 i = 0; i < K_PAGE_SIZE; ++i) initial[i] = (U8)(i * 37 + (i >> 8));
+        auto expected = initial;
+        memory->memcpy(page, initial.data(), K_PAGE_SIZE);
+        RamPage ram = getMemData(memory)->mmu[page >> K_PAGE_SHIFT].getRamPageIndex();
+        if (memory->mapPages(ctx.thread, alias >> K_PAGE_SHIFT, {ram}, PAGE_READ | PAGE_WRITE) != alias) {
+            testFail("REP MOVSD span alias mapping failed");
+            return;
+        }
+        const U32 src = 0x803 + (backward ? (count - 1) * 4 : 0), dst = src + separation;
+        cpu->reg[R_SI].u32 = page + src;
+        cpu->reg[R_DI].u32 = alias + dst;
+        cpu->reg[R_CX].u32 = count;
+        for (U32 i = 0; i < count; ++i) {
+            const U32 delta = backward ? -i * 4 : i * 4;
+            U32 value;
+            ::memcpy(&value, expected.data() + (src + delta), 4);
+            ::memcpy(expected.data() + (dst + delta), &value, 4);
+        }
+        testPushCode8(0xf3); testPushCode8(0xa5);
+        testPushCode8(0xcd); testPushCode8(0x97);
+        compileMovsdSpanCase(cpu, count);
+        testRunCPU();
+        memory->memcpy(actual.data(), page, K_PAGE_SIZE);
+        const U32 advance = backward ? -count * 4 : count * 4;
+        if (actual != expected || cpu->reg[R_CX].u32 || cpu->reg[R_SI].u32 != page + src + advance ||
+                cpu->reg[R_DI].u32 != alias + dst + advance ||
+                (actualFlags(cpu, true) & FLAG_MASK) != (CF | ZF | (backward ? DF : 0))) {
+            testFail("REP MOVSD aliased span count=%u separation=%d DF=%u", count, separation, backward);
+        }
+        memory->unmap(alias, K_PAGE_SIZE);
+    }
+    // Last fitting byte and first crossing byte, independently for each range.
+    for (U32 count : {6u, 7u}) for (U32 srcExtra : {0u, 1u, 3u}) for (U32 dstExtra : {0u, 1u, 3u}) {
+        testNewInstruction(CF | ZF);
+        setMovsdFlatSegments();
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        const U32 src = 0x2000 - count * 4 + srcExtra, dst = 0x6000 - count * 4 + dstExtra;
+        std::vector<U8> data(0x8000), actual(0x8000);
+        for (U32 i = 0; i < data.size(); ++i) data[i] = (U8)(i * 19 + (i >> 8));
+        auto expected = data;
+        ::memcpy(expected.data() + dst, data.data() + src, count * 4);
+        ctx.memory->memcpy(TEST_HEAP_ADDRESS, data.data(), data.size());
+        cpu->reg[R_SI].u32 = TEST_HEAP_ADDRESS + src;
+        cpu->reg[R_DI].u32 = TEST_HEAP_ADDRESS + dst;
+        cpu->reg[R_CX].u32 = count;
+        testPushCode8(0xf3); testPushCode8(0xa5);
+        testPushCode8(0xb8); testPushCode32(0x12345678);
+        testPushCode8(0xcd); testPushCode8(0x97);
+        compileMovsdSpanCase(cpu, count);
+        testRunCPU();
+        ctx.memory->memcpy(actual.data(), TEST_HEAP_ADDRESS, data.size());
+        if (actual != expected || cpu->reg[R_CX].u32 || cpu->reg[R_SI].u32 != TEST_HEAP_ADDRESS + src + count * 4 ||
+                cpu->reg[R_DI].u32 != TEST_HEAP_ADDRESS + dst + count * 4 || cpu->reg[R_AX].u32 != 0x12345678 ||
+                (actualFlags(cpu, true) & FLAG_MASK) != (CF | ZF)) {
+            testFail("REP MOVSD span boundary count=%u offsets=%u,%u", count, srcExtra, dstExtra);
+        }
+    }
+    for (U32 count : {6u, 7u}) {
+        testNewInstruction(CF | ZF);
+        setMovsdFlatSegments();
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        std::vector<U8> replacement(count * 4, 0x90);
+        const U32 value = 0x12345678;
+        ::memcpy(replacement.data(), &value, 4);
+        ctx.memory->memcpy(TEST_HEAP_ADDRESS + 0x500, replacement.data(), replacement.size());
+        cpu->reg[R_SI].u32 = TEST_HEAP_ADDRESS + 0x500;
+        cpu->reg[R_DI].u32 = TEST_CODE_ADDRESS + 3;
+        cpu->reg[R_CX].u32 = count;
+        testPushCode8(0xf3); testPushCode8(0xa5);
+        testPushCode8(0xb8); testPushCode32(0xbad);
+        for (U32 i = 4; i < count * 4; ++i) testPushCode8(0x90);
+        testPushCode8(0xcd); testPushCode8(0x97);
+        compileMovsdSpanCase(cpu, count);
+        testRunCPU();
+        if (cpu->reg[R_AX].u32 != value || cpu->reg[R_CX].u32 ||
+                cpu->reg[R_SI].u32 != TEST_HEAP_ADDRESS + 0x500 + count * 4 ||
+                cpu->reg[R_DI].u32 != TEST_CODE_ADDRESS + 3 + count * 4 ||
+                (actualFlags(cpu, true) & FLAG_MASK) != (CF | ZF)) {
+            testFail("REP MOVSD span self-modifying code count=%u", count);
+        }
+        testNewInstruction(CF | ZF);
+        setMovsdFlatSegments();
+        cpu = ctx.cpu;
+        cpu->reg[R_CX].u32 = 0;
+        cpu->reg[R_SI].u32 = cpu->reg[R_DI].u32 = 0xfffffffd;
+        testPushCode8(0xf3); testPushCode8(0xa5);
+        testPushCode8(0xcd); testPushCode8(0x97);
+        compileMovsdSpanCase(cpu, count);
+        testRunCPU();
+        if (cpu->reg[R_CX].u32 || cpu->reg[R_SI].u32 != 0xfffffffd || cpu->reg[R_DI].u32 != 0xfffffffd ||
+                (actualFlags(cpu, true) & FLAG_MASK) != (CF | ZF)) {
+            testFail("REP MOVSD zero count touched state");
+        }
+    }
+    // A writable alias retained as COW must detach before the batched store.
+    for (U32 count : {6u, 7u}) {
+        testNewInstruction(CF | ZF);
+        setMovsdFlatSegments();
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        KMemory* memory = ctx.memory;
+        const U32 src = TEST_HEAP_ADDRESS + 0x10000, dst = TEST_HEAP_ADDRESS + 0x12000;
+        const U32 alias = 0x30000000;
+        for (U32 i = 0; i < count; ++i) {
+            memory->writed(src + i * 4, 0x12340000 + i);
+            memory->writed(dst + i * 4, 0x55555555);
+        }
+        auto* data = getMemData(memory);
+        RamPage ram = data->mmu[dst >> K_PAGE_SHIFT].getRamPageIndex();
+        memory->mapPages(ctx.thread, alias >> K_PAGE_SHIFT, {ram}, PAGE_READ | PAGE_WRITE);
+        data->mmu[dst >> K_PAGE_SHIFT].setPageType(memory, dst >> K_PAGE_SHIFT, PageType::CopyOnWrite);
+        data->onPageChanged(dst >> K_PAGE_SHIFT);
+        cpu->reg[R_SI].u32 = src;
+        cpu->reg[R_DI].u32 = dst;
+        cpu->reg[R_CX].u32 = count;
+        testPushCode8(0xf3); testPushCode8(0xa5);
+        testPushCode8(0xcd); testPushCode8(0x97);
+        compileMovsdSpanCase(cpu, count);
+        testRunCPU();
+        for (U32 i = 0; i < count; ++i) {
+            if (memory->readd(dst + i * 4) != 0x12340000 + i || memory->readd(alias + i * 4) != 0x55555555) {
+                testFail("REP MOVSD span failed to detach COW page");
+            }
+        }
+        memory->unmap(alias, K_PAGE_SIZE);
+
+        // Enable a data breakpoint after compilation. Preserve the existing
+        // interpreter behavior: report the trap at the instruction boundary.
+        testNewInstruction(CF | ZF);
+        setMovsdFlatSegments();
+        cpu = ctx.cpu;
+        memory = ctx.memory;
+        memory->writed(src, 0x87654321);
+        memory->writed(dst, 0);
+        cpu->reg[R_SI].u32 = src;
+        cpu->reg[R_DI].u32 = dst;
+        cpu->reg[R_CX].u32 = count;
+        testPushCode8(0xf3); testPushCode8(0xa5);
+        testPushCode8(0xcd); testPushCode8(0x97);
+        auto oldAction = ctx.process->sigActions[K_SIGTRAP];
+        auto& action = ctx.process->sigActions[K_SIGTRAP];
+        action.reset();
+        action.flags = K_SA_SIGINFO;
+        action.handlerAndSigAction = ctx.codeIp;
+        testPushCode8(0xcd); testPushCode8(0x97);
+        compileMovsdSpanCase(cpu, count);
+        ctx.thread->debugRegs[0] = dst;
+        ctx.thread->debugRegs[7] = 3 | (1u << 16) | (3u << 18);
+        ctx.thread->updateDebugTrapActive();
+        testRunCPU();
+        const U32 uc = cpu->reg[R_DX].u32;
+        if (action.sigInfo[0] != K_SIGTRAP || !uc || memory->readd(dst) != 0x87654321 ||
+                memory->readd(uc + 0x28) != src + count * 4 || memory->readd(uc + 0x24) != dst + count * 4 ||
+                memory->readd(uc + 0x3c) != 0 || memory->readd(uc + 0x4c) != 2) {
+            testFail("REP MOVSD span bypassed data breakpoint progress");
+        }
+        for (U32& reg : ctx.thread->debugRegs) reg = 0;
+        ctx.thread->updateDebugTrapActive();
+        ctx.process->sigActions[K_SIGTRAP] = oldAction;
+    }
+
+}
+
+#define cpu (testContext().cpu)
+#define memory (testContext().memory)
+#endif
+
+void runHotMovsLiveState(U32 width) {
+#ifdef BOXEDWINE_JIT
+    // Exercise both the inline vector loop and the shared helper with live
+    // GP/XMM/x87 state and lazy arithmetic flags on entry and continuation.
+    for (U32 profile : {1u, 2048u}) for (bool backward : {false, true})
+    for (bool segments : {false, true}) for (U32 offset : {0u, 4093u})
+    for (U32 count : {0u, 1u, 7u, 32u, 1025u}) {
+        newInstruction(backward ? DF : 0);
+        cpu->fpu.FINIT();
+        const U32 arena = TEST_HEAP_ADDRESS;
+        const U32 segBase = segments ? arena : 0;
+        cpu->seg[DS].address = cpu->seg[ES].address = segBase;
+        cpu->thread->process->hasSetSeg[DS] = segments;
+        cpu->thread->process->hasSetSeg[ES] = segments;
+        const U32 last = backward && count ? (count - 1) * width : 0;
+        const U32 source = count ? arena + 0x2000 + offset + last - segBase : 0xffffefffu;
+        const U32 dest = count ? arena + 0xa000 + offset + last - segBase : 0xffffdfffu;
+        for (U32 i = 0; i < count; ++i)
+            writeMemoryValue(arena + 0x2000 + offset + i * width, width, 0x87654321 + i);
+        auto imm = [](U32 reg, U32 value) { pushCode8(0xb8 + reg); testPushCode32(value); };
+        imm(0, 0x12345678);
+        pushCode8(0x66); pushCode8(0x0f); pushCode8(0x6e); pushCode8(0xc0); // movd xmm0,eax
+        pushCode8(0xd9); pushCode8(0xe8); // fld1
+        imm(0, 5); pushCode8(0x83); pushCode8(0xe8); pushCode8(6); // sub eax,6
+        imm(3, 0xabcdef99); imm(6, source); imm(7, dest); imm(1, count);
+        if (width == 2) pushCode8(0x66);
+        pushCode8(0xf3); pushCode8(width == 1 ? 0xa4 : 0xa5);
+        pushCode8(0x9c); pushCode8(0x5d); // pushfd; pop ebp
+        pushCode8(0x66); pushCode8(0x0f); pushCode8(0x7e); pushCode8(0xc2); // movd edx,xmm0
+        pushCode8(0xd9); pushCode8(0x1d); testPushCode32(arena + 0x100 - segBase); // fstp float
+        pushCode8(0xcd); pushCode8(0x97);
+        DecodedOp* entry = cpu->getNextOp();
+        for (DecodedOp* op = entry; op; op = op->next) {
+            op->runCount = JIT_RUN_COUNT + 1;
+            if (op->inst == Movsb || op->inst == Movsw || op->inst == Movsd) {
+                if (width == 4) {
+                    for (U32 i = 0; i < 20; ++i) profileMovsdCount(op, profile, true);
+                } else {
+                    op->STR_COUNT = 20; op->STR_TOTAL = profile * 20;
+                }
+                op->DF0 = op->DF1 = 1;
+            }
+            if (op->isBranch()) break;
+        }
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+        runTestCPU();
+        const U32 delta = backward ? -count * width : count * width;
+        if (cpu->reg[R_AX].u32 != 0xffffffff || cpu->reg[R_CX].u32 ||
+                cpu->reg[R_DX].u32 != 0x12345678 || cpu->reg[R_BX].u32 != 0xabcdef99 ||
+                (cpu->reg[R_BP].u32 & (ARITH_FLAG_MASK | DF)) != (CF | PF | AF | SF | (backward ? DF : 0)) ||
+                cpu->reg[R_SI].u32 != source + delta || cpu->reg[R_DI].u32 != dest + delta ||
+                memory->readd(arena + 0x100) != 0x3f800000) {
+            failed("REP live state profile=%u count=%u offset=%u DF=%u segments=%u", profile, count, offset, backward, segments);
+            return;
+        }
+        for (U32 i = 0; i < count; ++i) {
+            if (readMemoryValue(arena + 0xa000 + offset + i * width, width) != ((0x87654321 + i) & widthMask(width * 8))) {
+                failed("REP live state copy result"); return;
+            }
+        }
+    }
+#endif
+}
+
+void runSharedMovsCodeWrite(U32 width) {
+    newInstruction(0);
+    memory->writed(TEST_HEAP_ADDRESS + 0x500, 0x12345678);
+    cpu->reg[R_SI].u32 = 0x500;
+    cpu->reg[R_DI].u32 = TEST_CODE_ADDRESS + (width == 2 ? 4 : 3);
+    cpu->reg[R_CX].u32 = 4 / width;
+    if (width == 2) pushCode8(0x66);
+    pushCode8(0xf3); pushCode8(width == 1 ? 0xa4 : 0xa5);
+    pushCode8(0xb8); testPushCode32(0xbad); // REP replaces this immediate.
+    pushCode8(0xcd); pushCode8(0x97);
+#ifdef BOXEDWINE_JIT
+    DecodedOp* entry = cpu->getNextOp();
+    entry->runCount = JIT_RUN_COUNT + 1;
+    if (width == 4) {
+        for (U32 i = 0; i < 20; ++i) profileMovsdCount(entry, 2048, true);
+    } else {
+        entry->STR_COUNT = 20; entry->STR_TOTAL = 2048 * 20;
+    }
+    startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+    if (!entry->pfnJitCode) failed("shared REP MOVS code-write case did not compile");
+#endif
+    runTestCPU();
+    if (cpu->reg[R_AX].u32 != 0x12345678 || cpu->reg[R_CX].u32 ||
+            cpu->reg[R_SI].u32 != 0x504 || cpu->reg[R_DI].u32 != TEST_CODE_ADDRESS + (width == 2 ? 8 : 7)) {
+        failed("shared REP MOVS executed stale code after writing the next instruction");
+    }
+}
+
+void runHotFillLoadLiveState(U32 width, bool store) {
+#ifdef BOXEDWINE_JIT
+    // Exercise the inline small loop and the RAM helper with live
+    // GP/XMM/x87 state and lazy arithmetic flags on entry and continuation.
+    for (bool backward : {false, true})
+    for (bool segments : {false, true}) for (U32 offset : {0u, 4093u})
+    for (U32 count : {0u, 1u, 7u, 32u, 1025u}) {
+        newInstruction(backward ? DF : 0);
+        cpu->fpu.FINIT();
+        const U32 arena = TEST_HEAP_ADDRESS;
+        const U32 segBase = segments ? arena : 0;
+        cpu->seg[DS].address = cpu->seg[ES].address = segBase;
+        cpu->thread->process->hasSetSeg[DS] = segments;
+        cpu->thread->process->hasSetSeg[ES] = segments;
+        const U32 last = backward && count ? (count - 1) * width : 0;
+        const U32 source = count ? arena + 0x2000 + offset + last - segBase : 0xffffefffu;
+        const U32 dest = count ? arena + 0xa000 + offset + last - segBase : 0xffffdfffu;
+        for (U32 i = 0; i < count; ++i)
+            writeMemoryValue(arena + 0x2000 + offset + i * width, width, 0x87654321 + i);
+        auto imm = [](U32 reg, U32 value) { pushCode8(0xb8 + reg); testPushCode32(value); };
+        imm(0, 0x12345678);
+        pushCode8(0x66); pushCode8(0x0f); pushCode8(0x6e); pushCode8(0xc0); // movd xmm0,eax
+        pushCode8(0xd9); pushCode8(0xe8); // fld1
+        imm(0, 5); pushCode8(0x83); pushCode8(0xe8); pushCode8(6); // sub eax,6
+        imm(0, 0x88776655); imm(3, 0xabcdef99); imm(6, source); imm(7, dest); imm(1, count);
+        if (width == 2) pushCode8(0x66);
+        pushCode8(0xf3); pushCode8((store ? 0xaa : 0xac) + (width != 1));
+        pushCode8(0x9c); pushCode8(0x5d); // pushfd; pop ebp
+        pushCode8(0x66); pushCode8(0x0f); pushCode8(0x7e); pushCode8(0xc2); // movd edx,xmm0
+        pushCode8(0xd9); pushCode8(0x1d); testPushCode32(arena + 0x100 - segBase); // fstp float
+        pushCode8(0xcd); pushCode8(0x97);
+        DecodedOp* entry = cpu->getNextOp();
+        for (DecodedOp* op = entry; op; op = op->next) {
+            op->runCount = JIT_RUN_COUNT + 1;
+            if (op->repZero || op->repNotZero) op->DF0 = op->DF1 = 1;
+            if (op->isBranch()) break;
+        }
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+        runTestCPU();
+        const U32 delta = backward ? -count * width : count * width;
+        U32 expectedEax = 0x88776655;
+        if (!store && count) setAccumulator(expectedEax, width, 0x87654321 + (backward ? 0 : count - 1));
+        if (cpu->reg[R_AX].u32 != expectedEax || cpu->reg[R_CX].u32 ||
+                cpu->reg[R_DX].u32 != 0x12345678 || cpu->reg[R_BX].u32 != 0xabcdef99 ||
+                (cpu->reg[R_BP].u32 & (ARITH_FLAG_MASK | DF)) != (CF | PF | AF | SF | (backward ? DF : 0)) ||
+                cpu->reg[R_SI].u32 != source + (store ? 0 : delta) || cpu->reg[R_DI].u32 != dest + (store ? delta : 0) ||
+                memory->readd(arena + 0x100) != 0x3f800000) {
+            failed("REP STOS/LODS live state store=%u count=%u offset=%u DF=%u segments=%u", store, count, offset, backward, segments);
+            return;
+        }
+        if (store) for (U32 i = 0; i < count; ++i) {
+            if (readMemoryValue(arena + 0xa000 + offset + i * width, width) != (0x88776655 & widthMask(width * 8))) {
+                failed("REP STOS/LODS live state copy result"); return;
+            }
+        }
+    }
+#endif
+}
+
+void runSharedFillLoadFaultCases(U32 width, bool store, bool flat) {
+    for (bool backward : {false, true}) for (U32 count : {3u, 64u, 1025u})
+    for (U32 unaligned = 0; unaligned < width; ++unaligned) {
+        newInstruction(CF | ZF | (backward ? DF : 0));
+        auto& ctx = testContext();
+        cpu->seg[ES].address = TEST_HEAP_ADDRESS;
+        ctx.process->hasSetSeg[ES] = true;
+        const U32 flatBase = flat ? TEST_HEAP_ADDRESS : 0;
+        const bool sourceFault = !store;
+        if (flat) {
+            cpu->seg[DS].address = cpu->seg[ES].address = 0;
+            ctx.process->hasSetSeg[DS] = ctx.process->hasSetSeg[ES] = false;
+        }
+        const U32 src = (backward ? 0x2000u + width : 0x2000u - width * 2) + unaligned;
+        const U32 dst = (backward ? 0x6000u + width : 0x6000u - width * 2) + unaligned;
+        for (U32 i = 0; i < 0x2000; ++i) {
+            memory->writeb(TEST_HEAP_ADDRESS + 0x1000 + i, (U8)(i * 37 + 9));
+            memory->writeb(TEST_HEAP_ADDRESS + 0x5000 + i, 0x55);
+        }
+        cpu->reg[R_SI].u32 = src + flatBase;
+        cpu->reg[R_DI].u32 = dst + flatBase;
+        cpu->reg[R_CX].u32 = count;
+        cpu->reg[R_AX].u32 = 0x88776655;
+        cpu->reg[R_BX].u32 = 0x12345678;
+        const U32 repAddress = ctx.codeIp;
+        if (width == 2) pushCode8(0x66);
+        pushCode8(0xf3); pushCode8((store ? 0xaa : 0xac) + (width != 1));
+        pushCode8(0xbb); testPushCode32(0xbad);
+        auto oldAction = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset();
+        action.flags = K_SA_SIGINFO;
+        action.handlerAndSigAction = ctx.codeIp;
+        pushCode8(0xcd); pushCode8(0x97);
+#ifdef BOXEDWINE_JIT
+        {
+            DecodedOp* op = cpu->getNextOp();
+            op->runCount = JIT_RUN_COUNT + 1;
+            op->DF0 = !backward;
+            op->DF1 = backward;
+            startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+            if (!op->pfnJitCode) failed("REP STOS/LODS fault case did not compile");
+        }
+#endif
+        const U32 page = TEST_HEAP_ADDRESS + (sourceFault
+            ? (backward ? 0x1000 : 0x2000) : (backward ? 0x5000 : 0x6000));
+        memory->mprotect(ctx.thread, page, K_PAGE_SIZE, sourceFault ? 0 : K_PROT_READ);
+        runTestCPU();
+        memory->mprotect(ctx.thread, page, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        const U32 completed = backward ? (src - 0x2000) / width + 1 : (0x2000 - src) / width;
+        const U32 advance = backward ? -completed * width : completed * width;
+        U32 expectedEax = 0x88776655;
+        if (!store && completed) setAccumulator(expectedEax, width, readMemoryValue(TEST_HEAP_ADDRESS + src + (backward ? -(completed - 1) * width : (completed - 1) * width), width));
+        const U32 uc = cpu->reg[R_DX].u32;
+        if (action.sigInfo[0] != K_SIGSEGV || !uc || memory->readd(uc + 0x28) != src + flatBase + (store ? 0 : advance) ||
+                memory->readd(uc + 0x24) != dst + flatBase + (store ? advance : 0) || memory->readd(uc + 0x3c) != count - completed ||
+                memory->readd(uc + 0x4c) != repAddress - TEST_CODE_ADDRESS ||
+                memory->readd(uc + 0x34) != 0x12345678 || memory->readd(uc + 0x40) != expectedEax ||
+                (memory->readd(uc + 0x54) & (CF | ZF | DF)) != (CF | ZF | (backward ? DF : 0))) {
+            failed("shared REP STOS/LODS partial fault width=%u source=%u DF=%u offset=%u", width, sourceFault, backward, unaligned);
+        }
+        std::vector<U8> expected(0x2000, 0x55);
+        if (store) for (U32 i = 0; i < completed; ++i) for (U32 j = 0; j < width; ++j) {
+            const U32 delta = backward ? -i * width : i * width;
+            expected[dst + delta + j - 0x5000] = (U8)(0x88776655 >> (j * 8));
+        }
+        std::vector<U8> actual(0x2000);
+        memory->memcpy(actual.data(), TEST_HEAP_ADDRESS + 0x5000, 0x2000);
+        if (actual != expected) failed("shared REP STOS/LODS fault changed uncommitted bytes");
+        ctx.process->sigActions[K_SIGSEGV] = oldAction;
+    }
+}
+
+void runSharedStosCodeWrite(U32 width) {
+    newInstruction(0);
+    cpu->reg[R_AX].u32 = 0x12345678;
+    cpu->reg[R_SI].u32 = 0x500;
+    cpu->reg[R_DI].u32 = TEST_CODE_ADDRESS + (width == 2 ? 4 : 3);
+    cpu->reg[R_CX].u32 = 4 / width;
+    if (width == 2) pushCode8(0x66);
+    pushCode8(0xf3); pushCode8(width == 1 ? 0xaa : 0xab);
+    pushCode8(0xb8); testPushCode32(0xbad); // REP replaces this immediate.
+    pushCode8(0xcd); pushCode8(0x97);
+#ifdef BOXEDWINE_JIT
+    DecodedOp* entry = cpu->getNextOp();
+    entry->runCount = JIT_RUN_COUNT + 1;
+    startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+    if (!entry->pfnJitCode) failed("shared REP STOS code-write case did not compile");
+#endif
+    runTestCPU();
+    const U32 expected = width == 1 ? 0x78787878 : width == 2 ? 0x56785678 : 0x12345678;
+    if (cpu->reg[R_AX].u32 != expected || cpu->reg[R_CX].u32 ||
+            cpu->reg[R_SI].u32 != 0x500 || cpu->reg[R_DI].u32 != TEST_CODE_ADDRESS + (width == 2 ? 8 : 7)) {
+        failed("shared REP STOS code-write width=%u eax=%x expected=%x ecx=%x esi=%x edi=%x", width, cpu->reg[R_AX].u32, expected, cpu->reg[R_CX].u32, cpu->reg[R_SI].u32, cpu->reg[R_DI].u32);
+    }
+}
+
+void runFillLoadSpecialPages(U32 width, bool store) {
+#ifdef BOXEDWINE_JIT
+    const U32 count = 64;
+    const U32 buffer = TEST_HEAP_ADDRESS + 0x10000;
+    auto compile = [&]() {
+        DecodedOp* entry = cpu->getNextOp();
+        for (DecodedOp* op = entry; op; op = op->next) {
+            op->runCount = JIT_RUN_COUNT + 1;
+            if (op->repZero || op->repNotZero) op->DF0 = op->DF1 = 1;
+            if (op->isBranch()) break;
+        }
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+        if (!entry->pfnJitCode) failed("STOS/LODS special-page test did not compile");
+    };
+    auto init = [&]() {
+        newInstruction(CF | ZF);
+        cpu->seg[DS].address = cpu->seg[ES].address = 0;
+        cpu->thread->process->hasSetSeg[DS] = cpu->thread->process->hasSetSeg[ES] = false;
+        cpu->reg[R_AX].u32 = 0x12345678;
+        cpu->reg[R_CX].u32 = count;
+        cpu->reg[R_SI].u32 = cpu->reg[R_DI].u32 = buffer;
+        for (U32 i = 0; i < count; ++i) writeMemoryValue(buffer + i * width, width, 0x88776600 + i);
+        if (width == 2) pushCode8(0x66);
+        pushCode8(0xf3); pushCode8((store ? 0xaa : 0xac) + (width != 1));
+    };
+    if (store) {
+        // A large helper call must not return to a block that REP just rewrote.
+        init();
+        const U32 dest = testContext().codeIp;
+        cpu->reg[R_AX].u32 = 0x90909090;
+        cpu->reg[R_DI].u32 = dest;
+        pushCode8(0xb8); testPushCode32(0xbad);
+        for (U32 i = 5; i < count * width; ++i) pushCode8(0x90);
+        pushCode8(0xcd); pushCode8(0x97);
+        compile();
+        runTestCPU();
+        if (cpu->reg[R_AX].u32 != 0x90909090 || cpu->reg[R_CX].u32 ||
+                cpu->reg[R_DI].u32 != dest + count * width || cpu->reg[R_SI].u32 != buffer) {
+            failed("REP STOS helper code-write width=%u", width);
+        }
+
+        init();
+        auto* pages = getMemData(memory);
+        const U32 alias = 0x30000000;
+        RamPage ram = pages->mmu[buffer >> K_PAGE_SHIFT].getRamPageIndex();
+        memory->mapPages(testContext().thread, alias >> K_PAGE_SHIFT, {ram}, PAGE_READ | PAGE_WRITE);
+        pages->mmu[buffer >> K_PAGE_SHIFT].setPageType(memory, buffer >> K_PAGE_SHIFT, PageType::CopyOnWrite);
+        pages->onPageChanged(buffer >> K_PAGE_SHIFT);
+        pushCode8(0xcd); pushCode8(0x97);
+        compile();
+        runTestCPU();
+        for (U32 i = 0; i < count; ++i) {
+            if (readMemoryValue(buffer + i * width, width) != (0x12345678 & widthMask(width * 8)) ||
+                    readMemoryValue(alias + i * width, width) != ((0x88776600 + i) & widthMask(width * 8))) {
+                failed("REP STOS COW width=%u", width);
+            }
+        }
+        memory->unmap(alias, K_PAGE_SIZE);
+    }
+
+    // Turn on a watchpoint after compilation, in the middle of the RAM span.
+    // The optimized helper must leave it to the ordinary memory accessors.
+    init();
+    pushCode8(0xcd); pushCode8(0x97);
+    auto& ctx = testContext();
+    auto oldAction = ctx.process->sigActions[K_SIGTRAP];
+    auto& action = ctx.process->sigActions[K_SIGTRAP];
+    action.reset();
+    action.flags = K_SA_SIGINFO;
+    action.handlerAndSigAction = ctx.codeIp;
+    pushCode8(0xcd); pushCode8(0x97);
+    compile();
+    ctx.thread->debugRegs[0] = buffer + 8 * width;
+    ctx.thread->debugRegs[7] = 3 | ((store ? 1u : 3u) << 16);
+    ctx.thread->updateDebugTrapActive();
+    runTestCPU();
+    const U32 uc = cpu->reg[R_DX].u32;
+    U32 expectedEax = 0x12345678;
+    if (!store) setAccumulator(expectedEax, width, 0x88776600 + count - 1);
+    if (store && (action.sigInfo[0] != K_SIGTRAP || !uc ||
+            memory->readd(uc + 0x28) != buffer + (store ? 0 : count * width) ||
+            memory->readd(uc + 0x24) != buffer + (store ? count * width : 0) ||
+            memory->readd(uc + 0x3c) != 0 || memory->readd(uc + 0x40) != expectedEax ||
+            memory->readd(uc + 0x4c) != (width == 2 ? 3 : 2))) {
+        failed("REP STOS/LODS watchpoint width=%u store=%u", width, store);
+    }
+    // Ordinary memory accessors currently report write watchpoints only.
+    // LODS must still preserve scalar behavior with debugTrapActive set.
+    if (!store && (cpu->reg[R_AX].u32 != expectedEax || cpu->reg[R_CX].u32 ||
+            cpu->reg[R_SI].u32 != buffer + count * width || cpu->reg[R_DI].u32 != buffer ||
+            (actualFlags(cpu, true) & (CF | ZF | DF)) != (CF | ZF))) {
+        failed("REP LODS with debug watchpoint width=%u", width);
+    }
+    for (U32& reg : ctx.thread->debugRegs) reg = 0;
+    ctx.thread->updateDebugTrapActive();
+    ctx.process->sigActions[K_SIGTRAP] = oldAction;
+#endif
+}
+
+void runHotCompareLiveState(U32 width, bool scan) {
+#ifdef BOXEDWINE_JIT
+    for (bool backward : {false, true}) for (bool segments : {false, true})
+    for (bool keepEqual : {false, true}) for (U32 offset : {0u, 4093u})
+    for (U32 count : {0u, 1u, 7u, 32u, 1025u}) for (U32 stopMode : {0u, 1u, 2u, 3u}) {
+        newInstruction(backward ? DF : 0);
+        cpu->fpu.FINIT();
+        const U32 arena = TEST_HEAP_ADDRESS, segBase = segments ? arena : 0;
+        cpu->seg[DS].address = cpu->seg[ES].address = segBase;
+        cpu->thread->process->hasSetSeg[DS] = cpu->thread->process->hasSetSeg[ES] = segments;
+        const U32 last = backward && count ? (count - 1) * width : 0;
+        const U32 source = count ? arena + 0x2000 + offset + last - segBase : 0xffffefffu;
+        const U32 dest = count ? arena + 0xa000 + offset + last - segBase : 0xffffdfffu;
+        const U32 stop = stopMode == 0 ? count : stopMode == 1 ? 0 : stopMode == 2 ? count / 2 : count - 1;
+        const U32 lhs = 0x88776655 & widthMask(width * 8);
+        for (U32 i = 0; i < count; ++i) {
+            const U32 delta = backward ? 0u - i * width : i * width;
+            writeMemoryValue(segBase + source + delta, width, lhs);
+            writeMemoryValue(segBase + dest + delta, width, lhs ^ ((keepEqual != (i == stop)) ? 0 : 0x81));
+        }
+        auto imm = [](U32 reg, U32 value) { pushCode8(0xb8 + reg); testPushCode32(value); };
+        imm(0, 0x12345678);
+        pushCode8(0x66); pushCode8(0x0f); pushCode8(0x6e); pushCode8(0xc0);
+        pushCode8(0xd9); pushCode8(0xe8); // fld1
+        imm(0, 5); pushCode8(0x83); pushCode8(0xe8); pushCode8(6);
+        imm(0, 0x88776655); imm(3, 0xabcdef99); imm(6, source); imm(7, dest); imm(1, count);
+        if (width == 2) pushCode8(0x66);
+        pushCode8(keepEqual ? 0xf3 : 0xf2); pushCode8((scan ? 0xae : 0xa6) + (width != 1));
+        pushCode8(0x9c); pushCode8(0x5d); // pushfd; pop ebp
+        pushCode8(0x66); pushCode8(0x0f); pushCode8(0x7e); pushCode8(0xc2);
+        pushCode8(0xd9); pushCode8(0x1d); testPushCode32(arena + 0x100 - segBase);
+        pushCode8(0xcd); pushCode8(0x97);
+        DecodedOp* entry = cpu->getNextOp();
+        for (DecodedOp* op = entry; op; op = op->next) {
+            op->runCount = JIT_RUN_COUNT + 1;
+            if (op->repZero || op->repNotZero) op->DF0 = op->DF1 = 1;
+            if (op->isBranch()) break;
+        }
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+        if (!entry->pfnJitCode) failed("REP compare live-state case did not compile");
+        runTestCPU();
+        const U32 done = std::min(count, stop + 1), delta = backward ? 0u - done * width : done * width;
+        U32 flags = CF | PF | AF | SF;
+        if (done) {
+            const U32 rhs = lhs ^ ((keepEqual != (done - 1 == stop)) ? 0 : 0x81);
+            flags = subFlags(lhs, rhs, lhs - rhs, width * 8);
+        }
+        flags |= backward ? DF : 0;
+        if (cpu->reg[R_AX].u32 != 0x88776655 || cpu->reg[R_CX].u32 != count - done ||
+                cpu->reg[R_DX].u32 != 0x12345678 || cpu->reg[R_BX].u32 != 0xabcdef99 ||
+                (cpu->reg[R_BP].u32 & (ARITH_FLAG_MASK | DF)) != flags ||
+                cpu->reg[R_SI].u32 != source + (scan ? 0 : delta) || cpu->reg[R_DI].u32 != dest + delta ||
+                memory->readd(arena + 0x100) != 0x3f800000) {
+            failed("REP compare live state width=%u scan=%u count=%u stop=%u offset=%u DF=%u segments=%u equal=%u ecx=%x flags=%x expected=%x",
+                width, scan, count, stopMode, offset, backward, segments, keepEqual,
+                cpu->reg[R_CX].u32, cpu->reg[R_BP].u32 & FLAG_MASK, flags);
+            return;
+        }
+    }
+#endif
+}
+
+void runCompareFaultCases(U32 width, bool scan) {
+    for (bool backward : {false, true}) for (bool flat : {false, true})
+    for (bool keepEqual : {false, true}) for (bool sourceFault : {false, true})
+    for (bool stopBeforeFault : {false, true})
+    for (U32 count : {3u, 64u, 1025u}) for (U32 unaligned = 0; unaligned < width; ++unaligned) {
+        if (scan && sourceFault) continue;
+        newInstruction(backward ? DF : 0);
+        auto& ctx = testContext();
+        const U32 segBase = flat ? 0 : TEST_HEAP_ADDRESS;
+        cpu->seg[DS].address = cpu->seg[ES].address = segBase;
+        ctx.process->hasSetSeg[DS] = ctx.process->hasSetSeg[ES] = !flat;
+        const U32 src = (backward ? 0x2000u + width : 0x2000u - width * 2) + unaligned;
+        const U32 dst = src + 0x4000;
+        // Byte patterns stay equal/unequal even for unaligned words/dwords.
+        for (U32 i = 0; i < 0x2000; ++i) {
+            memory->writeb(TEST_HEAP_ADDRESS + 0x1000 + i, 0x55);
+            memory->writeb(TEST_HEAP_ADDRESS + 0x5000 + i, keepEqual ? 0x55 : 0x66);
+        }
+        const U32 source = src + TEST_HEAP_ADDRESS - segBase, dest = dst + TEST_HEAP_ADDRESS - segBase;
+        const U32 accessible = backward ? (src - 0x2000) / width + 1 : (0x2000 - src) / width;
+        const U32 lhs = 0x55555555 & widthMask(width * 8);
+        const U32 rhs = keepEqual ? lhs ^ 1u : lhs;
+        if (stopBeforeFault) {
+            // A SIMD read crosses the protected page, but the last accessible
+            // element stops REP. The speculative wide access must not fault.
+            const U32 delta = (accessible - 1) * width;
+            writeMemoryValue(segBase + dest + (backward ? 0u - delta : delta), width, rhs);
+        }
+        auto imm = [](U32 reg, U32 value) { pushCode8(0xb8 + reg); testPushCode32(value); };
+        imm(0, 5); pushCode8(0x83); pushCode8(0xe8); pushCode8(6); // lazy entry flags
+        imm(0, 0x55555555); imm(3, 0x12345678); imm(6, source); imm(7, dest); imm(1, count);
+        const U32 repAddress = ctx.codeIp;
+        if (width == 2) pushCode8(0x66);
+        pushCode8(keepEqual ? 0xf3 : 0xf2); pushCode8((scan ? 0xae : 0xa6) + (width != 1));
+        imm(3, 0xbad);
+        auto oldAction = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = ctx.codeIp;
+        pushCode8(0xcd); pushCode8(0x97);
+#ifdef BOXEDWINE_JIT
+        DecodedOp* entry = cpu->getNextOp();
+        for (DecodedOp* op = entry; op; op = op->next) {
+            op->runCount = JIT_RUN_COUNT + 1;
+            if (op->repZero || op->repNotZero) op->DF0 = op->DF1 = 1;
+            if (op->isBranch()) break;
+        }
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+#endif
+        const U32 page = TEST_HEAP_ADDRESS + (sourceFault ? (backward ? 0x1000 : 0x2000) : (backward ? 0x5000 : 0x6000));
+        memory->mprotect(ctx.thread, page, K_PAGE_SIZE, 0);
+        runTestCPU();
+        memory->mprotect(ctx.thread, page, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        const U32 completed = backward ? (src - 0x2000) / width + 1 : (0x2000 - src) / width;
+        const U32 advance = backward ? 0u - completed * width : completed * width;
+        const U32 uc = action.sigInfo[0] == K_SIGSEGV ? cpu->reg[R_DX].u32 : 0;
+        const bool valid = action.sigInfo[0] == K_SIGSEGV && uc &&
+            memory->readd(uc + 0x28) == source + (scan ? 0 : advance) &&
+            memory->readd(uc + 0x24) == dest + advance && memory->readd(uc + 0x3c) == count - completed &&
+            memory->readd(uc + 0x4c) == repAddress - TEST_CODE_ADDRESS &&
+            memory->readd(uc + 0x34) == 0x12345678 && memory->readd(uc + 0x40) == 0x55555555 &&
+            (memory->readd(uc + 0x54) & FLAG_MASK) == (CF | PF | AF | SF | (backward ? DF : 0));
+        const bool stopped = action.sigInfo[0] != K_SIGSEGV && cpu->reg[R_BX].u32 == 0xbad &&
+            cpu->reg[R_SI].u32 == source + (scan ? 0 : advance) && cpu->reg[R_DI].u32 == dest + advance &&
+            cpu->reg[R_CX].u32 == count - completed && cpu->reg[R_AX].u32 == 0x55555555 &&
+            (actualFlags(cpu, true) & FLAG_MASK) == (subFlags(lhs, rhs, lhs - rhs, width * 8) | (backward ? DF : 0));
+        ctx.process->sigActions[K_SIGSEGV] = oldAction;
+        if (stopBeforeFault ? !stopped : !valid) {
+            failed("REP compare fault width=%u scan=%u DF=%u flat=%u equal=%u source=%u count=%u offset=%u stopBeforeFault=%u ecx=%x expected=%x esi=%x edi=%x flags=%x eip=%x expectedEip=%x",
+                width, scan, backward, flat, keepEqual, sourceFault, count, unaligned, stopBeforeFault,
+                uc ? memory->readd(uc + 0x3c) : 0, count - completed,
+                uc ? memory->readd(uc + 0x28) : 0, uc ? memory->readd(uc + 0x24) : 0,
+                uc ? memory->readd(uc + 0x54) : 0, uc ? memory->readd(uc + 0x4c) : 0, repAddress - TEST_CODE_ADDRESS);
+            return;
+        }
+    }
+}
+
+void runHotMovsDirectionSwitch(int width) {
+#ifdef BOXEDWINE_JIT
+    for (bool profileBackward : {false, true}) {
+        for (U32 separation : {0u, 1u, 7u, 80u}) {
+            newInstruction(0);
+            Seg savedDs = cpu->seg[DS], savedEs = cpu->seg[ES];
+            bool savedHasDs = cpu->thread->process->hasSetSeg[DS];
+            bool savedHasEs = cpu->thread->process->hasSetSeg[ES];
+            cpu->seg[DS].address = cpu->seg[ES].address = 0;
+            cpu->thread->process->hasSetSeg[DS] = cpu->thread->process->hasSetSeg[ES] = false;
+            if (width == 2) pushCode8(0x66);
+            emitCode(STRING_MOVS, width, PREFIX_REPE);
+            pushCode8(0xcd); pushCode8(0x97);
+            DecodedOp* op = cpu->getNextOp();
+            op->runCount = JIT_RUN_COUNT + 1;
+            op->DF0 = !profileBackward; op->DF1 = profileBackward;
+            op->STR_COUNT = 20; op->STR_TOTAL = 20;
+            if (width == 4) { op->STR_FLAGS = STR_WIDE_COPY; op->MOVSD_SIZE_HITS = 0; }
+            startNewJIT(cpu, TEST_CODE_ADDRESS, op);
+            auto entry = op->pfnJitCode;
+            if (!entry || (op->flags2 & OP_FLAG2_TRACED_STUB)) failed("MOVS direction switch missing JIT");
+            for (bool backward : {profileBackward, !profileBackward, profileBackward}) {
+                for (U32 count : {0u, 1u, 3u, 17u}) {
+                    U8 expected[OVERLAP_SIZE];
+                    initOverlapBytes(expected, sizeof(expected));
+                    writeOverlapBytes(expected, sizeof(expected));
+                    U32 src = 80 + (backward ? separation : 0);
+                    U32 dst = 80 + (backward ? 0 : separation);
+                    cpu->eip.u32 = 0;
+                    U32 flags = ARITH_FLAG_MASK | (backward ? DF : 0);
+                    cpu->setFlags(flags, FMASK_ALL);
+                    cpu->reg[R_SI].u32 = TEST_HEAP_ADDRESS + OVERLAP_BASE + src;
+                    cpu->reg[R_DI].u32 = TEST_HEAP_ADDRESS + OVERLAP_BASE + dst;
+                    cpu->reg[R_CX].u32 = count;
+                    for (U32 i = 0; i < count; ++i) {
+                        writeCaseValue(expected, dst, width, readCaseValue(expected, src, width));
+                        src += backward ? 0u - width : width;
+                        dst += backward ? 0u - width : width;
+                    }
+                    runTestCPU();
+                    verifyOverlapBytes(expected, sizeof(expected), "MOVS changed direction at same site");
+                    if (cpu->reg[R_CX].u32 || cpu->reg[R_SI].u32 != TEST_HEAP_ADDRESS + OVERLAP_BASE + src ||
+                            cpu->reg[R_DI].u32 != TEST_HEAP_ADDRESS + OVERLAP_BASE + dst ||
+                            (actualFlags(cpu, true) & FLAG_MASK) != flags || op->pfnJitCode != entry) {
+                        failed("MOVS direction switch width=%d count=%u profileDF=%d actualDF=%d", width, count, profileBackward, backward);
+                    }
+                }
+            }
+            cpu->seg[DS] = savedDs; cpu->seg[ES] = savedEs;
+            cpu->thread->process->hasSetSeg[DS] = savedHasDs;
+            cpu->thread->process->hasSetSeg[ES] = savedHasEs;
+        }
+    }
+#endif
+}
+
 } // namespace
 
 void testMovsb_0x0a4() {
@@ -854,6 +1988,14 @@ void testMovsb_0x0a4() {
 }
 
 void testMovsb_0x2a4() {
+    runHotMovsDirectionSwitch(1);
+    runHotMovsLiveState(1);
+    runSharedMovsFaultCases(1);
+    runSharedMovsFaultCases(1, true);
+    runSharedMovsFaultCases(1, true, true);
+    runSharedMovsCodeWrite(1);
+    runHotFlatMovsAliasedOverlap(1);
+    runHotFlatMovsAliasedOverlap(1, true);
     runStringCases(STRING_MOVS, 1, true, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(1, true);
     runHotMovsCases(1, true);
@@ -865,6 +2007,14 @@ void testMovsb_0x2a4() {
 }
 
 void testMovsw_0x0a5() {
+    runHotMovsDirectionSwitch(2);
+    runHotMovsLiveState(2);
+    runSharedMovsFaultCases(2);
+    runSharedMovsFaultCases(2, true);
+    runSharedMovsFaultCases(2, true, true);
+    runSharedMovsCodeWrite(2);
+    runHotFlatMovsAliasedOverlap(2);
+    runHotFlatMovsAliasedOverlap(2, true);
     runStringCases(STRING_MOVS, 2, false, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(2, false);
     runHotMovsCases(2, false);
@@ -875,6 +2025,20 @@ void testMovsw_0x0a5() {
 }
 
 void testMovsd_0x2a5() {
+    runHotMovsDirectionSwitch(4);
+    runHotMovsLiveState(4);
+    runSharedMovsdCases();
+    runHotFlatMovsdMixedCounts();
+    runHotFlatMovsAliasedOverlap(4);
+    runHotFlatMovsAliasedOverlap(4, true);
+    runSharedMovsFaultCases(4);
+    runSharedMovsFaultCases(4, true);
+    runSharedMovsFaultCases(4, true, true);
+    runSharedMovsCodeWrite(4);
+#ifdef BOXEDWINE_JIT
+    runMovsdCountSelection();
+    if (MOVSD_UNROLL_SUPPORTED) runRepSpanSafety();
+#endif
     runStringCases(STRING_MOVS, 4, true, MOVE_CASES, caseCount(MOVE_CASES));
     runOverlapMovsCases(4, true);
     runHotMovsCases(4, true);
@@ -890,16 +2054,22 @@ void testCmpsb_0x0a6() {
 }
 
 void testCmpsb_0x2a6() {
+    runHotCompareLiveState(1, false);
+    runCompareFaultCases(1, false);
     runStringCases(STRING_CMPS, 1, true, COMPARE_CASES, caseCount(COMPARE_CASES));
     runPageBoundaryCases(STRING_CMPS, 1, true);
 }
 
 void testCmpsw_0x0a7() {
+    runHotCompareLiveState(2, false);
+    runCompareFaultCases(2, false);
     runStringCases(STRING_CMPS, 2, false, COMPARE_CASES, caseCount(COMPARE_CASES));
     runPageBoundaryCases(STRING_CMPS, 2, false);
 }
 
 void testCmpsd_0x2a7() {
+    runHotCompareLiveState(4, false);
+    runCompareFaultCases(4, false);
     runStringCases(STRING_CMPS, 4, true, COMPARE_CASES, caseCount(COMPARE_CASES));
     runPageBoundaryCases(STRING_CMPS, 4, true);
 }
@@ -910,16 +2080,31 @@ void testStosb_0x0aa() {
 }
 
 void testStosb_0x2aa() {
+    runHotFillLoadLiveState(1, true);
+    runSharedFillLoadFaultCases(1, true, false);
+    runSharedFillLoadFaultCases(1, true, true);
+    runFillLoadSpecialPages(1, true);
+    runSharedStosCodeWrite(1);
     runStringCases(STRING_STOS, 1, true, STORE_CASES, caseCount(STORE_CASES));
     runPageBoundaryCases(STRING_STOS, 1, true);
 }
 
 void testStosw_0x0ab() {
+    runHotFillLoadLiveState(2, true);
+    runSharedFillLoadFaultCases(2, true, false);
+    runSharedFillLoadFaultCases(2, true, true);
+    runFillLoadSpecialPages(2, true);
+    runSharedStosCodeWrite(2);
     runStringCases(STRING_STOS, 2, false, STORE_CASES, caseCount(STORE_CASES));
     runPageBoundaryCases(STRING_STOS, 2, false);
 }
 
 void testStosd_0x2ab() {
+    runHotFillLoadLiveState(4, true);
+    runSharedFillLoadFaultCases(4, true, false);
+    runSharedFillLoadFaultCases(4, true, true);
+    runFillLoadSpecialPages(4, true);
+    runSharedStosCodeWrite(4);
     runStringCases(STRING_STOS, 4, true, STORE_CASES, caseCount(STORE_CASES));
     runPageBoundaryCases(STRING_STOS, 4, true);
 }
@@ -930,16 +2115,28 @@ void testLodsb_0x0ac() {
 }
 
 void testLodsb_0x2ac() {
+    runHotFillLoadLiveState(1, false);
+    runSharedFillLoadFaultCases(1, false, false);
+    runSharedFillLoadFaultCases(1, false, true);
+    runFillLoadSpecialPages(1, false);
     runStringCases(STRING_LODS, 1, true, LOAD_CASES, caseCount(LOAD_CASES));
     runPageBoundaryCases(STRING_LODS, 1, true);
 }
 
 void testLodsw_0x0ad() {
+    runHotFillLoadLiveState(2, false);
+    runSharedFillLoadFaultCases(2, false, false);
+    runSharedFillLoadFaultCases(2, false, true);
+    runFillLoadSpecialPages(2, false);
     runStringCases(STRING_LODS, 2, false, LOAD_CASES, caseCount(LOAD_CASES));
     runPageBoundaryCases(STRING_LODS, 2, false);
 }
 
 void testLodsd_0x2ad() {
+    runHotFillLoadLiveState(4, false);
+    runSharedFillLoadFaultCases(4, false, false);
+    runSharedFillLoadFaultCases(4, false, true);
+    runFillLoadSpecialPages(4, false);
     runStringCases(STRING_LODS, 4, true, LOAD_CASES, caseCount(LOAD_CASES));
     runPageBoundaryCases(STRING_LODS, 4, true);
 }
@@ -950,16 +2147,22 @@ void testScasb_0x0ae() {
 }
 
 void testScasb_0x2ae() {
+    runHotCompareLiveState(1, true);
+    runCompareFaultCases(1, true);
     runStringCases(STRING_SCAS, 1, true, SCAN_CASES, caseCount(SCAN_CASES));
     runPageBoundaryCases(STRING_SCAS, 1, true);
 }
 
 void testScasw_0x0af() {
+    runHotCompareLiveState(2, true);
+    runCompareFaultCases(2, true);
     runStringCases(STRING_SCAS, 2, false, SCAN_CASES, caseCount(SCAN_CASES));
     runPageBoundaryCases(STRING_SCAS, 2, false);
 }
 
 void testScasd_0x2af() {
+    runHotCompareLiveState(4, true);
+    runCompareFaultCases(4, true);
     runStringCases(STRING_SCAS, 4, true, SCAN_CASES, caseCount(SCAN_CASES));
     runPageBoundaryCases(STRING_SCAS, 4, true);
 }

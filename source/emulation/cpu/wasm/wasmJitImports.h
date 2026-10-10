@@ -62,6 +62,12 @@ enum WasmHelperIdx {
     HELPER_PROFILE_EXIT_GENERIC = 52,
     HELPER_PROFILE_INLINE_COND = 53,
     HELPER_PROFILE_RMW = 54,
+    // Append typed helpers without changing existing imports in saved modules.
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    HELPER_CPU_FIRST = 55,
+#else
+    HELPER_CPU_FIRST = 48,
+#endif
 };
 
 #endif

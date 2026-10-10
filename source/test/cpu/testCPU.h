@@ -69,6 +69,7 @@ void testWasmJitMaterializedConditions();
 void testWasmJitForwardLoopBranches();
 void testWasmJitForwardBranches();
 void testWasmJitLoopReachability();
+void testWasmJitRepMovsdState();
 void testWasmJitMultipleLoops();
 void testWasmJitConditionalSideExits();
 void testWasmJitSseCompareConditions();

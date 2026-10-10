@@ -7,6 +7,7 @@
 
 #ifdef BOXEDWINE_WASM_JIT
 #include "../../emulation/cpu/jit/jitCodeGen.h"
+#include "../../emulation/cpu/normal/normal_strings.h"
 namespace {
 
 bool conditionExpected(U32 condition, U32 flags) {
@@ -294,6 +295,71 @@ void testWasmJitForwardBranches() {
     if (cpu->reg[0].u32 != 2 || cpu->reg[3].u32 != 3 || cpu->reg[1].u32 ||
             !interiorOp || !interiorOp->pfnJitCode) {
         testFail("WASM loop interior entry must retain dispatcher fallback");
+    }
+}
+
+void testWasmJitRepMovsdState() {
+    // Exercise both the adaptive loop and each expected-count body, with
+    // flat, zero-base-but-set, and genuinely nonzero segment bases.
+    for (U32 profile : {1u, 6u, 7u}) for (U32 mode : {0u, 1u, 2u}) for (bool backward : {false, true})
+    for (U32 count : {0u, 1u, 6u, 7u, 8u, 12u, 15u, 16u, 17u, 32u, 511u, 512u, 513u, 1025u}) {
+        testNewInstruction(backward ? DF : 0);
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        KMemory* mem = ctx.memory;
+        const U32 sourceBase = mode == 2 ? TEST_HEAP_ADDRESS : 0;
+        const U32 destBase = mode == 2 ? TEST_HEAP_ADDRESS + 0x1000 : 0;
+        cpu->seg[DS].address = sourceBase;
+        cpu->seg[ES].address = destBase;
+        ctx.process->hasSetSeg[DS] = ctx.process->hasSetSeg[ES] = mode != 0;
+        cpu->fpu.FINIT();
+        for (U32 i = 0; i < 0x1800; ++i) {
+            mem->writeb(TEST_HEAP_ADDRESS + 0x800 + i, (U8)(i * 37 + 9));
+            mem->writeb(TEST_HEAP_ADDRESS + 0x3800 + i, 0x55);
+        }
+        const U32 offset = count & 3;
+        const U32 last = backward && count ? (count - 1) * 4 : 0;
+        // Zero-count REP must not access either invalid address.
+        const U32 src = count ? TEST_HEAP_ADDRESS + 0x800 + offset + last - sourceBase : 0xfffffff0;
+        const U32 dst = count ? TEST_HEAP_ADDRESS + 0x3800 + offset + last - destBase : 0xfffffff0;
+        testPushCode8(0xd9); testPushCode8(0xe8); // fld1 (live x87 cache)
+        emitMov(0, 0x12345678);
+        testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x6e); testPushCode8(0xc0); // movd xmm0,eax
+        emitMov(0, 0xffffffff);
+        testPushCode8(0x83); testPushCode8(0xc0); testPushCode8(1); // add eax,1 (live lazy flags)
+        emitMov(3, 0x87654321); emitMov(6, src); emitMov(7, dst); emitMov(1, count);
+        testPushCode8(0xf3); testPushCode8(0xa5);
+        testPushCode8(0x9c); testPushCode8(0x5d); // pushfd; pop ebp
+        testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x7e); testPushCode8(0xc2); // movd edx,xmm0
+        testPushCode8(0xd9); testPushCode8(0x1d); testPushCode32(TEST_HEAP_ADDRESS + 0x200 - sourceBase);
+        testPushCode8(0xcd); testPushCode8(0x97);
+        DecodedOp* entry = cpu->getNextOp();
+        for (DecodedOp* op = entry; op; op = op->next) {
+            op->runCount = JIT_RUN_COUNT + 1;
+            if (op->inst == Movsd) {
+                for (U32 i = 0; i < 20; ++i) profileMovsdCount(op, profile, true);
+            }
+            op->DF0 = !backward;
+            op->DF1 = backward;
+            if (op->isBranch()) break;
+        }
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+        if (!entry->pfnJitCode) testFail("REP cached-state case not compiled");
+        testRunCPU();
+        const U32 delta = backward ? -count * 4 : count * 4;
+        if (cpu->reg[0].u32 || cpu->reg[1].u32 || cpu->reg[2].u32 != 0x12345678 || cpu->reg[3].u32 != 0x87654321 ||
+                cpu->reg[6].u32 != src + delta || cpu->reg[7].u32 != dst + delta ||
+                (cpu->reg[5].u32 & (CF | ZF | AF | PF | SF | OF | DF)) != (CF | ZF | AF | PF | (backward ? DF : 0)) ||
+                mem->readd(TEST_HEAP_ADDRESS + 0x200) != 0x3f800000) {
+            testFail("REP cache/register/flag state mode=%u count=%u DF=%u", mode, count, backward);
+        }
+        for (U32 i = 0; i < 0x1800; ++i) {
+            const U8 expected = i >= offset && i < offset + count * 4 ? (U8)(i * 37 + 9) : 0x55;
+            if (mem->readb(TEST_HEAP_ADDRESS + 0x3800 + i) != expected) {
+                testFail("REP data/guard mismatch");
+                break;
+            }
+        }
     }
 }
 
