@@ -6859,7 +6859,10 @@ void JitWasmCodeGen::storeGPReg(U8 emulatedReg) {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitLocalGet(local);
     m_emitter.emitI32Store(cpuRegOffset32(emulatedReg));
-    m_gpDirty[emulatedReg] = false;
+    // A spill on one path or iteration does not make the other incoming
+    // paths clean. Every loop-written local remains potentially dirty.
+    m_gpDirty[emulatedReg] = keepsLoopRegisters() &&
+        (m_directLoop->registers.gpWritten & (1u << emulatedReg));
 }
 
 void JitWasmCodeGen::syncDirtyRegsToHost() {
@@ -6871,7 +6874,8 @@ void JitWasmCodeGen::syncDirtyRegsToHost() {
             m_emitter.emitLocalGet(WASM_CPU_LOCAL);
             m_emitter.emitLocalGet(WASM_XMM_LOCAL_BASE + i);
             m_emitter.emitV128Store((U32)(offsetof(CPU, xmm) + i * sizeof(cpu->xmm[0])));
-            m_xmmDirty[i] = false;
+            m_xmmDirty[i] = keepsLoopRegisters() &&
+                (m_directLoop->registers.xmmWritten & (1u << i));
         }
     }
 }
@@ -12690,6 +12694,11 @@ void JitWasmCodeGen::branchBoundary() {
     // The enclosing scope preloads its inputs and preserves local mappings
     // on returning paths; failure paths synchronize before leaving the block.
     if (m_preserveCpuRegisterState) return;
+    if (keepsLoopRegisters()) {
+        // All used locals were initialized before the loop. Branches can
+        // therefore join without spills, including a path that never writes.
+        return;
+    }
     syncDirtyRegsToHost();
     m_gpLoaded.fill(false);
     m_xmmLoaded.fill(false);
@@ -13794,6 +13803,7 @@ void JitWasmCodeGen::findDirectLoopCandidates() {
             if (entry.eip > loop.sourceEip) break;
             DecodedOp* cur = entry.op;
             loop.opCount++;
+            loop.keepsRegisters &= accumulateLoopRegisters(cur, loop.registers);
             loop.touchesFpu |= cur->isFpuOp() || cur->isMmxOp();
             cacheable &= canKeepFpuCache(cur);
             if (canCacheFpuOp(cur)) stackChange += cachedFpuStackChange(cur);
@@ -13804,6 +13814,9 @@ void JitWasmCodeGen::findDirectLoopCandidates() {
                 cur->inst == FSINCOS || cur->inst == FYL2X || cur->inst == FYL2XP1 || cur->inst == FPATAN ||
                 cur->inst == FNINIT || cur->inst == FLDENV || cur->inst == FNSAVE || cur->inst == FRSTOR;
         }
+        // The four segment locals alias FS/GS with ES/CS. Keep those loops
+        // on the existing path rather than carrying an aliased segment base.
+        loop.keepsRegisters &= (loop.registers.segments & ((1u << FS) | (1u << GS))) == 0;
         if (!m_directLoops.empty() && loop.touchesFpu) {
             continue;
         }
@@ -13859,9 +13872,13 @@ bool JitWasmCodeGen::emitForwardBranch(U32 address) {
     auto emit = [&](const std::vector<ForwardTarget>& targets) {
         for (const auto& target : targets) {
             if (target.eip == address && target.token && address > currentEip) {
-                // Both incoming paths publish their dirty locals before the
-                // join; the destination forgets path-specific caches/flags.
+                // Internal loop joins share preloaded locals. Other joins
+                // publish their dirty locals and forget path-specific caches.
                 branchBoundary();
+                if (keepsLoopRegisters() && address > m_directLoop->sourceEip) {
+                    // An edge leaving the loop joins code using CPU state.
+                    syncDirtyRegsToHost();
+                }
                 writeEip(address - cpu->seg[CS].address);
                 m_emitter.emitBr(m_emitter.currentCtrlDepth() - target.token);
                 return true;
@@ -13882,10 +13899,10 @@ bool JitWasmCodeGen::emitDirectLoopBackedge(U32 address) {
     // Cacheable loops reconcile their locals only on the taken edge.
     if (m_directLoop->touchesFpu && !m_directLoop->keepsFpu) materializeFpuCache();
 
-    // Make the loop header's reloads observe all guest-register changes from
-    // this iteration. EIP is also kept architecturally current for helpers,
-    // signals, and the budget-exhausted dispatcher path.
-    syncDirtyRegsToHost();
+    // Unsupported loops reload CPU state at their header. Supported loops
+    // carry locals around the backedge and publish them only when exiting.
+    // Keep EIP current for helpers, signals and the dispatcher.
+    if (!keepsLoopRegisters()) syncDirtyRegsToHost();
     writeEip(address - cpu->seg[CS].address);
 
     m_emitter.emitLocalGet(WASM_DIRECT_LOOP_BUDGET_LOCAL);
@@ -13973,14 +13990,16 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
         // Forward labels end no later than the backedge. Closing this loop
         // here lets the next disjoint loop reuse the budget local safely.
         m_emitter.emitEnd();
+        const bool keptRegisters = keepsLoopRegisters();
         m_directLoopOpen = false;
+        if (keptRegisters) branchBoundary();
         m_directLoop = nullptr;
     }
     if (m_directLoopOpen) {
         for (auto& target : m_directLoop->forwardTargets) {
             if (target.eip == this->currentEip && target.token) {
-                // Flush only the fall-through path before ending the label;
-                // branches to it have already stored their own live values.
+                // Unsupported loops publish each incoming path's values.
+                // Supported loops already agree on their local mappings.
                 branchBoundary();
                 m_emitter.emitEnd();
                 target.token = 0;
@@ -14023,9 +14042,22 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
             flushFpuCache();
         }
         // Synchronize the one-time linear entry before opening the loop.
-        // The compile-time caches are then cleared so loads emitted in
-        // the body execute on every backedge and observe flushed values.
+        // Supported loops preload every referenced local before opening
+        // the loop; all incoming paths then share the same local mappings.
         branchBoundary();
+        if (m_directLoop->keepsRegisters) {
+            // The measured memory-loop gain depends on the engine honoring
+            // our branch hints: otherwise V8 can spill these locals on the
+            // hot path for cold memory-helper calls. Hints affect performance,
+            // not correctness; see docs/Performance.md for Node benchmark flags.
+            for (U8 reg = 0; reg < 8; ++reg) {
+                if (m_directLoop->registers.gp & (1u << reg)) loadGPReg(reg);
+                if (m_directLoop->registers.xmm & (1u << reg)) loadCpuXMMReg(reg);
+            }
+            for (U8 seg = 0; seg < 4; ++seg) {
+                if (m_directLoop->registers.segments & (1u << seg)) getReadOnlySegAddress(seg);
+            }
+        }
         m_emitter.emitI32Const((S32)WASM_DIRECT_LOOP_ITERATIONS);
         m_emitter.emitLocalSet(WASM_DIRECT_LOOP_BUDGET_LOCAL);
         m_emitter.emitLoop();
@@ -14049,11 +14081,20 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
             g_wasmJitProfileDirectLoopOps17Plus.fetch_add(1, std::memory_order_relaxed);
         }
 #endif
-        m_gpDirty.fill(false);
-        m_xmmDirty.fill(false);
-        m_gpLoaded.fill(false);
-        m_xmmLoaded.fill(false);
-        m_segLoaded.fill(false);
+        if (m_directLoop->keepsRegisters) {
+            // A side exit near the top of a later iteration must publish
+            // writes made later in the preceding iteration too.
+            for (U8 reg = 0; reg < 8; ++reg) {
+                m_gpDirty[reg] = (m_directLoop->registers.gpWritten & (1u << reg)) != 0;
+                m_xmmDirty[reg] = (m_directLoop->registers.xmmWritten & (1u << reg)) != 0;
+            }
+        } else {
+            m_gpDirty.fill(false);
+            m_xmmDirty.fill(false);
+            m_gpLoaded.fill(false);
+            m_xmmLoaded.fill(false);
+            m_segLoaded.fill(false);
+        }
         currentLazyFlags = FLAGS_NULL;
     }
     JitCodeGen::preCompile(op, skippedOp);

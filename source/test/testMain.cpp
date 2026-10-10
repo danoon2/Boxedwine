@@ -225,6 +225,9 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},
+    {testWasmJitLoopRegisterState, "Test WASM JIT loop carried registers"},
+    {testWasmJitLoopRegisterFaults, "Test WASM JIT loop carried fault state"},
+    {testWasmJitLoopRegisterCodeWrite, "Test WASM JIT loop carried code write state"},
     {testWasmJitForwardLoopBranches, "Test WASM JIT forward branches within loops"},
     {testWasmJitForwardBranches, "Test WASM JIT forward branches across blocks and loops"},
     {testWasmJitRepMovsdState, "Test WASM JIT REP MOVSD cached state"},

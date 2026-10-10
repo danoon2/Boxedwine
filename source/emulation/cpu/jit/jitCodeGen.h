@@ -199,6 +199,17 @@ protected:
     std::vector<BlockBranch> forwardBranches;
     size_t findBlockInstruction(U32 eip) const;
     std::vector<BlockBranch> findLoopBackedges() const;
+    struct LoopRegisterUsage {
+        U8 gp = 0;
+        U8 gpWritten = 0;
+        U8 xmm = 0;
+        U8 xmmWritten = 0;
+        U8 segments = 0;
+    };
+    // Conservative region contract: these operations access architectural
+    // registers through the JIT register API. Memory operations use the JIT
+    // memory API, whose slow paths must publish dirty state and preserve locals.
+    bool accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage) const;
 
     virtual U32 getBufferSize() = 0;
     virtual U32 markBufferLocation() = 0;

@@ -1119,6 +1119,61 @@ void JitCodeGen::jumpInBlock(U32 address) {
     JumpInBlock(address);
 }
 
+bool JitCodeGen::accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage) const {
+    auto gp = [&](U8 reg, bool written = false) {
+        if (reg < 8) {
+            usage.gp |= 1u << reg;
+            if (written) usage.gpWritten |= 1u << reg;
+        }
+    };
+    auto memoryAddress = [&]() {
+        gp(op->rm); gp(op->sibIndex);
+        if (op->base < 6 && (op->ea16 || cpu->thread->process->hasSetSeg[op->base])) {
+            usage.segments |= 1u << op->base;
+        }
+    };
+    auto xmm = [&](U8 reg, bool written = false) {
+        usage.xmm |= 1u << reg;
+        if (written) usage.xmmWritten |= 1u << reg;
+    };
+    if (op->lock) return false;
+    if (op->isJumpCC()) return true;
+    switch (op->inst) {
+    case Nop: case JmpJb: case JmpJw: case JmpJd:
+        return true;
+    case AddR32R32: case SubR32R32: case AndR32R32: case OrR32R32:
+    case XorR32R32: case MovR32R32:
+        gp(op->reg, true); gp(op->rm); return true;
+    case AddR32I32: case SubR32I32: case AndR32I32: case OrR32I32:
+    case XorR32I32: case MovR32I32: case IncR32: case DecR32:
+        gp(op->reg, true); return true;
+    case LeaR32:
+        gp(op->reg, true); gp(op->rm); gp(op->sibIndex); return true;
+    case AddR32E32: case SubR32E32: case AndR32E32: case OrR32E32:
+    case XorR32E32: case MovR32E32:
+        gp(op->reg, true); memoryAddress(); return true;
+    case CmpR32E32: case CmpE32R32: case TestE32R32: case MovE32R32:
+        gp(op->reg); memoryAddress(); return true;
+    case CmpE32I32: case TestE32I32: case MovE32I32:
+        memoryAddress(); return true;
+    case CmpR32R32: case TestR32R32:
+        gp(op->reg); gp(op->rm); return true;
+    case CmpR32I32: case TestR32I32:
+        gp(op->reg); return true;
+    case MovdXmmR32:
+        xmm(op->reg, true); gp(op->rm); return true;
+    case MovdR32Xmm:
+        gp(op->reg, true); xmm(op->rm); return true;
+    case MovupsXmmXmm: case MovdqaXmmXmm: case MovdquXmmXmm:
+    case PadddXmmXmm: case PxorXmmXmm:
+        xmm(op->reg, true); xmm(op->rm); return true;
+    default:
+        // Other operations (including helpers, strings, guest calls and
+        // x87/MMX) retain the existing synchronization path.
+        return false;
+    }
+}
+
 bool JitCodeGen::jumpToCachedJitEntry(U32 eip) {
 #ifdef BOXEDWINE_JIT_X64
     void** entry = getMemData(cpu->memory)->opCache.getJitEntryLocation(eip);

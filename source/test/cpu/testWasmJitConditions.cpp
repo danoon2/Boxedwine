@@ -4,6 +4,7 @@
  */
 #include "boxedwine.h"
 #include "testCPU.h"
+#include "ksignal.h"
 
 #ifdef BOXEDWINE_WASM_JIT
 #include "../../emulation/cpu/jit/jitCodeGen.h"
@@ -110,6 +111,212 @@ void testWasmJitMaterializedConditions() {
             emitIndirectBoundary();
             runConsumers(condition, comparison[2], true);
         }
+    }
+}
+
+void testWasmJitLoopRegisterState() {
+    for (U32 count : {1u, 2u, 63u, 64u, 65u, 130u}) {
+        for (U32 exitAt : {0u, count, count / 2}) {
+            testNewInstruction(CF);
+            auto& ctx = testContext();
+            CPU* cpu = ctx.cpu;
+            emitMov(1, count); emitMov(3, 5);
+            testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x6e); testPushCode8(0xc3); // movd xmm0,ebx
+            U32 loop = ctx.codeIp;
+            testPushCode8(0x81); testPushCode8(0xf9); testPushCode32(exitAt); // cmp ecx,exitAt
+            testPushCode8(0x0f); testPushCode8(0x84); U32 sideExit = ctx.codeIp; testPushCode32(0);
+            testPushCode8(0xf7); testPushCode8(0xc1); testPushCode32(1); // test ecx,1
+            testPushCode8(0x74); U32 skip = ctx.codeIp; testPushCode8(0);
+            testPushCode8(0x83); testPushCode8(0xc0); testPushCode8(3); // add eax,3
+            testPushCode8(0x89); testPushCode8(0xc3); // mov ebx,eax
+            testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x6e); testPushCode8(0xc3);
+            ctx.memory->writeb(skip, (U8)(ctx.codeIp - skip - 1));
+            testPushCode8(0x01); testPushCode8(0xda); // add edx,ebx
+            testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x7e); testPushCode8(0xc7); // movd edi,xmm0
+            testPushCode8(0x01); testPushCode8(0xfe); // add esi,edi
+            testPushCode8(0x49); testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+            ctx.memory->writed(sideExit, ctx.codeIp - sideExit - 4);
+            testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x7e); testPushCode8(0xc5); // movd ebp,xmm0
+            testRunCPU();
+            cpu->fillFlags();
+            if ((cpu->flags & (CF | PF | AF | ZF | SF | OF)) != (ZF | PF)) testFail("WASM loop exit flags");
+            U32 eax = 0, ebx = 5, sum = 0, edi = 0;
+            for (U32 ecx = count; ecx > exitAt; --ecx) {
+                if (ecx & 1) ebx = (eax += 3);
+                sum += ebx; edi = ebx;
+            }
+            if (cpu->reg[0].u32 != eax || cpu->reg[1].u32 != exitAt || cpu->reg[2].u32 != sum ||
+                    cpu->reg[3].u32 != ebx || cpu->reg[4].u32 != 4096 || cpu->reg[5].u32 != ebx ||
+                    cpu->reg[6].u32 != sum || cpu->reg[7].u32 != edi) {
+                testFail("WASM loop carried registers count=%u exit=%u", count, exitAt);
+            }
+        }
+    }
+    // Carry all four lanes through a conditional join; untouched XMM
+    // registers and loop inputs must survive repeated budget exits too.
+    for (U32 count : {1u, 65u, 130u}) {
+        testNewInstruction(0);
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        U32 expected[8][4];
+        for (U32 reg = 0; reg < 8; ++reg) for (U32 lane = 0; lane < 4; ++lane) {
+            expected[reg][lane] = 0x89abcdefu + reg * 0x1234567u + lane;
+            cpu->xmm[reg].pi.u32[lane] = expected[reg][lane];
+        }
+        cpu->reg[1].u32 = count;
+        const U32 loop = ctx.codeIp;
+        testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x6f); testPushCode8(0xd0); // movdqa xmm2,xmm0
+        testPushCode8(0xf7); testPushCode8(0xc1); testPushCode32(1);
+        testPushCode8(0x74); testPushCode8(8);
+        testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0xfe); testPushCode8(0xc1); // paddd xmm0,xmm1
+        testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0xef); testPushCode8(0xd3); // pxor xmm2,xmm3
+        testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0xfe); testPushCode8(0xe2); // paddd xmm4,xmm2
+        testPushCode8(0x49); testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+        testRunCPU();
+        for (U32 ecx = count; ecx; --ecx) for (U32 lane = 0; lane < 4; ++lane) {
+            expected[2][lane] = expected[0][lane];
+            if (ecx & 1) {
+                expected[0][lane] += expected[1][lane];
+                expected[2][lane] ^= expected[3][lane];
+            }
+            expected[4][lane] += expected[2][lane];
+        }
+        for (U32 reg = 0; reg < 8; ++reg) for (U32 lane = 0; lane < 4; ++lane) {
+            if (cpu->xmm[reg].pi.u32[lane] != expected[reg][lane])
+                testFail("WASM loop XMM state count=%u reg=%u lane=%u", count, reg, lane);
+        }
+        if (cpu->reg[1].u32) testFail("WASM XMM loop count");
+    }
+
+    // A conditional memory access may first execute on a later iteration.
+    // Its GP inputs and segment bases must already be valid at the join.
+    // Unaligned addresses exercise cross-page helpers; address-size 16 wraps
+    // the effective offset while the full ESI/EDI values keep advancing.
+    for (U32 mode : {0u, 1u, 2u}) for (U32 count : {1u, 2u, 65u, 130u}) {
+        testNewInstruction(0);
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        bool ea16 = mode == 2;
+        U32 ds = mode ? TEST_HEAP_ADDRESS : 0;
+        U32 es = mode ? TEST_HEAP_ADDRESS + 0x10000 : 0;
+        U32 src = ea16 ? 0xcafefffd : TEST_HEAP_ADDRESS + 0xffd - ds;
+        U32 dst = ea16 ? 0xbeef0ffd : TEST_HEAP_ADDRESS + 0x10ffd - es;
+        auto offset = [ea16](U32 value) { return ea16 ? value & 0xffff : value; };
+        cpu->seg[DS].address = ds; cpu->seg[ES].address = es;
+        ctx.process->hasSetSeg[DS] = ctx.process->hasSetSeg[ES] = mode != 0;
+        cpu->reg[1].u32 = count; cpu->reg[3].u32 = 7;
+        cpu->reg[6].u32 = src; cpu->reg[7].u32 = dst;
+        for (U32 i = 0; i < count; ++i) {
+            ctx.memory->writed(ds + offset(src + i * 4), i + 3);
+            ctx.memory->writed(es + offset(dst + i * 4), 0xdeadbeef);
+        }
+        U32 loop = ctx.codeIp;
+        testPushCode8(0xf7); testPushCode8(0xc1); testPushCode32(1); // test ecx,1
+        testPushCode8(0x74); U32 skip = ctx.codeIp; testPushCode8(0);
+        if (ea16) testPushCode8(0x67);
+        testPushCode8(0x03); testPushCode8(ea16 ? 0x04 : 0x06); // add eax,[esi/si]
+        testPushCode8(0x26); if (ea16) testPushCode8(0x67);
+        testPushCode8(0x89); testPushCode8(ea16 ? 0x05 : 0x07); // mov es:[edi/di],eax
+        testPushCode8(0x26); if (ea16) testPushCode8(0x67);
+        testPushCode8(0x8b); testPushCode8(ea16 ? 0x1d : 0x1f); // mov ebx,es:[edi/di]
+        ctx.memory->writeb(skip, (U8)(ctx.codeIp - skip - 1));
+        testPushCode8(0x01); testPushCode8(0xda); // add edx,ebx
+        testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x6e); testPushCode8(0xc0);
+        testPushCode8(0x83); testPushCode8(0xc6); testPushCode8(4);
+        testPushCode8(0x83); testPushCode8(0xc7); testPushCode8(4);
+        testPushCode8(0x49); testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+        testRunCPU();
+        U32 eax = 0, ebx = 7, sum = 0;
+        for (U32 i = 0; i < count; ++i) {
+            if ((count - i) & 1) ebx = (eax += i + 3);
+            sum += ebx;
+            U32 expected = ((count - i) & 1) ? eax : 0xdeadbeef;
+            if (ctx.memory->readd(es + offset(dst + i * 4)) != expected)
+                testFail("WASM cached memory loop data mode=%u count=%u offset=%u", mode, count, i);
+        }
+        cpu->fillFlags();
+        if (cpu->reg[0].u32 != eax || cpu->reg[1].u32 || cpu->reg[2].u32 != sum ||
+                cpu->reg[3].u32 != ebx || cpu->reg[6].u32 != src + count * 4 ||
+                cpu->reg[7].u32 != dst + count * 4 || cpu->xmm[0].pi.u32[0] != eax ||
+                (cpu->flags & (CF | PF | AF | ZF | SF | OF)) != (ZF | PF)) {
+            testFail("WASM cached memory loop state mode=%u count=%u", mode, count);
+        }
+    }
+    // Include both address registers when the memory operand uses a SIB.
+    testNewInstruction(0);
+    auto& ctx = testContext();
+    ctx.cpu->reg[1].u32 = 65; ctx.cpu->reg[6].u32 = 0x100; ctx.cpu->reg[7].u32 = 3;
+    for (U32 i = 0; i < 65; ++i) ctx.memory->writed(TEST_HEAP_ADDRESS + 0x10c + 4 * i, i);
+    U32 loop = ctx.codeIp;
+    testPushCode8(0x03); testPushCode8(0x04); testPushCode8(0xbe); // add eax,[esi+edi*4]
+    testPushCode8(0x47); testPushCode8(0x49);
+    testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+    testRunCPU();
+    if (ctx.cpu->reg[0].u32 != 2080 || ctx.cpu->reg[1].u32 || ctx.cpu->reg[7].u32 != 68)
+        testFail("WASM cached memory loop SIB registers");
+
+}
+
+void testWasmJitLoopRegisterFaults() {
+    // The fault is at the header, before this iteration has written any GP
+    // or XMM register. State from the previous iteration must still be saved.
+    for (U32 completed : {0u, 1u, 2u, 63u, 64u, 65u}) for (bool store : {false, true}) {
+        testNewInstruction(CF);
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        const U32 page = TEST_HEAP_ADDRESS + 0x2000;
+        cpu->reg[1].u32 = completed + 2;
+        cpu->reg[6].u32 = 0x2000 - 4 * completed;
+        cpu->reg[3].u32 = 0x12345678;
+        cpu->xmm[0].pi.u32[0] = 0;
+        for (U32 i = 0; i < completed; ++i) ctx.memory->writed(page - 4 * completed + i * 4, 0x12345678);
+        const U32 loop = ctx.codeIp;
+        testPushCode8(store ? 0x89 : 0x8b); testPushCode8(0x1e); // mov [esi],ebx / mov ebx,[esi]
+        testPushCode8(0x83); testPushCode8(0xc0); testPushCode8(3);
+        testPushCode8(0x66); testPushCode8(0x0f); testPushCode8(0x6e); testPushCode8(0xc0);
+        testPushCode8(0x83); testPushCode8(0xc6); testPushCode8(4);
+        testPushCode8(0x49); testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+        auto oldAction = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = ctx.codeIp;
+        testPushCode8(0xcd); testPushCode8(0x97);
+        DecodedOp* entry = cpu->getNextOp();
+        entry->runCount = JIT_RUN_COUNT + 1;
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+        if (!entry->pfnJitCode) testFail("WASM loop fault case did not compile");
+        ctx.memory->mprotect(ctx.thread, page, K_PAGE_SIZE, store ? K_PROT_READ : 0);
+        testRunCPU();
+        ctx.memory->mprotect(ctx.thread, page, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        U32 uc = action.sigInfo[0] == K_SIGSEGV ? cpu->reg[2].u32 : 0;
+        if (!uc || ctx.memory->readd(uc + 0x40) != completed * 3 ||
+                ctx.memory->readd(uc + 0x3c) != 2 || ctx.memory->readd(uc + 0x28) != 0x2000 ||
+                ctx.memory->readd(uc + 0x34) != 0x12345678 || ctx.memory->readd(uc + 0x4c) != 0 ||
+                (ctx.memory->readd(uc + 0x54) & (CF | PF | AF | ZF | SF | OF)) != (completed ? 0u : CF) ||
+                cpu->xmm[0].pi.u32[0] != completed * 3) {
+            testFail("WASM loop fault lost carried state completed=%u store=%u", completed, store);
+        }
+        ctx.process->sigActions[K_SIGSEGV] = oldAction;
+    }
+}
+
+void testWasmJitLoopRegisterCodeWrite() {
+    testNewInstruction(0);
+    auto& ctx = testContext();
+    CPU* cpu = ctx.cpu;
+    cpu->reg[1].u32 = 5;
+    const U32 loop = ctx.codeIp;
+    testPushCode8(0x47); // inc edi
+    testPushCode8(0x83); testPushCode8(0xff); testPushCode8(3); // cmp edi,3
+    testPushCode8(0x75); U32 skip = ctx.codeIp; testPushCode8(0);
+    testPushCode8(0xc7); testPushCode8(0x05); U32 address = ctx.codeIp; testPushCode32(0);
+    testPushCode32(3); // mov dword [add immediate],3
+    ctx.memory->writeb(skip, (U8)(ctx.codeIp - skip - 1));
+    testPushCode8(0x81); testPushCode8(0xc0); U32 immediate = ctx.codeIp; testPushCode32(1);
+    ctx.memory->writed(address, immediate - cpu->seg[DS].address);
+    testPushCode8(0x49); testPushCode8(0x75); testPushCode8((U8)(loop - ctx.codeIp - 1));
+    testRunCPU();
+    if (cpu->reg[0].u32 != 11 || cpu->reg[1].u32 || cpu->reg[7].u32 != 5) {
+        testFail("WASM loop cached registers survived into stale self-modified code");
     }
 }
 

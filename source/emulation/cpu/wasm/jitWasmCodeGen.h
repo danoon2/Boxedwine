@@ -969,6 +969,8 @@ public:
         bool touchesFpu = false;
         bool keepsFpu = false;
         bool dynamicFpuValidity = false;
+        bool keepsRegisters = true;
+        LoopRegisterUsage registers;
         std::vector<ForwardTarget> forwardTargets;
     };
     // Labels surrounding the function's selected loops, for forward edges
@@ -1015,6 +1017,9 @@ protected:
     void dynamic_cmpxchgMem32(DecodedOp* op);
     void loadGPReg(U8 emulatedReg);   // emit: local.get cpu; i32.load; local.set localN
     void storeGPReg(U8 emulatedReg);  // emit: local.get cpu; local.get localN; i32.store
+    bool keepsLoopRegisters() const {
+        return m_directLoopOpen && m_directLoop->keepsRegisters;
+    }
     void findDirectLoopCandidates();
     void findForwardTargets();
     bool emitDirectLoopBackedge(U32 address);
