@@ -2,12 +2,16 @@
   "schema_version": 1,
   "wine_tag": "wine-11.0",
   "wine_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
-  "filesystem_version": "14",
+  "filesystem_version": "15",
   "changes_file": "changes_wine11.txt",
   "wine_config": "wine_builds.json",
-  "webgl_config": "webgl_filesystems_v14.json",
+  "webgl_config": "webgl_filesystems_v15.json",
   "documentation_patches": [
-    "../d3dToWebGL/webgl-gdi-owndc-sysmem-against-wine-11.0.patch"
+    "../d3dToWebGL/webgl-gdi-owndc-sysmem-against-wine-11.0.patch",
+    "../d3dToWebGL/webgl-rgb565-upload-scaling-against-wine-11.0.patch",
+    "../d3dToWebGL/webgl-fog-uniform-cache-against-wine-11.0.patch",
+    "../d3dToWebGL/webgl-projection-constant-cache-against-wine-11.0.patch",
+    "../d3dToWebGL/webgl-direct-map-dispatch-against-wine-11.0.patch"
   ],
   "gecko": {
     "version": "2.47.4",

@@ -30,12 +30,12 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
-loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the existing
-v42 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the
+v43 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 14. Its `changes.txt` comes from
+The filesystem revision is 15. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -51,13 +51,13 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v14.json`](webgl_filesystems_v14.json) and the
-[v42 patch manifest](../wineTests/webgl-test-divergences-v42.json). To test that
+[`webgl_filesystems_v15.json`](webgl_filesystems_v15.json) and the
+[v43 patch manifest](../wineTests/webgl-test-divergences-v43.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v14 WebGL configuration pins DLLs, source patches, and the filesystem
-ZIP in its `full-v14` profile for Jenkins demo validation. The complete filesystem
+The v15 WebGL configuration pins DLLs, source patches, and the filesystem
+ZIP in its `full-v15` and `web-v15` profiles for Jenkins demo validation. The complete filesystem
 is assembled by `filesystem_wine11.json`.
-The v14 prefix leaves the renderer registry values unset. The profile records
+The v15 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
 Wine 11 builds also include `wine11_clipcursor_destroyed_popup.patch`. SimTower
@@ -160,7 +160,7 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
   --variant web --work-dir "$HOME/boxedwine-wine11-web" --jobs 12
 ```
 
-This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 14.
+This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 15.
 Use `--variant web` again when retrying individual phases. The assembler checks
 the Wine configuration stamp and the addon manifest to prevent mixing variants.
 
@@ -194,7 +194,7 @@ download catalog checksums, existing containers, or the Jenkins demo root pin.
 
 ## Wine 11 DirectX-to-WebGL Filesystems
 
-### WineD3D performance (v43 source series)
+### WineD3D performance (v43, filesystem version 15)
 
 Both regular Wine variants include the fog uniform cache, projection constant
 cache and direct immediate map/unmap dispatch patches. The cache compares exact
@@ -204,6 +204,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
+Build and validate with `--config tools/buildWine/webgl_filesystems_v15.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises

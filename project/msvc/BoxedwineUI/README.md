@@ -55,7 +55,7 @@ choices stay visible and produce an actionable launch error. Driver environment
 variables are set only on the child process, including Wine preparation,
 installers and alternate programs. Per-app choices are included in backups.
 
-The current native UI release offers only Wine 11.0 V14. With a single catalog
+The current native UI release offers only Wine 11.0 V15. With a single catalog
 entry, Add App shows the package as text, built-in apps select it automatically,
 and version selection, ZIP import and trial-copy controls and guidance are hidden.
 Settings still offers setup of the supported package when needed. Existing apps

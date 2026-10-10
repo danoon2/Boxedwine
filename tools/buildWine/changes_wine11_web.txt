@@ -1,6 +1,6 @@
-v14 Oct 04, 2026 This is the web version of the full Wine 11.0 file system, including the SimTower popup cursor-release fix.
+v15 Oct 09, 2026 Web version of the full Wine 11.0 filesystem, including WineD3D fog/projection caches, immediate map/unmap dispatch, and WebGL RGB565 SSE2 uploads.
 
-Removed for the web version, compared with the full v14 file system:
+Removed for the web version, compared with the full v15 file system (v14 measurements; retained components and removals unchanged):
 
 Removed component                                      Saved (MiB)
 -----------------------------------------------------  -----------

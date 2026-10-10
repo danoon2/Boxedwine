@@ -13,12 +13,10 @@ only the test patch named by the selected manifest.
 The published v11 filesystem is pinned to v41. Its September 19 download
 matches the candidate used for the focused regression checks; see
 [the validation and upload record](../wineTests/graphics-review-fixes-20260919.json).
-The version 14 filesystem still selects v42, which includes the
-persistent-GDI-buffer lifetime fix in its separately built PE32
-`C:/webgl/wined3d.dll`, pinned by
-[`webgl_filesystems_v14.json`](../buildWine/webgl_filesystems_v14.json).
-The v43 source series adds the four performance patches below; the
-filesystem revision and rebuilt DLL pins are updated separately.
+The version 15 full and web filesystems select v43, adding RGB565 SSE2 upload
+conversion, fog/projection constant caches and immediate map/unmap dispatch.
+Their separately built PE32 `C:/webgl/wined3d.dll` is pinned by
+[`webgl_filesystems_v15.json`](../buildWine/webgl_filesystems_v15.json).
 Regular Wine carries the fog/projection and immediate-map counterparts through
 `wine_builds.json`; RGB565 expansion is specific to the WebGL upload path.
 
