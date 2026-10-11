@@ -3,6 +3,12 @@
 The four browser targets are `release`, `jit`, `multiThreaded`, and
 `multiThreadedJit`. Each target retains its own object directory.
 
+Compilation and linking both default to `-O2`; override them together with
+`OPTIMIZATION_FLAGS` when comparing builds. Both ST modes check their
+one-millisecond scheduler deadline after batches of at least 1,024 instructions,
+while honoring explicit yields after every dispatch. ST JIT also retains its
+existing instruction budget within each dispatch.
+
 All four browser targets and their automation variants start with 512 MiB of
 Wasm memory and allow growth up to 3 GiB. They share `RUNTIME_MEMORY_FLAGS` in
 the makefile; memory is grown on demand.
