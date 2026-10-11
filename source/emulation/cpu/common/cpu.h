@@ -212,7 +212,9 @@ class CPU: public DecodeBlockCallback {
 #endif
 public:
     static CPU* allocCPU(KMemory* memory);
-#if defined(BOXEDWINE_JIT_X64) && (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__))
+    // Windows and Linux x64 keep CPU state at a consistent cache-line phase.
+    // Tests follow the release policy; experiment builds cover other x64 hosts.
+#if defined(BOXEDWINE_JIT_X64) && (defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32))
     static void* operator new(size_t size);
     static void operator delete(void* address) noexcept;
 #endif

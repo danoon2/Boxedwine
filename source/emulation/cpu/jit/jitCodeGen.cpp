@@ -35,6 +35,13 @@ bool wasmJitCompilationPaused();
 #endif
 
 void clearJitBlock(const std::vector<void*>& jitOps);
+#ifndef BOXEDWINE_WASM_JIT
+void bindNativeCarryHelpers(CPU* cpu) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
+    memcpy(cpu->calculateCF, cpu->thread->process->calculateCF, sizeof(cpu->calculateCF));
+}
+#endif
+
 #if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
 void* jitCreateIndirectTraceExit(CPU* cpu);
 
@@ -1293,7 +1300,7 @@ void JitCodeGen::jumpIndirectEip(RegPtr reg, DecodedOp* op) {
 
 void JitCodeGen::jumpEip(RegPtr reg) {
     bool guardFlatCs = false;
-#ifdef BOXEDWINE_JIT_X64
+#ifndef BOXEDWINE_WASM_JIT
     // A block compiled before the first nonzero CS can be reused at the same
     // physical source with a different base. Its flat cached lookup is valid
     // only while live CS remains zero; otherwise resolve through the run loop.
@@ -3097,7 +3104,7 @@ bool JitCodeGen::canTrustAdjacentAddCarry() const {
     size_t index = findBlockInstruction(currentEip);
     if (!index || index == blockInstructions.size()) return false;
     bool allowMoves = false;
-#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32)) && defined(BOXEDWINE_JIT_X64)
     allowMoves = nativeJitPerformanceEnabled("BOXEDWINE_TEST_TRUST_CARRY_MOVES", true);
 #endif
     U32 moves = 0;

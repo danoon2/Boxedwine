@@ -4846,8 +4846,15 @@ void testJitSignalPendingQueuedSignal() {
 #endif
 }
 
-void testWasmJitSignalPendingDispatch() {
-#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+static void OPCALL testQueueSignalDuringJitDispatch(CPU* cpu, DecodedOp*) {
+    std::thread producer([cpu]() { cpu->thread->queuePendingSignal(K_SIGUSR1); });
+    producer.join();
+}
+#endif
+
+void testJitSignalPendingDispatch() {
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_MULTI_THREADED)
     TestContext& context = testContext();
     CPU* cpu = context.cpu;
     KThread* thread = context.thread;
@@ -4920,12 +4927,7 @@ void testWasmJitSignalPendingDispatch() {
     // This fixes the interleaving without relying on a timing-sensitive race.
     DecodedOp lateArrival;
     lateArrival.runCount = JIT_RUN_COUNT + 1;
-    lateArrival.pfn = [](CPU* runningCpu, DecodedOp*) {
-        std::thread lateProducer([runningCpu]() {
-            runningCpu->thread->queuePendingSignal(K_SIGUSR1);
-        });
-        lateProducer.join();
-    };
+    lateArrival.pfn = testQueueSignalDuringJitDispatch;
     cpu->eip.u32 = 0;
     cpu->nextOp = &lateArrival;
     cpu->run();
@@ -5127,13 +5129,13 @@ void testNativeJitConditionalSideExits() {
 #endif
 }
 
-static void testNativeReturnFirstCsChange(bool adaptiveEnabled) {
-#ifdef BOXEDWINE_JIT_X64
-    struct Environment {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+namespace {
+    struct NativeJitTestEnvironment {
         const char* name;
         bool present;
         std::string value;
-        Environment(const char* n, const char* v): name(n), present(std::getenv(n)!=nullptr), value(present?std::getenv(n):"") { set(v);
+        NativeJitTestEnvironment(const char* n, const char* v): name(n), present(std::getenv(n)!=nullptr), value(present?std::getenv(n):"") { set(v);
         }
         void set(const char* v) {
 #ifdef _WIN32
@@ -5143,17 +5145,365 @@ static void testNativeReturnFirstCsChange(bool adaptiveEnabled) {
             else unsetenv(name);
 #endif
         }
-        ~Environment() { set(present?value.c_str():nullptr);
+        ~NativeJitTestEnvironment() { set(present?value.c_str():nullptr);
         }
     };
-    Environment warmup("BOXEDWINE_TEST_PROFILE_WARMUP","1");
-    Environment adaptive("BOXEDWINE_TEST_ADAPTIVE_RETURN",adaptiveEnabled?"1":"0");
-    Environment early("BOXEDWINE_TEST_EARLY_RETURN_PROFILE","1");
-    Environment target("BOXEDWINE_TEST_TRACE_TARGET_FIRST","1");
-    Environment indirect("BOXEDWINE_TEST_INDIRECT_TARGET_SLOW","0");
-    Environment returns("BOXEDWINE_TEST_RETURN_TARGET_SLOW","0");
+#ifdef BOXEDWINE_JIT_X64
+    // The pinned-base policy also changes process-wide JIT entry helpers.
+    // Use a fresh guest process, not just fresh blocks, for each setting.
+    struct NativeJitTestContext {
+        TestContext* previous = &testContext();
+        KThread* previousThread = KThread::currentThread();
+        TestContext context;
+        NativeJitTestContext() {
+            createContext(context);
+            currentContext = &context;
+        }
+        ~NativeJitTestContext() {
+            previous->failed |= context.failed;
+            previous->failures.insert(previous->failures.end(), context.failures.begin(), context.failures.end());
+            delete context.thread;
+            KThread::setCurrentThread(previousThread);
+            currentContext = previous;
+            KSystem::eraseProcess(context.process->id);
+            context.process.reset();
+        }
+    };
+#endif
+}
+#endif
+
+void testNativeX64MemoryPolicies() {
+#ifdef BOXEDWINE_JIT_X64
+    NativeJitTestEnvironment baseline("BOXEDWINE_TEST_JIT_BASELINE", "1");
+    NativeJitTestEnvironment fused("BOXEDWINE_TEST_FUSE_MEMORY_ARITH", "0");
+    NativeJitTestEnvironment borrowed("BOXEDWINE_TEST_BORROW_READ_ADDRESS", "0");
+    NativeJitTestEnvironment pinned("BOXEDWINE_TEST_PIN_LINEAR_BASE", "0");
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    constexpr U32 input = 0x89765432;
+    const U8 opcodes[] = {0x03, 0x2b, 0x23, 0x0b, 0x33, 0x8b}; // ADD/SUB/AND/OR/XOR/MOV
+    for (U32 mode = 0; mode < 8; ++mode) {
+        fused.set(mode & 1 ? "1" : "0");
+        borrowed.set(mode & 2 ? "1" : "0");
+        pinned.set(mode & 4 ? "1" : "0");
+        NativeJitTestContext fresh;
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        auto before = nativeJitPolicyTestCounts();
+        for (U32 operation = 0; operation < 6; ++operation)
+        for (bool alias : {false, true}) for (U32 offset : {0x2000u, 0x2001u, 0x1ffeu})
+        for (bool fault : {false, true}) {
+            testNewInstruction(CF | OF);
+            cpu->seg[DS].address = 0;
+            ctx.process->hasSetSeg[DS] = false;
+            U32 address = TEST_HEAP_ADDRESS + offset;
+            U32 initial = alias ? address : 0x7fffffff;
+            cpu->reg[0].u32 = initial;
+            cpu->reg[1].u32 = 0x11223344;
+            cpu->reg[6].u32 = address;
+            ctx.memory->writed(address, input);
+            bytes({0xbf}); testPushCode32(0x10203040); // completed prefix: MOV EDI,imm
+            U32 accessEip = ctx.codeIp - TEST_CODE_ADDRESS;
+            bytes({opcodes[operation], (U8)(alias ? 0x00 : 0x06)});
+            bytes({0x31, 0xc9, 0xcd, 0x97}); // XOR ECX,ECX makes arithmetic flags dead
+            U32 handler = TEST_CODE_ADDRESS + 0x6000;
+            ctx.codeIp = handler;
+            bytes({0xcd, 0x97});
+            auto savedAction = ctx.process->sigActions[K_SIGSEGV];
+            auto& action = ctx.process->sigActions[K_SIGSEGV];
+            action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = handler;
+            auto* entry = cpu->getOp(TEST_CODE_ADDRESS, 0);
+            startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+            if (!entry->pfnJitCode) testFail("x64 memory policy did not compile");
+            if (fault && ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, 0))
+                testFail("x64 memory policy could not protect operand");
+            testRunCPU();
+            if (fault) ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+            if (fault) {
+                U32 uc = action.sigInfo[0] == K_SIGSEGV ? cpu->reg[2].u32 : 0;
+                if (!uc || ctx.memory->readd(uc + 0x4c) != accessEip ||
+                    ctx.memory->readd(uc + 0x40) != initial || ctx.memory->readd(uc + 0x3c) != 0x11223344 ||
+                    ctx.memory->readd(uc + 0x28) != address || ctx.memory->readd(uc + 0x24) != 0x10203040 ||
+                    (ctx.memory->readd(uc + 0x54) & FMASK_TEST) != (CF | OF))
+                    testFail("x64 memory policy fault mode=%u op=%u alias=%u offset=%x", mode, operation, alias, offset);
+            } else {
+                U32 expected[] = {initial + input, initial - input, initial & input, initial | input, initial ^ input, input};
+                cpu->fillFlags();
+                if (action.sigInfo[0] || cpu->reg[0].u32 != expected[operation] || cpu->reg[1].u32 ||
+                    cpu->reg[6].u32 != address || cpu->reg[7].u32 != 0x10203040 ||
+                    (cpu->flags & FMASK_TEST) != (ZF | PF))
+                    testFail("x64 memory policy result mode=%u op=%u alias=%u offset=%x", mode, operation, alias, offset);
+            }
+            if (ctx.memory->readd(address) != input) testFail("x64 memory read modified its operand");
+            ctx.process->sigActions[K_SIGSEGV] = savedAction;
+        }
+        auto after = nativeJitPolicyTestCounts();
+        if ((after.fusedMemoryReads != before.fusedMemoryReads) != ((mode & 1) != 0))
+            testFail("x64 memory policy did not exercise requested fused path mode=%u", mode);
+        bool canBorrow = getMemData(ctx.memory)->useLinearMemoryJit() && !ramPageUseLinearMemoryAdjacent();
+        if ((after.borrowedReadAddresses != before.borrowedReadAddresses) != ((mode & 2) != 0 && canBorrow))
+            testFail("x64 memory policy did not exercise requested address path mode=%u", mode);
+    }
+#endif
+}
+
+void testNativeX64AddressPolicies() {
+#ifdef BOXEDWINE_JIT_X64
+    NativeJitTestEnvironment baseline("BOXEDWINE_TEST_JIT_BASELINE", "1");
+    NativeJitTestEnvironment pinned("BOXEDWINE_TEST_PIN_LINEAR_BASE", "0");
+    NativeJitTestEnvironment folded("BOXEDWINE_TEST_FOLD_LINEAR_DISPLACEMENT", "0");
+    constexpr U32 input = 0x89765432, displacement = 64, savedFlags = CF | OF | AF;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    for (U32 mode = 0; mode < 4; ++mode) {
+        pinned.set(mode & 1 ? "1" : "0");
+        folded.set(mode & 2 ? "1" : "0");
+        NativeJitTestContext fresh;
+        auto& ctx = testContext();
+        CPU* cpu = ctx.cpu;
+        const U32 groupBytes = ramPageLinearMemoryPageCount() * K_PAGE_SIZE;
+        if (ctx.memory->mmap(ctx.thread, 0, groupBytes, K_PROT_READ | K_PROT_WRITE,
+                K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0) != 0) {
+            testFail("x64 address policy could not map wrapped operand");
+            return;
+        }
+        bool expectPinned = getMemData(ctx.memory)->useLinearMemoryJit();
+#ifndef _WIN32
+        expectPinned &= (mode & 1) && !ramPageUseLinearMemoryAdjacent();
+#endif
+#ifdef __linux__
+        bool expectFolded = expectPinned && (mode & 2);
+#else
+        bool expectFolded = false;
+#endif
+        auto beforeMode = nativeJitPolicyTestCounts();
+        for (U32 address : {TEST_HEAP_ADDRESS + 0x2000u, TEST_HEAP_ADDRESS + 0x2001u,
+                TEST_HEAP_ADDRESS + 0x1ffeu, 0x20u})
+        for (bool alias : {false, true}) for (bool fault : {false, true}) {
+            bool wrapped = address < displacement;
+            if (wrapped && fault) continue;
+            testNewInstruction(savedFlags);
+            cpu->seg[DS].address = 0;
+            ctx.process->hasSetSeg[DS] = false;
+            U32 base = address - displacement;
+            U32 initialEax = alias ? base : 0x11223344;
+            ctx.memory->writed(address, input);
+            bytes({0xbf}); testPushCode32(0x10203040); // completed prefix: MOV EDI,imm
+            U32 loadAddress = ctx.codeIp;
+            bytes({0x8b, (U8)(alias ? 0x40 : 0x46), displacement}); // MOV EAX,[EAX/ESI+64]
+            bytes({0xcd, 0x97});
+            U32 handler = TEST_CODE_ADDRESS + 0x6000;
+            ctx.codeIp = handler;
+            bytes({0xcd, 0x97});
+            auto savedAction = ctx.process->sigActions[K_SIGSEGV];
+            auto& action = ctx.process->sigActions[K_SIGSEGV];
+            action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = handler;
+            auto before = nativeJitPolicyTestCounts();
+            auto* first = cpu->getOp(TEST_CODE_ADDRESS, 0);
+            startNewJIT(cpu, TEST_CODE_ADDRESS, first);
+            if (!first->pfnJitCode) testFail("x64 address policy did not compile mode=%u", mode);
+            if ((nativeJitPolicyTestCounts().foldedLinearReads != before.foldedLinearReads) != expectFolded)
+                testFail("x64 address policy selected wrong folded path mode=%u", mode);
+            if (fault && ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, 0))
+                testFail("x64 address policy could not protect operand");
+            // Reuse the block: a folded wrap must retire to a safe wrapped load.
+            for (U32 repeat = 0; repeat < (fault ? 1u : 2u); ++repeat) {
+                cpu->reg[0].u32 = initialEax;
+                cpu->reg[6].u32 = base;
+                cpu->lazyFlagType = FLAGS_NONE;
+                cpu->setFlags(savedFlags, FMASK_TEST);
+                cpu->eip.u32 = 0;
+                testRunCPU();
+                cpu->fillFlags();
+                if (fault) {
+                    U32 uc = action.sigInfo[0] == K_SIGSEGV ? cpu->reg[2].u32 : 0;
+                    if (!uc || ctx.memory->readd(uc + 0x4c) != loadAddress - TEST_CODE_ADDRESS ||
+                        ctx.memory->readd(uc + 0x40) != initialEax || ctx.memory->readd(uc + 0x28) != base ||
+                        ctx.memory->readd(uc + 0x24) != 0x10203040 ||
+                        (ctx.memory->readd(uc + 0x54) & FMASK_TEST) != savedFlags)
+                        testFail("x64 address policy fault mode=%u alias=%u address=%x", mode, alias, address);
+                } else if (action.sigInfo[0] || cpu->reg[0].u32 != input || cpu->reg[6].u32 != base ||
+                        cpu->reg[7].u32 != 0x10203040 || (cpu->flags & FMASK_TEST) != savedFlags) {
+                    testFail("x64 address policy result mode=%u alias=%u address=%x repeat=%u", mode, alias, address, repeat);
+                }
+            }
+            if (fault) ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+            if (ctx.memory->readd(address) != input) testFail("x64 address policy changed its operand");
+            if (wrapped && expectFolded) {
+                auto* load = ctx.memory->getDecodedOp(loadAddress);
+                if (!load || load->foldedLinearReadState() != DecodedOp::LINEAR_READ_WRAPPED)
+                    testFail("x64 folded wrap did not select the persistent fallback");
+            }
+            ctx.process->sigActions[K_SIGSEGV] = savedAction;
+        }
+        if ((nativeJitPolicyTestCounts().pinnedLinearEntries != beforeMode.pinnedLinearEntries) != expectPinned)
+            testFail("x64 address policy selected wrong entry helper mode=%u", mode);
+    }
+#endif
+}
+
+void testNativeX64FpuPolicies() {
+#ifdef BOXEDWINE_JIT_X64
+    extern void testNativeJitFpuCachePressure();
+    NativeJitTestEnvironment stackPair("BOXEDWINE_TEST_STACK_PAIR_TOP", "0");
+    NativeJitTestEnvironment forceSpill("BOXEDWINE_TEST_SPILL_FPU_TOP", "0");
+    for (bool enabled : {false, true}) {
+        stackPair.set(enabled ? "1" : "0");
+        NativeJitTestContext fresh;
+        auto before = nativeJitPolicyTestCounts();
+        // Exercise TOP wrapping, register pressure, independent entry, and
+        // guest fault state with both strategies using the existing oracles.
+        testNativeJitFpuCachePressure();
+        testWasmJitFpuFaultState();
+        if ((nativeJitPolicyTestCounts().stackPairTopSpills != before.stackPairTopSpills) != enabled)
+            testFail("x64 x87 policy did not exercise requested stack-pair path enabled=%u", enabled);
+    }
+#endif
+}
+
+void testNativeX64CarryPolicies() {
+#ifdef BOXEDWINE_JIT_X64
+    NativeJitTestEnvironment baseline("BOXEDWINE_TEST_JIT_BASELINE", nullptr);
+    NativeJitTestEnvironment policies[] = {
+        {"BOXEDWINE_TEST_TRUST_ADJACENT_CARRY", nullptr},
+        {"BOXEDWINE_TEST_TRUST_HOST_CARRY", nullptr},
+        {"BOXEDWINE_TEST_ZERO_HOST_CARRY", nullptr},
+        {"BOXEDWINE_TEST_TRUST_CARRY_MOVES", nullptr},
+        {"BOXEDWINE_TEST_NATIVE_CARRY_ARITH", nullptr},
+        {"BOXEDWINE_TEST_NATIVE_CARRY_RR_ONLY", nullptr},
+        {"BOXEDWINE_TEST_FLAGS_MOVZX", nullptr},
+        {"BOXEDWINE_TEST_MOVZX_ADC_ONLY", nullptr},
+        {"BOXEDWINE_TEST_MOVZX_CARRY_ONLY", nullptr},
+    };
+#if defined(__linux__) || defined(_WIN32)
+    constexpr bool enabledByDefault = true;
+#else
+    constexpr bool enabledByDefault = false;
+#endif
+    auto& ctx = testContext();
+    CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    const U32 inputs[] = {0, 1, 0xf, 0x7fffffff, 0x80000000, 0xffffffff};
+    // Exercise host defaults, the fallback, and explicit enablement overriding
+    // the fallback. Verify emitted paths as well as guest results and flags.
+    for (U32 mode = 0; mode < 3; ++mode) {
+        baseline.set(mode ? "1" : nullptr);
+        for (auto& policy : policies) policy.set(mode == 2 ? "1" : nullptr);
+        bool optimized = mode == 2 || (mode == 0 && enabledByDefault);
+        auto before = nativeJitPolicyTestCounts();
+        for (U32 a : inputs) for (U32 b : inputs) for (U32 carry = 0; carry < 2; ++carry)
+        for (U32 gap = 0; gap < 3; ++gap) {
+            testNewInstruction(0);
+            cpu->reg[0].u32 = carry ? 0xffffffff : 0;
+            cpu->reg[1].u32 = a;
+            cpu->reg[2].u32 = b;
+            cpu->reg[3].u32 = 1;
+            cpu->reg[6].u32 = 0x12345678;
+            bytes({0x03, 0xc3}); // ADD EAX,EBX produces the incoming carry
+            if (gap == 1) bytes({0x8b, 0xfe}); // MOV EDI,ESI preserves host flags
+            if (gap == 2) bytes({0x46}); // INC ESI preserves guest CF but replaces other flags
+            bytes({0x13, 0xca}); // ADC ECX,EDX
+            testRunCPU();
+            U64 sum = (U64)a + b + carry;
+            U32 result = (U32)sum;
+            U32 flags = (sum >> 32 ? CF : 0) | (!result ? ZF : 0) | (result & 0x80000000 ? SF : 0) |
+                (((a ^ b ^ result) & 0x10) ? AF : 0) | ((~(a ^ b) & (a ^ result) & 0x80000000) ? OF : 0);
+            U8 parity = (U8)result;
+            parity ^= parity >> 4; parity ^= parity >> 2; parity ^= parity >> 1;
+            if (!(parity & 1)) flags |= PF;
+            cpu->fillFlags();
+            if (cpu->reg[1].u32 != result || cpu->reg[0].u32 != (carry ? 0u : 1u) ||
+                cpu->reg[2].u32 != b || cpu->reg[6].u32 != 0x12345678u + (gap == 2) ||
+                (gap == 1 && cpu->reg[7].u32 != 0x12345678) || (cpu->flags & FMASK_TEST) != flags)
+                testFail("x64 carry policy mode=%u a=%x b=%x carry=%u gap=%u result=%x flags=%x expected=%x", mode, a, b, carry, gap,
+                    cpu->reg[1].u32, cpu->flags & FMASK_TEST, flags);
+        }
+        // An entry at ADC or an intervening MOV must consume this entry's guest
+        // CF, not host flags left over from an ADD it did not execute.
+        for (U32 moves = 0; moves <= 2; ++moves) {
+            testNewInstruction(0);
+            bytes({0x03, 0xc3}); // ADD EAX,EBX
+            std::vector<U32> entries;
+            for (U32 move = 0; move < moves; ++move) {
+                entries.push_back(ctx.codeIp);
+                bytes({0x8b, 0xfe}); // MOV EDI,ESI
+            }
+            entries.push_back(ctx.codeIp);
+            bytes({0x13, 0xca, 0xcd, 0x97}); // ADC ECX,EDX; TestEnd
+            DecodedOp* first = cpu->getOp(TEST_CODE_ADDRESS, 0);
+            startNewJIT(cpu, TEST_CODE_ADDRESS, first);
+            if (!first->pfnJitCode) testFail("x64 carry entry test did not compile mode=%u", mode);
+            for (U32 entry : entries) {
+                auto* op = ctx.memory->getDecodedOp(entry);
+                if (!op) {
+                    testFail("x64 carry entry was not decoded mode=%u", mode);
+                    continue;
+                }
+                if (optimized && op->pfnJitCode)
+                    testFail("x64 trusted carry interior published as an external entry mode=%u moves=%u entry=%x", mode, moves, entry);
+            }
+            // Entering an interior may compile a separate, safe block there.
+            // Check the original block's entry protection before executing any.
+            for (U32 entry : entries) {
+                for (U32 carry = 0; carry < 2; ++carry) {
+                    cpu->reg[0].u32 = 0x12345678;
+                    cpu->reg[1].u32 = 0xffffffff;
+                    cpu->reg[2].u32 = 0;
+                    cpu->reg[3].u32 = 1;
+                    cpu->lazyFlagType = FLAGS_NONE;
+                    cpu->setFlags(carry ? CF : 0, FMASK_TEST);
+                    cpu->eip.u32 = entry - TEST_CODE_ADDRESS;
+                    cpu->nextOp = cpu->getNextOp();
+                    do { cpu->run(); } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+                    cpu->fillFlags();
+                    if (cpu->reg[0].u32 != 0x12345678 || cpu->reg[1].u32 != (carry ? 0u : 0xffffffff) ||
+                        (cpu->flags & CF) != (carry ? CF : 0))
+                        testFail("x64 carry external entry mode=%u moves=%u entry=%x carry=%u", mode, moves, entry, carry);
+                }
+            }
+        }
+        auto after = nativeJitPolicyTestCounts();
+        if ((after.nativeCarryArithmetic != before.nativeCarryArithmetic) != optimized ||
+            (after.trustedCarry != before.trustedCarry) != optimized)
+            testFail("x64 carry policy tests did not select the expected paths mode=%u", mode);
+    }
+#endif
+}
+
+void testNativeJitPerformancePolicy() {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    NativeJitTestEnvironment baseline("BOXEDWINE_TEST_JIT_BASELINE", nullptr);
+    NativeJitTestEnvironment policy("BOXEDWINE_TEST_POLICY_UNIT", nullptr);
+#if defined(BOXEDWINE_JIT_X64) && defined(__linux__)
+    constexpr bool enabledByDefault = true;
+#else
+    constexpr bool enabledByDefault = false;
+#endif
+    if (nativeJitPerformanceEnabled(policy.name, true) != enabledByDefault ||
+            nativeJitPerformanceEnabled(policy.name, false))
+        testFail("native JIT tests must use this host's production policy defaults");
+    baseline.set("1");
+    if (nativeJitPerformanceEnabled(policy.name, true))
+        testFail("native JIT baseline must disable production defaults");
+    policy.set("1");
+    if (!nativeJitPerformanceEnabled(policy.name, false))
+        testFail("explicit native JIT policy must override the baseline");
+    policy.set("0");
+    baseline.set("0");
+    if (nativeJitPerformanceEnabled(policy.name, true))
+        testFail("explicit zero must disable a native JIT policy");
+#endif
+}
+
+static void testNativeReturnFirstCsChange(bool adaptiveEnabled, bool earlyProfile, bool targetFirst) {
+#if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
+    NativeJitTestEnvironment warmup("BOXEDWINE_TEST_PROFILE_WARMUP","1");
+    NativeJitTestEnvironment adaptive("BOXEDWINE_TEST_ADAPTIVE_RETURN",adaptiveEnabled?"1":"0");
+    NativeJitTestEnvironment early("BOXEDWINE_TEST_EARLY_RETURN_PROFILE",earlyProfile?"1":"0");
+    NativeJitTestEnvironment target("BOXEDWINE_TEST_TRACE_TARGET_FIRST",targetFirst?"1":"0");
+    NativeJitTestEnvironment indirect("BOXEDWINE_TEST_INDIRECT_TARGET_SLOW","0");
+    NativeJitTestEnvironment returns("BOXEDWINE_TEST_RETURN_TARGET_SLOW","0");
     constexpr U32 CODE=0x500000, STACK=TEST_STACK_ADDRESS-256;
-    auto fail=[](const char* message){testFail("adaptive first CS transition: %s",message);
+    auto fail=[](const char* message){testFail("native cached entry / first CS transition: %s",message);
         throw 1;
     };
     testNewInstruction(0);
@@ -5213,7 +5563,10 @@ static void testNativeReturnFirstCsChange(bool adaptiveEnabled) {
             KThread::setCurrentThread(earlierThread.get());
             c = earlierThread->cpu;
             invoke(targets[0], 0, false);
+            if (!c->calculateCF[0]) fail("cached entry must initialize this CPU's carry helpers");
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
             if (c->exceptionSigNo) fail("cached entry on earlier CPU must bind carry helpers without a host fault");
+#endif
             c = t.cpu;
         }
         for (unsigned which = 0; which < 2; ++which) {
@@ -5230,16 +5583,29 @@ static void testNativeReturnFirstCsChange(bool adaptiveEnabled) {
             DecodedOp* prefix = c->getNextOp();
             if (!prefix || prefix->pfnJitCode || prefix->next != t.memory->getDecodedOp(targets[0]))
                 fail("cold interpreter prefix must link to a cached compiled target");
+            // Native test builds can compile on the first visit. Keep this
+            // prefix interpreted so helper binding must happen at the cached
+            // target entry, rather than as a side effect of compiling it.
+            prefix->flags |= OP_FLAG_NO_JIT;
+            prefix->runCount = JIT_RUN_COUNT + 1;
             invoke(targets[0] - 5, 0, false, which ? CF : 0);
+            if (!c->calculateCF[0]) fail("interpreter fallthrough must initialize this CPU's carry helpers");
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
             if (c->exceptionSigNo) fail("interpreter fallthrough must bind carry helpers without a host fault");
+#endif
             c = t.cpu;
         }
         invoke(CODE,0);
         auto*r=t.memory->getDecodedOp(CODE);
+#ifdef BOXEDWINE_JIT_X64
         if(r->indirectTargetHits!=1||r->pfnJitCode)fail("production warmup first hit");
-        if (adaptiveEnabled) {
+        if (adaptiveEnabled && earlyProfile) {
             invoke(CODE,1);
             if(r->indirectTargetHits!=13||r->imm!=targets[1]||r->indirectTargetEip!=targets[0]||r->pfnJitCode)fail("early second target");
+        } else {
+            // Without early profiling, first compile the one-target return;
+            // later misses must still adapt correctly when that policy is on.
+            for (unsigned n = 0; n < 128; ++n) invoke(CODE,0);
         }
         for(unsigned n=0;n<400;n++)invoke(CODE,adaptiveEnabled?n%2:0);
         const U8 expectedHits = adaptiveEnabled ? 76 : 12;
@@ -5247,6 +5613,13 @@ static void testNativeReturnFirstCsChange(bool adaptiveEnabled) {
         void*stable=r->blockStart->pfnJitCode;
         for(unsigned n=0;n<256;n++)invoke(CODE,adaptiveEnabled?n%2:0);
         if(r->indirectTargetHits!=expectedHits||r->blockStart->pfnJitCode!=stable)fail("profile churn");
+#else
+        // Other native backends share cached-entry and CS-base correctness,
+        // but do not implement x64's adaptive return profile.
+        if (!r->pfnJitCode) startNewJIT(c, CODE, r);
+        if (!r->pfnJitCode) fail("source compilation");
+        void* stable = r->pfnJitCode;
+#endif
         const U32 shift=0x10000;
         if(t.memory->mmap(t.thread,CODE+shift,4096,K_PROT_READ|K_PROT_WRITE|K_PROT_EXEC,K_MAP_FIXED|K_MAP_PRIVATE,-1,0)!=CODE+shift)fail("shifted target map");
         for(unsigned which=0;which<2;which++){
@@ -5273,9 +5646,18 @@ static void testNativeReturnFirstCsChange(bool adaptiveEnabled) {
             }
             if(!c->nextOp||c->nextOp->inst!=TestEnd)fail("bounded execution");
             c->fillFlags();
-            if(c->reg[0].u32!=0xdead1234+which||c->reg[1].u32!=11||c->reg[2].u32!=13||c->reg[3].u32!=9||c->reg[4].u32!=STACK+4||c->eip.u32!=targets[which]+5||!(c->flags&CF)||r->indirectTargetHits!=expectedHits||r->blockStart->pfnJitCode!=stable)fail("two-target live CS guard / one pop / state / stable profile");
+            if(c->reg[0].u32!=0xdead1234+which||c->reg[1].u32!=11||c->reg[2].u32!=13||c->reg[3].u32!=9||c->reg[4].u32!=STACK+4||c->eip.u32!=targets[which]+5||!(c->flags&CF)||r->pfnJitCode!=stable)fail("live CS guard / one pop / state / stable compiled entry");
+#ifdef BOXEDWINE_JIT_X64
+            if (r->indirectTargetHits != expectedHits) fail("stable return profile after CS change");
+#endif
         }
         c->setSeg(CS,0,c->seg[CS].value);
+#ifdef BOXEDWINE_JIT_X64
+        if (adaptiveEnabled) {
+            for (unsigned n = 0; n < 400; ++n) invoke(CODE,n%3);
+            if (r->indirectTargetHits != 0xff) fail("third return target must select the generic fallback");
+        }
+#endif
     } catch(int) {
         c->setSeg(CS,0,c->seg[CS].value);
     }
@@ -5284,8 +5666,11 @@ static void testNativeReturnFirstCsChange(bool adaptiveEnabled) {
 
 
 void testNativeAdaptiveReturnFirstCsChange() {
-    testNativeReturnFirstCsChange(true);
-    testNativeReturnFirstCsChange(false);
+#ifdef BOXEDWINE_JIT_X64
+    for (bool early : {false, true}) for (bool targetFirst : {false, true})
+        testNativeReturnFirstCsChange(true, early, targetFirst);
+#endif
+    testNativeReturnFirstCsChange(false, false, false);
 }
 
 #endif

@@ -52,7 +52,7 @@ void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCoun
 void testJitSignalPendingReset();
 void testArmJitPollExitState();
 void testJitSignalPendingQueuedSignal();
-void testWasmJitSignalPendingDispatch();
+void testJitSignalPendingDispatch();
 void testX87ExceptionSummaryState();
 void testDefaultUserSegmentsUseGdtSelectors();
 void testSignalHandlerSegmentsUseGdtSelectors();
@@ -191,3 +191,8 @@ void testFastModeSelectionHelpers();
 #endif
 
 void testNativeAdaptiveReturnFirstCsChange();
+void testNativeJitPerformancePolicy();
+void testNativeX64MemoryPolicies();
+void testNativeX64CarryPolicies();
+void testNativeX64AddressPolicies();
+void testNativeX64FpuPolicies();

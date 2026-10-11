@@ -30,11 +30,9 @@ static bool jitMemoryExperimentEnabled(const char* name, bool productionDefault 
     return nativeJitPerformanceEnabled(name, productionDefault);
 }
 
-#ifdef BOXEDWINE_JIT_X64
-static void bindNativeCarryHelpers(CPU* cpu) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
-    memcpy(cpu->calculateCF, cpu->thread->process->calculateCF, sizeof(cpu->calculateCF));
-}
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+static thread_local NativeJitPolicyTestCounts policyTestCounts;
+NativeJitPolicyTestCounts nativeJitPolicyTestCounts() { return policyTestCounts; }
 #endif
 
 #undef u8
@@ -261,7 +259,7 @@ public:
     void compile(DecodedOp* op) override;
     bool isExternalJitEntry(U32 eip) const override { return !fpuInternalEntries.count(eip) && !flagInternalEntries.count(eip); }
     bool hideTrustedCarryEntry(U32 eip) override {
-#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32)) && defined(BOXEDWINE_JIT_X64)
         if (nativeJitPerformanceEnabled("BOXEDWINE_TEST_TRUST_ADJACENT_CARRY", true)) {
             flagInternalEntries.insert(eip);
             return true;
@@ -270,9 +268,12 @@ public:
         return false;
     }
     bool materializeTrustedCarry(RegPtr result) override {
-#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32)) && defined(BOXEDWINE_JIT_X64)
         if (nativeCarryFromPreviousAdd && !fpuStackCache.entryTop &&
             jitMemoryExperimentEnabled("BOXEDWINE_TEST_TRUST_HOST_CARRY", true)) {
+#ifdef __TEST
+            ++policyTestCounts.trustedCarry;
+#endif
             if (jitMemoryExperimentEnabled("BOXEDWINE_TEST_ZERO_HOST_CARRY", true)) {
                 // MOV preserves the live ADD flags; clear the full result
                 // before SETB so its unused upper bits have a defined value.
@@ -288,10 +289,14 @@ public:
         return false;
     }
     bool useNativeCarryArithmetic(JitWidth width, LazyFlagType flags) override {
-#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
-        return width == JitWidth::b32 && flags == FLAGS_ADC32 &&
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32)) && defined(BOXEDWINE_JIT_X64)
+        bool enabled = width == JitWidth::b32 && flags == FLAGS_ADC32 &&
             (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_NATIVE_CARRY_RR_ONLY", true) || isAdc32RegisterPair(currentOp)) &&
             jitMemoryExperimentEnabled("BOXEDWINE_TEST_NATIVE_CARRY_ARITH", true);
+#ifdef __TEST
+        if (enabled) ++policyTestCounts.nativeCarryArithmetic;
+#endif
+        return enabled;
 #else
         return false;
 #endif
@@ -1038,8 +1043,12 @@ void JitX86CodeGen::postCompile(DecodedOp* op) {
     spillFpuTop();
 #elif defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)
     bool spillTop = jitMemoryExperimentEnabled("BOXEDWINE_TEST_SPILL_FPU_TOP");
-    if (!spillTop && jitMemoryExperimentEnabled("BOXEDWINE_TEST_STACK_PAIR_TOP", true))
+    if (!spillTop && jitMemoryExperimentEnabled("BOXEDWINE_TEST_STACK_PAIR_TOP", true)) {
         spillTop = hasAdjacentFpuStackChange(op);
+#ifdef __TEST
+        if (spillTop && fpuStackCache.entryTop) ++policyTestCounts.stackPairTopSpills;
+#endif
+    }
     if (spillTop) spillFpuTop();
 #endif
     nativeCarryFromPreviousAdd = !cachedFpuState && compiler.offset() == beforeCleanup && !op->lock &&
@@ -1686,8 +1695,15 @@ bool JitX86CodeGen::isTmpRegAvailable() {
 }
 
 void JitX86CodeGen::forceSyncBackIfNotCached(RegPtr reg) {
-    if (reg->emulatedReg != INVALID_REG && regCache[reg->emulatedReg] == INVALID_REG) {
-        compiler.mov(Mem(HOST_CPU, CPU::offsetofReg32(reg->emulatedReg)), R32(reg));
+    if (reg->emulatedReg != INVALID_REG) {
+        U8 cachedReg = regCache[reg->emulatedReg];
+        if (cachedReg == INVALID_REG) {
+            compiler.mov(Mem(HOST_CPU, CPU::offsetofReg32(reg->emulatedReg)), R32(reg));
+        } else if (cachedReg != reg->hardwareReg()) {
+            // On x86, AL uses a byte-capable temporary while EAX is cached in
+            // EBP. Publish the updated full register before a fault side exit.
+            compiler.mov(R32(cachedReg), R32(reg));
+        }
     }
 }
 
@@ -2893,6 +2909,9 @@ RegPtr JitX86CodeGen::calculateReadEaa(DecodedOp* op) {
         getMemData(thread->memory)->useLinearMemoryJit() &&
         op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS &&
         hasFlatRegisterAddress32(op) && !op->data.disp) {
+#ifdef __TEST
+        ++policyTestCounts.borrowedReadAddresses;
+#endif
         return getReadOnlyReg(op->rm);
     }
 #endif
@@ -2925,6 +2944,9 @@ void JitX86CodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth src
         !signExtend && hasFlatRegisterAddress32(op) &&
         op->data.disp > 0 && (U64)op->data.disp <= ownedGuardSize - 4 &&
         op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS && op->markFoldedLinearRead()) {
+#ifdef __TEST
+        ++policyTestCounts.foldedLinearReads;
+#endif
         RegPtr source = getReadOnlyReg(op->rm);
         RegPtr destination = getReg(op->reg);
         // A wrapped sum reaches only our protected trailing guard. Fault
@@ -2957,7 +2979,7 @@ void JitX86CodeGen::writeHost(JitWidth width, MemPtr address, U32 value, bool em
 }
 
 RegPtr JitX86CodeGen::getLazyFlagType() {
-#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32)) && defined(BOXEDWINE_JIT_X64)
     if (jitMemoryExperimentEnabled("BOXEDWINE_TEST_FLAGS_MOVZX", true) &&
         (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_MOVZX_ADC_ONLY", true) || isAdc32Consumer(currentOp)) &&
         (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_MOVZX_CARRY_ONLY", true) ||
@@ -2971,7 +2993,7 @@ RegPtr JitX86CodeGen::getLazyFlagType() {
 }
 
 RegPtr JitX86CodeGen::getLazyFlagTypeInTmp() {
-#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32)) && defined(BOXEDWINE_JIT_X64)
     if (jitMemoryExperimentEnabled("BOXEDWINE_TEST_FLAGS_MOVZX", true) &&
         (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_MOVZX_ADC_ONLY", true) || isAdc32Consumer(currentOp)) &&
         (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_MOVZX_CARRY_ONLY", true) ||
@@ -6364,6 +6386,9 @@ bool JitX86CodeGen::tryRegMemoryArithmetic(DecodedOp* op, JitWidth width, LazyFl
     case FLAGS_XOR32: operation = JitFlagOp::Xor; break;
     default: return false;
     }
+#ifdef __TEST
+    ++policyTestCounts.fusedMemoryReads;
+#endif
     RegPtr dest = getReg(op->reg);
     RegPtr address = calculateReadEaa(op);
     read(width, std::move(address), [this, width, operation, dest](MemPtr address) {
@@ -6489,6 +6514,9 @@ U8* JitX86CodeGen::createStartJITCode() {
     KMemoryData* memoryData = getMemData(KThread::currentThread()->memory);
     if (jitUsePinnedLinearBase(cpu)) {
         compiler.mov(HOST_LINEAR_MEMORY, (U64)memoryData->linearMemoryBase);
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+        ++policyTestCounts.pinnedLinearEntries;
+#endif
     } else {
         compiler.mov(HOST_MMU, (U64)memoryData->mmu);
     }
@@ -6531,6 +6559,9 @@ U8* JitX86CodeGen::createStartJITCode() {
     RegPtr tmpReg = getTmpReg();
     compiler.mov(RN(tmpReg), Mem(regEdx, offsetof(DecodedOp, pfnJitCode)));
     If(DYN_PTR, tmpReg); {
+        IfNotCPU(DYN_PTR, nullptr, 0, offsetof(CPU, calculateCF)); {
+            callHostFunction((void*)bindNativeCarryHelpers, {DynParam(JitCallParamType::CPU)});
+        } EndIf();
         compiler.call(RN(tmpReg));
     } EndIf();
 #endif

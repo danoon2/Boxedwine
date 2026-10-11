@@ -3640,6 +3640,8 @@ RegPtr JitArmV8CodeGen::readCPU(JitWidth width, U32 offset, RegPtr reg) {
 }
 
 RegPtr JitArmV8CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr reg) {
+    // Shared CPU-field guards use a null index for a direct field access.
+    if (!sib) return readCPU(width, offset, std::move(reg));
     if (!reg) {
         reg = getTmpReg();
     }
@@ -8293,6 +8295,16 @@ U8* JitArmV8CodeGen::createStartJITCode() {
     }
     loadCacheFromCPU();
     If(JitWidth::b64, std::make_shared<JitReg>(regBranch, 0xff)); {
+        // A reset CPU can enter another CPU's compiled code directly or via
+        // an interpreter tail. The host call uses xBranch, so preserve the
+        // selected entry explicitly and keep the native stack aligned.
+        IfNotCPU(DYN_PTR, nullptr, 0, offsetof(CPU, calculateCF)); {
+            compiler.sub(asmjit::a64::sp, asmjit::a64::sp, 16);
+            compiler.str(xBranch, Mem(asmjit::a64::sp));
+            callHostFunction((void*)bindNativeCarryHelpers, {DynParam(JitCallParamType::CPU)});
+            compiler.ldr(xBranch, Mem(asmjit::a64::sp));
+            compiler.add(asmjit::a64::sp, asmjit::a64::sp, 16);
+        } EndIf();
         compiler.blr(xBranch);
     } StartElse(); {
         // Invalidation can clear the entry after an interpreter tail call has

@@ -386,7 +386,14 @@ const TestEntry TEST_ENTRIES[] = {
     {testNativeJitRunCountWraps, "Test native JIT runCount wrap"},
     {testNativeJitCooperativeScheduling, "Test native JIT cooperative scheduling", TEST_ENTRY_SERIAL},
     {testNativeAdaptiveReturnFirstCsChange, "Test native return first CS change and cached carry helper entry", TEST_ENTRY_SERIAL},
+    {testNativeJitPerformancePolicy, "Test native JIT production policy defaults and overrides", TEST_ENTRY_SERIAL},
     {testNativeJitConditionalSideExits, "Test native JIT conditional side exits"},
+#endif
+#ifdef BOXEDWINE_JIT_X64
+    {testNativeX64MemoryPolicies, "Test x64 JIT memory policies and fault state", TEST_ENTRY_SERIAL},
+    {testNativeX64CarryPolicies, "Test x64 JIT carry policies and flags", TEST_ENTRY_SERIAL},
+    {testNativeX64AddressPolicies, "Test x64 JIT address policies and wraparound", TEST_ENTRY_SERIAL},
+    {testNativeX64FpuPolicies, "Test x64 JIT x87 stack policy and fallbacks", TEST_ENTRY_SERIAL},
 #endif
 #ifdef BOXEDWINE_JIT
     {testJitDecodedChainBoundary, "Test JIT decoded chain boundary", TEST_ENTRY_SERIAL},
@@ -762,7 +769,7 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
     {testJitSignalPendingReset, "Test JIT signal pending reset", TEST_ENTRY_SERIAL},
     {testJitSignalPendingQueuedSignal, "Test JIT signal pending queued signal", TEST_ENTRY_SERIAL},
-    {testWasmJitSignalPendingDispatch, "Test WASM JIT signal pending dispatch", TEST_ENTRY_SERIAL},
+    {testJitSignalPendingDispatch, "Test JIT signal pending dispatch", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointRaisesTrap, "Test hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointIgnoresNonExecutableAddress, "Test hardware breakpoint ignores non-executable address", TEST_ENTRY_SERIAL},
     {testDataHardwareBreakpointRaisesTrap, "Test data hardware breakpoint raises trap", TEST_ENTRY_SERIAL},

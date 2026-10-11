@@ -1658,7 +1658,9 @@ void runSharedFillLoadFaultCases(U32 width, bool store, bool flat) {
                 memory->readd(uc + 0x4c) != repAddress - TEST_CODE_ADDRESS ||
                 memory->readd(uc + 0x34) != 0x12345678 || memory->readd(uc + 0x40) != expectedEax ||
                 (memory->readd(uc + 0x54) & (CF | ZF | DF)) != (CF | ZF | (backward ? DF : 0))) {
-            failed("shared REP STOS/LODS partial fault width=%u source=%u DF=%u offset=%u", width, sourceFault, backward, unaligned);
+            failed("shared REP STOS/LODS partial fault width=%u source=%u DF=%u offset=%u count=%u flat=%u EAX=%08x expected=%08x",
+                width, sourceFault, backward, unaligned, count, flat,
+                uc ? memory->readd(uc + 0x40) : 0, expectedEax);
         }
         std::vector<U8> expected(0x2000, 0x55);
         if (store) for (U32 i = 0; i < completed; ++i) for (U32 j = 0; j < width; ++j) {

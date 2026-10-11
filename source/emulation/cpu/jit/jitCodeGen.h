@@ -282,4 +282,9 @@ protected:
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
 JitCodeGen* startNewJIT(CPU* cpu);
 
+#ifndef BOXEDWINE_WASM_JIT
+// Bind per-CPU helpers when entering code compiled by another CPU.
+void bindNativeCarryHelpers(CPU* cpu);
+#endif
+
 #endif

@@ -12,7 +12,7 @@ void wasmJitMtLeaveCpu(CPU* cpu);
 void wasmJitMtUnregisterCpu(CPU* cpu);
 #endif
 
-#if defined(BOXEDWINE_JIT_X64) && (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__))
+#if defined(BOXEDWINE_JIT_X64) && (defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32))
 void* CPU::operator new(size_t size) {
 #if defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT)
     U32 phase = 0;
