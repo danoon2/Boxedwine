@@ -181,6 +181,12 @@ void OPCALL normal_retn16(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_retn32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->eip.u32 = cpu->pop32();
+#ifdef BOXEDWINE_JIT_X64
+#if defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)
+    if (!(op->flags2 & OP_FLAG2_NATIVE_ADAPTIVE_RETURN))
+#endif
+    op->observeIndirectTarget(cpu->eip.u32);
+#endif
     NEXT_DONE();
 }
 void OPCALL normal_invalid(CPU* cpu, DecodedOp* op) {
@@ -511,6 +517,9 @@ void OPCALL normal_callR32(CPU* cpu, DecodedOp* op) {
     U32 dest = cpu->reg[op->reg].u32;
     cpu->push32(cpu->eip.u32+op->len);
     cpu->eip.u32 = dest;
+#ifdef BOXEDWINE_JIT_X64
+    op->observeIndirectTarget(cpu->eip.u32);
+#endif
     NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_callE16(CPU* cpu, DecodedOp* op) {
@@ -525,6 +534,9 @@ void OPCALL normal_callE32(CPU* cpu, DecodedOp* op) {
     U32 neweip = cpu->memory->readd(eaa(cpu, op));
     cpu->push32(cpu->eip.u32+op->len);
     cpu->eip.u32 = neweip;
+#ifdef BOXEDWINE_JIT_X64
+    op->observeIndirectTarget(cpu->eip.u32);
+#endif
     NEXT_DONE_JUMP_OR_CALL();
 }
 void OPCALL normal_jmpR16(CPU* cpu, DecodedOp* op) {

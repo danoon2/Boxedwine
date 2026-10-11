@@ -37,6 +37,10 @@ public:
 
 	U32 delayedFree = 0; // millis before the memory can be recycles
     bool isCodeMemory = false;
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+    // Set before the heap's first allocation; kept fixed for its lifetime.
+    U32 testAlignment = 4;
+#endif
 	std::function<void(void*, U32)> delayedFreeCallback;
 private:
     BOXEDWINE_MUTEX heapMutex;

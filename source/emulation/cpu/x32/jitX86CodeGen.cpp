@@ -25,6 +25,18 @@
 #include <array>
 #include <set>
 
+// Explicit zero preserves environment layout for paired experiment controls.
+static bool jitMemoryExperimentEnabled(const char* name, bool productionDefault = false) {
+    return nativeJitPerformanceEnabled(name, productionDefault);
+}
+
+#ifdef BOXEDWINE_JIT_X64
+static void bindNativeCarryHelpers(CPU* cpu) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
+    memcpy(cpu->calculateCF, cpu->thread->process->calculateCF, sizeof(cpu->calculateCF));
+}
+#endif
+
 #undef u8
 #undef h8
 #undef h16
@@ -71,7 +83,7 @@ static U8 XMMtmps[] = { 12, 13, 14, 15 };
 #endif
 #define HOST_MMU asmjit::x86::r15
 #define HOST_CPU asmjit::x86::r13
-#if defined(BOXEDWINE_64) && defined(_WIN32)
+#if defined(BOXEDWINE_64)
 // R15 is the hot linear-memory base on Windows. MMU fallback paths acquire a
 // temporary table base only while emitting the lookup, leaving R14 available
 // to the ordinary temporary-register allocator.
@@ -247,7 +259,43 @@ public:
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void postCompile(DecodedOp* op) override;
     void compile(DecodedOp* op) override;
-    bool isExternalJitEntry(U32 eip) const override { return !fpuInternalEntries.count(eip); }
+    bool isExternalJitEntry(U32 eip) const override { return !fpuInternalEntries.count(eip) && !flagInternalEntries.count(eip); }
+    bool hideTrustedCarryEntry(U32 eip) override {
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+        if (nativeJitPerformanceEnabled("BOXEDWINE_TEST_TRUST_ADJACENT_CARRY", true)) {
+            flagInternalEntries.insert(eip);
+            return true;
+        }
+#endif
+        return false;
+    }
+    bool materializeTrustedCarry(RegPtr result) override {
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+        if (nativeCarryFromPreviousAdd && !fpuStackCache.entryTop &&
+            jitMemoryExperimentEnabled("BOXEDWINE_TEST_TRUST_HOST_CARRY", true)) {
+            if (jitMemoryExperimentEnabled("BOXEDWINE_TEST_ZERO_HOST_CARRY", true)) {
+                // MOV preserves the live ADD flags; clear the full result
+                // before SETB so its unused upper bits have a defined value.
+                compiler.mov(R32(result), 0);
+                compiler.setb(R8(result));
+            } else {
+                compiler.setb(R8(result));
+                compiler.movzx(R32(result), R8(result));
+            }
+            return true;
+        }
+#endif
+        return false;
+    }
+    bool useNativeCarryArithmetic(JitWidth width, LazyFlagType flags) override {
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+        return width == JitWidth::b32 && flags == FLAGS_ADC32 &&
+            (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_NATIVE_CARRY_RR_ONLY", true) || isAdc32RegisterPair(currentOp)) &&
+            jitMemoryExperimentEnabled("BOXEDWINE_TEST_NATIVE_CARRY_ARITH", true);
+#else
+        return false;
+#endif
+    }
     bool supportsFpuStackCache() const override {
         static const bool enabled = !std::getenv("BOXEDWINE_DISABLE_NATIVE_FPU_CACHE");
         return enabled;
@@ -272,7 +320,12 @@ public:
     U32 saveNativeFpuRegisters();
     void restoreNativeFpuRegisters(U32 mask);
     std::set<U32> fpuInternalEntries;
+    std::set<U32> flagInternalEntries;
+    bool nativeCarryFromPreviousAdd = false;
     std::vector<FpuRegisterLoop> fpuRegisterLoops;
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+    std::set<U32> loopAlignmentHeaders;
+#endif
     const FpuRegisterLoop* fpuRegisterLoop = nullptr;
     RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) override;
     RegPtr getReg8(U8 reg, bool load = true) override;
@@ -365,6 +418,8 @@ public:
     void writeHost(JitWidth width, MemPtr address, U32 value, bool emlulatedMemory = true) override;
     Mem createMem(JitWidth width, MemPtr address);
 
+    RegPtr getLazyFlagType() override;
+    RegPtr getLazyFlagTypeInTmp() override;
     RegPtr readCPU(JitWidth width, U32 offset, RegPtr resultReg = nullptr) override;
     RegPtr readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr resultReg = nullptr) override;
     void writeCPU(JitWidth width, U32 offset, RegPtr src) override;
@@ -433,6 +488,7 @@ public:
     void direct_test(JitWidth width, RegPtr left, RegPtr right) override;
     void direct_test(JitWidth width, RegPtr left, U32 right) override;
     void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) override;
+    bool tryRegMemoryArithmetic(DecodedOp* op, JitWidth width, LazyFlagType flagType) override;
     void direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, U32 src) override;
     void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, RegPtr src, RegPtr cf) override;
     void direct_flags_op_with_cf(JitWidth width, JitCarryOp op, RegPtr dst, U32 src, RegPtr cf) override;
@@ -449,6 +505,7 @@ public:
 
     bool directDoesAffectFlags(DecodedOp* op) override;
     RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) override;
+    RegPtr calculateReadEaa(DecodedOp* op);
 
 #ifdef BOXEDWINE_64
     void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
@@ -921,8 +978,16 @@ bool JitX86CodeGen::canCacheFpuOp(DecodedOp* op) const {
 }
 
 void JitX86CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
+    const size_t beforePrefix = compiler.offset();
+    if (fpuStackCache.entryTop || fpuRegisterLoop) nativeCarryFromPreviousAdd = false;
 #ifdef BOXEDWINE_JIT_X64
-    if (!blockOpCount) fpuRegisterLoops = findFpuRegisterLoops(4);
+    if (!blockOpCount) {
+        fpuRegisterLoops = findFpuRegisterLoops(4);
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+        loopAlignmentHeaders.clear();
+        for (const auto& branch : findLoopBackedges()) loopAlignmentHeaders.insert(branch.targetEip);
+#endif
+    }
 #endif
     if (fpuRegisterLoop && currentEip > fpuRegisterLoop->backedge) {
         flushFpuCache();
@@ -954,6 +1019,7 @@ void JitX86CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     }
     if (fpuStackCache.entryTop) fpuInternalEntries.insert(currentEip);
     JitCodeGen::preCompile(op, skippedOp);
+    if (compiler.offset() != beforePrefix || fpuStackCache.entryTop || fpuRegisterLoop) nativeCarryFromPreviousAdd = false;
 }
 
 void JitX86CodeGen::compile(DecodedOp* op) {
@@ -961,10 +1027,25 @@ void JitX86CodeGen::compile(DecodedOp* op) {
 }
 
 void JitX86CodeGen::postCompile(DecodedOp* op) {
-    // Tags/TOP share the small GP temporary pool. Values stay in the separate
-    // four-register x87 cache; metadata is reloaded only when it is used.
+    const size_t beforeCleanup = compiler.offset();
+    bool cachedFpuState = !!fpuStackCache.entryTop || !!fpuRegisterLoop;
+    for (const auto& slot : fpuStackCache.slots)
+        cachedFpuState |= !!slot.value || !!slot.tag || !!slot.valid;
+    // Tags still share the small GP pool with instruction operands. Keep the
+    // immutable entry TOP on x64 until pressure or a region boundary needs it.
     for (U8 i = 0; i < 8; ++i) spillFpuTag(i);
+#ifndef BOXEDWINE_JIT_X64
     spillFpuTop();
+#elif defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)
+    bool spillTop = jitMemoryExperimentEnabled("BOXEDWINE_TEST_SPILL_FPU_TOP");
+    if (!spillTop && jitMemoryExperimentEnabled("BOXEDWINE_TEST_STACK_PAIR_TOP", true))
+        spillTop = hasAdjacentFpuStackChange(op);
+    if (spillTop) spillFpuTop();
+#endif
+    nativeCarryFromPreviousAdd = !cachedFpuState && compiler.offset() == beforeCleanup && !op->lock &&
+        (op->inst == AddR32R32 || op->inst == AddR32I32 || op->inst == AddR32E32 ||
+            (nativeCarryFromPreviousAdd && op->inst == MovR32R32 &&
+                jitMemoryExperimentEnabled("BOXEDWINE_TEST_TRUST_CARRY_MOVES", true)));
     JitCodeGen::postCompile(op);
 }
 
@@ -1243,6 +1324,14 @@ void JitX86CodeGen::preOp(DecodedOp* op) {
         // Values alone keep their assignments around the backedge.
         spillFpuTop();
     }
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+    if (loopAlignmentHeaders.count(currentEip)) {
+        const char* setting = std::getenv("BOXEDWINE_TEST_LOOP_ALIGNMENT");
+        U32 alignment = setting ? (U32)strtoul(setting, nullptr, 10) : 0;
+        if (alignment == 16 || alignment == 32 || alignment == 64)
+            compiler.align(asmjit::AlignMode::kCode, alignment);
+    }
+#endif
     compiler.bind(label);
     pendingLabels.remove(currentEip);
 }
@@ -1363,6 +1452,14 @@ U8 JitX86CodeGen::findTmpReg(bool needs8bitReg, S8 hint, bool allowInvalidReturn
 RegPtr JitX86CodeGen::getConditionCalculationReg(U32 index) {
     U8 tmp = INVALID_REG;
 #ifdef BOXEDWINE_64
+    // These flag scratch registers are fixed, unlike ordinary temporaries.
+    // Evict an unborrowed cached TOP before claiming one; live operands retain
+    // the existing conflict check below.
+    if (index < 3) {
+        U8 selected = tmps[NUMBER_OF_TMPS - 1 - index];
+        auto& top = fpuStackCache.entryTop;
+        if (top && top->isLoaded() && top->hardwareReg() == selected && top.use_count() == 1) spillFpuTop();
+    }
     if (index == 0) {
         tmp = tmps[NUMBER_OF_TMPS - 1];
         if (regUsed[tmp]) {
@@ -2627,10 +2724,19 @@ void JitX86CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, RegP
 }
 
 #include "../../softmmu/kmemory_soft.h"
+static bool jitUsePinnedLinearBase(CPU* cpu) {
+#ifdef _WIN32
+    return getMemData(cpu->memory)->useLinearMemoryJit();
+#elif (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_64) && defined(BOXEDWINE_JIT_X64)
+    return jitMemoryExperimentEnabled("BOXEDWINE_TEST_PIN_LINEAR_BASE", true) &&
+        getMemData(cpu->memory)->useLinearMemoryJit() && !ramPageUseLinearMemoryAdjacent();
+#else
+    return false;
+#endif
+}
 void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
 #ifdef BOXEDWINE_64
-#ifdef _WIN32
-    if (getMemData(cpu->memory)->useLinearMemoryJit()) {
+    if (jitUsePinnedLinearBase(cpu)) {
         RegPtr mmuBase = dest;
         if (dest->hardwareReg() == index->hardwareReg()) {
             mmuBase = getTmpReg();
@@ -2639,7 +2745,6 @@ void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
         compiler.mov(R64(dest), Mem(R64(mmuBase), RN(index), 3, offset));
         return;
     }
-#endif
     compiler.mov(R64(dest), Mem(HOST_MMU, RN(index), 3, offset));
 #else
     compiler.mov(R32(dest), Mem((U32)getMemData(KThread::currentThread()->memory)->mmu, RN(index), 2));
@@ -2648,13 +2753,11 @@ void JitX86CodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
 
 void JitX86CodeGen::readMMU(RegPtr dest, U32 index) {
 #ifdef BOXEDWINE_64
-#ifdef _WIN32
-    if (getMemData(cpu->memory)->useLinearMemoryJit()) {
+    if (jitUsePinnedLinearBase(cpu)) {
         compiler.mov(R64(dest), (U64)getMemData(cpu->memory)->mmu);
         compiler.mov(R64(dest), Mem(R64(dest), index * 8));
         return;
     }
-#endif
     compiler.mov(R64(dest), Mem(HOST_MMU, index * 8));
 #else
     compiler.mov(R32(dest), Mem((U32)getMemData(KThread::currentThread()->memory)->mmu + index * 4));
@@ -2663,12 +2766,10 @@ void JitX86CodeGen::readMMU(RegPtr dest, U32 index) {
 
 RegPtr JitX86CodeGen::getLinearMemoryBase(RegPtr tmp) {
 #ifdef BOXEDWINE_64
-#ifdef _WIN32
-    if (getMemData(cpu->memory)->useLinearMemoryJit()) {
+    if (jitUsePinnedLinearBase(cpu)) {
         (void)tmp;
         return std::shared_ptr<JitReg>(new JitReg(HOST_LINEAR_MEMORY.id(), INVALID_REG), [](JitReg* reg) { delete reg; });
     }
-#endif
     if (!tmp) {
         tmp = getTmpReg();
     }
@@ -2782,10 +2883,26 @@ void JitX86CodeGen::readHost(JitWidth width, MemPtr address, RegPtr result, bool
 }
 
 #ifdef BOXEDWINE_64
+RegPtr JitX86CodeGen::calculateReadEaa(DecodedOp* op) {
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    // These custom reads consume the address without modifying it. Borrow a
+    // guest register only while the shared reader selects its linear arm.
+    KThread* thread = KThread::currentThread();
+    if (jitMemoryExperimentEnabled("BOXEDWINE_TEST_BORROW_READ_ADDRESS", true) && thread &&
+        ramPageUseLinearMemory() && !ramPageUseLinearMemoryAdjacent() &&
+        getMemData(thread->memory)->useLinearMemoryJit() &&
+        op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS &&
+        hasFlatRegisterAddress32(op) && !op->data.disp) {
+        return getReadOnlyReg(op->rm);
+    }
+#endif
+    return calculateEaa(op);
+}
+
 void JitX86CodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend) {
     // Keep address calculation and MMU scratch work separate from the guest
     // destination, including when that register also supplies the address.
-    read(srcWidth, calculateEaa(op), [this, op, dstWidth, srcWidth, signExtend](MemPtr address) {
+    auto emitRead = [this, op, dstWidth, srcWidth, signExtend](MemPtr address) {
         RegPtr dst = dstWidth == JitWidth::b8 ? getReg8(op->reg, false) : getReg(op->reg, -1, dstWidth != JitWidth::b32);
         if (dstWidth == srcWidth) {
             compiler.mov(R(dstWidth, dst), createMem(srcWidth, address));
@@ -2794,11 +2911,34 @@ void JitX86CodeGen::movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth src
         } else {
             compiler.movzx(R(dstWidth, dst), createMem(srcWidth, address));
         }
-    });
+    };
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    KThread* thread = KThread::currentThread();
+    bool cachedFpuState = !!fpuStackCache.entryTop || !!fpuRegisterLoop;
+    for (const auto& slot : fpuStackCache.slots)
+        cachedFpuState |= !!slot.value || !!slot.tag || !!slot.valid;
+#if defined(__linux__)
+    const U64 ownedGuardSize = (U64)Platform::getPageAllocationGranularity() << K_PAGE_SHIFT;
+    if (jitMemoryExperimentEnabled("BOXEDWINE_TEST_FOLD_LINEAR_DISPLACEMENT", true) && thread &&
+        jitUsePinnedLinearBase(cpu) && !cachedFpuState &&
+        op->inst == MovR32E32 && dstWidth == JitWidth::b32 && srcWidth == JitWidth::b32 &&
+        !signExtend && hasFlatRegisterAddress32(op) &&
+        op->data.disp > 0 && (U64)op->data.disp <= ownedGuardSize - 4 &&
+        op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS && op->markFoldedLinearRead()) {
+        RegPtr source = getReadOnlyReg(op->rm);
+        RegPtr destination = getReg(op->reg);
+        // A wrapped sum reaches only our protected trailing guard. Fault
+        // handling emulates the original 32-bit address once and retires it.
+        compiler.mov(R32(destination), Mem32(HOST_LINEAR_MEMORY, RN(source), 0, (S32)op->data.disp));
+        return;
+    }
+#endif
+#endif
+    read(srcWidth, calculateReadEaa(op), emitRead);
 }
 
 void JitX86CodeGen::scalarSseFromMemory(DecodedOp* op, JitWidth width, U32 instruction) {
-    read(width, calculateEaa(op), [this, op, width, instruction](MemPtr address) {
+    read(width, calculateReadEaa(op), [this, op, width, instruction](MemPtr address) {
         SSERegPtr dst = loadCpuXMMReg(op->reg);
         // Legacy scalar instructions retain the destination's upper lanes and
         // leave it unchanged if the memory operand faults.
@@ -2814,6 +2954,34 @@ void JitX86CodeGen::writeHost(JitWidth width, MemPtr address, RegPtr src, bool e
 
 void JitX86CodeGen::writeHost(JitWidth width, MemPtr address, U32 value, bool emlulatedMemory) {
     compiler.mov(createMem(width, address), value);
+}
+
+RegPtr JitX86CodeGen::getLazyFlagType() {
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    if (jitMemoryExperimentEnabled("BOXEDWINE_TEST_FLAGS_MOVZX", true) &&
+        (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_MOVZX_ADC_ONLY", true) || isAdc32Consumer(currentOp)) &&
+        (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_MOVZX_CARRY_ONLY", true) ||
+            (currentOp && (instructionInfo[currentOp->inst].flagsUsed & CF)))) {
+        RegPtr result = getTmpReg8();
+        compiler.movzx(R32(result), Mem8(HOST_CPU, offsetof(CPU, lazyFlagType)));
+        return result;
+    }
+#endif
+    return JitCodeGen::getLazyFlagType();
+}
+
+RegPtr JitX86CodeGen::getLazyFlagTypeInTmp() {
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    if (jitMemoryExperimentEnabled("BOXEDWINE_TEST_FLAGS_MOVZX", true) &&
+        (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_MOVZX_ADC_ONLY", true) || isAdc32Consumer(currentOp)) &&
+        (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_MOVZX_CARRY_ONLY", true) ||
+            (currentOp && (instructionInfo[currentOp->inst].flagsUsed & CF)))) {
+        RegPtr result = getTmpReg8();
+        compiler.movzx(R32(result), Mem8(HOST_CPU, offsetof(CPU, lazyFlagType)));
+        return result;
+    }
+#endif
+    return JitCodeGen::getLazyFlagTypeInTmp();
 }
 
 RegPtr JitX86CodeGen::readCPU(JitWidth width, U32 offset, RegPtr reg) {
@@ -3493,12 +3661,14 @@ void JitX86CodeGen::IfNotCPU(JitWidth regWidth, RegPtr sib, U8 lsl, U32 offset) 
     Label label = compiler.new_label();
     ifLabels.push_back(label);
 
-    if (regWidth == JitWidth::b32) {
-        compiler.cmp(Mem32(HOST_CPU, RN(sib), lsl, offset), 0);
+    if (regWidth == JitWidth::b64) {
+        compiler.cmp((sib ? Mem64(HOST_CPU, RN(sib), lsl, offset) : Mem64(HOST_CPU, offset)), 0);
+    } else if (regWidth == JitWidth::b32) {
+        compiler.cmp((sib ? Mem32(HOST_CPU, RN(sib), lsl, offset) : Mem32(HOST_CPU, offset)), 0);
     } else if (regWidth == JitWidth::b16) {
-        compiler.cmp(Mem16(HOST_CPU, RN(sib), lsl, offset), 0);
+        compiler.cmp((sib ? Mem16(HOST_CPU, RN(sib), lsl, offset) : Mem16(HOST_CPU, offset)), 0);
     } else if (regWidth == JitWidth::b8) {
-        compiler.cmp(Mem8(HOST_CPU, RN(sib), lsl, offset), 0);
+        compiler.cmp((sib ? Mem8(HOST_CPU, RN(sib), lsl, offset) : Mem8(HOST_CPU, offset)), 0);
     } else {
         kpanic_fmt("JitX86CodeGen::IfNotCPU unexpected width: %d", (U32)regWidth);
     }
@@ -6182,6 +6352,36 @@ void JitX86CodeGen::direct_test(JitWidth width, RegPtr left, U32 right) {
     }
 }
 
+bool JitX86CodeGen::tryRegMemoryArithmetic(DecodedOp* op, JitWidth width, LazyFlagType flagType) {
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    if (!jitMemoryExperimentEnabled("BOXEDWINE_TEST_FUSE_MEMORY_ARITH", true) || width != JitWidth::b32) return false;
+    JitFlagOp operation;
+    switch (flagType) {
+    case FLAGS_ADD32: operation = JitFlagOp::Add; break;
+    case FLAGS_SUB32: operation = JitFlagOp::Sub; break;
+    case FLAGS_AND32: operation = JitFlagOp::And; break;
+    case FLAGS_OR32: operation = JitFlagOp::Or; break;
+    case FLAGS_XOR32: operation = JitFlagOp::Xor; break;
+    default: return false;
+    }
+    RegPtr dest = getReg(op->reg);
+    RegPtr address = calculateReadEaa(op);
+    read(width, std::move(address), [this, width, operation, dest](MemPtr address) {
+        Mem memory = createMem(width, address);
+        switch (operation) {
+        case JitFlagOp::Add: compiler.add(R32(dest), memory); break;
+        case JitFlagOp::Sub: compiler.sub(R32(dest), memory); break;
+        case JitFlagOp::And: compiler.and_(R32(dest), memory); break;
+        case JitFlagOp::Or: compiler.or_(R32(dest), memory); break;
+        case JitFlagOp::Xor: compiler.xor_(R32(dest), memory); break;
+        }
+    });
+    return true;
+#else
+    return false;
+#endif
+}
+
 void JitX86CodeGen::direct_flags_op(JitWidth width, JitFlagOp op, RegPtr dst, RegPtr src) {
     switch (op) {
     case JitFlagOp::Add:
@@ -6287,23 +6487,31 @@ U8* JitX86CodeGen::createStartJITCode() {
         compiler.push(asmjit::x86::rax);
     } EndIf();    
     KMemoryData* memoryData = getMemData(KThread::currentThread()->memory);
-#ifdef _WIN32
-    if (memoryData->useLinearMemoryJit()) {
+    if (jitUsePinnedLinearBase(cpu)) {
         compiler.mov(HOST_LINEAR_MEMORY, (U64)memoryData->linearMemoryBase);
     } else {
         compiler.mov(HOST_MMU, (U64)memoryData->mmu);
     }
-#else
-    compiler.mov(HOST_MMU, (U64)memoryData->mmu);
-#endif
-    
+
     compiler.mov(HOST_CPU, params[0]);
     compiler.mov(RN(tmpReg), Mem(params[1], offsetof(DecodedOp, pfnJitCode)));
 
     loadCache();
 
-    // jmp ((DecodedOp*)rdx)->pfn    
+    // jmp ((DecodedOp*)rdx)->pfn
     If(DYN_PTR, tmpReg); {
+#ifdef BOXEDWINE_JIT_X64
+        // Interpreter chains can enter code compiled by another CPU after
+        // this CPU was reset. Bind at this boundary, including late entries.
+        IfNotCPU(DYN_PTR, nullptr, 0, offsetof(CPU, calculateCF)); {
+            // The wrapper's stack is one slot above the compiled-body
+            // alignment expected by callHostFunction. Its normal temporary
+            // preservation also keeps tmpReg's compiled target intact.
+            compiler.push(PARAM_CALL_TMP);
+            callHostFunction((void*)bindNativeCarryHelpers, {DynParam(JitCallParamType::CPU)});
+            compiler.pop(PARAM_CALL_TMP);
+        } EndIf();
+#endif
         compiler.call(RN(tmpReg));
     }; EndIf();
 

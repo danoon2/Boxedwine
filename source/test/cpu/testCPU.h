@@ -153,6 +153,9 @@ void testWasmJitXmmCache();
 void testWasmJitXmmFaultState();
 void testWasmJitOomRetryAfterRelease();
 void testFlagsAcrossIndirectJitBlockBoundary();
+void testWasmJitIndirectCacheState();
+void testJitIndirectTargetProfile();
+void testJitIndirectTargetFlags();
 void testJitOverlappingDirectJumpTarget();
 void testJitBranchTargetBoundaries();
 void testJitOpenGLCallStateAndInvalidation();
@@ -186,3 +189,5 @@ bool testRunMemorySib(int base, int index, int shift);
 void testFastModeSelectionHelpers();
 
 #endif
+
+void testNativeAdaptiveReturnFirstCsChange();

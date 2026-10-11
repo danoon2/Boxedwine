@@ -1284,6 +1284,7 @@ bool wasmJitCompilationPaused();
 #endif
 
 #ifdef __TEST
+extern "C" U32 wasmJitTestEmissionCount();
 void wasmJitTestSetFailInvalidationPreparation(bool fail);
 #endif
 

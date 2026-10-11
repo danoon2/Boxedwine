@@ -4349,7 +4349,7 @@ static void wasmHelper_fetchNextOp(CPU* cpu) {
         DecodedOp* nextOp = nullptr;
         if (cpu->thread->process) {
             nextOp = getMemData(cpu->memory)->opCache.get(cpu->getEipAddress());
-            if (!nextOp) {
+            if (!nextOp || ((nextOp->flags2 & OP_FLAG2_DECODED_32BIT) != 0) != cpu->isBig()) {
                 nextOp = cpu->getNextOp();
             }
         }
@@ -12205,7 +12205,7 @@ bool JitWasmCodeGen::canKeepPublishedFlagType(DecodedOp* op) const {
     const auto& info = instructionInfo[op->inst];
     if (info.branch || info.readMemWidth || info.writeMemWidth || (info.flagsSets & MAYBE)) return false;
     if (op->isSetCC() || op->isCMovCC()) {
-        U32 used = info.flagsUsed & FMASK_TEST;
+        U32 used = info.flagsUsed & WASM_FMASK_TEST;
         return !(used & ~(ZF | SF | PF)) && (!(used & PF) || !std::getenv("BOXEDWINE_WASM_PARITY_SLOW"));
     }
     switch (op->inst) {
@@ -13344,6 +13344,95 @@ void JitWasmCodeGen::blockNext2(U32 eip, DecodedOp* op) {
 }
 void JitWasmCodeGen::jumpEip(RegPtr reg) {
     writeEip(reg);
+#ifdef __TEST
+    if (const char* slow = std::getenv("BOXEDWINE_TEST_INDIRECT_LOOKUP_SLOW"); slow && strcmp(slow, "0") != 0) {
+        blockExit();
+        return;
+    }
+#endif
+    if (wasmJitRecordActive()) {
+        blockExit();
+        return;
+    }
+    // Recording still uses the helper to collect dynamic transitions.
+    // The cache walk itself contains no process addresses or relocations.
+    // Publish GP state unconditionally; hit and miss exits each publish x87
+    // state once, after the nonfaulting cache lookup.
+    syncDirtyRegsToHost();
+    U32 address = allocScratch(), page = allocScratch(), target = allocScratch();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, thread));
+    m_emitter.emitI32Load8U((U32)offsetof(KThread, terminating));
+    m_emitter.emitOp(WASM_I32_EQZ);
+    m_emitter.setNextBranchHint(WasmBranchHint::Likely);
+    m_emitter.emitIf();
+    pushRegValue(reg);
+    if (cpu->thread->process->hasSetSeg[CS]) {
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load((U32)offsetof(CPU, seg) + CS * sizeof(Seg) + offsetof(Seg, address));
+        m_emitter.emitOp(WASM_I32_ADD);
+    }
+    m_emitter.emitLocalTee(address);
+    m_emitter.emitI32Const(K_PAGE_SHIFT);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitLocalTee(page);
+    m_emitter.emitI32Const(10);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitI32Const(2);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, opCache));
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load(0);
+    m_emitter.emitLocalGet(page);
+    m_emitter.emitI32Const(0x3ff);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitI32Const(2);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load(0);
+    m_emitter.emitLocalTee(page);
+    m_emitter.setNextBranchHint(WasmBranchHint::Likely);
+    m_emitter.emitIf();
+    m_emitter.emitLocalGet(page);
+    m_emitter.emitLocalGet(address);
+    m_emitter.emitI32Const(K_PAGE_MASK);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitI32Const(2);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load((U32)offsetof(DecodedOpPageCache, ops));
+    m_emitter.emitLocalTee(target);
+    m_emitter.setNextBranchHint(WasmBranchHint::Likely);
+    m_emitter.emitIf();
+    // A live cache entry can still belong to the other CS decode mode.
+    // Leave replacement/invalidation to getNextOp on a format mismatch.
+    m_emitter.emitLocalGet(target);
+    m_emitter.emitI32Load8U((U32)offsetof(DecodedOp, flags2));
+    m_emitter.emitI32Const(OP_FLAG2_DECODED_32BIT);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitOp(WASM_I32_EQZ);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, big));
+    m_emitter.emitOp(WASM_I32_EQZ);
+    m_emitter.emitOp(WASM_I32_EQ);
+    m_emitter.setNextBranchHint(WasmBranchHint::Likely);
+    m_emitter.emitIf();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(target);
+    m_emitter.emitI32Store((U32)offsetof(CPU, nextOp));
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const((U32)(m_currentWasmOp ? m_currentWasmOp->inst : InstructionCount));
+    m_emitter.emitI32Store((U32)offsetof(CPU, tmpReg));
+    emitProfileSampledCall(HELPER_PROFILE_EXIT_GENERIC);
+#endif
+    emitFunctionReturn();
+    m_emitter.emitEnd();
+    m_emitter.emitEnd();
+    m_emitter.emitEnd();
+    m_emitter.emitEnd();
+    freeScratch(target); freeScratch(page); freeScratch(address);
     blockExit();
 }
 void JitWasmCodeGen::onTestEnd(DecodedOp* op) {
@@ -14478,7 +14567,17 @@ bool JitWasmCodeGen::shouldStopBlockBefore(U32 eip, DecodedOp* op) {
 #endif
 }
 
+#ifdef __TEST
+static std::atomic<U32> g_wasmJitTestEmissionCount{0};
+extern "C" U32 wasmJitTestEmissionCount() {
+    return g_wasmJitTestEmissionCount.load(std::memory_order_relaxed);
+}
+#endif
+
 void JitWasmCodeGen::commitJIT(DecodedOp* op) {
+#ifdef __TEST
+    g_wasmJitTestEmissionCount.fetch_add(1, std::memory_order_relaxed);
+#endif
     // Finalize the WASM function body and the module binary.
     if (m_directLoopOpen) {
         m_emitter.emitEnd();
@@ -14503,6 +14602,13 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     m_wasmBinary = m_emitter.finalize();
 
     if (m_wasmBinary.empty()) return;
+#ifdef __TEST
+    if (std::getenv("BOXEDWINE_TEST_DUMP_WASM_MODULES")) {
+        printf("JIT_MODULE %08x %zu ", this->startingEip, m_wasmBinary.size());
+        for (U8 byte : m_wasmBinary) printf("%02x", byte);
+        printf("\n");
+    }
+#endif
 
     // Cache identity for the persistence mode. Cheap relative to module
     // emission; computed unconditionally so the flow below stays simple.

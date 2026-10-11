@@ -35,6 +35,10 @@ bool wasmJitCompilationPaused();
 #endif
 
 void clearJitBlock(const std::vector<void*>& jitOps);
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+void* jitCreateIndirectTraceExit(CPU* cpu);
+
+#endif
 
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
 namespace {
@@ -1135,7 +1139,13 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #endif
     if (allowStartJit) {
 #ifdef __TEST
+#ifdef BOXEDWINE_JIT_X64
+        bool shouldStartJit = std::getenv("BOXEDWINE_TEST_PROFILE_WARMUP")
+            ? (op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT))
+            : op->runCount == 0;
+#else
         bool shouldStartJit = op->runCount == 0;
+#endif
 #else
         // done check is for long blocks that get broken up, affects f-22/f-16
         bool shouldStartJit = op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT);
@@ -1183,7 +1193,114 @@ bool JitCodeGen::isParamTypeReg(JitCallParamType paramType) {
     return paramType == JitCallParamType::REG_8 || paramType == JitCallParamType::REG_16 || paramType == JitCallParamType::REG_32;
 }
 
+void JitCodeGen::jumpIndirectEip(RegPtr reg, DecodedOp* op) {
+#ifdef BOXEDWINE_JIT_X64
+    U8 hits = std::atomic_ref<U8>(op->indirectTargetHits).load(std::memory_order_acquire);
+    bool enabled = true;
+#ifdef __TEST
+    const char* slow = std::getenv("BOXEDWINE_TEST_INDIRECT_TARGET_SLOW");
+    enabled = !slow || strcmp(slow, "0") == 0;
+    const char* kindSlow = std::getenv(op->inst == Retn32
+        ? "BOXEDWINE_TEST_RETURN_TARGET_SLOW" : "BOXEDWINE_TEST_CALL_TARGET_SLOW");
+    if (kindSlow && strcmp(kindSlow, "0") != 0) enabled = false;
+    if (const char* policy = std::getenv("BOXEDWINE_TEST_INDIRECT_TARGET_POLICY")) {
+        enabled = !strcmp(policy,"calls") ? op->inst != Retn32 :
+            !strcmp(policy,"returns") ? op->inst == Retn32 : false;
+    }
+#endif
+    if (enabled && hits >= 12 && hits != 0xff) {
+#if defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)
+        if (op->inst == Retn32 && nativeJitPerformanceEnabled("BOXEDWINE_TEST_ADAPTIVE_RETURN", true) && hits < 140) {
+            op->flags2 |= OP_FLAG2_NATIVE_ADAPTIVE_RETURN;
+            if (!cpu->thread->process->indirectTraceExit) cpu->thread->process->indirectTraceExit = jitCreateIndirectTraceExit(cpu);
+            U32 targets[2] = {std::atomic_ref<U32>(op->indirectTargetEip).load(std::memory_order_relaxed), 0};
+            U32 count = hits >= 76 ? 2 : 1;
+            if (count == 2) targets[1] = std::atomic_ref<U32>(op->imm).load(std::memory_order_relaxed);
+            const bool targetFirst = nativeJitPerformanceEnabled("BOXEDWINE_TEST_TRACE_TARGET_FIRST", true);
+            U32 csOffset = offsetof(CPU, seg) + CS * sizeof(Seg) + offsetof(Seg, address);
+            auto beginCsGuard = [&]() {
+                if (!cpu->seg[CS].address) IfNotCPU(JitWidth::b32, nullptr, 0, csOffset);
+                else {
+                    RegPtr cs = readCPU(JitWidth::b32, csOffset);
+                    IfEqual(JitWidth::b32, cs, cpu->seg[CS].address);
+                }
+            };
+            if (!targetFirst) beginCsGuard();
+            for (U32 i = 0; i < count; ++i) {
+                U32 address = targets[i] + cpu->seg[CS].address;
+                if (getMemData(cpu->memory)->opCache.getJitEntryLocation(address)) {
+                    IfEqual(JitWidth::b32, reg, targets[i]); {
+                        if (targetFirst) beginCsGuard();
+                        exitToRunLoopIfNeeded(reg);
+                        jumpToCachedJitEntry(address);
+                        writeEip(reg);
+                        writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+                        blockExit();
+                        if (targetFirst) EndIf();
+                    } EndIf();
+                }
+            }
+            if (targetFirst) beginCsGuard();
+            exitToRunLoopIfNeeded(reg);
+            writeCPU(JitWidth::b32, offsetof(CPU, tmpReg), reg);
+            writeCurrentEip(0);
+            jmpHost((DYN_PTR_SIZE)cpu->thread->process->indirectTraceExit);
+            EndIf();
+            // Only a live CS mismatch reaches this exit. Dispatch through
+            // the run loop, which resolves the new base even if this block
+            // was compiled before the first nonzero CS was observed.
+            writeEip(reg);
+            writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+            blockExit();
+            return;
+        }
+#endif
+        U32 target = std::atomic_ref<U32>(op->indirectTargetEip).load(std::memory_order_relaxed);
+        U32 address = target + cpu->seg[CS].address;
+        // Never use data.nextJump: CallE32 owns its displacement union.
+        // A current entry slot also avoids callee identity/ABA assumptions.
+        if (getMemData(cpu->memory)->opCache.getJitEntryLocation(address)) {
+            IfEqual(JitWidth::b32, reg, target); {
+                // A CS-offset profile can be reused with a different segment
+                // base. Only the original linear target owns this entry slot.
+                RegPtr cs;
+                bool memoryCs = !cpu->seg[CS].address;
+#ifdef __TEST
+                if (const char* load = std::getenv("BOXEDWINE_TEST_CS_GUARD_LOAD"))
+                    if (strcmp(load, "0") != 0) memoryCs = false;
+#endif
+                U32 csOffset = offsetof(CPU, seg) + CS * sizeof(Seg) + offsetof(Seg, address);
+                if (memoryCs) IfNotCPU(JitWidth::b32, nullptr, 0, csOffset);
+                else {
+                    cs = readCPU(JitWidth::b32, csOffset);
+                    IfEqual(JitWidth::b32, cs, cpu->seg[CS].address);
+                }
+                {
+                    exitToRunLoopIfNeeded(reg);
+                    jumpToCachedJitEntry(address);
+                    writeEip(reg);
+                    writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+                    blockExit();
+                } EndIf();
+            } EndIf();
+        }
+    }
+#else
+    (void)op;
+#endif
+    jumpEip(reg);
+}
+
 void JitCodeGen::jumpEip(RegPtr reg) {
+    bool guardFlatCs = false;
+#ifdef BOXEDWINE_JIT_X64
+    // A block compiled before the first nonzero CS can be reused at the same
+    // physical source with a different base. Its flat cached lookup is valid
+    // only while live CS remains zero; otherwise resolve through the run loop.
+    guardFlatCs = !cpu->thread->process->hasSetSeg[CS];
+    if (guardFlatCs) IfNotCPU(JitWidth::b32, nullptr, 0,
+        offsetof(CPU, seg) + CS * sizeof(Seg) + offsetof(Seg, address));
+#endif
     RegPtr tmp = getTmpReg();
     mov(JitWidth::b32, tmp, reg);
     exitToRunLoopIfNeeded(reg);
@@ -1191,6 +1308,12 @@ void JitCodeGen::jumpEip(RegPtr reg) {
     writeEip(reg);
     writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
     blockExit();
+    if (guardFlatCs) {
+        EndIf();
+        writeEip(reg);
+        writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+        blockExit();
+    }
 }
 
 void JitCodeGen::exitToRunLoopIfNeeded(U32 eip) {
@@ -1594,6 +1717,52 @@ static DYN_PTR_SIZE jitNextBlockAfterHostCall(CPU* cpu) {
     return 0;
 }
 
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+static DYN_PTR_SIZE jitTraceIndirectExit(CPU* cpu) {
+    const U32 target = cpu->tmpReg;
+    U32 instructionAddress = cpu->getEipAddress();
+    DecodedOp* op = cpu->memory->getDecodedOp(instructionAddress);
+    cpu->eip.u32 = target;
+    try {
+    if (op && op->inst == Retn32 && (op->flags2 & OP_FLAG2_NATIVE_ADAPTIVE_RETURN)) {
+            auto hits = std::atomic_ref<U8>(op->indirectTargetHits);
+            U8 count = hits.load(std::memory_order_acquire);
+            bool retire = false;
+            if (target != std::atomic_ref<U32>(op->indirectTargetEip).load(std::memory_order_relaxed)) {
+                if (count == 12 && hits.compare_exchange_strong(count, 0xfe, std::memory_order_acq_rel)) {
+                    std::atomic_ref<U32>(op->imm).store(target, std::memory_order_relaxed);
+                    hits.store(13, std::memory_order_release);
+                } else if (count >= 13 && count < 76) {
+                    if (target != std::atomic_ref<U32>(op->imm).load(std::memory_order_relaxed)) {
+                        hits.store(0xff, std::memory_order_release); retire = true;
+                    } else {
+                        while (count >= 13 && count < 76 &&
+                            !hits.compare_exchange_weak(count, count + 1, std::memory_order_acq_rel)) {}
+                        retire = count == 75;
+                    }
+                } else if (count >= 76 && count < 140 &&
+                    target != std::atomic_ref<U32>(op->imm).load(std::memory_order_relaxed)) {
+                    while (count >= 76 && count < 140 &&
+                        !hits.compare_exchange_weak(count, count + 1, std::memory_order_acq_rel)) {}
+                    if (count == 139) { hits.store(0xff, std::memory_order_release); retire = true; }
+                }
+            }
+            if (retire) cpu->memory->removeCodeBlock(instructionAddress, op, false);
+    }
+#ifdef __TEST
+    // Diagnostic mutation simulates a write after RET's one architectural load.
+    if (const char* replacement = std::getenv("BOXEDWINE_TEST_TRACE_SWAP_STACK"))
+        cpu->memory->writed(cpu->seg[SS].address + ((cpu->reg[4].u32 - 4) & cpu->stackMask), strtoul(replacement, nullptr, 0));
+#endif
+    cpu->nextOp = cpu->getNextOp();
+    return jitNextBlockAfterHostCall(cpu);
+    } catch (...) {
+        cpu->nextOp = nullptr;
+        return 0;
+    }
+}
+
+#endif
 DYN_PTR_SIZE jitRunSingleOp(CPU* cpu) {
     if (!cpu->runNextSingleOp()) {
         return 0;
@@ -1666,6 +1835,25 @@ U8* JitCodeGen::createEmulateSingleOp() {
     return createDynamicExecutableMemory();
 }
 
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+U8* JitCodeGen::createIndirectTraceExit() {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(JitCallParamType::CPU));
+    RegPtr nextJitBlock = getTmpReg();
+    callHostFunctionWithResult(nextJitBlock, (void*)jitTraceIndirectExit, params);
+    If(DYN_PTR, nextJitBlock); {
+        jmpHost(nextJitBlock);
+    } EndIf();
+    blockExit();
+    return createDynamicExecutableMemory();
+}
+
+void* jitCreateIndirectTraceExit(CPU* cpu) {
+    std::unique_ptr<JitCodeGen> generator(startNewJIT(cpu));
+    return generator->createIndirectTraceExit();
+}
+
+#endif
 #ifndef BOXEDWINE_WASM_JIT
 // Native sampling profilers see generated code as anonymous addresses. Record
 // compilation-time ranges on request, without instrumenting block execution.
@@ -2880,8 +3068,69 @@ void JitCodeGen::getCF(LazyFlagType flags, RegPtr result) {
     }    
 }
 
+bool JitCodeGen::isAdc32Consumer(DecodedOp* op) const {
+    if (!op) return false;
+    switch (op->inst) {
+    case AdcR32R32: case AdcR32E32: case AdcR32I32:
+    case AdcE32R32: case AdcE32I32: return true;
+    default: return false;
+    }
+}
+
+bool JitCodeGen::isAdc32RegisterPair(DecodedOp* op) const {
+    return op && op->inst == AdcR32R32;
+}
+
+bool JitCodeGen::hasSimpleRegisterAddress32(DecodedOp* op) const {
+    return !op->ea16 && op->rm < 8 && op->sibIndex == 8;
+}
+
+bool JitCodeGen::hasFlatRegisterAddress32(DecodedOp* op) const {
+    return hasSimpleRegisterAddress32(op) &&
+        (op->base >= 6 || !cpu->thread->process->hasSetSeg[op->base]);
+}
+
+bool JitCodeGen::canTrustAdjacentAddCarry() const {
+    if (currentLazyFlags != FLAGS_ADD32 || !currentOp || currentOp->lock ||
+        (currentOp->flags2 & OP_FLAG2_JUMP_TARGET)) return false;
+    if (currentOp->inst != AdcR32R32 && currentOp->inst != AdcR32I32) return false;
+    size_t index = findBlockInstruction(currentEip);
+    if (!index || index == blockInstructions.size()) return false;
+    bool allowMoves = false;
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    allowMoves = nativeJitPerformanceEnabled("BOXEDWINE_TEST_TRUST_CARRY_MOVES", true);
+#endif
+    U32 moves = 0;
+    while (index) {
+        const auto& previous = blockInstructions[index - 1];
+        const auto& following = blockInstructions[index];
+        if (previous.eip + previous.op->len != following.eip || previous.op->next != following.op || previous.op->lock) return false;
+        if (previous.op->inst == AddR32R32 || previous.op->inst == AddR32I32 || previous.op->inst == AddR32E32) return true;
+        if (!allowMoves || moves == 2 || previous.op->inst != MovR32R32 ||
+            (previous.op->flags2 & OP_FLAG2_JUMP_TARGET)) return false;
+        ++moves; --index;
+    }
+    return false;
+}
+
+bool JitCodeGen::protectCarryFallthroughEntries() {
+    if (!hideTrustedCarryEntry(currentEip)) return false;
+    size_t index = findBlockInstruction(currentEip);
+    while (index && blockInstructions[index - 1].op->inst == MovR32R32) {
+        --index;
+        if (!hideTrustedCarryEntry(blockInstructions[index].eip)) return false;
+    }
+    return true;
+}
+
 RegPtr JitCodeGen::getCF() {
     RegPtr tmpReg = getConditionCalculationReg();
+    if (canTrustAdjacentAddCarry() && protectCarryFallthroughEntries()) {
+        getConditionCalculationReg(1);
+        getConditionCalculationReg(2);
+        if (!materializeTrustedCarry(tmpReg)) getCF(FLAGS_ADD32, tmpReg);
+        return tmpReg;
+    }
     RegPtr flagsType = getLazyFlagType();
 
     // make sure these tmps are not in use by checking if they are available
@@ -2891,10 +3140,11 @@ RegPtr JitCodeGen::getCF() {
     }    
 
     if (currentLazyFlags != FLAGS_NULL) {
-        IfEqual(JitWidth::b32, flagsType, currentLazyFlags); {
+        IfEqual(JitWidth::b32, flagsType, currentLazyFlags);
+        {
             getCF(currentLazyFlags, tmpReg);
         } StartElse();
-    }    
+    }
     readCPU(DYN_PTR, flagsType, DYN_PTR_LSL, offsetof(CPU, calculateCF), tmpReg);
     nakedCall(tmpReg);
     if (currentLazyFlags != FLAGS_NULL) {

@@ -1321,8 +1321,7 @@ bool JitArmV8CodeGen::compileIntegerParity(DecodedOp* op) {
 }
 
 bool JitArmV8CodeGen::compileNarrowParity(DecodedOp* op) {
-    if (op->lock || !armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_NARROW_PARITY_SLOW") ||
-            !op->getNeededFlagsAfter(PF)) return false;
+    if (op->lock || !armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_NARROW_PARITY_SLOW")) return false;
     enum class ParityOp { Add, Sub, Cmp, Test, And, Or, Xor };
     ParityOp operation;
     U32 bits;
@@ -1343,6 +1342,9 @@ bool JitArmV8CodeGen::compileNarrowParity(DecodedOp* op) {
 #undef NARROW_PARITY_CASES
     default: return false;
     }
+    // Terminal ops have no successor. Filter candidates before looking ahead,
+    // and leave truncated arithmetic chains on the established lowering.
+    if (!op->next || !op->getNeededFlagsAfter(PF)) return false;
     // A standalone high-byte SETP/SETNP measured faster on the established
     // path in changing-input tests. Retain that lowering;
     // high-byte branch and CMOV consumers still benefit from fusion.

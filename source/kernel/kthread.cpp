@@ -397,7 +397,9 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
         ramAddress = (U64)memory->getRamPtr(addr, 4, false, true);
     }
     if (ramAddress == 0) {
-        kpanic_fmt("Could not find futex address: %0.8X", addr);
+        // A shared futex may have been unmapped before this syscall.
+        // Report the guest memory error instead of terminating the emulator.
+        return -K_EFAULT;
     }
     /*
     * from kernel source, if I ever implement one of these I need to note pTime actually contains val2

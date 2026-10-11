@@ -68,6 +68,14 @@ public:
     // Some interiors require live backend registers. Dispatch those through
     // the interpreter until the next independently enterable instruction.
     virtual bool isExternalJitEntry(U32 eip) const { return true; }
+    virtual bool hideTrustedCarryEntry(U32 eip) { return false; }
+    virtual bool materializeTrustedCarry(RegPtr result) { return false; }
+    bool canTrustAdjacentAddCarry() const;
+    bool protectCarryFallthroughEntries();
+    bool isAdc32Consumer(DecodedOp* op) const;
+    bool isAdc32RegisterPair(DecodedOp* op) const;
+    bool hasSimpleRegisterAddress32(DecodedOp* op) const;
+    bool hasFlatRegisterAddress32(DecodedOp* op) const;
     // Consulted per op while calculateLongestBlock extends a block (never for
     // the block's first op). Returning true ends the block before `op`, so a
     // backend can honor profile-guided split hints that want a hot interior
@@ -162,6 +170,7 @@ public:
     void blockNext1(U32 eip, DecodedOp* op) override;
     void blockNext2(U32 eip, DecodedOp* op) override;
     void jumpEip(RegPtr reg) override;
+    void jumpIndirectEip(RegPtr reg, DecodedOp* op) override;
     void jumpInBlock(U32 address) override;
     void exitToRunLoopIfNeeded(U32 eip) override;
     virtual void exitToRunLoopIfNeeded(RegPtr eip);
@@ -171,6 +180,9 @@ public:
     virtual void jumpToEipIfCached(RegPtr eip);
     bool jumpToCachedJitEntry(U32 eip);
     U8* createEmulateSingleOp();    
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    U8* createIndirectTraceExit();
+#endif
     U8* createEmulateOpenGL();
     U8* createCalculationCF(LazyFlagType lazyFlagType);
     void getCF(LazyFlagType lazyFlagType, RegPtr result);
