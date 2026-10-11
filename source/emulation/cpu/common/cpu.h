@@ -208,6 +208,10 @@ enum WasmJitBailoutReason : U32 {
 class CPU: public DecodeBlockCallback {
 public:
     static CPU* allocCPU(KMemory* memory);
+#if defined(BOXEDWINE_JIT_X64) && (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__))
+    static void* operator new(size_t size);
+    static void operator delete(void* address) noexcept;
+#endif
 
     CPU(KMemory* memory);
     virtual ~CPU();

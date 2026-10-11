@@ -180,6 +180,7 @@ void testStartupArgsDefaultUtf8LocaleEnvironment();
 void testStartupArgsLinearMemoryOption();
 void testStartupArgsMouseSensitivity();
 void testTerminatingThreadDoesNotEnterFutexWait();
+void testSharedFutexUnmappedAddressReturnsEFAULT();
 void testUnixSocketPollOutClearsPeerCondition();
 void testUnixSocketSendmsgStreamPayloadCanBeRead();
 void testUnixSocketWritevInvalidSecondIovAfterZeroLengthFirstReturnsEfault();
@@ -343,6 +344,13 @@ const TestEntry TEST_ENTRIES[] = {
     {testWasmJitGroupedOomRecovery, "Test WASM JIT grouped OOM recovery"},
     {testWasmJitOomRetryAfterRelease, "Test WASM JIT OOM retry after release"},
 #endif
+#ifdef BOXEDWINE_WASM_JIT
+    {testWasmJitIndirectCacheState, "Test WASM JIT indirect cache state"},
+#endif
+#ifdef BOXEDWINE_JIT_X64
+    {testJitIndirectTargetProfile, "Test JIT indirect target profile"},
+    {testJitIndirectTargetFlags, "Test JIT indirect target guard flags"},
+#endif
     {testFlagsAcrossIndirectJitBlockBoundary, "Test flags across indirect JIT block boundary"},
 #ifdef BOXEDWINE_JIT
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
@@ -375,6 +383,7 @@ const TestEntry TEST_ENTRIES[] = {
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
     {testNativeJitRunCountWraps, "Test native JIT runCount wrap"},
     {testNativeJitCooperativeScheduling, "Test native JIT cooperative scheduling", TEST_ENTRY_SERIAL},
+    {testNativeAdaptiveReturnFirstCsChange, "Test native return first CS change and cached carry helper entry", TEST_ENTRY_SERIAL},
     {testNativeJitConditionalSideExits, "Test native JIT conditional side exits"},
 #endif
 #ifdef BOXEDWINE_JIT
@@ -1154,6 +1163,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testStartupArgsLinearMemoryOption, "Test startup args linear-memory option", TEST_ENTRY_SERIAL},
     {testStartupArgsMouseSensitivity, "Test startup args mouse sensitivity", TEST_ENTRY_SERIAL},
     {testCapturedMouseSensitivity, "Test captured mouse sensitivity and recentering"},
+    {testSharedFutexUnmappedAddressReturnsEFAULT, "Test unmapped shared futex returns EFAULT"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testTerminatingThreadDoesNotEnterFutexWait, "Test terminating thread does not enter futex wait"},
 #endif

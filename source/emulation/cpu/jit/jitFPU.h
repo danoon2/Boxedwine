@@ -141,6 +141,7 @@ protected:
     void prepareFpuCacheForLoop(bool dynamicValidity, U8 slots = 0xff, bool trackTags = true);
     void reconcileFpuCacheForLoop(const FpuStackCache& entry);
     S32 cachedFpuStackChange(DecodedOp* op) const;
+    bool hasAdjacentFpuStackChange(DecodedOp* op) const;
     CachedFpuSlot& cachedFpuSlot(U8 relativeIndex);
     FPURegPtr cachedFpuValue(U8 relativeIndex);
     RegPtr cachedFpuTag(U8 relativeIndex);

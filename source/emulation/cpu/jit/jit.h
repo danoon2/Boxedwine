@@ -355,6 +355,8 @@ public:
     void dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
     void dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags);
     void dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, InstRegRegCF callbackWithCF = nullptr);
+    virtual bool useNativeCarryArithmetic(JitWidth width, LazyFlagType flags) { return false; }
+    virtual bool tryRegMemoryArithmetic(DecodedOp* op, JitWidth width, LazyFlagType flagType) { return false; }
     void dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flags, bool writeback = true, bool addCF = false);
     void dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFlagType flags, bool writeback = true, bool addCF = false, InstRegReg cfCallback = nullptr, InstRegImmCF callbackWithCF = nullptr);
     void dynamic_RRDirect(DecodedOp* op, JitWidth width, JitFlagOp directOp, InstRegReg callback, LazyFlagType flags);
@@ -389,6 +391,7 @@ public:
     virtual void blockNext2(U32 eip, DecodedOp* op) = 0;
     virtual void blockExit() = 0;
     virtual void jumpEip(RegPtr reg) = 0;
+    virtual void jumpIndirectEip(RegPtr reg, DecodedOp* op) { (void)op; jumpEip(reg); }
     virtual void exitToRunLoopIfNeeded(U32 eip) = 0;
 
     virtual void jumpInBlock(U32 address) = 0;

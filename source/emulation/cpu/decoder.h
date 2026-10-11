@@ -19,6 +19,8 @@
 #ifndef __CPU_DECODER_H__
 #define __CPU_DECODER_H__
 
+#include "jit/jitPerformancePolicy.h"
+
 #define eaa1(cpu, op) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->data.disp)
 #define eaa3(cpu, op) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->data.disp
 #define eaa(cpu, op) (op->ea16)?(eaa1(cpu, op)):(eaa3(cpu, op))
@@ -1560,6 +1562,7 @@ typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 #define OP_FLAG2_JUMP_TARGET 4
 #define OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE 8
 #define OP_FLAG2_WASM_JIT_MEM_ARRAYS 16
+#define OP_FLAG2_NATIVE_ADAPTIVE_RETURN 16
 #define OP_FLAG2_WASM_JIT_PENDING 32
 #define OP_FLAG2_WASM_JIT_RELOC_HAZARD 64
 #define OP_FLAG2_DECODED_32BIT 128
@@ -1672,14 +1675,82 @@ public:
     U8 runCount;
 #endif
     U8 flags2;
+#ifdef BOXEDWINE_JIT_X64
+    // Native x64 profile metadata occupies existing alignment padding.
+    // Only CallR32, CallE32 and Retn32 observe targets during warmup.
+    U8 indirectTargetHits;
+    // Simple MOV loads do not observe indirect targets. Reuse the native
+    // padding byte for a distinct fault-driven read policy: 0 unseen,
+    // 1 folded code has been emitted, 2 requires wrapped guest EAA.
+    enum NativeLinearReadPolicy : U8 { LINEAR_READ_UNSEEN, LINEAR_READ_FOLDED, LINEAR_READ_WRAPPED };
+    U8 foldedLinearReadState() {
+        return std::atomic_ref<U8>(indirectTargetHits).load(std::memory_order_acquire);
+    }
+    bool markFoldedLinearRead() {
+        std::atomic_ref<U8> state(indirectTargetHits);
+        U8 expected = LINEAR_READ_UNSEEN;
+        state.compare_exchange_strong(expected, LINEAR_READ_FOLDED, std::memory_order_acq_rel, std::memory_order_acquire);
+        return expected != LINEAR_READ_WRAPPED;
+    }
+    void disableFoldedLinearRead() {
+        std::atomic_ref<U8>(indirectTargetHits).store(LINEAR_READ_WRAPPED, std::memory_order_release);
+    }
+    void observeIndirectTarget(U32 target) {
+        std::atomic_ref<U8> hits(indirectTargetHits);
+        U8 count = hits.load(std::memory_order_acquire);
+#if defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)
+        if (inst == Retn32 &&
+            nativeJitPerformanceEnabled("BOXEDWINE_TEST_ADAPTIVE_RETURN", true) &&
+            nativeJitPerformanceEnabled("BOXEDWINE_TEST_EARLY_RETURN_PROFILE", true)) {
+            if (!count) {
+                if (hits.compare_exchange_strong(count, 0xfe, std::memory_order_acquire, std::memory_order_relaxed)) {
+                    std::atomic_ref<U32>(indirectTargetEip).store(target, std::memory_order_relaxed);
+                    hits.store(1, std::memory_order_release);
+                }
+            } else if (count >= 1 && count <= 76) {
+                U32 first = std::atomic_ref<U32>(indirectTargetEip).load(std::memory_order_relaxed);
+                if (count <= 12) {
+                    if (first == target) {
+                        if (count < 12) hits.compare_exchange_strong(count, count + 1, std::memory_order_release, std::memory_order_relaxed);
+                    } else if (hits.compare_exchange_strong(count, 0xfe, std::memory_order_acquire, std::memory_order_relaxed)) {
+                        std::atomic_ref<U32>(imm).store(target, std::memory_order_relaxed);
+                        hits.store(13, std::memory_order_release);
+                    }
+                } else if (first != target) {
+                    U32 second = std::atomic_ref<U32>(imm).load(std::memory_order_relaxed);
+                    if (second != target) hits.compare_exchange_strong(count, 0xff, std::memory_order_release, std::memory_order_relaxed);
+                    else if (count < 76) hits.compare_exchange_strong(count, count + 1, std::memory_order_release, std::memory_order_relaxed);
+                }
+            }
+            return;
+        }
+#endif
+        if (!count) {
+            if (hits.compare_exchange_strong(count, 0xff, std::memory_order_acquire, std::memory_order_relaxed)) {
+                std::atomic_ref<U32>(indirectTargetEip).store(target, std::memory_order_relaxed);
+                hits.store(1, std::memory_order_release);
+            }
+        } else if (count != 0xff) {
+            U32 first = std::atomic_ref<U32>(indirectTargetEip).load(std::memory_order_relaxed);
+            if (first != target) hits.store(0xff, std::memory_order_release);
+            else if (count < 12) hits.compare_exchange_strong(count, count + 1, std::memory_order_release, std::memory_order_relaxed);
+        }
+    }
+#endif
 #ifdef BOXEDWINE_JIT
     U16 jitLen;
     U16 blockOpCount;
     U16 blockLen; // emulated code length of the block
+#if defined(BOXEDWINE_JIT_X64) && !defined(_DEBUG)
+    U32 indirectTargetEip;
+#endif
     DecodedOp* blockStart;
 #endif
 #ifdef _DEBUG
     U16 originalOp;
+#ifdef BOXEDWINE_JIT_X64
+    U32 indirectTargetEip; // Use the debug layout's trailing alignment padding.
+#endif
 #endif
     void reset();
 };

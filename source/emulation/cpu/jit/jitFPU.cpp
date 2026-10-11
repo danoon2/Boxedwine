@@ -270,6 +270,23 @@ void JitFPU::reconcileFpuCacheForLoop(const FpuStackCache& entry) {
     }
 }
 
+bool JitFPU::hasAdjacentFpuStackChange(DecodedOp* op) const {
+    if (!canCacheFpuOp(op) || !cachedFpuStackChange(op)) return false;
+    const size_t index = findBlockInstruction(currentEip);
+    if (index >= blockInstructions.size()) return false;
+    if (index && blockInstructions[index - 1].op->next == op &&
+        blockInstructions[index - 1].eip + blockInstructions[index - 1].op->len == currentEip) {
+        DecodedOp* previous = blockInstructions[index - 1].op;
+        if (canCacheFpuOp(previous) && cachedFpuStackChange(previous)) return true;
+    }
+    if (index + 1 < blockInstructions.size() && op->next == blockInstructions[index + 1].op &&
+        currentEip + op->len == blockInstructions[index + 1].eip) {
+        DecodedOp* next = blockInstructions[index + 1].op;
+        if (canCacheFpuOp(next) && cachedFpuStackChange(next)) return true;
+    }
+    return false;
+}
+
 S32 JitFPU::cachedFpuStackChange(DecodedOp* op) const {
     // Keep stack effects together with the cacheable instruction set. This is
     // used only after canCacheFpuOp has accepted the instruction.

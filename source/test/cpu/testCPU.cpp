@@ -850,6 +850,172 @@ void testFlagsAcrossIndirectJitBlockBoundary() {
                            "cross-block sub/pushfd");
 }
 
+void testJitIndirectTargetProfile() {
+#ifdef BOXEDWINE_JIT_X64
+    DecodedOp op;
+    for (U32 i = 0; i < 32; ++i) op.observeIndirectTarget(0);
+    if (op.indirectTargetHits != 12 || op.indirectTargetEip != 0) testFail("zero monomorphic indirect target");
+    op.observeIndirectTarget(17);
+    for (U32 i = 0; i < 32; ++i) op.observeIndirectTarget(0);
+    if (op.indirectTargetHits != 0xff || op.indirectTargetEip != 0) testFail("sticky polymorphic indirect target");
+    op.reset();
+    // Multiple interpreter workers may reach the same decoded call site.
+    std::vector<std::thread> workers;
+    for (U32 i = 0; i < 8; ++i) workers.emplace_back([&op]() {
+        for (U32 j = 0; j < 1000; ++j) op.observeIndirectTarget(0x12345678);
+    });
+    for (auto& worker : workers) worker.join();
+    if (op.indirectTargetHits != 12 || op.indirectTargetEip != 0x12345678) testFail("concurrent monomorphic indirect target");
+    workers.clear();
+    for (U32 i = 0; i < 8; ++i) workers.emplace_back([&op,i]() {
+        for (U32 j = 0; j < 1000; ++j) op.observeIndirectTarget(i & 1 ? 0x87654321 : 0x12345678);
+    });
+    for (auto& worker : workers) worker.join();
+    if (op.indirectTargetHits != 0xff || op.indirectTargetEip != 0x12345678) testFail("concurrent sticky polymorphic indirect target");
+#endif
+}
+
+void testJitIndirectTargetFlags() {
+#ifdef BOXEDWINE_JIT_X64
+    auto& context = testContext();
+    CPU* cpu = context.cpu;
+    for (U32 csBase : {TEST_CODE_ADDRESS,0u}) for (bool memoryCall : {false,true}) {
+        testNewInstruction(0);
+        cpu->seg[CS].address = csBase;
+        U32 returnOffset = memoryCall ? 8 : 4;
+        auto emitCaller = [&](U32 offset) {
+            context.codeIp = TEST_CODE_ADDRESS + offset;
+            testPushCode8(0x39); testPushCode8(0xfe); // cmp esi,edi
+            testPushCode8(0xff);
+            if (memoryCall) { testPushCode8(0x15); testPushCode32(0); } // call [ds:0]
+            else testPushCode8(0xd1); // call ecx
+            testPushCode8(0x9c); testPushCode8(0x5b); // pushfd; pop ebx
+            testPushCode8(0xcd); testPushCode8(0x97);
+        };
+        emitCaller(0);
+        emitCaller(0x300); // A different return address exercises the return guard miss.
+        for (U32 offset : {0x100u,0x200u}) {
+            context.codeIp = TEST_CODE_ADDRESS + offset;
+            testPushCode8(0xc3);
+        }
+        DecodedOp* producer = cpu->getOp(TEST_CODE_ADDRESS, 0);
+        DecodedOp* call = producer->next;
+        DecodedOp* callee = cpu->getOp(TEST_CODE_ADDRESS + 0x100, 0);
+        for (U32 i = 0; i < 12; ++i) {
+            call->observeIndirectTarget(TEST_CODE_ADDRESS + 0x100 - csBase);
+            callee->observeIndirectTarget(TEST_CODE_ADDRESS + returnOffset - csBase);
+        }
+        startNewJIT(cpu, TEST_CODE_ADDRESS + 0x100, callee);
+        startNewJIT(cpu, TEST_CODE_ADDRESS, producer);
+        if (!producer->pfnJitCode || !callee->pfnJitCode) {
+            testFail("indirect target flags setup did not compile");
+            return;
+        }
+        constexpr U32 expected[] = {CF | PF | AF | SF, PF | ZF, 0};
+        for (U32 scenario = 0; scenario < 3; ++scenario) {
+            U32 caller = TEST_CODE_ADDRESS + (scenario == 2 ? 0x300 : 0) - csBase;
+            U32 target = TEST_CODE_ADDRESS + (scenario == 1 ? 0x200 : 0x100) - csBase;
+            for (U32 left = 0; left < 3; ++left) {
+                cpu->reg[1].u32 = target;
+                context.memory->writed(TEST_HEAP_ADDRESS, target);
+                cpu->reg[6].u32 = left;
+                cpu->reg[7].u32 = 1;
+                cpu->reg[4].u32 = 4096;
+                cpu->eip.u32 = caller;
+                cpu->nextOp = cpu->getNextOp();
+                do { cpu->run(); } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+                if ((cpu->reg[3].u32 & FMASK_TEST) != expected[left] ||
+                    cpu->reg[4].u32 != 4096 || cpu->eip.u32 != caller + returnOffset + 2) {
+                    testFail("indirect target flags call %u scenario %u input %u", memoryCall, scenario, left);
+                }
+            }
+        }
+    }
+    // A compiled RET can be shared at the same linear address with another
+    // CS base. Its learned target offset must use the current segment base.
+    testNewInstruction(0);
+    context.codeIp = TEST_CODE_ADDRESS + 0x300;
+    testPushCode8(0xc3);
+    for (U32 offset : {0x100u,0x1100u}) {
+        context.codeIp = TEST_CODE_ADDRESS + offset;
+        testPushCode8(0xb8); testPushCode32(offset); // mov eax, distinct target
+        testPushCode8(0xcd); testPushCode8(0x97);
+    }
+    DecodedOp* ret = cpu->getOp(TEST_CODE_ADDRESS + 0x300, 0);
+    for (U32 i = 0; i < 12; ++i) ret->observeIndirectTarget(0x100);
+    startNewJIT(cpu, TEST_CODE_ADDRESS + 0x300, ret);
+    for (U32 shift : {0u,0x1000u}) {
+        cpu->seg[CS].address = TEST_CODE_ADDRESS + shift;
+        cpu->reg[4].u32 = 4096;
+        context.memory->writed(cpu->seg[SS].address + 4096, 0x100);
+        cpu->eip.u32 = 0x300 - shift;
+        cpu->nextOp = ret;
+        do { cpu->run(); } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+        if (cpu->reg[0].u32 != 0x100 + shift || cpu->reg[4].u32 != 4100)
+            testFail("indirect return guard CS base shift %u", shift);
+    }
+    cpu->seg[CS].address = TEST_CODE_ADDRESS;
+#endif
+}
+
+void testWasmJitIndirectCacheState() {
+#ifdef BOXEDWINE_WASM_JIT
+    auto& context = testContext();
+    CPU* cpu = context.cpu;
+    // Cover an absent op, absent page, absent cache group, and an initial hit.
+    // The producer must publish dirty GP and x87 state on every exit arm.
+    for (U32 scenario = 0; scenario < 5; ++scenario) {
+        testNewInstruction(0);
+        cpu->fpu.reset();
+        U32 offset = scenario == 1 ? 0x4000 : scenario == 2 ? 0x400000 : 0x100;
+        U32 targetAddress = TEST_CODE_ADDRESS + offset;
+        if (scenario == 2) {
+            context.memory->mmap(context.thread, targetAddress, K_PAGE_SIZE,
+                K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+        }
+        testPushCode8(0xd9); testPushCode8(0xe8); // fld1
+        testPushCode8(0xb8); testPushCode32(0x12345678); // mov eax, immediate
+        testPushCode8(0xff); testPushCode8(0xe2); // jmp edx
+        context.codeIp = targetAddress;
+        testPushCode8(0xdd); testPushCode8(0x1d); testPushCode32(0); // fstp qword [ds:0]
+        testPushCode8(0x89); testPushCode8(0xc3); // mov ebx,eax
+        testPushCode8(0xcd); testPushCode8(0x97);
+        DecodedOp* producer = cpu->getOp(TEST_CODE_ADDRESS, 0);
+        startNewJIT(cpu, TEST_CODE_ADDRESS, producer);
+        if (!producer->pfnJitCode) {
+            testFail("indirect cache producer did not compile");
+            return;
+        }
+        if (scenario >= 3) {
+            if (scenario == 4) cpu->setIsBig(0);
+            DecodedOp* target = cpu->getOp(targetAddress, 0);
+            if (scenario == 4) cpu->setIsBig(1);
+            else startNewJIT(cpu, targetAddress, target);
+        } else if (context.memory->getDecodedOp(targetAddress)) {
+            testFail("indirect cache miss unexpectedly decoded");
+        }
+        void* producerCode = producer->pfnJitCode;
+        for (U32 pass = 0; pass < 3; ++pass) {
+            if (pass == 2) {
+                DecodedOp* target = context.memory->getDecodedOp(targetAddress);
+                context.memory->removeCodeBlock(targetAddress, target, false);
+            }
+            cpu->fpu.reset();
+            cpu->eip.u32 = 0;
+            cpu->reg[2].u32 = offset;
+            cpu->reg[3].u32 = 0;
+            cpu->nextOp = producer;
+            do { cpu->run(); } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+            if (cpu->reg[3].u32 != 0x12345678 || cpu->fpu.top != 0 ||
+                context.memory->readq(TEST_HEAP_ADDRESS) != 0x3ff0000000000000ULL ||
+                cpu->eip.u32 != offset + 8 || producer->pfnJitCode != producerCode) {
+                testFail("indirect cache state scenario %u pass %u", scenario, pass);
+            }
+        }
+    }
+#endif
+}
+
 void testJitOverlappingDirectJumpTarget() {
 #ifdef BOXEDWINE_JIT
     CPU* cpu = testContext().cpu;
@@ -3798,6 +3964,167 @@ void testNativeJitConditionalSideExits() {
         ctx.process->sigActions[K_SIGSEGV] = old;
     }
 #endif
+}
+
+static void testNativeReturnFirstCsChange(bool adaptiveEnabled) {
+#ifdef BOXEDWINE_JIT_X64
+    struct Environment {
+        const char* name;
+        bool present;
+        std::string value;
+        Environment(const char* n, const char* v): name(n), present(std::getenv(n)!=nullptr), value(present?std::getenv(n):"") { set(v);
+        }
+        void set(const char* v) {
+#ifdef _WIN32
+            _putenv_s(name,v?v:"");
+#else
+            if(v) setenv(name,v,1);
+            else unsetenv(name);
+#endif
+        }
+        ~Environment() { set(present?value.c_str():nullptr);
+        }
+    };
+    Environment warmup("BOXEDWINE_TEST_PROFILE_WARMUP","1");
+    Environment adaptive("BOXEDWINE_TEST_ADAPTIVE_RETURN",adaptiveEnabled?"1":"0");
+    Environment early("BOXEDWINE_TEST_EARLY_RETURN_PROFILE","1");
+    Environment target("BOXEDWINE_TEST_TRACE_TARGET_FIRST","1");
+    Environment indirect("BOXEDWINE_TEST_INDIRECT_TARGET_SLOW","0");
+    Environment returns("BOXEDWINE_TEST_RETURN_TARGET_SLOW","0");
+    constexpr U32 CODE=0x500000, STACK=TEST_STACK_ADDRESS-256;
+    auto fail=[](const char* message){testFail("adaptive first CS transition: %s",message);
+        throw 1;
+    };
+    testNewInstruction(0);
+    auto& t=testContext();
+    auto* c=t.cpu;
+    std::unique_ptr<KThread> earlierThread(t.process->createThread());
+    earlierThread->cpu->reset();
+    std::unique_ptr<KThread> prefixThreads[2];
+    for (auto& thread : prefixThreads) {
+        thread.reset(t.process->createThread());
+        thread->cpu->reset();
+    }
+    try {
+        for(int i=0;i<6;i++){c->seg[i].address=0;
+            t.process->hasSetSeg[i]=false;
+        }
+        // Compile with no nonzero CS history; transition through the actual CPU setter below.
+        if(t.memory->mmap(t.thread,CODE,4096,K_PROT_READ|K_PROT_WRITE|K_PROT_EXEC,K_MAP_FIXED|K_MAP_PRIVATE,-1,0)!=CODE)fail("map");
+        t.memory->writeb(CODE,0xc3);
+        t.memory->writeb(CODE+16,0xc3);
+        const U32 targets[]={CODE+128,CODE+192,CODE+256};
+        for(unsigned i=0;i<3;i++){t.memory->writeb(targets[i],0x40+i);
+            t.memory->writeb(targets[i]+1,0xcd);
+            t.memory->writeb(targets[i]+2,0x97);
+        }
+        // Leave this prefix cold, adjacent to an independently warmed target.
+        t.memory->writeb(targets[0] - 5, 0xba); // MOV EDX,13
+        t.memory->writed(targets[0] - 4, 13);
+        auto invoke=[&](U32 pc,unsigned which,bool ret=true,U32 carry=CF){c->reg[0].u32=7;
+            c->reg[1].u32=11;
+            c->reg[3].u32=9;
+            c->reg[2].u32=13;
+            c->reg[4].u32=STACK;
+            c->flags=2|carry;
+            c->lazyFlagType=FLAGS_NONE;
+            c->eip.u32=pc;
+            c->nextOp=nullptr;
+            t.memory->writed(STACK,targets[which]);
+            for(unsigned step=0;step<4096;step++){c->run();
+                if(c->nextOp&&c->nextOp->inst==TestEnd)break;
+            }
+            if(!c->nextOp||c->nextOp->inst!=TestEnd)fail("bounded execution");
+            if(c->reg[4].u32!=STACK+(ret?4:0)||c->eip.u32!=targets[which]+1)fail("single stack pop and target EIP");
+            if(c->reg[0].u32!=7+(which==0)||c->reg[1].u32!=11+(which==1)||c->reg[2].u32!=13+(which==2)||c->reg[3].u32!=9)fail("target registers");
+            c->fillFlags();
+            if((c->flags&CF)!=carry)fail("incoming carry");
+        };
+        for(unsigned i=0;i<3;i++)for(unsigned n=0;n<128;n++)invoke(targets[i],i,false);
+        // A CPU reset before helper creation can later enter already compiled
+        // code without compiling a block of its own. INC needs its carry helper.
+        earlierThread->cpu->clone(c);
+        {
+            struct CurrentThread {
+                KThread* previous = KThread::currentThread();
+                ~CurrentThread() { KThread::setCurrentThread(previous); }
+            } restoreThread;
+            KThread::setCurrentThread(earlierThread.get());
+            c = earlierThread->cpu;
+            invoke(targets[0], 0, false);
+            if (c->exceptionSigNo) fail("cached entry on earlier CPU must bind carry helpers without a host fault");
+            c = t.cpu;
+        }
+        for (unsigned which = 0; which < 2; ++which) {
+            struct CurrentThread {
+                KThread* previous = KThread::currentThread();
+                ~CurrentThread() { KThread::setCurrentThread(previous); }
+            } restoreThread;
+            prefixThreads[which]->cpu->clone(c);
+            c = prefixThreads[which]->cpu;
+            if (c->calculateCF[0]) fail("reset CPU must begin without carry helpers");
+            KThread::setCurrentThread(prefixThreads[which].get());
+            c->eip.u32 = targets[0] - 5;
+            c->nextOp = nullptr;
+            DecodedOp* prefix = c->getNextOp();
+            if (!prefix || prefix->pfnJitCode || prefix->next != t.memory->getDecodedOp(targets[0]))
+                fail("cold interpreter prefix must link to a cached compiled target");
+            invoke(targets[0] - 5, 0, false, which ? CF : 0);
+            if (c->exceptionSigNo) fail("interpreter fallthrough must bind carry helpers without a host fault");
+            c = t.cpu;
+        }
+        invoke(CODE,0);
+        auto*r=t.memory->getDecodedOp(CODE);
+        if(r->indirectTargetHits!=1||r->pfnJitCode)fail("production warmup first hit");
+        if (adaptiveEnabled) {
+            invoke(CODE,1);
+            if(r->indirectTargetHits!=13||r->imm!=targets[1]||r->indirectTargetEip!=targets[0]||r->pfnJitCode)fail("early second target");
+        }
+        for(unsigned n=0;n<400;n++)invoke(CODE,adaptiveEnabled?n%2:0);
+        const U8 expectedHits = adaptiveEnabled ? 76 : 12;
+        if(r->indirectTargetHits!=expectedHits||!r->blockStart||!r->blockStart->pfnJitCode)fail("source compilation");
+        void*stable=r->blockStart->pfnJitCode;
+        for(unsigned n=0;n<256;n++)invoke(CODE,adaptiveEnabled?n%2:0);
+        if(r->indirectTargetHits!=expectedHits||r->blockStart->pfnJitCode!=stable)fail("profile churn");
+        const U32 shift=0x10000;
+        if(t.memory->mmap(t.thread,CODE+shift,4096,K_PROT_READ|K_PROT_WRITE|K_PROT_EXEC,K_MAP_FIXED|K_MAP_PRIVATE,-1,0)!=CODE+shift)fail("shifted target map");
+        for(unsigned which=0;which<2;which++){
+            U32 linear=targets[which]+shift;
+            t.memory->writeb(linear,0xb8);
+            t.memory->writed(linear+1,0xdead1234+which);
+            t.memory->writeb(linear+5,0xcd);
+            t.memory->writeb(linear+6,0x97);
+        }
+        for(unsigned which=0;which<2;which++){
+            c->setSeg(CS,shift,c->seg[CS].value);
+            c->reg[0].u32=7;
+            c->reg[1].u32=11;
+            c->reg[2].u32=13;
+            c->reg[3].u32=9;
+            c->reg[4].u32=STACK;
+            c->flags=2|CF;
+            c->lazyFlagType=FLAGS_NONE;
+            c->eip.u32=CODE-shift;
+            c->nextOp=nullptr;
+            t.memory->writed(STACK,targets[which]);
+            for(unsigned step=0;step<4096;step++){c->run();
+                if(c->nextOp&&c->nextOp->inst==TestEnd)break;
+            }
+            if(!c->nextOp||c->nextOp->inst!=TestEnd)fail("bounded execution");
+            c->fillFlags();
+            if(c->reg[0].u32!=0xdead1234+which||c->reg[1].u32!=11||c->reg[2].u32!=13||c->reg[3].u32!=9||c->reg[4].u32!=STACK+4||c->eip.u32!=targets[which]+5||!(c->flags&CF)||r->indirectTargetHits!=expectedHits||r->blockStart->pfnJitCode!=stable)fail("two-target live CS guard / one pop / state / stable profile");
+        }
+        c->setSeg(CS,0,c->seg[CS].value);
+    } catch(int) {
+        c->setSeg(CS,0,c->seg[CS].value);
+    }
+#endif
+}
+
+
+void testNativeAdaptiveReturnFirstCsChange() {
+    testNativeReturnFirstCsChange(true);
+    testNativeReturnFirstCsChange(false);
 }
 
 #endif

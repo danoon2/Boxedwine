@@ -377,8 +377,12 @@ void Jit::dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm callback, LazyFla
     if (callbackWithCF) {
         (this->*callbackWithCF)(width, dest, op->imm, cf);
     } else if (cf) {
-        addValue(width, cf, op->imm);
-        (this->*cfCallback)(width, dest, cf);
+        if (writeback && useNativeCarryArithmetic(width, flagType)) {
+            direct_flags_op_with_cf(width, JitCarryOp::Adc, dest, op->imm, cf);
+        } else {
+            addValue(width, cf, op->imm);
+            (this->*cfCallback)(width, dest, cf);
+        }
     } else {
         (this->*callback)(width, dest, op->imm);
     }
@@ -519,6 +523,10 @@ void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFla
 
 void Jit::dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFlagType flagType, bool writeback, bool addCF) {    
     const LazyFlags* flags = lazyFlags[flagType];
+    if (writeback && !addCF && (!flags || !op->needsToSetFlags(cpu)) &&
+        tryRegMemoryArithmetic(op, width, flagType)) {
+        return;
+    }
     RegPtr dest;
     RegPtr cf;
     if (addCF) {
@@ -567,6 +575,7 @@ void Jit::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFla
         cf = getCF();
     }
     arithSetup(op, needsToSetFlags, flagType, cf);
+    const bool nativeCarry = writeback && cf && useNativeCarryArithmetic(width, flagType);
 
     if (writeback) {
         if (width == JitWidth::b8) {
@@ -614,7 +623,7 @@ void Jit::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFla
                 RegPtr reg = getReg(op->reg);
                 RegPtr rm;
 
-                if (cf) {
+                if (cf && !nativeCarry) {
                     if (op->reg == op->rm) {
                         rm = getTmpReg();
                         mov(width, rm, reg);
@@ -630,11 +639,15 @@ void Jit::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg callback, LazyFla
                 if (flags && flags->usesSrc(needsToSetFlags)) {
                     storeLazyFlagsSrc(rm);
                 }
-                if (cf) {
-                    // after we stored src
-                    addReg(width, rm, cf);
+                if (nativeCarry) {
+                    direct_flags_op_with_cf(width, JitCarryOp::Adc, reg, rm, cf);
+                } else {
+                    if (cf) {
+                        // after we stored src
+                        addReg(width, rm, cf);
+                    }
+                    (this->*callback)(width, reg, rm);
                 }
-                (this->*callback)(width, reg, rm);
                 if (flags && flags->usesResult(needsToSetFlags)) {
                     storeLazyFlagsResult(reg);
                 }
