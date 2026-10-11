@@ -33,6 +33,7 @@
 #include "cpu/testWasmJitBatch.h"
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
 #include "cpu/testWasmJitModuleBroker.h"
+#include "../emulation/cpu/wasm/wasmMemoryOrdering.h"
 #endif
 #include "cpu/testFPU.h"
 #include "cpu/testIncDec.h"
@@ -179,6 +180,7 @@ void testInotifyAsyncSignalsSigioOnDelete();
 void testStartupArgsDefaultUtf8LocaleEnvironment();
 void testStartupArgsLinearMemoryOption();
 void testStartupArgsMouseSensitivity();
+void testStartupArgsSafeMemoryOption();
 void testTerminatingThreadDoesNotEnterFutexWait();
 void testSharedFutexUnmappedAddressReturnsEFAULT();
 void testUnixSocketPollOutClearsPeerCondition();
@@ -1166,6 +1168,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testStartupArgsDefaultUtf8LocaleEnvironment, "Test startup args default UTF-8 locale environment"},
     {testStartupArgsLinearMemoryOption, "Test startup args linear-memory option", TEST_ENTRY_SERIAL},
     {testStartupArgsMouseSensitivity, "Test startup args mouse sensitivity", TEST_ENTRY_SERIAL},
+    {testStartupArgsSafeMemoryOption, "Test startup args safe-memory option", TEST_ENTRY_SERIAL},
     {testCapturedMouseSensitivity, "Test captured mouse sensitivity and recentering"},
     {testSharedFutexUnmappedAddressReturnsEFAULT, "Test unmapped shared futex returns EFAULT"},
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -1213,6 +1216,7 @@ struct TestRunArgs {
     U32 workerCount = 0;
     bool fast = false;
     bool disableLinearMemory = false;
+    bool safeMemory = true; // Test builds always default to ordered execution.
     U32 shardIndex = 0;
     U32 shardCount = 0;
     bool list = false;
@@ -1259,6 +1263,10 @@ TestRunArgs parseTestRunArgs(int argc, char** argv) {
         }
         if (!strcmp(argv[i], "-disableLinearMemory")) {
             args.disableLinearMemory = true;
+            continue;
+        }
+        if (!strcmp(argv[i], "-safe-memory")) {
+            args.safeMemory = true;
             continue;
         }
 
@@ -1360,9 +1368,12 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
 int runTestTestsFromArgs(int argc, char** argv) {
     TestRunArgs args = parseTestRunArgs(argc, argv);
     if (!args.valid) {
-        fprintf(stderr, "Usage: tests [start [count [threads]]] [-fast] [-disableLinearMemory] [-shard index count] [-list]\nShard indexes start at zero.\n");
+        fprintf(stderr, "Usage: tests [start [count [threads]]] [-fast] [-disableLinearMemory] [-safe-memory] [-shard index count] [-list]\nShard indexes start at zero.\n");
         return 2;
     }
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    wasmJitInitMemoryOrdering(args.safeMemory);
+#endif
     return runTestTests(args.startEntry, args.requestedCount, args.workerCount, args.fast,
         args.disableLinearMemory, args.shardIndex, args.shardCount, args.list);
 }

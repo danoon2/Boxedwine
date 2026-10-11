@@ -1147,3 +1147,77 @@ contains per-case/pair results. `analyze.py` regenerates the tables. The
 experiment. Candidate build outputs are test artifacts, not the restored source
 state; do not mistake them for retained builds. No application or browser UI
 was launched. Nothing was staged, committed or pushed.
+
+## MT Wasm opt-in memory ordering (2026-10-11)
+
+Commit `e7ef373afa3ac1d806771ea7d28595b8e24a9683` added the full guest-memory
+instruction fences to repair the ARM64 unit-test race documented above. It
+identified no specific game or application requiring the repair. Local MDK runs
+identified those fences as the cause of the MT JIT regression from roughly
+300 to 57. A portable scalar atomic-load/store prototype recovered only about
+120.
+
+The retained policy omits the extra fences by default on every host. Pass
+`-safe-memory` before the guest program, or `&safe-memory=true` in a demo URL,
+to restore them on every host, including x64. There is no CPU or browser
+detection. The C++ policy initializes once before guest execution and is shared
+by all pthreads. Interpreter warmup and fallback use the same policy, retaining
+a compiler barrier when hardware fences are off. Locked operations are
+unchanged. The default does not guarantee x86 ordering under the Wasm memory
+model; ARM64 can reproduce the original intermittent race without the option.
+Builds with `__TEST` defined enable safe memory by default, protecting both CI
+and manual unit-test runs without extra arguments.
+
+Persisted modules follow the selected policy. The MT block hash now includes an
+ordering revision and the selected mode, preventing both flat and grouped
+caches recorded without fences from being reused with safe memory enabled (or
+vice versa). Older MT cache identities miss and recompile; ST identities are
+unchanged. The acquire/release atomics TODO remains beside the fence decision.
+
+Measurements below came from the preceding x64/V8-detected prototype, before
+replacing host detection with the explicit option. Local Windows Chrome
+154.0.8037.99 used the same `-O2` release binary, Wine 11 web root and MDK app,
+GDI, 640x480x8, fresh in-memory storage, and cache recording off. Runs were
+sequential, alternating modes, after builds and tests finished. These are
+running scores at 20 seconds, not benchmark completion scores:
+
+| Prototype mode | First run | Second run |
+|---|---:|---:|
+| x64 V8 specialization | 321.18 | 330.92 |
+| Forced full fences | 57.29 | 56.77 |
+
+The earlier prototype passed all 908 MT JIT browser unit tests and the 14
+concurrency tests in 20 additional x64 browser processes, 5 fully fenced
+browser processes, and local WSL Node 22.16.0. These results predate the final
+option wiring. No remote machine or ARM hardware was tested here. Optimization
+remains `-O2`; the ST/ST JIT 1024 clock-check batch is unchanged.
+
+An additional record-mode Wine probe reported registry parsing/startup errors
+on the unmodified baseline as well as both prototype modes; it is not evidence
+of successful record/replay application execution. That prototype's always-
+fenced recorded modules were disassembled separately. The final policy instead
+records the selected mode and separates its cache identities.
+
+Earlier commands, logs, source/runtime hashes, and results are under
+`tmp/mt-jit-ordering-fix-20261011/`; benchmark screenshots and individual results
+are under `tmp/mt-jit-regression-20261011/runs/host-ordering-*/`. Final option
+validation artifacts are under `tmp/mt-jit-safe-memory-20261011/`.
+
+Final option validation: MT JIT release and test builds succeeded. All 909
+browser unit tests passed in fast mode with fences off and again with fences
+on before switching the test-build default. The final `__TEST` binary then
+passed all 14 concurrency entries plus the startup-option test in local WSL
+Node without `-safe-memory`; startup reported safe memory on. Browser option
+parsing tests and flat/grouped cache importer/pipeline tests passed. Four
+recorded release modules per mode were disassembled: the default-off samples
+contained zero `atomic.fence` instructions, and the enabled samples contained
+5, 12, 18, and 32. The normal Wine record-mode startup limitation noted above
+still applies; this check verifies emitted modules, not application replay.
+
+The existing six launcher storage tests fail because their DOM mock lacks
+`contains()`. The identical failure was reproduced against unchanged HEAD;
+no storage-test or fullscreen changes are included here. No remote tests or
+new performance measurements were run for this option revision.
+The final default-on browser binary also passed the 14 concurrency entries in
+five fresh processes (70/70), with no safe-memory argument; every process
+reported safe memory on.

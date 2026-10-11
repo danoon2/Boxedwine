@@ -119,6 +119,33 @@ both requested sample rates are available, and run with both
 For sustained-tone testing, compile with `-DAUDIO_PROBE_BLOCK_MS=5000
 -DAUDIO_PROBE_CYCLES=1`; each format then plays continuously for 20 seconds.
 
+## MT JIT memory ordering
+
+MT JIT omits the extra full guest-memory instruction fences by default on all
+hosts. Use `-safe-memory` before the guest program to enable them, or append
+`&safe-memory=true` to a demo URL. This applies on x64 too: there is no browser
+or CPU detection. The option affects MT Wasm JIT execution, including its
+interpreter warmup and fallback; native and single-threaded execution are
+unchanged. Locked operations keep their existing atomic implementation.
+
+The default favors performance and does not guarantee x86 ordering for ordinary
+shared-memory accesses under the Wasm memory model. ARM64 has reproduced an
+intermittent locked-CMPXCHG/plain-store unit-test failure without these fences.
+Use `-safe-memory` for applications that need this ordering. Builds with `__TEST`
+defined enable it by default, so both CI and manual unit-test runs retain the
+fences on every host without an extra argument. A compiler barrier remains in
+interpreter fallback even when the extra hardware fences are disabled.
+
+The mode is fixed at startup before guest execution and shared by every pthread.
+The startup log reports `WASM JIT MT safe-memory: on` or `off`. Recorded modules
+use the selected mode. MT block hashes include an ordering revision and mode,
+so fenced and unfenced caches cannot be reused across modes; a mismatch
+recompiles the block. Older MT cache identities are invalidated, while ST cache
+identities are unchanged.
+
+Run `node testWasmMemoryOrdering.mjs` to check browser option handling. The unit
+test runner also accepts `-safe-memory`, although it is already on by default.
+
 ## WASM JIT cache compatibility
 
 The current cache version is `v6`. Record new cache ZIPs with this build;

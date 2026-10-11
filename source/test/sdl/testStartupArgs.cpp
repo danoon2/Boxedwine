@@ -45,6 +45,30 @@ static bool hasExactEnvValue(const std::vector<BString>& envValues, const char* 
     return false;
 }
 
+void testStartupArgsSafeMemoryOption() {
+    StartUpArgs defaults;
+    auto defaultArgs = defaults.buildArgs();
+    if (defaults.safeMemory || std::find(defaultArgs.begin(), defaultArgs.end(), B("-safe-memory")) != defaultArgs.end()) {
+        testFail("safe-memory must be off by default");
+    }
+    StartUpArgs startup;
+    const char* argv[] = {"boxedwine", "-safe-memory", "/bin/wine", "game.exe"};
+    if (!startup.parseStartupArgs(4, argv) || !startup.safeMemory) {
+        testFail("-safe-memory was not parsed");
+    }
+    auto child = startup.buildArgs();
+    auto option = std::find(child.begin(), child.end(), B("-safe-memory"));
+    auto program = std::find(child.begin(), child.end(), B("/bin/wine"));
+    if (option == child.end() || program == child.end() || option >= program) {
+        testFail("-safe-memory must precede the guest program in child arguments");
+    }
+    StartUpArgs guestOption;
+    const char* guestArgv[] = {"boxedwine", "/bin/wine", "game.exe", "-safe-memory"};
+    if (!guestOption.parseStartupArgs(4, guestArgv) || guestOption.safeMemory) {
+        testFail("guest arguments must not change emulator memory ordering");
+    }
+}
+
 void testStartupArgsDefaultUtf8LocaleEnvironment() {
     std::vector<BString> unsupportedEnvValues;
     StartUpArgs::addDefaultUtf8LocaleEnv(unsupportedEnvValues, false);

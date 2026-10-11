@@ -124,6 +124,7 @@
             Config.isSoundEnabled = getSound();
             Config.recordJITCache = getJitRecord();
             Config.wasmModuleBrokerEnabled = getWasmModuleBrokerEnabled();
+            Config.safeMemory = getSafeMemory();
             Config.audioFreq = getAudioFreq();
             Config.disableHideCursor = getDisableHideCursor();
             Config.disableWasmJitForWrittenCode = getDisableWasmJitForWrittenCode();
@@ -417,6 +418,10 @@
                 return true;
             }
             return value != "0";
+        }
+
+        function getSafeMemory() {
+            return allowParameterOverride() && getParameter("safe-memory") === "true";
         }
 
         function getAudioFreq() {
@@ -978,6 +983,9 @@
             }
             if (Config.disableWasmJitForWrittenCode) {
                 params.push("-disableWasmJitForWrittenCode");
+            }
+            if (Config.safeMemory) {
+                params.push("-safe-memory");
             }
             if(Config.bpp != DEFAULT_BPP){
                 params.push("-bpp");

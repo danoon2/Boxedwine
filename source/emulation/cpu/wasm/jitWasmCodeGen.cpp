@@ -23,6 +23,7 @@
 #include "jitWasmCodeGen.h"
 #include "wasmJitImports.h"
 #include "wasmJitBatchPolicy.h"
+#include "wasmMemoryOrdering.h"
 #include "wasmModuleMerger.h"
 #include "../jit/jitCodeGen.h"
 #include "../jit/jitCodeLifecycle.h"
@@ -56,6 +57,21 @@
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+
+#ifdef BOXEDWINE_MULTI_THREADED
+bool wasmJitNeedsMemoryFence = WASM_JIT_DEFAULT_SAFE_MEMORY;
+
+void wasmJitInitMemoryOrdering(bool safeMemory) {
+    static std::once_flag initFlag;
+    std::call_once(initFlag, [safeMemory]() {
+        // Startup and the test runner configure this before creating any CPU.
+        // The constructor's default initialization is only a fallback for
+        // embedders. Latch the mode so existing JIT blocks cannot outlive it.
+        wasmJitNeedsMemoryFence = safeMemory;
+        klog(safeMemory ? "WASM JIT MT safe-memory: on" : "WASM JIT MT safe-memory: off");
+    });
+}
+#endif
 
 #ifdef __TEST
 static bool g_wasmJitTestFailInvalidationPreparation = false;
@@ -14297,6 +14313,13 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     if (this->blockOpCount == 0) {
         m_wasmBlockStartOp = op;
         m_preCompileBlockHash = 2166136261u;
+#ifdef BOXEDWINE_MULTI_THREADED
+        // Separate fenced and unfenced modules, including grouped caches.
+        // A safe-memory launch must never replay blocks recorded without it.
+        // Also invalidate older MT ordering policies; leave ST identities alone.
+        m_preCompileBlockHash = wasmJitHashMix(m_preCompileBlockHash, 0x4d544f32u);
+        m_preCompileBlockHash = wasmJitHashMix(m_preCompileBlockHash, wasmJitNeedsMemoryFence ? 1u : 0u);
+#endif
         m_manifestNext1Target = 0;
         m_manifestNext2Target = 0;
         m_manifestJumpTarget = 0;
@@ -14498,7 +14521,18 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     // A plain Wasm load/store can otherwise observe a publication flag before
     // its data on ARM64. Emit inside the labels so loop/branch entries execute
     // the fence too, and cover both the inline MMU and helper paths here.
-    if (!skippedOp && (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth)) {
+    // -safe-memory opts into this on every host. Persisted modules use the
+    // same policy, with distinct cache identities for the two ordering modes.
+    // TODO: Revisit this policy when WebAssembly Acquire-Release Atomics is
+    // available in supported engines/toolchains:
+    // https://github.com/WebAssembly/acquire-release-atomics
+    // Evaluate feature-detected acquire/release accesses or fences to avoid
+    // per-instruction seq-cst fences and make ordered execution affordable by
+    // default. Validate x86 ordering (including locked/plain races and unaligned
+    // accesses), interpreter fallback, and portable cache compatibility before
+    // weakening these fences.
+    if (wasmJitNeedsMemoryFence && !skippedOp &&
+            (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth)) {
         m_emitter.emitAtomicFence();
     }
 #endif

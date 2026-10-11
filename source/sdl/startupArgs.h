@@ -119,6 +119,7 @@ public:
     bool forceRelativeMouse = false;
     bool cacheReads = false;
     bool disableWasmJitForWrittenCode = false;
+    bool safeMemory = false; // Opt into MT Wasm JIT guest-memory fences.
     bool disableLinearMemory = false;
 
 private:

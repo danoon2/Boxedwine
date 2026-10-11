@@ -25,6 +25,7 @@
 #include "../armv7/armv7CPU.h"
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
+#include "../wasm/wasmMemoryOrdering.h"
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
 #include "../jit/jitCodeGen.h"
 #endif
@@ -39,7 +40,12 @@ static inline void normalOrderMemoryInstruction(DecodedOp* op) {
     // single-op fallback. Ordinary Wasm loads/stores do not provide x86 TSO
     // on weakly ordered hosts, even when another access uses a locked op.
     if (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth) {
-        std::atomic_thread_fence(std::memory_order_seq_cst);
+        if (wasmJitNeedsMemoryFence) {
+            std::atomic_thread_fence(std::memory_order_seq_cst);
+        } else {
+            // Retain the C++ compiler barrier even without hardware fences.
+            std::atomic_signal_fence(std::memory_order_seq_cst);
+        }
     }
 }
 #define START_OP(cpu, op) normalOrderMemoryInstruction(op)
@@ -394,6 +400,9 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
 #endif
 
 NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {   
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_WASM_JIT)
+    wasmJitInitMemoryOrdering();
+#endif
     initNormalOps();
 #ifdef BOXEDWINE_JIT
     this->firstOp = firstDynamicOp;
