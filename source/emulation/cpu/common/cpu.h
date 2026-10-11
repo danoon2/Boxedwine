@@ -293,8 +293,11 @@ public:
     U32 pendingDebugTrapCode = 0;
     U32 pendingDebugTrapDr6 = 0;
     DecodedOp*** opCache = nullptr;
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     void**** jitEntryPageGroups = nullptr;
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    void** jitFlatEntries = nullptr;
 #endif
 
     U64 fAbs = 0x7fffffffffffffffl;

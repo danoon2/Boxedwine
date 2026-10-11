@@ -21,6 +21,7 @@
 
 #include "jitArmV8CodeGen.h"
 #include "../jit/jitSSE.h"
+#include "../../softmmu/kmemory_soft.h"
 #include <array>
 #include <set>
 
@@ -43,6 +44,11 @@ enum class TSOMode {
 };
 
 static TSOMode tsoMode = TSOMode::Automatic;
+static thread_local bool forceInlinePoll = false;
+#ifdef __TEST
+static thread_local U32 largePollFallbacks = 0;
+U32 armJitLargePollFallbackCount() { return largePollFallbacks; }
+#endif
 static std::once_flag s_tsoModeInitFlag;
 #ifdef __linux__
 static thread_local bool s_hardwareTsoChecked = false;
@@ -147,11 +153,13 @@ asmjit::a64::Gp R32(RegPtr reg) {
 #define xTmp3 23
 #define xTmp4 24
 #define xTmp5 25
-// this improves code density since every emulated read/write needs to compile this address, so instead of 3-4 mov/movk's, it's just a direct br xEmulateSingleOp
-// but I diddn't really notice this improving performance
+// The default keeps x26 for the emulation helper. The optional linear-memory
+// experiment instead keeps the invariant RAM base here.
 #define xEmulateSingleOp asmjit::a64::x26
+#define xLinearMemoryBase asmjit::a64::x26
 #define xWriteCacheToCPU asmjit::a64::x27
 #define xLoadCacheFromCPU asmjit::a64::x28
+#define xFlatJitBase asmjit::a64::x28
 #define xScratch asmjit::a64::x29
 #define wScratch asmjit::a64::w29
 #define regScratch 29
@@ -162,6 +170,20 @@ asmjit::a64::Gp R32(RegPtr reg) {
 using MakeSSE = Vec(SSERegPtr reg);
 
 bool enableHardwareTSO();
+
+static bool cacheFlatJitBase(CPU* cpu) {
+    // Reserving x28 speeds some dispatch loops, but enlarges the helper
+    // reload paths and regressed several narrow arithmetic kernels.
+    static const bool enabled = std::getenv("BOXEDWINE_ARM_FLAT_BASE") &&
+        !std::getenv("BOXEDWINE_ARM_FLAT_BASE_SLOW");
+    return enabled && getMemData(cpu->memory)->opCache.getFlatJitEntries();
+}
+
+static bool cacheLinearMemoryBase() {
+    static const bool enabled = std::getenv("BOXEDWINE_ARM_LINEAR_BASE") &&
+        !std::getenv("BOXEDWINE_ARM_LINEAR_BASE_SLOW");
+    return ramPageUseLinearMemory() && enabled;
+}
 
 class JitArmV8CodeGen : public JitSSE, asmjit::ErrorHandler {
 public:  
@@ -185,6 +207,23 @@ public:
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void postCompile(DecodedOp* op) override;
     void compile(DecodedOp* op) override;
+    void jumpToEipIfCached(RegPtr eipReg) override;
+    void callLoadCacheFromCPU();
+    void exitToRunLoopIfNeeded(U32 eip) override;
+    void exitToRunLoopIfNeeded(RegPtr eip) override;
+    bool useColdPollExit() const;
+    void emitColdPollExit(const std::function<void()>& writeRestart);
+    bool compileOps(DecodedOp* op) override;
+    asmjit::Section* pollExitSection = nullptr;
+    bool compileNarrowIncDec(DecodedOp* op);
+    bool compileCarryChain(DecodedOp* op);
+    bool compileNarrowArithmetic(DecodedOp* op);
+    bool compileShiftFlags(DecodedOp* op);
+    bool compileIntegerParity(DecodedOp* op);
+    bool compileNarrowParity(DecodedOp* op);
+    void emitIntegerParity(RegPtr result);
+    bool compileMultiplyFlags(DecodedOp* op);
+    bool compileConditionalCompare(DecodedOp* op);
     bool isExternalJitEntry(U32 eip) const override { return !fpuInternalEntries.count(eip); }
     bool supportsFpuStackCache() const override {
         static const bool enabled = !std::getenv("BOXEDWINE_DISABLE_NATIVE_FPU_CACHE");
@@ -863,6 +902,10 @@ protected:
     BHashTable<U32, Label> opLabels;
     BHashTable<U32, Label> pendingLabels;
     bool cfInverted = false;
+    bool directFloatFlags = false;
+    bool directIntegerParity = false;
+    RegPtr directParityValue; // immutable even-parity bit across a fused region
+    bool directMultiplyFlags = false;
 };
 
 asmjit::JitRuntime JitArmV8CodeGen::rt;
@@ -947,8 +990,580 @@ void JitArmV8CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     JitCodeGen::preCompile(op, skippedOp);
 }
 
+bool armJitHasFlagM() {
+    return asmjit::CpuInfo::host().features().arm().has_flagm();
+}
+
+bool armJitHasFlagM2() {
+    return asmjit::CpuInfo::host().features().arm().has_flagm2();
+}
+
+bool JitArmV8CodeGen::compileCarryChain(DecodedOp* op) {
+    const bool subtract = op->inst == SubR32R32 || op->inst == SubR32I32;
+    if (op->lock || (!subtract && op->inst != AddR32R32 && op->inst != AddR32I32) ||
+            std::getenv("BOXEDWINE_ARM_CARRY_CHAIN_SLOW")) return false;
+    auto isCarry = [subtract](DecodedOp* next) {
+        return next && !next->lock && (subtract ?
+            (next->inst == SbbR32R32 || next->inst == SbbR32I32) :
+            (next->inst == AdcR32R32 || next->inst == AdcR32I32));
+    };
+    if (!isCarry(op->next)) return false;
+    std::array<DecodedOp*, 8> chain{op};
+    U32 count = 1, eip = currentEip + op->len, lastProducerEip = currentEip;
+    for (DecodedOp* next = op->next; isCarry(next) && count < chain.size(); eip += next->len, next = next->next) {
+        if (eip > lastOpEip || (next->flags2 & OP_FLAG2_JUMP_TARGET)) break;
+        chain[count++] = next;
+        lastProducerEip = eip;
+        if (!next->getNeededFlagsAfter(FMASK_TEST)) break;
+    }
+    if (count < 2) return false;
+    auto emit = [this, &chain, count, subtract]() {
+        for (U32 i = 0; i < count; ++i) {
+            DecodedOp* cur = chain[i];
+            if (i) preCompile(cur, true);
+            {
+                RegPtr dst = getReg(cur->reg);
+                const bool immediate = cur->inst == AddR32I32 || cur->inst == SubR32I32 ||
+                    cur->inst == AdcR32I32 || cur->inst == SbbR32I32;
+                RegPtr src = immediate ? getTmpReg() : getReadOnlyReg(cur->rm);
+                if (immediate) movValue(JitWidth::b32, src, cur->imm);
+                if (!i) {
+                    if (subtract) compiler.subs(R32(dst), R32(dst), R32(src));
+                    else compiler.adds(R32(dst), R32(dst), R32(src));
+                } else {
+                    if (subtract) compiler.sbcs(R32(dst), R32(dst), R32(src));
+                    else compiler.adcs(R32(dst), R32(dst), R32(src));
+                }
+            }
+            if (i + 1 < count) postCompile(cur);
+        }
+        cfInverted = subtract;
+    };
+    DecodedOp* last = chain[count - 1];
+    if (last->getNeededFlagsAfter(FMASK_TEST)) {
+        if (std::getenv("BOXEDWINE_ARM_CARRY_CONSUMERS_SLOW")) return false;
+        return tryDirectConsumers(last, emit, FMASK_TEST, lastProducerEip - currentEip, 1);
+    }
+    emit();
+    // Every interior is register-only and has no independent incoming edge.
+    // Final flags are either dead here or consumed directly above.
+    skipToOp = last;
+    return true;
+}
+
+bool JitArmV8CodeGen::compileNarrowArithmetic(DecodedOp* op) {
+    U32 bits;
+    bool immediate;
+    switch (op->inst) {
+    case AddR8R8: bits = 8; immediate = false; break;
+    case AddR8I8: bits = 8; immediate = true; break;
+    case AddR16R16: bits = 16; immediate = false; break;
+    case AddR16I16: bits = 16; immediate = true; break;
+    default: return false;
+    }
+    if (op->lock || (bits == 8 && op->reg >= 4) || !op->next ||
+            std::getenv("BOXEDWINE_ARM_NARROW_ARITH_SLOW")) return false;
+    DecodedOp* next = op->next;
+    JitConditional condition;
+    if (next->isJumpCC()) condition = getJumpConditionFromOp(next);
+    else if (next->isCMovCC()) condition = getCmovConditionFromOp(next);
+    else if (next->isSetCC()) condition = getSetConditionFromOp(next);
+    else return false;
+    if (condition != JitConditional::L && condition != JitConditional::NL &&
+            condition != JitConditional::LE && condition != JitConditional::NLE) return false;
+    // Native NZCV saves the compound SF/OF calculation. For simpler conditions,
+    // subtraction, or high-byte destinations, operand alignment cost dominated
+    // on the measured ARM host; retain the existing lazy-flag lowering there.
+    tryDirect(op, [this, op, bits, immediate]() {
+        RegPtr dst = bits == 8 ? getReg8(op->reg) : getReg(op->reg);
+        RegPtr left = getTmpReg();
+        compiler.ubfiz(R32(left), R32(dst), 32 - bits, bits);
+        cfInverted = false;
+        if (!immediate && !(bits == 8 && op->rm >= 4) &&
+                !std::getenv("BOXEDWINE_ARM_NARROW_SHIFTED_SLOW")) {
+            RegPtr src = bits == 8 ? getReadOnlyReg8(op->rm) : getReadOnlyReg(op->rm);
+            compiler.adds(R32(left), R32(left), R32(src), Shift(ShiftOp::kLSL, 32 - bits));
+        } else {
+            RegPtr right = getTmpReg();
+            if (immediate) movValue(JitWidth::b32, right, op->imm << (32 - bits));
+            else {
+                RegPtr src = bits == 8 ? getReadOnlyReg8(op->rm) : getReadOnlyReg(op->rm);
+                if (src->isHigh) {
+                    compiler.ubfx(R32(right), R32(src), 8, 8);
+                    compiler.lsl(R32(right), R32(right), 24);
+                } else compiler.ubfiz(R32(right), R32(src), 32 - bits, bits);
+            }
+            compiler.adds(R32(left), R32(left), R32(right));
+        }
+        compiler.bfxil(R32(dst), R32(left), 32 - bits, bits);
+    }, [this, op]() { JitCodeGen::compile(op); });
+    return true;
+}
+
+bool JitArmV8CodeGen::compileNarrowIncDec(DecodedOp* op) {
+    bool decrement;
+    U32 bits;
+    switch (op->inst) {
+    case IncR8: bits = 8; decrement = false; break;
+    case DecR8: bits = 8; decrement = true; break;
+    case IncR16: bits = 16; decrement = false; break;
+    case DecR16: bits = 16; decrement = true; break;
+    default: return false;
+    }
+    if (!armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_NARROW_FLAGS_SLOW")) return false;
+    tryDirect(op, [this, op, bits, decrement]() {
+        RegPtr dest = bits == 8 ? getReg8(op->reg) : getReg(op->reg);
+        RegPtr result = getTmpReg();
+        U32 shift = dest->isHigh ? 8 : 0;
+        // SETF observes the sign bit and the bit above it. Sign extension
+        // before arithmetic makes that pair encode narrow signed overflow.
+        compiler.sbfx(R32(result), R32(dest), shift, bits);
+        if (decrement) compiler.sub(R32(result), R32(result), 1);
+        else compiler.add(R32(result), R32(result), 1);
+        if (bits == 8) compiler.setf8(R32(result));
+        else compiler.setf16(R32(result));
+        compiler.bfi(R32(dest), R32(result), shift, bits);
+        // Native carry is irrelevant: fused consumers may only read NZV.
+    }, [this, op]() { JitCodeGen::compile(op); }, FMASK_TEST & ~CF);
+    return true;
+}
+
+bool JitArmV8CodeGen::compileConditionalCompare(DecodedOp* op) {
+    if (!std::getenv("BOXEDWINE_ARM_CCMP")) return false;
+    auto supportedCompare = [](DecodedOp* candidate) {
+        return candidate && !candidate->lock &&
+            (candidate->inst == CmpR32R32 || candidate->inst == CmpR32I32);
+    };
+    if (!supportedCompare(op)) return false;
+    DecodedOp* firstBranch = op->next;
+    DecodedOp* second = firstBranch ? firstBranch->next : nullptr;
+    DecodedOp* last = second ? second->next : nullptr;
+    if (!firstBranch || !firstBranch->isJumpCC() || !supportedCompare(second) ||
+            !last || !last->isJumpCC()) return false;
+    const U32 firstBranchEip = currentEip + op->len;
+    const U32 secondEip = firstBranchEip + firstBranch->len;
+    const U32 lastEip = secondEip + second->len;
+    const U32 target = firstBranchEip + firstBranch->len + firstBranch->imm;
+    if (lastEip > lastOpEip || target != lastEip + last->len + last->imm ||
+            ((firstBranch->flags2 | second->flags2 | last->flags2) & OP_FLAG2_JUMP_TARGET) ||
+            ((instructionInfo[firstBranch->inst].flagsUsed | instructionInfo[last->inst].flagsUsed) & PF) ||
+            !canJumpInBlock(firstBranchEip, firstBranch) || !canJumpInBlock(lastEip, last) ||
+            firstBranch->getNeededFlagsAfter(FMASK_TEST) || last->getNeededFlagsAfter(FMASK_TEST)) return false;
+    const JitConditional firstCondition = getJumpConditionFromOp(firstBranch);
+    const JitConditional lastCondition = getJumpConditionFromOp(last);
+    // CMP leaves ARM C as the inverse of x86 borrow. Choose an immediate NZCV
+    // state that takes the final failure branch when the first check failed.
+    auto accepts = [lastCondition](U32 flags) {
+        const bool n = (flags & 8) != 0, z = (flags & 4) != 0;
+        const bool c = (flags & 2) != 0, v = (flags & 1) != 0;
+        switch (lastCondition) {
+        case JitConditional::O: return v;
+        case JitConditional::NO: return !v;
+        case JitConditional::B: return !c;
+        case JitConditional::NB: return c;
+        case JitConditional::Z: return z;
+        case JitConditional::NZ: return !z;
+        case JitConditional::BE: return !c || z;
+        case JitConditional::NBE: return c && !z;
+        case JitConditional::S: return n;
+        case JitConditional::NS: return !n;
+        case JitConditional::L: return n != v;
+        case JitConditional::NL: return n == v;
+        case JitConditional::LE: return z || n != v;
+        case JitConditional::NLE: return !z && n == v;
+        default: return false;
+        }
+    };
+    U32 fallback = 0;
+    while (fallback < 16 && !accepts(fallback)) ++fallback;
+    if (fallback == 16) return false;
+    if (target <= lastEip) exitToRunLoopIfNeeded(currentEip);
+    cfInverted = true;
+    const auto firstNativeCondition = getCondCode(firstCondition);
+    const bool useImmediate = std::getenv("BOXEDWINE_ARM_CCMP_IMMEDIATE") != nullptr;
+    {
+        RegPtr left = getReadOnlyReg(op->reg);
+        if (useImmediate && op->inst == CmpR32I32) {
+            cmp(JitWidth::b32, left, op->imm);
+        } else {
+            RegPtr right = op->inst == CmpR32I32 ? loadConst(op->imm) : getReadOnlyReg(op->rm);
+            compiler.cmp(R32(left), R32(right));
+        }
+    }
+    postCompile(op);
+    preCompile(firstBranch, true);
+    postCompile(firstBranch);
+    preCompile(second, true);
+    {
+        RegPtr left = getReadOnlyReg(second->reg);
+        if (useImmediate && second->inst == CmpR32I32 && second->imm <= 31) {
+            compiler.ccmp(R32(left), second->imm, fallback, asmjit::arm::negate_cond(firstNativeCondition));
+        } else {
+            RegPtr right = second->inst == CmpR32I32 ? loadConst(second->imm) : getReadOnlyReg(second->rm);
+            compiler.ccmp(R32(left), R32(right), fallback, asmjit::arm::negate_cond(firstNativeCondition));
+        }
+    }
+    postCompile(second);
+    preCompile(last, true);
+    direct_jump(lastCondition, target);
+    skipToOp = last;
+    return true;
+}
+
+bool JitArmV8CodeGen::compileMultiplyFlags(DecodedOp* op) {
+    if (op->lock || std::getenv("BOXEDWINE_ARM_MULTIPLY_FLAGS_SLOW")) return false;
+    const bool oneOperand = op->inst == MulR32 || op->inst == IMulR32;
+    const bool unsignedMultiply = op->inst == MulR32;
+    const bool immediate = op->inst == ImulR32R32;
+    if (!oneOperand && !immediate && op->inst != DimulR32R32) return false;
+    if (op->getNeededFlagsAfter(FMASK_TEST & ~(CF | OF))) return false;
+    bool fused = false;
+    directMultiplyFlags = true;
+    tryDirect(op, [this, op, oneOperand, unsignedMultiply, immediate, &fused]() {
+        RegPtr left = getReadOnlyReg(oneOperand ? 0 : immediate ? op->rm : op->reg);
+        RegPtr right = immediate ? loadConst(op->imm) : getReadOnlyReg(oneOperand ? op->reg : op->rm);
+        RegPtr product = getTmpReg();
+        if (unsignedMultiply) compiler.umull(R64(product), R32(left), R32(right));
+        else compiler.smull(R64(product), R32(left), R32(right));
+        RegPtr upperOrExtended = getTmpReg();
+        if (unsignedMultiply) {
+            compiler.lsr(R64(upperOrExtended), R64(product), 32);
+            compiler.cmp(R32(upperOrExtended), 0);
+        } else {
+            compiler.sxtw(R64(upperOrExtended), R32(product));
+            compiler.cmp(R64(product), R64(upperOrExtended));
+        }
+        // CF and OF are the same overflow predicate for MUL/IMUL. Keep that
+        // predicate in Z; the other x86 arithmetic flags are undefined and
+        // cannot be consumed by this direct path.
+        if (oneOperand) compiler.lsr(R64(getReg(2)), R64(product), 32);
+        compiler.mov(R32(getReg(oneOperand ? 0 : op->reg)), R32(product));
+        cfInverted = false;
+        fused = true;
+    }, []() {}, CF | OF);
+    directMultiplyFlags = false;
+    return fused;
+}
+
+void JitArmV8CodeGen::emitIntegerParity(RegPtr result) {
+    const char* mode = std::getenv("BOXEDWINE_ARM_PARITY_VALUE");
+    if (!mode && !std::getenv("BOXEDWINE_ARM_PARITY_FUSION")) mode = "table";
+    if (mode && !strcmp(mode, "table")) {
+        directParityValue = getTmpReg();
+        compiler.and_(R32(directParityValue), R32(result), 0xff);
+        readCPU(JitWidth::b8, directParityValue, 0, offsetof(CPU, flagParityLookup), directParityValue);
+        return;
+    }
+    RegPtr folded = getTmpReg();
+    compiler.eor(R32(folded), R32(result), R32(result), Shift(ShiftOp::kLSR, 4));
+    compiler.eor(R32(folded), R32(folded), R32(folded), Shift(ShiftOp::kLSR, 2));
+    compiler.eor(R32(folded), R32(folded), R32(folded), Shift(ShiftOp::kLSR, 1));
+    if (mode && !strcmp(mode, "xor")) {
+        compiler.eor(R32(folded), R32(folded), 1);
+        compiler.and_(R32(folded), R32(folded), 1);
+        directParityValue = folded;
+    } else {
+        // V holds odd parity when no explicit value is retained.
+        compiler.embed_uint32(0xba000401u | (R64(folded).id() << 5));
+    }
+}
+
+bool JitArmV8CodeGen::compileIntegerParity(DecodedOp* op) {
+    if (op->lock || !armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_INTEGER_PARITY_SLOW")) return false;
+    enum class ParityOp { Add, Sub, Cmp, Test, And, Or, Xor };
+    ParityOp arithmetic;
+    bool immediate;
+    switch (op->inst) {
+    case AddR32R32: arithmetic = ParityOp::Add; immediate = false; break;
+    case AddR32I32: arithmetic = ParityOp::Add; immediate = true; break;
+    case SubR32R32: arithmetic = ParityOp::Sub; immediate = false; break;
+    case SubR32I32: arithmetic = ParityOp::Sub; immediate = true; break;
+    case CmpR32R32: arithmetic = ParityOp::Cmp; immediate = false; break;
+    case CmpR32I32: arithmetic = ParityOp::Cmp; immediate = true; break;
+    case TestR32R32: arithmetic = ParityOp::Test; immediate = false; break;
+    case TestR32I32: arithmetic = ParityOp::Test; immediate = true; break;
+    case AndR32R32: arithmetic = ParityOp::And; immediate = false; break;
+    case AndR32I32: arithmetic = ParityOp::And; immediate = true; break;
+    case OrR32R32: arithmetic = ParityOp::Or; immediate = false; break;
+    case OrR32I32: arithmetic = ParityOp::Or; immediate = true; break;
+    case XorR32R32: arithmetic = ParityOp::Xor; immediate = false; break;
+    case XorR32I32: arithmetic = ParityOp::Xor; immediate = true; break;
+    default: return false;
+    }
+    if (!op->getNeededFlagsAfter(PF)) return false;
+    bool fused = false;
+    directIntegerParity = true;
+    tryDirect(op, [this, op, arithmetic, immediate, &fused]() {
+        const bool noWrite = arithmetic == ParityOp::Cmp || arithmetic == ParityOp::Test;
+        RegPtr left = noWrite ? getReadOnlyReg(op->reg) : getReg(op->reg);
+        RegPtr right = immediate ? loadConst(op->imm) : getReadOnlyReg(op->rm);
+        RegPtr result = noWrite ? getTmpReg() : left;
+        cfInverted = false;
+        switch (arithmetic) {
+        case ParityOp::Add: compiler.adds(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Sub: case ParityOp::Cmp:
+            compiler.subs(R32(result), R32(left), R32(right)); cfInverted = true; break;
+        case ParityOp::And: case ParityOp::Test:
+            compiler.ands(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Or:
+            compiler.orr(R32(result), R32(left), R32(right));
+            compiler.ands(asmjit::a64::wzr, R32(result), R32(result)); break;
+        case ParityOp::Xor:
+            compiler.eor(R32(result), R32(left), R32(right));
+            compiler.ands(asmjit::a64::wzr, R32(result), R32(result)); break;
+        }
+        emitIntegerParity(result);
+        fused = true;
+    }, []() {}, CF | ZF | SF | PF);
+    directIntegerParity = false;
+    directParityValue.reset();
+    return fused;
+}
+
+bool JitArmV8CodeGen::compileNarrowParity(DecodedOp* op) {
+    if (op->lock || !armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_NARROW_PARITY_SLOW") ||
+            !op->getNeededFlagsAfter(PF)) return false;
+    enum class ParityOp { Add, Sub, Cmp, Test, And, Or, Xor };
+    ParityOp operation;
+    U32 bits;
+    bool immediate;
+    switch (op->inst) {
+#define NARROW_PARITY_CASES(prefix, kind) \
+    case prefix##R8R8: operation = ParityOp::kind; bits = 8; immediate = false; break; \
+    case prefix##R8I8: operation = ParityOp::kind; bits = 8; immediate = true; break; \
+    case prefix##R16R16: operation = ParityOp::kind; bits = 16; immediate = false; break; \
+    case prefix##R16I16: operation = ParityOp::kind; bits = 16; immediate = true; break;
+    NARROW_PARITY_CASES(Add, Add)
+    NARROW_PARITY_CASES(Sub, Sub)
+    NARROW_PARITY_CASES(Cmp, Cmp)
+    NARROW_PARITY_CASES(Test, Test)
+    NARROW_PARITY_CASES(And, And)
+    NARROW_PARITY_CASES(Or, Or)
+    NARROW_PARITY_CASES(Xor, Xor)
+#undef NARROW_PARITY_CASES
+    default: return false;
+    }
+    // A standalone high-byte SETP/SETNP measured faster on the established
+    // path in changing-input tests. Retain that lowering;
+    // high-byte branch and CMOV consumers still benefit from fusion.
+    if (bits == 8 && op->reg >= 4 && op->next && op->next->isSetCC() &&
+            !op->next->getNeededFlagsAfter(FMASK_TEST) &&
+            !std::getenv("BOXEDWINE_ARM_NARROW_PARITY_HIGH_SET")) return false;
+    bool fused = false;
+    directIntegerParity = true;
+    tryDirect(op, [this, op, bits, immediate, operation, &fused]() {
+        const bool noWrite = operation == ParityOp::Cmp || operation == ParityOp::Test;
+        RegPtr dst = bits == 8 ? getReadOnlyReg8(op->reg) : getReadOnlyReg(op->reg);
+        RegPtr result = getTmpReg();
+        const bool lowBits = !std::getenv("BOXEDWINE_ARM_NARROW_PARITY_LOW_BITS_SLOW");
+        RegPtr left = dst;
+        if (!lowBits || dst->isHigh) {
+            compiler.ubfx(R32(result), R32(dst), dst->isHigh ? 8 : 0, bits);
+            left = result;
+        }
+        RegPtr right;
+        if (immediate) right = loadConst(op->imm);
+        else {
+            RegPtr src = bits == 8 ? getReadOnlyReg8(op->rm) : getReadOnlyReg(op->rm);
+            if (lowBits && !src->isHigh) right = src;
+            else {
+                right = getTmpReg();
+                compiler.ubfx(R32(right), R32(src), src->isHigh ? 8 : 0, bits);
+            }
+        }
+        // With CF/OF excluded, upper operand bits cannot affect the low
+        // result, its parity, or SETF8/16's N/Z. High-byte operands still
+        // need extraction; BFI below preserves the destination's other bits.
+        switch (operation) {
+        case ParityOp::Add: compiler.add(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Sub: case ParityOp::Cmp: compiler.sub(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Test: case ParityOp::And: compiler.and_(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Or: compiler.orr(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Xor: compiler.eor(R32(result), R32(left), R32(right)); break;
+        }
+        // SETF obtains N/Z from the narrow result without aligning operands.
+        // Carry and overflow consumers remain on the established lowering.
+        if (op->getNeededFlagsAfter(ZF | SF)) {
+            if (bits == 8) compiler.setf8(R32(result));
+            else compiler.setf16(R32(result));
+        }
+        if (!noWrite) {
+            RegPtr write = bits == 8 ? getReg8(op->reg) : getReg(op->reg);
+            compiler.bfi(R32(write), R32(result), write->isHigh ? 8 : 0, bits);
+        }
+        emitIntegerParity(result);
+        fused = true;
+    }, []() {}, PF | ZF | SF);
+    directIntegerParity = false;
+    directParityValue.reset();
+    return fused;
+}
+
+bool JitArmV8CodeGen::compileShiftFlags(DecodedOp* op) {
+    const bool left = op->inst == ShlR32I8;
+    const bool arithmetic = op->inst == SarR32I8;
+    if ((!left && !arithmetic && op->inst != ShrR32I8) || op->lock ||
+            !armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_SHIFT_FLAGS_SLOW")) return false;
+    const U32 count = op->imm & 31;
+    if (!count) return false;
+    const bool parity = !std::getenv("BOXEDWINE_ARM_SHIFT_PARITY_SLOW") &&
+        op->getNeededFlagsAfter(PF) && !op->getNeededFlagsAfter(OF);
+    const U32 supported = CF | ZF | SF | (parity ? PF : count == 1 ? OF : 0);
+    const bool needCarry = op->getNeededFlagsAfter(CF) != 0;
+    const bool needOverflow = count == 1 && op->getNeededFlagsAfter(OF);
+    bool fused = false;
+    directIntegerParity = parity;
+    tryDirect(op, [this, op, count, left, arithmetic, needCarry, needOverflow, parity, &fused]() {
+        RegPtr dst = getReg(op->reg);
+        if (left && count == 1) {
+            compiler.adds(R32(dst), R32(dst), R32(dst));
+        } else {
+            RegPtr original;
+            if (needCarry || (needOverflow && !arithmetic)) {
+                original = getTmpReg();
+                compiler.mov(R32(original), R32(dst));
+            }
+            if (left) compiler.lsl(R32(dst), R32(dst), count);
+            else if (arithmetic) compiler.asr(R32(dst), R32(dst), count);
+            else compiler.lsr(R32(dst), R32(dst), count);
+            // ANDS supplies N/Z and clears V. RMIF changes only the selected
+            // flag bits; x86 carry is the last bit shifted out of the source.
+            compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+            // This AsmJit version has no RMIF emitter. Encoding is the Arm
+            // FEAT_FlagM RMIF Xn,#shift,#mask form (validated with clang).
+            auto rmif = [&](U32 shift, U32 mask) {
+                compiler.embed_uint32(0xba000400u | (shift << 15) |
+                    (R64(original).id() << 5) | mask);
+            };
+            if (needCarry) rmif(left ? 31 - count : (count + 62) & 63, 2);
+            if (needOverflow && !arithmetic) rmif(31, 1);
+        }
+        if (parity) emitIntegerParity(dst);
+        cfInverted = false;
+        fused = true;
+    }, []() {}, supported);
+    directIntegerParity = false;
+    directParityValue.reset();
+    if (!fused) JitCodeGen::compile(op);
+    return true;
+}
+
+bool JitArmV8CodeGen::useColdPollExit() const {
+    return !forceInlinePoll && !std::getenv("BOXEDWINE_ARM_INLINE_POLL");
+}
+
+void JitArmV8CodeGen::exitToRunLoopIfNeeded(U32 eip) {
+    if (!useColdPollExit() || std::getenv("BOXEDWINE_ARM_POLL_EIP_INLINE")) {
+        JitCodeGen::exitToRunLoopIfNeeded(eip);
+        return;
+    }
+    emitColdPollExit([this, eip]() { writeEip(eip - cpu->seg[CS].address); });
+}
+
+void JitArmV8CodeGen::exitToRunLoopIfNeeded(RegPtr eip) {
+    if (!useColdPollExit()) {
+        JitCodeGen::exitToRunLoopIfNeeded(eip);
+        return;
+    }
+    emitColdPollExit([this, eip]() { writeEip(eip); });
+}
+
+bool JitArmV8CodeGen::compileOps(DecodedOp* op) {
+    if (!JitCodeGen::compileOps(op)) return false;
+    if (pollExitSection && (code.text_section()->buffer().size() + pollExitSection->buffer().size() > 512 * 1024 ||
+            pollExitSection->buffer().size() > 32 * 1024)) {
+        // Retry before publishing anything. Bound both CBZ/CBNZ displacement
+        // and the cold tail included in the final instruction's U16 jitLen.
+        struct Reset { bool previous; ~Reset() { forceInlinePoll = previous; } } reset{forceInlinePoll};
+        forceInlinePoll = true;
+#ifdef __TEST
+        ++largePollFallbacks;
+#endif
+        startNewJIT(cpu, startingEip, op);
+        return false;
+    }
+    return true;
+}
+
+void JitArmV8CodeGen::emitColdPollExit(const std::function<void()>& writeRestart) {
+    // Emit now, while the exact GP and x87 cache state at the poll is available.
+    // compileOps retries oversized blocks using inline exits before publishing.
+    if (!pollExitSection) {
+        auto error = code.new_section(asmjit::Out(pollExitSection), ".poll-exits", SIZE_MAX,
+            asmjit::SectionFlags::kExecutable, 4, 1);
+        if (error != asmjit::Error::kOk) kpanic("ARM JIT could not allocate poll exits");
+    }
+    Label exit = compiler.new_label();
+#ifdef BOXEDWINE_MULTI_THREADED
+    RegPtr pending = readCPU(JitWidth::b32, offsetof(CPU, jitSignalPending));
+    compiler.cbnz(R32(pending), exit);
+#else
+    RegPtr budget = readCPU(JitWidth::b32, offsetof(CPU, jitBranchBudget));
+    subValue(JitWidth::b32, budget, 1);
+    writeCPU(JitWidth::b32, offsetof(CPU, jitBranchBudget), budget);
+    compiler.cbz(R32(budget), exit);
+#endif
+    auto* hot = compiler.current_section();
+    compiler.section(pollExitSection);
+    compiler.bind(exit);
+    writeRestart();
+    writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+    blockExit();
+    compiler.section(hot);
+}
+
+void JitArmV8CodeGen::jumpToEipIfCached(RegPtr eipReg) {
+    auto& cache = getMemData(cpu->memory)->opCache;
+    // Flat lookup helps jumps and returns, but regressed the measured
+    // multi-target indirect-call loops. Keep calls on the page-tree path.
+    const bool flatCalls = std::getenv("BOXEDWINE_ARM_FLAT_CALL") &&
+        !std::getenv("BOXEDWINE_ARM_FLAT_CALL_SLOW");
+    if (!cache.getFlatJitEntries() ||
+            (currentOp && currentOp->isCall() && !flatCalls) ||
+            (currentOp && currentOp->isRet() && std::getenv("BOXEDWINE_ARM_FLAT_RETURN_SLOW"))) {
+        JitCodeGen::jumpToEipIfCached(eipReg);
+        return;
+    }
+    if (!eipReg) eipReg = readEip();
+    if (cpu->thread->process->hasSetSeg[CS]) addReg(JitWidth::b32, eipReg, getReadOnlySegAddress(CS));
+    RegPtr index = eipReg;
+    if (cache.hasFlatJitHash()) {
+        index = getTmpReg();
+        compiler.eor(R32(index), R32(eipReg), R32(eipReg), Shift(ShiftOp::kLSR, cache.getFlatJitHashShift()));
+        if (cache.hasFlatJitPageHash()) {
+            RegPtr high = getTmpReg();
+            compiler.and_(R32(high), R32(eipReg), 0xffff0000u);
+            compiler.eor(R32(index), R32(index), R32(high), Shift(ShiftOp::kLSR, 4));
+        }
+    }
+    // Diagnostic controls for separating index dependencies from code-size
+    // effects. Both leave the selected lookup mapping unchanged.
+    if (const char* padding = std::getenv("BOXEDWINE_ARM_HASH_DIAGNOSTIC")) {
+        if (!strcmp(padding, "nop")) {
+            compiler.nop(); compiler.nop();
+        } else if (!strcmp(padding, "unused")) {
+            RegPtr unused = getTmpReg();
+            compiler.and_(R32(unused), R32(eipReg), 0xffff0000u);
+            compiler.eor(R32(unused), R32(index), R32(unused), Shift(ShiftOp::kLSR, 4));
+        }
+    }
+    RegPtr target;
+    const bool preserveCallLookup = std::getenv("BOXEDWINE_ARM_FLAT_BASE_JUMPS_ONLY") &&
+        currentOp && (currentOp->isCall() || currentOp->isRet());
+    if (cacheFlatJitBase(cpu) && !preserveCallLookup) {
+        target = getTmpReg();
+        compiler.ldr(R64(target), Mem(xFlatJitBase, R64(index), Shift(ShiftOp::kLSL, DYN_PTR_LSL)));
+    } else {
+        target = readCPU(DYN_PTR, offsetof(CPU, jitFlatEntries));
+        readHost(DYN_PTR, createMemPtr(target, index, DYN_PTR_LSL, 0), target, false);
+    }
+    If(DYN_PTR, target); {
+        jmpHost(target);
+    } EndIf();
+}
+
 void JitArmV8CodeGen::compile(DecodedOp* op) {
-    if (!compileCachedFpuOp(op)) JitCodeGen::compile(op);
+    if (!compileConditionalCompare(op) && !compileMultiplyFlags(op) && !compileIntegerParity(op) && !compileNarrowParity(op) && !compileShiftFlags(op) && !compileNarrowArithmetic(op) && !compileCarryChain(op) && !compileNarrowIncDec(op) && !compileCachedFpuOp(op)) JitCodeGen::compile(op);
 }
 
 void JitArmV8CodeGen::postCompile(DecodedOp* op) {
@@ -1191,11 +1806,42 @@ FPURegPtr JitArmV8CodeGen::getFPUTmp() {
 }
 
 void JitArmV8CodeGen::emulateSingleOp() {
+    const bool memory = currentOp && (instructionInfo[currentOp->inst].readMemWidth ||
+        instructionInfo[currentOp->inst].writeMemWidth);
+    const bool cold = memory && !forceInlinePoll && !ifLabels.empty() &&
+        std::getenv("BOXEDWINE_ARM_MEMORY_EXIT_COLD");
+    asmjit::Section* originalSection = compiler.current_section();
+    if (cold) {
+        if (!pollExitSection) {
+            auto error = code.new_section(asmjit::Out(pollExitSection), ".poll-exits", SIZE_MAX,
+                asmjit::SectionFlags::kExecutable, 4, 1);
+            if (error != asmjit::Error::kOk) kpanic("ARM JIT could not allocate cold memory exits");
+        }
+        Label exit = compiler.new_label();
+        compiler.b(exit);
+        compiler.section(pollExitSection);
+        compiler.bind(exit);
+    }
     materializeFpuCache();
     writeCurrentEip(0);
 
-    //compiler.mov(xBranch, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
-    compiler.br(xEmulateSingleOp); // we won't return to here
+    if (cacheLinearMemoryBase()) {
+        if (std::getenv("BOXEDWINE_ARM_HELPER_LITERAL")) {
+            // This is a tail transfer: execution cannot fall through into the
+            // immutable pointer literal. The next guest entry follows it.
+            Label pointer = compiler.new_label();
+            compiler.ldr(xBranch, Mem(pointer));
+            compiler.br(xBranch);
+            compiler.bind(pointer);
+            compiler.embed_uint64((DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+        } else {
+            compiler.mov(xBranch, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+            compiler.br(xBranch);
+        }
+    } else {
+        compiler.br(xEmulateSingleOp);
+    } // we won't return to here
+    if (cold) compiler.section(originalSection);
 }
 
 U8 JitArmV8CodeGen::findTmpReg(bool allowInvalidReturn) {
@@ -2634,7 +3280,6 @@ void JitArmV8CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, Re
     }
 }
 
-#include "../../softmmu/kmemory_soft.h"
 void JitArmV8CodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
     compiler.ldr(R64(dest), createMem(regMMU, index->hardwareReg(), 3, offset));
 }
@@ -2644,6 +3289,11 @@ void JitArmV8CodeGen::readMMU(RegPtr dest, U32 index) {
 }
 
 RegPtr JitArmV8CodeGen::getLinearMemoryBase(RegPtr tmp) {
+    if (cacheLinearMemoryBase()) {
+        // This callee-saved register is loaded at JIT entry and is never a
+        // destination or temporary, including when a guest access faults.
+        return std::make_shared<JitReg>(26, 0xff);
+    }
     // A grouped linear-memory read can fault when another guest page in the
     // host-page group prevents a direct mapping. Keep the address base out of
     // the load destination so the exception context retains a valid address
@@ -3203,6 +3853,17 @@ void JitArmV8CodeGen::setParams(const std::vector<DynParam>& params) {
     }
 }
 
+void JitArmV8CodeGen::callLoadCacheFromCPU() {
+    if (cacheFlatJitBase(cpu)) {
+        // The target-table base is hotter than the helper address. This helper
+        // follows the native ABI and preserves the callee-saved x28 base.
+        compiler.mov(xBranch, (U64)cpu->thread->process->syncToHost);
+        compiler.blr(xBranch);
+    } else {
+        compiler.blr(xLoadCacheFromCPU);
+    }
+}
+
 void JitArmV8CodeGen::callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache, bool saveCache) {
     materializeFpuCache();
     auto saved = saveFpuTemporaries();
@@ -3215,7 +3876,7 @@ void JitArmV8CodeGen::callHostFunction(void* address, const std::vector<DynParam
     compiler.blr(xBranch);
 
     if (restoreCache) {
-        compiler.blr(xLoadCacheFromCPU);
+        callLoadCacheFromCPU();
     }
     restoreFpuTemporaries(saved);
 }
@@ -3238,7 +3899,7 @@ void JitArmV8CodeGen::callHostFunctionWithResult(RegPtr result, void* address, c
     compiler.mov(xBranch, (U64)address);
     compiler.blr(xBranch);
     compiler.mov(R64(result), xEAX);
-    compiler.blr(xLoadCacheFromCPU);
+    callLoadCacheFromCPU();
     restoreFpuTemporaries(saved);
 }
 
@@ -3830,6 +4491,18 @@ void JitArmV8CodeGen::IfSseLessThan(SSERegPtr src1, SSERegPtr src2) {
 }
 
 void JitArmV8CodeGen::fmax(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake) {
+    if (!std::getenv("BOXEDWINE_ARM_MINMAX_SELECT_SLOW")) {
+        // x86 selects the right operand for unordered/equal inputs, including
+        // signed zero and the exact NaN payload. FCMGT is false in those cases.
+        bool leftAlias = dst->hardwareReg() == src1->hardwareReg();
+        bool rightAlias = dst->hardwareReg() == src2->hardwareReg();
+        SSERegPtr mask = leftAlias || rightAlias ? getTmpSSE() : dst;
+        compiler.fcmgt(vMake(mask), vMake(src1), vMake(src2));
+        if (leftAlias) compiler.bif(toSseB16(dst), toSseB16(src2), toSseB16(mask));
+        else if (rightAlias) compiler.bit(toSseB16(dst), toSseB16(src1), toSseB16(mask));
+        else compiler.bsl(toSseB16(dst), toSseB16(src1), toSseB16(src2));
+        return;
+    }
     SSERegPtr vTmpReg = getTmpSSE();
     SSERegPtr vTmpReg2 = getTmpSSE();    
 
@@ -3861,6 +4534,18 @@ void JitArmV8CodeGen::fmax(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSS
 }
 
 void JitArmV8CodeGen::fmin(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake) {
+    if (!std::getenv("BOXEDWINE_ARM_MINMAX_SELECT_SLOW")) {
+        // x86 selects the right operand for unordered/equal inputs, including
+        // signed zero and the exact NaN payload. FCMGT is false in those cases.
+        bool leftAlias = dst->hardwareReg() == src1->hardwareReg();
+        bool rightAlias = dst->hardwareReg() == src2->hardwareReg();
+        SSERegPtr mask = leftAlias || rightAlias ? getTmpSSE() : dst;
+        compiler.fcmgt(vMake(mask), vMake(src2), vMake(src1));
+        if (leftAlias) compiler.bif(toSseB16(dst), toSseB16(src2), toSseB16(mask));
+        else if (rightAlias) compiler.bit(toSseB16(dst), toSseB16(src1), toSseB16(mask));
+        else compiler.bsl(toSseB16(dst), toSseB16(src1), toSseB16(src2));
+        return;
+    }
     SSERegPtr vTmpReg = getTmpSSE();
     SSERegPtr vTmpReg2 = getTmpSSE();
 
@@ -4089,37 +4774,85 @@ void JitArmV8CodeGen::sseCmp(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, U8 p
 }
 
 void JitArmV8CodeGen::comis(SSERegPtr dst, SSERegPtr src, MakeSSE vMake) {
-    // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
-    // if (isnan(a.f64[0]) || isnan(b.f64[0])) {
-    //     cpu->flags |= CF | ZF | PF;
-    // } else if (a.f64[0] == b.f64[0]) {
-    //     cpu->flags |= ZF;
-    // } else if (a.f64[0] < b.f64[0]) {
-    //     cpu->flags |= CF;
-    // }
-    RegPtr tmpReg = getTmpReg();
+    auto materialize = [&] {
+        // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
+        // if (isnan(a.f64[0]) || isnan(b.f64[0])) {
+        //     cpu->flags |= CF | ZF | PF;
+        // } else if (a.f64[0] == b.f64[0]) {
+        //     cpu->flags |= ZF;
+        // } else if (a.f64[0] < b.f64[0]) {
+        //     cpu->flags |= CF;
+        // }
+        RegPtr tmpReg = getTmpReg();
 
-    // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
-    compiler.movn(R32(tmpReg), AF | OF | SF | CF | PF | ZF);
-    compiler.and_(xFLAGS, xFLAGS, R32(tmpReg));
-    
-    compiler.fcmp(vMake(dst), vMake(src));
+        // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
+        compiler.movn(R32(tmpReg), AF | OF | SF | CF | PF | ZF);
+        compiler.and_(xFLAGS, xFLAGS, R32(tmpReg));
 
-    // if (isnan(a.f64[0]) || isnan(b.f64[0])) { cpu->flags |= CF | ZF | PF; }
-    compiler.mov(R32(tmpReg), CF | PF | ZF);
-    compiler.orr(R32(tmpReg), xFLAGS, R32(tmpReg));
-    compiler.csel(xFLAGS, R32(tmpReg), xFLAGS, asmjit::a64::CondCode::kVS);
+        compiler.fcmp(vMake(dst), vMake(src));
 
-    // else if (a.f64[0] == b.f64[0]) { cpu->flags |= ZF; }
-    compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kEQ);
-    compiler.orr(xFLAGS, xFLAGS, R32(tmpReg), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 6))); // 6 for ZF
+        // if (isnan(a.f64[0]) || isnan(b.f64[0])) { cpu->flags |= CF | ZF | PF; }
+        compiler.mov(R32(tmpReg), CF | PF | ZF);
+        compiler.orr(R32(tmpReg), xFLAGS, R32(tmpReg));
+        compiler.csel(xFLAGS, R32(tmpReg), xFLAGS, asmjit::a64::CondCode::kVS);
 
-    // else if (a.f64[0] < b.f64[0]) {cpu->flags |= CF; }
-    compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kLT);
-    compiler.orr(xFLAGS, xFLAGS, R32(tmpReg));
-    storeLazyFlagType(FLAGS_NONE);
-    currentLazyFlags = FLAGS_NONE;
+        // else if (a.f64[0] == b.f64[0]) { cpu->flags |= ZF; }
+        compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kEQ);
+        compiler.orr(xFLAGS, xFLAGS, R32(tmpReg), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 6))); // 6 for ZF
+
+        // else if (a.f64[0] < b.f64[0]) {cpu->flags |= CF; }
+        compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kLT);
+        compiler.orr(xFLAGS, xFLAGS, R32(tmpReg));
+        storeLazyFlagType(FLAGS_NONE);
+        currentLazyFlags = FLAGS_NONE;
+    };
+    bool canFuseMemoryCompare = !std::getenv("BOXEDWINE_ARM_SSE_MEMORY_SLOW");
+    if (instructionInfo[currentOp->inst].readMemWidth) {
+        // read() has already emitted the guest load. A fused backward branch
+        // would insert a scheduler poll here and restart at the producer,
+        // potentially observing a different memory value. Keep that case on
+        // the ordinary path until the poll can be emitted before the load.
+        U32 eip = currentEip + currentOp->len;
+        DecodedOp* next = currentOp->next;
+        for (U32 i = 0; next && i < getDirectFlagWindow(); ++i, eip += next->len, next = next->next) {
+            if (next->isJumpCC() && eip + next->len + next->imm <= eip) {
+                canFuseMemoryCompare = false;
+                break;
+            }
+            if (instructionInfo[next->inst].flagsSets) break;
+        }
+    }
+    const bool canFuseCompare = !instructionInfo[currentOp->inst].readMemWidth || canFuseMemoryCompare;
+    if (canFuseCompare &&
+            !std::getenv("BOXEDWINE_ARM_SSE_NATIVE_FLAGS_SLOW") &&
+            !std::getenv("BOXEDWINE_ARM_SSE_COMPARE_SLOW")) {
+        // FCMP directly describes x86 below/below-or-equal and unordered.
+        // Keeping its native flags also makes parity available without
+        // constructing EFLAGS or saving/restoring the unordered bit.
+        bool fused = false;
+        directFloatFlags = true;
+        tryDirect(currentOp, [&] {
+            compiler.fcmp(vMake(dst), vMake(src));
+            fused = true;
+        }, [] {}, CF | ZF | PF);
+        directFloatFlags = false;
+        if (fused) return;
+    }
+    if (canFuseCompare &&
+            armJitHasFlagM2() &&
+            !std::getenv("BOXEDWINE_ARM_SSE_COMPARE_SLOW")) {
+        tryDirect(currentOp, [&] {
+            compiler.fcmp(vMake(dst), vMake(src));
+            // AXFLAG includes unordered in Z, clears N/V, and leaves C as
+            // the inverse of x86 CF. Parity still needs the materialized path.
+            compiler.axflag();
+            cfInverted = true;
+        }, materialize, CF | ZF | SF | OF);
+    } else {
+        materialize();
+    }
 }
+
 
 void JitArmV8CodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
     if (index >= 8) {
@@ -6009,6 +6742,8 @@ U32 JitArmV8CodeGen::getBufferLocation(U32 id) {
 
 U32 JitArmV8CodeGen::getBufferSize() {
     code.flatten();
+    auto error = code.resolve_cross_section_fixups();
+    if (error != asmjit::Error::kOk) kpanic("ARM JIT cross-section fixups failed");
     return (U32)code.code_size();
 }
 
@@ -7320,6 +8055,20 @@ void JitArmV8CodeGen::onBlockPreCommit(DecodedOp* op) {
 }
 
 bool JitArmV8CodeGen::supportsDirectCondition(JitConditional condition) {
+    if (directMultiplyFlags) {
+        return condition == JitConditional::O || condition == JitConditional::NO ||
+            condition == JitConditional::B || condition == JitConditional::NB;
+    }
+    if (directIntegerParity) {
+        return condition != JitConditional::O && condition != JitConditional::NO &&
+            condition != JitConditional::L && condition != JitConditional::NL &&
+            condition != JitConditional::LE && condition != JitConditional::NLE;
+    }
+    if (directFloatFlags) {
+        return condition == JitConditional::B || condition == JitConditional::NB ||
+            condition == JitConditional::BE || condition == JitConditional::NBE ||
+            condition == JitConditional::P || condition == JitConditional::NP;
+    }
     if (condition == JitConditional::P || condition == JitConditional::NP) {
         return false;
     }
@@ -7327,6 +8076,32 @@ bool JitArmV8CodeGen::supportsDirectCondition(JitConditional condition) {
 }
 
 asmjit::a64::CondCode JitArmV8CodeGen::getCondCode(JitConditional condition) {
+    if (directMultiplyFlags) {
+        if (condition == JitConditional::O || condition == JitConditional::B) return asmjit::a64::CondCode::kNE;
+        if (condition == JitConditional::NO || condition == JitConditional::NB) return asmjit::a64::CondCode::kEQ;
+        kpanic("Unsupported direct multiply condition");
+    }
+    if (directIntegerParity) {
+        if (directParityValue && (condition == JitConditional::P || condition == JitConditional::NP)) {
+            // Only parity conditions need V. The table value is even parity;
+            // N/Z/C remain available for the other consumers in this region.
+            compiler.embed_uint32(0xba000401u | (R64(directParityValue).id() << 5));
+            return condition == JitConditional::P ? asmjit::a64::CondCode::kVS : asmjit::a64::CondCode::kVC;
+        }
+        if (condition == JitConditional::P) return asmjit::a64::CondCode::kVC;
+        if (condition == JitConditional::NP) return asmjit::a64::CondCode::kVS;
+    }
+    if (directFloatFlags) {
+        switch (condition) {
+        case JitConditional::B: return asmjit::a64::CondCode::kLT;
+        case JitConditional::NB: return asmjit::a64::CondCode::kGE;
+        case JitConditional::BE: return asmjit::a64::CondCode::kLE;
+        case JitConditional::NBE: return asmjit::a64::CondCode::kGT;
+        case JitConditional::P: return asmjit::a64::CondCode::kVS;
+        case JitConditional::NP: return asmjit::a64::CondCode::kVC;
+        default: kpanic("Unsupported direct floating-point condition");
+        }
+    }
     switch (condition) {
     case JitConditional::O: return asmjit::a64::CondCode::kVS;
     case JitConditional::NO: return asmjit::a64::CondCode::kVC;
@@ -7337,11 +8112,13 @@ asmjit::a64::CondCode JitArmV8CodeGen::getCondCode(JitConditional condition) {
     case JitConditional::BE: 
         if (!cfInverted) {
             compiler.cfinv();
+            cfInverted = true;
         }
         return asmjit::a64::CondCode::kLS;
     case JitConditional::NBE: 
         if (!cfInverted) {
             compiler.cfinv();
+            cfInverted = true;
         }
         return asmjit::a64::CondCode::kHI;
     case JitConditional::S: return asmjit::a64::CondCode::kMI;
@@ -7359,9 +8136,24 @@ asmjit::a64::CondCode JitArmV8CodeGen::getCondCode(JitConditional condition) {
 }
 
 void JitArmV8CodeGen::direct_jump(JitConditional condition, U32 address) {
+    const bool parityValueBranch = directIntegerParity && directParityValue &&
+        (condition == JitConditional::P || condition == JitConditional::NP) &&
+        std::getenv("BOXEDWINE_ARM_PARITY_CBZ");
+    auto emitBranch = [&](Label label, bool inverse) {
+        if (parityValueBranch) {
+            // The retained value is 0/1, so CBZ/CBNZ can consume it directly.
+            // Both have the same signed 19-bit displacement as B.cond; this
+            // does not introduce TBZ's shorter branch-range restriction.
+            if ((condition == JitConditional::P) != inverse) compiler.cbnz(R32(directParityValue), label);
+            else compiler.cbz(R32(directParityValue), label);
+        } else {
+            auto nativeCondition = getCondCode(condition);
+            compiler.b(inverse ? asmjit::arm::negate_cond(nativeCondition) : nativeCondition, label);
+        }
+    };
     if (!isBlockOpBoundary(address)) {
         Label fallthrough = compiler.new_label();
-        compiler.b(asmjit::arm::negate_cond(getCondCode(condition)), fallthrough);
+        emitBranch(fallthrough, true);
         branchToSideExit(address);
         compiler.bind(fallthrough);
         return;
@@ -7374,7 +8166,7 @@ void JitArmV8CodeGen::direct_jump(JitConditional condition, U32 address) {
         pendingLabels.set(address, label);
     }
 
-    compiler.b(getCondCode(condition), label);
+    emitBranch(label, false);
 }
 
 void JitArmV8CodeGen::direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) {
@@ -7389,6 +8181,16 @@ void JitArmV8CodeGen::direct_cmov(JitWidth width, JitConditional condition, RegP
 }
 
 void JitArmV8CodeGen::direct_setcc(JitConditional condition, RegPtr dst) {
+    if (directIntegerParity && directParityValue &&
+            (condition == JitConditional::P || condition == JitConditional::NP)) {
+        RegPtr value = directParityValue;
+        if (condition == JitConditional::NP) {
+            value = getTmpReg();
+            compiler.eor(R32(value), R32(directParityValue), 1);
+        }
+        compiler.bfi(R32(dst), R32(value), dst->isHigh ? 8 : 0, 8);
+        return;
+    }
     RegPtr result = getTmpReg();
     compiler.mov(R32(result->hardwareReg()), 1);
     compiler.csel(R32(result), R32(result), asmjit::a64::wzr, getCondCode(condition));
@@ -7478,9 +8280,15 @@ U8* JitArmV8CodeGen::createStartJITCode() {
     static_assert(offsetof(KMemoryData, mmu) + sizeof(void*) * K_NUMBER_OF_PAGES == offsetof(KMemoryData, readCache));
     static_assert(offsetof(KMemoryData, mmu) + sizeof(void*) * K_NUMBER_OF_PAGES * 2 == offsetof(KMemoryData, writeCache));
 #endif
-    compiler.mov(xLoadCacheFromCPU, (U64)KThread::currentThread()->process->syncToHost);
+    if (cacheFlatJitBase(cpu)) compiler.ldr(xFlatJitBase, Mem(xCPU, offsetof(CPU, jitFlatEntries)));
+    else compiler.mov(xLoadCacheFromCPU, (U64)KThread::currentThread()->process->syncToHost);
     compiler.mov(xWriteCacheToCPU, (U64)KThread::currentThread()->process->syncFromHost);
-    compiler.mov(xEmulateSingleOp, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+    if (cacheLinearMemoryBase()) {
+        constexpr S32 offset = (S32)offsetof(KMemoryData, linearMemoryBase) - (S32)offsetof(KMemoryData, mmu);
+        compiler.ldr(xLinearMemoryBase, Mem(xMMU, offset));
+    } else {
+        compiler.mov(xEmulateSingleOp, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+    }
     loadCacheFromCPU();
     If(JitWidth::b64, std::make_shared<JitReg>(regBranch, 0xff)); {
         compiler.blr(xBranch);
@@ -7553,18 +8361,38 @@ void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
     data.doJIT(address, op);
 }
 
+#ifdef _WIN32
+static void clearArmJitBlockEntry(void* entry) noexcept {
+    ::memset(entry, 0, 4);
+}
+#else
 static void clearArmJitBlockEntries(void* opaque) noexcept {
     const std::vector<void*>& jitOps = *static_cast<const std::vector<void*>*>(opaque);
     for (void* p : jitOps) {
         ::memset(p, 0, 4);
     }
 }
+#endif
 
 void clearJitBlock(const std::vector<void*>& jitOps) {
-    U8* start = (U8*)jitOps[0];
-    U8* end = (U8*)jitOps[jitOps.size() - 1];
-    U32 len = static_cast<U32>(end - start) + 4;
-    Platform::writeCodeToMemory(start, len, clearArmJitBlockEntries, const_cast<std::vector<void*>*>(&jitOps));
+    if (jitOps.empty()) return;
+#ifdef _WIN32
+    // Windows changes protection only for the supplied address range. Each
+    // disjoint entry therefore needs its own protected write and cache flush.
+    for (void* entry : jitOps) {
+        Platform::writeCodeToMemory(entry, 4, clearArmJitBlockEntry, entry);
+    }
+#else
+    // Guest-address order does not imply native-address order, and entries
+    // can belong to disjoint executable allocations. A first-to-last range
+    // can underflow or cross unmapped memory during cache maintenance.
+    // Write all traps in one JIT write window, then flush only written words.
+    Platform::writeCodeToMemory(jitOps.front(), 4, clearArmJitBlockEntries,
+        const_cast<std::vector<void*>*>(&jitOps));
+    for (size_t i = 1; i < jitOps.size(); ++i) {
+        Platform::clearInstructionCache(jitOps[i], 4);
+    }
+#endif
 }
 
 #endif

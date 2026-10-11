@@ -22,6 +22,25 @@
 #include "kmemory_soft.h"
 #include "../cpu/normal/normalCPU.h"
 
+#if defined(BOXEDWINE_JIT_ARMV8) && (defined(__APPLE__) || defined(__linux__))
+#include <sys/mman.h>
+static constexpr U64 FLAT_JIT_ENTRY_BYTES = ((U64)1 << 32) * sizeof(void*);
+static constexpr size_t FLAT_JIT_LEAF_BYTES = K_PAGE_SIZE * sizeof(void*);
+
+static void adviseFlatJitLeaf(void** entries, bool reuse) {
+    static const bool disabled = std::getenv("BOXEDWINE_ARM_FLAT_RECLAIM_SLOW") != nullptr;
+    const size_t granularity = (size_t)Platform::getPagePermissionGranularity() << K_PAGE_SHIFT;
+    // In particular, a 64 KiB host page can contain two 32 KiB leaves. Never
+    // discard a neighboring leaf that may still hold published entries.
+    if (disabled || !entries || !granularity || FLAT_JIT_LEAF_BYTES % granularity) return;
+#ifdef __APPLE__
+    madvise(entries, FLAT_JIT_LEAF_BYTES, reuse ? MADV_FREE_REUSE : MADV_FREE_REUSABLE);
+#else
+    if (!reuse) madvise(entries, FLAT_JIT_LEAF_BYTES, MADV_DONTNEED);
+#endif
+}
+#endif
+
 #define FIRST_INDEX_SIZE 0x400
 #define SECOND_INDEX_SIZE 0x400
 // if these change, fix X64Asm::jmpReg and any other binary translators
@@ -37,15 +56,18 @@ DecodedOpPageCache::DecodedOpPageCache() {
 DecodedOpPageCache::~DecodedOpPageCache() {
 	for (U32 i = 0; i < K_PAGE_SIZE; i++) {
 		if (ops[i]) {
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
             ops[i]->detachJitEntry();
 #endif
 			ops[i]->dealloc();
 			activeOps--;
 		}
 	}
-#ifdef BOXEDWINE_JIT_X64
-    std::free(jitEntries);
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    if (ownsJitEntries) std::free(jitEntries);
+#if defined(BOXEDWINE_JIT_ARMV8) && (defined(__APPLE__) || defined(__linux__))
+    else adviseFlatJitLeaf(jitEntries, false);
+#endif
 #endif
 }
 
@@ -55,7 +77,7 @@ DecodedOpCache::DecodedOpCache() {
 		pageData[i] = emptyPageCacheLevel1;
 	}
 	memset(writeCounts, 0, sizeof(writeCounts));
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     if (!std::getenv("BOXEDWINE_JIT_ENTRY_CACHE_SLOW")) {
         jitPageGroups = (void****)std::malloc(FIRST_INDEX_SIZE * sizeof(void***));
         if (jitPageGroups) {
@@ -65,12 +87,36 @@ DecodedOpCache::DecodedOpCache() {
         }
     }
 #endif
+#if defined(BOXEDWINE_JIT_ARMV8) && (defined(__APPLE__) || defined(__linux__))
+    if (jitPageGroups && !std::getenv("BOXEDWINE_ARM_FLAT_CACHE_SLOW")) {
+        // A 32-bit guest has a bounded address space. Reserve virtual storage
+        // for one host pointer per guest byte; anonymous pages are demand-zero
+        // and consume physical memory only as lookup slots are touched.
+        void* entries = mmap(nullptr, FLAT_JIT_ENTRY_BYTES, PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+        if (entries != MAP_FAILED) {
+            flatJitEntries = (void**)entries;
+            flatJitHash = !std::getenv("BOXEDWINE_ARM_FLAT_HASH_SLOW");
+            if (const char* value = std::getenv("BOXEDWINE_ARM_FLAT_HASH_SHIFT")) {
+                U32 shift = (U32)std::strtoul(value, nullptr, 0);
+                // A shift of at least twelve preserves a contiguous,
+                // independently reclaimable leaf for every guest page.
+                if (shift >= K_PAGE_SHIFT && shift <= 24) flatJitHashShift = shift;
+            }
+            flatJitPageHash = flatJitHash && std::getenv("BOXEDWINE_ARM_FLAT_PAGE_HASH") &&
+                !std::getenv("BOXEDWINE_ARM_FLAT_PAGE_HASH_SLOW");
+        }
+    }
+#endif
 }
 
 DecodedOpCache::~DecodedOpCache() {
 	removeAll();
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     std::free(jitPageGroups);
+#endif
+#if defined(BOXEDWINE_JIT_ARMV8) && (defined(__APPLE__) || defined(__linux__))
+    if (flatJitEntries) munmap(flatJitEntries, FLAT_JIT_ENTRY_BYTES);
 #endif
 }
 
@@ -84,7 +130,7 @@ DecodedOp** DecodedOpCache::getLocation(U32 address) {
     return nullptr;
 }
 
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
 void** DecodedOpCache::getJitEntryLocation(U32 address) {
     if (!jitPageGroups) return nullptr;
     U32 pageIndex = address >> K_PAGE_SHIFT;
@@ -92,40 +138,95 @@ void** DecodedOpCache::getJitEntryLocation(U32 address) {
     if (jitPageGroups[firstIndex] == emptyJitPageGroup) {
         void*** group = (void***)std::calloc(SECOND_INDEX_SIZE, sizeof(void**));
         if (!group) return nullptr;
+#ifdef BOXEDWINE_JIT_ARMV8
+        // Native lookups follow address dependencies from this pointer.
+        // Publish zeroed children before exposing a newly allocated group.
+        std::atomic_thread_fence(std::memory_order_release);
+#endif
         jitPageGroups[firstIndex] = group;
     }
     DecodedOpPageCache* page = getPageCache(pageIndex, true);
     if (!page->jitEntries) {
-        void** entries = (void**)std::calloc(K_PAGE_SIZE, sizeof(void*));
+        void** entries;
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (flatJitEntries) {
+            // XOR-shift is a permutation of all 32-bit addresses. Mixing page
+            // bits into the byte offset spreads regularly spaced targets over
+            // host cache sets while preserving a contiguous leaf per guest page.
+            entries = flatJitEntries + (getFlatJitEntryIndex(pageIndex << K_PAGE_SHIFT) & ~K_PAGE_MASK);
+            page->jitEntryXorMask = getFlatJitEntryIndex(pageIndex << K_PAGE_SHIFT) & K_PAGE_MASK;
+            page->ownsJitEntries = false;
+#if defined(__APPLE__) || defined(__linux__)
+            // Cleared leaves remain at stable virtual addresses. Make their
+            // zeroed storage active again before publishing new code pointers.
+            adviseFlatJitLeaf(entries, true);
+#endif
+        } else
+#endif
+            entries = (void**)std::calloc(K_PAGE_SIZE, sizeof(void*));
         if (entries) {
             // Decoding alone does not need a compiled-entry array. Bind any
             // existing instructions before publishing this page to the JIT.
             for (U32 offset = 0; offset < K_PAGE_SIZE; ++offset) {
                 DecodedOp* op = page->ops[offset];
                 if (op) {
-                    op->jitEntrySlot = &entries[offset];
-                    entries[offset] = op->pfnJitCode;
+                    op->bindJitEntry(&entries[offset ^ page->jitEntryXorMask]);
                 }
             }
             page->jitEntries = entries;
+#ifdef BOXEDWINE_JIT_ARMV8
+            std::atomic_thread_fence(std::memory_order_release);
+#endif
             jitPageGroups[firstIndex][pageIndex & 0x3ff] = entries;
         }
     }
-    return page->jitEntries ? &page->jitEntries[address & K_PAGE_MASK] : nullptr;
+    return page->jitEntries ? &page->jitEntries[(address & K_PAGE_MASK) ^ page->jitEntryXorMask] : nullptr;
+}
+#endif
+
+#ifdef BOXEDWINE_JIT_ARMV8
+void** DecodedOpCache::getDirectJitEntryLocation(U32 address) {
+    static const bool disabled = std::getenv("BOXEDWINE_ARM_COMPACT_DIRECT_SLOW") != nullptr;
+    if (!flatJitEntries || disabled) return getJitEntryLocation(address);
+    // Direct branches already know the guest target at translation time. Their
+    // cells can be packed independently of the sparse indirect-lookup table.
+    auto result = directJitEntries.try_emplace(address);
+    auto& entry = result.first->second;
+    if (result.second) {
+        if (std::getenv("BOXEDWINE_ARM_PACKED_DIRECT_SLOW")) {
+            entry.binding.direct = &entry.scatteredCode;
+        } else {
+            // Pack hot pointer cells separately from hash nodes/DecodedOps.
+            // Growing the chunk list never moves an existing cell.
+            U32 offset = directJitEntryCount % DIRECT_ENTRY_CHUNK_SIZE;
+            if (!offset) directJitEntryChunks.push_back(std::make_unique<void*[]>(DIRECT_ENTRY_CHUNK_SIZE));
+            entry.binding.direct = directJitEntryChunks.back().get() + offset;
+            ++directJitEntryCount;
+        }
+    }
+    void** slot = entry.binding.direct;
+    if (DecodedOp* op = get(address)) {
+        op->bindDirectJitEntry(&entry.binding);
+    }
+    return slot;
 }
 #endif
 
 void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
+	// Preserve the old last-page-first order without one host stack frame per
+	// guest page. Large sparse unmaps can cover hundreds of thousands of pages.
+	U64 end = (U64)address + len;
+	while (end > address) {
+		U64 start = std::max((U64)address, (end - 1) & ~(U64)K_PAGE_MASK);
+		removePageRange((U32)start, (U32)(end - start), becauseOfWrite);
+		end = start;
+	}
+}
+
+void DecodedOpCache::removePageRange(U32 address, U32 len, bool becauseOfWrite) {
 	U32 pageIndex = address >> K_PAGE_SHIFT;		
 	U32 offset = address & K_PAGE_MASK;
 	U32 end = offset + len;
-
-	if (end > K_PAGE_SIZE) {
-		U32 todo = K_PAGE_SIZE - offset;
-		removeStartAt((pageIndex + 1) << K_PAGE_SHIFT, len - todo, becauseOfWrite);
-		len = todo;
-		end = K_PAGE_SIZE;
-	}
 
 	U8* pageWriteCounts = nullptr;
 	if (becauseOfWrite) {
@@ -144,7 +245,7 @@ void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 			} else {
 				pendingDeallocs[thread->id].ops.push_back(page->ops[i]);
 			}
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
             page->ops[i]->detachJitEntry();
 #endif
 			page->ops[i] = nullptr;
@@ -200,7 +301,7 @@ DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address) {
 	if (previousOp) {
 		// does previousOp span into address, if so then remove it
         if (previousOpAddress + previousOp->len > address) {
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
             previousOp->detachJitEntry();
 #endif
 			previousPageCache->ops[previousOpAddress & K_PAGE_MASK] = nullptr;			
@@ -442,7 +543,7 @@ void DecodedOpCache::finishPreparedRemove() {
 }
 
 void DecodedOpCache::removeAll() {
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     if (jitPageGroups) {
         for (U32 first = 0; first < FIRST_INDEX_SIZE; ++first) {
             if (jitPageGroups[first] != emptyJitPageGroup) {
@@ -472,6 +573,12 @@ void DecodedOpCache::removeAll() {
 			writeCounts[firstIndex] = nullptr;
 		}
 	}
+#ifdef BOXEDWINE_JIT_ARMV8
+    // Page destruction detached every live op before the pointer cells die.
+    directJitEntries.clear();
+    directJitEntryChunks.clear();
+    directJitEntryCount = 0;
+#endif
 }
 
 void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
@@ -534,10 +641,15 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
             testAfterOpPublished(address, op);
         }
 #endif
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
         if (page->jitEntries) {
-            op->jitEntrySlot = &page->jitEntries[offset];
-            *op->jitEntrySlot = op->pfnJitCode;
+            op->bindJitEntry(&page->jitEntries[offset ^ page->jitEntryXorMask]);
+        }
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+        auto direct = directJitEntries.find(address);
+        if (direct != directJitEntries.end()) {
+            op->bindDirectJitEntry(&direct->second.binding);
         }
 #endif
 		address += op->len;

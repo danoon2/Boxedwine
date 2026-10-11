@@ -21,6 +21,7 @@ void testJitMemoryReadOperands();
 void testJitMemoryReadFaultState();
 void testLinearMemoryCloneMappings();
 void testLinearMemoryCodeInvalidation();
+void testDecodedOpLargeRangeRemoval();
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void testDecodedOpInvalidationDefersCrossThreadReuse();

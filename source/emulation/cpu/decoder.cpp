@@ -6238,7 +6238,7 @@ void DecodedOp::reset() {
     this->runCount = 0;
     this->jitLen = 0;
     this->pfnJitCode = nullptr;
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     jitEntrySlot = nullptr;
 #endif
     blockStart = nullptr;

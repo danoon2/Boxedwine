@@ -353,7 +353,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testArmJitEntryInvalidatedBeforeDispatch, "Test ARM JIT entry invalidated before dispatch"},
 #endif
 #endif
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     {testJitEntryCacheInvalidation, "Test JIT compiled-entry cache invalidation"},
 #endif
 #if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
@@ -746,6 +746,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testX87DivFastPathDecision, "Test x87 divide fast path decision"},
     {testX87ExceptionSummaryState, "Test x87 exception summary state"},
     {testX87FwaitRaisesPendingException, "Test x87 fwait raises pending exception", TEST_ENTRY_SERIAL},
+#ifdef BOXEDWINE_JIT_ARMV8
+    {testArmJitPollExitState, "Test ARM JIT poll exit state", TEST_ENTRY_SERIAL},
+#endif
     {testJitSignalPendingReset, "Test JIT signal pending reset", TEST_ENTRY_SERIAL},
     {testJitSignalPendingQueuedSignal, "Test JIT signal pending queued signal", TEST_ENTRY_SERIAL},
     {testWasmJitSignalPendingDispatch, "Test WASM JIT signal pending dispatch", TEST_ENTRY_SERIAL},
@@ -1024,6 +1027,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testJitMemoryReadFaultState, "Test JIT memory load preserves fault state", TEST_ENTRY_SERIAL},
     {testLinearMemoryCloneMappings, "Test linear-memory COW and shared clone mappings", TEST_ENTRY_SERIAL},
     {testLinearMemoryCodeInvalidation, "Test linear-memory code invalidation", TEST_ENTRY_SERIAL},
+    {testDecodedOpLargeRangeRemoval, "Test decoded op large-range removal"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testDecodedOpInvalidationDefersCrossThreadReuse, "Test decoded op invalidation defers cross-thread reuse"},
     {testDecodedOpCacheCloneExecDetach, "Test decoded op cache CLONE_VM exec detach"},
@@ -1371,16 +1375,21 @@ extern "C" BOXEDWINE_TEST_EXPORT __attribute__((used, retain)) int runMacOpenGLP
 #endif
 
 extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void) {
+    if (getenv("BOXEDWINE_TEST_LIST")) {
+        return runTestTests(0, 0, 1, true, false, 0, 0, true);
+    }
     const char* start = getenv("BOXEDWINE_TEST_START");
     const char* count = getenv("BOXEDWINE_TEST_COUNT");
     const char* threads = getenv("BOXEDWINE_TEST_THREADS");
     const char* fast = getenv("BOXEDWINE_TEST_FAST");
-    if (start || count || threads || fast) {
+    const char* disableLinearMemory = getenv("BOXEDWINE_TEST_DISABLE_LINEAR_MEMORY");
+    if (start || count || threads || fast || disableLinearMemory) {
         return runTestTests(
             start ? (size_t)strtoul(start, nullptr, 0) : 0,
             count ? (size_t)strtoul(count, nullptr, 0) : 0,
             threads ? (U32)strtoul(threads, nullptr, 0) : 0,
-            fast && strcmp(fast, "0"));
+            fast && strcmp(fast, "0"),
+            disableLinearMemory && strcmp(disableLinearMemory, "0"));
     }
     return runTestTests();
 }

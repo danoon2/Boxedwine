@@ -1198,13 +1198,38 @@ void testArmJitEntryInvalidatedBeforeDispatch() {
 }
 
 void testJitEntryCacheInvalidation() {
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     testNewInstruction(0);
     TestContext& context = testContext();
     CPU* cpu = context.cpu;
     auto groups = getMemData(cpu->memory)->opCache.getJitPageGroups();
+#ifdef BOXEDWINE_JIT_ARMV8
+    {
+        extern void clearJitBlock(const std::vector<void*>&);
+        U8* code = static_cast<U8*>(context.memory->allocCodeMemory(128));
+        Platform::writeCodeToMemory(code, 128, [code]() { memset(code, 0xa5, 128); });
+        // The native order deliberately differs from the supplied entry order.
+        // The old range calculation wrapped to nearly 4 GiB and repeatedly
+        // faulted inside macOS instruction-cache invalidation.
+        clearJitBlock({code + 96, code + 32, code + 64, code});
+        clearJitBlock({});
+        for (U32 i = 0; i < 128; ++i) {
+            if (code[i] != (i % 32 < 4 ? 0 : 0xa5))
+                testFail("ARM unordered entry invalidation changed a neighboring byte");
+        }
+        getMemData(cpu->memory)->codeMemory.free(code);
+    }
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    auto flat = getMemData(cpu->memory)->opCache.getFlatJitEntries();
+    if (flat != cpu->jitFlatEntries || (std::getenv("BOXEDWINE_ARM_FLAT_CACHE_SLOW") && flat))
+        testFail("Flat JIT entry cache CPU binding or opt-out");
+#endif
     if (std::getenv("BOXEDWINE_JIT_ENTRY_CACHE_SLOW")) {
         if (groups || cpu->jitEntryPageGroups) testFail("JIT entry cache opt-out was ignored");
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (flat) testFail("Flat cache ignored compiled-entry cache opt-out");
+#endif
         return;
     }
     if (!groups || groups != cpu->jitEntryPageGroups) {
@@ -1219,30 +1244,65 @@ void testJitEntryCacheInvalidation() {
             testPushCode8(0xcd); testPushCode8(0x97);
             DecodedOp* op = cpu->getOp(address, 0);
             U32 pageIndex = address >> K_PAGE_SHIFT;
-            if (groups[pageIndex >> 10][pageIndex & 0x3ff] || op->jitEntrySlot) {
+            if (groups[pageIndex >> 10][pageIndex & 0x3ff] || op->getJitEntrySlot()) {
                 testFail("Decoding alone allocated a compiled-entry page");
                 return;
             }
+#ifdef BOXEDWINE_JIT_ARMV8
+            auto& cache = getMemData(cpu->memory)->opCache;
+            void** direct = cache.getDirectJitEntryLocation(address);
+            // Force several rehashes after taking the address. Never publish
+            // fake code pointers: every uncompiled target must stay null.
+            for (U32 n = 0; flat && !std::getenv("BOXEDWINE_ARM_COMPACT_DIRECT_SLOW") && n < 4096; ++n) {
+                void** unused = cache.getDirectJitEntryLocation(0xb0000000u + n * 4096u);
+                if (!unused || *unused) testFail("Compact direct cache uncompiled target");
+            }
+            if (!direct || *direct) testFail("Compact direct cache premature publication");
+#endif
             startNewJIT(cpu, address, op);
+#ifdef BOXEDWINE_JIT_ARMV8
+            if (*direct != op->pfnJitCode || !*direct) testFail("Compact direct cache publication after rehash");
+#endif
             auto page = groups[pageIndex >> 10][pageIndex & 0x3ff];
-            if (!page || page[address & K_PAGE_MASK] != op->pfnJitCode || !op->pfnJitCode) {
+            U32 entryIndex = address & K_PAGE_MASK;
+#ifdef BOXEDWINE_JIT_ARMV8
+            U32 flatIndex = getMemData(cpu->memory)->opCache.getFlatJitEntryIndex(address);
+            if (flat) entryIndex = flatIndex & K_PAGE_MASK;
+#endif
+            if (!page || page[entryIndex] != op->pfnJitCode || !op->pfnJitCode) {
                 testFail("JIT entry cache missed a published compiled entry");
                 return;
             }
+#ifdef BOXEDWINE_JIT_ARMV8
+            if (flat && (op->getJitEntrySlot() != flat + flatIndex || flat[flatIndex] != op->pfnJitCode))
+                testFail("Flat JIT entry cache publication");
+#endif
             context.memory->removeCodeBlock(address, op, false);
-            if (page[address & K_PAGE_MASK] || op->pfnJitCode || context.memory->getDecodedOp(address) != op) {
+#ifdef BOXEDWINE_JIT_ARMV8
+            if (*direct) testFail("Compact direct cache JIT-only invalidation");
+#endif
+            if (page[entryIndex] || op->pfnJitCode || context.memory->getDecodedOp(address) != op) {
                 testFail("JIT entry cache retained code after JIT-only removal");
             }
             startNewJIT(cpu, address, op);
-            if (page[address & K_PAGE_MASK] != op->pfnJitCode || !op->pfnJitCode) {
+            if (page[entryIndex] != op->pfnJitCode || !op->pfnJitCode) {
                 testFail("JIT entry cache missed republication");
             }
             context.memory->writeb(address, 0x43); // invalidate and replace with inc ebx
-            if (page[address & K_PAGE_MASK]) testFail("JIT entry cache retained invalidated code");
+            if (page[entryIndex]) testFail("JIT entry cache retained invalidated code");
+#ifdef BOXEDWINE_JIT_ARMV8
+            if (*direct) testFail("Compact direct cache guest-write invalidation");
+#endif
             DecodedOp* replacement = cpu->getOp(address, 0);
-            if (!replacement || replacement->jitEntrySlot != &page[address & K_PAGE_MASK] || page[address & K_PAGE_MASK]) {
+            if (!replacement || replacement->getJitEntrySlot() != &page[entryIndex] || page[entryIndex]) {
                 testFail("JIT entry cache replacement binding");
             }
+#ifdef BOXEDWINE_JIT_ARMV8
+            if (flat && !std::getenv("BOXEDWINE_ARM_COMPACT_DIRECT_SLOW") &&
+                replacement->getDirectJitEntrySlot() != direct) testFail("Compact direct cache replacement binding");
+            startNewJIT(cpu, address, replacement);
+            if (*direct != replacement->pfnJitCode || !*direct) testFail("Compact direct cache replacement publication");
+#endif
         }
         context.memory->clearOpCache();
         for (U32 i = 0; i < K_NUMBER_OF_PAGES; ++i) {
@@ -1251,6 +1311,21 @@ void testJitEntryCacheInvalidation() {
         if (groups != getMemData(cpu->memory)->opCache.getJitPageGroups()) {
             testFail("JIT entry cache view changed during clear");
         }
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (flat) {
+            if (flat != getMemData(cpu->memory)->opCache.getFlatJitEntries())
+                testFail("Flat JIT cache reservation moved during clear");
+            for (U32 i = 0; i < 3; ++i)
+                if (flat[getMemData(cpu->memory)->opCache.getFlatJitEntryIndex(TEST_CODE_ADDRESS + i * K_PAGE_SIZE)])
+                    testFail("Flat JIT cache retained cleared code");
+            for (U32 address : {0u, 0xfffu, 0x400000u, 0x80000000u, 0xfff000ffu, 0xf0ff000fu, 0xfffff000u, 0xffffffffu}) {
+                void** slot = getMemData(cpu->memory)->opCache.getJitEntryLocation(address);
+                if (slot != flat + getMemData(cpu->memory)->opCache.getFlatJitEntryIndex(address) || *slot)
+                    testFail("Flat JIT cache boundary lookup");
+            }
+            context.memory->clearOpCache();
+        }
+#endif
     }
 #endif
 }
@@ -1991,7 +2066,698 @@ void runDirectArithmeticInterveningMemoryCase(bool store, bool indirect) {
 
 } // namespace
 
+#if defined(BOXEDWINE_JIT_ARMV8)
+static void testArmFlagWindowEntries() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    for (U32 gap : {8u, 15u, 30u, 31u, 32u}) {
+        testNewInstruction(0);
+        bytes({0x01,0xd0}); // ADD EAX,EDX
+        U32 middle = ctx.codeIp + (gap / 2) * 2;
+        for (U32 n=0; n<gap; ++n) bytes({0x89,0xf5}); // MOV EBP,ESI
+        U32 consumer=ctx.codeIp;
+        bytes({0x0f,0x92,0xc3,0x0f,0x94,0xc1,0x39,0xf6});
+        cpu->reg[0].u32=0xffffffff;cpu->reg[2].u32=1;cpu->reg[6].u32=0x31415926;
+        testRunCPU();
+        if(cpu->reg[0].u32!=0||cpu->reg[3].u32!=1||cpu->reg[1].u32!=1||cpu->reg[5].u32!=0x31415926)
+            testFail("ARM flag window initial gap=%u",gap);
+        auto execute = [&](U32 address) {
+            cpu->eip.u32=address-TEST_CODE_ADDRESS;cpu->nextOp=cpu->getNextOp();cpu->yield=false;
+            U32 dispatches=0;
+            do { cpu->run(); if(++dispatches>1024){testFail("ARM flag window dispatch limit");break;} }
+                while(!cpu->nextOp||cpu->nextOp->inst!=TestEnd);
+        };
+        for(U32 target : {middle,consumer})for(U32 flags : {0u,(U32)CF,(U32)ZF,(U32)(CF|ZF)}) {
+            cpu->reg[0].u32=0x12345678;cpu->reg[2].u32=7;cpu->reg[3].u32=0x87654321;
+            cpu->reg[1].u32=0xabcdef12;cpu->reg[5].u32=0x55555555;
+            cpu->setFlags(flags,FMASK_ALL);cpu->lazyFlagType=FLAGS_NONE;
+            execute(target);
+            if(cpu->reg[0].u32!=0x12345678||cpu->reg[2].u32!=7||
+               cpu->reg[3].u32!=(0x87654300|((flags&CF)?1u:0u))||
+               cpu->reg[1].u32!=(0xabcdef00|((flags&ZF)?1u:0u))||
+               cpu->reg[5].u32!=(target==middle?0x31415926u:0x55555555u))
+                testFail("ARM flag window independent entry gap=%u target=%x flags=%x",gap,target,flags);
+        }
+        ctx.memory->writeb(TEST_CODE_ADDRESS,0x31); // XOR EAX,EDX replaces ADD
+        cpu->reg[0].u32=2;cpu->reg[2].u32=2;cpu->reg[3].u32=0;cpu->reg[1].u32=0;
+        execute(TEST_CODE_ADDRESS);
+        if(cpu->reg[0].u32!=0||cpu->reg[3].u32!=0||cpu->reg[1].u32!=1)
+            testFail("ARM flag window code replacement gap=%u",gap);
+    }
+}
+
+static void testArmDirectFlagConsumers() {
+    auto& ctx = testContext();
+    CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    for (const auto& arithmetic : DIRECT_ARITHMETIC_OPS) for (const auto& values : DIRECT_ARITHMETIC_CASES)
+    for (U8 first = 0; first < 16; ++first) for (U8 second = 0; second < 16; ++second)
+    for (bool cmov : {false, true}) {
+        testNewInstruction(0);
+        cpu->reg[0].u32 = values[0]; cpu->reg[2].u32 = values[1];
+        cpu->reg[3].u32 = 0x12345678; cpu->reg[1].u32 = 0x87654321;
+        cpu->reg[6].u32 = 0x01234567; cpu->reg[7].u32 = 0x89abcdef;
+        bytes({arithmetic.regRmOpcode, 0xc2}); // arithmetic eax,edx
+        U32 firstEip = ctx.codeIp;
+        if (cmov) bytes({0x0f, (U8)(0x40 + first), 0xde}); // cmovcc ebx,esi
+        else bytes({0x0f, (U8)(0x90 + first), 0xc3}); // setcc bl
+        bytes({0x89, 0xfd}); // mov ebp,edi: preserves flags between consumers
+        U32 secondEip = ctx.codeIp;
+        if (cmov) bytes({0x66, 0x0f, (U8)(0x40 + second), 0xcf}); // cmovcc cx,di
+        else bytes({0x0f, (U8)(0x90 + second), 0xc5}); // setcc ch
+        bytes({0x39, 0xf6}); // kill all arithmetic flags
+        testRunCPU();
+        U32 result;
+        U32 flags = directArithmeticFlags(arithmetic.op, values[0], values[1], result);
+        bool takeFirst = directArithmeticCondition(first, flags), takeSecond = directArithmeticCondition(second, flags);
+        U32 ebx = cmov ? (takeFirst ? 0x01234567 : 0x12345678) : 0x12345600 | (takeFirst ? 1 : 0);
+        U32 ecx = cmov ? (takeSecond ? 0x8765cdef : 0x87654321) : 0x87650021 | (takeSecond ? 0x100 : 0);
+        if (cpu->reg[0].u32 != result || cpu->reg[2].u32 != values[1] || cpu->reg[3].u32 != ebx ||
+                cpu->reg[1].u32 != ecx || cpu->reg[5].u32 != 0x89abcdef || cpu->reg[4].u32 != 4096)
+            testFail("ARM flag consumers op=%s a=%x b=%x first=%u second=%u cmov=%u ebx=%x ecx=%x",
+                arithmetic.name, values[0], values[1], first, second, cmov, cpu->reg[3].u32, cpu->reg[1].u32);
+        bool hasParity = first == 10 || first == 11 || second == 10 || second == 11;
+        bool hasOverflow = first < 2 || first >= 12 || second < 2 || second >= 12;
+        bool fuse = (!hasParity || (!hasOverflow && armJitHasFlagM() && !std::getenv("BOXEDWINE_ARM_INTEGER_PARITY_SLOW"))) &&
+            !std::getenv("BOXEDWINE_JIT_FLAG_CHAIN_SLOW");
+        for (U32 address : {firstEip, secondEip}) {
+            auto* op = ctx.memory->getDecodedOp(address);
+            if (!op || ((op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) != 0) != fuse)
+                testFail("ARM flag-consumer fusion selection first=%u second=%u cmov=%u", first, second, cmov);
+        }
+    }
+    for (const auto& arithmetic : DIRECT_ARITHMETIC_OPS) for (const auto& values : DIRECT_ARITHMETIC_CASES)
+    for (U8 first = 0; first < 16; ++first) for (U8 second = 0; second < 16; ++second) {
+        testNewInstruction(0); cpu->reg[0].u32 = values[0]; cpu->reg[2].u32 = values[1];
+        cpu->reg[3].u32 = 0x12345678;
+        constexpr U32 target = TEST_CODE_ADDRESS + 0x4000;
+        bytes({arithmetic.regRmOpcode, 0xc2});
+        U32 firstEip = ctx.codeIp;
+        bytes({0x0f, (U8)(0x90 + first), 0xc3});
+        U32 branchEip = ctx.codeIp;
+        bytes({0x0f, (U8)(0x80 + second)}); testPushCode32(target - ctx.codeIp - 4);
+        bytes({0x39, 0xf6, 0xb9}); testPushCode32(1); bytes({0xcd, 0x97});
+        ctx.codeIp = target;
+        bytes({0x39, 0xf6, 0xb9}); testPushCode32(2); bytes({0xcd, 0x97});
+        cpu->getOp(target, 0); // expose both successor flag kills before compilation
+        testRunCPU();
+        U32 result, flags = directArithmeticFlags(arithmetic.op, values[0], values[1], result);
+        if (cpu->reg[0].u32 != result || cpu->reg[1].u32 != (directArithmeticCondition(second, flags) ? 2u : 1u) ||
+                cpu->reg[3].u32 != (0x12345600 | (directArithmeticCondition(first, flags) ? 1u : 0u)))
+            testFail("ARM flag chain side exit op=%s first=%u branch=%u a=%x b=%x", arithmetic.name, first, second, values[0], values[1]);
+        bool hasParity = first == 10 || first == 11 || second == 10 || second == 11;
+        bool hasOverflow = first < 2 || first >= 12 || second < 2 || second >= 12;
+        bool fuse = (!hasParity || (!hasOverflow && armJitHasFlagM() && !std::getenv("BOXEDWINE_ARM_INTEGER_PARITY_SLOW"))) &&
+            !std::getenv("BOXEDWINE_JIT_FLAG_CHAIN_SLOW");
+        for (U32 address : {firstEip, branchEip}) {
+            auto* op = ctx.memory->getDecodedOp(address);
+            if (!op || ((op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) != 0) != fuse)
+                testFail("ARM flag chain side-exit selection first=%u branch=%u", first, second);
+        }
+    }
+    // Enter a previously fused interior with fresh flags, then invalidate the
+    // producer and execute the changed code. Neither can reuse hidden NZCV.
+    testNewInstruction(0);
+    bytes({0x39, 0xd0, 0x0f, 0x92, 0xc3, 0x0f, 0x94, 0xc1, 0x39, 0xf6});
+    testRunCPU();
+    for (U32 flags : {0u, (U32)CF, (U32)ZF, (U32)(CF | ZF)}) {
+        cpu->reg[0].u32 = 0xabcdef01; cpu->reg[3].u32 = 0x98765432; cpu->reg[1].u32 = 0x12345678;
+        cpu->flags = flags; cpu->lazyFlagType = FLAGS_NONE; cpu->eip.u32 = 5; cpu->nextOp = nullptr;
+        testRunCPU();
+        if (cpu->reg[0].u32 != 0xabcdef01 || cpu->reg[3].u32 != 0x98765432 || cpu->reg[1].u32 != (0x12345600 | ((flags & ZF) ? 1u : 0u)))
+            testFail("ARM independent entry reused flags from a fused producer");
+    }
+    ctx.memory->writeb(TEST_CODE_ADDRESS, 0x01); // change cmp eax,edx to add eax,edx
+    cpu->reg[0].u32 = 0xffffffff; cpu->reg[2].u32 = 1; cpu->reg[3].u32 = cpu->reg[1].u32 = 0;
+    cpu->eip.u32 = 0; cpu->nextOp = nullptr;
+    testRunCPU();
+    if (cpu->reg[0].u32 || cpu->reg[3].u32 != 1 || cpu->reg[1].u32 != 1)
+        testFail("ARM flag chain invalidation reused an old producer");
+
+    // A live flag observer after the consumers must retain complete lazy flags.
+    for (const auto& arithmetic : DIRECT_ARITHMETIC_OPS) for (const auto& values : DIRECT_ARITHMETIC_CASES) {
+        testNewInstruction(0); cpu->reg[0].u32 = values[0]; cpu->reg[2].u32 = values[1];
+        bytes({arithmetic.regRmOpcode, 0xc2, 0x0f, 0x92, 0xc3, 0x0f, 0x94, 0xc1, 0x9c, 0x5f});
+        testRunCPU();
+        U32 result, flags = directArithmeticFlags(arithmetic.op, values[0], values[1], result);
+        U32 mask = CF | PF | ZF | SF | OF;
+        if (((cpu->reg[7].u32 ^ flags) & mask) || cpu->reg[0].u32 != result ||
+                cpu->reg[3].u32 != ((flags & CF) ? 1u : 0u) || cpu->reg[1].u32 != ((flags & ZF) ? 1u : 0u))
+            testFail("ARM flag-consumer chain lost live outgoing flags");
+    }
+}
+#endif
+
+#ifdef BOXEDWINE_JIT_ARMV8
+static void testArmNarrowArithmetic() {
+    auto& ctx=testContext();CPU* cpu=ctx.cpu;
+    constexpr U32 edge[]={0,1,0x7f,0x80,0xff,0x7fff,0x8000,0xffff};
+    auto bytes=[](std::initializer_list<U8> v){for(U8 b:v)testPushCode8(b);};
+    for(const auto& arithmetic:DIRECT_ARITHMETIC_OPS) for(U32 bits:{8u,16u})
+            for(bool immediate:{false,true}) for(U32 sample=0;sample<320;++sample) for(U8 condition=0;condition<16;++condition){
+        testNewInstruction(CF|OF);
+        U32 mask=(1u<<bits)-1,sign=1u<<(bits-1),dst=(sample/8)%8,src=(sample/32)%8;
+        U32 lhs=(sample<256?sample:edge[(sample-256)/8])&mask;
+        U32 rhs=(sample<256?sample*17+3:edge[sample%8])&mask;
+        U32 dstFull=bits==8?(dst&3):dst,srcFull=bits==8?(src&3):src;
+        U32 dstShift=bits==8&&dst>=4?8:0,srcShift=bits==8&&src>=4?8:0;
+        for(U32 r=0;r<8;++r)cpu->reg[r].u32=0xa5b60000+r*0x101;
+        cpu->reg[dstFull].u32=(cpu->reg[dstFull].u32&~(mask<<dstShift))|(lhs<<dstShift);
+        if(!immediate)cpu->reg[srcFull].u32=(cpu->reg[srcFull].u32&~(mask<<srcShift))|(rhs<<srcShift);
+        lhs=(cpu->reg[dstFull].u32>>dstShift)&mask;
+        if(!immediate)rhs=(cpu->reg[srcFull].u32>>srcShift)&mask;
+        U32 expected[8];for(U32 r=0;r<8;++r)expected[r]=cpu->reg[r].u32;
+        U32 result=0,flags=0,group=0;
+        switch(arithmetic.op){
+        case DirectArithmeticTestOp::Add:result=(lhs+rhs)&mask;if(lhs+rhs>mask)flags|=CF;if(~(lhs^rhs)&(lhs^result)&sign)flags|=OF;break;
+        case DirectArithmeticTestOp::Sub:group=5;result=(lhs-rhs)&mask;if(lhs<rhs)flags|=CF;if((lhs^rhs)&(lhs^result)&sign)flags|=OF;break;
+        case DirectArithmeticTestOp::And:group=4;result=lhs&rhs;break;
+        case DirectArithmeticTestOp::Or:group=1;result=lhs|rhs;break;
+        case DirectArithmeticTestOp::Xor:group=6;result=lhs^rhs;break;
+        }
+        if(group==0||group==5)if((lhs^rhs^result)&16)flags|=AF;
+        if(!result)flags|=ZF;if(result&sign)flags|=SF;flags|=directArithmeticParityFlag(result);
+        expected[dstFull]=(expected[dstFull]&~(mask<<dstShift))|(result<<dstShift);
+        expected[0]=(expected[0]&0xffffff00)|(directArithmeticCondition(condition,flags)?1:0);
+        if(bits==16)bytes({0x66});
+        if(immediate){bytes({(U8)(bits==8?0x80:0x81),(U8)(0xc0+group*8+dst)});if(bits==8)testPushCode8(rhs);else testPushCode16(rhs);}
+        else bytes({(U8)(group*8+(bits==16?1:0)),(U8)(0xc0+src*8+dst)});
+        U32 consumer=ctx.codeIp;
+        bytes({0x0f,(U8)(0x90+condition),0xc0,0x39,0xf6,0xcd,0x97});
+        testRunCPU();
+        for(U32 r=0;r<8;++r)if(cpu->reg[r].u32!=expected[r])
+            testFail("ARM narrow %s bits=%u imm=%u sample=%u condition=%u r%u=%x expected=%x",arithmetic.name,bits,immediate,sample,condition,r,cpu->reg[r].u32,expected[r]);
+        auto* set=ctx.memory->getDecodedOp(consumer);
+        bool fused=arithmetic.op==DirectArithmeticTestOp::Add&&condition>=12&&
+            (bits!=8||dst<4)&&!std::getenv("BOXEDWINE_ARM_NARROW_ARITH_SLOW");
+        fused |= (condition==10||condition==11)&&armJitHasFlagM()&&
+            !std::getenv("BOXEDWINE_ARM_NARROW_PARITY_SLOW")&&
+            (bits!=8||dst<4||std::getenv("BOXEDWINE_ARM_NARROW_PARITY_HIGH_SET"));
+        if(!set||((set->flags2&OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)!=0)!=fused)
+            testFail("ARM narrow arithmetic fusion selection");
+    }
+}
+#endif
+
+#ifdef BOXEDWINE_JIT
+static void testLogicalConditionsWithLiveFlags() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    constexpr U32 values[] = {0, 1, 0x7f, 0x80, 0xff, 0x7fff, 0x80000000, 0xffffffff};
+    auto bytes = [](std::initializer_list<U8> v) { for (U8 b : v) testPushCode8(b); };
+    for (U32 operation = 0; operation < 4; ++operation) for (U32 bits : {8u, 16u, 32u})
+            for (U32 lhs : values) for (U32 rhs : values) for (U8 condition = 0; condition < 16; ++condition)
+            for (bool immediate : {false, true}) {
+        testNewInstruction(CF | OF);
+        U32 mask = bits == 32 ? 0xffffffff : (1u << bits) - 1;
+        U32 original = (0xa5a50000 & ~mask) | (lhs & mask);
+        cpu->reg[0].u32 = original; cpu->reg[2].u32 = rhs;
+        cpu->reg[3].u32 = 0x12345678; cpu->reg[6].u32 = 42;
+        U32 result = (operation == 1 ? lhs | rhs : operation == 2 ? lhs ^ rhs : lhs & rhs) & mask;
+        U32 flags = directArithmeticParityFlag(result);
+        if (!result) flags |= ZF;
+        if (result & (1u << (bits - 1))) flags |= SF;
+        U32 group = operation == 0 ? 4 : operation == 1 ? 1 : 6;
+        if (bits == 16) bytes({0x66});
+        if (immediate) {
+            if (operation == 3) bytes({(U8)(bits == 8 ? 0xf6 : 0xf7), 0xc0});
+            else bytes({(U8)(bits == 8 ? 0x80 : 0x81), (U8)(0xc0 + group * 8)});
+            if (bits == 8) testPushCode8(rhs);
+            else if (bits == 16) testPushCode16(rhs);
+            else testPushCode32(rhs);
+        } else if (operation == 3) bytes({(U8)(bits == 8 ? 0x84 : 0x85), 0xd0});
+        else bytes({(U8)(group * 8 + (bits == 8 ? 0 : 1)), 0xd0});
+        bytes({0x0f, (U8)(0x90 + condition), 0xc3, 0x9c, 0x5f, 0x39, 0xf6, 0xcd, 0x97});
+        testRunCPU();
+        U32 expected = operation == 3 ? original : (original & ~mask) | result;
+        U32 defined = CF | PF | ZF | SF | OF;
+        if (cpu->reg[0].u32 != expected || cpu->reg[3].u32 != (0x12345600 | (directArithmeticCondition(condition, flags) ? 1u : 0u)) ||
+                (cpu->reg[7].u32 & defined) != flags || cpu->reg[4].u32 != 4096)
+            testFail("logical condition op=%u bits=%u lhs=%x rhs=%x cc=%u immediate=%u", operation, bits, lhs, rhs, condition, immediate);
+    }
+}
+#endif
+
+#ifdef BOXEDWINE_JIT
+static void testParityConsumers() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> v) { for (U8 b : v) testPushCode8(b); };
+    for (U32 form = 0; form < 4; ++form) for (U32 low = 0; low < 256; ++low)
+            for (U32 kind = 0; kind < 3; ++kind) for (U32 shape = 0; shape < 3; ++shape) {
+        testNewInstruction(CF | OF | PF);
+        U32 bits = form < 2 ? 8 : form == 2 ? 16 : 32, shift = form == 1 ? 8 : 0;
+        U32 mask = bits == 32 ? 0xffffffffu : (1u << bits) - 1;
+        U32 seed = (0xa5c39e00u & ~(255u << shift)) | (low << shift);
+        cpu->reg[0].u32 = seed; cpu->reg[1].u32 = 0x12345678;
+        cpu->reg[2].u32 = 0x31415926; cpu->reg[3].u32 = 0x98765432;
+        cpu->reg[5].u32 = 0;
+        U32 input = (seed >> shift) & mask, operand = kind == 1 ? 0x83 : 3;
+        U32 result = (kind == 0 ? input + operand : kind == 1 ? input ^ operand : input >> operand) & mask;
+        U32 expectedEax = (seed & ~(mask << shift)) | (result << shift);
+        bool parity = directArithmeticParityFlag(result) != 0;
+        if (bits == 16) bytes({0x66});
+        bytes({(U8)(kind == 2 ? (bits == 8 ? 0xc0 : 0xc1) : (bits == 8 ? 0x80 : 0x81)),
+            (U8)(0xc0 + (kind == 0 ? 0 : kind == 1 ? 48 : 40) + (shift ? 4 : 0))});
+        if (bits == 8 || kind == 2) testPushCode8(operand);
+        else if (bits == 16) testPushCode16(operand); else testPushCode32(operand);
+        U32 expectedEbx = 0x98765432, expectedEcx = 0x12345678;
+        if (shape == 0) {
+            bytes({0x0f, 0x9a, 0xc0, 0x0f, 0x9b, 0xc4}); // setp al; setnp ah, both alias the producer
+            expectedEax = (expectedEax & 0xffff0000) | (parity ? 1 : 256);
+        } else if (shape == 1) {
+            bytes({0x0f, 0x9b, 0xc7, 0x66, 0x0f, 0x4a, 0xca}); // setnp bh; cmovp cx,dx
+            expectedEbx = 0x98760032 | (parity ? 0 : 256);
+            if (parity) expectedEcx = 0x12345926;
+        } else {
+            bytes({0x0f, 0x9a, 0xc3, 0x9c, 0x5d, 0x0f, 0x4b, 0xca}); // live flags through pushfd
+            expectedEbx = 0x98765400 | (parity ? 1 : 0);
+            if (!parity) expectedEcx = 0x31415926;
+        }
+        bytes({0x39, 0xf6, 0xcd, 0x97});
+        testRunCPU();
+        if (cpu->reg[0].u32 != expectedEax || cpu->reg[1].u32 != expectedEcx ||
+                cpu->reg[2].u32 != 0x31415926 || cpu->reg[3].u32 != expectedEbx ||
+                cpu->reg[4].u32 != 4096 || (shape == 2 && ((cpu->reg[5].u32 & PF) != 0) != parity))
+            testFail("parity consumers form=%u low=%u kind=%u shape=%u", form, low, kind, shape);
+    }
+}
+#endif
+
+#ifdef BOXEDWINE_JIT_ARMV8
+static void testArmSseMemoryFaultConsumers() {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    auto& ctx=testContext();CPU* cpu=ctx.cpu;
+    const U32 groupBytes=ramPageLinearMemoryPageCount()*K_PAGE_SIZE;
+    constexpr U32 target=0x22000000;
+    for(bool wide:{false,true})for(bool unordered:{false,true})for(U32 shape=0;shape<5;++shape)
+    for(U32 state=0;state<(shape==4?1u:3u);++state)
+    for(U32 gap : {0u,9u,31u})
+    for(U32 offset:{0u,K_PAGE_SIZE-1u,groupBytes-1u})
+    for(U32 tier:{0u,(U32)LINEAR_MEMORY_RECOMPILE_FAULTS,(U32)MAX_OP_EXCEPTION_COUNT}) {
+        if (shape != 4 && gap) continue;
+        testNewInstruction(0);
+        auto bytes=[](std::initializer_list<U8> v){for(U8 b:v)testPushCode8(b);};
+        bytes({0xd9,0xe8,0xd9,0xe8,0xde,0xc1}); // dirty ST0=2
+        U32 loop=ctx.codeIp;
+        bytes({0x47}); // count executions of the producer prefix
+        if(shape==4){testPushCode8(wide?0xf2:0xf3);bytes({0x0f,0x58,0xc1});}
+        U32 producer=ctx.codeIp;
+        if(wide)testPushCode8(0x66);
+        bytes({0x0f,(U8)(unordered?0x2e:0x2f),0x06}); // [ESI]
+        for (U32 n=0;n<gap;++n) bytes({0x89,0xed}); // MOV EBP,EBP preserves flags
+        U32 consumer=ctx.codeIp;
+        if(shape==0)bytes({0x0f,0x9a,0xc3,0x0f,0x96,0xc7});
+        else if(shape==1)bytes({0x0f,0x46,0xc2,0x0f,0x9b,0xc3});
+        else if(shape==2){bytes({0x72,5,0xb8});testPushCode32(43);}
+        else if(shape==3)bytes({0x0f,0x9a,0xc3,0x9c,0x5d});
+        else {bytes({0x0f,0x82});testPushCode32(loop-ctx.codeIp-4);}
+        bytes({0x39,0xc9,0xdd,0x1d});testPushCode32(0x180);
+        auto prepare=[&](U32 source){
+            cpu->fpu.FINIT();
+            U32 values[]={42,0x12345678,0x31415926,0x98765432,4096,0x55555555,source,0};
+            for(U32 r=0;r<8;++r)cpu->reg[r].u32=values[r];
+            for(U32 r=0;r<8;++r)for(U32 lane=0;lane<4;++lane)cpu->xmm[r].pi.u32[lane]=0x12340000+r*16+lane;
+            if(wide){cpu->xmm[0].pi.u64[0]=shape==4?0xc000000000000000ull:state==0?0:state==1?0x3ff0000000000000ull:0x7ff8123456789abcull;cpu->xmm[1].pi.u64[0]=0x3ff0000000000000ull;}
+            else {cpu->xmm[0].pi.u32[0]=shape==4?0xc0000000:state==0?0:state==1?0x3f800000:0x7fc12345;cpu->xmm[1].pi.u32[0]=0x3f800000;}
+            cpu->setFlags(0,FMASK_ALL);ctx.memory->writeq(TEST_HEAP_ADDRESS+0x180,0);
+        };
+        ctx.memory->writeq(TEST_HEAP_ADDRESS+0x100,0);
+        bytes({0xcd,0x97}); // finish writing before decoding or setting fault tiers
+        prepare(0x100);
+        auto* first = cpu->getOp(TEST_CODE_ADDRESS,0);
+        auto* memoryOp = ctx.memory->getDecodedOp(producer);
+        if (!memoryOp) { testFail("SSE memory fault producer not decoded"); return; }
+        memoryOp->exceptionCount=tier;
+        cpu->nextOp=first;cpu->yield=false;
+        U32 warmupDispatches=0;
+        do { cpu->run(); if (++warmupDispatches>1024) {testFail("SSE memory warmup dispatch limit"); break;} }
+            while(!cpu->nextOp||cpu->nextOp->inst!=TestEnd);
+        // Interior instructions need not expose an independently callable entry.
+        if(!first->pfnJitCode)testFail("SSE memory fault warmup not compiled");
+        if(ctx.memory->mmap(ctx.thread,target,groupBytes*2,K_PROT_READ|K_PROT_WRITE,K_MAP_FIXED|K_MAP_PRIVATE|K_MAP_ANONYMOUS,-1,0)!=target){testFail("SSE memory fault mapping failed");return;}
+        prepare(target+offset-cpu->seg[DS].address);
+        U64 saved[8][2];for(U32 r=0;r<8;++r)for(U32 lane=0;lane<2;++lane)saved[r][lane]=cpu->xmm[r].pi.u64[lane];
+        cpu->eip.u32=0;cpu->nextOp=cpu->getNextOp();cpu->yield=false;
+        U32 dispatches=0;do{cpu->run();if(++dispatches>1024){testFail("SSE memory fault dispatch limit");break;}}while(!cpu->nextOp||cpu->nextOp->inst!=TestEnd);
+        U32 flags=state==0?ZF:state==1?0:CF|ZF|PF;
+        U32 eax=shape==1?(state==1?42:0x31415926):shape==2?(state==2?42:43):42;
+        U32 ebx=shape==0?0x98760000|(state==2?1:0)|(state==1?0:256):shape==1?0x98765400|(state==2?0:1):shape==3?0x98765400|(state==2?1:0):0x98765432;
+        if(cpu->reg[0].u32!=eax||cpu->reg[1].u32!=0x12345678||cpu->reg[2].u32!=0x31415926||cpu->reg[3].u32!=ebx||cpu->reg[4].u32!=4096||cpu->reg[6].u32!=target+offset-cpu->seg[DS].address||cpu->reg[7].u32!=(shape==4?2u:1u)||
+                (shape==3&&(cpu->reg[5].u32&FMASK_TEST)!=flags)||ctx.memory->readq(TEST_HEAP_ADDRESS+0x180)!=0x4000000000000000ull)
+            testFail("SSE memory fault wide=%u unordered=%u shape=%u state=%u offset=%u tier=%u gap=%u",wide,unordered,shape,state,offset,tier,gap);
+        if(shape==4){if(wide)saved[0][0]=0;else saved[0][0]&=0xffffffff00000000ull;}
+        for(U32 r=0;r<8;++r)for(U32 lane=0;lane<2;++lane)if(cpu->xmm[r].pi.u64[lane]!=saved[r][lane])testFail("SSE memory fault clobbered xmm%u",r);
+        if(shape==4){auto* op=ctx.memory->getDecodedOp(consumer);if(op&&(op->flags2&OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE))testFail("SSE memory backward branch fused after load");}
+        ctx.memory->unmap(target,groupBytes*2);
+    }
+#endif
+}
+
+static void testArmMinMaxSelection() {
+    constexpr U32 singles[] = {0,0x80000000,0x3f800000,0xbf800000,1,0x807fffff,
+        0x7f800000,0xff800000,0x7fc12345,0x7f812345,0xffc23456,0xff823456};
+    constexpr U64 doubles[] = {0,0x8000000000000000ull,0x3ff0000000000000ull,0xbff0000000000000ull,
+        1,0x800fffffffffffffull,0x7ff0000000000000ull,0xfff0000000000000ull,
+        0x7ff8123456789abcull,0x7ff0123456789abcull,0xfff823456789abcdull,0xfff023456789abcdull};
+    auto selected = [](U64 a,U64 b,bool wide,bool maximum) {
+        U64 magnitudeMask=wide?0x7fffffffffffffffull:0x7fffffffull;
+        U64 infinity=wide?0x7ff0000000000000ull:0x7f800000ull;
+        if((a&magnitudeMask)>infinity||(b&magnitudeMask)>infinity)return b;
+        double lhs,rhs;
+        if(wide){memcpy(&lhs,&a,8);memcpy(&rhs,&b,8);}
+        else {float x,y;U32 aa=(U32)a,bb=(U32)b;memcpy(&x,&aa,4);memcpy(&y,&bb,4);lhs=x;rhs=y;}
+        return (maximum?lhs>rhs:lhs<rhs)?a:b;
+    };
+    auto& ctx=testContext();CPU* cpu=ctx.cpu;
+    for(bool wide:{false,true})for(bool scalar:{false,true})for(bool maximum:{false,true})
+    for(U32 lhs=0;lhs<12;++lhs)for(U32 rhs=0;rhs<12;++rhs)for(U32 shape=0;shape<5;++shape){
+        testNewInstruction(CF|PF|AF|ZF|SF|OF);
+        const bool memory=shape>=2, alias=shape==1;
+        const U32 offset=shape==3?0xffd:shape==4?0x3ffd:0x100;
+        for(U32 reg=0;reg<8;++reg)for(U32 lane=0;lane<4;++lane)cpu->xmm[reg].pi.u32[lane]=0x12340000+reg*16+lane;
+        U64 expected[2]={};
+        if(wide)for(U32 lane=0;lane<2;++lane){
+            U64 a=doubles[(lhs+lane)%12],b=doubles[(rhs+lane*2)%12];
+            cpu->xmm[0].pi.u64[lane]=a;cpu->xmm[1].pi.u64[lane]=b;
+            expected[lane]=scalar&&lane?a:selected(a,alias?a:b,true,maximum);
+            if(memory)ctx.memory->writeq(TEST_HEAP_ADDRESS+offset+lane*8,b);
+        }else for(U32 lane=0;lane<4;++lane){
+            U32 a=singles[(lhs+lane)%12],b=singles[(rhs+lane*2)%12];
+            cpu->xmm[0].pi.u32[lane]=a;cpu->xmm[1].pi.u32[lane]=b;
+            U32 value=scalar&&lane?a:(U32)selected(a,alias?a:b,false,maximum);
+            expected[lane/2]|=(U64)value<<((lane&1)*32);
+            if(memory)ctx.memory->writed(TEST_HEAP_ADDRESS+offset+lane*4,b);
+        }
+        U64 preserved[7][2];for(U32 reg=1;reg<8;++reg)for(U32 lane=0;lane<2;++lane)preserved[reg-1][lane]=cpu->xmm[reg].pi.u64[lane];
+        auto bytes=[](std::initializer_list<U8> v){for(U8 b:v)testPushCode8(b);};
+        bytes({0xd9,0xe8,0xd9,0xe8,0xde,0xc1}); // dirty x87 ST0 = 2
+        if(wide)testPushCode8(scalar?0xf2:0x66);else if(scalar)testPushCode8(0xf3);
+        bytes({0x0f,(U8)(maximum?0x5f:0x5d),(U8)(memory?0x05:alias?0xc0:0xc1)});
+        if(memory)testPushCode32(offset);
+        bytes({0x9c,0x5b,0xdd,0x1d});testPushCode32(0x180);
+        testRunCPU();
+        if(cpu->xmm[0].pi.u64[0]!=expected[0]||cpu->xmm[0].pi.u64[1]!=expected[1]||
+                (cpu->reg[3].u32&FMASK_TEST)!=(CF|PF|AF|ZF|SF|OF)||cpu->reg[4].u32!=4096||
+                ctx.memory->readq(TEST_HEAP_ADDRESS+0x180)!=0x4000000000000000ull)
+            testFail("ARM min/max wide=%u scalar=%u maximum=%u lhs=%u rhs=%u shape=%u",wide,scalar,maximum,lhs,rhs,shape);
+        for(U32 reg=1;reg<8;++reg)for(U32 lane=0;lane<2;++lane)if(cpu->xmm[reg].pi.u64[lane]!=preserved[reg-1][lane])testFail("ARM min/max clobbered xmm%u",reg);
+    }
+}
+
+static void testArmSseCompareConsumers() {
+    struct Value { U32 single; U64 dbl; };
+    constexpr Value values[] = {
+        {0, 0}, {0x80000000, 0x8000000000000000ull},
+        {0x3f800000, 0x3ff0000000000000ull}, {0xbf800000, 0xbff0000000000000ull},
+        {1, 1}, {0x80000001, 0x8000000000000001ull},
+        {0x7f800000, 0x7ff0000000000000ull}, {0xff800000, 0xfff0000000000000ull},
+        {0x7fc12345, 0x7ff8123456789abcull}, {0x7f812345, 0x7ff0123456789abcull}
+    };
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> v) { for (U8 b : v) testPushCode8(b); };
+    for (bool wide : {false, true}) for (bool unordered : {false, true})
+            for (const auto& lhs : values) for (const auto& rhs : values)
+            for (U32 kind = 0; kind < 10; ++kind) for (U8 condition = 0; condition < 16; ++condition) {
+        const bool memory = kind >= 5;
+        const U32 shape = memory ? kind - 5 : kind;
+        testNewInstruction(CF | PF | ZF | SF | OF);
+        cpu->reg[0].u32 = 42; cpu->reg[1].u32 = 0x12345678;
+        cpu->reg[2].u32 = 0x31415926; cpu->reg[3].u32 = 0x98765432;
+        cpu->reg[6].u32 = 0; cpu->reg[7].u32 = 0;
+        for (U32 lane = 0; lane < 4; ++lane) {
+            cpu->xmm[0].pi.u32[lane] = 21 + lane; cpu->xmm[1].pi.u32[lane] = 31 + lane;
+        }
+        double a, b;
+        if (wide) {
+            cpu->xmm[0].pi.u64[0] = lhs.dbl; cpu->xmm[1].pi.u64[0] = rhs.dbl;
+            memcpy(&a, &lhs.dbl, 8); memcpy(&b, &rhs.dbl, 8);
+        } else {
+            cpu->xmm[0].pi.u32[0] = lhs.single; cpu->xmm[1].pi.u32[0] = rhs.single;
+            float af, bf; memcpy(&af, &lhs.single, 4); memcpy(&bf, &rhs.single, 4); a = af; b = bf;
+        }
+        U64 xmm[4] = {cpu->xmm[0].pi.u64[0], cpu->xmm[0].pi.u64[1], cpu->xmm[1].pi.u64[0], cpu->xmm[1].pi.u64[1]};
+        U32 flags = a != a || b != b ? CF | ZF | PF : a == b ? ZF : a < b ? CF : 0;
+        bool expected = directArithmeticCondition(condition, flags);
+        bool second = directArithmeticCondition(condition ^ 4, flags);
+        bytes({0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1}); // dirty cached ST0 = 2
+        if (wide) bytes({0x66});
+        bytes({0x0f, (U8)(unordered ? 0x2e : 0x2f), (U8)(memory ? 0x05 : 0xc1)});
+        if (memory) {
+            testPushCode32(0x100);
+            ctx.memory->writeq(TEST_HEAP_ADDRESS + 0x100, wide ? rhs.dbl : rhs.single);
+        }
+        U32 consumer = ctx.codeIp;
+        if (shape == 2) bytes({0x0f, (U8)(0x40 + condition), 0xc2});
+        else if (shape == 3) {
+            bytes({0x0f, (U8)(0x80 + condition)}); testPushCode32(5);
+            bytes({0xb8}); testPushCode32(43);
+        } else {
+            bytes({0x0f, (U8)(0x90 + condition), 0xc3});
+            if (shape == 1) bytes({0x0f, (U8)(0x90 + (condition ^ 4)), 0xc1});
+            if (shape == 4) bytes({0x9c, 0x5f});
+        }
+        bytes({0x39, 0xf6, 0xdd, 0x1d}); testPushCode32(0x180); bytes({0xcd, 0x97});
+        if (shape == 3) cpu->getOp(consumer + 11, 0);
+        testRunCPU();
+        U32 eax = shape == 2 ? (expected ? 0x31415926u : 42u) : shape == 3 ? (expected ? 42u : 43u) : 42u;
+        U32 ebx = shape == 2 || shape == 3 ? 0x98765432u : 0x98765400u | (expected ? 1u : 0u);
+        U32 ecx = shape == 1 ? 0x12345600u | (second ? 1u : 0u) : 0x12345678u;
+        if (cpu->reg[0].u32 != eax || cpu->reg[3].u32 != ebx || cpu->reg[1].u32 != ecx ||
+                cpu->reg[2].u32 != 0x31415926 || cpu->reg[4].u32 != 4096 ||
+                (shape == 4 && (cpu->reg[7].u32 & FMASK_TEST) != flags) ||
+                ctx.memory->readq(TEST_HEAP_ADDRESS + 0x180) != 0x4000000000000000ull ||
+                cpu->xmm[0].pi.u64[0] != xmm[0] || cpu->xmm[0].pi.u64[1] != xmm[1] ||
+                cpu->xmm[1].pi.u64[0] != xmm[2] || cpu->xmm[1].pi.u64[1] != xmm[3])
+            testFail("ARM SSE compare wide=%u unordered=%u kind=%u cc=%u lhs=%llx rhs=%llx", wide, unordered, kind, condition, lhs.dbl, rhs.dbl);
+        auto* op = ctx.memory->getDecodedOp(consumer);
+        auto nativeCondition = [](U8 cc) { return cc == 2 || cc == 3 || cc == 6 || cc == 7 || cc == 10 || cc == 11; };
+        bool native = !std::getenv("BOXEDWINE_ARM_SSE_NATIVE_FLAGS_SLOW") && nativeCondition(condition) &&
+            (shape != 1 || nativeCondition(condition ^ 4));
+        bool converted = armJitHasFlagM2() && condition != 10 && condition != 11 &&
+            (shape != 1 || ((condition ^ 4) != 10 && (condition ^ 4) != 11));
+        bool fused = (native || converted) && shape < 4 &&
+            (!memory || !std::getenv("BOXEDWINE_ARM_SSE_MEMORY_SLOW")) &&
+            !std::getenv("BOXEDWINE_ARM_SSE_COMPARE_SLOW") && (shape != 1 || !std::getenv("BOXEDWINE_JIT_FLAG_CHAIN_SLOW"));
+        if (!op || ((op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) != 0) != fused)
+            testFail("ARM SSE compare fusion selection kind=%u cc=%u", kind, condition);
+    }
+}
+#endif
+
+static void testJitMultiplyOverflowState() {
+#ifdef BOXEDWINE_JIT
+    auto& ctx=testContext();CPU* cpu=ctx.cpu;
+    constexpr U32 edge[]={0,1,2,0xffffffff,0x80000000,0x7fffffff,65535,65536,0xffff0000};
+    const U8 aliases[][2]={{0,0},{0,2},{2,0},{3,6},{6,3}};
+    auto bytes=[](std::initializer_list<U8> v){for(U8 b:v)testPushCode8(b);};
+    for(U32 form=0;form<8;++form)for(U32 a:edge)for(U32 b:edge)
+    for(const auto& alias:aliases)for(U32 shape=0;shape<5;++shape)for(bool lazy:{false,true}){
+        testNewInstruction(CF|OF);
+        U32 expected[8]={0x13579bdf,0x12345678,0x87654321,0x10203040,4096,0x55667788,0xaabbccdd,0xfedcba98};
+        bool one=form<2||form>=6,immediate=form==3||form==5,memory=form>=4,isSigned=form!=0&&form!=6;
+        U8 dst=one?0:alias[0],src=alias[1];
+        if(immediate)expected[src]=a;
+        else{expected[dst]=a;if(!memory)expected[src]=b;}
+        U32 left=immediate?(memory?a:expected[src]):expected[dst];
+        U32 right=immediate?b:(memory?b:expected[src]);
+        for(U32 r=0;r<8;++r)cpu->reg[r].u32=expected[r];
+        for(U32 r=0;r<8;++r)for(U32 lane=0;lane<4;++lane)cpu->xmm[r].pi.u32[lane]=r*16+lane+1;
+        if(memory)ctx.memory->writed(TEST_HEAP_ADDRESS+0x100,immediate?a:b);
+        if(one){bytes({0xf7,(U8)((memory?5:0xc0)+(isSigned?0x28:0x20)+(memory?0:src))});if(memory)testPushCode32(0x100);}
+        else if(immediate){bytes({0x69,(U8)((memory?5:0xc0)+dst*8+(memory?0:src))});if(memory)testPushCode32(0x100);testPushCode32(b);}
+        else{bytes({0x0f,0xaf,(U8)((memory?5:0xc0)+dst*8+(memory?0:src))});if(memory)testPushCode32(0x100);}
+        U64 product=isSigned?(U64)((S64)(S32)left*(S64)(S32)right):(U64)left*right;
+        bool overflow=isSigned?(S64)product!=(S64)(S32)(U32)product:(product>>32)!=0;
+        expected[dst]=(U32)product;if(one)expected[2]=(U32)(product>>32);
+        U8 cc=(U8)((a^b)&3);bool take=(cc&1)?!overflow:overflow;
+        if(shape==0){bytes({0x0f,(U8)(0x90+cc),0xc1});expected[1]=(expected[1]&0xffffff00)|(take?1:0);}
+        else if(shape==1){bytes({0x66,0x0f,(U8)(0x40+cc),0xd6});if(take)expected[2]=(expected[2]&0xffff0000)|(expected[6]&0xffff);}
+        else if(shape==2){bytes({0x0f,0x92,0xc1,0x89,0xfd,0x0f,0x90,0xc5});expected[1]=(expected[1]&0xffff0000)|(overflow?0x101:0);expected[5]=expected[7];}
+        else if(shape==3){bytes({(U8)(0x70+cc),5,0xb9});testPushCode32(0x31415926);if(!take)expected[1]=0x31415926;}
+        else bytes({0x9c,0x59}); // PUSHFD; POP ECX: retain live architectural CF/OF
+        bytes({0x39,0xff});
+        if(lazy){
+            // Contradict the multiply result with flags from a previous block.
+            cpu->dst.u32=overflow?0:0xffffffff;cpu->src.u32=overflow?0:1;
+            cpu->result.u32=0;cpu->lazyFlagType=FLAGS_ADD32;
+        }
+        testRunCPU();
+        for(U32 r=0;r<8;++r){
+            if(shape==4&&r==1){if((cpu->reg[r].u32&(CF|OF))!=(overflow?(CF|OF):0))testFail("multiply live flags form=%u a=%x b=%x lazy=%u got=%x",form,a,b,lazy,cpu->reg[r].u32);}
+            else if(cpu->reg[r].u32!=expected[r])testFail("multiply state form=%u a=%x b=%x dst=%u src=%u shape=%u lazy=%u r%u=%x expected=%x",form,a,b,dst,src,shape,lazy,r,cpu->reg[r].u32,expected[r]);
+            for(U32 lane=0;lane<4;++lane)if(cpu->xmm[r].pi.u32[lane]!=r*16+lane+1)testFail("multiply SIMD state");
+        }
+    }
+#endif
+}
+
+static void testJitFlagResultRegions() {
+#if defined(BOXEDWINE_WASM_JIT) || defined(BOXEDWINE_JIT_ARMV8)
+    extern void startNewJIT(CPU*, U32, DecodedOp*);
+    auto& ctx=testContext();CPU* cpu=ctx.cpu;
+    struct Snapshot { U32 regs[8],flags;U64 xmm[16]; };
+    auto capture=[&](){Snapshot state{};for(U32 r=0;r<8;++r){state.regs[r]=cpu->reg[r].u32;state.xmm[r*2]=cpu->xmm[r].pi.u64[0];state.xmm[r*2+1]=cpu->xmm[r].pi.u64[1];}cpu->fillFlags();state.flags=cpu->flags&FMASK_TEST;return state;};
+    auto execute=[&](bool jit){
+        U32 steps=0;
+        if(jit){do{cpu->run();if(++steps>1024){testFail("JIT flag region JIT dispatch limit");return;}}while(!cpu->nextOp||cpu->nextOp->inst!=TestEnd);}
+        else while(cpu->getNextOp()->inst!=TestEnd){if(++steps>1024||!cpu->runNextSingleOp()){testFail("JIT flag region interpreter limit");return;}}
+    };
+    const U32 values[]={0,1,0x7f,0xff,0x7fffffff,0xffffffff};
+    for(U32 producer=0;producer<10;++producer)for(U32 form=0;form<4;++form)for(U32 seed:values)for(U32 gap:{0u,1u,15u,31u,32u})for(U32 shape=0;shape<3;++shape){
+        std::vector<U8> code;
+        auto bytes=[&](std::initializer_list<U8> v){for(U8 b:v)code.push_back(b);};
+        auto dword=[&](U32 value){for(U32 n=0;n<4;++n)code.push_back((U8)(value>>(n*8)));};
+        U32 consumer=0;
+        for(U32 repeat=0;repeat<2;++repeat){
+            if(form==2)bytes({0x66});
+            U8 operand=form==1?4:0;
+            if(producer==5) { // TEST AL/AH/AX/EAX,13
+                bytes({(U8)(form<2?0xf6:0xf7),(U8)(0xc0+operand),13});
+                if(form==2)bytes({0});else if(form==3)bytes({0,0,0});
+            } else if(producer>=7) { // INC, DEC, NEG
+                U8 opcode=producer==9?(form<2?0xf6:0xf7):(form<2?0xfe:0xff);
+                U8 group=producer==7?0:producer==8?1:3;
+                bytes({opcode,(U8)(0xc0+group*8+operand)});
+            } else {
+                const U8 groups[]={0,5,6,4,1,0,7}; // ADD/SUB/XOR/AND/OR/TEST/CMP
+                bytes({(U8)(form<2?0x80:0x83),(U8)(0xc0+groups[producer]*8+operand),13});
+            }
+            bytes({0xb8});dword(0xdeadbeef); // the saved result must not alias EAX
+            for(U32 n=0;n<gap;++n)if(n&1)bytes({0x8d,0x6d,1});else bytes({0x89,0xf5});
+            if(shape==1){bytes({0x8b,0x1d});dword(0x100);}
+            if(shape==2)bytes({0x75,2,0x89,0xf5}); // forward join preserving arithmetic flags
+            if(!repeat)consumer=(U32)code.size();
+            bytes({0x0f,0x9a,0xc2,0xb8});dword(0x11223344);
+            if(repeat)bytes({0x0f,0x48,0xdf}); // CMOVS EBX,EDI
+            else bytes({0x0f,0x98,0xc3}); // SETS BL keeps the first span straight-line
+            bytes({0x0f,0x94,0xc6});
+            if(repeat) {
+                bytes({0x9c,0x59}); // observe the final published lazy state
+                // Logical operations leave AF undefined; compare only defined bits.
+                if(producer>=2&&producer<=5){bytes({0x81,0xe1});dword(~(U32)AF);}
+            }
+            bytes({0x8d,0x34,0x16}); // consume earlier flag results in later data flow
+        }
+        bytes({0x39,0xff,0xcd,0x97});
+        auto registers=[&](U32 flags,U32 eip){
+            U32 initial[]={seed,0x11223344,0x44556600,0x12345678,4096,0x13579bdf,0x2468ace0,0xabcdef01};
+            for(U32 r=0;r<8;++r){cpu->reg[r].u32=initial[r];cpu->xmm[r].pi.u64[0]=0x1234567800000000ull+r;cpu->xmm[r].pi.u64[1]=0xabcdef1200000000ull+r;}
+            cpu->setFlags(flags,FMASK_ALL);cpu->lazyFlagType=FLAGS_NONE;cpu->eip.u32=eip;cpu->nextOp=nullptr;cpu->yield=false;
+        };
+        auto setup=[&](){testNewInstruction(0);for(U8 b:code)testPushCode8(b);ctx.memory->writed(TEST_HEAP_ADDRESS+0x100,0x98765432);registers(CF|OF,0);};
+        setup();execute(false);Snapshot expected=capture();
+        setup();auto* entry=cpu->getOp(TEST_CODE_ADDRESS,0);startNewJIT(cpu,TEST_CODE_ADDRESS,entry);cpu->nextOp=entry;execute(true);Snapshot actual=capture();
+        if(expected.flags!=actual.flags || memcmp(expected.regs,actual.regs,sizeof(expected.regs)) || memcmp(expected.xmm,actual.xmm,sizeof(expected.xmm)))testFail("JIT flag region producer=%u form=%u seed=%x gap=%u shape=%u",producer,form,seed,gap,shape);
+        if(!entry->pfnJitCode)testFail("JIT flag region did not compile");
+        if(gap==15&&shape==0&&seed==0){
+            // A prior root compilation must not expose its private result local
+            // to an independent entry at the former consumer.
+            for(U32 flags:{0u,(U32)PF,(U32)SF,(U32)ZF,(U32)(PF|SF|ZF)}){
+                registers(flags,consumer);execute(false);expected=capture();
+                registers(flags,consumer);U32 address=TEST_CODE_ADDRESS+consumer;
+                auto* middle=cpu->getOp(address,0);startNewJIT(cpu,address,middle);cpu->nextOp=middle;execute(true);actual=capture();
+                if(expected.flags!=actual.flags || memcmp(expected.regs,actual.regs,sizeof(expected.regs)) || memcmp(expected.xmm,actual.xmm,sizeof(expected.xmm)))testFail("JIT flag region independent entry producer=%u form=%u flags=%x",producer,form,flags);
+            }
+        }
+    }
+#endif
+}
+
+static void testArmConditionalCompare() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    extern void startNewJIT(CPU*, U32, DecodedOp*);
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    constexpr U32 edge[] = {0,1,2,0xffffffff,0x80000000,0x7fffffff,0xaaaaaaaa,0x55555555,0x10000,31,32,4095,4096};
+    constexpr U32 edgeCount = sizeof(edge) / sizeof(edge[0]);
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    auto execute = [&](U32 address) {
+        cpu->eip.u32=address-TEST_CODE_ADDRESS;cpu->nextOp=nullptr;cpu->yield=false;
+        U32 dispatches=0;
+        do {cpu->run();if(++dispatches>1024){testFail("CCMP dispatch limit");break;}}
+            while(!cpu->nextOp||cpu->nextOp->inst!=TestEnd);
+    };
+    for(U8 first=0;first<16;++first)for(U8 second=0;second<16;++second)
+    for(U32 seed=0;seed<edgeCount;++seed)for(U32 form=0;form<4;++form)for(U32 live=0;live<3;++live) {
+        testNewInstruction(CF|OF);
+        const U32 a=edge[seed],b=edge[(seed+3)%edgeCount],c=edge[(seed+5)%edgeCount],d=edge[(seed+1)%edgeCount];
+        U32 expected[]={a,0x12345678,d,0,4096,0x31415926,b,c};
+        for(U32 r=0;r<8;++r){cpu->reg[r].u32=expected[r];for(U32 lane=0;lane<4;++lane)cpu->xmm[r].pi.u32[lane]=r*16+lane+3;}
+        const U32 lhs1=form==3?b:a,rhs1=form==2?a:form==3?a:b;
+        const U32 lhs2=form>=2?a:d,rhs2=form>=2?b:c;
+        if(form==1){bytes({0x81,0xf8});testPushCode32(rhs1);}
+        else bytes({0x39,(U8)(form==2?0xc0:form==3?0xc6:0xf0)});
+        const U32 branch1=ctx.codeIp;bytes({0x0f,(U8)(0x80+first)});U32 disp1=ctx.codeIp;testPushCode32(0);
+        const U32 compare2=ctx.codeIp;
+        if(form==1){bytes({0x81,0xfa});testPushCode32(rhs2);}
+        else bytes({0x39,(U8)(form>=2?0xf0:0xfa)});
+        const U32 branch2=ctx.codeIp;bytes({0x0f,(U8)(0x80+second)});U32 disp2=ctx.codeIp;testPushCode32(0);
+        bytes({0xbb});testPushCode32(1);
+        if(live==2)bytes({0x9c,0x5d});
+        const U32 target=ctx.codeIp;
+        if(live==1)bytes({0x9c,0x5d});
+        bytes({0x39,0xff,0xcd,0x97});
+        ctx.memory->writed(disp1,target-disp1-4);ctx.memory->writed(disp2,target-disp2-4);
+        cpu->getOp(target,0); // expose the flag kill at the shared successor
+        auto* entry=cpu->getOp(TEST_CODE_ADDRESS,0);startNewJIT(cpu,TEST_CODE_ADDRESS,entry);
+        U32 ignored;U32 flags1=directArithmeticFlags(DirectArithmeticTestOp::Sub,lhs1,rhs1,ignored);
+        U32 flags2=directArithmeticFlags(DirectArithmeticTestOp::Sub,lhs2,rhs2,ignored);
+        bool take1=directArithmeticCondition(first,flags1),take2=directArithmeticCondition(second,flags2);
+        expected[3]=!take1&&!take2;
+        execute(TEST_CODE_ADDRESS);
+        for(U32 r=0;r<8;++r) {
+            if(r==5&&live&&(live==1||expected[3])) {
+                U32 wanted=take1?flags1:flags2;
+                if((cpu->reg[r].u32&FMASK_TEST)!=(wanted&FMASK_TEST))testFail("CCMP live flags first=%u second=%u form=%u live=%u",first,second,form,live);
+            } else if(cpu->reg[r].u32!=expected[r])testFail("CCMP result first=%u second=%u seed=%u form=%u live=%u r%u",first,second,seed,form,live,r);
+            for(U32 lane=0;lane<4;++lane)if(cpu->xmm[r].pi.u32[lane]!=r*16+lane+3)testFail("CCMP SIMD state");
+        }
+        cpu->fillFlags();
+        if((cpu->flags&FMASK_TEST)!=(ZF|PF))testFail("CCMP final flags");
+        if(!live&&first!=10&&first!=11&&second!=10&&second!=11&&std::getenv("BOXEDWINE_ARM_CCMP")) {
+            auto* op=ctx.memory->getDecodedOp(compare2);
+            if(!op||!(op->flags2&OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE))testFail("CCMP candidate was not fused");
+        }
+        if(!live&&form==0&&seed==0) {
+            for(U32 address:{branch1,compare2,branch2})for(U32 fresh:{0u,(U32)FMASK_TEST}) {
+                for(U32 r=0;r<8;++r)cpu->reg[r].u32=expected[r];cpu->reg[3].u32=0;
+                cpu->setFlags(fresh,FMASK_ALL);cpu->lazyFlagType=FLAGS_NONE;
+                bool fail=address==branch1?directArithmeticCondition(first,fresh)||take2:
+                    address==compare2?take2:directArithmeticCondition(second,fresh);
+                execute(address);
+                if(cpu->reg[3].u32!=(fail?0u:1u))testFail("CCMP independent entry first=%u second=%u address=%x",first,second,address);
+            }
+            // Replace the second comparison with ADD. The newly written guest
+            // instruction must execute even when the former region was fused.
+            ctx.memory->writeb(compare2,0x01);
+            for(U32 r=0;r<8;++r)cpu->reg[r].u32=expected[r];cpu->reg[3].u32=0;
+            U32 result;U32 addFlags=directArithmeticFlags(DirectArithmeticTestOp::Add,d,c,result);
+            execute(TEST_CODE_ADDRESS);
+            if(cpu->reg[2].u32!=(take1?d:result)||cpu->reg[3].u32!=(!take1&&!directArithmeticCondition(second,addFlags)?1u:0u))
+                testFail("CCMP code replacement first=%u second=%u",first,second);
+        }
+    }
+#endif
+}
+
 void testJitDirectArithmeticFlags() {
+    testArmConditionalCompare();
+    testJitFlagResultRegions();
+    testJitMultiplyOverflowState();
+#ifdef BOXEDWINE_JIT_ARMV8
+    testArmSseCompareConsumers();
+    testArmMinMaxSelection();
+    testArmSseMemoryFaultConsumers();
+#endif
+#ifdef BOXEDWINE_JIT
+    testLogicalConditionsWithLiveFlags();
+    testParityConsumers();
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    testArmNarrowArithmetic();
+#endif
+#if defined(BOXEDWINE_JIT_ARMV8)
+    testArmFlagWindowEntries();
+    testArmDirectFlagConsumers();
+#endif
 #ifdef BOXEDWINE_JIT
     constexpr DirectArithmeticTestShape shapes[] = {
         DirectArithmeticTestShape::Reg,
@@ -2177,7 +2943,132 @@ void runDirectIncDecInterveningCFReaderCase(DirectIncDecTestOp op, bool oldCF,
 
 } // namespace
 
+#if defined(BOXEDWINE_JIT_ARMV8)
+static void testArmDirectIncDecPreservedCarry() {
+    auto& ctx = testContext();
+    CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    for (bool decrement : {false, true}) for (U32 value : DIRECT_INC_DEC_CASES)
+    for (U32 source = 0; source < 3; ++source) for (bool carry : {false, true})
+    for (U8 condition = 0; condition < 16; ++condition) for (bool liveOverflow : {false, true}) {
+        testNewInstruction(carry ? CF : 0);
+        cpu->reg[0].u32 = value;
+        cpu->reg[1].u32 = 0x12345678;
+        cpu->reg[2].u32 = 0x13572468;
+        cpu->reg[3].u32 = 0x87654321;
+        cpu->reg[6].u32 = source == 1 ? 1 : 0;
+        cpu->reg[7].u32 = source == 1 ? (carry ? 0xffffffff : 0) : (carry ? 1 : 0);
+        if (source) bytes({(U8)(source == 1 ? 0x01 : 0x39), 0xfe}); // add/cmp esi,edi
+        U32 producer = ctx.codeIp;
+        bytes({(U8)(decrement ? 0x48 : 0x40)});
+        U32 consumer = ctx.codeIp;
+        bytes({0x0f, (U8)(0x90 + condition), 0xc3}); // setcc bl
+        bytes({0x0f, 0x92, 0xc1}); // setc cl: carry remains live after the first consumer
+        if (liveOverflow) bytes({0x0f, 0x90, 0xc2}); // seto dl: requires the new INC/DEC flags
+        bytes({0x39, 0xf6}); // cmp esi,esi: all preceding flags are now dead
+        testRunCPU();
+        U32 expectedResult;
+        U32 flags = directArithmeticFlags(decrement ? DirectArithmeticTestOp::Sub : DirectArithmeticTestOp::Add,
+            value, 1, expectedResult);
+        flags = (flags & ~CF) | (carry ? CF : 0);
+        if (cpu->reg[0].u32 != expectedResult || cpu->reg[1].u32 != (0x12345600 | (carry ? 1 : 0)) ||
+                cpu->reg[3].u32 != (0x87654300 | (directArithmeticCondition(condition, flags) ? 1 : 0)) ||
+                cpu->reg[2].u32 != (liveOverflow ? (0x13572400 | ((flags & OF) ? 1 : 0)) : 0x13572468))
+            testFail("ARM direct INC/DEC preserved carry dec=%u value=%x source=%u carry=%u cc=%u liveOF=%u",
+                decrement, value, source, carry, condition, liveOverflow);
+        auto* p = ctx.memory->getDecodedOp(producer);
+        auto* c = ctx.memory->getDecodedOp(consumer);
+        bool expectedFusion = !liveOverflow && !directIncDecConditionUsesCF(condition) && condition != 10 && condition != 11 &&
+            !std::getenv("BOXEDWINE_JIT_PRESERVED_CF_SLOW");
+        if (!p || !c || !p->pfnJitCode || ((c->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) != 0) != expectedFusion)
+            testFail("ARM preserved carry fusion selection cc=%u liveOF=%u", condition, liveOverflow);
+    }
+    for (U32 count : {1u, 2u, 15u, 16u, 17u, 65u, 1024u})
+    for (bool carry : {false, true}) for (bool lazy : {false, true}) {
+        testNewInstruction(carry ? CF : 0);
+        cpu->reg[1].u32 = count;
+        cpu->reg[6].u32 = 0;
+        cpu->reg[7].u32 = carry ? 1 : 0;
+        if (lazy) bytes({0x39, 0xfe}); // cmp esi,edi
+        U32 header = ctx.codeIp;
+        bytes({0x8d, 0x40, 1, 0x49, 0x75}); // lea eax,[eax+1]; dec ecx; jnz
+        testPushCode8((U8)(header - ctx.codeIp - 1));
+        bytes({0x0f, 0x92, 0xc3, 0x39, 0xf6}); // setc bl; cmp esi,esi
+        testRunCPU();
+        if (cpu->reg[0].u32 != count || cpu->reg[1].u32 || cpu->reg[3].u32 != (carry ? 1 : 0))
+            testFail("ARM preserved carry loop count=%u carry=%u lazy=%u", count, carry, lazy);
+    }
+}
+#endif
+
+#if defined(BOXEDWINE_JIT_ARMV8)
+static void testArmNarrowIncDecFlags() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    for (U32 bits : {8u, 16u}) for (U32 reg = 0; reg < 8; ++reg)
+    for (bool decrement : {false, true}) for (bool carry : {false, true}) {
+        std::vector<U32> values;
+        if (bits == 8 && (reg == 0 || reg == 4)) for (U32 i = 0; i < 256; ++i) values.push_back(i);
+        else values = {0, 1, 0xf, 0x7f, 0x80, 0xff, 0x7fff, 0x8000, 0xfffe, 0xffff};
+        for (U32 input : values) for (U8 condition = 0; condition < 16; ++condition) {
+            testNewInstruction(carry ? CF : 0);
+            U32 expected[8];
+            for (U32 i = 0; i < 8; ++i) expected[i] = cpu->reg[i].u32 = i == 4 ? 4096 : 0x12345678 + i * 0x01010101;
+            U32 mask = (1u << bits) - 1, sign = 1u << (bits - 1);
+            U32 index = bits == 8 ? reg & 3 : reg, shift = bits == 8 && reg >= 4 ? 8 : 0;
+            input &= mask;
+            expected[index] = cpu->reg[index].u32 = (expected[index] & ~(mask << shift)) | (input << shift);
+            U32 result = (decrement ? input - 1 : input + 1) & mask;
+            expected[index] = (expected[index] & ~(mask << shift)) | (result << shift);
+            U32 flags = (carry ? CF : 0) | (result ? 0 : ZF) | ((result & sign) ? SF : 0) |
+                directArithmeticParityFlag(result) | (((input ^ 1 ^ result) & 0x10) ? AF : 0) |
+                ((result == (decrement ? sign - 1 : sign)) ? OF : 0);
+            U32 expectedCondition = directArithmeticCondition(condition, flags) ? 1 : 0;
+            expected[3] = (expected[3] & ~0xff) | expectedCondition;
+            expected[1] = (expected[1] & ~0xff) | (carry ? 1 : 0);
+            if (bits == 16) bytes({0x66});
+            bytes({(U8)(bits == 16 ? 0xff : 0xfe), (U8)(0xc0 + (decrement ? 8 : 0) + reg)});
+            U32 consumer = ctx.codeIp;
+            bytes({0x0f, (U8)(0x90 + condition), 0xc3, 0x0f, 0x92, 0xc1, 0x39, 0xf6});
+            testRunCPU();
+            for (U32 i = 0; i < 8; ++i) if (cpu->reg[i].u32 != expected[i])
+                testFail("ARM narrow flags bits=%u reg=%u dec=%u input=%x cf=%u cc=%u changed r%u=%x expected=%x",
+                    bits, reg, decrement, input, carry, condition, i, cpu->reg[i].u32, expected[i]);
+            bool fuse = armJitHasFlagM() && !directIncDecConditionUsesCF(condition) && condition != 10 && condition != 11 &&
+                !std::getenv("BOXEDWINE_ARM_NARROW_FLAGS_SLOW") && !std::getenv("BOXEDWINE_JIT_PRESERVED_CF_SLOW");
+            auto* op = ctx.memory->getDecodedOp(consumer);
+            if (!op || ((op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE) != 0) != fuse)
+                testFail("ARM narrow fusion selection bits=%u cc=%u", bits, condition);
+        }
+    }
+    for (U32 bits : {8u, 16u}) for (bool high : {false, true}) for (bool increment : {false, true})
+    for (bool carry : {false, true}) for (bool lazy : {false, true}) for (U32 count : {1u, 2u, 127u, 128u, 255u}) {
+        if (bits == 16 && high) continue;
+        testNewInstruction(carry ? CF : 0);
+        U32 mask = (1u << bits) - 1, shift = high ? 8 : 0;
+        U32 initial = increment ? ((mask + 1 - count) & mask) : count;
+        cpu->reg[0].u32 = (0x12348080u & ~(mask << shift)) | (initial << shift);
+        cpu->reg[6].u32 = 0; cpu->reg[7].u32 = carry ? 1 : 0;
+        if (lazy) bytes({0x39, 0xfe});
+        U32 header = ctx.codeIp;
+        if (bits == 16) bytes({0x66});
+        bytes({(U8)(bits == 16 ? 0xff : 0xfe), (U8)(0xc0 + (increment ? 0 : 8) + (high ? 4 : 0)), 0x75});
+        testPushCode8((U8)(header - ctx.codeIp - 1));
+        bytes({0x0f, 0x92, 0xc3, 0x39, 0xf6});
+        testRunCPU();
+        if (cpu->reg[0].u32 != (0x12348080u & ~(mask << shift)) || cpu->reg[3].u32 != (carry ? 1u : 0u))
+            testFail("ARM narrow loop bits=%u high=%u inc=%u carry=%u lazy=%u count=%u", bits, high, increment, carry, lazy, count);
+    }
+}
+#endif
+
 void testJitDirectIncDecFlags() {
+#if defined(BOXEDWINE_JIT_ARMV8)
+    testArmNarrowIncDecFlags();
+#endif
+#if defined(BOXEDWINE_JIT_ARMV8)
+    testArmDirectIncDecPreservedCarry();
+#endif
 #ifdef BOXEDWINE_JIT
     for (DirectIncDecTestOp op : {DirectIncDecTestOp::Inc, DirectIncDecTestOp::Dec}) {
         for (U32 value : DIRECT_INC_DEC_CASES) {
@@ -2375,7 +3266,85 @@ void runDirectCarryFlagsCase(const DirectCarryOpInfo& op, DirectCarryTestShape s
 
 } // namespace
 
+#ifdef BOXEDWINE_JIT_ARMV8
+static void testArmCarryChains() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    constexpr U32 values[] = {0,1,0x7fffffff,0x80000000,0xffffffff,0xfffffffe,0x12345678,0xaaaaaaaa};
+    constexpr U8 regs[] = {0,3,6,7,2,5,1};
+    auto bytes = [](std::initializer_list<U8> v) { for (U8 b : v) testPushCode8(b); };
+    for (bool subtract : {false, true}) for (U32 shape = 0; shape < 3; ++shape)
+            for (U32 length : {2u,4u,8u,9u}) for (U32 seed = 0; seed < 64; ++seed)
+            for (bool interior : {false,true}) for (bool observe : {false,true}) {
+        testNewInstruction((seed & 1) ? CF : 0);
+        U32 expected[8];
+        for (U32 r=0;r<8;++r) expected[r]=cpu->reg[r].u32=values[(seed+r)%8] ^ (r==3?values[seed/8]:0);
+        expected[4]=cpu->reg[4].u32=4096;
+        U32 flags=(seed&1)?CF:0, interiorEip=0;
+        for (U32 i=0;i<length;++i) {
+            U32 dst=regs[i%7], src=shape==1?dst:regs[(i+2)%7];
+            U32 rhs=shape==2?values[(seed+i*3)%8]:expected[src];
+            if (i==1) interiorEip=ctx.codeIp-TEST_CODE_ADDRESS;
+            if (shape==2) { bytes({0x81,(U8)(0xc0+(subtract?(i?0x18:0x28):(i?0x10:0))+dst)}); testPushCode32(rhs); }
+            else bytes({(U8)(subtract?(i?0x19:0x29):(i?0x11:0x01)),(U8)(0xc0+src*8+dst)});
+            if (!interior || i) flags=directCarryFlags(subtract?DirectCarryTestOp::Sbb:DirectCarryTestOp::Adc,
+                expected[dst],rhs,i?(flags&CF?1:0):0,expected[dst]);
+        }
+        if (observe) bytes({0x9c});
+        bytes({0x39,0xc0,0xcd,0x97});
+        auto* entry=cpu->getOp(TEST_CODE_ADDRESS,0);startNewJIT(cpu,TEST_CODE_ADDRESS,entry);
+        if (interior) cpu->eip.u32=interiorEip;
+        testRunCPU();
+        if (observe) expected[4]-=4;
+        for (U32 r=0;r<8;++r) if (cpu->reg[r].u32!=expected[r])
+            testFail("ARM carry chain sub=%u shape=%u length=%u seed=%u entry=%u live=%u r%u=%x expected=%x",
+                subtract,shape,length,seed,interior,observe,r,cpu->reg[r].u32,expected[r]);
+        if (observe && (ctx.memory->readd(cpu->seg[SS].address+expected[4])&FMASK_TEST)!=flags)
+            testFail("ARM carry chain lost outgoing flags sub=%u shape=%u length=%u seed=%u entry=%u",subtract,shape,length,seed,interior);
+    }
+    // Replacing the producer must invalidate all assumptions about carry.
+    testNewInstruction(0); bytes({0x01,0xd0,0x11,0xeb,0x39,0xc0,0xcd,0x97});
+    cpu->reg[0].u32=0;cpu->reg[2].u32=1;cpu->reg[3].u32=10;testRunCPU();
+    ctx.memory->writeb(TEST_CODE_ADDRESS,0x29); // sub eax,edx followed by adc ebx,ebp
+    cpu->reg[0].u32=0;cpu->reg[2].u32=1;cpu->reg[3].u32=10;cpu->eip.u32=0;cpu->nextOp=nullptr;
+    testRunCPU();
+    if(cpu->reg[0].u32!=0xffffffff||cpu->reg[3].u32!=11)testFail("ARM carry chain invalidation");
+}
+#endif
+
+#ifdef BOXEDWINE_JIT_ARMV8
+static void testArmCarryConsumers() {
+    auto& ctx=testContext();CPU* cpu=ctx.cpu;
+    constexpr U32 values[]={0,1,0x7fffffff,0x80000000,0xffffffff,0xfffffffe,0x12345678,0xaaaaaaaa};
+    auto bytes=[](std::initializer_list<U8> v){for(U8 b:v)testPushCode8(b);};
+    for(bool subtract:{false,true})for(U32 seed=0;seed<512;++seed)for(U32 mode=0;mode<4;++mode)for(U8 condition=0;condition<16;++condition){
+        testNewInstruction(CF|OF);cpu->fpu.FINIT();cpu->fpu.top=7;
+        cpu->reg[0].u32=values[seed%8];cpu->reg[2].u32=values[(seed/8)%8];cpu->reg[3].u32=values[seed/64];cpu->reg[5].u32=values[(seed+3)%8];
+        cpu->reg[1].u32=0xabcd0011;cpu->reg[6].u32=42;cpu->reg[7].u32=84;
+        U32 low,high,flags=directCarryFlags(subtract?DirectCarryTestOp::Sbb:DirectCarryTestOp::Adc,cpu->reg[0].u32,cpu->reg[2].u32,0,low);
+        flags=directCarryFlags(subtract?DirectCarryTestOp::Sbb:DirectCarryTestOp::Adc,cpu->reg[3].u32,cpu->reg[5].u32,(flags&CF)?1:0,high);
+        U32 yes=directArithmeticCondition(condition,flags)?1:0, expected=0;
+        bytes({0xd9,0xe8,0xd9,0xe8,0xde,0xc1,(U8)(subtract?0x29:0x01),0xd0,(U8)(subtract?0x19:0x11),0xeb});
+        if(mode==0){bytes({0x0f,(U8)(0x90+condition),0xc1});expected=0xabcd0000|yes;}
+        else if(mode==1){bytes({0x0f,(U8)(0x90+condition),0xc1,0x0f,(U8)(0x90+(condition^4)),0xc5});expected=0xabcd0000|yes|(directArithmeticCondition(condition^4,flags)?0x100:0);}
+        else if(mode==2){if(seed&1)bytes({0x66});bytes({0x0f,(U8)(0x40+condition),0xcf});expected=yes?((seed&1)?0xabcd0054:84):0xabcd0011;}
+        else {bytes({0x0f,(U8)(0x80+condition)});testPushCode32(TEST_CODE_ADDRESS+0x400-ctx.codeIp-4);bytes({0xb9});testPushCode32(1);expected=yes?2:1;}
+        auto finish=[&](){bytes({0x39,0xf6,0xdd,0x1d});testPushCode32(0x100);bytes({0xcd,0x97});};
+        finish();
+        if(mode==3){ctx.codeIp=TEST_CODE_ADDRESS+0x400;bytes({0xb9});testPushCode32(2);finish();cpu->getOp(TEST_CODE_ADDRESS+0x400,0);}
+        testRunCPU();
+        if(cpu->reg[0].u32!=low||cpu->reg[3].u32!=high||cpu->reg[1].u32!=expected||cpu->reg[4].u32!=4096||cpu->fpu.top!=7||ctx.memory->readq(TEST_HEAP_ADDRESS+0x100)!=0x4000000000000000ULL)
+            testFail("ARM carry consumer sub=%u seed=%u mode=%u condition=%u low=%x/%x high=%x/%x result=%x/%x",subtract,seed,mode,condition,cpu->reg[0].u32,low,cpu->reg[3].u32,high,cpu->reg[1].u32,expected);
+    }
+}
+#endif
+
 void testJitDirectAdcSbbFlags() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    testArmCarryConsumers();
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    testArmCarryChains();
+#endif
 #ifdef BOXEDWINE_JIT
     constexpr DirectCarryTestShape shapes[] = {
         DirectCarryTestShape::Reg,
@@ -2495,7 +3464,81 @@ void runDirectShiftFlagsCase(const DirectShiftOpInfo& op, U32 value, U8 count, U
 
 } // namespace
 
+#ifdef BOXEDWINE_JIT_ARMV8
+static void testArmShiftConsumers() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> v) { for (U8 b : v) testPushCode8(b); };
+    constexpr U32 values[] = {0, 1, 0x7fffffff, 0x80000000, 0x80000001, 0xffffffff, 0x13579bdf, 0xabcdef01};
+    for (const auto& operation : DIRECT_SHIFT_OPS) for (U8 count : {0, 1, 2, 7, 16, 31, 32, 33, 255})
+    for (U32 value : values) for (U8 first = 0; first < 16; ++first) for (U32 kind = 0; kind < 5; ++kind) {
+        const U32 incoming = 2 | CF | PF | OF;
+        testNewInstruction(incoming); cpu->fpu.FINIT(); cpu->fpu.top = 7;
+        cpu->reg[0].u32 = value; cpu->reg[1].u32 = 0x12345678; cpu->reg[2].u32 = 0x31415926;
+        cpu->reg[3].u32 = 0x98765432; cpu->reg[6].u32 = 42; cpu->reg[7].u32 = 0;
+        U32 result = value;
+        U32 flags = count & 31 ? directShiftFlags(operation.op, value, count & 31, result) : incoming;
+        // OF is architecturally undefined for counts greater than one. The
+        // legacy lowering remains responsible for any consumers that use it.
+        if ((count & 31) > 1 && directShiftConditionUsesOF(first)) continue;
+        U8 second = first ^ 1;
+        bool a = directArithmeticCondition(first, flags), b = directArithmeticCondition(second, flags);
+        bytes({0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1}); // leave cached ST0 dirty
+        U32 producer = ctx.codeIp;
+        bytes({0xc1, (U8)(0xc0 | operation.group << 3), count});
+        U32 consumer = ctx.codeIp;
+        if (kind == 0) bytes({0x0f, (U8)(0x90 + first), 0xc3, 0x0f, (U8)(0x90 + second), 0xc7}); // BL/BH alias
+        else if (kind == 1) bytes({0x0f, (U8)(0x90 + first), 0xc3, 0x0f, (U8)(0x40 + second), 0xce});
+        else if (kind == 2) {
+            bytes({0x0f, (U8)(0x90 + first), 0xc3, (U8)(0x70 + second), 5, 0xb9}); testPushCode32(43);
+        } else {
+            bytes({0x0f, (U8)(0x90 + first), 0xc3, 0x9c, 0x5f});
+            if (kind == 4) bytes({0x0f, (U8)(0x90 + second), 0xc1});
+        }
+        U32 join = ctx.codeIp;
+        bytes({0x39, 0xf6, 0xdd, 0x1d}); testPushCode32(0x100); bytes({0xcd, 0x97});
+        if (kind == 2) cpu->getOp(join, 0);
+        testRunCPU();
+        U32 expectedB = kind == 0 ? (0x98760000 | (b ? 0x100 : 0) | (a ? 1 : 0)) : (0x98765400 | (a ? 1 : 0));
+        U32 expectedC = kind == 1 ? (b ? 42u : 0x12345678u) : kind == 2 ? (b ? 0x12345678u : 43u) : kind == 4 ? (0x12345600 | (b ? 1 : 0)) : 0x12345678u;
+        U32 defined = CF | PF | ZF | SF | ((count & 31) <= 1 ? OF : 0);
+        if (cpu->reg[0].u32 != result || cpu->reg[1].u32 != expectedC || cpu->reg[3].u32 != expectedB ||
+                cpu->reg[2].u32 != 0x31415926 || cpu->reg[4].u32 != 4096 ||
+                (kind >= 3 && ((cpu->reg[7].u32 ^ flags) & defined)) ||
+                ctx.memory->readq(TEST_HEAP_ADDRESS + 0x100) != 0x4000000000000000ull)
+            testFail("ARM shift consumers op=%s count=%u value=%x first=%u kind=%u", operation.name, count, value, first, kind);
+        if (kind == 0 && (count & 31) &&
+                ((first != 10 && first != 11) || !std::getenv("BOXEDWINE_ARM_SHIFT_PARITY_SLOW")) &&
+                armJitHasFlagM() && !std::getenv("BOXEDWINE_ARM_SHIFT_FLAGS_SLOW") &&
+                !std::getenv("BOXEDWINE_JIT_FLAG_CHAIN_SLOW")) {
+            auto* op = ctx.memory->getDecodedOp(consumer);
+            if (!op || !(op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE))
+                testFail("ARM shift consumer fusion was not selected");
+            // Enter the former consumer independently, with different flags.
+            cpu->reg[3].u32 = 0x98765432; cpu->flags = 2 | ZF; cpu->lazyFlagType = FLAGS_NONE;
+            cpu->eip.u32 = consumer - TEST_CODE_ADDRESS; cpu->nextOp = nullptr;
+            testRunCPU();
+            U32 firstNew = directArithmeticCondition(first, ZF) ? 1 : 0;
+            U32 secondNew = directArithmeticCondition(second, ZF) ? 1 : 0;
+            if (cpu->reg[3].u32 != (0x98760000 | (secondNew << 8) | firstNew))
+                testFail("ARM shift independent entry reused native flags");
+            // Invalidating a producer must not leave its fused interior cached.
+            ctx.memory->writeb(producer + 1, 0xc0 | (operation.group == 4 ? 5 : 4) << 3);
+            cpu->eip.u32 = producer - TEST_CODE_ADDRESS; cpu->nextOp = nullptr;
+            cpu->reg[0].u32 = value; cpu->reg[3].u32 = 0x98765432;
+            U32 newResult;
+            U32 newFlags = directShiftFlags(operation.group == 4 ? DirectShiftTestOp::Shr : DirectShiftTestOp::Shl, value, count & 31, newResult);
+            testRunCPU();
+            if (cpu->reg[0].u32 != newResult || (cpu->reg[3].u32 & 255) != (directArithmeticCondition(first, newFlags) ? 1u : 0u))
+                testFail("ARM shift invalidation reused old producer");
+        }
+    }
+}
+#endif
+
 void testJitDirectShiftFlags() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    testArmShiftConsumers();
+#endif
 #ifdef BOXEDWINE_JIT
     for (const DirectShiftOpInfo& op : DIRECT_SHIFT_OPS) {
         for (U32 value : DIRECT_INC_DEC_CASES) {
@@ -3473,6 +4516,108 @@ void testSignalHandlerClearsTraceFlagUntilReturn() {
     if (!cpu->debugTrapActive) {
         testFail("signal return did not restore active trace trap");
     }
+}
+
+void testArmJitPollExitState() {
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_MULTI_THREADED)
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    constexpr U32 target = 0x4000;
+    // direct/register/memory calls and jumps, both near returns, and CALL ESP.
+    for (U32 kind = 0; kind < 9; ++kind) {
+        testNewInstruction(CF); cpu->fpu.FINIT(); cpu->fpu.top = 7;
+        cpu->reg[0].u32 = target;
+        if (kind == 6) cpu->reg[4].u32 = target;
+        if (kind == 4 || kind == 5) cpu->push32(target);
+        U32 beforeSp = cpu->reg[4].u32;
+        for (U32 lane = 0; lane < 4; ++lane) {
+            cpu->xmm[0].pi.u32[lane] = 10 + lane; cpu->xmm[1].pi.u32[lane] = 20 + lane;
+        }
+        ctx.memory->writed(TEST_HEAP_ADDRESS + 0x100, target);
+        bytes({0x46, 0x66, 0x0f, 0xfe, 0xc1, 0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1});
+        bool call = kind == 0 || kind == 1 || kind == 6 || kind == 7;
+        if (kind == 0 || kind == 2) {
+            bytes({(U8)(call ? 0xe8 : 0xe9)}); testPushCode32(TEST_CODE_ADDRESS + target - ctx.codeIp - 4);
+        } else if (kind == 1 || kind == 3 || kind == 6) bytes({0xff, (U8)(kind == 6 ? 0xd4 : call ? 0xd0 : 0xe0)});
+        else if (kind == 4) bytes({0xc3});
+        else if (kind == 5) bytes({0xc2, 12, 0});
+        else { bytes({0xff, (U8)(call ? 0x15 : 0x25)}); testPushCode32(0x100); }
+        U32 continuation = ctx.codeIp;
+        bytes({0xcd, 0x97});
+        ctx.codeIp = TEST_CODE_ADDRESS + target;
+        bytes({0x47}); // target must not run before the polling exit
+        if (call) bytes({0xc3});
+        bytes({0xcd, 0x97});
+        for (U32 address : {TEST_CODE_ADDRESS + target, continuation, TEST_CODE_ADDRESS}) {
+            auto* op = cpu->getOp(address, 0); if (!op->pfnJitCode) startNewJIT(cpu, address, op);
+        }
+        auto* entry = ctx.memory->getDecodedOp(TEST_CODE_ADDRESS);
+        if (!entry || !entry->pfnJitCode) { testFail("ARM poll state setup"); continue; }
+        cpu->jitSignalPending.store(1, std::memory_order_release);
+        entry->pfn(cpu, entry);
+        cpu->jitSignalPending.store(0, std::memory_order_release);
+        U32 expectedSp = call ? beforeSp - 4 : beforeSp + (kind == 4 ? 4 : kind == 5 ? 16 : 0);
+        cpu->fillFlags();
+        if (cpu->eip.u32 != target || cpu->reg[0].u32 != target || cpu->reg[6].u32 != 1 || cpu->reg[7].u32 ||
+                cpu->reg[4].u32 != expectedSp || cpu->nextOp || (cpu->flags & FMASK_TEST) != CF ||
+                cpu->fpu.top != 6 || cpu->fpu.getF64(cpu->fpu.STV(0)) != 2.0)
+            testFail("ARM poll exit state kind=%u eip=%x esi=%u edi=%u esp=%x expected=%x flags=%x top=%u", kind,
+                cpu->eip.u32, cpu->reg[6].u32, cpu->reg[7].u32, cpu->reg[4].u32, expectedSp, cpu->flags, cpu->fpu.top);
+        for (U32 lane = 0; lane < 4; ++lane) if (cpu->xmm[0].pi.u32[lane] != 30 + 2 * lane)
+            testFail("ARM poll exit lost SIMD state");
+        testRunCPU();
+        if (cpu->reg[6].u32 != 1 || cpu->reg[7].u32 != 1 || cpu->reg[4].u32 != (call ? beforeSp : expectedSp) ||
+                cpu->fpu.top != 6 || cpu->fpu.getF64(cpu->fpu.STV(0)) != 2.0)
+            testFail("ARM poll restart replayed or lost state kind=%u", kind);
+    }
+    testNewInstruction(0);
+    constexpr U32 loops = 2048;
+    for (U32 i = 0; i < loops; ++i) {
+        bytes({0xb9}); testPushCode32(1); // mov ecx,1
+        bytes({0x49, 0x75, 0xfd}); // dec ecx; jnz dec
+    }
+    bytes({0x39, 0xc0, 0xcd, 0x97});
+    auto* large = cpu->getOp(TEST_CODE_ADDRESS, 0);
+    U32 beforeFallbacks = armJitLargePollFallbackCount();
+    startNewJIT(cpu, TEST_CODE_ADDRESS, large);
+    if (!large->pfnJitCode) testFail("ARM large poll block did not compile");
+    if (!std::getenv("BOXEDWINE_ARM_INLINE_POLL") && armJitLargePollFallbackCount() <= beforeFallbacks)
+        testFail("ARM large poll block did not exercise the size fallback");
+    testRunCPU();
+    if (cpu->reg[1].u32 || cpu->reg[4].u32 != 4096) testFail("ARM large poll block lost restart state");
+
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (std::getenv("BOXEDWINE_ARM_MEMORY_EXIT_COLD")) {
+        testNewInstruction(0);
+        cpu->reg[6].u32=0x100;
+        ctx.memory->writed(TEST_HEAP_ADDRESS+0x100,0x12345678);
+        // Keep each decoded chain below its 1,000-op cap, then let the JIT
+        // join the chains. Otherwise a long straight-line test stops before
+        // its cold section can exceed 32 KiB. JNZ +0 has identical successors.
+        std::vector<U32> segments;
+        for(U32 group=0;group<32;++group) {
+            segments.push_back(ctx.codeIp);
+            for(U32 i=0;i<128;++i)bytes({0x8b,0x06}); // MOV EAX,[ESI]
+            bytes({0x75,0x00});
+        }
+        bytes({0x39,0xff,0xcd,0x97});
+        for(U32 address:segments) {
+            for(auto* op=cpu->getOp(address,0);op&&op->inst!=TestEnd&&op->inst!=Done;op=op->next)
+                op->exceptionCount=255;
+        }
+        auto* entry=cpu->getOp(TEST_CODE_ADDRESS,0);
+        beforeFallbacks=armJitLargePollFallbackCount();
+        startNewJIT(cpu,TEST_CODE_ADDRESS,entry);
+        if(!entry->pfnJitCode||armJitLargePollFallbackCount()<=beforeFallbacks)
+            testFail("ARM large memory-exit block did not exercise size fallback");
+        cpu->nextOp=entry;U32 dispatches=0;
+        do {cpu->run();if(++dispatches>4096){testFail("ARM large memory-exit dispatch limit");break;}}
+            while(!cpu->nextOp||cpu->nextOp->inst!=TestEnd);
+        if(cpu->reg[0].u32!=0x12345678||cpu->reg[6].u32!=0x100||cpu->reg[4].u32!=4096)
+            testFail("ARM large memory-exit block lost state");
+    }
+#endif
+#endif
 }
 
 void testJitSignalPendingReset() {

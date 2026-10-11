@@ -1172,6 +1172,11 @@ protected:
     std::array<bool, WASM_GP_LOCAL_COUNT> m_gpDirty{};
     bool m_preserveCpuRegisterState = false;
     DecodedOp* m_forwardedResultConsumer = nullptr;
+    U32 m_forwardedResultEndEip = 0;
+    U32 findFlagResultForwardEnd(DecodedOp* producer) const;
+    // Actual published CPU state, distinct from the current flag formula.
+    LazyFlagType m_publishedLazyFlagType = FLAGS_NULL;
+    bool canKeepPublishedFlagType(DecodedOp* op) const;
     void pushLazyFlagResult();
     std::array<bool, 4> m_segLoaded{};
     std::array<bool, WASM_XMM_LOCAL_COUNT> m_xmmLoaded{};

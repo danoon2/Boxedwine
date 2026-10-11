@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include <array>
 #include <chrono>
 
 #ifdef BOXEDWINE_JIT
@@ -726,6 +727,15 @@ JitConditional JitCodeGen::getSetConditionFromOp(DecodedOp* op) {
     return JitConditional::O;
 }
 
+U32 JitCodeGen::getDirectFlagWindow() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    static const bool narrow = std::getenv("BOXEDWINE_ARM_FLAG_WINDOW_SLOW") != nullptr;
+    return narrow ? 8 : 32;
+#else
+    return 8;
+#endif
+}
+
 enum class DirectType {
     None,
     Jump,
@@ -733,14 +743,96 @@ enum class DirectType {
     SetCC
 };
 
+#ifdef BOXEDWINE_JIT_ARMV8
+static bool canExtendDirectFlagWindow(DecodedOp* op) {
+    if (std::getenv("BOXEDWINE_ARM_FLAG_WINDOW_LEA")) return true;
+    // The longer window helps across copies. Address calculations can leave
+    // the loop limited by a value dependency, where the wider fusion did not
+    // help in measurements. Keep their established eight-instruction budget.
+    switch (op->inst) {
+    case MovR8R8: case MovR16R16: case MovR32R32:
+    case MovR8I8: case MovR16I16: case MovR32I32:
+        return true;
+    default: return false;
+    }
+}
+
+bool JitCodeGen::tryDirectConsumers(DecodedOp* producer, const std::function<void()>& callback,
+        U32 supportedFlags, U32 producerOffset, U32 minimumConsumers) {
+    if (std::getenv("BOXEDWINE_JIT_FLAG_CHAIN_SLOW")) return false;
+    struct Entry { DecodedOp* op; DirectType type; JitConditional condition; U32 eip; };
+    std::array<Entry, 32> entries{};
+    U32 limit = getDirectFlagWindow();
+    U32 entryCount = 0;
+    U32 eip = currentEip + producerOffset + producer->len;
+    U32 replacedFlags = FMASK_TEST;
+    if ((producer->inst == IncR8 || producer->inst == DecR8 || producer->inst == IncR16 || producer->inst == DecR16 || producer->inst == IncR32 || producer->inst == DecR32) && !std::getenv("BOXEDWINE_JIT_PRESERVED_CF_SLOW"))
+        replacedFlags &= ~CF;
+    unsigned consumers = 0;
+    bool complete = false;
+    for (DecodedOp* op = producer->next; op && entryCount < limit; eip += op->len, op = op->next) {
+        const auto& info = instructionInfo[op->inst];
+        if (eip > lastOpEip || (op->flags2 & OP_FLAG2_JUMP_TARGET) || info.readMemWidth || info.writeMemWidth) break;
+        Entry entry{op, DirectType::None, JitConditional::O, eip};
+        if (op->isJumpCC()) { entry.type = DirectType::Jump; entry.condition = getJumpConditionFromOp(op); }
+        else if (op->isCMovCC()) { entry.type = DirectType::CMov; entry.condition = getCmovConditionFromOp(op); }
+        else if (op->isSetCC()) { entry.type = DirectType::SetCC; entry.condition = getSetConditionFromOp(op); }
+        if (entry.type != DirectType::None) {
+            if ((info.flagsUsed & FMASK_TEST & ~supportedFlags) || !supportsDirectCondition(entry.condition)) break;
+            ++consumers;
+            entries[entryCount++] = entry;
+            if (!op->getNeededFlagsAfter(replacedFlags)) { complete = consumers >= minimumConsumers; break; }
+            if (entry.type == DirectType::Jump) break;
+        } else {
+            if (info.flagsSets || (info.flagsUsed & FMASK_TEST) || directDoesAffectFlags(op)) break;
+            if (!canExtendDirectFlagWindow(op)) limit = std::min(limit, 8u);
+            if (entryCount >= limit) break;
+            entries[entryCount++] = entry;
+        }
+    }
+    if (!complete) return false;
+    const Entry& last = entries[entryCount - 1];
+    if (last.type == DirectType::Jump) {
+        if (!canJumpInBlock(last.eip, last.op)) return false;
+        if (last.eip + last.op->len + last.op->imm <= last.eip) exitToRunLoopIfNeeded(currentEip);
+    }
+    callback();
+    postCompile(producer);
+    for (U32 i = 0; i < entryCount; ++i) {
+        const auto& entry = entries[i];
+        preCompile(entry.op, true);
+        switch (entry.type) {
+        case DirectType::None: compile(entry.op); break;
+        case DirectType::Jump: direct_jump(entry.condition, entry.eip + entry.op->len + entry.op->imm); break;
+        case DirectType::CMov: {
+            JitWidth width = entry.op->inst >= CmovO_R32R32 ? JitWidth::b32 : JitWidth::b16;
+            direct_cmov(width, entry.condition, getReg(entry.op->reg), getReadOnlyReg(entry.op->rm));
+            break;
+        }
+        case DirectType::SetCC: direct_setcc(entry.condition, getReg8(entry.op->reg, false)); break;
+        }
+        if (i + 1 < entryCount) postCompile(entry.op);
+    }
+    skipToOp = last.op;
+    return true;
+}
+
+#endif
+
 void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback, U32 supportedFlags) {
+#ifdef BOXEDWINE_JIT_ARMV8
+    if (tryDirectConsumers(op, callback, supportedFlags)) return;
+#endif
     DecodedOp* nextOp = op->next;
     U32 skipped = 0;
     DirectType directType = DirectType::None;
     JitConditional cond = JitConditional::O;
     bool pollForRunLoop = false;
 
-    for (int i = 0; i < 8 && nextOp; i++) {
+    U32 scanEip = currentEip + op->len;
+    U32 limit = getDirectFlagWindow();
+    for (U32 i = 0; i < limit && nextOp; i++) {
+        if (scanEip > lastOpEip) break;
         if (nextOp->flags2 & OP_FLAG2_JUMP_TARGET) {
             break;
         }
@@ -774,11 +866,24 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
         if (directDoesAffectFlags(nextOp)) {
             break;
         }
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (!canExtendDirectFlagWindow(nextOp)) limit = std::min(limit, 8u);
+        if (i >= limit) break;
+#endif
         skipped++;
+        scanEip += nextOp->len;
         nextOp = nextOp->next;
     }
     U32 unsupportedFlags = directType != DirectType::None ? instructionInfo[nextOp->inst].flagsUsed & FMASK_TEST & ~supportedFlags : 0;
-    if (directType != DirectType::None && !unsupportedFlags && !nextOp->getNeededFlagsAfter(FMASK_TEST) && supportsDirectCondition(cond)) {
+    U32 replacedFlags = FMASK_TEST;
+#ifdef BOXEDWINE_JIT_ARMV8
+    // Direct INC/DEC leaves the cached lazy-flag state intact. Carry may stay
+    // live because these instructions preserve it; only their new flags need
+    // to be dead after the fused consumer.
+    if ((op->inst == IncR8 || op->inst == DecR8 || op->inst == IncR16 || op->inst == DecR16 || op->inst == IncR32 || op->inst == DecR32) && !std::getenv("BOXEDWINE_JIT_PRESERVED_CF_SLOW"))
+        replacedFlags &= ~CF;
+#endif
+    if (directType != DirectType::None && !unsupportedFlags && !nextOp->getNeededFlagsAfter(replacedFlags) && supportsDirectCondition(cond)) {
         DecodedOp* nextOp = op->next;
         U32 opEip = currentEip + op->len;
 
@@ -1287,8 +1392,18 @@ bool JitCodeGen::accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage
 }
 
 bool JitCodeGen::jumpToCachedJitEntry(U32 eip) {
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+#ifdef BOXEDWINE_JIT_ARMV8
+    auto& cache = getMemData(cpu->memory)->opCache;
+    // Targets in the same guest page already share a compact flat-table leaf.
+    // Reserve separate cells for branches that would otherwise touch sparse
+    // leaves. This choice is made while translating, with no extra hot code.
+    const bool local = ((currentEip ^ eip) >> K_PAGE_SHIFT) == 0 &&
+        !std::getenv("BOXEDWINE_ARM_LOCAL_DIRECT_SLOW");
+    void** entry = local ? cache.getJitEntryLocation(eip) : cache.getDirectJitEntryLocation(eip);
+#else
     void** entry = getMemData(cpu->memory)->opCache.getJitEntryLocation(eip);
+#endif
     if (entry) {
         RegPtr jit = getTmpReg();
         movValue(DYN_PTR, jit, (DYN_PTR_SIZE)entry);
@@ -1411,7 +1526,7 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
     RegPtr pageReg = getTmpReg();
     shrValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_SHIFT);
 
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     if (getMemData(cpu->memory)->opCache.getJitPageGroups()) {
         RegPtr groupReg = getTmpReg();
         shrValueWithDest(JitWidth::b32, groupReg, pageReg, 10);
@@ -1420,7 +1535,15 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
         andValue(JitWidth::b32, pageReg, 0x3ff);
         readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
         If(DYN_PTR, tmp); {
-            andValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_MASK);
+#ifdef BOXEDWINE_JIT_ARMV8
+            if (getMemData(cpu->memory)->opCache.hasFlatJitHash()) {
+                shrValueWithDest(JitWidth::b32, pageReg, eipReg,
+                    getMemData(cpu->memory)->opCache.getFlatJitHashShift());
+                xorReg(JitWidth::b32, pageReg, eipReg);
+                andValue(JitWidth::b32, pageReg, K_PAGE_MASK);
+            } else
+#endif
+                andValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_MASK);
             readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
             If(DYN_PTR, tmp); {
                 jmpHost(tmp);
@@ -1661,8 +1784,8 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         } else {
             bufferIndex = getBufferLocation(bufferIndex);
-#ifdef BOXEDWINE_JIT_X64
-            if (!nextOp->jitEntrySlot) {
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+            if (!nextOp->getJitEntrySlot()) {
                 getMemData(cpu->memory)->opCache.getJitEntryLocation(address);
             }
 #endif
@@ -2910,6 +3033,16 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         resultReg = getTmpReg8();
     }
     U32 flagWidth = lazyFlags[currentLazyFlags] ? lazyFlags[currentLazyFlags]->width : 0;
+    bool clearsOverflow = false;
+    switch (currentLazyFlags) {
+    case FLAGS_AND8: case FLAGS_AND16: case FLAGS_AND32:
+    case FLAGS_OR8: case FLAGS_OR16: case FLAGS_OR32:
+    case FLAGS_XOR8: case FLAGS_XOR16: case FLAGS_XOR32:
+    case FLAGS_TEST8: case FLAGS_TEST16: case FLAGS_TEST32:
+        clearsOverflow = !std::getenv("BOXEDWINE_JIT_LOGICAL_CC_SLOW");
+        break;
+    default: break;
+    }
     IfEqual(JitWidth::b32, getLazyFlagType(), currentLazyFlags);
     switch (condition) {
     case JitConditional::NO:
@@ -2999,7 +3132,10 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         genPF(resultReg);
         break;
     case JitConditional::NL:
-        if (currentLazyFlags == FLAGS_SUB8) {
+        if (clearsOverflow) {
+            compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(), 0,
+                JitEvaluate::GREATER_THAN_EQUAL_SIGNED, resultReg);
+        } else if (currentLazyFlags == FLAGS_SUB8) {
             compareReg(JitWidth::b8, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::GREATER_THAN_EQUAL_SIGNED, resultReg);
         } else if (currentLazyFlags == FLAGS_SUB16) {
             compareReg(JitWidth::b16, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::GREATER_THAN_EQUAL_SIGNED, resultReg);
@@ -3016,7 +3152,20 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         }
         break;
     case JitConditional::L: {
-        if (currentLazyFlags == FLAGS_SUB8) {
+        if (clearsOverflow) {
+#ifdef BOXEDWINE_JIT_ARMV8
+            // Logical operations clear OF, so L is simply the result's sign.
+            // Extracting that bit avoids a sign extension and native compare.
+            if (!std::getenv("BOXEDWINE_ARM_LOGICAL_SIGN_SLOW")) {
+                shrValueWithDest(JitWidth::b32, resultReg, getFlagResultReadOnly(), flagWidth - 1);
+                if (flagWidth != 32) andValue(JitWidth::b32, resultReg, 1);
+            } else
+#endif
+            {
+                compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(), 0,
+                    JitEvaluate::LESS_THAN_SIGNED, resultReg);
+            }
+        } else if (currentLazyFlags == FLAGS_SUB8) {
             compareReg(JitWidth::b8, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_SIGNED, resultReg);
         } else if (currentLazyFlags == FLAGS_SUB16) {
             compareReg(JitWidth::b16, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_SIGNED, resultReg);
@@ -3034,7 +3183,22 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         break;
     }
     case JitConditional::NLE:
-        if (currentLazyFlags == FLAGS_SUB8) {
+        if (clearsOverflow) {
+#ifdef BOXEDWINE_JIT_X64
+            // Keep the zero-result shortcut: on the measured x64/Rosetta
+            // path it is cheaper than always calculating the comparison.
+            getFlagResultTmp(resultReg);
+            if (flagWidth != 32) movzx(JitWidth::b32, resultReg, getWidthOfFlags(currentLazyFlags), resultReg);
+            If(getWidthOfFlags(currentLazyFlags), resultReg); {
+                compareValue(getWidthOfFlags(currentLazyFlags), resultReg, 0,
+                    JitEvaluate::GREATER_THAN_SIGNED, resultReg);
+            } EndIf();
+#else
+            // With OF=0, signed conditions compare the narrow result to zero.
+            compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(), 0,
+                JitEvaluate::GREATER_THAN_SIGNED, resultReg);
+#endif
+        } else if (currentLazyFlags == FLAGS_SUB8) {
             compareReg(JitWidth::b8, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::GREATER_THAN_SIGNED, resultReg);
         } else if (currentLazyFlags == FLAGS_SUB16) {
             compareReg(JitWidth::b16, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::GREATER_THAN_SIGNED, resultReg);
@@ -3056,7 +3220,21 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         }
         break;
     case JitConditional::LE: {
-        if (currentLazyFlags == FLAGS_SUB8) {
+        if (clearsOverflow) {
+#ifdef BOXEDWINE_JIT_X64
+            getFlagResultTmp(resultReg);
+            if (flagWidth != 32) movzx(JitWidth::b32, resultReg, getWidthOfFlags(currentLazyFlags), resultReg);
+            If(getWidthOfFlags(currentLazyFlags), resultReg); {
+                compareValue(getWidthOfFlags(currentLazyFlags), resultReg, 0,
+                    JitEvaluate::GREATER_THAN_SIGNED, resultReg);
+            } EndIf();
+            xorValue(JitWidth::b32, resultReg, 1);
+#else
+            // With OF=0, signed conditions compare the narrow result to zero.
+            compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(), 0,
+                JitEvaluate::LESS_THAN_EQUAL_SIGNED, resultReg);
+#endif
+        } else if (currentLazyFlags == FLAGS_SUB8) {
             compareReg(JitWidth::b8, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_EQUAL_SIGNED, resultReg);
         } else if (currentLazyFlags == FLAGS_SUB16) {
             compareReg(JitWidth::b16, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_EQUAL_SIGNED, resultReg);

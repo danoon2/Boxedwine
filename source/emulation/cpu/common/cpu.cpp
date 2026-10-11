@@ -176,8 +176,11 @@ void CPU::reset() {
 #ifdef BOXEDWINE_MULTI_THREADED
     decodedOpCacheGlobalEpoch = getMemData(memory)->opCache.getEpochAddress();
 #endif
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     jitEntryPageGroups = getMemData(memory)->opCache.getJitPageGroups();
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    jitFlatEntries = getMemData(memory)->opCache.getFlatJitEntries();
 #endif
 #ifdef BOXEDWINE_JIT
     this->jitSignalPending.store(0, std::memory_order_release);

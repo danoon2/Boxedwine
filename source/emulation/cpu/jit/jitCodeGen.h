@@ -51,6 +51,12 @@ public:
     void compile(DecodedOp* op) override;
     void postCompile(DecodedOp* op) override;
     void tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback, U32 supportedFlags = FMASK_TEST) override;
+#ifdef BOXEDWINE_JIT_ARMV8
+    // The callback may emit several producers, leaving currentEip at the last.
+    bool tryDirectConsumers(DecodedOp* producer, const std::function<void()>& callback,
+        U32 supportedFlags, U32 producerOffset = 0, U32 minimumConsumers = 2);
+#endif
+    static U32 getDirectFlagWindow();
     virtual bool supportsDirectCondition(JitConditional condition) { return true; }
 
     JitConditional getJumpConditionFromOp(DecodedOp* op);
@@ -158,11 +164,11 @@ public:
     void jumpEip(RegPtr reg) override;
     void jumpInBlock(U32 address) override;
     void exitToRunLoopIfNeeded(U32 eip) override;
-    void exitToRunLoopIfNeeded(RegPtr eip);
+    virtual void exitToRunLoopIfNeeded(RegPtr eip);
 
     void doJIT(U32 address, DecodedOp* op);
     void onTestEnd(DecodedOp* op) override;
-    void jumpToEipIfCached(RegPtr eip);
+    virtual void jumpToEipIfCached(RegPtr eip);
     bool jumpToCachedJitEntry(U32 eip);
     U8* createEmulateSingleOp();    
     U8* createEmulateOpenGL();

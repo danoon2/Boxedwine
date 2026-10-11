@@ -1560,6 +1560,14 @@ typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 #define OP_FLAG2_JUMP_TARGET 4
 #define OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE 8
 #define OP_FLAG2_WASM_JIT_MEM_ARRAYS 16
+#ifdef BOXEDWINE_JIT_ARMV8
+// Backend-private bit; ARM and Wasm code generators are mutually exclusive.
+#define OP_FLAG2_ARM_DUAL_JIT_ENTRY 16
+struct DecodedOpJitEntries {
+    void** flat = nullptr;
+    void** direct = nullptr;
+};
+#endif
 #define OP_FLAG2_WASM_JIT_PENDING 32
 #define OP_FLAG2_WASM_JIT_RELOC_HAZARD 64
 #define OP_FLAG2_DECODED_32BIT 128
@@ -1613,18 +1621,58 @@ public:
     void* pfnJitCode;
     void setJitCode(void* code) {
         pfnJitCode = code;
-#ifdef BOXEDWINE_JIT_X64
-        if (jitEntrySlot) *jitEntrySlot = code;
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+        if (void** slot = getJitEntrySlot()) *slot = code;
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (void** slot = getDirectJitEntrySlot()) *slot = code;
+#endif
 #endif
     }
-#ifdef BOXEDWINE_JIT_X64
-    // Owned by the decoded-page cache. Detach before deferred DecodedOp reuse.
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    // Most instructions need only one slot. Direct-target bindings live in
+    // the cache's stable index nodes, so they add no pointer to every op.
+#ifdef BOXEDWINE_JIT_ARMV8
+    union {
+        void** jitEntrySlot = nullptr;
+        DecodedOpJitEntries* jitEntryBinding;
+    };
+#else
     void** jitEntrySlot = nullptr;
+#endif
+    void** getJitEntrySlot() const {
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (flags2 & OP_FLAG2_ARM_DUAL_JIT_ENTRY) return jitEntryBinding->flat;
+#endif
+        return jitEntrySlot;
+    }
+    void bindJitEntry(void** slot) {
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (flags2 & OP_FLAG2_ARM_DUAL_JIT_ENTRY) jitEntryBinding->flat = slot;
+        else
+#endif
+            jitEntrySlot = slot;
+        if (slot) *slot = pfnJitCode;
+    }
+#ifdef BOXEDWINE_JIT_ARMV8
+    void** getDirectJitEntrySlot() const {
+        return (flags2 & OP_FLAG2_ARM_DUAL_JIT_ENTRY) ? jitEntryBinding->direct : nullptr;
+    }
+    void bindDirectJitEntry(DecodedOpJitEntries* binding) {
+        binding->flat = getJitEntrySlot();
+        jitEntryBinding = binding;
+        flags2 |= OP_FLAG2_ARM_DUAL_JIT_ENTRY;
+        if (binding->direct) *binding->direct = pfnJitCode;
+    }
+#endif
+    // Detach both publications before deferred DecodedOp reuse or leaf release.
     void detachJitEntry() {
-        if (jitEntrySlot) {
-            *jitEntrySlot = nullptr;
-            jitEntrySlot = nullptr;
-        }
+        if (void** slot = getJitEntrySlot()) *slot = nullptr;
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (void** slot = getDirectJitEntrySlot()) *slot = nullptr;
+        if (flags2 & OP_FLAG2_ARM_DUAL_JIT_ENTRY) jitEntryBinding->flat = nullptr;
+        flags2 &= ~OP_FLAG2_ARM_DUAL_JIT_ENTRY;
+#endif
+        jitEntrySlot = nullptr;
     }
 #endif
 #endif
