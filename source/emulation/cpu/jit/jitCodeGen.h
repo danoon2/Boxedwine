@@ -20,6 +20,7 @@
 #define __JIT_CODE_GEN_H__
 
 #include "jit.h"
+#include <set>
 
 // Implementation of JIT that is host instruction independent
 class JitCodeGen : public Jit {
@@ -68,12 +69,16 @@ public:
     virtual void onBlockPreCommit(DecodedOp* op) {}
     // Some interiors require live backend registers. Dispatch those through
     // the interpreter until the next independently enterable instruction.
-    virtual bool isExternalJitEntry(U32 eip) const { return true; }
+    virtual bool isExternalJitEntry(U32 eip) const { return !protectedInternalEntries.count(eip); }
+    // Keep real instruction/fault boundaries while preventing dispatch from
+    // bypassing a proof established earlier in this compiled block.
+    std::set<U32> protectedInternalEntries;
     virtual bool hideTrustedCarryEntry(U32 eip) { return false; }
     virtual bool materializeTrustedCarry(RegPtr result) { return false; }
     // A backend may omit the lazy-type guard only after protecting every
     // independent entry between the producer and this flag consumer.
     virtual bool protectKnownLazyFlagType() { return false; }
+    bool protectCmpLazyFlagType();
     bool canTrustAdjacentAddCarry() const;
     bool protectCarryFallthroughEntries();
     bool isAdc32Consumer(DecodedOp* op) const;

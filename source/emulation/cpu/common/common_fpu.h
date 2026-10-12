@@ -19,6 +19,12 @@
 #ifndef __COMMON_FPU_H__
 #define __COMMON_FPU_H__
 
+// Keep one out-of-line calculation for the interpreter and native JITs.
+// Compilers can commute a multiply in otherwise identical expressions and
+// select different NaN payloads; noinline keeps call sites from diverging.
+NO_INLINE double common_fpuYLog2X(double x, double y);
+NO_INLINE double common_fpuYLog2XPlus1(double x, double y);
+
 #undef FPU_0
 #define FPU_0(name) void common_##name(CPU* cpu);
 #undef FPU_R

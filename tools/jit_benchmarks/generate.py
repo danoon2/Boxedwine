@@ -274,9 +274,34 @@ def cases():
         'lea_mixed': ['lea eax, [ebx+ecx*4-4]', 'lea ebx, [eax+edx*2-8]',
                       'lea ecx, [eax+ebx*8-64]', 'lea edx, [ecx+eax*2-128]'],
         'helper_fsin': ['fld1', 'fsin', 'fstp st0'],
+        'helper_fcos': ['fld1', 'fcos', 'fstp st0'],
+        'helper_f2xm1': ['fld1', 'f2xm1', 'fstp st0'],
+        'helper_fptan': ['fld1', 'fptan', 'fstp st0', 'fstp st0'],
+        'helper_fsincos': ['fld1', 'fsincos', 'fstp st0', 'fstp st0'],
+        'helper_fyl2x': ['fld1', 'fld1', 'fyl2x', 'fstp st0'],
+        'helper_fyl2xp1': ['fld1', 'fld1', 'fyl2xp1', 'fstp st0'],
+        'helper_fpatan': ['fld1', 'fld1', 'fpatan', 'fstp st0'],
+        'helper_fxam': ['fld1', 'fxam', 'fstp st0'],
+        'helper_fscale': ['fld1', 'fld1', 'fscale', 'fstp st0', 'fstp st0'],
+        'helper_fprem': ['fld1', 'fld1', 'fprem', 'fstp st0', 'fstp st0'],
+        'helper_fxtract': ['fld1', 'fxtract', 'fstp st0', 'fstp st0'],
         'helper_cpuid': ['xor eax, eax', 'cpuid'],
     }.items():
         result[name] = (body * 16, len(body) * 16)
+    # Keep scalar values finite, exercise multiple destinations, and separate
+    # cached x87 calls from the raw-80-bit helper fallback. These kernels are
+    # also useful when comparing native x64 and browser JIT implementations.
+    for name, body in {
+        'scalar_ss_chain': ['addss xmm0, xmm7', 'subss xmm0, xmm7'] * 32,
+        'scalar_ss_parallel': [f'{op} xmm{r}, xmm7' for _ in range(8)
+                               for op in ('addss', 'subss') for r in range(4)],
+        'division_ss_chain': ['divss xmm0, xmm7'] * 64,
+        'division_ps_chain': ['divps xmm0, xmm7'] * 64,
+        'math_fsin_chain': ['fld1'] + ['fsin'] * 16 + ['fstp qword [edi]'],
+        'math_mixed_chain': ['fld1'] + ['fsin', 'fcos'] * 8 + ['fstp qword [edi]'],
+        'math_raw_control': ['fld tword [extended_one]', 'fsin', 'fstp qword [edi]'] * 8,
+    }.items():
+        result[name] = (body, len(body))
     for name in ('vector_load', 'scalar_load', 'double_load'):
         body, _ = result[name]
         remapped = []
@@ -350,6 +375,7 @@ def main():
         data += ['align 16, db 0', 'lane_input_' + state + ':',
                  '    dd ' + ', '.join(value for i in range(4) for value in (f'{17+i}.0', high))]
     data += ['lane_input_integers: dd 17, 18, 19, 20']
+    data += ['align 16, db 0', 'extended_one: dq 0x8000000000000000', '    dw 0x3fff']
     template = template.replace('; BENCHMARK_DATA', '\n'.join(data))
     manifest = {}
     for name, (body, operations) in cases().items():

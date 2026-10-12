@@ -1,4 +1,4 @@
-# ARM64 JIT benchmarks
+# JIT benchmarks
 
 These small, freestanding i386 programs measure generated instruction sequences
 without a Windows installation, compiler optimization, or application startup in
@@ -34,6 +34,17 @@ Use `--build-env after:VARIABLE=VALUE` to compare an existing optional code path
 without rebuilding. Environment variables are inherited, so start comparisons
 with known Boxedwine settings. Several Boxedwine switches test for presence,
 rather than whether a value is `0`.
+
+For x64/Wasm portability experiments, `known_flags_*` covers comparison proofs,
+`division_*` covers repeated SSE exception checks, `scalar_ss_*` covers low-lane
+arithmetic, and `math_*` covers cached and raw x87 math. Compare one executable
+against itself with the relevant fallback control present on the baseline:
+`BOXEDWINE_X64_KNOWN_FLAGS_SLOW`, `BOXEDWINE_JIT_DIV_GUARDS_SLOW` (Wasm),
+`BOXEDWINE_WASM_SCALAR_REGION_SLOW`, or `BOXEDWINE_X64_FPU_HELPERS_SLOW`.
+`BOXEDWINE_X64_CACHED_MATH_SLOW` isolates cached math from direct helper calls.
+Use the same environment policy when creating each browser runtime, and disable
+persistent module replay for those experiments. These are translation controls;
+changing one does not replace blocks that have already been compiled.
 
 Shuffle cases include dependent chains, independent register streams, distinct
 inputs, and a mixed vector transform. Memory cases include loads, stores, copies,

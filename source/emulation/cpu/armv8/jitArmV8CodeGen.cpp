@@ -258,7 +258,7 @@ public:
     bool compileCachedFpuExamine(DecodedOp* op);
     bool compilePureFpuHelper(DecodedOp* op);
     bool isExternalJitEntry(U32 eip) const override {
-        return !fpuInternalEntries.count(eip) && !scalarInternalEntries.count(eip) && !flagInternalEntries.count(eip);
+        return JitCodeGen::isExternalJitEntry(eip) && !fpuInternalEntries.count(eip) && !scalarInternalEntries.count(eip) && !flagInternalEntries.count(eip);
     }
     bool protectKnownLazyFlagType() override;
     bool knownLazyTypeEnabled = std::getenv("BOXEDWINE_ARM_KNOWN_LAZY_TYPE_SLOW") == nullptr;
@@ -1021,50 +1021,7 @@ bool JitArmV8CodeGen::canCacheFpuOp(DecodedOp* op) const {
 
 
 bool JitArmV8CodeGen::protectKnownLazyFlagType() {
-    if (!knownLazyTypeEnabled || !currentOp || currentOp->lock ||
-        (currentOp->flags2 & OP_FLAG2_JUMP_TARGET) ||
-        currentLazyFlags != FLAGS_SUB32) return false;
-    const size_t consumer = findBlockInstruction(currentEip);
-    U32 consumerLocation = 0;
-    if (!consumer || consumer == blockInstructions.size() ||
-        !eipToBufferPos.get(currentEip, consumerLocation) || consumerLocation == SKIPPED_OP) return false;
-    size_t index = consumer;
-    while (index && consumer - index <= 16) {
-        const auto& previous = blockInstructions[index - 1];
-        const auto& following = blockInstructions[index];
-        U32 location = 0;
-        if (previous.eip + previous.op->len != following.eip || previous.op->next != following.op ||
-            previous.op->lock || !eipToBufferPos.get(previous.eip, location) || location == SKIPPED_OP)
-            return false;
-        U32 producedType = FLAGS_NULL;
-        switch (previous.op->inst) {
-        case CmpR32E32: case CmpE32R32: case CmpR32R32: case CmpR32I32: case CmpE32I32:
-            producedType = FLAGS_SUB32; break;
-        default: break;
-        }
-        if (producedType != FLAGS_NULL) {
-            if (producedType != currentLazyFlags) return false;
-            // Keep real fault boundaries and the ordinary lazy registers.
-            // Entry promotion recompiles an interior without this proof.
-            for (size_t entry = index; entry <= consumer; ++entry)
-                flagInternalEntries.insert(blockInstructions[entry].eip);
-            return true;
-        }
-        if (previous.op->flags2 & OP_FLAG2_JUMP_TARGET) return false;
-        switch (previous.op->inst) {
-        case Nop:
-        case MovR8R8: case MovR8I8: case MovR8E8: case MovE8R8: case MovE8I8:
-        case MovR16R16: case MovR16I16: case MovR16E16: case MovE16R16: case MovE16I16:
-        case MovR32R32: case MovR32I32: case MovR32E32: case MovE32R32: case MovE32I32:
-        case LeaR16: case LeaR32:
-        case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
-        case MovdqaXmmXmm: case MovdquXmmXmm:
-            break;
-        default: return false;
-        }
-        --index;
-    }
-    return false;
+    return knownLazyTypeEnabled && protectCmpLazyFlagType();
 }
 
 bool JitArmV8CodeGen::canTrackScalarZero(DecodedOp* op) const {
@@ -1792,9 +1749,6 @@ void JitArmV8CodeGen::compile(DecodedOp* op) {
 }
 
 static double armFpuExp2Minus1(double value) { return std::pow(2.0, value) - 1; }
-// Keep the common FPU's operation order, including division after multiplication.
-static double armFpuYLog2X(double x, double y) { return y * std::log(x) / std::log(2.0); }
-static double armFpuYLog2XPlus1(double x, double y) { return y * std::log(x + 1.0) / std::log(2.0); }
 static double armFpuAtanYX(double x, double y) { return std::atan2(y, x); }
 
 bool JitArmV8CodeGen::compileCachedMathRegion(DecodedOp* op) {
@@ -1953,8 +1907,8 @@ bool JitArmV8CodeGen::compilePureFpuHelper(DecodedOp* op) {
             if (xReg < 8 || xReg > 15 || yReg < 8 || yReg > 15 || xReg == yReg)
                 kpanic("ARM cached binary math requires distinct saved D registers");
             auto saved = saveFpuTemporaries();
-            auto function = op->inst == FYL2X ? armFpuYLog2X :
-                op->inst == FYL2XP1 ? armFpuYLog2XPlus1 : armFpuAtanYX;
+            auto function = op->inst == FYL2X ? common_fpuYLog2X :
+                op->inst == FYL2XP1 ? common_fpuYLog2XPlus1 : armFpuAtanYX;
             compiler.blr(xWriteCacheToCPU);
             compiler.fmov(asmjit::a64::d0, Vec::make_d(xReg));
             compiler.fmov(asmjit::a64::d1, Vec::make_d(yReg));

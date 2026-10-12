@@ -3297,6 +3297,53 @@ RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
     return calculateCondition(condition, resultReg);
 }
 
+bool JitCodeGen::protectCmpLazyFlagType() {
+    if (!currentOp || currentOp->lock ||
+        (currentOp->flags2 & OP_FLAG2_JUMP_TARGET) ||
+        currentLazyFlags != FLAGS_SUB32) return false;
+    const size_t consumer = findBlockInstruction(currentEip);
+    U32 consumerLocation = 0;
+    if (!consumer || consumer == blockInstructions.size() ||
+        !eipToBufferPos.get(currentEip, consumerLocation) || consumerLocation == SKIPPED_OP) return false;
+    size_t index = consumer;
+    while (index && consumer - index <= 16) {
+        const auto& previous = blockInstructions[index - 1];
+        const auto& following = blockInstructions[index];
+        U32 location = 0;
+        if (previous.eip + previous.op->len != following.eip || previous.op->next != following.op ||
+            previous.op->lock || !eipToBufferPos.get(previous.eip, location) || location == SKIPPED_OP)
+            return false;
+        U32 producedType = FLAGS_NULL;
+        switch (previous.op->inst) {
+        case CmpR32E32: case CmpE32R32: case CmpR32R32: case CmpR32I32: case CmpE32I32:
+            producedType = FLAGS_SUB32; break;
+        default: break;
+        }
+        if (producedType != FLAGS_NULL) {
+            if (producedType != currentLazyFlags) return false;
+            // Keep real fault boundaries and the ordinary lazy registers.
+            // Entry promotion recompiles an interior without this proof.
+            for (size_t entry = index; entry <= consumer; ++entry)
+                protectedInternalEntries.insert(blockInstructions[entry].eip);
+            return true;
+        }
+        if (previous.op->flags2 & OP_FLAG2_JUMP_TARGET) return false;
+        switch (previous.op->inst) {
+        case Nop:
+        case MovR8R8: case MovR8I8: case MovR8E8: case MovE8R8: case MovE8I8:
+        case MovR16R16: case MovR16I16: case MovR16E16: case MovE16R16: case MovE16I16:
+        case MovR32R32: case MovR32I32: case MovR32E32: case MovE32R32: case MovE32I32:
+        case LeaR16: case LeaR32:
+        case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+        case MovdqaXmmXmm: case MovdquXmmXmm:
+            break;
+        default: return false;
+        }
+        --index;
+    }
+    return false;
+}
+
 RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg) {
     if (!resultReg) {
         resultReg = getTmpReg8();

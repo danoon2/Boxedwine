@@ -20,16 +20,55 @@
 
 #ifdef BOXEDWINE_JIT
 #include "jitSSE.h"
+#include <cstdlib>
 
 static constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
 static constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
 static constexpr U32 MXCSR_DIV_EXCEPTION_MASKS = MXCSR_INVALID_OPERATION_MASK | MXCSR_DIVIDE_BY_ZERO_MASK;
 
 void JitSSE::guardSseDiv() {
+    if (reuseSseDivGuard()) return;
     RegPtr exceptionsUnmasked = readCPU(JitWidth::b32, offsetof(CPU, sseDivExceptionsUnmasked));
     If(JitWidth::b32, exceptionsUnmasked); {
-        emulateSingleOp();
+        emitSseDivSlowPath();
     } EndIf();
+    lastSseDivGuardEip = currentEip;
+    hasSseDivGuard = true;
+}
+
+bool JitSSE::reuseSseDivGuard() {
+#ifndef BOXEDWINE_WASM_JIT
+    // Wasm benefits from coalescing these checks. Native x64 measurements
+    // showed no gain; ARM already handles this in its scalar-region emitter.
+    return false;
+#endif
+    if (!hasSseDivGuard || std::getenv("BOXEDWINE_JIT_DIV_GUARDS_SLOW")) return false;
+    const size_t first = findBlockInstruction(lastSseDivGuardEip);
+    const size_t last = findBlockInstruction(currentEip);
+    if (first >= last || last >= blockInstructions.size() || last - first > 64) return false;
+    for (size_t i = first; i <= last; ++i) {
+        const auto& entry = blockInstructions[i];
+        auto* op = entry.op;
+        U32 location = 0;
+        if (op->lock || (i != first && (op->flags2 & OP_FLAG2_JUMP_TARGET)) ||
+            !eipToBufferPos.get(entry.eip, location) || location == SKIPPED_OP ||
+            (i != first && (blockInstructions[i - 1].op->next != op ||
+                blockInstructions[i - 1].eip + blockInstructions[i - 1].op->len != entry.eip))) return false;
+        // Register-only operations with no helper, fault, MXCSR write or guest
+        // control transfer. Memory forms deliberately retain their own guard.
+        switch (op->inst) {
+        case AddssXmm: case SubssXmm: case MulssXmm: case DivssXmm: case SqrtssXmm:
+        case AddpsXmm: case SubpsXmm: case MulpsXmm: case DivpsXmm: case SqrtpsXmm:
+        case AddsdXmmXmm: case SubsdXmmXmm: case MulsdXmmXmm: case DivsdXmmXmm: case SqrtsdXmmXmm:
+        case MovssXmmXmm: case MovsdXmmXmm:
+        case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+        case MovdqaXmmXmm: case MovdquXmmXmm: case Nop:
+            break;
+        default: return false;
+        }
+    }
+    for (size_t i = first + 1; i <= last; ++i) protectedInternalEntries.insert(blockInstructions[i].eip);
+    return true;
 }
 
 void JitSSE::updateSseDivExceptionState() {

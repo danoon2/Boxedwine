@@ -113,6 +113,10 @@ public:
 	virtual void ldmxcsr(MemPtr address) = 0;
 
 	void guardSseDiv();
+    virtual void emitSseDivSlowPath() { emulateSingleOp(); }
+    bool reuseSseDivGuard();
+    U32 lastSseDivGuardEip = 0;
+    bool hasSseDivGuard = false;
 	void updateSseDivExceptionState();
 
 	void dynamic_addpsXmm(DecodedOp* op) override { opXmmXmm(op, &JitSSE::addpsXmmXmm); }

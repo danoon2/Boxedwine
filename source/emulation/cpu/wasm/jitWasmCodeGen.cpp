@@ -14538,7 +14538,112 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
 #endif
 }
 
+void JitWasmCodeGen::emitSseDivSlowPath() {
+    // The interpreter executes this DIVSS/DIVPS, including any exception.
+    // Always leave afterwards; falling through would execute it twice. Keep
+    // the compiler's hot-path cache state intact across the cold branch.
+    auto gpLoaded = m_gpLoaded, gpDirty = m_gpDirty;
+    auto xmmLoaded = m_xmmLoaded, xmmDirty = m_xmmDirty;
+    auto segLoaded = m_segLoaded;
+    auto fpu = fpuStackCache;
+    auto lazy = currentLazyFlags, published = m_publishedLazyFlagType;
+    bool emulated = m_emulatedCurrentOp;
+    emulateSingleOp();
+    blockExit();
+    m_gpLoaded = gpLoaded; m_gpDirty = gpDirty;
+    m_xmmLoaded = xmmLoaded; m_xmmDirty = xmmDirty;
+    m_segLoaded = segLoaded;
+    fpuStackCache = fpu;
+    currentLazyFlags = lazy; m_publishedLazyFlagType = published;
+    m_emulatedCurrentOp = emulated;
+}
+
+bool JitWasmCodeGen::compileScalarSseRegion(DecodedOp* op) {
+    if (std::getenv("BOXEDWINE_WASM_SCALAR_REGION_SLOW")) return false;
+    auto width = [](DecodedOp* cur) -> U32 {
+        if (!cur || cur->lock) return 0;
+        switch (cur->inst) {
+        case AddssXmm: case SubssXmm: case MulssXmm: case DivssXmm:
+        case SqrtssXmm: case MovssXmmXmm: return 32;
+        case AddsdXmmXmm: case SubsdXmmXmm: case MulsdXmmXmm: case DivsdXmmXmm:
+        case SqrtsdXmmXmm: case MovsdXmmXmm: return 64;
+        default: return 0;
+        }
+    };
+    const U32 bits = width(op);
+    if (!bits) return false;
+    std::array<DecodedOp*, 64> region{};
+    U32 count = 0, eip = currentEip, destinations = 0, arithmetic = 0;
+    for (auto* cur = op; cur && count < region.size(); eip += cur->len, cur = cur->next) {
+        if (eip > lastOpEip || (count && (cur->flags2 & OP_FLAG2_JUMP_TARGET)) || width(cur) != bits) break;
+        region[count++] = cur;
+        destinations |= 1u << cur->reg;
+        arithmetic += cur->inst != MovssXmmXmm && cur->inst != MovsdXmmXmm;
+    }
+    U32 destinationCount = 0;
+    for (U8 r = 0; r < 8; ++r) if (destinations & (1u << r)) ++destinationCount;
+    if (count < 2 || arithmetic <= destinationCount) return false;
+
+    // Vector temporaries hold the live low lanes. Their upper lanes are never
+    // observed. This retains the existing SIMD arithmetic/NaN behavior while
+    // removing extract/replace pairs between consecutive scalar operations.
+    std::array<SSERegPtr, 8> values{};
+    auto merge = [&]() {
+        for (U8 r = 0; r < 8; ++r) if (values[r]) {
+            auto dst = loadCpuXMMReg(r);
+            m_emitter.emitLocalGet(dst->hardwareReg());
+            m_emitter.emitLocalGet(values[r]->hardwareReg());
+            m_emitter.emitSimdLaneOp(bits == 32 ? WASM_SIMD_F32X4_EXTRACT_LANE : WASM_SIMD_F64X2_EXTRACT_LANE, 0);
+            m_emitter.emitSimdLaneOp(bits == 32 ? WASM_SIMD_F32X4_REPLACE_LANE : WASM_SIMD_F64X2_REPLACE_LANE, 0);
+            m_emitter.emitLocalSet(dst->hardwareReg());
+            storeCpuXMMReg(dst, r);
+            values[r].reset();
+        }
+    };
+    bool divisionGuarded = false;
+    for (U32 i = 0; i < count; ++i) {
+        auto* cur = region[i];
+        if (i) {
+            preCompile(cur);
+            protectedInternalEntries.insert(currentEip);
+        }
+        for (const auto& value : values) if (value)
+            m_v128ScratchInUse[value->hardwareReg() - WASM_V128_LOCAL_BASE] = true;
+        if (cur->inst == DivssXmm && (!divisionGuarded || std::getenv("BOXEDWINE_JIT_DIV_GUARDS_SLOW"))) {
+            merge(); // publish preceding results at the exact exception boundary
+            guardSseDiv();
+            divisionGuarded = true;
+        }
+        auto lhs = values[cur->reg] ? values[cur->reg] : loadCpuXMMReg(cur->reg);
+        auto rhs = values[cur->rm] ? values[cur->rm] : loadCpuXMMReg(cur->rm);
+        if (!values[cur->reg]) values[cur->reg] = getTmpSSE();
+        bool unary = cur->inst == SqrtssXmm || cur->inst == SqrtsdXmmXmm;
+        bool move = cur->inst == MovssXmmXmm || cur->inst == MovsdXmmXmm;
+        if (!unary && !move) m_emitter.emitLocalGet(lhs->hardwareReg());
+        m_emitter.emitLocalGet(rhs->hardwareReg());
+        switch (cur->inst) {
+        case AddssXmm: m_emitter.emitSimdOp(WASM_SIMD_F32X4_ADD); break;
+        case SubssXmm: m_emitter.emitSimdOp(WASM_SIMD_F32X4_SUB); break;
+        case MulssXmm: m_emitter.emitSimdOp(WASM_SIMD_F32X4_MUL); break;
+        case DivssXmm: m_emitter.emitSimdOp(WASM_SIMD_F32X4_DIV); break;
+        case SqrtssXmm: m_emitter.emitSimdOp(WASM_SIMD_F32X4_SQRT); break;
+        case AddsdXmmXmm: m_emitter.emitSimdOp(WASM_SIMD_F64X2_ADD); break;
+        case SubsdXmmXmm: m_emitter.emitSimdOp(WASM_SIMD_F64X2_SUB); break;
+        case MulsdXmmXmm: m_emitter.emitSimdOp(WASM_SIMD_F64X2_MUL); break;
+        case DivsdXmmXmm: m_emitter.emitSimdOp(WASM_SIMD_F64X2_DIV); break;
+        case SqrtsdXmmXmm: m_emitter.emitSimdOp(WASM_SIMD_F64X2_SQRT); break;
+        default: break; // scalar move
+        }
+        m_emitter.emitLocalSet(values[cur->reg]->hardwareReg());
+        if (i + 1 < count) postCompile(cur);
+    }
+    merge();
+    skipToOp = region[count - 1];
+    return true;
+}
+
 void JitWasmCodeGen::compile(DecodedOp* op) {
+    if (compileScalarSseRegion(op)) return;
     if (compileCachedFpuOp(op)) return;
     if (op->isBranch()) {
         emitBranchBailoutCheck();

@@ -2738,20 +2738,54 @@ static void testArmMinMaxSelection() {
     }
 }
 
-static void testArmScalarSseRegions() {
+#endif
+
+void testJitScalarSseRegions() {
+#ifdef BOXEDWINE_JIT
     auto& ctx = testContext(); CPU* cpu = ctx.cpu;
     auto runExisting = [&]() {
         cpu->nextOp = cpu->getNextOp();
         U32 dispatches = 0;
         do {
             cpu->run();
-            if (++dispatches > 1024) { testFail("ARM scalar dispatch limit"); break; }
+            if (++dispatches > 1024) { testFail("JIT scalar dispatch limit"); break; }
         } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
     };
     auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
     auto scalar = [&](bool wide, U8 opcode, U8 dst, U8 src) {
         bytes({(U8)(wide ? 0xf2 : 0xf3), 0x0f, opcode, (U8)(0xc0 + (dst << 3) + src)});
     };
+    // An unmasked mode can take the interpreter arm even when the operands
+    // raise no exception. Without cached x87 state, Wasm must still exit that
+    // arm instead of falling through and executing the same division twice.
+    for (bool packed : {false, true}) for (bool unmasked : {false, true}) {
+        testNewInstruction(CF); cpu->fpu.FINIT();
+        cpu->setMxcsr(unmasked ? 0x1d00 : 0x1f80);
+        auto resetLanes = [&]() {
+            for (U32 lane = 0; lane < 4; ++lane) {
+                cpu->xmm[0].pi.u32[lane] = 0x41800000; // 16
+                cpu->xmm[1].pi.u32[lane] = 0x40000000; // 2
+            }
+        };
+        resetLanes();
+        U32 second = 0;
+        for (U32 i = 0; i < 3; ++i) {
+            if (i == 1) second = ctx.codeIp;
+            if (!packed) testPushCode8(0xf3);
+            bytes({0x0f, 0x5e, 0xc1});
+        }
+        testRunCPU();
+        for (U32 lane = 0; lane < 4; ++lane)
+            if (cpu->xmm[0].pi.u32[lane] != (packed || !lane ? 0x40000000u : 0x41800000u))
+                testFail("JIT division fallback executed twice packed=%u unmasked=%u", packed, unmasked);
+        // Re-enter after the formerly dominating check with different MXCSR.
+        resetLanes(); cpu->setMxcsr(0x1d00);
+        cpu->eip.u32 = second - TEST_CODE_ADDRESS; cpu->nextOp = nullptr;
+        runExisting();
+        for (U32 lane = 0; lane < 4; ++lane)
+            if (cpu->xmm[0].pi.u32[lane] != (packed || !lane ? 0x40800000u : 0x41800000u))
+                testFail("JIT division interior bypassed mode check packed=%u", packed);
+    }
     // A DIVSS fallback must observe every pending scalar result and dirty x87
     // value. Repeat with both exception masks, a mode-change boundary, and an
     // independently reachable dividing instruction. NOPs provide the ordinary
@@ -2792,14 +2826,14 @@ static void testArmScalarSseRegions() {
                 U64 value = cpu->xmm[r].pi.u64[lane];
                 if (reference) expected[r][lane] = value;
                 else if (value != expected[r][lane])
-                    testFail("ARM DIVSS region masks=%u dst=%u boundary=%u xmm%u lane%u", masks, dst, boundary, r, lane);
+                    testFail("JIT DIVSS region masks=%u dst=%u boundary=%u xmm%u lane%u", masks, dst, boundary, r, lane);
             }
             if (reference) expectedMxcsr = cpu->mxcsr;
-            else if (cpu->mxcsr != expectedMxcsr) testFail("ARM DIVSS region MXCSR");
+            else if (cpu->mxcsr != expectedMxcsr) testFail("JIT DIVSS region MXCSR");
             cpu->fillFlags();
             if ((cpu->flags & FMASK_TEST) != (CF | PF | AF | ZF | SF | OF) ||
                     ctx.memory->readq(TEST_HEAP_ADDRESS + 0x180) != 0x4000000000000000ull)
-                testFail("ARM DIVSS region flags or x87 state");
+                testFail("JIT DIVSS region flags or x87 state");
         }
     }
     for (bool invalid : {false, true}) {
@@ -2829,14 +2863,14 @@ static void testArmScalarSseRegions() {
         testRunCPU();
         if (action.sigInfo[0] != K_SIGFPE || action.sigInfo[2] != (invalid ? K_FPE_FLTINV : K_FPE_FLTDIV) ||
                 action.sigInfo[4] != 19 || action.sigInfo[3] != faultEip)
-            testFail("ARM DIVSS region signal invalid=%u", invalid);
+            testFail("JIT DIVSS region signal invalid=%u", invalid);
         U32 signalContext = ctx.memory->readd(cpu->reg[4].u32 + 12);
         if (ctx.memory->readd(signalContext + 0x4c) != faultEip ||
                 cpu->fpu.getF64(cpu->fpu.STV(0)) != 2.0)
-            testFail("ARM DIVSS region signal EIP or x87 state");
+            testFail("JIT DIVSS region signal EIP or x87 state");
         for (U32 r = 0; r < 8; ++r) for (U32 lane = 0; lane < 2; ++lane)
             if (cpu->xmm[r].pi.u64[lane] != expected[r][lane])
-                testFail("ARM DIVSS region signal xmm%u lane%u invalid=%u", r, lane, invalid);
+                testFail("JIT DIVSS region signal xmm%u lane%u invalid=%u", r, lane, invalid);
         ctx.process->sigActions[K_SIGFPE] = oldAction;
     }
     cpu->setMxcsr(0x1f80);
@@ -2882,20 +2916,20 @@ static void testArmScalarSseRegions() {
             for (U32 r = 0; r < 8; ++r) for (U32 lane = 0; lane < 2; ++lane)
                 cpu->xmm[r].pi.u64[lane] = initial[r][lane];
             testRunCPU();
-            for (U32 r = 0; r < 8; ++r) if (cpu->reg[r].u32 != gp[r]) testFail("ARM scalar region changed GP state");
+            for (U32 r = 0; r < 8; ++r) if (cpu->reg[r].u32 != gp[r]) testFail("JIT scalar region changed GP state");
             for (U32 r = 0; r < 8; ++r) for (U32 lane = 0; lane < 2; ++lane) {
                 U64 value = cpu->xmm[r].pi.u64[lane];
                 if (reference) expected[r][lane] = value;
                 else if (value != expected[r][lane])
-                    testFail("ARM scalar region copies=%u wide=%u trial=%u xmm%u lane%u", fullCopies, wide, trial, r, lane);
+                    testFail("JIT scalar region copies=%u wide=%u trial=%u xmm%u lane%u", fullCopies, wide, trial, r, lane);
                 if (!fullCopies && ((lane == 1 && value != initial[r][lane]) ||
                         (!wide && lane == 0 && (value >> 32) != (initial[r][lane] >> 32))))
-                    testFail("ARM scalar region changed upper lanes");
+                    testFail("JIT scalar region changed upper lanes");
             }
             cpu->fillFlags();
             if ((cpu->flags & FMASK_TEST) != (CF | PF | AF | ZF | SF | OF) ||
                     ctx.memory->readq(TEST_HEAP_ADDRESS + 0x180) != 0x4000000000000000ull)
-                testFail("ARM scalar region changed flags or x87 state");
+                testFail("JIT scalar region changed flags or x87 state");
         }
     }
     // Copies can share a pending low value, but a later write to either
@@ -2938,9 +2972,9 @@ static void testArmScalarSseRegions() {
         testRunCPU();
         for (U32 r = 0; r < 8; ++r) for (U32 lane = 0; lane < 2; ++lane)
             if (cpu->xmm[r].pi.u64[lane] != expected[r][lane])
-                testFail("ARM scalar copy alias form=%u wide=%u xmm%u lane%u", form, wide, r, lane);
+                testFail("JIT scalar copy alias form=%u wide=%u xmm%u lane%u", form, wide, r, lane);
         cpu->fillFlags();
-        if ((cpu->flags & FMASK_TEST) != (CF | PF | AF | ZF | SF | OF)) testFail("ARM scalar copy alias flags");
+        if ((cpu->flags & FMASK_TEST) != (CF | PF | AF | ZF | SF | OF)) testFail("JIT scalar copy alias flags");
     }
     // Full-width copies must observe pending scalar results and copy every
     // upper bit. Exercise materialization, independent entry and invalidation.
@@ -2962,16 +2996,16 @@ static void testArmScalarSseRegions() {
         if (boundary == 1) {
             mapping = ctx.memory->mmap(ctx.thread, 0x64100000, 2 * K_PAGE_SIZE,
                 K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
-            if (mapping != 0x64100000) { testFail("ARM vector-copy mapping"); continue; }
+            if (mapping != 0x64100000) { testFail("JIT vector-copy mapping"); continue; }
             bytes({0xf3, 0x0f, 0x10, 0x1d}); testPushCode32(mapping + K_PAGE_SIZE - 3 - TEST_HEAP_ADDRESS);
         } else if (boundary == 2) bytes({0xd4, 0x0a});
         testRunCPU();
         U64 expected = wide ? (boundary == 3 ? 0x4000000000000000ull : 0x4008000000000000ull) :
             0x1234567800000000ull | (boundary == 3 ? 0x40000000 : 0x40400000);
         if (cpu->xmm[2].pi.u64[0] != expected || cpu->xmm[2].pi.u64[1] != 0xabcdef9876543210ull)
-            testFail("ARM vector copy boundary=%u wide=%u", boundary, wide);
+            testFail("JIT vector copy boundary=%u wide=%u", boundary, wide);
         if (mapping) {
-            if (cpu->xmm[3].pi.u32[0]) testFail("ARM vector-copy first-touch load");
+            if (cpu->xmm[3].pi.u32[0]) testFail("JIT vector-copy first-touch load");
             ctx.memory->unmap(mapping, 2 * K_PAGE_SIZE);
         }
         if (!boundary) {
@@ -2981,14 +3015,14 @@ static void testArmScalarSseRegions() {
             runExisting();
             expected = wide ? 0x4014000000000000ull : 0x1234567840a00000ull;
             if (cpu->xmm[2].pi.u64[0] != expected || cpu->xmm[2].pi.u64[1] != 0xabcdef9876543210ull)
-                testFail("ARM vector-copy independent entry");
+                testFail("JIT vector-copy independent entry");
             ctx.memory->writeb(copy + 2, 0xd1); // now copy xmm1, including its upper bits
             if (wide) cpu->xmm[0].pi.u64[0] = 0x3ff0000000000000ull;
             else cpu->xmm[0].pi.u32[0] = 0x3f800000;
             cpu->eip.u32 = 0; cpu->nextOp = nullptr; runExisting();
             expected = wide ? 0x3ff4000000000000ull : 0x876543213fa00000ull;
             if (cpu->xmm[2].pi.u64[0] != expected || cpu->xmm[2].pi.u64[1] != 0x9876543210abcdefull)
-                testFail("ARM vector-copy invalidation");
+                testFail("JIT vector-copy invalidation");
         }
     }
     // A faulting load, helper, width change, or independent entry must see
@@ -3004,7 +3038,7 @@ static void testArmScalarSseRegions() {
         const U32 memorySize = ramPageLinearMemoryPageCount() * K_PAGE_SIZE * 2;
         if (boundary == 1 && ctx.memory->mmap(ctx.thread, memory, memorySize,
                 K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0) != memory) {
-            testFail("ARM scalar boundary mmap"); continue;
+            testFail("JIT scalar boundary mmap"); continue;
         }
         if (boundary == 4) {
             bytes({0x39, 0xc0, 0x0f, 0x84}); branchFixup = ctx.codeIp; testPushCode32(0);
@@ -3025,24 +3059,26 @@ static void testArmScalarSseRegions() {
         U64 expected = boundary == 3 ? 0x4008000000000000ull :
             0x1234567800000000ull | (boundary == 4 ? 0x40000000 : 0x40400000);
         if (cpu->xmm[0].pi.u64[0] != expected || cpu->xmm[0].pi.u64[1] != 0xabcdef9876543210ull)
-            testFail("ARM scalar boundary=%u lost committed lane state", boundary);
+            testFail("JIT scalar boundary=%u lost committed lane state", boundary);
         if (boundary == 1) {
-            if (cpu->xmm[2].pi.u32[0]) testFail("ARM scalar boundary load result");
+            if (cpu->xmm[2].pi.u32[0]) testFail("JIT scalar boundary load result");
             ctx.memory->unmap(memory, memorySize);
         }
         if (boundary == 0) {
             cpu->xmm[0].pi.u32[0] = 0x3f800000;
             cpu->eip.u32 = second - TEST_CODE_ADDRESS; cpu->nextOp = nullptr;
             runExisting();
-            if (cpu->xmm[0].pi.u32[0] != 0x40300000) testFail("ARM scalar independent interior entry");
+            if (cpu->xmm[0].pi.u32[0] != 0x40300000) testFail("JIT scalar independent interior entry");
             ctx.memory->writeb(TEST_CODE_ADDRESS + 2, 0x5c); // first ADDSS becomes SUBSS
             cpu->xmm[0].pi.u32[0] = 0x3f800000; cpu->eip.u32 = 0; cpu->nextOp = nullptr;
             runExisting();
-            if (cpu->xmm[0].pi.u32[0] != 0x40200000) testFail("ARM scalar invalidation reused stale region");
+            if (cpu->xmm[0].pi.u32[0] != 0x40200000) testFail("JIT scalar invalidation reused stale region");
         }
     }
+#endif
 }
 
+#ifdef BOXEDWINE_JIT_ARMV8
 static void testArmSignedAcquireLoads() {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
     auto& ctx = testContext(); CPU* cpu = ctx.cpu;
@@ -3168,7 +3204,10 @@ static void testArmScalarIntegerConversions() {
     }
 }
 
-static void testArmPureFpuHelpers() {
+#endif
+
+void testNativePureFpuHelpers() {
+#if defined(BOXEDWINE_JIT_ARMV8) || defined(BOXEDWINE_JIT_X64)
     auto& ctx = testContext(); CPU* cpu = ctx.cpu;
     auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
     const U64 inputs[] = {0, 0x8000000000000000ull, 0x3fd0000000000000ull, 0xbfe0000000000000ull,
@@ -3247,23 +3286,23 @@ static void testArmPureFpuHelpers() {
         bytes({0x83, 0xc0, 1, 0xd9, opcode, 0x83, 0xd0, 0, 0xf3, 0x0f, 0x58, 0xc0});
         testRunCPU();
         auto* entry = ctx.memory->getDecodedOp(TEST_CODE_ADDRESS);
-        if (!entry || !entry->pfnJitCode) testFail("ARM x87 helper test did not compile");
+        if (!entry || !entry->pfnJitCode) testFail("Native x87 helper test did not compile");
         if (actual.top != expected.top || (actual.sw & ~0x3800u) != (expected.sw & ~0x3800u) ||
                 actual.cw != expected.cw || cpu->reg[0].u32 != 1 || cpu->reg[4].u32 != esp)
-            testFail("ARM x87 helper opcode=%x format=%u input=%u status/TOP/flags", opcode, format, input);
+            testFail("Native x87 helper opcode=%x format=%u input=%u status/TOP/flags", opcode, format, input);
         for (U32 index = 0; index < 8; ++index) {
-            if (actual.tags[index] != expected.tags[index]) testFail("ARM x87 helper changed tag");
+            if (actual.tags[index] != expected.tags[index]) testFail("Native x87 helper changed tag");
             if (expected.tags[index] == TAG_Empty) continue;
             if (actual.isRegCached[index] != expected.isRegCached[index] ||
                     (expected.isRegCached[index] ? actual.regCache[index].l != expected.regCache[index].l :
                     actual.regs[index].signif != expected.regs[index].signif || actual.regs[index].signExp != expected.regs[index].signExp))
-                testFail("ARM x87 helper opcode=%x format=%u input=%u slot=%u representation", opcode, format, input, index);
+                testFail("Native x87 helper opcode=%x format=%u input=%u slot=%u representation", opcode, format, input, index);
         }
         for (U32 r = 1; r < 8; ++r) if (r != 4 && cpu->reg[r].u32 != 0x12340000 + r)
-            testFail("ARM x87 helper changed GP state");
+            testFail("Native x87 helper changed GP state");
         for (U32 r = 0; r < 8; ++r) for (U32 lane = 0; lane < 4; ++lane)
             if (cpu->xmm[r].pi.u32[lane] != (r == 0 && lane == 0 ? 0x40800000 : 0x56780000 + r * 16 + lane))
-                testFail("ARM x87 helper changed SIMD state");
+                testFail("Native x87 helper changed SIMD state");
     }
     // Preserve the common helpers' empty-slot behavior and retained payloads.
     // In particular, binary operations pop ST0 and must set its FPOP status.
@@ -3272,11 +3311,13 @@ static void testArmPureFpuHelpers() {
         {0x7ff8123456789abcull, 0xfff8fedcba987654ull},
         {0xfff0123456789abcull, 0x7ff8fedcba987654ull},
         {0x7ff8123456789abcull, 0xfff0fedcba987654ull},
-        {0xfff0123456789abcull, 0x7ff0fedcba987654ull}
+        {0xfff0123456789abcull, 0x7ff0fedcba987654ull},
+        {0xfff8fedcba987654ull, 0x7ff8123456789abcull},
+        {0x7ff8fedcba987654ull, 0xfff0123456789abcull}
     };
     for (U32 top : {0u, 3u, 7u}) for (U8 opcode : {0xf0, 0xf1, 0xf2, 0xf3, 0xf9, 0xfb, 0xfe, 0xff})
     for (U32 empty = 0; empty < 4; ++empty) for (bool unmasked : {false, true})
-    for (U32 pair = 0; pair < 5; ++pair) {
+    for (U32 pair = 0; pair < sizeof(mathPairs) / sizeof(mathPairs[0]); ++pair) {
         testNewInstruction(CF | PF | AF | ZF | SF | OF);
         auto& actual = cpu->fpu;
         actual.FINIT(); actual.top = (top + 2) & 7; actual.sw = 0x0200;
@@ -3305,19 +3346,21 @@ static void testArmPureFpuHelpers() {
         testRunCPU();
         if (actual.top != expected.top || actual.cw != expected.cw ||
                 (actual.sw & ~0x3800u) != (expected.sw & ~0x3800u))
-            testFail("ARM cached math empty opcode=%x tags=%u pair=%u unmasked=%u status=%x expected=%x",
+            testFail("Native cached math empty opcode=%x tags=%u pair=%u unmasked=%u status=%x expected=%x",
                 opcode, empty, pair, unmasked, actual.sw, expected.sw);
         for (U32 r = 0; r < 8; ++r) {
             if (actual.tags[r] != expected.tags[r] || actual.isRegCached[r] != expected.isRegCached[r] ||
                     (expected.isRegCached[r] ? actual.regCache[r].l != expected.regCache[r].l :
                     actual.regs[r].signif != expected.regs[r].signif || actual.regs[r].signExp != expected.regs[r].signExp))
-                testFail("ARM cached math empty opcode=%x tags=%u pair=%u slot=%u representation", opcode, empty, pair, r);
-            if (cpu->reg[r].u32 != (r == 4 ? esp : 0x13570000 + r)) testFail("ARM cached math empty changed GP state");
+                testFail("Native cached math empty opcode=%x tags=%u pair=%u slot=%u representation cached=%u/%u bits=%llx/%llx",
+                    opcode, empty, pair, r, actual.isRegCached[r], expected.isRegCached[r],
+                    (unsigned long long)actual.regCache[r].l, (unsigned long long)expected.regCache[r].l);
+            if (cpu->reg[r].u32 != (r == 4 ? esp : 0x13570000 + r)) testFail("Native cached math empty changed GP state");
             for (U32 lane = 0; lane < 4; ++lane)
-                if (cpu->xmm[r].pi.u32[lane] != 0x24680000 + r * 16 + lane) testFail("ARM cached math empty changed SIMD state");
+                if (cpu->xmm[r].pi.u32[lane] != 0x24680000 + r * 16 + lane) testFail("Native cached math empty changed SIMD state");
         }
         cpu->fillFlags();
-        if ((cpu->flags & FMASK_TEST) != (CF | PF | AF | ZF | SF | OF)) testFail("ARM cached math empty changed flags");
+        if ((cpu->flags & FMASK_TEST) != (CF | PF | AF | ZF | SF | OF)) testFail("Native cached math empty changed flags");
     }
     // FXAM must preserve the retained sign even for empty tags and must not
     // quiet a signaling NaN merely to classify it. Unknown/raw entries and
@@ -3353,24 +3396,24 @@ static void testArmPureFpuHelpers() {
         bytes({0xd9, 0xe5, 0xd9, 0xe5});
         testRunCPU();
         if (actual.top != expected.top || (actual.sw & ~0x3800u) != (expected.sw & ~0x3800u))
-            testFail("ARM examine input=%u format=%u tag=%u status=%x expected=%x", input, format, tag, actual.sw, expected.sw);
+            testFail("Native examine input=%u format=%u tag=%u status=%x expected=%x", input, format, tag, actual.sw, expected.sw);
         for (U32 r = 0; r < 8; ++r) {
             if (actual.tags[r] != expected.tags[r] || actual.isRegCached[r] != expected.isRegCached[r] ||
                     (expected.isRegCached[r] ? actual.regCache[r].l != expected.regCache[r].l :
                     actual.regs[r].signif != expected.regs[r].signif || actual.regs[r].signExp != expected.regs[r].signExp))
-                testFail("ARM examine changed representation input=%u format=%u tag=%u slot=%u", input, format, tag, r);
-            if (cpu->reg[r].u32 != (r == 4 ? esp : 0x12340000 + r)) testFail("ARM examine changed GP state");
+                testFail("Native examine changed representation input=%u format=%u tag=%u slot=%u", input, format, tag, r);
+            if (cpu->reg[r].u32 != (r == 4 ? esp : 0x12340000 + r)) testFail("Native examine changed GP state");
             for (U32 lane = 0; lane < 4; ++lane)
-                if (cpu->xmm[r].pi.u32[lane] != 0x87650000 + r * 16 + lane) testFail("ARM examine changed SIMD state");
+                if (cpu->xmm[r].pi.u32[lane] != 0x87650000 + r * 16 + lane) testFail("Native examine changed SIMD state");
         }
         cpu->fillFlags();
-        if ((cpu->flags & FMASK_TEST) != (CF | PF | AF | ZF | SF | OF)) testFail("ARM examine changed flags");
+        if ((cpu->flags & FMASK_TEST) != (CF | PF | AF | ZF | SF | OF)) testFail("Native examine changed flags");
         if (top == 0 && input == 2 && format == 2 && tag == TAG_Valid) {
             auto enterSecond = [&]() {
                 cpu->eip.u32 = secondExamine - TEST_CODE_ADDRESS;
                 cpu->nextOp = cpu->getNextOp();
                 U32 dispatches = 0;
-                do { cpu->run(); if (++dispatches > 1024) { testFail("ARM examine dispatch limit"); break; } }
+                do { cpu->run(); if (++dispatches > 1024) { testFail("Native examine dispatch limit"); break; } }
                 while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
             };
             for (bool raw : {false, true}) {
@@ -3382,13 +3425,13 @@ static void testArmPureFpuHelpers() {
                         (raw ? actual.regs[actual.top].signif != expected.regs[expected.top].signif ||
                             actual.regs[actual.top].signExp != expected.regs[expected.top].signExp :
                             actual.regCache[actual.top].l != expected.regCache[expected.top].l))
-                    testFail("ARM examine independent entry raw=%u", raw);
+                    testFail("Native examine independent entry raw=%u", raw);
             }
             seed(actual, actual.top, 0xbfe8000000000000ull, false);
             ctx.memory->writeb(secondExamine + 1, 0xe1); // replace FXAM with FABS
             enterSecond();
             if (!actual.isRegCached[actual.top] || actual.regCache[actual.top].l != 0x3fe8000000000000ull)
-                testFail("ARM examine invalidation retained old classification");
+                testFail("Native examine invalidation retained old classification");
         }
     }
 #if defined(__aarch64__) && !defined(_MSC_VER)
@@ -3416,9 +3459,9 @@ static void testArmPureFpuHelpers() {
         asm volatile("msr fpsr,%0" :: "r"(savedFpsr) : "memory");
         if (afterFpcr != testFpcr || (cpu->fpu.sw & ~0x3800u) != (expected.sw & ~0x3800u) ||
                 !cpu->fpu.isRegCached[0] || cpu->fpu.regCache[0].l != inputs[input])
-            testFail("ARM examine host FPCR mode=%u input=%u", mode, input);
+            testFail("Native examine host FPCR mode=%u input=%u", mode, input);
         if (actualFpsr != expectedFpsr)
-            testFail("ARM examine host FPSR mode=%u input=%u actual=%llx expected=%llx", mode, input,
+            testFail("Native examine host FPSR mode=%u input=%u actual=%llx expected=%llx", mode, input,
                 (unsigned long long)actualFpsr, (unsigned long long)expectedFpsr);
     }
 #endif
@@ -3433,7 +3476,7 @@ static void testArmPureFpuHelpers() {
     auto runExisting = [&]() {
         cpu->nextOp = cpu->getNextOp();
         U32 dispatches = 0;
-        do { cpu->run(); if (++dispatches > 1024) { testFail("ARM cached math dispatch limit"); break; } }
+        do { cpu->run(); if (++dispatches > 1024) { testFail("Native cached math dispatch limit"); break; } }
         while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
     };
     for (U8 opcode : {0xfe, 0xff, 0xf0, 0xf2, 0xfb, 0xf1, 0xf9, 0xf3}) for (U32 boundary = 0; boundary < 3; ++boundary) {
@@ -3453,17 +3496,17 @@ static void testArmPureFpuHelpers() {
         if (boundary == 2) {
             mapping = ctx.memory->mmap(ctx.thread, 0x64080000, 2 * K_PAGE_SIZE,
                 K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
-            if (mapping != 0x64080000) { testFail("ARM cached math mapping"); continue; }
+            if (mapping != 0x64080000) { testFail("Native cached math mapping"); continue; }
             bytes({0xf3, 0x0f, 0x10, 0x15}); testPushCode32(mapping + K_PAGE_SIZE - 3 - TEST_HEAP_ADDRESS);
         }
         bytes({0xdd, 0x1d}); testPushCode32(0x180);
         testRunCPU();
         if (cpu->fpu.top || ctx.memory->readq(TEST_HEAP_ADDRESS + 0x180) != bits(expectedMath(opcode, 0.375)))
-            testFail("ARM cached math lost state at boundary %u", boundary);
+            testFail("Native cached math lost state at boundary %u", boundary);
         if (opcode == 0xfb && ctx.memory->readq(TEST_HEAP_ADDRESS + 0x1a0) != bits(std::cos(0.375)))
-            testFail("ARM cached sincos lost its second result");
+            testFail("Native cached sincos lost its second result");
         if (mapping) {
-            if (cpu->xmm[2].pi.u32[0]) testFail("ARM cached math first-touch load");
+            if (cpu->xmm[2].pi.u32[0]) testFail("Native cached math first-touch load");
             ctx.memory->unmap(mapping, 2 * K_PAGE_SIZE);
         }
         if (!boundary) {
@@ -3475,9 +3518,9 @@ static void testArmPureFpuHelpers() {
                 cpu->eip.u32 = math - TEST_CODE_ADDRESS; cpu->nextOp = nullptr;
                 runExisting();
                 if (cpu->fpu.top || ctx.memory->readq(TEST_HEAP_ADDRESS + 0x180) != bits(expectedMath(opcode, 0.5)))
-                    testFail("ARM cached math independent entry raw=%u", raw);
+                    testFail("Native cached math independent entry raw=%u", raw);
                 if (opcode == 0xfb && ctx.memory->readq(TEST_HEAP_ADDRESS + 0x1a0) != bits(std::cos(0.5)))
-                    testFail("ARM cached sincos independent second result raw=%u", raw);
+                    testFail("Native cached sincos independent second result raw=%u", raw);
             }
             // FPTAN/FSINCOS have a following pop; use another unary operation only for
             // shapes whose stack effect remains unchanged after invalidation.
@@ -3487,7 +3530,7 @@ static void testArmPureFpuHelpers() {
             cpu->fpu.FINIT(); cpu->eip.u32 = 0; cpu->nextOp = nullptr;
             runExisting();
             if (cpu->fpu.top || ctx.memory->readq(TEST_HEAP_ADDRESS + 0x180) != bits(expectedMath(replacement, 0.375)))
-                testFail("ARM cached math invalidation retained old operation");
+                testFail("Native cached math invalidation retained old operation");
         }
     }
     for (U32 boundary = 0; boundary < 3; ++boundary) {
@@ -3502,22 +3545,22 @@ static void testArmPureFpuHelpers() {
         if (boundary == 2) {
             mapping = ctx.memory->mmap(ctx.thread, 0x64090000, 2 * K_PAGE_SIZE,
                 K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
-            if (mapping != 0x64090000) { testFail("ARM math region boundary mapping"); continue; }
+            if (mapping != 0x64090000) { testFail("Native math region boundary mapping"); continue; }
             bytes({0xf3, 0x0f, 0x10, 0x15}); testPushCode32(mapping + K_PAGE_SIZE - 3 - TEST_HEAP_ADDRESS);
         }
         bytes({0xdd, 0x1d}); testPushCode32(0x180);
         testRunCPU();
         if (cpu->fpu.top || ctx.memory->readq(TEST_HEAP_ADDRESS + 0x180) != bits(std::pow(2.0, std::cos(std::sin(0.375))) - 1))
-            testFail("ARM math region lost state at boundary %u", boundary);
+            testFail("Native math region lost state at boundary %u", boundary);
         if (mapping) {
-            if (cpu->xmm[2].pi.u32[0]) testFail("ARM math region first-touch load");
+            if (cpu->xmm[2].pi.u32[0]) testFail("Native math region first-touch load");
             ctx.memory->unmap(mapping, 2 * K_PAGE_SIZE);
         }
         if (!boundary) {
             ctx.memory->writeb(middle + 1, 0xfe);
             cpu->fpu.FINIT(); cpu->eip.u32 = 0; cpu->nextOp = nullptr; runExisting();
             if (cpu->fpu.top || ctx.memory->readq(TEST_HEAP_ADDRESS + 0x180) != bits(std::pow(2.0, std::sin(std::sin(0.375))) - 1))
-                testFail("ARM math region invalidation kept stale composition");
+                testFail("Native math region invalidation kept stale composition");
         }
     }
     // Consecutive cached unary calls must preserve exact intermediate results,
@@ -3549,21 +3592,21 @@ static void testArmPureFpuHelpers() {
         testRunCPU();
         auto verifyFpu = [&]() {
             if (cpu->fpu.top != expected.top || (cpu->fpu.sw & ~0x3800u) != (expected.sw & ~0x3800u))
-                testFail("ARM math region changed TOP/status");
+                testFail("Native math region changed TOP/status");
             for (U32 r = 0; r < 8; ++r) {
                 if (cpu->fpu.tags[r] != expected.tags[r] || cpu->fpu.isRegCached[r] != expected.isRegCached[r] ||
                         (expected.isRegCached[r] ? cpu->fpu.regCache[r].l != expected.regCache[r].l :
                         cpu->fpu.regs[r].signif != expected.regs[r].signif || cpu->fpu.regs[r].signExp != expected.regs[r].signExp))
-                    testFail("ARM math region input=%u width=%u pattern=%u split=%u slot=%u", input, width, pattern, split, r);
+                    testFail("Native math region input=%u width=%u pattern=%u split=%u slot=%u", input, width, pattern, split, r);
             }
         };
         verifyFpu();
         for (U32 r = 0; r < 8; ++r) {
             if (cpu->reg[r].u32 != (r == 0 ? 1 : r == 4 ? esp : 0x12340000 + r))
-                testFail("ARM math region changed GP state");
+                testFail("Native math region changed GP state");
             for (U32 lane = 0; lane < 4; ++lane)
                 if (cpu->xmm[r].pi.u32[lane] != (r == 0 && lane == 0 ? 0x40800000 : 0x56780000 + r * 16 + lane))
-                    testFail("ARM math region changed SIMD state");
+                    testFail("Native math region changed SIMD state");
         }
         if (!split && input == 2 && width == 4) {
             // A new entry in a formerly hidden interior must import its own
@@ -3578,8 +3621,10 @@ static void testArmPureFpuHelpers() {
         }
     }
     cpu->fpu.FINIT();
+#endif
 }
 
+#ifdef BOXEDWINE_JIT_ARMV8
 static void testArmScalarLoopState() {
     auto& ctx = testContext(); CPU* cpu = ctx.cpu;
     auto runExisting = [&]() {
@@ -3929,8 +3974,8 @@ static void testArmConditionalCompare() {
 #endif
 }
 
-void testArmKnownLazyFlagType() {
-#ifdef BOXEDWINE_JIT_ARMV8
+void testNativeKnownLazyFlagType() {
+#if defined(BOXEDWINE_JIT_ARMV8) || defined(BOXEDWINE_JIT_X64)
     extern void startNewJIT(CPU*, U32, DecodedOp*);
     auto& ctx = testContext(); CPU* cpu = ctx.cpu;
     struct State { U32 regs[8], flags; U64 xmm[16]; };
@@ -4021,7 +4066,7 @@ void testArmKnownLazyFlagType() {
         if (expected.regs[1] != output) testFail("known flags reference condition form=%u cc=%u", form, cc);
         setup(); auto* head = cpu->getOp(TEST_CODE_ADDRESS, 0); startNewJIT(cpu, TEST_CODE_ADDRESS, head);
         bool probe = form == 0 && input[0] == 0 && input[1] == 1 && cc == 4 && gap == 4 && shape == 1 && live;
-        if (probe && !std::getenv("BOXEDWINE_ARM_KNOWN_LAZY_TYPE_SLOW")) {
+        if (probe && !std::getenv("BOXEDWINE_ARM_KNOWN_LAZY_TYPE_SLOW") && !std::getenv("BOXEDWINE_X64_KNOWN_FLAGS_SLOW")) {
             for (U32 eip : entries) {
                 auto* op = ctx.memory->getDecodedOp(TEST_CODE_ADDRESS + eip);
                 if (!op || op->pfnJitCode) testFail("known flags interior was published before execution");
@@ -4066,8 +4111,8 @@ void testArmKnownLazyFlagType() {
 #endif
 }
 
-void testArmKnownLazyFlagFaults() {
-#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_HOST_EXCEPTIONS)
+void testNativeKnownLazyFlagFaults() {
+#if (defined(BOXEDWINE_JIT_ARMV8) || defined(BOXEDWINE_JIT_X64)) && defined(BOXEDWINE_HOST_EXCEPTIONS)
     extern void startNewJIT(CPU*, U32, DecodedOp*);
     auto& ctx = testContext(); CPU* cpu = ctx.cpu;
     const U32 groupBytes = ramPageLinearMemoryPageCount() * K_PAGE_SIZE;
@@ -4151,11 +4196,9 @@ void testJitDirectArithmeticFlags() {
 #ifdef BOXEDWINE_JIT_ARMV8
     testArmSseCompareConsumers();
     testArmMinMaxSelection();
-    testArmScalarSseRegions();
     testArmScalarIntegerConversions();
     testArmSignedAcquireLoads();
     testArmScalarLoopState();
-    testArmPureFpuHelpers();
     testArmSseMemoryFaultConsumers();
 #endif
 #ifdef BOXEDWINE_JIT

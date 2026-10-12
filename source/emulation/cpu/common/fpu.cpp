@@ -19,6 +19,7 @@
 #include "boxedwine.h"
 #include <math.h>
 #include "fpu.h"
+#include "common_fpu.h"
 #include "ksignal.h"
 
 #define FMASK_TEST (CF | PF | AF | ZF | SF | OF)    
@@ -1061,18 +1062,26 @@ void FPU::F2XM1() {
     }
 }
 
+NO_INLINE double common_fpuYLog2X(double x, double y) {
+    return y * log(x) / log(2.0);
+}
+
+NO_INLINE double common_fpuYLog2XPlus1(double x, double y) {
+    return y * log(x + 1.0) / log(2.0);
+}
+
 void FPU::FYL2X() {
     // if either is cached, then convert since top is popped and STV(1) is overwritten
     if (isRegCached[top] || isRegCached[STV(1)]) {
         double& d1 = getF64(top);
         double& d2 = getF64(STV(1));
-        d2 = d2 * log(d1) / log(2.0);
+        d2 = common_fpuYLog2X(d1, d2);
     } else {
         long2Double d1;
         long2Double d2;
         d1.l = extF80_to_f64(this->regs[this->top]).v;
         d2.l = extF80_to_f64(this->regs[STV(1)]).v;
-        d1.d = d2.d * log(d1.d) / log(2.0);
+        d1.d = common_fpuYLog2X(d1.d, d2.d);
         float64_sf f;
         f.v = d1.l;
         this->regs[STV(1)] = f64_to_extF80(f);
@@ -1122,13 +1131,13 @@ void FPU::FYL2XP1() {
     if (isRegCached[top] || isRegCached[STV(1)]) {
         double& d1 = getF64(top);
         double& d2 = getF64(STV(1));
-        d2 = d2 * log(d1 + 1.0) / log(2.0);
+        d2 = common_fpuYLog2XPlus1(d1, d2);
     } else {
         long2Double d1;
         long2Double d2;
         d1.l = extF80_to_f64(this->regs[this->top]).v;
         d2.l = extF80_to_f64(this->regs[STV(1)]).v;
-        d1.d = d2.d * log(d1.d + 1.0) / log(2.0);
+        d1.d = common_fpuYLog2XPlus1(d1.d, d2.d);
         float64_sf f;
         f.v = d1.l;
         this->regs[STV(1)] = f64_to_extF80(f);

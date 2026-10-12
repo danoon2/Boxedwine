@@ -947,6 +947,8 @@ public:
     // --- Compilation lifecycle ---
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void compile(DecodedOp* op) override;
+    bool compileScalarSseRegion(DecodedOp* op);
+    void emitSseDivSlowPath() override;
     void postCompile(DecodedOp* op) override;
     bool shouldStopBlockBefore(U32 eip, DecodedOp* op) override;
     bool supportsConditionalSideExit(U32, U32) const override { return true; }

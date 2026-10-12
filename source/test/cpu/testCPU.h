@@ -170,8 +170,8 @@ void testJitDecodedChainBoundary();
 void testNativeJitRunCountWraps();
 void testNativeJitCooperativeScheduling();
 void testJitDirectArithmeticFlags();
-void testArmKnownLazyFlagType();
-void testArmKnownLazyFlagFaults();
+void testNativeKnownLazyFlagType();
+void testNativeKnownLazyFlagFaults();
 void testJitDirectIncDecFlags();
 void testJitDirectNegFlags();
 void testJitDirectAdcSbbFlags();
@@ -200,3 +200,6 @@ void testArmLinearReadAddress();
 void testNativeX64CarryPolicies();
 void testNativeX64AddressPolicies();
 void testNativeX64FpuPolicies();
+
+void testJitScalarSseRegions();
+void testNativePureFpuHelpers();

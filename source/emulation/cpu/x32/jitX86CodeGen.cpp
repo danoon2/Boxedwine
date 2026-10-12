@@ -21,9 +21,11 @@
 
 #include "jitX86CodeGen.h"
 #include "../jit/jitSSE.h"
+#include "../common/common_fpu.h"
 #include "../../softmmu/soft_ram.h"
 #include <array>
 #include <set>
+#include <cmath>
 
 // Explicit zero preserves environment layout for paired experiment controls.
 static bool jitMemoryExperimentEnabled(const char* name, bool productionDefault = false) {
@@ -257,7 +259,14 @@ public:
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void postCompile(DecodedOp* op) override;
     void compile(DecodedOp* op) override;
-    bool isExternalJitEntry(U32 eip) const override { return !fpuInternalEntries.count(eip) && !flagInternalEntries.count(eip); }
+    bool isExternalJitEntry(U32 eip) const override { return JitCodeGen::isExternalJitEntry(eip) && !fpuInternalEntries.count(eip) && !flagInternalEntries.count(eip); }
+    bool protectKnownLazyFlagType() override {
+#ifdef BOXEDWINE_JIT_X64
+        return !std::getenv("BOXEDWINE_X64_KNOWN_FLAGS_SLOW") && protectCmpLazyFlagType();
+#else
+        return false;
+#endif
+    }
     bool hideTrustedCarryEntry(U32 eip) override {
 #if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32)) && defined(BOXEDWINE_JIT_X64)
         if (nativeJitPerformanceEnabled("BOXEDWINE_TEST_TRUST_ADJACENT_CARRY", true)) {
@@ -306,6 +315,12 @@ public:
         return enabled;
     }
     bool canCacheFpuOp(DecodedOp* op) const override;
+    bool compileCachedMathRegion(DecodedOp* op);
+    bool compilePureFpuHelper(DecodedOp* op);
+#ifdef BOXEDWINE_JIT_X64
+    void callCachedFpuMath(void* function, FPURegPtr dst, FPURegPtr x, FPURegPtr y = nullptr,
+        const std::function<void()>& calls = nullptr);
+#endif
     RegPtr getFpuCacheTopReg() override;
     RegPtr getFpuCacheTagReg(U8 index) override;
     FPURegPtr getFpuCacheReg(U8 index) override;
@@ -979,6 +994,16 @@ protected:
 };
 
 bool JitX86CodeGen::canCacheFpuOp(DecodedOp* op) const {
+#ifdef BOXEDWINE_JIT_X64
+    if (supportsFpuStackCache() && !op->lock &&
+        !std::getenv("BOXEDWINE_X64_FPU_HELPERS_SLOW") && !std::getenv("BOXEDWINE_X64_CACHED_MATH_SLOW")) {
+        switch (op->inst) {
+        case FSIN: case FCOS: case F2XM1: case FPTAN:
+        case FYL2X: case FYL2XP1: case FPATAN: return true;
+        default: break;
+        }
+    }
+#endif
     return canCacheNativeFpuOp(op);
 }
 
@@ -1028,7 +1053,166 @@ void JitX86CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
 }
 
 void JitX86CodeGen::compile(DecodedOp* op) {
-    if (!compileCachedFpuOp(op)) JitCodeGen::compile(op);
+    if (!compileCachedMathRegion(op) && !compilePureFpuHelper(op) && !compileCachedFpuOp(op)) JitCodeGen::compile(op);
+}
+
+#ifdef BOXEDWINE_JIT_X64
+static double x64FpuExp2Minus1(double x) { return std::pow(2.0, x) - 1; }
+static double x64FpuAtanYX(double x, double y) { return std::atan2(y, x); }
+
+void JitX86CodeGen::callCachedFpuMath(void* function, FPURegPtr dst, FPURegPtr x, FPURegPtr y,
+        const std::function<void()>& calls) {
+    // Metadata lives in caller-clobbered GP temporaries. Publish it before
+    // calling libm, but retain the known binary64 stack values in XMM registers.
+    for (U8 i = 0; i < 8; ++i) spillFpuTag(i);
+    spillFpuTop();
+    const U32 saved = saveNativeFpuRegisters();
+    callWriteCache();
+#ifdef BOXEDWINE_MSVC
+    constexpr U32 shadow = 32;
+#else
+    constexpr U32 shadow = 0;
+#endif
+    // Both x64 ABIs pass these all-double arguments in XMM0/XMM1. Stage them
+    // to handle aliases, and keep the result safe while reloading guest XMMs.
+    compiler.sub(asmjit::x86::rsp, shadow + 16);
+    compiler.movsd(Mem(asmjit::x86::rsp, shadow), getFPUReg(x));
+    if (y) compiler.movsd(Mem(asmjit::x86::rsp, shadow + 8), getFPUReg(y));
+    compiler.movsd(asmjit::x86::xmm0, Mem(asmjit::x86::rsp, shadow));
+    if (y) compiler.movsd(asmjit::x86::xmm1, Mem(asmjit::x86::rsp, shadow + 8));
+    if (calls) calls();
+    else {
+        compiler.mov(PARAM_CALL_TMP, (U64)function);
+        compiler.call(PARAM_CALL_TMP);
+    }
+    compiler.movsd(Mem(asmjit::x86::rsp, shadow), asmjit::x86::xmm0);
+    callLoadCache();
+    compiler.movsd(getFPUReg(dst), Mem(asmjit::x86::rsp, shadow));
+    compiler.add(asmjit::x86::rsp, shadow + 16);
+    for (int i = NUMBER_OF_XMM_REG - 1; i >= 0; --i) if (saved & (1u << i)) {
+        if (i != dst->hardwareReg()) compiler.movups(XMM(i), Mem128(asmjit::x86::rsp));
+        compiler.add(asmjit::x86::rsp, 16);
+    }
+}
+#endif
+
+bool JitX86CodeGen::compileCachedMathRegion(DecodedOp* op) {
+#ifdef BOXEDWINE_JIT_X64
+    if (std::getenv("BOXEDWINE_X64_FPU_HELPERS_SLOW") ||
+        std::getenv("BOXEDWINE_X64_CACHED_MATH_SLOW") || !fpuStackCache.entryTop) return false;
+    auto eligible = [](DecodedOp* cur) {
+        return cur && !cur->lock && (cur->inst == FSIN || cur->inst == FCOS || cur->inst == F2XM1);
+    };
+    if (!eligible(op)) return false;
+    auto& slot = cachedFpuSlot(0);
+    if (!slot.loaded || slot.needsValidation) return false;
+    std::array<DecodedOp*, 256> region{};
+    U32 count = 0, eip = currentEip;
+    bool clearC2 = false;
+    for (auto* cur = op; eligible(cur) && count < region.size(); eip += cur->len, cur = cur->next) {
+        if (eip > lastOpEip || (count && (cur->flags2 & OP_FLAG2_JUMP_TARGET))) break;
+        region[count++] = cur;
+        clearC2 |= cur->inst != F2XM1;
+    }
+    if (count < 2) return false;
+    // Consecutive unary calls pass their result directly in XMM0. Save guest
+    // registers once for the region, matching the ARM cached-math strategy.
+    callCachedFpuMath(nullptr, slot.value, slot.value, nullptr, [&]() {
+        for (U32 i = 0; i < count; ++i) {
+            if (i) preCompile(region[i], true);
+            void* function = region[i]->inst == FSIN ? (void*)static_cast<double(*)(double)>(std::sin) :
+                region[i]->inst == FCOS ? (void*)static_cast<double(*)(double)>(std::cos) : (void*)x64FpuExp2Minus1;
+            compiler.mov(PARAM_CALL_TMP, (U64)function);
+            compiler.call(PARAM_CALL_TMP);
+            if (i + 1 < count) postCompile(region[i]);
+        }
+    });
+    slot.dirty = true;
+    if (clearC2) {
+        RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+        andValue(JitWidth::b32, sw, ~0x0400u);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), sw);
+    }
+    skipToOp = region[count - 1];
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool JitX86CodeGen::compilePureFpuHelper(DecodedOp* op) {
+#ifdef BOXEDWINE_JIT_X64
+    if (op->lock || std::getenv("BOXEDWINE_X64_FPU_HELPERS_SLOW")) return false;
+    // A lone cached FSIN is cheaper through the existing tail-dispatch helper
+    // on x64. Consecutive calls were handled by compileCachedMathRegion above;
+    // raw/unknown inputs still benefit from the direct common-helper path.
+    if (op->inst == FSIN && fpuStackCache.entryTop) {
+        const auto& slot = cachedFpuSlot(0);
+        if (slot.loaded && !slot.needsValidation) {
+            flushFpuCache();
+            emulateSingleOp();
+            return true;
+        }
+    }
+    void (*helper)(CPU*) = nullptr;
+    switch (op->inst) {
+    case F2XM1: helper = common_F2XM1; break;
+    case FSIN: helper = common_FSIN; break;
+    case FCOS: helper = common_FCOS; break;
+    case FPTAN: helper = common_FPTAN; break;
+    case FSINCOS: helper = common_FSINCOS; break;
+    case FYL2X: helper = common_FYL2X; break;
+    case FYL2XP1: helper = common_FYL2XP1; break;
+    case FPATAN: helper = common_FPATAN; break;
+    case FPREM: helper = common_FPREM; break;
+    case FPREM_nearest: helper = common_FPREM_nearest; break;
+    case FSCALE: helper = common_FSCALE; break;
+    case FXTRACT: helper = common_FXTRACT; break;
+    case FXAM: helper = common_FXAM; break;
+    default: return false;
+    }
+    if (fpuStackCache.entryTop && !std::getenv("BOXEDWINE_X64_CACHED_MATH_SLOW")) {
+        const bool binary = op->inst == FYL2X || op->inst == FYL2XP1 || op->inst == FPATAN;
+        const bool unary = op->inst == FSIN || op->inst == FCOS || op->inst == F2XM1 || op->inst == FPTAN;
+        if (binary || unary) {
+            auto& x = cachedFpuSlot(0);
+            auto& y = binary ? cachedFpuSlot(1) : x;
+            if (x.loaded && !x.needsValidation && y.loaded && !y.needsValidation) {
+                if (binary) {
+                    RegPtr empty = getTmpReg8();
+                    mov(JitWidth::b32, empty, cachedFpuTag(0));
+                    compareValue(JitWidth::b8, empty, TAG_Empty, JitEvaluate::EQUALS, empty);
+                    guardCachedFpuFallback(empty);
+                }
+                void* function = binary ? (op->inst == FYL2X ? (void*)common_fpuYLog2X :
+                    op->inst == FYL2XP1 ? (void*)common_fpuYLog2XPlus1 : (void*)x64FpuAtanYX) :
+                    op->inst == FSIN ? (void*)static_cast<double(*)(double)>(std::sin) :
+                    op->inst == FCOS ? (void*)static_cast<double(*)(double)>(std::cos) :
+                    op->inst == FPTAN ? (void*)static_cast<double(*)(double)>(std::tan) : (void*)x64FpuExp2Minus1;
+                callCachedFpuMath(function, y.value, x.value, binary ? y.value : nullptr);
+                y.dirty = true;
+                if (binary) cachedFpuPop();
+                else {
+                    if (op->inst == FPTAN) cachedFpuLoadConst(offsetof(CPU, fOne));
+                    if (op->inst != F2XM1) {
+                        RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+                        andValue(JitWidth::b32, sw, ~0x0400u);
+                        writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), sw);
+                    }
+                }
+                return true;
+            }
+        }
+    }
+    // Raw/unknown representations retain the common helper's conversion and
+    // exception semantics. These helpers do not access guest memory or branch.
+    flushFpuCache();
+    writeCurrentEip(0);
+    callHostFunction((void*)helper, {DynParam(JitCallParamType::CPU)});
+    return true;
+#else
+    return false;
+#endif
 }
 
 void JitX86CodeGen::postCompile(DecodedOp* op) {
