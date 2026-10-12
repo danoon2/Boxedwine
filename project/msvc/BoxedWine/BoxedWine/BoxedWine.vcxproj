@@ -3867,6 +3867,7 @@
     <ClCompile Include="..\..\..\..\source\test\devs\testDspAudio.cpp" />
     <ClCompile Include="..\..\..\..\source\test\fs\testHardLinks.cpp" />
     <ClCompile Include="..\..\..\..\source\test\kernel\testFutex.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\kernel\testLoader.cpp" />
     <ClCompile Include="..\..\..\..\source\test\kernel\testMemory.cpp" />
     <ClCompile Include="..\..\..\..\source\test\kernel\testUnixSocketPoll.cpp" />
     <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp" />
