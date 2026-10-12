@@ -19,6 +19,7 @@
 #endif
 
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 
 #define cpu (testContext().cpu)
@@ -1417,6 +1418,12 @@ void runFILD16DoesNotRetranslateHostAddress(const char* name) {
     U8* sourceHostAddress = memoryData->readCache[sourceAddress >> K_PAGE_SHIFT] + sourceAddress;
     U32 aliasAddress = (U32)(uintptr_t)sourceHostAddress;
     U32 aliasPage = aliasAddress & ~K_PAGE_MASK;
+    if (std::getenv("BOXEDWINE_TEST_FILD16_ALIAS_DIAGNOSTIC")) {
+        klog_fmt("TEST_FILD16_ALIAS source=%08x host=%p alias=%08x type=%u flags=%u",
+            sourceAddress, (void*)sourceHostAddress, aliasPage,
+            (U32)memoryData->mmu[aliasPage >> K_PAGE_SHIFT].getPageType(),
+            (U32)memoryData->mmu[aliasPage >> K_PAGE_SHIFT].flags);
+    }
     if (aliasPage == (sourceAddress & ~K_PAGE_MASK) ||
         memory->mmap(testContext().thread, aliasPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
             K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0) != aliasPage) {
