@@ -26,6 +26,7 @@ class JitCodeGen : public Jit {
 public:    
     JitCodeGen(CPU* cpu) : Jit(cpu) {}
     virtual ~JitCodeGen() {}
+    void initializeProcessHelpers();
     DecodedOp* firstOp = nullptr;
 
     const U32 SKIPPED_OP = 0xffffffff;
@@ -70,6 +71,9 @@ public:
     virtual bool isExternalJitEntry(U32 eip) const { return true; }
     virtual bool hideTrustedCarryEntry(U32 eip) { return false; }
     virtual bool materializeTrustedCarry(RegPtr result) { return false; }
+    // A backend may omit the lazy-type guard only after protecting every
+    // independent entry between the producer and this flag consumer.
+    virtual bool protectKnownLazyFlagType() { return false; }
     bool canTrustAdjacentAddCarry() const;
     bool protectCarryFallthroughEntries();
     bool isAdc32Consumer(DecodedOp* op) const;

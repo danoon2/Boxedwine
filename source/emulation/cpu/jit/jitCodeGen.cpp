@@ -38,6 +38,13 @@ void clearJitBlock(const std::vector<void*>& jitOps);
 #ifndef BOXEDWINE_WASM_JIT
 void bindNativeCarryHelpers(CPU* cpu) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
+    // A CLONE_VM child can enter its parent's compiled code before compiling
+    // any block of its own. Initialize its process-local helpers before that
+    // code can fault or request a carry calculation.
+    if (!cpu->thread->process->startJITOp) {
+        std::unique_ptr<JitCodeGen> jit(startNewJIT(cpu));
+        jit->initializeProcessHelpers();
+    }
     memcpy(cpu->calculateCF, cpu->thread->process->calculateCF, sizeof(cpu->calculateCF));
 }
 #endif
@@ -1030,39 +1037,8 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
     return true;
 }
 
-void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
+void JitCodeGen::initializeProcessHelpers() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
-    // Did another thread beat us to compiling or queueing this block?
-    if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
-        return;
-    }
-    if (op->flags & OP_FLAG_JIT) {
-#ifndef BOXEDWINE_WASM_JIT
-        if (!op->pfnJitCode && op->blockStart &&
-            !(op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
-            // An external dispatch cannot inherit the owning block's live FPU
-            // cache. Recompile that whole block with a clean entry here, keeping
-            // the prefix compiled as well as the newly discovered target.
-            DecodedOp* owner = op->blockStart;
-            U32 offset = 0;
-            DecodedOp* entry = owner;
-            for (U32 i = 0; i < owner->blockOpCount && entry != op; ++i) {
-                offset += entry->len;
-                entry = entry->next;
-            }
-            if (entry != op) {
-                kpanic("JitCodeGen::doJIT: entry outside owning block");
-            }
-            op->flags2 |= OP_FLAG2_JUMP_TARGET;
-            address -= offset;
-            op = owner;
-        } else
-#endif
-        {
-            // Another thread may have published this entry while we waited.
-            return;
-        }
-    }
     if (!cpu->thread->process->startJITOp) {
         JitCodeGen* jit = startNewJIT(cpu);
         cpu->thread->process->syncToHost = jit->createSyncToHost();
@@ -1097,6 +1073,42 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
             delete jit;
         }
     }
+}
+
+void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
+    // Did another thread beat us to compiling or queueing this block?
+    if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
+        return;
+    }
+    if (op->flags & OP_FLAG_JIT) {
+#ifndef BOXEDWINE_WASM_JIT
+        if (!op->pfnJitCode && op->blockStart &&
+            !(op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
+            // An external dispatch cannot inherit the owning block's live FPU
+            // cache. Recompile that whole block with a clean entry here, keeping
+            // the prefix compiled as well as the newly discovered target.
+            DecodedOp* owner = op->blockStart;
+            U32 offset = 0;
+            DecodedOp* entry = owner;
+            for (U32 i = 0; i < owner->blockOpCount && entry != op; ++i) {
+                offset += entry->len;
+                entry = entry->next;
+            }
+            if (entry != op) {
+                kpanic("JitCodeGen::doJIT: entry outside owning block");
+            }
+            op->flags2 |= OP_FLAG2_JUMP_TARGET;
+            address -= offset;
+            op = owner;
+        } else
+#endif
+        {
+            // Another thread may have published this entry while we waited.
+            return;
+        }
+    }
+    initializeProcessHelpers();
     if (!cpu->calculateCF[0]) {
         if (!cpu->thread->process->calculateCF[0]) {
             kpanic("JitCodeGen::doJIT");
@@ -3300,7 +3312,8 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         break;
     default: break;
     }
-    IfEqual(JitWidth::b32, getLazyFlagType(), currentLazyFlags);
+    const bool knownType = protectKnownLazyFlagType();
+    if (!knownType) IfEqual(JitWidth::b32, getLazyFlagType(), currentLazyFlags);
     switch (condition) {
     case JitConditional::NO:
         genOF(currentLazyFlags, resultReg);
@@ -3517,9 +3530,11 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
     }
     // no default, should get compiler error if not all enum cases handled
     }
-    StartElse(); {
-        callGetCondition(condition, resultReg);
-    } EndIf();
+    if (!knownType) {
+        StartElse(); {
+            callGetCondition(condition, resultReg);
+        } EndIf();
+    }
     return resultReg;
 }
 
@@ -3559,6 +3574,11 @@ void JitCodeGen::IfCondition(JitConditional condition) {
 
 void JitCodeGen::preIfCondition(JitConditional condition, bool& negative, RegPtr& reg) {
     if (condition == JitConditional::Z || condition == JitConditional::NZ) {
+        if (protectKnownLazyFlagType()) {
+            reg = getFlagResultReadOnly();
+            negative = condition == JitConditional::Z;
+            return;
+        }
         // hard to measure small difference, but it seems like this gives about a 1% improvement
         // 
         // for FLAGS_NONE, result will be 0 and flags will contain ZF

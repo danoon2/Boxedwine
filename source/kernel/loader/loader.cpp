@@ -89,7 +89,7 @@ BString ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
         U32 i;
 
         openNode->seek(hdr->e_phoff);	
-        for (i=0;i<hdr->e_phoff;i++) {
+        for (i=0;i<hdr->e_phnum;i++) {
             struct k_Elf32_Phdr phdr;		
             openNode->seek(hdr->e_phoff+i*hdr->e_phentsize);	
             openNode->readNative((U8*)&phdr, sizeof(struct k_Elf32_Phdr));

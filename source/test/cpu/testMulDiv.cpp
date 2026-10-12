@@ -181,7 +181,12 @@ const ImulCase TWO_IMUL32_CASES[] = {
     {0, 0xfffffffe, 0xfffffffe},
     {0, 300000, 400000},
     {0, (U32)-300000, 400000},
-    {0, 0x40000000, 2}
+    {0, 0x40000000, 2},
+    {0, 0x80000000, 0xffffffff},
+    {0, 0xffffffff, 0xffffffff},
+    {0, 0x7fffffff, 0x80000001},
+    {0, 0x12345678, 0},
+    {0, 0x9e3779b1, 0xdeadbeef}
 };
 
 const ImulCase IMUL16_IMM8_CASES[] = {

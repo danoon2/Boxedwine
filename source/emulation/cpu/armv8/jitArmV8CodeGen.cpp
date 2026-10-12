@@ -153,8 +153,8 @@ asmjit::a64::Gp R32(RegPtr reg) {
 #define xTmp3 23
 #define xTmp4 24
 #define xTmp5 25
-// The default keeps x26 for the emulation helper. The optional linear-memory
-// experiment instead keeps the invariant RAM base here.
+// Linear-memory code keeps its invariant RAM base in x26. Other memory modes
+// retain the emulation helper here.
 #define xEmulateSingleOp asmjit::a64::x26
 #define xLinearMemoryBase asmjit::a64::x26
 #define xWriteCacheToCPU asmjit::a64::x27
@@ -180,8 +180,7 @@ static bool cacheFlatJitBase(CPU* cpu) {
 }
 
 static bool cacheLinearMemoryBase() {
-    static const bool enabled = std::getenv("BOXEDWINE_ARM_LINEAR_BASE") &&
-        !std::getenv("BOXEDWINE_ARM_LINEAR_BASE_SLOW");
+    static const bool enabled = !std::getenv("BOXEDWINE_ARM_LINEAR_BASE_SLOW");
     return ramPageUseLinearMemory() && enabled;
 }
 
@@ -224,7 +223,22 @@ public:
     void emitIntegerParity(RegPtr result);
     bool compileMultiplyFlags(DecodedOp* op);
     bool compileConditionalCompare(DecodedOp* op);
-    bool isExternalJitEntry(U32 eip) const override { return !fpuInternalEntries.count(eip); }
+    bool isExternalJitEntry(U32 eip) const override {
+        return !fpuInternalEntries.count(eip) && !scalarInternalEntries.count(eip) && !flagInternalEntries.count(eip);
+    }
+    bool protectKnownLazyFlagType() override;
+    bool knownLazyTypeEnabled = std::getenv("BOXEDWINE_ARM_KNOWN_LAZY_TYPE_SLOW") == nullptr;
+    std::set<U32> flagInternalEntries;
+    bool canTrackScalarZero(DecodedOp* op) const;
+    void updateScalarZero(DecodedOp* op);
+    bool hasZeroUpper64(SSERegPtr reg) const;
+    bool scalarZeroEnabled = std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_SLOW") == nullptr;
+    bool scalarZeroCopyEnabled = std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_COPY_SLOW") == nullptr;
+    bool scalarZeroLanesEnabled = std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_LANES_SLOW") == nullptr;
+    bool scalarZeroDirectEnabled = std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_DIRECT_SLOW") == nullptr;
+    U8 scalarZeroMask = 0;
+    U8 scalarZeroLane1Mask = 0;
+    std::set<U32> scalarInternalEntries;
     bool supportsFpuStackCache() const override {
         static const bool enabled = !std::getenv("BOXEDWINE_DISABLE_NATIVE_FPU_CACHE");
         return enabled;
@@ -579,6 +593,7 @@ public:
     void cvtpd2pi(SSERegPtr dst, SSERegPtr src, bool truncate);
     void sseConvertFloatToInt(Vec dst, Vec src, bool truncate);
     void sseConvertFloatToInt(RegPtr dst, Vec src, bool truncate);
+    void truncateScalarToInt32(RegPtr dst, SSERegPtr src, bool doublePrecision);
     void sseCmp(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, U8 pred, MakeSSE vMake);
     void comis(SSERegPtr dst, SSERegPtr src, MakeSSE vMake);
 
@@ -614,6 +629,8 @@ public:
     void movlhpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void movmskpsR32Xmm(RegPtr dst, SSERegPtr src) override;
     void movssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    bool shuffleDwords(SSERegPtr dst, SSERegPtr src, U32 mask);
+    void shuffleWords(SSERegPtr dst, SSERegPtr src, U32 mask, bool high);
     void shufpsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
     void unpckhpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void unpcklpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
@@ -961,7 +978,171 @@ bool JitArmV8CodeGen::canCacheFpuOp(DecodedOp* op) const {
 }
 
 
+bool JitArmV8CodeGen::protectKnownLazyFlagType() {
+    if (!knownLazyTypeEnabled || !currentOp || currentOp->lock ||
+        (currentOp->flags2 & OP_FLAG2_JUMP_TARGET) ||
+        currentLazyFlags != FLAGS_SUB32) return false;
+    const size_t consumer = findBlockInstruction(currentEip);
+    U32 consumerLocation = 0;
+    if (!consumer || consumer == blockInstructions.size() ||
+        !eipToBufferPos.get(currentEip, consumerLocation) || consumerLocation == SKIPPED_OP) return false;
+    size_t index = consumer;
+    while (index && consumer - index <= 16) {
+        const auto& previous = blockInstructions[index - 1];
+        const auto& following = blockInstructions[index];
+        U32 location = 0;
+        if (previous.eip + previous.op->len != following.eip || previous.op->next != following.op ||
+            previous.op->lock || !eipToBufferPos.get(previous.eip, location) || location == SKIPPED_OP)
+            return false;
+        U32 producedType = FLAGS_NULL;
+        switch (previous.op->inst) {
+        case CmpR32E32: case CmpE32R32: case CmpR32R32: case CmpR32I32: case CmpE32I32:
+            producedType = FLAGS_SUB32; break;
+        default: break;
+        }
+        if (producedType != FLAGS_NULL) {
+            if (producedType != currentLazyFlags) return false;
+            // Keep real fault boundaries and the ordinary lazy registers.
+            // Entry promotion recompiles an interior without this proof.
+            for (size_t entry = index; entry <= consumer; ++entry)
+                flagInternalEntries.insert(blockInstructions[entry].eip);
+            return true;
+        }
+        if (previous.op->flags2 & OP_FLAG2_JUMP_TARGET) return false;
+        switch (previous.op->inst) {
+        case Nop:
+        case MovR8R8: case MovR8I8: case MovR8E8: case MovE8R8: case MovE8I8:
+        case MovR16R16: case MovR16I16: case MovR16E16: case MovE16R16: case MovE16I16:
+        case MovR32R32: case MovR32I32: case MovR32E32: case MovE32R32: case MovE32I32:
+        case LeaR16: case LeaR32:
+        case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+        case MovdqaXmmXmm: case MovdquXmmXmm:
+            break;
+        default: return false;
+        }
+        --index;
+    }
+    return false;
+}
+
+bool JitArmV8CodeGen::canTrackScalarZero(DecodedOp* op) const {
+    // A small whitelist keeps the proof local. Helpers and instructions that
+    // can overwrite packed lanes terminate it until another zeroing producer.
+    switch (op->inst) {
+    case Cvtps2pdXmmXmm: case Cvtps2pdXmmE64:
+        return scalarZeroLanesEnabled;
+    case Nop:
+    case MovR8R8: case MovR8I8: case MovR8E8: case MovE8R8: case MovE8I8:
+    case MovR16R16: case MovR16I16: case MovR16E16: case MovE16R16: case MovE16I16:
+    case MovR32R32: case MovR32I32: case MovR32E32: case MovE32R32: case MovE32I32:
+    case LeaR16: case LeaR32:
+    case MovsdXmmXmm: case MovsdXmmE64: case MovsdE64Xmm:
+    case MovqXmmXmm: case MovqXmmE64: case MovqE64Xmm:
+    case MovssXmmXmm: case MovssXmmE32: case MovssE32Xmm:
+    case MovdXmmR32: case MovdXmmE32: case MovdR32Xmm: case MovdE32Xmm:
+    case AddsdXmmXmm: case AddsdXmmE64:
+    case SubsdXmmXmm: case SubsdXmmE64:
+    case MulsdXmmXmm: case MulsdXmmE64:
+    case DivsdXmmXmm: case DivsdXmmE64:
+    case SqrtsdXmmXmm: case SqrtsdXmmE64:
+        return true;
+    case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+    case MovdqaXmmXmm: case MovdquXmmXmm:
+    case Cvtsi2sdXmmR32: case Cvtsi2sdXmmE32: case Cvtss2sdXmmXmm: case Cvtss2sdXmmE32:
+    case Cvtsi2ssXmmR32: case Cvtsi2ssXmmE32: case Cvtsd2ssXmmXmm: case Cvtsd2ssXmmE64:
+    case Cvtsd2siR32Xmm: case Cvtsd2siR32E64: case Cvttsd2siR32Xmm: case Cvttsd2siR32E64:
+    case Cvtss2siR32Xmm: case Cvtss2siR32E32: case Cvttss2siR32Xmm: case Cvttss2siR32E32:
+    case ComisdXmmXmm: case ComisdXmmE64: case UcomisdXmmXmm: case UcomisdXmmE64:
+    case AddR32E32: case AddE32R32: case AddR32R32: case AddR32I32: case AddE32I32:
+    case SubR32E32: case SubE32R32: case SubR32R32: case SubR32I32: case SubE32I32:
+    case AndR32E32: case AndE32R32: case AndR32R32: case AndR32I32: case AndE32I32:
+    case OrR32E32: case OrE32R32: case OrR32R32: case OrR32I32: case OrE32I32:
+    case XorR32E32: case XorE32R32: case XorR32R32: case XorR32I32: case XorE32I32:
+    case CmpR32E32: case CmpE32R32: case CmpR32R32: case CmpR32I32: case CmpE32I32:
+    case TestE32R32: case TestR32R32: case TestR32I32: case TestE32I32:
+        return scalarZeroCopyEnabled;
+    default:
+        return false;
+    }
+}
+
+void JitArmV8CodeGen::updateScalarZero(DecodedOp* op) {
+    if (!scalarZeroEnabled) return;
+    if (scalarZeroLanesEnabled) {
+        const U8 dst = op->reg < 8 ? 1u << op->reg : 0;
+        const bool sourceLane1Zero = op->rm < 8 && (scalarZeroLane1Mask & (1u << op->rm)) != 0;
+        switch (op->inst) {
+        case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+        case MovdqaXmmXmm: case MovdquXmmXmm:
+        case MovqXmmXmm: case MovsdXmmXmm:
+            scalarZeroLane1Mask &= ~dst;
+            if (sourceLane1Zero) scalarZeroLane1Mask |= dst;
+            break;
+        case MovssXmmE32: case MovdXmmR32: case MovdXmmE32:
+            scalarZeroLane1Mask |= dst;
+            break;
+        case XorpdXmmXmm: case XorpsXmmXmm: case PxorXmmXmm:
+            if (op->reg == op->rm) scalarZeroLane1Mask |= dst;
+            break;
+        case Cvtps2pdXmmXmm: case Cvtps2pdXmmE64:
+            // Positive zero in float lane 1 becomes an all-zero high double.
+            // Unknown values, including negative zero, cannot use this proof.
+            scalarZeroMask &= ~dst;
+            if (op->inst == Cvtps2pdXmmXmm && sourceLane1Zero) scalarZeroMask |= dst;
+            scalarZeroLane1Mask &= ~dst;
+            break;
+        case MovsdXmmE64: case MovqXmmE64:
+        case AddsdXmmXmm: case AddsdXmmE64:
+        case SubsdXmmXmm: case SubsdXmmE64:
+        case MulsdXmmXmm: case MulsdXmmE64:
+        case DivsdXmmXmm: case DivsdXmmE64:
+        case SqrtsdXmmXmm: case SqrtsdXmmE64:
+        case Cvtsi2sdXmmR32: case Cvtsi2sdXmmE32:
+        case Cvtss2sdXmmXmm: case Cvtss2sdXmmE32:
+            scalarZeroLane1Mask &= ~dst;
+            break;
+        default:
+            break;
+        }
+    }
+    switch (op->inst) {
+    case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+    case MovdqaXmmXmm: case MovdquXmmXmm:
+        if (scalarZeroCopyEnabled) {
+            const bool sourceZero = (scalarZeroMask & (1u << op->rm)) != 0;
+            scalarZeroMask &= ~(1u << op->reg);
+            if (sourceZero) scalarZeroMask |= 1u << op->reg;
+        }
+        break;
+    case MovsdXmmE64: case MovssXmmE32:
+    case MovqXmmXmm: case MovqXmmE64:
+    case MovdXmmR32: case MovdXmmE32:
+        scalarZeroMask |= 1u << op->reg;
+        break;
+    case XorpdXmmXmm: case XorpsXmmXmm: case PxorXmmXmm:
+        // These are not on the whitelist, so preCompile already discarded
+        // older proofs. A self XOR establishes a fresh zero value.
+        if (op->reg == op->rm) scalarZeroMask |= 1u << op->reg;
+        break;
+    default:
+        break;
+    }
+}
+
+bool JitArmV8CodeGen::hasZeroUpper64(SSERegPtr reg) const {
+    return reg->emulatedReg < 8 && (scalarZeroMask & (1u << reg->emulatedReg));
+}
+
 void JitArmV8CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
+    if (!scalarZeroEnabled || !blockOpCount || op->isBranch() ||
+        (op->flags2 & OP_FLAG2_JUMP_TARGET) || !canTrackScalarZero(op)) {
+        scalarZeroMask = 0;
+        scalarZeroLane1Mask = 0;
+    }
+    // Every interior that carries a proof must reject independent entry, even
+    // if this particular instruction does not use it. Keep real boundaries
+    // for host fault recovery; an external dispatch can promote and recompile.
+    if (scalarZeroMask || scalarZeroLane1Mask) scalarInternalEntries.insert(currentEip);
     if (!blockOpCount) fpuRegisterLoops = findFpuRegisterLoops(8);
     if (fpuRegisterLoop && currentEip > fpuRegisterLoop->backedge) {
         flushFpuCache();
@@ -1569,6 +1750,7 @@ void JitArmV8CodeGen::compile(DecodedOp* op) {
 }
 
 void JitArmV8CodeGen::postCompile(DecodedOp* op) {
+    updateScalarZero(op);
     // Metadata uses ordinary GP temporaries; values have eight dedicated D regs.
     for (U8 i = 0; i < 8; ++i) spillFpuTag(i);
     spillFpuTop();
@@ -2232,6 +2414,13 @@ void JitArmV8CodeGen::addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, 
 }
 
 void JitArmV8CodeGen::addValue(JitWidth regWidth, RegPtr reg, U32 imm) {
+    // Guest address arithmetic wraps at 32 bits. A negative displacement can
+    // therefore use SUB immediate without materializing its unsigned value.
+    // Do not apply this to a 64-bit add, where that value is positive.
+    if (regWidth == JitWidth::b32 && asmjit::a64::Utils::is_add_sub_imm(0u - imm)) {
+        compiler.sub(R32(reg), R32(reg), 0u - imm);
+        return;
+    }
     if (!asmjit::a64::Utils::is_add_sub_imm(imm)) {
         addReg(regWidth, reg, loadConst(imm));
         return;
@@ -2242,11 +2431,18 @@ void JitArmV8CodeGen::addValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 }
 
 void JitArmV8CodeGen::addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
-    if (asmjit::a64::Utils::is_add_sub_imm(value)) {
-        if (regWidth == JitWidth::b32) {
+    if (regWidth == JitWidth::b32) {
+        if (asmjit::a64::Utils::is_add_sub_imm(value)) {
             compiler.add(R32(dst), R32(reg), value);
-            return;
-        } else if (regWidth == JitWidth::b64) {
+        } else if (asmjit::a64::Utils::is_add_sub_imm(0u - value)) {
+            compiler.sub(R32(dst), R32(reg), 0u - value);
+        } else {
+            compiler.add(R32(dst), R32(reg), R32(loadConst(value)));
+        }
+        return;
+    }
+    if (asmjit::a64::Utils::is_add_sub_imm(value)) {
+        if (regWidth == JitWidth::b64) {
             compiler.add(R64(dst), R64(reg), value);
             return;
         }
@@ -3098,12 +3294,15 @@ void JitArmV8CodeGen::mulReg(JitWidth regWidth, RegPtr reg) {
 
 void JitArmV8CodeGen::imulRR(JitWidth regWidth, RegPtr dst, RegPtr src, RegPtr overflow) {
     if (regWidth == JitWidth::b32) {
-        compiler.smull(R64(dst), R32(dst), R32(src));
-
         if (overflow) {
+            compiler.smull(R64(dst), R32(dst), R32(src));
             compiler.lsr(R64(overflow), R64(dst), 32);
+            compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
+        } else {
+            // A truncated product has identical low bits for signed and
+            // unsigned inputs. The W form also clears the upper host bits.
+            compiler.mul(R32(dst), R32(dst), R32(src));
         }
-        compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
     } else if (regWidth == JitWidth::b16) {
         if (overflow) {
             kpanic("JitArmV8CodeGen::imulRR overflow");
@@ -3121,14 +3320,15 @@ void JitArmV8CodeGen::imulRR(JitWidth regWidth, RegPtr dst, RegPtr src, RegPtr o
 }
 
 void JitArmV8CodeGen::imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2, RegPtr overflow) {    
-    RegPtr value = loadConst(src2);
     if (regWidth == JitWidth::b32) {
         RegPtr value = loadConst(src2);
-        compiler.smull(R64(dst), R32(src), R32(value));
         if (overflow) {
+            compiler.smull(R64(dst), R32(src), R32(value));
             compiler.ubfx(R64(overflow), R64(dst), 32, 32);
+            compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
+        } else {
+            compiler.mul(R32(dst), R32(src), R32(value));
         }
-        compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
     } else if (regWidth == JitWidth::b16) {
         RegPtr value = loadConst((S32)((S16)src2));
         RegPtr src16 = getTmpReg();
@@ -4231,11 +4431,7 @@ RegPtr JitArmV8CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
                     }
                 } else if (disp) {
                     result = getTmpReg();
-                    if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
-                        compiler.add(R32(result), R32(getReadOnlyReg(op->sibIndex)), R32(loadConst(disp)));
-                    } else {
-                        compiler.add(R32(result), R32(getReadOnlyReg(op->sibIndex)), disp);
-                    }
+                    addValueWithDest(JitWidth::b32, result, getReadOnlyReg(op->sibIndex), disp);
                 } else if (base) {
                     result = getTmpReg();
                     compiler.add(R32(result), R32(getReadOnlyReg(op->sibIndex)), R32(base));
@@ -4255,20 +4451,12 @@ RegPtr JitArmV8CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
                 }
             } else {
                 result = getTmpReg();
-                if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
-                    compiler.add(R32(result), R32(getReadOnlyReg(op->rm)), R32(loadConst(disp)));
-                } else {
-                    compiler.add(R32(result), R32(getReadOnlyReg(op->rm)), disp);
-                }
+                addValueWithDest(JitWidth::b32, result, getReadOnlyReg(op->rm), disp);
             }
         } else if (disp) {
             result = getTmpReg();
             if (base) {
-                if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
-                    compiler.add(R32(result), R32(base), R32(loadConst(disp)));
-                } else {
-                    compiler.add(R32(result), R32(base), disp);
-                }
+                addValueWithDest(JitWidth::b32, result, base, disp);
                 base = nullptr;
             } else {
                 movValue(JitWidth::b32, result, disp);
@@ -4615,6 +4803,28 @@ void JitArmV8CodeGen::sseConvertFloatToInt(RegPtr dst, Vec src, bool truncate) {
         } else if (roundingMode == ROUND_Chop) {
             compiler.fcvtzs(R32(dst), src);
         }
+    }
+}
+
+void JitArmV8CodeGen::truncateScalarToInt32(RegPtr dst, SSERegPtr src, bool doublePrecision) {
+    const Vec input = doublePrecision ? toSseD(src) : toSseS(src);
+    static const bool useFrintts = asmjit::CpuInfo::host().features().arm().has_frintts() &&
+        !std::getenv("BOXEDWINE_ARM_FRINTTS_SLOW");
+    if (useFrintts) {
+        // FRINT32Z produces the x86 indefinite value for NaN, infinity and
+        // overflow before FCVTZS converts the integral floating-point value.
+        SSERegPtr tmp = getTmpSSE();
+        const Vec rounded = doublePrecision ? toSseD(tmp) : toSseS(tmp);
+        compiler.frint32z(rounded, input);
+        compiler.fcvtzs(R32(dst), rounded);
+    } else {
+        // Negative overflow already saturates to INT_MIN. Keep the converted
+        // result only for an ordered value below +2^31; this also rejects NaN.
+        SSERegPtr limit = loadSSEConst(doublePrecision ? SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE : SSE_MAX_INT32_PLUS_ONE_AS_FLOAT);
+        compiler.fcvtzs(R32(dst), input);
+        compiler.fcmp(input, doublePrecision ? toSseD(limit) : toSseS(limit));
+        RegPtr indefinite = loadConst(0x80000000);
+        compiler.csel(R32(dst), R32(dst), R32(indefinite), asmjit::a64::CondCode::kMI);
     }
 }
 
@@ -5235,8 +5445,7 @@ void JitArmV8CodeGen::cvtps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
 
 void JitArmV8CodeGen::cvtsi2ssXmmR32(SSERegPtr dst, RegPtr src) {
     SSERegPtr tmp = getTmpSSE();
-    compiler.ins(toSseS4(tmp, 0), R32(src));
-    compiler.scvtf(toSseS(tmp), toSseS(tmp));
+    compiler.scvtf(toSseS(tmp), R32(src));
     compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0)); // need to maintain the high 96-bits
 }
 
@@ -5251,9 +5460,7 @@ void JitArmV8CodeGen::cvttps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::cvttss2siR32Xmm(RegPtr dst, SSERegPtr src) {
-    SSERegPtr tmp = getTmpSSE();
-    cvtps2pi(tmp, src, true);
-    compiler.umov(R32(dst), toSseS4(tmp, 0));
+    truncateScalarToInt32(dst, src, false);
 }
 
 void JitArmV8CodeGen::movhlpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
@@ -5268,10 +5475,93 @@ void JitArmV8CodeGen::movssXmmXmm(SSERegPtr dst, SSERegPtr src) {
     compiler.ins(toSseS4(dst, 0), toSseS4(src, 0));
 }
 
+bool JitArmV8CodeGen::shuffleDwords(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    switch (mask) {
+    case 0x00:
+    case 0x55:
+    case 0xaa:
+    case 0xff:
+        compiler.dup(toSseS4(dst), toSseS4(src, mask & 3));
+        break;
+    case 0xe4:
+        if (dst->hardwareReg() != src->hardwareReg()) {
+            compiler.mov(toSse128(dst), toSse128(src));
+        }
+        break;
+    case 0xb1:
+        compiler.rev64(toSseS4(dst), toSseS4(src));
+        break;
+    case 0x1b:
+        compiler.rev64(toSseS4(dst), toSseS4(src));
+        compiler.ext(toSseB16(dst), toSseB16(dst), toSseB16(dst), 8);
+        break;
+    case 0x39:
+    case 0x4e:
+    case 0x93:
+        compiler.ext(toSseB16(dst), toSseB16(src), toSseB16(src), (mask & 3) * 4);
+        break;
+    case 0x44:
+        compiler.zip1(toSseD2(dst), toSseD2(src), toSseD2(src));
+        break;
+    case 0xee:
+        compiler.zip2(toSseD2(dst), toSseD2(src), toSseD2(src));
+        break;
+    case 0x88:
+        compiler.uzp1(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0xdd:
+        compiler.uzp2(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0x50:
+        compiler.zip1(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0xfa:
+        compiler.zip2(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0xa0:
+        compiler.trn1(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0xf5:
+        compiler.trn2(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    default:
+        return false;
+    }
+    return true;
+}
+
 void JitArmV8CodeGen::shufpsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    if (dst->hardwareReg() == src->hardwareReg() && shuffleDwords(dst, src, mask)) {
+        return;
+    }
+    // These selections preserve whole pairs or select even/odd lanes. ARM's
+    // vector shuffles read both inputs before writing the destination, so the
+    // same paths are also valid when the guest operands alias.
+    switch (mask) {
+    case 0x44:
+        compiler.zip1(toSseD2(dst), toSseD2(dst), toSseD2(src));
+        return;
+    case 0xee:
+        compiler.zip2(toSseD2(dst), toSseD2(dst), toSseD2(src));
+        return;
+    case 0xe4:
+        compiler.ins(toSseD2(dst, 1), toSseD2(src, 1));
+        return;
+    case 0x4e:
+        compiler.ext(toSseB16(dst), toSseB16(dst), toSseB16(src), 8);
+        return;
+    case 0x88:
+        compiler.uzp1(toSseS4(dst), toSseS4(dst), toSseS4(src));
+        return;
+    case 0xdd:
+        compiler.uzp2(toSseS4(dst), toSseS4(dst), toSseS4(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     
-    compiler.ins(toSseS4(tmp, 0), toSseS4(dst, mask & 3));
+    // Start with a complete write: inserting lane zero would retain a false
+    // dependency on the previous instruction that used this temporary.
+    compiler.dup(toSseS4(tmp), toSseS4(dst, mask & 3));
     compiler.ins(toSseS4(tmp, 1), toSseS4(dst, (mask >> 2) & 3));
     compiler.ins(toSseS4(tmp, 2), toSseS4(src, (mask >> 4) & 3));
     compiler.ins(toSseS4(tmp, 3), toSseS4(src, (mask >> 6) & 3));
@@ -5773,6 +6063,10 @@ void JitArmV8CodeGen::addpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::addsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fadd(toSseD(dst), toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fadd(toSseD(tmp), toSseD(dst), toSseD(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
@@ -5783,6 +6077,10 @@ void JitArmV8CodeGen::subpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::subsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fsub(toSseD(dst), toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fsub(toSseD(tmp), toSseD(dst), toSseD(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
@@ -5793,6 +6091,10 @@ void JitArmV8CodeGen::mulpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::mulsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fmul(toSseD(dst), toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fmul(toSseD(tmp), toSseD(dst), toSseD(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
@@ -5803,6 +6105,10 @@ void JitArmV8CodeGen::divpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::divsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fdiv(toSseD(dst), toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fdiv(toSseD(tmp), toSseD(dst), toSseD(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
@@ -5938,6 +6244,10 @@ void JitArmV8CodeGen::sqrtpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::sqrtsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fsqrt(toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fsqrt(toSse64(tmp), toSse64(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0));
@@ -6192,9 +6502,7 @@ void JitArmV8CodeGen::cvtsd2ssXmmXmm(SSERegPtr dst, SSERegPtr src) {
 void JitArmV8CodeGen::cvtsi2sdXmmR32(SSERegPtr dst, RegPtr src) {
     // cpu->xmm[reg].pd.f64[0] = cpu->reg[rm].u32;
     SSERegPtr tmpReg = getTmpSSE();
-    compiler.ins(toSseS4(tmpReg, 0), R32(src));
-    compiler.sxtl(toSseD2(tmpReg), toSseS2(tmpReg));
-    compiler.scvtf(toSseD(tmpReg), toSseD(tmpReg));
+    compiler.scvtf(toSseD(tmpReg), R32(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmpReg, 0));
 }
 
@@ -6218,10 +6526,14 @@ void JitArmV8CodeGen::cvttps2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::cvttsd2siR32Xmm(RegPtr dst, SSERegPtr src) {
-    cvtsd2si(dst, src, true);
+    truncateScalarToInt32(dst, src, true);
 }
 
 void JitArmV8CodeGen::movsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (scalarZeroDirectEnabled && hasZeroUpper64(dst)) {
+        compiler.fmov(toSseD(dst), toSseD(src));
+        return;
+    }
     compiler.ins(toSseD2(dst, 0), toSseD2(src, 0));
 }
 
@@ -6246,9 +6558,8 @@ void JitArmV8CodeGen::movd(RegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::movd(SSERegPtr dst, RegPtr src) {
-    // couldn't see a way to do this in 1 instruction, "mov s0, w0" is not valid
-    compiler.ins(toSseS4(dst, 0), R32(src));
-    compiler.mov(toSseS(dst), toSseS4(dst, 0));
+    // Bitwise transfer, with the upper 96 bits cleared as required by MOVD.
+    compiler.fmov(toSseS(dst), R32(src));
 }
 
 void JitArmV8CodeGen::movdq2q(MMXRegPtr dst, SSERegPtr src) {
@@ -6279,12 +6590,15 @@ void JitArmV8CodeGen::maskmovdqu(SSERegPtr src, SSERegPtr mask, MemPtr address) 
 }
 
 void JitArmV8CodeGen::pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    if (shuffleDwords(dst, src, mask)) {
+        return;
+    }
     SSERegPtr tmp = dst;
 
     if (dst->hardwareReg() == src->hardwareReg()) {
         tmp = getTmpSSE();
     }
-    compiler.ins(toSseS4(tmp, 0), toSseS4(src, mask & 3));
+    compiler.dup(toSseS4(tmp), toSseS4(src, mask & 3));
     compiler.ins(toSseS4(tmp, 1), toSseS4(src, (mask >> 2) & 3));
     compiler.ins(toSseS4(tmp, 2), toSseS4(src, (mask >> 4) & 3));
     compiler.ins(toSseS4(tmp, 3), toSseS4(src, (mask >> 6) & 3));
@@ -6293,54 +6607,59 @@ void JitArmV8CodeGen::pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
     }
 }
 
-// from spec: The low quadword of the source operand is copied to the low quadword of the destination operand, for each 128-bit lane.
-void JitArmV8CodeGen::pshufhwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
-    SSERegPtr tmp = dst;
-
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        tmp = getTmpSSE();
+void JitArmV8CodeGen::shuffleWords(SSERegPtr dst, SSERegPtr src, U32 mask, bool high) {
+    const bool alias = dst->hardwareReg() == src->hardwareReg();
+    if (mask == 0xe4) {
+        if (!alias) compiler.mov(toSse128(dst), toSse128(src));
+        return;
     }
-    compiler.ins(toSseH8(tmp, 4), toSseH8(src, 4 + (mask & 3)));
-    compiler.ins(toSseH8(tmp, 5), toSseH8(src, 4 + ((mask >> 2) & 3)));
-    compiler.ins(toSseH8(tmp, 6), toSseH8(src, 4 + ((mask >> 4) & 3)));
-    compiler.ins(toSseH8(tmp, 7), toSseH8(src, 4 + ((mask >> 6) & 3)));
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        compiler.ins(toSseD2(dst, 1), toSseD2(tmp, 1));
+    SSERegPtr tmp = alias ? getTmpSSE() : dst;
+    const U32 first = high ? 4 : 0;
+    if (mask == 0xb1) {
+        compiler.rev32(toSseH8(tmp), toSseH8(src));
+    } else if (mask == 0x1b) {
+        compiler.rev64(toSseH8(tmp), toSseH8(src));
     } else {
-        compiler.ins(toSseD2(dst, 0), toSseD2(src, 0));
+        // A full write avoids a false dependency on the old temporary value.
+        compiler.dup(toSseH8(tmp), toSseH8(src, first + (mask & 3)));
+        if (mask != 0x00 && mask != 0x55 && mask != 0xaa && mask != 0xff) {
+            compiler.ins(toSseH8(tmp, first + 1), toSseH8(src, first + ((mask >> 2) & 3)));
+            compiler.ins(toSseH8(tmp, first + 2), toSseH8(src, first + ((mask >> 4) & 3)));
+            compiler.ins(toSseH8(tmp, first + 3), toSseH8(src, first + ((mask >> 6) & 3)));
+        }
+    }
+    // The other half is copied from the source, including when dst aliases it.
+    if (alias) {
+        compiler.ins(toSseD2(dst, high ? 1 : 0), toSseD2(tmp, high ? 1 : 0));
+    } else {
+        compiler.ins(toSseD2(dst, high ? 0 : 1), toSseD2(src, high ? 0 : 1));
     }
 }
 
-// from spec: The high quadword of the source operand is copied to the high quadword of the destination operand
-void JitArmV8CodeGen::pshuflwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
-    SSERegPtr tmp = dst;
+void JitArmV8CodeGen::pshufhwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    shuffleWords(dst, src, mask, true);
+}
 
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        tmp = getTmpSSE();
-    }
-    compiler.ins(toSseH8(tmp, 0), toSseH8(src, (mask & 3)));
-    compiler.ins(toSseH8(tmp, 1), toSseH8(src, (mask >> 2) & 3));
-    compiler.ins(toSseH8(tmp, 2), toSseH8(src, (mask >> 4) & 3));
-    compiler.ins(toSseH8(tmp, 3), toSseH8(src, (mask >> 6) & 3));
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0));
-    } else {
-        compiler.ins(toSseD2(dst, 1), toSseD2(src, 1));
-    }
+void JitArmV8CodeGen::pshuflwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    shuffleWords(dst, src, mask, false);
 }
 
 void JitArmV8CodeGen::shufpdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
-    // r.f64[0] = ((imm8 & 1) == 0) ? a.f64[0] : a.f64[1];
-    // r.f64[1] = ((imm8 & 2) == 0) ? b.f64[0] : b.f64[1];
-    SSERegPtr tmp = dst;
-
+    // Only the low two immediate bits select the two 64-bit lanes.
     if (dst->hardwareReg() == src->hardwareReg()) {
-        tmp = getTmpSSE();
-    }
-    compiler.ins(toSseD2(tmp, 0), toSseD2(dst, mask & 1));
-    compiler.ins(toSseD2(tmp, 1), toSseD2(src, (mask >> 1) & 1));
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        compiler.mov(toSse128(dst), toSse128(tmp));
+        switch (mask & 3) {
+        case 0: compiler.dup(toSseD2(dst), toSseD2(src, 0)); break;
+        case 1: compiler.ext(toSseB16(dst), toSseB16(src), toSseB16(src), 8); break;
+        case 2: break;
+        case 3: compiler.dup(toSseD2(dst), toSseD2(src, 1)); break;
+        }
+    } else {
+        switch (mask & 3) {
+        case 0: compiler.zip1(toSseD2(dst), toSseD2(dst), toSseD2(src)); break;
+        case 1: compiler.ext(toSseB16(dst), toSseB16(dst), toSseB16(src), 8); break;
+        case 2: compiler.ins(toSseD2(dst, 1), toSseD2(src, 1)); break;
+        case 3: compiler.zip2(toSseD2(dst), toSseD2(dst), toSseD2(src)); break;
+        }
     }
 }
 

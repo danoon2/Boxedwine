@@ -456,6 +456,83 @@ void testSingleThreadSchedulerTimeSlice() {
 }
 #endif
 
+void testCloneVmCompiledEntryHelpers() {
+#if defined(BOXEDWINE_JIT_ARMV8) || defined(BOXEDWINE_JIT_X64)
+    auto& context = testContext();
+    testNewInstruction(0);
+#ifdef BOXEDWINE_JIT_ARMV8
+    ensureArmV8HardwareTSOForThread();
+#endif
+    testPushCode8(0xb8); testPushCode32(0x12345678);
+    testPushCode8(0xcd); testPushCode8(0x97);
+    const U32 faultCode = TEST_CODE_ADDRESS + 0x100;
+    context.codeIp = faultCode;
+    testPushCode8(0xa1); testPushCode32(0x24000000 - TEST_HEAP_ADDRESS);
+    testPushCode8(0xcd); testPushCode8(0x97);
+    auto* head = context.cpu->getOp(TEST_CODE_ADDRESS, 0);
+    auto* fault = context.cpu->getOp(faultCode, 0);
+    startNewJIT(context.cpu, TEST_CODE_ADDRESS, head);
+    startNewJIT(context.cpu, faultCode, fault);
+    if (!head->pfnJitCode || !fault->pfnJitCode) {
+        testFail("shared JIT helper test did not compile parent blocks");
+        return;
+    }
+    KProcessPtr child = KProcess::create();
+    child->memory = KMemory::create(child.get());
+    // Match CLONE_VM's shared memory and CPU state without requiring the
+    // filesystem fixture used by process-publication tests.
+    child->memory->clone(context.memory, true);
+    for (U32 segment = 0; segment < 6; ++segment) {
+        child->hasSetSeg[segment] = context.process->hasSetSeg[segment];
+        const U32 index = context.cpu->seg[segment].value >> 3;
+        *child->getLDT(index) = *context.process->getLDT(index);
+    }
+    child->hasSetStackMask = context.process->hasSetStackMask;
+    KThread* thread = child->createThread();
+    thread->clone(context.thread);
+    CPU* childCpu = thread->cpu;
+    auto run = [childCpu](U32 address) {
+        childCpu->eip.u32 = address - childCpu->seg[CS].address;
+        childCpu->nextOp = childCpu->getNextOp();
+        for (U32 dispatch = 0; dispatch < 20; ++dispatch) {
+            if (childCpu->nextOp && childCpu->nextOp->inst == TestEnd) return;
+            try { childCpu->run(); }
+            catch (int) { childCpu->nextOp = nullptr; }
+        }
+        testFail("shared JIT helper test failed to reach its end");
+    };
+    {
+        ChangeThread current(thread);
+        run(TEST_CODE_ADDRESS);
+        if (childCpu->reg[0].u32 != 0x12345678 || !child->startJITOp ||
+            !child->syncToHost || !child->syncFromHost || !child->blockExit ||
+            !child->calculateCF[0] || childCpu->calculateCF[0] != child->calculateCF[0]
+#ifdef BOXEDWINE_POSIX
+            || !child->signalHandler
+#endif
+            ) {
+            // Check before provoking a host fault: the old behavior otherwise
+            // loops at a null signal-handler address instead of failing cleanly.
+            testFail("shared compiled entry did not initialize child process helpers");
+        } else {
+            const U32 length = ramPageLinearMemoryPageCount() * K_PAGE_SIZE;
+            child->memory->mmap(thread, 0x24000000, length, K_PROT_READ | K_PROT_WRITE,
+                K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+            childCpu->reg[0].u32 = 0xffffffff;
+            run(faultCode);
+            if (childCpu->reg[0].u32 || childCpu->eip.u32 != faultCode + 5 - TEST_CODE_ADDRESS)
+                testFail("shared compiled entry did not recover its first memory fault");
+            child->memory->unmap(0x24000000, length);
+        }
+    }
+    child->memory->execvReset(true);
+    KSystem::eraseProcess(child->id);
+    child.reset();
+    if (context.memory->getDecodedOp(TEST_CODE_ADDRESS) != head || !head->pfnJitCode)
+        testFail("child helper cleanup damaged parent compiled code");
+#endif
+}
+
 void testRunCPU() {
 #if defined(BOXEDWINE_JIT_ARMV8)
     ensureArmV8HardwareTSOForThread();
@@ -2920,6 +2997,221 @@ static void testArmConditionalCompare() {
 #endif
 }
 
+void testArmKnownLazyFlagType() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    extern void startNewJIT(CPU*, U32, DecodedOp*);
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    struct State { U32 regs[8], flags; U64 xmm[16]; };
+    auto capture = [&]() {
+        State state{};
+        for (U32 r = 0; r < 8; ++r) {
+            state.regs[r] = cpu->reg[r].u32;
+            state.xmm[2*r] = cpu->xmm[r].pi.u64[0]; state.xmm[2*r+1] = cpu->xmm[r].pi.u64[1];
+        }
+        cpu->fillFlags(); state.flags = cpu->flags & FMASK_TEST; return state;
+    };
+    auto same = [](const State& a, const State& b) {
+        return a.flags == b.flags && !memcmp(a.regs, b.regs, sizeof(a.regs)) && !memcmp(a.xmm, b.xmm, sizeof(a.xmm));
+    };
+    auto execute = [&](bool jit) {
+        U32 steps = 0;
+        if (jit) do {
+            cpu->run(); if (++steps > 1024) { testFail("known flags JIT dispatch limit"); return; }
+        } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+        else while (cpu->getNextOp()->inst != TestEnd) {
+            if (++steps > 1024 || !cpu->runNextSingleOp()) { testFail("known flags interpreter limit"); return; }
+        }
+    };
+    for (U32 form = 0; form < 9; ++form) for (const auto& input : DIRECT_ARITHMETIC_CASES)
+    for (U8 cc = 0; cc < 16; ++cc) for (U32 gap : {1u, 4u, 16u, 17u})
+    for (U32 shape = 0; shape < 3; ++shape) for (bool live : {false, true}) {
+        std::vector<U8> code;
+        auto bytes = [&](std::initializer_list<U8> values) { for (U8 b : values) code.push_back(b); };
+        auto dword = [&](U32 value) { for (U32 i = 0; i < 4; ++i) code.push_back((U8)(value >> (8*i))); };
+        switch (form) {
+        case 0: bytes({0x3b, 0xc2}); break; // CMP EAX,EDX
+        case 1: bytes({0x3b, 0x05}); dword(0x104); break;
+        case 2: bytes({0x39, 0x15}); dword(0x100); break;
+        case 3: bytes({0x81, 0xf8}); dword(input[1]); break;
+        case 4: bytes({0x81, 0x3d}); dword(0x100); dword(input[1]); break;
+        case 5: bytes({0x85, 0xd0}); break; // TEST EAX,EDX
+        case 6: bytes({0x85, 0x15}); dword(0x100); break;
+        case 7: bytes({0xf7, 0xc0}); dword(input[1]); break;
+        default: bytes({0xf7, 0x05}); dword(0x100); dword(input[1]); break;
+        }
+        std::vector<U32> entries;
+        for (U32 move = 0; move < gap; ++move) {
+            entries.push_back((U32)code.size());
+            switch (move & 7) {
+            case 0: bytes({0x89, 0xf0}); break; // Overwrite the original comparison operands.
+            case 1: bytes({0x89, 0xfa}); break;
+            case 2: bytes({0x8b, 0x2d}); dword(0x110); break;
+            case 3: bytes({0x89, 0x2d}); dword(0x108); break;
+            case 4: bytes({0x66, 0x8b, 0x05}); dword(0x110); break;
+            case 5: bytes({0x88, 0x25}); dword(0x114); break;
+            case 6: bytes({0x8d, 0x6e, 1}); break;
+            case 7: bytes({0x0f, 0x28, 0xc1}); break;
+            }
+        }
+        entries.push_back((U32)code.size());
+        if (shape == 0) { bytes({(U8)(0x70 + cc), 5, 0xb9}); dword(0x12345678); }
+        else if (shape == 1) bytes({0x0f, (U8)(0x90 + cc), 0xc1});
+        else bytes({0x0f, (U8)(0x40 + cc), 0xce}); // CMOVcc ECX,ESI
+        if (live) {
+            bytes({0x9c, 0x5b});
+            if (form >= 5) { bytes({0x81, 0xe3}); dword(~(U32)AF); } // TEST leaves AF undefined.
+        }
+        bytes({0x39, 0xff, 0xcd, 0x97});
+        auto reset = [&](U32 eip, U32 incoming, bool lazy = false) {
+            U32 values[] = {input[0], 0xaaaaaa00, input[1], 0x76543210, 4096, 0x12345678, 0x87654321, 0x13579bdf};
+            for (U32 r = 0; r < 8; ++r) {
+                cpu->reg[r].u32 = values[r];
+                cpu->xmm[r].pi.u64[0] = 0x123456789abcdef0ull + r;
+                cpu->xmm[r].pi.u64[1] = 0xabcdef0123456789ull + r;
+            }
+            ctx.memory->writed(TEST_HEAP_ADDRESS + 0x100, input[0]);
+            ctx.memory->writed(TEST_HEAP_ADDRESS + 0x104, input[1]);
+            ctx.memory->writed(TEST_HEAP_ADDRESS + 0x108, 0);
+            ctx.memory->writed(TEST_HEAP_ADDRESS + 0x110, 0xabcd1234);
+            ctx.memory->writed(TEST_HEAP_ADDRESS + 0x114, 0);
+            cpu->setFlags(incoming, FMASK_ALL); cpu->lazyFlagType = FLAGS_NONE;
+            if (lazy) {
+                cpu->dst.u32 = 0xffffffff; cpu->src.u32 = 1; cpu->result.u32 = 0; cpu->lazyFlagType = FLAGS_ADD32;
+            }
+            cpu->eip.u32 = eip; cpu->nextOp = nullptr; cpu->yield = false;
+        };
+        auto setup = [&]() { testNewInstruction(0); for (U8 b : code) testPushCode8(b); reset(0, CF | OF); };
+        setup(); execute(false); State expected = capture();
+        U32 ignored; U32 flags = directArithmeticFlags(form < 5 ? DirectArithmeticTestOp::Sub : DirectArithmeticTestOp::And,
+            input[0], input[1], ignored);
+        bool take = directArithmeticCondition(cc, flags);
+        U32 output = shape == 0 ? (take ? 0xaaaaaa00 : 0x12345678) : shape == 1 ? (0xaaaaaa00 | (take ? 1 : 0)) : take ? 0x87654321 : 0xaaaaaa00;
+        if (expected.regs[1] != output) testFail("known flags reference condition form=%u cc=%u", form, cc);
+        setup(); auto* head = cpu->getOp(TEST_CODE_ADDRESS, 0); startNewJIT(cpu, TEST_CODE_ADDRESS, head);
+        bool probe = form == 0 && input[0] == 0 && input[1] == 1 && cc == 4 && gap == 4 && shape == 1 && live;
+        if (probe && !std::getenv("BOXEDWINE_ARM_KNOWN_LAZY_TYPE_SLOW")) {
+            for (U32 eip : entries) {
+                auto* op = ctx.memory->getDecodedOp(TEST_CODE_ADDRESS + eip);
+                if (!op || op->pfnJitCode) testFail("known flags interior was published before execution");
+            }
+        }
+        cpu->nextOp = head; execute(true); State actual = capture();
+        if (!same(expected, actual)) testFail("known flags form=%u lhs=%x rhs=%x cc=%u gap=%u shape=%u live=%u", form, input[0], input[1], cc, gap, shape, live);
+        if (probe) {
+            // Enter every proof-carrying interior with unrelated incoming flags.
+            for (U32 entry : entries) for (U32 incoming : {0u, (U32)ZF, (U32)(CF | SF | OF)}) for (bool lazy : {false, true}) {
+                reset(entry, incoming, lazy); execute(false); expected = capture();
+                reset(entry, incoming, lazy); execute(true); actual = capture();
+                if (!same(expected, actual)) testFail("known flags independent entry=%u incoming=%x lazy=%u", entry, incoming, lazy);
+            }
+            ctx.memory->writeb(TEST_CODE_ADDRESS, 0x03); // Replace CMP with ADD and invalidate the proof.
+            reset(0, CF | OF); execute(false); expected = capture();
+            reset(0, CF | OF); execute(true); actual = capture();
+            if (!same(expected, actual)) testFail("known flags producer invalidation");
+        }
+    }
+    // A forward edge can bypass the comparison but enter its following MOV.
+    for (U8 cc = 0; cc < 16; ++cc) {
+        testNewInstruction(0);
+        auto bytes = [](std::initializer_list<U8> values) { for (U8 b : values) testPushCode8(b); };
+        bytes({0x85, 0xff, 0x74, 2, 0x39, 0xd0, 0x89, 0xf3, 0x8b, 0x2d}); testPushCode32(0x110);
+        bytes({0x0f, (U8)(0x90 + cc), 0xc1, 0x9c, 0x5b, 0x39, 0xff, 0xcd, 0x97});
+        ctx.memory->writed(TEST_HEAP_ADDRESS + 0x110, 0x12345678);
+        auto reset = [&](U32 selector) {
+            for (U32 r = 0; r < 8; ++r) cpu->reg[r].u32 = r + 1;
+            cpu->reg[0].u32 = 0x80000000; cpu->reg[2].u32 = 1;
+            cpu->reg[4].u32 = 4096; cpu->reg[7].u32 = selector;
+            cpu->setFlags(0, FMASK_ALL); cpu->lazyFlagType = FLAGS_NONE;
+            cpu->eip.u32 = 0; cpu->nextOp = nullptr; cpu->yield = false;
+        };
+        auto* head = cpu->getOp(TEST_CODE_ADDRESS, 0); startNewJIT(cpu, TEST_CODE_ADDRESS, head);
+        for (U32 selector : {1u, 0u, 1u}) {
+            reset(selector); execute(false); State expected = capture();
+            reset(selector); execute(true); State actual = capture();
+            if (!same(expected, actual)) testFail("known flags branch bypass cc=%u selector=%u", cc, selector);
+        }
+    }
+#endif
+}
+
+void testArmKnownLazyFlagFaults() {
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_HOST_EXCEPTIONS)
+    extern void startNewJIT(CPU*, U32, DecodedOp*);
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    const U32 groupBytes = ramPageLinearMemoryPageCount() * K_PAGE_SIZE;
+    constexpr U32 target = 0x24000000;
+    auto bytes = [](std::initializer_list<U8> values) { for (U8 b : values) testPushCode8(b); };
+    for (bool logical : {false, true}) for (U8 cc = 0; cc < 16; ++cc)
+    for (bool store : {false, true}) for (U32 width : {1u, 2u, 4u})
+    for (U32 offset : {0u, 1u, K_PAGE_SIZE - 1u, groupBytes - 1u})
+    for (U32 tier : {0u, (U32)LINEAR_MEMORY_RECOMPILE_FAULTS, (U32)MAX_OP_EXCEPTION_COUNT})
+    for (U32 incoming : {0xffffffffu, 0u, (U32)FMASK_TEST, (U32)SF}) {
+        const bool signal = incoming != 0xffffffffu;
+        testNewInstruction(CF | OF);
+        ctx.memory->mmap(ctx.thread, target, groupBytes * 2, K_PROT_READ | K_PROT_WRITE,
+            K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+        if (signal) ctx.memory->writed(target + offset, 0xaabbccdd);
+        ctx.memory->writed(TEST_HEAP_ADDRESS + 0x108, 0);
+        cpu->reg[0].u32 = 0x80000000; cpu->reg[2].u32 = 1;
+        cpu->reg[1].u32 = 0x12345600; cpu->reg[5].u32 = 0x98765432;
+        cpu->reg[6].u32 = target + offset - TEST_HEAP_ADDRESS;
+        bytes({0xff, 0x05}); testPushCode32(0x108); // Count the completed prefix.
+        bytes({(U8)(logical ? 0x85 : 0x39), 0xd0}); // TEST/CMP EAX,EDX.
+        bytes({0xb8}); testPushCode32(0x12345678);
+        const U32 access = ctx.codeIp;
+        if (width == 2) bytes({0x66});
+        if (store) bytes({(U8)(width == 1 ? 0x88 : 0x89), 0x06});
+        else bytes({(U8)(width == 1 ? 0x8a : 0x8b), (U8)(width == 1 ? 0x1e : 0x2e)}); // BL/BP/EBP.
+        bytes({0x89, 0xfa, 0x0f, (U8)(0x90 + cc), 0xc1, 0xcd, 0x97});
+        const U32 handler = TEST_CODE_ADDRESS + 0x6000;
+        ctx.codeIp = handler; bytes({0xcd, 0x97});
+        auto savedAction = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = handler;
+        auto* head = cpu->getOp(TEST_CODE_ADDRESS, 0);
+        auto* accessOp = ctx.memory->getDecodedOp(access);
+        if (!accessOp) { testFail("known flags fault operand not decoded"); return; }
+        accessOp->exceptionCount = tier;
+        startNewJIT(cpu, TEST_CODE_ADDRESS, head);
+        const U32 protectedPage = (target + offset + width - 1) & ~K_PAGE_MASK;
+        if (signal) ctx.memory->mprotect(ctx.thread, protectedPage, K_PAGE_SIZE, store ? K_PROT_READ : 0);
+        U32 ignored;
+        U32 flags = directArithmeticFlags(logical ? DirectArithmeticTestOp::And : DirectArithmeticTestOp::Sub,
+            0x80000000, 1, ignored);
+        const U32 mask = logical ? FMASK_TEST & ~AF : FMASK_TEST;
+        testRunCPU();
+        if (signal) {
+            const U32 uc = action.sigInfo[0] == K_SIGSEGV ? cpu->reg[2].u32 : 0;
+            if (!uc || ctx.memory->readd(uc + 0x4c) != access - TEST_CODE_ADDRESS ||
+                (ctx.memory->readd(uc + 0x54) & mask) != (flags & mask) ||
+                ctx.memory->readd(uc + 0x40) != 0x12345678) {
+                testFail("known flags fault state logical=%u cc=%u store=%u width=%u offset=%x tier=%u", logical, cc, store, width, offset, tier);
+            } else {
+                U32 savedFlags = ctx.memory->readd(uc + 0x54);
+                ctx.memory->writed(uc + 0x54, (savedFlags & ~FMASK_TEST) | incoming);
+                ctx.memory->mprotect(ctx.thread, protectedPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+                if (cpu->pop32() != SIG_RETURN_ADDRESS) testFail("known flags signal return address");
+                onExitSignal(cpu, nullptr); cpu->nextOp = nullptr;
+                testRunCPU(); flags = incoming;
+            }
+        } else if (action.sigInfo[0]) testFail("known flags first-touch raised a signal");
+        ctx.memory->mprotect(ctx.thread, protectedPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        cpu->fillFlags();
+        if (cpu->reg[1].u32 != (0x12345600 | (directArithmeticCondition(cc, flags) ? 1 : 0)) ||
+            (cpu->flags & mask) != (flags & mask))
+            testFail("known flags recovery result logical=%u cc=%u store=%u width=%u offset=%x tier=%u incoming=%x", logical, cc, store, width, offset, tier, incoming);
+        if (ctx.memory->readd(TEST_HEAP_ADDRESS + 0x108) != 1) testFail("known flags replayed the completed prefix");
+        if (store) {
+            const U32 value = width == 1 ? ctx.memory->readb(target + offset) : width == 2 ? ctx.memory->readw(target + offset) : ctx.memory->readd(target + offset);
+            const U32 expected = width == 1 ? 0x78 : width == 2 ? 0x5678 : 0x12345678;
+            if (value != expected) testFail("known flags recovered store value");
+        }
+        ctx.process->sigActions[K_SIGSEGV] = savedAction;
+        ctx.memory->unmap(target, groupBytes * 2);
+    }
+#endif
+}
+
 void testJitDirectArithmeticFlags() {
     testArmConditionalCompare();
     testJitFlagResultRegions();
@@ -5172,6 +5464,102 @@ namespace {
 #endif
 }
 #endif
+
+void testArmLinearReadAddress() {
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_HOST_EXCEPTIONS)
+    auto& ctx = testContext();
+    CPU* cpu = ctx.cpu;
+    const U32 groupBytes = ramPageLinearMemoryPageCount() * K_PAGE_SIZE;
+    constexpr U32 counter = TEST_HEAP_ADDRESS + 0x100;
+    constexpr U32 freshBase = 0x22004000;
+    constexpr U32 input = 0x8976ff80;
+    constexpr U32 contextOffsets[] = {0x40, 0x3c, 0x38, 0x34, 0x30, 0x2c, 0x28, 0x24};
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    for (U32 form = 0; form < 7; ++form)
+    for (U32 base = 0; base < 8; ++base) for (bool alias : {false, true})
+    for (U32 offset : {0u, 1u, K_PAGE_SIZE - 1u, groupBytes - 1u})
+    for (U32 tier : {0u, (U32)LINEAR_MEMORY_RECOMPILE_FAULTS, (U32)MAX_OP_EXCEPTION_COUNT})
+    for (U32 state = 0; state < 3; ++state) {
+        const bool fault = state == 1, fresh = state == 2;
+        if (fresh && tier) continue;
+        // An inaccessible ESP page cannot also hold a signal frame. The
+        // first two offsets leave the frame in the preceding writable page.
+        if (fault && base == 4 && offset > 1) continue;
+        testNewInstruction(CF | OF | AF);
+        U32 savedEsp = cpu->seg[SS].address + cpu->reg[4].u32;
+        cpu->seg[DS].address = cpu->seg[SS].address = 0;
+        ctx.process->hasSetSeg[DS] = ctx.process->hasSetSeg[SS] = false;
+        const U32 address = (fresh ? freshBase : TEST_HEAP_ADDRESS + 0x4000) + offset;
+        if (fresh && ctx.memory->mmap(ctx.thread, freshBase, groupBytes * 2, K_PROT_READ | K_PROT_WRITE,
+                K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0) != freshBase) {
+            testFail("linear read fresh mapping failed"); return;
+        }
+        if (!fresh) ctx.memory->writed(address, input);
+        ctx.memory->writed(counter, 0);
+        U32 initial[8];
+        for (U32 r = 0; r < 8; ++r) initial[r] = 0x12340000 + r * 0x101;
+        initial[4] = savedEsp;
+        initial[base] = address;
+        for (U32 r = 0; r < 8; ++r) cpu->reg[r].u32 = initial[r];
+        const U32 dst = alias ? base : (base + 1) % 8;
+        bytes({0xff, 0x05}); testPushCode32(counter); // INC: completed prefix, lazy flags, must not repeat.
+        const U32 access = ctx.codeIp;
+        if (form >= 5) bytes({0x66});
+        if (!form) bytes({0x8b});
+        else {
+            const U8 opcodes[] = {0, 0xb6, 0xbe, 0xb7, 0xbf, 0xb6, 0xbe};
+            bytes({0x0f, opcodes[form]});
+        }
+        bytes({(U8)((base == 5 ? 0x40 : 0) | (dst << 3) | base)});
+        if (base == 4) bytes({0x24});
+        if (base == 5) bytes({0});
+        bytes({0xcd, 0x97});
+        const U32 handler = TEST_CODE_ADDRESS + 0x6000;
+        ctx.codeIp = handler; bytes({0xcd, 0x97});
+        auto savedAction = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = handler;
+        auto* entry = cpu->getOp(TEST_CODE_ADDRESS, 0);
+        auto* readOp = ctx.memory->getDecodedOp(access);
+        if (!readOp) { testFail("linear read not decoded"); return; }
+        readOp->exceptionCount = tier;
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+        if (!entry->pfnJitCode) testFail("linear read did not compile");
+        const U32 width = !form ? 4 : (form == 3 || form == 4) ? 2 : 1;
+        const U32 protectedPage = (address + width - 1) & ~K_PAGE_MASK;
+        if (fault && ctx.memory->mprotect(ctx.thread, protectedPage, K_PAGE_SIZE, 0)) {
+            testFail("linear read protection setup failed"); return;
+        }
+        testRunCPU();
+        if (fault) ctx.memory->mprotect(ctx.thread, protectedPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        if (ctx.memory->readd(counter) != 1) testFail("linear read repeated completed prefix");
+        if (fault) {
+            U32 uc = action.sigInfo[0] == K_SIGSEGV ? cpu->reg[2].u32 : 0;
+            if (!uc || ctx.memory->readd(uc + 0x4c) != access - TEST_CODE_ADDRESS ||
+                    (ctx.memory->readd(uc + 0x54) & FMASK_TEST) != CF) {
+                testFail("linear read fault eip/flags form=%u base=%u alias=%u offset=%x tier=%u", form, base, alias, offset, tier);
+            } else for (U32 r = 0; r < 8; ++r) {
+                if (ctx.memory->readd(uc + contextOffsets[r]) != initial[r])
+                    testFail("linear read fault changed register %u form=%u base=%u alias=%u offset=%x tier=%u", r, form, base, alias, offset, tier);
+            }
+        } else {
+            U32 value = fresh ? 0 : input;
+            if (width == 1) value = (form == 2 || form == 6) ? (U32)(S32)(S8)value : (U8)value;
+            if (width == 2) value = form == 4 ? (U32)(S32)(S16)value : (U16)value;
+            if (form >= 5) value = (initial[dst] & 0xffff0000) | (value & 0xffff);
+            initial[dst] = value;
+            cpu->fillFlags();
+            if (action.sigInfo[0] || (cpu->flags & FMASK_TEST) != CF)
+                testFail("linear read unexpected signal/flags");
+            for (U32 r = 0; r < 8; ++r) if (cpu->reg[r].u32 != initial[r])
+                testFail("linear read result register %u form=%u base=%u alias=%u offset=%x tier=%u state=%u", r, form, base, alias, offset, tier, state);
+        }
+        if (!fresh && ctx.memory->readd(address) != input) testFail("linear read modified source memory");
+        ctx.process->sigActions[K_SIGSEGV] = savedAction;
+        if (fresh) ctx.memory->unmap(freshBase, groupBytes * 2);
+    }
+#endif
+}
 
 void testNativeX64MemoryPolicies() {
 #ifdef BOXEDWINE_JIT_X64

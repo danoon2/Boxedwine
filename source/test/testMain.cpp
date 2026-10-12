@@ -118,6 +118,9 @@ void testFinalMappedRetirementShortWriteIsRetryable();
 void testFinalMappedRetirementSerializesNewRetain();
 void testMmapRejectsFileOffsetOverflowBeforeReplacement();
 void testMlockValidatesMappedAccessibleRange();
+void testInitialStackLinearAlignment();
+void testMmapStackEndAlignment();
+void testElfInterpreterHonorsProgramHeaderCount();
 void testMsyncRejectsUnmappedFileRange();
 void testMsyncFlushesRangeAcrossFixedFileOverlay();
 void testMsyncValidatesArgumentsAndAcceptsAnonymousRanges();
@@ -1019,6 +1022,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testXaddE32R32_0x3c1, "Test Xadd E32,R32 3c1"},
     {testSseCompareImmediate_0x3c2, "Test SSE Compare Immediate 3c2"},
     {testSseInsertExtractShuffle_0x1c4_0x3c4_0x1c5_0x3c5_0x3c6, "Test SSE Insert/Extract/Shuffle"},
+    {testSseShuffleAllMasks, "Test SSE shuffle all masks and aliases"},
+    {testArmScalarTruncateBoundaries, "Test ARM scalar truncation boundaries"},
     {testCmpXchg8b_0x3c7, "Test CmpXchg8b 3c7"},
     {testBswap_0x3c8_0x3cf, "Test Bswap 3c8-3cf"},
     {testFxsave_0x3ae, "Test Fxsave 3ae"},
@@ -1109,6 +1114,17 @@ const TestEntry TEST_ENTRIES[] = {
     {testFinalMappedRetirementSerializesNewRetain, "Test final mapped retirement serializes a new retain", TEST_ENTRY_SERIAL},
     {testMmapRejectsFileOffsetOverflowBeforeReplacement, "Test mmap rejects file offset overflow before replacement", TEST_ENTRY_SERIAL},
     {testMlockValidatesMappedAccessibleRange, "Test mlock validates mapped accessible ranges", TEST_ENTRY_SERIAL},
+    {testInitialStackLinearAlignment, "Test initial stack linear alignment", TEST_ENTRY_SERIAL},
+    {testArmLinearReadAddress, "Test ARM linear read address", TEST_ENTRY_SERIAL},
+    {testArmScalarZeroLanes, "Test ARM scalar zero lanes", TEST_ENTRY_SERIAL},
+    {testArmScalarZeroFaults, "Test ARM scalar zero fault recovery", TEST_ENTRY_SERIAL},
+    {testCloneVmCompiledEntryHelpers, "Test CLONE_VM child enters compiled parent code", TEST_ENTRY_SERIAL},
+    {testMmapStackEndAlignment, "Test mmap thread stack end alignment", TEST_ENTRY_SERIAL},
+    {testElfInterpreterHonorsProgramHeaderCount, "Test ELF interpreter program header count", TEST_ENTRY_SERIAL},
+    {testArmScalarZeroLanePropagation, "Test ARM scalar zero lane propagation", TEST_ENTRY_SERIAL},
+    {testArmScalarZeroDirectOps, "Test ARM direct scalar zero-lane operations", TEST_ENTRY_SERIAL},
+    {testArmKnownLazyFlagType, "Test ARM known lazy flag type", TEST_ENTRY_SERIAL},
+    {testArmKnownLazyFlagFaults, "Test ARM known lazy flag fault recovery", TEST_ENTRY_SERIAL},
     {testMsyncRejectsUnmappedFileRange, "Test msync rejects unmapped file range", TEST_ENTRY_SERIAL},
     {testMsyncFlushesRangeAcrossFixedFileOverlay, "Test msync flushes range across fixed file overlay", TEST_ENTRY_SERIAL},
     {testMsyncValidatesArgumentsAndAcceptsAnonymousRanges, "Test msync validates arguments and accepts anonymous ranges", TEST_ENTRY_SERIAL},

@@ -1006,13 +1006,12 @@ void common_cvttps2dqXmmE128(CPU* cpu,U32 reg, U32 address ) {
 }
 
 void common_cvttsd2siR32Xmm(CPU* cpu, U32 r1, U32 r2) {
-    cpu->reg[r1].u32 = simde_mm_cvttsd_si32(cpu->xmm[r2].pd);
+    // The bundled SIMDe fallback rejects valid values at and just above INT_MAX.
+    cpu->reg[r1].u32 = commonSse2RoundToI32(commonSse2F64FromBits(cpu->xmm[r2].pd.u64[0]), cpu->mxcsr, true);
 }
 
 void common_cvttsd2siR32E64(CPU* cpu, U32 reg, U32 address) {
-    simde__m128d value;
-    value.u64[0] = cpu->memory->readq(address);
-    cpu->reg[reg].u32 = simde_mm_cvttsd_si32(value);
+    cpu->reg[reg].u32 = commonSse2RoundToI32(commonSse2F64FromBits(cpu->memory->readq(address)), cpu->mxcsr, true);
 }
 
 void common_movqXmmXmm(CPU* cpu, U32 r1, U32 r2) {
