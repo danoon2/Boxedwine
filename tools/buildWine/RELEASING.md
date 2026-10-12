@@ -211,10 +211,11 @@ generate new `graphics-builds.json` identities for newly generated builds.
 ## 7. Review separately pinned test suites
 
 - [ ] [`../wineTests/runWineTests.py`](../wineTests/runWineTests.py) has its own
-  `FILESYSTEM_URL` and `FILESYSTEM_CACHE_NAME` (v10 at this audit). Decide whether
-  that suite moves to the release. If it does, update both defaults, corresponding
-  tests/docs, and use a fresh cache. A nonempty old cache can otherwise be reused
-  even with `--filesystem-url` set to a new URL.
+  native test entry point. Publish the final main ZIP at
+  `https://boxedwine.org/v2/latest/TinyCore15Wine11.0.zip` alongside its versioned
+  URL. The runner refreshes this alias on every invocation; verify that the
+  printed revision and `inputs.json` match the new release. Use an explicit
+  versioned `--filesystem-url` only when reproducing an older result.
 - [ ] Graphics qualification uses explicit filesystem, runtime, test-executable,
   divergence-manifest, and baseline identities. Use the
   [graphics test guide](../wineTests/GRAPHICS_README.md) and
