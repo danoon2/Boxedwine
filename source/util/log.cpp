@@ -36,6 +36,7 @@ void internal_kpanic(BString msg) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(logMutex);
     if (KSystem::logFile.isOpen()) {
         KSystem::logFile.write(msg);
+        KSystem::logFile.flush();
     }
     fwrite(msg.c_str(), 1, msg.length(), stderr);
     fflush(stderr);
@@ -68,6 +69,7 @@ void internal_log(BString msg, FILE* f) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(logMutex);
     if (KSystem::logFile.isOpen()) {
         KSystem::logFile.write(msg);
+        KSystem::logFile.flush();
     }
     fwrite(msg.c_str(), 1, msg.length(), f);
     fflush(f);

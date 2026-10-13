@@ -130,6 +130,8 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     }
     if (KSystem::logFile.isOpen()) {
         KSystem::logFile.write((char*)buffer, len);
+        // Flushed per write, so a killed or crashed process keeps its log
+        KSystem::logFile.flush();
     }
     if (KSystem::watchTTY) {
         KSystem::watchTTY(s);
