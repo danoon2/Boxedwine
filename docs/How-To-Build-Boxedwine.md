@@ -43,7 +43,12 @@ cd project\msvc\BoxedWine
 msbuild BoxedWine.sln -p:Configuration=Release -p:Platform=x64 -m
 ```
 
-The executable is `project\msvc\BoxedWine\x64\Release\BoxedWine.exe`.
+The executable is `project\msvc\BoxedWine\x64\Release\BoxedWine.exe`. Release builds use the Windows subsystem, so the executable writes nothing to a terminal it is started from. To get the console executable the release packages ship, copy it and change the copy's subsystem, as `tools/jenkins/build-windows.ps1` does:
+
+```bat
+copy x64\Release\BoxedWine.exe x64\Release\Boxedwine_console.exe
+editbin /subsystem:console x64\Release\Boxedwine_console.exe
+```
 
 The projects use the v145 toolset from Visual Studio 2026. With only Visual Studio 2022 (or its Build Tools) installed, the build stops with `MSB8020: The build tools for v145 ... cannot be found`. Pass the 2022 toolset instead:
 

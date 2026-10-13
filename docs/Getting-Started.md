@@ -25,14 +25,16 @@ one folder per architecture:
 | `Win32\BoxedWine.exe`, `Win32\Boxedwine_console.exe` | 32-bit x86 Windows |
 | `WinARM64\BoxedWine.exe` | Windows on ARM64 |
 
-Use the `_console` executable when running from a terminal, so that log
-output shows up there.
+`BoxedWine.exe` writes nothing to a terminal it is started from, so the
+commands below use `Boxedwine_console.exe`, which does. The 26R1 `WinARM64`
+folder has only `BoxedWine.exe`; use it with `-log <file>` and read the file.
 
 ### Build from source
 
 To build Boxedwine yourself, follow
-[How to Build Boxedwine](How-To-Build-Boxedwine.md). It also covers getting
-the file system that matches a source build.
+[How to Build Boxedwine](How-To-Build-Boxedwine.md). It also covers making
+the console executable and getting the file system that matches a source
+build.
 
 ## 2. Get a Wine file system
 
@@ -46,7 +48,7 @@ since Boxedwine opens the path as given and does not look in
 ## 3. Run a Wine program
 
 ```bat
-BoxedWine.exe -zip "%APPDATA%\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" -root C:\bw\root /bin/wine winemine
+Boxedwine_console.exe -zip "%APPDATA%\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" -root C:\bw\root /bin/wine winemine
 ```
 
 - `-zip` is the read-only file system. `-root` is a host directory where
@@ -73,7 +75,7 @@ This starts `Game.exe` with the installed game on E: and the CD's files on
 D:, from the game's own directory (`-w`):
 
 ```bat
-BoxedWine.exe -zip "%APPDATA%\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" -root C:\bw\root-mygame ^
+Boxedwine_console.exe -zip "%APPDATA%\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" -root C:\bw\root-mygame ^
   -mount_drive C:\games\MyGame e ^
   -mount_drive C:\games\MyGame-cd d ^
   -w /home/username/.wine/dosdevices/e: ^
@@ -94,7 +96,7 @@ To change Wine settings for a root, run Wine's own tools in it, for example
 the DirectDraw renderer:
 
 ```bat
-BoxedWine.exe -zip "%APPDATA%\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" -root C:\bw\root-mygame ^
+Boxedwine_console.exe -zip "%APPDATA%\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" -root C:\bw\root-mygame ^
   /bin/wine reg add "HKCU\Software\Wine\Direct3D" /v renderer /d gdi /f
 ```
 
@@ -102,7 +104,7 @@ A mounted drive is a fixed disk to Wine. For a game that checks the drive
 type of its CD, mark the drive as a CD-ROM in the same root:
 
 ```bat
-BoxedWine.exe -zip "%APPDATA%\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" -root C:\bw\root-mygame ^
+Boxedwine_console.exe -zip "%APPDATA%\Boxedwine\FileSystems2\TinyCore15Wine11.0.zip" -root C:\bw\root-mygame ^
   /bin/wine reg add "HKLM\Software\Wine\Drives" /v d: /d cdrom /f
 ```
 
