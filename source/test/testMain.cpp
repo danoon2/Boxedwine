@@ -1043,6 +1043,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingMovsb, "Test Self Modifying Code using movsb"},
     {testSelfModifyingFront, "Test Self Modifying Code Same Block(Previous)"},
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
+    {testCodePageCopyOnWriteReferences, "Test code-page copy-on-write references"},
     {testLinearMemoryAliasAndFaults, "Test linear-memory alias and fault handling", TEST_ENTRY_SERIAL},
     {testLinearMemoryFileFirstTouches, "Test linear-memory file and COW first touches", TEST_ENTRY_SERIAL},
     {testLinearMemoryWraparound, "Test linear-memory wraparound loads and stores", TEST_ENTRY_SERIAL},

@@ -14,6 +14,7 @@ void testSelfModifying();
 void testSelfModifyingMovsb();
 void testSelfModifyingFront();
 void testSelfModifyingBack();
+void testCodePageCopyOnWriteReferences();
 void testLinearMemoryAliasAndFaults();
 void testLinearMemoryFileFirstTouches();
 void testLinearMemoryWraparound();

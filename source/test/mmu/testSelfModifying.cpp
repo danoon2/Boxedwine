@@ -442,6 +442,47 @@ void testSelfModifyingBack() {
     verifyReg32(0, 0x60, "self modifying back eax");
 }
 
+void testCodePageCopyOnWriteReferences() {
+    newInstruction(0);
+    pushCode8(0xb8); // MOV EAX,1
+    testPushCode32(1);
+    pushCode8(0xcd);
+    pushCode8(0x97);
+    runTestCPU();
+
+    MMU& entry = getMemData(testMemory)->mmu[TEST_CODE_ADDRESS >> K_PAGE_SHIFT];
+    if (entry.getPageType() != PageType::Code) {
+        failed("copy-on-write test did not create a code page");
+        return;
+    }
+    // Keep the original backing alive, as a fork sharing this code page does.
+    RamPage original = entry.getRamPageIndex();
+    ramPageRetain(original);
+    testMemory->writeb(TEST_CODE_ADDRESS + 1, 2);
+    RamPage copied = entry.getRamPageIndex();
+    if (copied.value == original.value || ramPageGet(original)[1] != 1 ||
+            testMemory->readb(TEST_CODE_ADDRESS + 1) != 2) {
+        failed("code-page copy-on-write did not isolate the write");
+    }
+    if (ramPageUseCount(copied) != 1) {
+        failed("copied code page retained an extra allocation reference");
+    }
+    ramPageRelease(original);
+
+    // Once private, repeated patches must reuse the page rather than leaking
+    // another page on every write (large JIT tests exhausted Linux mappings).
+    testMemory->writew(TEST_CODE_ADDRESS + 1, 3);
+    testMemory->writed(TEST_CODE_ADDRESS + 1, 4);
+    if (entry.getRamPageIndex().value != copied.value || ramPageUseCount(copied) != 1) {
+        failed("private code-page patches allocated another copy");
+    }
+    cpu->eip.u32 = 0;
+    cpu->nextOp = nullptr;
+    cpu->yield = false;
+    runTestCPU();
+    verifyReg32(0, 4, "copy-on-write patched code eax");
+}
+
 void testLinearMemoryAliasAndFaults() {
     if (!ramPageUseLinearMemory()) {
         return;
