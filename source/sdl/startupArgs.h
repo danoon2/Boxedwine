@@ -122,6 +122,8 @@ public:
     bool disableWasmJitForWrittenCode = false;
     bool safeMemory = false; // Opt into MT Wasm JIT guest-memory fences.
     bool disableLinearMemory = false;
+    // -localServer port, -1 when the local server is off. 0 picks a free port.
+    int localServerPort = -1;
 
 private:
     static void addWineDllOverrides(std::vector<BString>& envValues, const char* overrides);

@@ -506,6 +506,21 @@
     <ClCompile Include="..\..\..\..\..\source\util\pixelMatch.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\server\audiocapture.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\server\encoding.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\server\localserver.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\server\mediaroutes.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\server\screencapture.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\util\stb_image.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
@@ -1050,6 +1065,9 @@
     </Filter>
     <Filter Include="platform">
       <UniqueIdentifier>{8190a792-fd71-4036-b1b5-965c4b6a6194}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\server">
+      <UniqueIdentifier>{898908cc-b9e3-4b74-9c4d-ffc413a36057}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\util">
       <UniqueIdentifier>{ca5ebf92-9e70-4a1c-adaf-c61920f1c23d}</UniqueIdentifier>
@@ -2180,6 +2198,18 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\pixelMatch.h">
       <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\server\audiocapture.h">
+      <Filter>source\server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\server\encoding.h">
+      <Filter>source\server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\server\localserver.h">
+      <Filter>source\server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\server\screencapture.h">
+      <Filter>source\server</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\stb_image.h">
       <Filter>source\util</Filter>

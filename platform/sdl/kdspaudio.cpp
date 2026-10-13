@@ -22,6 +22,10 @@
 #include <SDL.h>
 #include <algorithm>
 #include "../../source/kernel/devs/oss.h"
+#include "../../source/server/localserver.h"
+#ifdef BOXEDWINE_LOCAL_SERVER
+#include "../../source/server/audiocapture.h"
+#endif
 
 #define DSP_BUFFER_SIZE (1024*32)
 
@@ -554,6 +558,9 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 }
 
 void KDspAudioSdl::closeAudio() {
+#ifdef BOXEDWINE_LOCAL_SERVER
+	AudioCapture::closeVoice(this->id);
+#endif
 	if (!KSystem::soundEnabled) {
 		this->open = false;
 		this->audioBuffer.clear();
@@ -615,6 +622,9 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		U32 blockSize = bytesPerSampleWant() * want.channels;
 		len = KDspAudioMath::getWritableBytes(len, capacity, (U32)this->audioBuffer.size(), blockSize);
 		audioBuffer.insert(this->audioBuffer.end(), data, data + len);
+#ifdef BOXEDWINE_LOCAL_SERVER
+		AudioCapture::write(this->id, this->want.format, this->want.freq, this->want.channels, data, len);
+#endif
 		return len;
 	}
 
@@ -655,6 +665,9 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	}
 #endif
 
+#ifdef BOXEDWINE_LOCAL_SERVER
+	AudioCapture::write(this->id, this->want.format, this->want.freq, this->want.channels, data, len);
+#endif
 #ifdef __EMSCRIPTEN__
 	if (!this->sameFormat && this->stream) {
 		if (SDL_AudioStreamPut(this->stream, data, (int)len) < 0) {

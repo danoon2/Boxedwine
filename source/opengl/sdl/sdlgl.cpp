@@ -30,6 +30,10 @@
 #include "../../x11/x11.h"
 #include "../../source/ui/mainui.h"
 #include "../../platform/sdl/sdlcallback.h"
+#include "../../server/localserver.h"
+#ifdef BOXEDWINE_LOCAL_SERVER
+#include "../../server/screencapture.h"
+#endif
 #ifdef __APPLE__
 #include "../../../platform/mac/macOpenGL.h"
 #endif
@@ -591,6 +595,11 @@ KOpenGLSdl::~KOpenGLSdl() {
 void SDLGlWindow::showWindow(bool show) {
     if (XServer::getServer(true)) {
         XWindowPtr inputWindow = this->inputWindow.lock();
+#ifdef BOXEDWINE_LOCAL_SERVER
+        if (!show && inputWindow) {
+            ScreenCapture::clearGlFrame(inputWindow->id);
+        }
+#endif
         if (show) {
             XServer::getServer()->setFakeFullScreenWindow(inputWindow);
         } else {
@@ -925,6 +934,88 @@ void SDLGlWindow::paceSwap(S32 interval) {
 }
 #endif
 
+#ifdef BOXEDWINE_LOCAL_SERVER
+#ifndef GL_BGRA
+#define GL_BGRA 0x80E1
+#endif
+#ifndef GL_READ_FRAMEBUFFER
+#define GL_READ_FRAMEBUFFER 0x8CA8
+#endif
+#ifndef GL_READ_FRAMEBUFFER_BINDING
+#define GL_READ_FRAMEBUFFER_BINDING 0x8CAA
+#endif
+#ifndef GL_PIXEL_PACK_BUFFER
+#define GL_PIXEL_PACK_BUFFER 0x88EB
+#endif
+#ifndef GL_PIXEL_PACK_BUFFER_BINDING
+#define GL_PIXEL_PACK_BUFFER_BINDING 0x88ED
+#endif
+
+// Reads the back buffer of a window about to be swapped, for the local
+// server, and puts back every piece of state it changes so the game sees none.
+static void captureGlFrame(const std::shared_ptr<XDrawable>& d) {
+    if (!ScreenCapture::onGlSwap() || !pglReadPixels || !pglGetIntegerv || !pglPixelStorei || !pglReadBuffer) {
+        return;
+    }
+    U32 width = d->width();
+    U32 height = d->height();
+    if (!width || !height) {
+        return;
+    }
+    S32 x = 0;
+    S32 y = 0;
+    if (XServer* server = XServer::getServer(true)) {
+        XWindowPtr wnd = server->getWindow(d->id);
+        if (wnd) {
+            wnd->windowToScreen(x, y);
+        }
+    }
+
+    GLint packAlignment = 4, packRowLength = 0, packSkipRows = 0, packSkipPixels = 0;
+    GLint readBuffer = GL_BACK, doubleBuffer = 1, readFramebuffer = 0, packBuffer = 0;
+    pglGetIntegerv(GL_PACK_ALIGNMENT, &packAlignment);
+    pglGetIntegerv(GL_PACK_ROW_LENGTH, &packRowLength);
+    pglGetIntegerv(GL_PACK_SKIP_ROWS, &packSkipRows);
+    pglGetIntegerv(GL_PACK_SKIP_PIXELS, &packSkipPixels);
+    pglGetIntegerv(GL_READ_BUFFER, &readBuffer);
+    pglGetIntegerv(GL_DOUBLEBUFFER, &doubleBuffer);
+    if (ext_glBindFramebuffer) {
+        pglGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFramebuffer);
+        if (readFramebuffer) {
+            ext_glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        }
+    }
+    if (ext_glBindBuffer) {
+        pglGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &packBuffer);
+        if (packBuffer) {
+            ext_glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+        }
+    }
+    pglReadBuffer(doubleBuffer ? GL_BACK : GL_FRONT);
+    pglPixelStorei(GL_PACK_ALIGNMENT, 4);
+    pglPixelStorei(GL_PACK_ROW_LENGTH, 0);
+    pglPixelStorei(GL_PACK_SKIP_ROWS, 0);
+    pglPixelStorei(GL_PACK_SKIP_PIXELS, 0);
+
+    std::vector<U8> pixels((size_t)width * height * 4);
+    pglReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, pixels.data());
+
+    pglPixelStorei(GL_PACK_ALIGNMENT, packAlignment);
+    pglPixelStorei(GL_PACK_ROW_LENGTH, packRowLength);
+    pglPixelStorei(GL_PACK_SKIP_ROWS, packSkipRows);
+    pglPixelStorei(GL_PACK_SKIP_PIXELS, packSkipPixels);
+    if (packBuffer) {
+        ext_glBindBuffer(GL_PIXEL_PACK_BUFFER, packBuffer);
+    }
+    if (readFramebuffer) {
+        ext_glBindFramebuffer(GL_READ_FRAMEBUFFER, readFramebuffer);
+    }
+    pglReadBuffer(readBuffer);
+
+    ScreenCapture::setGlFrame(d->id, x, y, width, height, pixels.data());
+}
+#endif
+
 void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>& d) {
     if (d->eglSwapInterval >= 0 && !d->isWindow) {
         if (pglFlush) pglFlush();
@@ -941,6 +1032,9 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
     }
     if (window) {
         window->showWindow(true);
+#ifdef BOXEDWINE_LOCAL_SERVER
+        captureGlFrame(d);
+#endif
 #ifdef __EMSCRIPTEN__
         SDLGlContextPtr currentContext;
         if (thread && thread->currentContext) {
@@ -1039,6 +1133,9 @@ void KOpenGLSdl::glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>&
 }
 
 void KOpenGLSdl::glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) {
+#ifdef BOXEDWINE_LOCAL_SERVER
+    ScreenCapture::clearGlFrame(wnd->id);
+#endif
     if (XServer::getServer(true)) {
         XServer::getServer()->clearFakeFullScreenWindow(wnd);
     }
