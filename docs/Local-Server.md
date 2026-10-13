@@ -1,11 +1,14 @@
 # Local server
 
 `-localServer <port>` starts an HTTP and WebSocket server on 127.0.0.1. Tools and agents use it to
-see and hear a running program without a host window, focus, or a platform capture API. It works
-with `-novideo` and `-nosound`.
+see and hear a running program without a host window, focus, or a platform capture API.
+
+For a headless run, pass both `-novideo` and `-nosound`. Without `-nosound`, the guest's audio
+also plays on the host's speakers. With it, the host stays silent, and `/audio` and `/ws/audio`
+still get every sample the guest writes, paced at the same rate as playback.
 
 ```
-boxedwine -novideo -localServer 8086 -zip TinyCore15Wine11.0.zip /bin/wine notepad
+boxedwine -novideo -nosound -localServer 8086 -zip TinyCore15Wine11.0.zip /bin/wine notepad
 ```
 
 Port 0 picks a free port. The log has a `Local server listening on http://127.0.0.1:<port>/` line
