@@ -207,6 +207,8 @@ int boxedmain(int argc, const char **argv) {
             }
             BoxedwineData::startApp();
             GlobalSettings::startUpArgs.readyToLaunch = false;
+            // the app's apply() may have turned it on for an automation run; the UI goes back to the command line's choice
+            KSystem::noErrorDialog = startupArgs.noErrorDialog;
 
             KNativeSystem::preReturnToUI();
             if (!GlobalSettings::keepUIRunning) {

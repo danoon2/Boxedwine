@@ -342,6 +342,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
 }
 
 bool StartUpArgs::apply() {
+    // Set before anything below can kpanic. An automation script can't dismiss a dialog, and its
+    // timeout can't fire while one blocks the main thread.
+    KSystem::noErrorDialog = this->noErrorDialog || this->runAutomation.length();
     KSystem::init(this->disableLinearMemory);
     klog_fmt("BoxedWine build timestamp: %s %s", __DATE__, __TIME__);
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -362,8 +365,6 @@ bool StartUpArgs::apply() {
     }
     KSystem::openglLib = this->openGlLib;
     KSystem::ttyPrepend = this->ttyPrepend;
-    // An automation script can't dismiss a dialog, and its timeout can't fire while one blocks the main thread
-    KSystem::noErrorDialog = this->noErrorDialog || this->runAutomation.length();
     KSystem::skipFrameFPS = this->skipFrameFPS;
     if (!KSystem::logFile.isOpen() && this->logPath.length()) {
         KSystem::logFile.createNew(this->logPath);
@@ -953,6 +954,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->ttyPrepend = true;
         } else if (!strcmp(argv[i], "-noErrorDialog")) {
             this->noErrorDialog = true;
+            // also cover a kpanic during startup, before apply() runs
+            KSystem::noErrorDialog = true;
         } else if (!strcmp(argv[i], "-cpuAffinity")) {
 #ifdef BOXEDWINE_MULTI_THREADED
             this->cpuAffinity = atoi(argv[i+1]);

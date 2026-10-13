@@ -29,7 +29,7 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -disableLinearMemory : Disable linear memory and use the legacy guarded MMU memory cache.
 
--noErrorDialog : On a fatal error, log the message and exit with code 1 instead of showing an error dialog and waiting for it to be closed.  Use this for unattended runs.  It is on when -automation is used.
+-noErrorDialog : On a fatal error, log the message and exit with code 1 instead of showing an error dialog and waiting for it to be closed.  Use this for unattended runs.  It is on when -automation or -play is used.
 
 -dpiAware: will prevent Windows from scaling the screen if you are using display scaling.
 
