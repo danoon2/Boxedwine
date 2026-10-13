@@ -21,6 +21,7 @@
 #include "knativesystem.h"
 
 #include <stdio.h>
+#include <cstdlib>
 
 #ifdef BOXEDWINE_MSVC
 #include <Windows.h>
@@ -36,6 +37,7 @@ void internal_kpanic(BString msg) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(logMutex);
     if (KSystem::logFile.isOpen()) {
         KSystem::logFile.write(msg);
+        // std::_Exit and KNativeSystem::exit below skip stdio cleanup, so the message would stay in the buffer
         KSystem::logFile.flush();
     }
     fwrite(msg.c_str(), 1, msg.length(), stderr);
@@ -43,6 +45,12 @@ void internal_kpanic(BString msg) {
 #if defined(BOXEDWINE_MSVC) && defined(_DEBUG)
     OutputDebugStringA(msg.c_str());
 #endif
+    if (KSystem::noErrorDialog) {
+        // Exit right away. Other threads keep running during a sleep, so the automation player or
+        // the main loop could end the process first with a different exit code.
+        fflush(stdout);
+        std::_Exit(1);
+    }
     if (KSystem::videoOption == VIDEO_NORMAL) {
 #ifndef _TEST
         KNativeSystem::exit(msg.c_str(), 1);
@@ -75,14 +83,4 @@ void internal_log(BString msg, FILE* f) {
 #if defined(BOXEDWINE_MSVC) && defined(_DEBUG)
     OutputDebugStringA(msg.c_str());
 #endif
-}
-
-void flushLogFileIfDue() {
-    // Writes stay buffered for speed; flushing about once a second bounds what a killed or crashed process loses
-    static U32 lastFlush;
-    U32 now = KSystem::getMilliesSinceStart();
-    if (KSystem::logFile.isOpen() && now - lastFlush >= 1000) {
-        lastFlush = now;
-        KSystem::logFile.flush();
-    }
 }

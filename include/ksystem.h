@@ -150,6 +150,7 @@ public:
     static BWriteFile logFile;
     static std::function<void(BString line)> watchTTY;
     static bool ttyPrepend;
+    static bool noErrorDialog;
     static BString exePath;
     static bool disableHideCursor;
     static bool forceRelativeMouse;
