@@ -65,19 +65,18 @@ drive. A game usually needs two of them:
   left it.
 - The game's CD: the files from the CD, for games that read data from it
   while running. Mount them at the drive letter the game was installed from,
-  since the game keeps that path (Enemy Infestation has
-  `cdDir = D:\EI\` in its `Ei.cfg`).
+  since games usually store that path in their settings.
 
-This starts Enemy Infestation with its installed files on E: and its CD's
-files on D:, from the game's own directory (`-w`):
+This starts `Game.exe` with the installed game on E: and the CD's files on
+D:, from the game's own directory (`-w`):
 
 ```bat
-BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root-ei ^
-  -mount_drive "C:\games\Enemy Infestation" e ^
-  -mount_drive C:\games\ei-cd-files d ^
+BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root-mygame ^
+  -mount_drive C:\games\MyGame e ^
+  -mount_drive C:\games\MyGame-cd d ^
   -w /home/username/.wine/dosdevices/e: ^
   -env WINEDLLOVERRIDES=mscoree,mshtml= ^
-  /bin/wine Ei.exe
+  /bin/wine Game.exe
 ```
 
 `-mount_drive` takes a directory, not an image file. To use a CD image, extract it first (7-Zip
@@ -91,7 +90,7 @@ To change Wine settings for a root, run Wine's own tools in it, for example
 the DirectDraw renderer:
 
 ```bat
-BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root-ei ^
+BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root-mygame ^
   /bin/wine reg add "HKCU\Software\Wine\Direct3D" /v renderer /d gdi /f
 ```
 
@@ -99,15 +98,14 @@ A mounted drive is a fixed disk to Wine. For a game that checks the drive
 type of its CD, mark the drive as a CD-ROM in the same root:
 
 ```bat
-BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root-mm ^
-  /bin/wine reg add "HKLM\Software\Wine\Drives" /v e: /d cdrom /f
+BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root-mygame ^
+  /bin/wine reg add "HKLM\Software\Wine\Drives" /v d: /d cdrom /f
 ```
 
 Boxedwine does not emulate a CD-ROM device behind a mounted directory, so
 CD audio and reading the disc's table of contents fail. A game that checks
-its CD through MCI CD audio (for example Magic & Mayhem, which opens
-`cdaudio` and asks for the track count) still reports that the CD is
-missing.
+for its CD through MCI CD audio (opening `cdaudio` and asking for the track
+count) still reports that the CD is missing.
 
 ## 5. Logs and pitfalls
 
