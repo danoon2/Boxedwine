@@ -2,8 +2,7 @@
 
 This guide takes you from nothing to a Windows game running from the command
 line. It uses Windows as the example; the Boxedwine command line is the same
-on Linux and macOS once you have an executable
-(see [How to Build Boxedwine](How-To-Build-Boxedwine.md)).
+on Linux and macOS.
 
 ## 1. Get Boxedwine
 
