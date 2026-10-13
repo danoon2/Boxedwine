@@ -1203,12 +1203,12 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(arguments.tests_url, "file:///tmp/tests.zip")
         self.assertEqual(arguments.boxedwine, Path("/tmp/boxedwine"))
 
-    def test_default_filesystem_uses_version_10(self) -> None:
+    def test_default_filesystem_uses_version_11(self) -> None:
         arguments = self.runner.parse_arguments([])
 
         self.assertEqual(
             arguments.filesystem_url,
-            "https://boxedwine.org/v2/10/TinyCore15Wine11.0.zip",
+            "https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip",
         )
 
     def test_default_graphics_filesystem_uses_demo_version_3(self) -> None:
@@ -1268,7 +1268,7 @@ class CommandLineTests(unittest.TestCase):
                 )
 
             self.assertEqual(status, 0)
-            self.assertTrue((cache_dir / "TinyCore15Wine11.0-v10.zip").is_file())
+            self.assertTrue((cache_dir / "TinyCore15Wine11.0-v11.zip").is_file())
             self.assertTrue((cache_dir / "wine_tests_v4.zip").is_file())
             self.assertEqual(
                 run_suite.call_args.args[0],

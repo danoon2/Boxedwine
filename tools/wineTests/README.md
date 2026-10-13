@@ -63,7 +63,7 @@ by all 33 kernel32 groups, the ws2_32 `afd` group, and all 12 advapi32 groups.
 The versioned inputs are:
 
 - BoxedWine Wine 11 filesystem:
-  `https://boxedwine.org/v2/10/TinyCore15Wine11.0.zip`
+  `https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip`
 - Wine 11 tests:
   `https://boxedwine.org/v2/1/wine_tests_v4.zip`
 - Prepared local graphics-test bundle:

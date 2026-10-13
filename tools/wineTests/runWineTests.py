@@ -22,8 +22,8 @@ from typing import BinaryIO, Callable, NamedTuple
 from urllib.request import urlopen
 
 
-FILESYSTEM_URL = "https://boxedwine.org/v2/10/TinyCore15Wine11.0.zip"
-FILESYSTEM_CACHE_NAME = "TinyCore15Wine11.0-v10.zip"
+FILESYSTEM_URL = "https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip"
+FILESYSTEM_CACHE_NAME = "TinyCore15Wine11.0-v11.zip"
 TESTS_URL = "https://boxedwine.org/v2/1/wine_tests_v4.zip"
 TESTS_CACHE_NAME = "wine_tests_v4.zip"
 TEST_EXECUTABLES = {
