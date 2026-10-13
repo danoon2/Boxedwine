@@ -58,6 +58,7 @@ U32 KSystem::pollRate = DEFAULT_POLL_RATE;
 BWriteFile KSystem::logFile;
 std::function<void(BString line)> KSystem::watchTTY;
 bool KSystem::ttyPrepend;
+bool KSystem::noErrorDialog;
 BString KSystem::exePath;
 std::shared_ptr<FsNode> KSystem::procNode;
 U32 KSystem::wineMajorVersion;
