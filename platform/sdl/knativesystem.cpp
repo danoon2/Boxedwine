@@ -118,6 +118,7 @@ KNativeScreenPtr KNativeSystem::getScreen() {
 }
 
 void KNativeSystem::tick() {
+    flushLogFileIfDue();
 #if defined(__EMSCRIPTEN__) && !defined(BOXEDWINE_MULTI_THREADED)
     return;
 #endif
