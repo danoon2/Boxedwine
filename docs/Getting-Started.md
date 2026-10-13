@@ -1,11 +1,37 @@
 # Getting Started
 
-This guide takes a fresh checkout to a Windows game running from the command
-line. It uses the Windows build as the example; the Boxedwine command line is
-the same on Linux and macOS once you have an executable
+This guide takes you from nothing to a Windows game running from the command
+line. It uses Windows as the example; the Boxedwine command line is the same
+on Linux and macOS once you have an executable
 (see [How to Build Boxedwine](How-To-Build-Boxedwine.md)).
 
-## 1. Build Boxedwine
+## 1. Get Boxedwine
+
+### Prebuilt binaries
+
+Download the package for your platform from the
+[releases page](https://github.com/danoon2/Boxedwine/releases), then launch
+the app. If it is the first time running on your system it will download the
+latest Wine/Linux file system (Wine 11.0 for release 26R1). The UI has demos
+in the Install tab to try, or you can install your own apps and games,
+including by dragging installers or directories into the UI.
+
+The Windows package (`Boxedwine26R1Windows-x86-x64-Arm64.zip` for 26R1) has
+one folder per architecture:
+
+| Path | Use |
+|---|---|
+| `Win64\BoxedWine.exe` | 64-bit x86 Windows |
+| `Win64\Boxedwine_console.exe` | The same, with a console window for its output |
+| `Win32\BoxedWine.exe`, `Win32\Boxedwine_console.exe` | 32-bit x86 Windows |
+| `WinARM64\BoxedWine.exe` | Windows on ARM64 |
+
+Use the `_console` executable when running from a terminal, so that log
+output shows up there. Every command below works with the prebuilt
+executables; skip to [Run a Wine program](#3-run-a-wine-program) if you are
+not building from source.
+
+### Build from source
 
 Open `project\msvc\BoxedWine\BoxedWine.sln` in Visual Studio 2026 and build
 `Release|x64`, or build from a Developer Command Prompt:
@@ -88,6 +114,20 @@ the DirectDraw renderer:
 BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root-ei ^
   /bin/wine reg add "HKCU\Software\Wine\Direct3D" /v renderer /d gdi /f
 ```
+
+A mounted drive is a fixed disk to Wine. For a game that checks the drive
+type of its CD, mark the drive as a CD-ROM in the same root:
+
+```bat
+BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root-mm ^
+  /bin/wine reg add "HKLM\Software\Wine\Drives" /v e: /d cdrom /f
+```
+
+Boxedwine does not emulate a CD-ROM device behind a mounted directory, so
+CD audio and reading the disc's table of contents fail. A game that checks
+its CD through MCI CD audio (for example Magic & Mayhem, which opens
+`cdaudio` and asks for the track count) still reports that the CD is
+missing.
 
 ## 5. Logs and pitfalls
 
