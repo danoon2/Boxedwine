@@ -1,3 +1,6 @@
+v17 Oct 12, 2026 Fix 3DMark06 shaders: static HLSL functions, constant disassembly/reassembly, loop unrolling, legacy power folding and cube-map LOD compilation.
+
+v16 Oct 12, 2026 Fix idle COM surrogate shutdown and apartment factory reference leaks, allowing 3DMark03 to close normally with Futuremark SystemInfo enabled
 v15 Oct 09, 2026 Cache unchanged fog and projection constants and reduce immediate resource map/unmap dispatch overhead in regular Wine and WebGL WineD3D; accelerate WebGL RGB565 texture uploads with exact SSE2 conversion
 v14 Oct 04, 2026 Fix lost cursor-release notifications after a popup is destroyed, preventing SimTower floor selection from leaving mouse input clipped
 v13 Sep 30, 2026 Omit Wine development headers and static/import libraries from runtime archives

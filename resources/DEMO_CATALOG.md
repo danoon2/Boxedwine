@@ -8,7 +8,12 @@ URL. An unchanged pin makes no network request when its verified ZIP is cached.
 
 The package contains `catalog.xml` and its referenced PNGs in one flat directory.
 The XML's `release` matches the lock's `version`; `schemaVersion` describes the
-recipe format separately. The current pin, `26R2-catalog-3`, contains 34 recipes and icons.
+recipe format separately. The current pin, `26R2-catalog-6`, contains 37 recipes and icons,
+including the 3DMark2001 SE (`3DMark2001SE.exe`), 3DMark03 (2003)
+(`3DMark03_v360_1901.exe`) and 3DMark05 (2005) (`3DMark05_v130_1901.exe`)
+installers. The 3DMark03 and 3DMark05 details include their full-version unlock
+keys. 3DMark05 uses its extracted application icon and selects `3DMark05.exe`
+after installation; the hosted installer matches the supplied local file.
 All demos now select Wine 11.0: Daytona USA and vkQuake no longer select Wine 9.0,
 and vkQuake's obsolete Wine 10 mouse-button warning has been removed.
 Java Solitaire and FreeCol were removed in `26R2-catalog-2`.
@@ -20,10 +25,14 @@ The native launchers initialize newly installed Alice demos (ID `alice`) with
 200% mouse sensitivity. This is saved as an editable per-app Boxedwine argument;
 existing installations retain their saved settings.
 
-`tools/demo_catalog.py` uses Python 3's standard library and is shared build
-infrastructure for future native frontends. The old OpenGL UI still uses its
-existing XML. Other platforms must implement the recipe schema before using
-this package; this change does not convert their UIs.
+The native Mac, Windows, and Linux UIs consume this shared pin and recipe format.
+`tools/demo_catalog.py` uses Python 3's standard library to package and validate
+the catalog. The old OpenGL UI still uses its existing XML, and the Emscripten
+demo site has a separate catalog.
+
+Windows builds always copy the extracted catalog into their output and publish
+directories. Catalog ZIPs use fixed timestamps, so copying only newer files can
+leave an older catalog embedded after the pin changes.
 
 ## Building and caching
 
@@ -82,7 +91,7 @@ duplicates, unexpected files, malformed XML and missing icons, with size limits.
    ignores the generated receipt. Keep a backed-up authoring copy or retrieve the
    immutable published ZIP to edit it later.
 2. Edit `catalog.xml` and its PNGs. Preserve demo IDs for the same app across
-   releases. Give the XML a new `release`, for example `26R2-catalog-3`. Retain the
+   releases. Give the XML a new `release`, for example `26R2-catalog-6`. Retain the
    schema version unless the recipe format changes. Follow the native schema's
    payload verification and compatibility testing procedure.
 3. Validate recipes with `BoxedwinePackageCheck --catalog`, then pack the files
@@ -92,13 +101,13 @@ duplicates, unexpected files, malformed XML and missing icons, with size limits.
    swift run --package-path project/mac-xcode/Boxedwine/BoxedwineUI \
      BoxedwinePackageCheck --catalog tmp/catalog-edit/catalog.xml
    python3 tools/demo_catalog.py pack --source tmp/catalog-edit \
-     --version 26R2-catalog-3 \
-     --url https://boxedwine.org/catalogs/26R2-catalog-3/catalog.zip \
-     --output tmp/catalog-3.zip --lock resources/demo-catalog.lock.json
+     --version 26R2-catalog-6 \
+     --url https://boxedwine.org/catalogs/26R2-catalog-6/catalog.zip \
+     --output tmp/catalog-6.zip --lock resources/demo-catalog.lock.json
    ```
 
 4. Upload the ZIP to the exact URL printed by the packer. Never overwrite an
-   existing release URL. For testing before upload, `import --zip tmp/catalog-3.zip`
+   existing release URL. For testing before upload, `import --zip tmp/catalog-6.zip`
    verifies the ZIP against the project lock and seeds only your build cache.
 5. Verify an actual download using a fresh cache, test the catalog, and build:
 

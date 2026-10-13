@@ -1,6 +1,8 @@
-v15 Oct 09, 2026 Web version of the full Wine 11.0 filesystem, including WineD3D fog/projection caches, immediate map/unmap dispatch, and WebGL RGB565 SSE2 uploads.
+v17 Oct 12, 2026 Fix 3DMark06 shaders in regular Wine and WebGL DLLs: static HLSL functions, constant disassembly/reassembly, loop unrolling, legacy power folding and cube-map LOD compilation.
 
-Removed for the web version, compared with the full v15 file system (v14 measurements; retained components and removals unchanged):
+v16 Oct 12, 2026 Web version of the full Wine 11.0 filesystem, including the COM surrogate lifetime fix.
+
+Removed for the web version, compared with the full v16 file system (v14 measurements; retained components and removals unchanged):
 
 Removed component                                      Saved (MiB)
 -----------------------------------------------------  -----------

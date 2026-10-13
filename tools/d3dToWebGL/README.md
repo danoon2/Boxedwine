@@ -1,12 +1,12 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current source series is pinned by
-[`webgl-test-divergences-v43.json`](../wineTests/webgl-test-divergences-v43.json).
-It contains 59 production patches and one separate, complete Wine graphics-test
-adaptation. The [v43 inventory](../wineTests/webgl-patch-inventory-v43.json)
+[`webgl-test-divergences-v45.json`](../wineTests/webgl-test-divergences-v45.json).
+It contains 65 production patches and one separate, complete Wine graphics-test
+adaptation. The [v45 inventory](../wineTests/webgl-patch-inventory-v45.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 42 retain earlier build and test selections for reproducing historical
+Versions 2 through 44 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 
@@ -16,9 +16,21 @@ matches the candidate used for the focused regression checks; see
 The version 15 full and web filesystems select v43, adding RGB565 SSE2 upload
 conversion, fog/projection constant caches and immediate map/unmap dispatch.
 Their separately built PE32 `C:/webgl/wined3d.dll` is pinned by
-[`webgl_filesystems_v15.json`](../buildWine/webgl_filesystems_v15.json).
+[`webgl_filesystems_v16.json`](../buildWine/webgl_filesystems_v16.json).
 Regular Wine carries the fog/projection and immediate-map counterparts through
 `wine_builds.json`; RGB565 expansion is specific to the WebGL upload path.
+
+Filesystem 17 selects v45. Production patches 60 through 65 fix 3DMark06's
+static HLSL helpers, constant disassembly/reassembly, folding passes, loop
+unrolling, legacy constant `pow`, and `texCUBElod`, respectively. The same
+patches rebuild regular Wine and the separate PE D3DX DLLs, which use Wine's
+shared builtin compiler modules. The assembler
+lexer change belongs to the production series; its Wine unit-test additions
+are retained separately in `wine11_shader_disassembly_constants_tests.patch`.
+The DLL and archive identities are pinned by
+[`webgl_filesystems_v17.json`](../buildWine/webgl_filesystems_v17.json).
+These compiler fixes apply independently of the rendering backend; they do not
+enable Vulkan. See [the regression notes](../../docs/3dmark06-shaders.md).
 
 The RGB565 upload optimization is
 [`webgl-rgb565-upload-scaling-against-wine-11.0.patch`](webgl-rgb565-upload-scaling-against-wine-11.0.patch).

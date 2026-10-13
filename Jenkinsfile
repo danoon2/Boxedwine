@@ -680,8 +680,8 @@ pipeline {
                             # Keep the AbiWord captures paired with the Wine 11 window theme.
                             ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v3.zip'
                             ABIWORD_AUTO_SHA256='e71c79c0335da3d2b89e23b79c1f2162b954fedf68d442a210d8b28eb783eef5'
-                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/15/TinyCore15Wine11.0-web.zip'
-                            BOXEDWINE_AUTO_SHA256='f839ac3d9b85e9f5a102ba6ca3232828d5f47a55399898f220dafa094321103a'
+                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/17/TinyCore15Wine11.0-web.zip'
+                            BOXEDWINE_AUTO_SHA256='262671189dddccac04c537715fd5030f23ac08a5bc6742d15206004eeeb9f29d'
 
                             file_matches_sha256() {
                                 local file="$1"
@@ -750,9 +750,9 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation35.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
                                 rm -rf automation
-                                unzip automation35.zip
+                                unzip automation36.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -782,9 +782,9 @@ pipeline {
                     steps {
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation35.zip https://boxedwine.org/v2/1/automation35.zip --output automation35.zip
+                                curl -z automation36.zip https://boxedwine.org/v2/1/automation36.zip --output automation36.zip
                                 rm -rf automation
-                                unzip automation35.zip
+                                unzip automation36.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -819,9 +819,9 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation35.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
                                 rm -rf automation
-                                unzip automation35.zip
+                                unzip automation36.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -850,9 +850,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation35.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            unzip automation35.zip
+                            unzip automation36.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }
@@ -887,9 +887,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation35.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            tar -xf automation35.zip
+                            tar -xf automation36.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }

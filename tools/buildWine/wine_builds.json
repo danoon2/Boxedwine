@@ -156,6 +156,41 @@
       "reason": "Deliver cursor-release notifications after a popup is destroyed so SimTower floor selection does not leave mouse coordinates clipped"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_surrogate_lifetime.patch",
+      "reason": "Retire idle COM surrogates using DLL unload readiness while preserving active objects, factories and server locks"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_static_functions.patch",
+      "reason": "Backport vkd3d static HLSL function support, fixing 3DMark06 shader compilation while preserving declaration and entry-point checks"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_shader_disassembly_constants.patch",
+      "reason": "Fix shader constant disassembly and scientific-notation reassembly for 3DMark06 HDR"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_folding_passes.patch",
+      "reason": "Separate HLSL folding from branch flattening before loop unrolling"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_unroll_loops.patch",
+      "reason": "Backport safe loop-unrolling traversal, fixing the 3DMark06 HDR compiler hang"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_legacy_pow.patch",
+      "reason": "Fold finite legacy HLSL powers before lowering them to logarithms"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_texcubelod.patch",
+      "reason": "Backport texCUBElod support for 3DMark06 HDR2 Deep Freeze"
+    },
+    {
       "when": {
         "min": "11.0",
         "max": "11.0"

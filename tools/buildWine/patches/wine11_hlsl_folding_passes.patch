@@ -1,0 +1,58 @@
+Subject: [PATCH] vkd3d-shader/hlsl: Separate folding from branch flattening.
+
+Backport of vkd3d da975da82c475a6e8c4bd9ce13788463eb8d7897
+Author: Shaun Ren <sren@codeweavers.com>
+Upstream: https://gitlab.winehq.org/wine/vkd3d/-/commit/da975da82c475a6e8c4bd9ce13788463eb8d7897
+
+Prerequisite for the 3DMark06 HDR loop-unrolling fix. Folding must run
+before unrolling without prematurely flattening SM2 control flow.
+Adapted to Wine 11, which already declares progress in hlsl_run_const_passes
+and has not yet factored its split-copy passes into split_copies().
+
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl_codegen.c
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl_codegen.c
+@@ -8760,11 +8760,11 @@
+     return any_progress;
+ }
+ 
+-static void hlsl_run_folding_passes(struct hlsl_ctx *ctx, struct hlsl_block *body)
+-{
+-    bool progress;
+-
+-    replace_ir(ctx, fold_redundant_casts, body);
++static bool hlsl_run_folding_passes(struct hlsl_ctx *ctx, struct hlsl_block *body)
++{
++    bool progress, any_progress;
++
++    any_progress = replace_ir(ctx, fold_redundant_casts, body);
+     do
+     {
+         progress = simplify_exprs(ctx, body);
+@@ -8772,9 +8772,12 @@
+         progress |= replace_ir(ctx, fold_swizzle_chains, body);
+         progress |= replace_ir(ctx, fold_trivial_swizzles, body);
+         progress |= hlsl_transform_ir(ctx, remove_trivial_conditional_branches, body, NULL);
+-        progress |= hlsl_transform_ir(ctx, flatten_conditional_branches, body, NULL);
++
++        any_progress |= progress;
+     } while (progress);
+-    replace_ir(ctx, fold_redundant_casts, body);
++    any_progress |= replace_ir(ctx, fold_redundant_casts, body);
++
++    return any_progress;
+ }
+ 
+ void hlsl_run_const_passes(struct hlsl_ctx *ctx, struct hlsl_block *body)
+@@ -8805,7 +8808,11 @@
+     replace_ir(ctx, lower_casts_to_bool, body);
+     replace_ir(ctx, lower_float_modulus, body);
+ 
+-    hlsl_run_folding_passes(ctx, body);
++    do
++    {
++        progress = hlsl_run_folding_passes(ctx, body);
++        progress |= hlsl_transform_ir(ctx, flatten_conditional_branches, body, NULL);
++    } while (progress);
+ }
+ 
+ static void generate_vsir_signature_entry(struct hlsl_ctx *ctx, struct vsir_program *program,

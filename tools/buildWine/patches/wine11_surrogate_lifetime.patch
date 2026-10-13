@@ -1,0 +1,335 @@
+Subject: [Boxedwine Wine 11.0] Retire idle COM surrogates using DLL lifetime
+
+Drop dllhost's permanent reference to the hosted factory and use the server's
+DllCanUnloadNow contract, keeping the module mapped while polling. Revoke the
+wrapper before the final check so active factory/object/lock references keep
+the server alive. Unknown or redirected server modules remain conservative.
+
+Preserve REGCLS_SURROGATE registrations for subsequent clients, release the
+reference acquired when marshalling a factory into a hosting apartment, and
+retry activation if an idle server revoked its registration during lookup.
+
+This fixes the Futuremark SystemInfo helper left running after 3DMark03 exits.
+It does not classify dllhost as a Wine system process and does not implement
+the complete CoRegisterSurrogate API (including multiple-DLL hosting).
+
+Regression check when changing this patch: launch 3DMark03 with Futuremark
+SystemInfo enabled, then close it using the application's own close button.
+The dllhost helper and Boxedwine must exit normally. No benchmark run is needed;
+do not use -nosysteminfo or close the outer Boxedwine window for this check.
+
+Base: Wine 11.0, db11d0fe6a169c457e23d007e20404643d067aa8
+Validation and limitations: docs/3dmark03-shutdown.md
+Regression probe: tools/buildWine/probes/surrogate-lifetime.c
+
+diff --git a/dlls/combase/apartment.c b/dlls/combase/apartment.c
+index 85e06a6fd57..6dee033357f 100644
+--- a/dlls/combase/apartment.c
++++ b/dlls/combase/apartment.c
+@@ -287,7 +287,7 @@ static HRESULT WINAPI local_server_QueryService(IServiceProvider *iface, REFGUID
+ {
+     struct local_server *local_server = impl_from_IServiceProvider(iface);
+     struct apartment *apt = com_get_current_apt();
+-    HRESULT hr = E_FAIL;
++    HRESULT hr = REGDB_E_CLASSNOTREG;
+     IUnknown *unk;
+ 
+     TRACE("%p, %s, %s, %p\n", iface, debugstr_guid(guid), debugstr_guid(riid), obj);
+@@ -1098,8 +1098,7 @@ static HRESULT apartment_hostobject(struct apartment *apt, const struct host_obj
+         return hr;
+ 
+     hr = CoMarshalInterface(params->stream, &params->iid, object, MSHCTX_INPROC, NULL, MSHLFLAGS_NORMAL);
+-    if (FAILED(hr))
+-        IUnknown_Release(object);
++    IUnknown_Release(object);
+     IStream_Seek(params->stream, llZero, STREAM_SEEK_SET, NULL);
+ 
+     return hr;
+diff --git a/dlls/combase/rpc.c b/dlls/combase/rpc.c
+index c51b59de4bf..92584b88fae 100644
+--- a/dlls/combase/rpc.c
++++ b/dlls/combase/rpc.c
+@@ -622,7 +622,7 @@ static HRESULT create_surrogate_server(REFCLSID rclsid, HANDLE *process)
+     return S_OK;
+ }
+ 
+-HRESULT rpc_get_local_class_object(REFCLSID rclsid, REFIID riid, void **obj)
++static HRESULT get_local_class_object(REFCLSID rclsid, REFIID riid, void **obj)
+ {
+     PMInterfacePointer objref = NULL;
+     IServiceProvider *local_server;
+@@ -694,6 +694,29 @@ HRESULT rpc_get_local_class_object(REFCLSID rclsid, REFIID riid, void **obj)
+     return hr;
+ }
+ 
++/* An idle local server may revoke its class after the SCM lookup but before
++ * QueryService. Retry stale registrations, without hiding real interface or
++ * activation errors. In-flight object calls are not retried. */
++HRESULT rpc_get_local_class_object(REFCLSID rclsid, REFIID riid, void **obj)
++{
++    HRESULT hr;
++    unsigned int tries;
++
++    for (tries = 0; tries < 3; ++tries)
++    {
++        hr = get_local_class_object(rclsid, riid, obj);
++        if (hr != REGDB_E_CLASSNOTREG && hr != CO_E_OBJNOTCONNECTED
++            && hr != RPC_E_DISCONNECTED && hr != RPC_E_INVALID_OBJREF
++            && hr != HRESULT_FROM_WIN32(RPC_S_SERVER_UNAVAILABLE)
++            && hr != HRESULT_FROM_WIN32(RPC_S_UNKNOWN_IF)
++            && hr != HRESULT_FROM_WIN32(RPC_S_CALL_FAILED)
++            && hr != HRESULT_FROM_WIN32(RPC_S_CALL_FAILED_DNE)
++            && hr != RPC_E_SERVER_DIED
++            && hr != RPC_E_SERVER_DIED_DNE) break;
++    }
++    return hr;
++}
++
+ HRESULT rpc_register_local_server(REFCLSID clsid, IStream *stream, DWORD flags, unsigned int *cookie)
+ {
+     MInterfacePointer *obj;
+diff --git a/programs/dllhost/Makefile.in b/programs/dllhost/Makefile.in
+index 3d85f97823e..e93d3911eba 100644
+--- a/programs/dllhost/Makefile.in
++++ b/programs/dllhost/Makefile.in
+@@ -1,5 +1,5 @@
+ MODULE    = dllhost.exe
+-IMPORTS   = ole32 uuid
++IMPORTS   = ole32 uuid advapi32
+ 
+ EXTRADLLFLAGS = -mwindows -municode
+ 
+diff --git a/programs/dllhost/dllhost.c b/programs/dllhost/dllhost.c
+index 9e3455ee15a..11bfc5f383c 100644
+--- a/programs/dllhost/dllhost.c
++++ b/programs/dllhost/dllhost.c
+@@ -23,6 +23,7 @@
+ #include <windef.h>
+ #include <winbase.h>
+ #include <objbase.h>
++#include <winreg.h>
+ 
+ #include "wine/debug.h"
+ 
+@@ -34,7 +35,10 @@ struct factory
+     IMarshal IMarshal_iface;
+     CLSID clsid;
+     LONG ref;
+-    IClassFactory *dll_factory;
++    HMODULE module;
++    HRESULT (WINAPI *can_unload)(void);
++    LONG used;
++    LONG last_activity;
+ };
+ 
+ static inline struct factory *impl_from_IClassFactory(IClassFactory *iface)
+@@ -92,7 +96,7 @@ static ULONG WINAPI factory_Release(IClassFactory *iface)
+ 
+     if (!ref)
+     {
+-        if (factory->dll_factory) IClassFactory_Release(factory->dll_factory);
++        if (factory->module) FreeLibrary(factory->module);
+         HeapFree(GetProcessHeap(), 0, factory);
+     }
+ 
+@@ -102,14 +106,34 @@ static ULONG WINAPI factory_Release(IClassFactory *iface)
+ static HRESULT WINAPI factory_CreateInstance(IClassFactory *iface,
+     IUnknown *punkouter, REFIID iid, void **ppv)
+ {
+-    FIXME("(%p,%p,%s,%p): stub\n", iface, punkouter, wine_dbgstr_guid(iid), ppv);
+-    return E_NOTIMPL;
++    struct factory *factory = impl_from_IClassFactory(iface);
++    IClassFactory *dll_factory;
++    HRESULT hr;
++
++    hr = CoGetClassObject(&factory->clsid, CLSCTX_INPROC_SERVER, NULL,
++                         &IID_IClassFactory, (void **)&dll_factory);
++    if (SUCCEEDED(hr))
++    {
++        hr = IClassFactory_CreateInstance(dll_factory, punkouter, iid, ppv);
++        IClassFactory_Release(dll_factory);
++    }
++    return hr;
+ }
+ 
+ static HRESULT WINAPI factory_LockServer(IClassFactory *iface, BOOL lock)
+ {
+-    TRACE("(%p,%d)\n", iface, lock);
+-    return S_OK;
++    struct factory *factory = impl_from_IClassFactory(iface);
++    IClassFactory *dll_factory;
++    HRESULT hr;
++
++    hr = CoGetClassObject(&factory->clsid, CLSCTX_INPROC_SERVER, NULL,
++                         &IID_IClassFactory, (void **)&dll_factory);
++    if (SUCCEEDED(hr))
++    {
++        hr = IClassFactory_LockServer(dll_factory, lock);
++        IClassFactory_Release(dll_factory);
++    }
++    return hr;
+ }
+ 
+ static const IClassFactoryVtbl ClassFactory_Vtbl =
+@@ -171,9 +195,20 @@ static HRESULT WINAPI marshal_MarshalInterface(IMarshal *iface, IStream *stream,
+ {
+     struct factory *factory = impl_from_IMarshal(iface);
+ 
++    IUnknown *object;
++    HRESULT hr;
++
+     TRACE("(%p,%s,%p,%08lx,%p,%08lx)\n", stream, wine_dbgstr_guid(iid), pv, dwDestContext, pvDestContext, mshlflags);
+ 
+-    return CoMarshalInterface(stream, iid, (IUnknown *)factory->dll_factory, dwDestContext, pvDestContext, mshlflags);
++    hr = CoGetClassObject(&factory->clsid, CLSCTX_INPROC_SERVER, NULL, iid, (void **)&object);
++    if (SUCCEEDED(hr))
++    {
++        hr = CoMarshalInterface(stream, iid, object, dwDestContext, pvDestContext, mshlflags);
++        IUnknown_Release(object);
++        InterlockedExchange(&factory->last_activity, GetTickCount());
++        InterlockedExchange(&factory->used, 1);
++    }
++    return hr;
+ }
+ 
+ static HRESULT WINAPI marshal_UnmarshalInterface(IMarshal *iface, IStream *stream,
+@@ -255,15 +290,42 @@ static ULONG WINAPI surrogate_Release(ISurrogate *iface)
+     return 1;
+ }
+ 
++/* Keep the module mapped while checking its unload contract, without keeping
++ * a class factory alive. A missing export/path is conservative: do not retire
++ * the surrogate automatically. CoGetClassObject still handles activation and
++ * apartment selection; this lookup never loads a different server. */
++static void factory_pin_module(struct factory *factory)
++{
++    WCHAR key[80], guid[39], *path;
++    ACTCTX_SECTION_KEYED_DATA data = { sizeof(data) };
++    CLSID redirect;
++    DWORD size = 0;
++
++    /* Registry paths cannot identify an activation-context or TreatAs server. */
++    if (CoGetTreatAsClass(&factory->clsid, &redirect) == S_OK
++        || FindActCtxSectionGuid(0, NULL, ACTIVATION_CONTEXT_SECTION_COM_SERVER_REDIRECTION,
++                                 &factory->clsid, &data)) return;
++
++    StringFromGUID2(&factory->clsid, guid, ARRAY_SIZE(guid));
++    swprintf(key, ARRAY_SIZE(key), L"CLSID\\%s\\InprocServer32", guid);
++    if (RegGetValueW(HKEY_CLASSES_ROOT, key, NULL, RRF_RT_REG_SZ, NULL, NULL, &size)) return;
++    if (!(path = HeapAlloc(GetProcessHeap(), 0, size))) return;
++    if (!RegGetValueW(HKEY_CLASSES_ROOT, key, NULL, RRF_RT_REG_SZ, NULL, path, &size)
++        && GetModuleHandleExW(0, path, &factory->module))
++        factory->can_unload = (void *)GetProcAddress(factory->module, "DllCanUnloadNow");
++    HeapFree(GetProcessHeap(), 0, path);
++}
++
+ static HRESULT WINAPI surrogate_LoadDllServer(ISurrogate *iface, const CLSID *clsid)
+ {
+     struct surrogate *surrogate = impl_from_ISurrogate(iface);
+     struct factory *factory;
++    IClassFactory *dll_factory;
+     HRESULT hr;
+ 
+     TRACE("(%p,%s)\n", iface, wine_dbgstr_guid(clsid));
+ 
+-    factory = HeapAlloc(GetProcessHeap(), 0, sizeof(*factory));
++    factory = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*factory));
+     if (!factory)
+         return E_OUTOFMEMORY;
+ 
+@@ -271,12 +333,16 @@ static HRESULT WINAPI surrogate_LoadDllServer(ISurrogate *iface, const CLSID *cl
+     factory->IMarshal_iface.lpVtbl = &Marshal_Vtbl;
+     factory->clsid = *clsid;
+     factory->ref = 1;
+-    factory->dll_factory = NULL;
++    factory->last_activity = GetTickCount();
+ 
+-    hr = CoGetClassObject(clsid, CLSCTX_INPROC_SERVER, NULL, &IID_IClassFactory, (void **)&factory->dll_factory);
++    hr = CoGetClassObject(clsid, CLSCTX_INPROC_SERVER, NULL, &IID_IClassFactory, (void **)&dll_factory);
+     if (SUCCEEDED(hr))
++    {
++        factory_pin_module(factory);
++        IClassFactory_Release(dll_factory);
+         hr = CoRegisterClassObject(clsid, (IUnknown *)&factory->IClassFactory_iface,
+                                    CLSCTX_LOCAL_SERVER, REGCLS_SURROGATE, &surrogate->cookie);
++    }
+     if (FAILED(hr))
+         IClassFactory_Release(&factory->IClassFactory_iface);
+     else
+@@ -311,6 +377,48 @@ static HRESULT WINAPI surrogate_FreeSurrogate(ISurrogate *iface)
+     return S_OK;
+ }
+ 
++/* Revoke before the final check. CoRevokeClassObject serializes with class
++ * lookup, so any lookup which already obtained the wrapper has a reference
++ * by the time it returns. Marshalled DLL factories, objects and LockServer
++ * holds are accounted for by DllCanUnloadNow. */
++static BOOL surrogate_try_shutdown(struct surrogate *surrogate)
++{
++    struct factory *factory = impl_from_IClassFactory(surrogate->factory);
++    ULONG baseline = surrogate->cookie ? 2 : 1;
++    DWORD now = GetTickCount(), last_activity;
++    DWORD idle_delay = InterlockedCompareExchange(&factory->used, 0, 0) ? 5000 : 30000;
++    HRESULT hr;
++
++    if (!factory->can_unload) return FALSE;
++    if (InterlockedCompareExchange(&factory->ref, 0, 0) != baseline || factory->can_unload() != S_OK)
++    {
++        InterlockedExchange(&factory->last_activity, now);
++        return FALSE;
++    }
++    last_activity = InterlockedCompareExchange(&factory->last_activity, 0, 0);
++    if ((DWORD)(GetTickCount() - last_activity) < idle_delay) return FALSE;
++    if (surrogate->cookie)
++    {
++        if (FAILED(CoRevokeClassObject(surrogate->cookie))) return FALSE;
++        surrogate->cookie = 0;
++    }
++    if (InterlockedCompareExchange(&factory->ref, 0, 0) == 1 && factory->can_unload() == S_OK)
++    {
++        last_activity = InterlockedCompareExchange(&factory->last_activity, 0, 0);
++        if ((DWORD)(GetTickCount() - last_activity) >= idle_delay)
++        {
++            ISurrogate_FreeSurrogate(&surrogate->ISurrogate_iface);
++            return TRUE;
++        }
++    }
++
++    InterlockedExchange(&factory->last_activity, now);
++    hr = CoRegisterClassObject(&factory->clsid, (IUnknown *)&factory->IClassFactory_iface,
++                              CLSCTX_LOCAL_SERVER, REGCLS_SURROGATE, &surrogate->cookie);
++    if (FAILED(hr)) WARN("Failed to re-register active surrogate: %#lx\n", hr);
++    return FALSE;
++}
++
+ static const ISurrogateVtbl Surrogate_Vtbl =
+ {
+     surrogate_QueryInterface,
+@@ -353,8 +461,13 @@ int WINAPI wWinMain(HINSTANCE hinst, HINSTANCE previnst, LPWSTR cmdline, int sho
+             goto cleanup;
+         }
+ 
+-        while (WaitForSingleObject(surrogate.event, 30000) != WAIT_OBJECT_0)
++        while (WaitForSingleObject(surrogate.event, 1000) == WAIT_TIMEOUT)
++        {
++            if (surrogate_try_shutdown(&surrogate)) break;
+             CoFreeUnusedLibraries();
++        }
++        ISurrogate_FreeSurrogate(&surrogate.ISurrogate_iface);
++        CloseHandle(surrogate.event);
+     }
+ 
+ cleanup:
+diff --git a/programs/rpcss/rpcss_main.c b/programs/rpcss/rpcss_main.c
+index dfe5ced7c07..9c8fb559dc9 100644
+--- a/programs/rpcss/rpcss_main.c
++++ b/programs/rpcss/rpcss_main.c
+@@ -61,7 +61,7 @@ HRESULT __cdecl irpcss_server_register(handle_t h, const GUID *clsid, unsigned i
+         return E_OUTOFMEMORY;
+ 
+     entry->clsid = *clsid;
+-    entry->single_use = !(flags & (REGCLS_MULTIPLEUSE | REGCLS_MULTI_SEPARATE));
++    entry->single_use = !(flags & (REGCLS_MULTIPLEUSE | REGCLS_MULTI_SEPARATE | REGCLS_SURROGATE));
+     if (!(entry->object = malloc(FIELD_OFFSET(MInterfacePointer, abData[object->ulCntData]))))
+     {
+         free(entry);

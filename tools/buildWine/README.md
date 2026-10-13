@@ -31,11 +31,11 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
 loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the
-v43 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+v45 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 15. Its `changes.txt` comes from
+The filesystem revision is 17. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -51,14 +51,29 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v15.json`](webgl_filesystems_v15.json) and the
-[v43 patch manifest](../wineTests/webgl-test-divergences-v43.json). To test that
+[`webgl_filesystems_v17.json`](webgl_filesystems_v17.json) and the
+[v45 patch manifest](../wineTests/webgl-test-divergences-v45.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v15 WebGL configuration pins DLLs, source patches, and the filesystem
-ZIP in its `full-v15` and `web-v15` profiles for Jenkins demo validation. The complete filesystem
+The v17 WebGL configuration pins DLLs, source patches, and the filesystem
+ZIP in its `full-v17` and `web-v17` profiles for Jenkins demo validation. The complete filesystem
 is assembled by `filesystem_wine11.json`.
-The v15 prefix leaves the renderer registry values unset. The profile records
+The v17 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
+
+Revision 17 includes six compiler patches for 3DMark06: static HLSL helpers,
+constant disassembly/reassembly (including scientific notation), separated
+folding passes, safe loop unrolling, legacy constant `pow`, and `texCUBElod`.
+The source series for regular Wine and the separate WebGL D3DX DLLs includes
+these fixes. The PE D3DX DLLs import Wine's shared builtin compiler modules. The
+unpublished revision remains 17. These patches change shader compilation, not
+the selected graphics renderer. See [the regression notes](../../docs/3dmark06-shaders.md)
+for the aggregate probe and the upstream/local patch origins.
+
+Revision 16 includes `wine11_surrogate_lifetime.patch`, which lets an idle
+COM surrogate exit after its hosted DLL releases its objects, factories and
+server locks. This fixes 3DMark03 shutdown with Futuremark SystemInfo enabled.
+See [the regression notes](../../docs/3dmark03-shutdown.md) for the lifetime
+probes and the application startup/close check to repeat when changing it.
 
 Wine 11 builds also include `wine11_clipcursor_destroyed_popup.patch`. SimTower
 releases the cursor restriction and immediately destroys its floor-selection
@@ -204,7 +219,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
-Build and validate with `--config tools/buildWine/webgl_filesystems_v15.json`.
+Build and validate with `--config tools/buildWine/webgl_filesystems_v17.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises
