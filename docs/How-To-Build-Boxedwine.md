@@ -22,11 +22,34 @@ With the executable and downloaded file system, you can test launching Wine Note
 boxedwine -root . -zip TinyCore15Wine11.0.zip /bin/wine notepad
 ```
 
+You can also download the file system directly. A source build needs the file system it was made for; the current source uses:
+
+```bash
+curl -L -o TinyCore15Wine11.0.zip https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip
+```
+
+With an older file system (such as `v2/10`), every Wine program stops at startup with an `Error` dialog saying `Vulkan not compiled into Boxedwine`, and the Boxedwine window stays white until the dialog is closed.
+
 ## Windows Build
 
 Install Visual Studio 2026 Community with the **Desktop development with C++** workload.
 
 Open the solution file at: `project\msvc\BoxedWine\BoxedWine.sln`
+
+To build from a Developer Command Prompt instead:
+
+```bat
+cd project\msvc\BoxedWine
+msbuild BoxedWine.sln -p:Configuration=Release -p:Platform=x64 -m
+```
+
+The executable is `project\msvc\BoxedWine\x64\Release\BoxedWine.exe`.
+
+The projects use the v145 toolset from Visual Studio 2026. With only Visual Studio 2022 (or its Build Tools) installed, the build stops with `MSB8020: The build tools for v145 ... cannot be found`. Pass the 2022 toolset instead:
+
+```bat
+msbuild BoxedWine.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v143 -m
+```
 
 ## Linux Build
 

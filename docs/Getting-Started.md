@@ -27,47 +27,20 @@ one folder per architecture:
 | `WinARM64\BoxedWine.exe` | Windows on ARM64 |
 
 Use the `_console` executable when running from a terminal, so that log
-output shows up there. Every command below works with the prebuilt
-executables; skip to [Run a Wine program](#3-run-a-wine-program) if you are
-not building from source.
+output shows up there.
 
 ### Build from source
 
-Open `project\msvc\BoxedWine\BoxedWine.sln` in Visual Studio 2026 and build
-`Release|x64`, or build from a Developer Command Prompt:
-
-```bat
-cd project\msvc\BoxedWine
-msbuild BoxedWine.sln -p:Configuration=Release -p:Platform=x64 -m
-```
-
-The executable is `project\msvc\BoxedWine\x64\Release\BoxedWine.exe`.
-
-The projects use the v145 toolset from Visual Studio 2026. With only Visual
-Studio 2022 (or its Build Tools) installed, the build stops with
-`MSB8020: The build tools for v145 ... cannot be found`. Pass the 2022 toolset
-instead:
-
-```bat
-msbuild BoxedWine.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v143 -m
-```
+To build Boxedwine yourself, follow
+[How to Build Boxedwine](How-To-Build-Boxedwine.md). It also covers getting
+the file system that matches a source build.
 
 ## 2. Get a Wine file system
 
 Boxedwine runs a 32-bit Linux build of Wine, which comes as a ZIP file system.
-Launching `BoxedWine.exe` without arguments opens the UI, which offers to
-download one into `%APPDATA%\Boxedwine\FileSystems2`. To get it without the UI,
-download it directly:
-
-```sh
-curl -L -o TinyCore15Wine11.0.zip https://boxedwine.org/v2/11/TinyCore15Wine11.0.zip
-```
-
-Use the file system that matches your build. The current source expects the
-`v2/11` file system. With an older one (such as `v2/10`), every Wine program
-stops at startup with an `Error` dialog saying
-`Vulkan not compiled into Boxedwine`, and the Boxedwine window stays white
-until the dialog is closed.
+The first launch without arguments opens the UI, which downloads one into
+`%APPDATA%\Boxedwine\FileSystems2` (`~/.local/share/Boxedwine/FileSystems2`
+on Linux). The commands below pass that ZIP with `-zip`.
 
 ## 3. Run a Wine program
 
