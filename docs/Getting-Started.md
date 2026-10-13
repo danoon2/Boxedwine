@@ -58,21 +58,29 @@ BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root /bin/wine winemine
 
 ## 4. Run a game
 
-Put the game's files in a host directory and mount it as a Wine drive with
-`-mount_drive <host directory> <drive letter>`. A game that reads its CD needs
-the CD's files mounted at the drive letter it was installed with. Then start
-the game from its own directory with `-w`:
+`-mount_drive <host directory> <drive letter>` makes a host directory a Wine
+drive. A game usually needs two of them:
+
+- The installed game: the directory with the game's EXE, as its installer
+  left it.
+- The game's CD: the files from the CD, for games that read data from it
+  while running. Mount them at the drive letter the game was installed from,
+  since the game keeps that path (Enemy Infestation has
+  `cdDir = D:\EI\` in its `Ei.cfg`).
+
+This starts Enemy Infestation with its installed files on E: and its CD's
+files on D:, from the game's own directory (`-w`):
 
 ```bat
 BoxedWine.exe -zip TinyCore15Wine11.0.zip -root C:\bw\root-ei ^
-  -mount_drive C:\games\ei-cd d ^
   -mount_drive "C:\games\Enemy Infestation" e ^
+  -mount_drive C:\games\ei-cd-files d ^
   -w /home/username/.wine/dosdevices/e: ^
   -env WINEDLLOVERRIDES=mscoree,mshtml= ^
   /bin/wine Ei.exe
 ```
 
-`-mount_drive` takes a directory. To use a CD image, extract it first (7-Zip
+`-mount_drive` takes a directory, not an image file. To use a CD image, extract it first (7-Zip
 opens ISO files). A raw `.bin` image with 2352-byte sectors has to be
 converted to a 2048-byte ISO before 7-Zip can read it: keep bytes 16 to 2063
 of each sector for mode 1 discs, and 24 to 2071 for mode 2 (CD-XA) discs.
