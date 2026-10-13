@@ -110,6 +110,7 @@
       	var spinnerElement = document.getElementById('spinner');
         var dropzone = document.getElementById("dropzone");
         var hostFolderBusy = false;
+        var awaitingStart = false;
         var hostFolderRefreshBusy = false;
         var hostFolderRefreshPendingReason = "";
         var hostFolderRefreshTimer = null;
@@ -762,6 +763,10 @@
             if(Config.isAutoRunSet){
                 start();
             }else{
+                // Downloads are done, but the "setupBoxedWine" run dependency stays
+                // pending until start(), so emscripten will not clear the status yet.
+                awaitingStart = true;
+                Module.setStatus('');
                 var startBtn = document.getElementById('startbtn');
                 startBtn.disabled = false;
                 startBtn.textContent = getHostFolderStartButtonText();
@@ -804,6 +809,7 @@
             }
 
             document.getElementById('startbtn').textContent = "Running...";
+            awaitingStart = false;
             Module["removeRunDependency"]("setupBoxedWine");
         }
         function isPointerLockEnabled() {
@@ -1851,10 +1857,12 @@
         })(),
         setStatus: function(text) {
           if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
-          if (text === Module.setStatus.text) return;
+          if (text === Module.setStatus.last.text) return;
           var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
           var now = Date.now();
-          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
+          if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
+          Module.setStatus.last.time = now;
+          Module.setStatus.last.text = text;
           if (m) {
             text = m[1];
             progressElement.value = parseInt(m[2])*100;
@@ -1872,7 +1880,8 @@
         totalDependencies: 0,
         monitorRunDependencies: function(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
-          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : '');
+          // Keep the status clear while the page waits for the user to press start.
+          Module.setStatus(left && !awaitingStart ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : '');
         }
       };
       Module.setStatus('Downloading...');
