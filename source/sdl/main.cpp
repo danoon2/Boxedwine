@@ -156,6 +156,10 @@ int boxedmain(int argc, const char **argv) {
                 KNativeSystem::postQuit();
             }
         }
+        // std::_Exit skips stdio cleanup, so write out what is still buffered for -log
+        if (KSystem::logFile.isOpen()) {
+            KSystem::logFile.flush();
+        }
         std::_Exit(0);
     }).detach();
 #endif
@@ -206,6 +210,10 @@ int boxedmain(int argc, const char **argv) {
                 continue;
             }
             BoxedwineData::startApp();
+            // The UI loop does not call KNativeSystem::tick, so the end of the app's -log output would stay buffered
+            if (KSystem::logFile.isOpen()) {
+                KSystem::logFile.flush();
+            }
             GlobalSettings::startUpArgs.readyToLaunch = false;
             // the app's apply() may have turned it on for an automation run; the UI goes back to the command line's choice
             KSystem::noErrorDialog = startupArgs.noErrorDialog;

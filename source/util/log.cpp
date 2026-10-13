@@ -88,7 +88,8 @@ void internal_log(BString msg, FILE* f) {
 void flushLogFileIfDue() {
     // Writes stay buffered for speed; flushing about once a second bounds what a killed or crashed process loses
     static U32 lastFlush;
-    U32 now = KSystem::getMilliesSinceStart();
+    // Host ticks: KSystem::getMilliesSinceStart() is scaled by adjustClockFactor
+    U32 now = KNativeSystem::getTicks();
     if (KSystem::logFile.isOpen() && now - lastFlush >= 1000) {
         lastFlush = now;
         KSystem::logFile.flush();
