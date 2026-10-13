@@ -25,6 +25,7 @@
 #include <set>
 #include <cctype>
 #include <cstdlib>
+#include <cmath>
 
 #ifdef WIN32
 #undef BOOL
@@ -41,7 +42,7 @@ static const int SHUTDOWN_BOTH = SD_BOTH;
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/select.h>
+#include <poll.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -76,7 +77,9 @@ namespace {
     std::mutex stateMutex;
     std::condition_variable stateCond;
     ServerSocket listenSocket = NO_SOCKET;
-    std::thread acceptThread;
+    // Never destroyed: exit() (kpanic does it under -novideo) runs static
+    // destructors, and destroying a joinable std::thread calls std::terminate.
+    std::thread& acceptThread = *new std::thread();
     std::set<ServerSocket> clientSockets;
     U32 activeConnections = 0;
     std::atomic<bool> running(false);
@@ -98,6 +101,7 @@ namespace {
     // Waits up to timeoutMs for the socket to become readable. Returns 1 if
     // readable, 0 on timeout, -1 on error.
     int waitReadable(ServerSocket s, U32 timeoutMs) {
+#ifdef WIN32
         fd_set set;
         FD_ZERO(&set);
         FD_SET(s, &set);
@@ -105,6 +109,14 @@ namespace {
         tv.tv_sec = timeoutMs / 1000;
         tv.tv_usec = (timeoutMs % 1000) * 1000;
         int result = select((int)(s + 1), &set, nullptr, nullptr, &tv);
+#else
+        // poll, because FD_SET overflows the fd_set once the emulator's open
+        // host files push socket numbers past FD_SETSIZE.
+        pollfd pfd = {};
+        pfd.fd = s;
+        pfd.events = POLLIN;
+        int result = poll(&pfd, 1, (int)timeoutMs);
+#endif
         if (result < 0) {
             return -1;
         }
@@ -486,7 +498,8 @@ double LocalServer::Request::paramDouble(const std::string& name, double default
     }
     char* end = nullptr;
     double value = strtod(it->second.c_str(), &end);
-    return (end && !*end) ? value : defaultValue;
+    // NaN would slip through every range check a handler makes.
+    return (end && !*end && std::isfinite(value)) ? value : defaultValue;
 }
 
 bool LocalServer::Request::isWebSocketUpgrade() const {
@@ -601,6 +614,15 @@ bool LocalServer::start(U32 port, std::string& error) {
     if (running) {
         error = "already running";
         return false;
+    }
+    {
+        // stop() gives up on handlers after 2 seconds. Clearing stopping under
+        // them would keep them running, and their exit would underflow the count.
+        std::lock_guard<std::mutex> lock(stateMutex);
+        if (activeConnections) {
+            error = "connections from the previous run are still closing";
+            return false;
+        }
     }
 #ifdef WIN32
     WSADATA wsaData;

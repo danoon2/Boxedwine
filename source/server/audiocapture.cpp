@@ -56,7 +56,9 @@ namespace {
     bool heardSound = false;
     U32 lastSoundTime = 0;
 
-    std::thread mixerThread;
+    // Never destroyed: exit() (kpanic does it under -novideo) runs static
+    // destructors, and destroying a joinable std::thread calls std::terminate.
+    std::thread& mixerThread = *new std::thread();
     std::mutex mixerMutex;
     std::condition_variable mixerCond;
     bool mixerRunning = false;

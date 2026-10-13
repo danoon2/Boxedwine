@@ -23,7 +23,7 @@
 #include <atomic>
 
 // Keeps a copy of what the guest shows, for the local server. Nothing here
-// runs unless ScreenCapture::enabled is set, which only -server does.
+// runs unless ScreenCapture::enabled is set, which only -localServer does.
 //
 // GDI output (every X window Wine draws) is composited the same way the SDL
 // screen does it: clear(), putBitsOnWnd() per window, present(). OpenGL output

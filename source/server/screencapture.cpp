@@ -100,9 +100,11 @@ namespace {
             S32 top = std::max<S32>(gl.y, 0);
             S32 right = std::min<S32>(gl.x + (S32)gl.width, (S32)width);
             S32 bottom = std::min<S32>(gl.y + (S32)gl.height, (S32)height);
-            for (S32 y = top; y < bottom; y++) {
-                const U32* src = &gl.pixels[(size_t)(y - gl.y) * gl.width + (left - gl.x)];
-                if (right > left) {
+            // A window entirely off the left edge has left - gl.x past its row,
+            // so only index the layer when something overlaps.
+            if (right > left) {
+                for (S32 y = top; y < bottom; y++) {
+                    const U32* src = &gl.pixels[(size_t)(y - gl.y) * gl.width + (left - gl.x)];
                     memcpy(&composed[(size_t)y * width + left], src, (size_t)(right - left) * 4);
                 }
             }

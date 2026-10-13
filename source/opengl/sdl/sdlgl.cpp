@@ -997,7 +997,9 @@ static void captureGlFrame(const std::shared_ptr<XDrawable>& d) {
     pglPixelStorei(GL_PACK_SKIP_ROWS, 0);
     pglPixelStorei(GL_PACK_SKIP_PIXELS, 0);
 
-    std::vector<U8> pixels((size_t)width * height * 4);
+    // Reused across swaps: this runs up to about 60 times a second.
+    static thread_local std::vector<U8> pixels;
+    pixels.resize((size_t)width * height * 4);
     pglReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, pixels.data());
 
     pglPixelStorei(GL_PACK_ALIGNMENT, packAlignment);

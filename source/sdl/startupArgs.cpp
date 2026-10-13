@@ -721,9 +721,8 @@ bool StartUpArgs::apply() {
         KSystem::enableSoundAfterMouseClick = true;
     }
 #endif
-    KNativeSystem::initWindow(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
-    KNativeAudio::init();
 #ifdef BOXEDWINE_LOCAL_SERVER
+    // Before the window and audio exist, so a failure leaves nothing to tear down.
     if (this->localServerPort >= 0) {
         startMediaCapture();
         std::string error;
@@ -735,6 +734,8 @@ bool StartUpArgs::apply() {
         klog_fmt("Local server listening on http://127.0.0.1:%u/", LocalServer::port());
     }
 #endif
+    KNativeSystem::initWindow(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
+    KNativeAudio::init();
 #ifdef BOXEDWINE_OPENGL
     PlatformOpenGL::init();
     gl_init(this->glExt);        
