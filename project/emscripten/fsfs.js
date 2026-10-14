@@ -124,6 +124,14 @@
                 mount.fsfsApplyingLocal = false;
             }
         }
+        // The guest copy's current metadata, or null if it no longer exists.
+        function currentLocalEntry(path) {
+            try {
+                return FSFS.statToEntry(FS.stat(path));
+            } catch (e) {
+                return null;
+            }
+        }
         function isLocalPathOpen(path) {
             if (!FS.streams) {
                 return false;
@@ -410,7 +418,9 @@
             },
             removeRemoteEntry: async function(handles, path) {
                 var parentDirHandle = handles.get(dirname(path));
-                await parentDirHandle.removeEntry(basename(path), {recursive: true});
+                // Not recursive: a folder still holding files that were kept (conflicts
+                // or new host files) fails to delete instead of taking them with it.
+                await parentDirHandle.removeEntry(basename(path));
                 handles.delete(path);
             },
             reconcile: async function(mount, src, dst) {
@@ -477,66 +487,83 @@
 
                 for (var i = 0; i < remotePaths.length; i++) {
                     var remotePath = remotePaths[i];
-                    var remoteEntry = remote.entries[remotePath];
-                    var localEntry = local.entries[remotePath];
-                    var base = baseline[remotePath];
-                    var remoteChanged = !base || !entriesSame(remoteEntry, base.remote);
-                    var localChanged = localEntry && (!base || !entriesSame(localEntry, base.local));
-                    var relPath = relativeFromMount(mount.mountpoint, remotePath);
+                    try {
+                        var remoteEntry = remote.entries[remotePath];
+                        var localEntry = local.entries[remotePath];
+                        var base = baseline[remotePath];
+                        var remoteChanged = !base || !entriesSame(remoteEntry, base.remote);
+                        var localChanged = localEntry && (!base || !entriesSame(localEntry, base.local));
+                        var relPath = relativeFromMount(mount.mountpoint, remotePath);
 
-                    if (!localEntry) {
-                        if (base && remoteChanged) {
-                            addConflict(result, remotePath, "host changed while guest removed it");
-                            continue;
-                        }
-                        if (!base) {
-                            var newHandle = remote.handles.get(relPath);
-                            var newEntry = await FSFS.loadRemoteEntry(newHandle);
+                        if (!localEntry) {
+                            if (base && remoteChanged) {
+                                addConflict(result, remotePath, "host changed while guest removed it");
+                                continue;
+                            }
+                            if (!base) {
+                                var newHandle = remote.handles.get(relPath);
+                                var newEntry = await FSFS.loadRemoteEntry(newHandle);
+                                if (currentLocalEntry(remotePath)) {
+                                    addConflict(result, remotePath, "guest created it during the refresh");
+                                    continue;
+                                }
+                                applyLocal(mount, function() {
+                                    FSFS.storeLocalEntry(remotePath, newEntry);
+                                });
+                                nextBaseline[remotePath] = makeBaselineEntry(FSFS.statToEntry(FS.stat(remotePath)), remoteEntry);
+                                result.changedPaths.push(remotePath);
+                                result.created++;
+                            }
+                        } else if (remoteChanged) {
+                            if (localChanged || isLocalPathOpen(remotePath)) {
+                                addConflict(result, remotePath, localChanged ?
+                                    "host and guest both changed it" : "guest has it open");
+                                continue;
+                            }
+                            var changedHandle = remote.handles.get(relPath);
+                            var changedEntry = await FSFS.loadRemoteEntry(changedHandle);
+                            // The guest may have saved or opened it while the host copy was read.
+                            if (!entriesSame(currentLocalEntry(remotePath), localEntry) || isLocalPathOpen(remotePath)) {
+                                addConflict(result, remotePath, "guest changed or opened it during the refresh");
+                                continue;
+                            }
                             applyLocal(mount, function() {
-                                FSFS.storeLocalEntry(remotePath, newEntry);
+                                FSFS.storeLocalEntry(remotePath, changedEntry);
                             });
                             nextBaseline[remotePath] = makeBaselineEntry(FSFS.statToEntry(FS.stat(remotePath)), remoteEntry);
                             result.changedPaths.push(remotePath);
-                            result.created++;
+                            result.updated++;
                         }
-                    } else if (remoteChanged) {
-                        if (localChanged || isLocalPathOpen(remotePath)) {
-                            addConflict(result, remotePath, localChanged ?
-                                "host and guest both changed it" : "guest has it open");
-                            continue;
-                        }
-                        var changedHandle = remote.handles.get(relPath);
-                        var changedEntry = await FSFS.loadRemoteEntry(changedHandle);
-                        applyLocal(mount, function() {
-                            FSFS.storeLocalEntry(remotePath, changedEntry);
-                        });
-                        nextBaseline[remotePath] = makeBaselineEntry(FSFS.statToEntry(FS.stat(remotePath)), remoteEntry);
-                        result.changedPaths.push(remotePath);
-                        result.updated++;
+                    } catch (e) {
+                        addConflict(result, remotePath, "failed: " + e);
                     }
                 }
 
                 var localPaths = Object.keys(local.entries).sort().reverse();
                 for (var j = 0; j < localPaths.length; j++) {
                     var localPath = localPaths[j];
-                    if (remote.entries[localPath]) {
-                        continue;
+                    try {
+                        if (remote.entries[localPath]) {
+                            continue;
+                        }
+                        var localBase = baseline[localPath];
+                        if (!localBase) {
+                            continue;
+                        }
+                        // Check the current guest copy; the snapshot predates the awaits above.
+                        if (!entriesSame(currentLocalEntry(localPath), localBase.local) || isLocalPathOpen(localPath)) {
+                            addConflict(result, localPath, "host removed it while guest changed or opened it");
+                            continue;
+                        }
+                        applyLocal(mount, function() {
+                            FSFS.removeLocalEntry(localPath);
+                        });
+                        delete nextBaseline[localPath];
+                        result.changedPaths.push(localPath);
+                        result.removed++;
+                    } catch (e) {
+                        addConflict(result, localPath, "failed: " + e);
                     }
-                    var localBase = baseline[localPath];
-                    if (!localBase) {
-                        continue;
-                    }
-                    var currentLocal = local.entries[localPath];
-                    if (!entriesSame(currentLocal, localBase.local) || isLocalPathOpen(localPath)) {
-                        addConflict(result, localPath, "host removed it while guest changed or opened it");
-                        continue;
-                    }
-                    applyLocal(mount, function() {
-                        FSFS.removeLocalEntry(localPath);
-                    });
-                    delete nextBaseline[localPath];
-                    result.changedPaths.push(localPath);
-                    result.removed++;
                 }
 
                 mount.fsfsBaseline = nextBaseline;
@@ -550,52 +577,60 @@
 
                 for (var i = 0; i < localPaths.length; i++) {
                     var localPath = localPaths[i];
-                    var localEntry = local.entries[localPath];
-                    var remoteEntry = remote.entries[localPath];
-                    var base = baseline[localPath];
-                    var localChanged = !base || !entriesSame(localEntry, base.local);
-                    var remoteChanged = remoteEntry && (!base || !entriesSame(remoteEntry, base.remote));
-                    var relPath = relativeFromMount(mount.mountpoint, localPath);
+                    try {
+                        var localEntry = local.entries[localPath];
+                        var remoteEntry = remote.entries[localPath];
+                        var base = baseline[localPath];
+                        var localChanged = !base || !entriesSame(localEntry, base.local);
+                        var remoteChanged = remoteEntry && (!base || !entriesSame(remoteEntry, base.remote));
+                        var relPath = relativeFromMount(mount.mountpoint, localPath);
 
-                    if (!localChanged) {
-                        continue;
-                    }
-                    if (!remoteEntry && base) {
-                        addConflict(result, localPath, "guest changed it after host removed it");
-                        continue;
-                    }
-                    if (remoteChanged && !entriesSame(localEntry, remoteEntry)) {
-                        addConflict(result, localPath, "guest and host both changed it");
-                        continue;
-                    }
-                    var entryToStore = FSFS.loadLocalEntry(localPath);
-                    var storedEntry = await FSFS.storeRemoteEntry(remote.handles, relPath, entryToStore);
-                    nextBaseline[localPath] = makeBaselineEntry(entryToStore, storedEntry);
-                    if (remoteEntry) {
-                        result.updated++;
-                    } else {
-                        result.created++;
+                        if (!localChanged) {
+                            continue;
+                        }
+                        if (!remoteEntry && base) {
+                            addConflict(result, localPath, "guest changed it after host removed it");
+                            continue;
+                        }
+                        if (remoteChanged && !entriesSame(localEntry, remoteEntry)) {
+                            addConflict(result, localPath, "guest and host both changed it");
+                            continue;
+                        }
+                        var entryToStore = FSFS.loadLocalEntry(localPath);
+                        var storedEntry = await FSFS.storeRemoteEntry(remote.handles, relPath, entryToStore);
+                        nextBaseline[localPath] = makeBaselineEntry(entryToStore, storedEntry);
+                        if (remoteEntry) {
+                            result.updated++;
+                        } else {
+                            result.created++;
+                        }
+                    } catch (e) {
+                        addConflict(result, localPath, "failed: " + e);
                     }
                 }
 
                 var remotePaths = Object.keys(remote.entries).sort().reverse();
                 for (var j = 0; j < remotePaths.length; j++) {
                     var remotePath = remotePaths[j];
-                    if (local.entries[remotePath]) {
-                        continue;
+                    try {
+                        if (local.entries[remotePath]) {
+                            continue;
+                        }
+                        var remoteBase = baseline[remotePath];
+                        if (!remoteBase) {
+                            continue;
+                        }
+                        var currentRemote = remote.entries[remotePath];
+                        if (!entriesSame(currentRemote, remoteBase.remote)) {
+                            addConflict(result, remotePath, "guest removed it while host changed it");
+                            continue;
+                        }
+                        await FSFS.removeRemoteEntry(remote.handles, relativeFromMount(mount.mountpoint, remotePath));
+                        delete nextBaseline[remotePath];
+                        result.removed++;
+                    } catch (e) {
+                        addConflict(result, remotePath, "failed: " + e);
                     }
-                    var remoteBase = baseline[remotePath];
-                    if (!remoteBase) {
-                        continue;
-                    }
-                    var currentRemote = remote.entries[remotePath];
-                    if (!entriesSame(currentRemote, remoteBase.remote)) {
-                        addConflict(result, remotePath, "guest removed it while host changed it");
-                        continue;
-                    }
-                    await FSFS.removeRemoteEntry(remote.handles, relativeFromMount(mount.mountpoint, remotePath));
-                    delete nextBaseline[remotePath];
-                    result.removed++;
                 }
 
                 mount.fsfsBaseline = nextBaseline;
