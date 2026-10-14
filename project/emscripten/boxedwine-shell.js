@@ -1453,6 +1453,19 @@
                 setHostFolderStatus("Mounted D: folder (auto-sync enabled)", false);
                 return true;
             } catch (e) {
+                if (Config.hostFolderMounted && !Config.hostFolderEnabled) {
+                    // The initial populate failed: drop the partial mount without
+                    // syncing it back, so a retry does not hit the same error.
+                    try { FS.unmount(Config.d_drive); } catch (unmountError) {}
+                    Config.hostFolderMounted = false;
+                    Config.hostFolderHandle = null;
+                    stopHostFolderRefresh();
+                }
+                if (e && (e.name === "NotFoundError" || e.name === "NotAllowedError")) {
+                    // The remembered folder was moved, deleted or revoked; forget it
+                    // so the next click offers the folder picker again.
+                    await forgetPersistedHostFolderHandle(true);
+                }
                 if (e && e.name === "AbortError") {
                     setHostFolderStatus("Host folder selection canceled", false);
                 } else {
