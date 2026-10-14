@@ -86,10 +86,16 @@ public:
     BOXEDWINE_CONDITION readingCond;
     BOXEDWINE_CONDITION writingCond;
 
+#ifdef __TEST
+    std::function<void()> testBeforeNativeConnect;
+#endif
+
 private:
-    // connectMutex protects completion and consumption of the native SO_ERROR.
+    // Protect connection state and consumption of SO_ERROR, never the host wait.
     void updateConnectStatus();
     BOXEDWINE_MUTEX connectMutex;
+    // While the host call owns completion, poll/SO_ERROR must not consume it.
+    bool connectInProgress = false;
     bool connectPending = false;
     bool connectFailed = false;
     S32 connectError = 0;

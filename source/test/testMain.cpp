@@ -198,6 +198,7 @@ void testNativeSocketSetOobInlineCanBeReadBack();
 void testNativeSocketBindUnavailableAddressReturnsEaddrnotavail();
 void testNativeSocketRecvmsgReceivesOobData();
 void testNativeSocketConnectCompletion();
+void testNativeSocketBlockingConnectDoesNotBlockPoll();
 #if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
 void stopNativeSocketsThread();
 #endif
@@ -1214,6 +1215,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testNativeSocketSetOobInlineCanBeReadBack, "Test native socket SO_OOBINLINE can be read back", TEST_ENTRY_SERIAL},
     {testNativeSocketRecvmsgReceivesOobData, "Test native socket recvmsg receives OOB data", TEST_ENTRY_SERIAL},
     {testNativeSocketConnectCompletion, "Test native socket nonblocking connect completion", TEST_ENTRY_SERIAL},
+    {testNativeSocketBlockingConnectDoesNotBlockPoll,
+        "Test native socket blocking connect does not block zero-timeout poll", TEST_ENTRY_SERIAL},
     {testNativeDatagramSocketPollDoesNotReportHangup,
         "Test native datagram socket poll does not report hangup", TEST_ENTRY_SERIAL},
     {testNativeDatagramRecvmsgPeekScattersOnce,

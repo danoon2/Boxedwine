@@ -525,12 +525,8 @@ S32 translateNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, in
     return result;
 }
 
-S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool write) {
-#ifdef WIN32
-    S32 result = translateNativeSocketError(s, WSAGetLastError());
-#else
-    S32 result = translateNativeSocketError(s, errno);
-#endif
+static S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool write, int nativeError) {
+    S32 result = translateNativeSocketError(s, nativeError);
     s->error = -result;
 #ifndef BOXEDWINE_MULTI_THREADED
     if (result == -K_EWOULDBLOCK) {
@@ -549,6 +545,14 @@ S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool 
     }    
 #endif
     return result;
+}
+
+S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool write) {
+#ifdef WIN32
+    return handleNativeSocketError(s, write, WSAGetLastError());
+#else
+    return handleNativeSocketError(s, write, errno);
+#endif
 }
 
 #ifndef __EMSCRIPTEN__
@@ -917,13 +921,13 @@ bool KNativeSocketObject::supportsLocks() {
 
 bool KNativeSocketObject::isOpen() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
-    return this->nativeSocket >= 0 && (this->type == K_SOCK_DGRAM || this->listening || this->connected || this->connectPending);
+    return this->nativeSocket >= 0 && (this->type == K_SOCK_DGRAM || this->listening || this->connected || this->connectPending || this->connectInProgress);
 }
 
 // Called with connectMutex held. Reading native SO_ERROR can consume it, so retain
 // the result until the guest reads SO_ERROR (or resumes a blocking ST connect).
 void KNativeSocketObject::updateConnectStatus() {
-    if (!this->connectPending) {
+    if (!this->connectPending || this->connectInProgress) {
         return;
     }
     fd_set writes = {}, errors = {};
@@ -951,6 +955,9 @@ void KNativeSocketObject::updateConnectStatus() {
 
 U32 KNativeSocketObject::getPollEvents(U32 events) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
+    if (this->connectInProgress) {
+        return 0;
+    }
     updateConnectStatus();
     if (this->connectFailed) {
         // Winsock puts a failed nonblocking connect in exceptfds, not writefds.
@@ -1128,7 +1135,6 @@ U32 KNativeSocketObject::bind(KThread* thread, const KFileDescriptorPtr& fd, U32
 }
 
 U32 KNativeSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
     if (this->nativeSocket < 0) {
         return nativeNetworkUnavailable(this);
     }
@@ -1177,9 +1183,30 @@ U32 KNativeSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, 
         addr = (struct sockaddr*)buffer;
     }
 
-    this->connectError = 0;
-    this->connectFailed = false;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
+        if (this->connectInProgress) {
+            return -K_EALREADY;
+        }
+        this->connectInProgress = true;
+        this->connectError = 0;
+        this->connectFailed = false;
+    }
+    // A blocking host connect must not hold up poll (including timeout=0) or
+    // SO_ERROR. Keep those callers from consuming completion until it returns.
+#ifdef __TEST
+    if (testBeforeNativeConnect) {
+        testBeforeNativeConnect();
+    }
+#endif
     int r = ::connect(this->nativeSocket, addr, addrLen);
+#ifdef WIN32
+    int nativeError = r < 0 ? WSAGetLastError() : 0;
+#else
+    int nativeError = r < 0 ? errno : 0;
+#endif
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
+    this->connectInProgress = false;
     LOG_SOCK("native socket: %x connect %s result=%x", nativeSocket, socketAddressName(thread->memory, address, len).c_str(), r);
     if (r == 0) {
         this->error = 0;
@@ -1190,7 +1217,7 @@ U32 KNativeSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, 
         recordEth0Rx(64);
         return 0;
     }
-    result = handleNativeSocketError(t, true);
+    result = handleNativeSocketError(t, true, nativeError);
     if ((S32)result == -K_EWOULDBLOCK) {
         result = -K_EINPROGRESS;
         t->error = K_EINPROGRESS;
@@ -1608,7 +1635,7 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, const KFileDescriptorPtr& f
             if (this->connectError) {
                 retrievedValue = this->connectError;
                 this->connectError = 0;
-            } else if (!this->connectPending && !this->connectFailed) {
+            } else if (!this->connectPending && !this->connectFailed && !this->connectInProgress) {
                 // Winsock retains a failed connect's SO_ERROR even after it was
                 // read; Linux clears it. Do not expose the consumed error again.
                 int nativeError = 0;
