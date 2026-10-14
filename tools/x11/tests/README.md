@@ -81,3 +81,38 @@ it; the extended focus probe also continued to pass all 27 checks.
 The rebuilt engine also allowed lobby placement in the installed SimTower demo:
 funds decreased and the tutorial advanced to building offices. This change is
 in Boxedwine's X11 implementation and does not require another Wine patch.
+
+## Keyboard delivery
+
+`keyboard.c` tests actual key delivery, including startup focus, rejection of a
+focus request for a hidden window, and focus reversion after unmap/destroy.
+It also covers pointer descendants of the focus window, propagation stopping
+at focus, independent press/release selection, None, and PointerRoot.
+
+On an isolated Xvfb display, use XTEST to inject input (the reference binary
+needs `libXtst.so.6` at runtime):
+
+```sh
+gcc -O2 -Wall -Wextra keyboard.c -lX11 -ldl -o keyboard-reference
+DISPLAY=:198 ./keyboard-reference reference
+gcc -m32 -O2 -Wall -Wextra keyboard.c -lX11 -ldl -o keyboard-probe
+```
+
+Run the 32-bit probe inside a recorder-enabled Boxedwine build:
+
+```sh
+python run_keyboard.py /path/to/Boxedwine /path/to/TinyCore15Wine11.0.zip /path/to/keyboard-probe /path/to/isolated-output
+```
+
+The runner generates small readiness markers and a recording. Each marker
+gates a key press/release through the native input path; a subsequent mouse
+event lets the probe finish checks that expect no keyboard events. It does
+not substitute `XSendEvent` for real input or rely on sleeps for readiness.
+Expected result: `RESULT checks=13 failures=0`.
+
+These checks cover Jenkins build 15's AoE and AbiWord failures. AoE's early
+request to focus a hidden window was correctly rejected, but the initial
+None focus then discarded its player-name input. AbiWord reverted focus to
+the explicit root after closing a window, and key delivery failed to start
+at the pointer descendant. Initialize focus to PointerRoot as Xvfb does and
+honor the focus subtree when routing keys; keep rejecting hidden windows.

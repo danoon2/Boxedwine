@@ -442,6 +442,11 @@ const XWindowPtr& XServer::getRoot() {
 		U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
 		root->setProperty(atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
 		root->isMapped = true; // so that grab works
+		// Like an X server without a window manager, initially deliver keys to
+		// the pointer window. A rejected early focus request (e.g. AoE focusing
+		// its still-hidden window) must not leave keyboard input disabled.
+		inputFocus = root;
+		inputFocusIsPointerRoot = true;
 		root->colorMap = getDefaultColorMap();
 		root->attributes.colormap = root->colorMap->id;
 		root->cursor = std::make_shared<XCursor>(132); // XC_top_left_arrow
@@ -1321,19 +1326,20 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 }
 
 void XServer::key(U32 key, bool pressed) {
-	U32 revertTo;
-	U32 focus = getInputFocus(revertTo);
-	if (focus != None) {
+	XWindowPtr focus = getInputFocusWindow(); // PointerRoot is stored as root.
+	if (focus) {
 		S32 x = 0;
 		S32 y = 0;
 		KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
-		XWindowPtr wnd;
-		if (focus == PointerRoot && root) {
-			wnd = root->getWindowFromPoint(x, y);
-		} else {
-			wnd = getWindow(focus);
-		}
+		XWindowPtr pointer = root ? root->getWindowFromPoint(x, y) : nullptr;
+		// Keyboard events start at the pointer window when it is within the
+		// focus subtree, including when focus reverts to the explicit root.
+		// Otherwise they start at the focus window, and never propagate above it.
+		XWindowPtr wnd = focusAncestor(focus, pointer) ? pointer : focus;
 		while (wnd && !wnd->keyScreenCoords(key, x, y, pressed)) {
+			if (wnd == focus) {
+				break;
+			}
 			wnd = wnd->getParent();
 		}
 	}
