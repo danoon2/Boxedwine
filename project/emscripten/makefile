@@ -25,15 +25,15 @@ test: export EXTRA_LD_FLAGS := --emrun
 testMultiThreaded: export BUILD_DIR := Build/TestMultiThreaded
 testMultiThreaded: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC -DBOXEDWINE_MULTI_THREADED -pthread
 testMultiThreaded: export SHELL_FILE := shelltest.html
-testMultiThreaded: export EXTRA_LD_FLAGS := --emrun -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-audio.js
+testMultiThreaded: export EXTRA_LD_FLAGS := --emrun -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-helper.js
 testMultiThreadedOpenGL: export BUILD_DIR := Build/TestMultiThreadedOpenGL
 testMultiThreadedOpenGL: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY -pthread
 testMultiThreadedOpenGL: export SHELL_FILE := shelltest.html
-testMultiThreadedOpenGL: export EXTRA_LD_FLAGS := --emrun -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --js-library=boxedwine-multithreaded-audio.js
+testMultiThreadedOpenGL: export EXTRA_LD_FLAGS := --emrun -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --js-library=boxedwine-multithreaded-helper.js
 multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
-multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=16 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --js-library=boxedwine-multithreaded-audio.js $(RUNTIME_MEMORY_FLAGS)
+multiThreaded: export EXTRA_LD_FLAGS := -pthread -sPTHREAD_POOL_SIZE=16 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --js-library=boxedwine-multithreaded-helper.js $(RUNTIME_MEMORY_FLAGS)
 multiThreaded: export ASSET_FILES := boxedwine.css fsfs.js boxedwine-shell.js $(ZIP_ASSET_FILES)
 # WASM JIT build: emits each basic block as a raw one-function WASM module, then installs it standalone or merges it into a bounded runtime group.
 # Key flags:
@@ -63,7 +63,7 @@ automation: export ASSET_FILES := boxedwine.css fsfs.js boxedwine-shell.js $(ZIP
 automationMultiThreaded: export BUILD_DIR := Build/AutomationMultiThreaded
 automationMultiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_RECORDER -pthread
 automationMultiThreaded: export SHELL_FILE := shell.html
-automationMultiThreaded: export EXTRA_LD_FLAGS := --emrun -sEXIT_RUNTIME=1 -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-audio.js $(RUNTIME_MEMORY_FLAGS)
+automationMultiThreaded: export EXTRA_LD_FLAGS := --emrun -sEXIT_RUNTIME=1 -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-helper.js $(RUNTIME_MEMORY_FLAGS)
 automationMultiThreaded: export ASSET_FILES := boxedwine.css fsfs.js boxedwine-shell.js $(ZIP_ASSET_FILES)
 automationJit: export BUILD_DIR := Build/AutomationJit
 automationJit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_WASM_JIT -DBOXEDWINE_RECORDER $(WASM_JIT_SIMD_FLAG)
@@ -79,7 +79,7 @@ testJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -sALLOW_TABLE_GR
 testMultiThreadedJit: export BUILD_DIR := Build/TestMultiThreadedJit
 testMultiThreadedJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASM_JIT $(WASM_JIT_SIMD_FLAG) -pthread
 testMultiThreadedJit: export SHELL_FILE := shelltest.html
-testMultiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -pthread -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --pre-js=boxedwine-wasm-jit-module-broker.js --js-library=boxedwine-multithreaded-audio.js -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8$(JIT_CCALL_EXPORTS) -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_mt_set_module_broker_enabled,_wasm_jit_mt_broker_validate_module,_wasm_jit_mt_take_thread_start_owner,_wasm_jit_mt_copy_runtime_batch_stats,_wasm_jit_mt_record_group_worker_event,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
+testMultiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -pthread -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --pre-js=boxedwine-wasm-jit-module-broker.js --js-library=boxedwine-multithreaded-helper.js -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8$(JIT_CCALL_EXPORTS) -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_mt_set_module_broker_enabled,_wasm_jit_mt_broker_validate_module,_wasm_jit_mt_take_thread_start_owner,_wasm_jit_mt_copy_runtime_batch_stats,_wasm_jit_mt_record_group_worker_event,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
 # Multi-threaded WASM JIT: combines the multiThreaded and jit flag sets.
 # Within a single emulated process, JIT compilation is serialized via
 # memory->mutex, and the inline-TLB arrays are mutated under the same
@@ -93,12 +93,12 @@ multiThreadedJit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWI
 multiThreadedJit: export SHELL_FILE := shell.html
 # HEAPU8/_malloc/_free: used by boxedwine-shell.js (onRuntimeInitialized) to
 # copy server-zip cache entries into wasm memory for _wasm_jit_mt_register.
-multiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) -pthread -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --pre-js=boxedwine-wasm-jit-module-broker.js --js-library=boxedwine-multithreaded-audio.js -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8$(JIT_CCALL_EXPORTS) -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_mt_set_module_broker_enabled,_wasm_jit_mt_broker_validate_module,_wasm_jit_mt_take_thread_start_owner,_wasm_jit_mt_copy_runtime_batch_stats,_wasm_jit_mt_record_group_worker_event,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
+multiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) -pthread -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --pre-js=boxedwine-wasm-jit-module-broker.js --js-library=boxedwine-multithreaded-helper.js -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8$(JIT_CCALL_EXPORTS) -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_mt_set_module_broker_enabled,_wasm_jit_mt_broker_validate_module,_wasm_jit_mt_take_thread_start_owner,_wasm_jit_mt_copy_runtime_batch_stats,_wasm_jit_mt_record_group_worker_event,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
 multiThreadedJit: export ASSET_FILES := boxedwine.css fsfs.js boxedwine-shell.js $(ZIP_ASSET_FILES)
 automationMultiThreadedJit: export BUILD_DIR := Build/AutomationMultiThreadedJit
 automationMultiThreadedJit: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASM_JIT -DBOXEDWINE_RECORDER $(WASM_JIT_SIMD_FLAG) -pthread
 automationMultiThreadedJit: export SHELL_FILE := shell.html
-automationMultiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -sEXIT_RUNTIME=1 -pthread -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --pre-js=boxedwine-wasm-jit-module-broker.js --js-library=boxedwine-multithreaded-audio.js -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8$(JIT_CCALL_EXPORTS) -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_mt_set_module_broker_enabled,_wasm_jit_mt_broker_validate_module,_wasm_jit_mt_take_thread_start_owner,_wasm_jit_mt_copy_runtime_batch_stats,_wasm_jit_mt_record_group_worker_event,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
+automationMultiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -sEXIT_RUNTIME=1 -pthread -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --pre-js=boxedwine-wasm-jit-module-broker.js --js-library=boxedwine-multithreaded-helper.js -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8$(JIT_CCALL_EXPORTS) -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_mt_set_module_broker_enabled,_wasm_jit_mt_broker_validate_module,_wasm_jit_mt_take_thread_start_owner,_wasm_jit_mt_copy_runtime_batch_stats,_wasm_jit_mt_record_group_worker_event,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
 automationMultiThreadedJit: export ASSET_FILES := boxedwine.css fsfs.js boxedwine-shell.js $(ZIP_ASSET_FILES)
 
 cpus := $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
@@ -326,7 +326,7 @@ $(ASSET_OUTPUTS): $(BUILD_DIR)/%: %
 LINK_INPUTS := $(if $(filter %.html,$(TARGET_EXEC)),$(SHELL_FILE),)
 LINK_INPUTS += boxedwine-audio-worklet.js
 LINK_INPUTS += $(if $(findstring boxedwine-wasm-jit-module-broker.js,$(EXTRA_LD_FLAGS)),boxedwine-wasm-jit-module-broker.js,)
-LINK_INPUTS += $(if $(findstring boxedwine-multithreaded-audio.js,$(EXTRA_LD_FLAGS)),boxedwine-multithreaded-audio.js,)
+LINK_INPUTS += $(if $(findstring boxedwine-multithreaded-helper.js,$(EXTRA_LD_FLAGS)),boxedwine-multithreaded-helper.js,)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(ALL) $(LINK_CONFIG) $(LINK_INPUTS)
 	@$(CC) $(ALL) -o $@ $(LDFLAGS)

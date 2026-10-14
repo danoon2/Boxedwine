@@ -1,4 +1,11 @@
 addToLibrary({
+  // Message ID for Emscripten's 'call Module[handler] on the main thread' pthread
+  // command. Emscripten 6.0.0 changed these IDs from strings to integers, so a
+  // hand-built {cmd: 'callHandler'} message is dropped as an unknown command.
+  // Only --js-library files are preprocessed, so EM_JS and --pre-js code reads
+  // the resolved value from here (declare it with EM_JS_DEPS).
+  $bwCallHandlerCmd: {{{ typeof CMD_CALL_HANDLER != 'undefined' ? CMD_CALL_HANDLER : "'callHandler'" }}},
+
   // SDL2 WebAudio stores its state on Module.SDL2 in the browser main thread.
   // With PROXY_TO_PTHREAD, SDL audio can call plain EM_ASM_INT from the pthread;
   // if that happens, Module.SDL2 is missing and audio startup fails. Proxy only
