@@ -412,7 +412,7 @@
         if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
             try {
                 postToMain({
-                    cmd: 'callHandler',
+                    cmd: bwCallHandlerCmd,
                     handler: 'bwWasmJitBrokerPublish',
                     args: [moduleId, memoryId, memoryIncarnation, module,
                         typeof _pthread_self === 'function' ? _pthread_self() : 0,
@@ -905,7 +905,7 @@
             retireOwner, groupInstanceKeys);
         if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
             postToMain({
-                cmd: 'callHandler',
+                cmd: bwCallHandlerCmd,
                 handler: 'bwWasmJitBrokerReleaseMemory',
                 args: [memoryId, memoryIncarnation, moduleIds, tableSlots,
                     retireOwner, groupInstanceKeys]
@@ -1301,7 +1301,7 @@
             Atomics.notify(HEAP32, message.received >> 2);
         } else if (message.type === 'statsRequest') {
             postToMain({
-                cmd: 'callHandler',
+                cmd: bwCallHandlerCmd,
                 handler: 'bwWasmJitBrokerStatsReply',
                 args: [message.requestId, message.token || workerStatsToken, snapshotLocalStats()]
             });

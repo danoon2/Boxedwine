@@ -189,6 +189,11 @@ EM_JS(void, boxedwineUnregisterThreadWebGLCanvas, (const char* selector), {
     }
 });
 
+#ifdef __EMSCRIPTEN_PTHREADS__
+// bwCallHandlerCmd comes from boxedwine-multithreaded-helper.js.
+EM_JS_DEPS(boxedwine_present_webgl_frame_deps, "$bwCallHandlerCmd");
+#endif
+
 EM_JS(void, boxedwinePresentCurrentWebGLFrame, (int requestedWidth, int requestedHeight), {
     if (typeof GL === 'undefined' || !GL.currentContext || !GL.currentContext.GLctx) {
         return;
@@ -283,7 +288,7 @@ EM_JS(void, boxedwinePresentCurrentWebGLFrame, (int requestedWidth, int requeste
     try {
         var bitmap = source.transferToImageBitmap();
         postMessage({
-            cmd: 'callHandler',
+            cmd: bwCallHandlerCmd,
             handler: 'boxedwinePresentFrame',
             args: [bitmap, presentState, sx, sy, sw, sh]
         }, [bitmap]);

@@ -57,6 +57,13 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(__EMSCRIPTEN_PTHREADS__)
+// The module broker (boxedwine-wasm-jit-module-broker.js) and the MT test hooks
+// post call-handler messages using bwCallHandlerCmd from
+// boxedwine-multithreaded-helper.js.
+EM_JS_DEPS(boxedwine_wasm_jit_broker_deps, "$bwCallHandlerCmd");
+#endif
+
 #ifdef __TEST
 static bool g_wasmJitTestFailInvalidationPreparation = false;
 
@@ -6374,7 +6381,7 @@ bool wasmJitTestAddMtSealedRequestForStats(KMemory* memory, U32 mappedFileKey,
 EM_JS(void, wasmJitTestBrokerStatsSnapshotFailureJs, (S32* done), {
     if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
         postMessage({
-            cmd: 'callHandler',
+            cmd: bwCallHandlerCmd,
             handler: 'bwWasmJitBrokerTestStatsSnapshotFailure',
             args: [done]
         });
@@ -6405,7 +6412,7 @@ EM_JS(void, wasmJitTestBrokerIncompleteStatsJs,
          U32 expectedLocalCompiles, S32* done), {
     if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
         postMessage({
-            cmd: 'callHandler',
+            cmd: bwCallHandlerCmd,
             handler: 'bwWasmJitBrokerTestIncompleteStats',
             args: [
                 expectedCreations,
@@ -6445,7 +6452,7 @@ bool wasmJitTestBrokerIncompleteStats(U32 expectedCreations,
 EM_JS(void, wasmJitTestResetMtScheduleThreadPreloadStatsJs, (S32* done), {
     if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
         postMessage({
-            cmd: 'callHandler',
+            cmd: bwCallHandlerCmd,
             handler: 'bwWasmJitBrokerResetScheduleThreadTestStats',
             args: [done]
         });

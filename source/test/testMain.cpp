@@ -94,6 +94,7 @@ void testStatxEmptyPathUsesOpenFile();
 void testReadOnlyCreatePreservesZipFile();
 void testZipRandomAccess();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
+void testHostFolderSyncUpdatesLoadedChildren();
 void testSharedFileMappingGrowthKeepsPagesShared();
 void testSharedFileMappingTruncateClearsResidentBytes();
 void testSharedMappedWriteIsVisibleToPread();
@@ -1050,6 +1051,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testThreadStartPublishesHandleBeforeEntry, "Test thread start publishes handle before entry", TEST_ENTRY_SERIAL},
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs", TEST_ENTRY_SERIAL},
     {testFileCacheIdentitySurvivesRenameAndHardLink, "Test mapped-file cache identity survives rename and hard link", TEST_ENTRY_SERIAL},
+    {testHostFolderSyncUpdatesLoadedChildren, "Test host folder sync updates loaded children", TEST_ENTRY_SERIAL},
     {testSharedFileMappingGrowthKeepsPagesShared, "Test shared file mapping stays shared after growth", TEST_ENTRY_SERIAL},
     {testSharedFileMappingTruncateClearsResidentBytes, "Test shared file mapping clears resident bytes after truncate", TEST_ENTRY_SERIAL},
     {testSharedMappedWriteIsVisibleToPread, "Test shared mapped write is visible to pread", TEST_ENTRY_SERIAL},

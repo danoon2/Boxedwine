@@ -11,6 +11,12 @@
         let ROOT = "/root";
         let STORAGE_INDEXED_DB = "INDEXED_DB";
         let STORAGE_MEMORY = "MEMORY";
+        let STORAGE_HOST_FOLDER = "HOST_FOLDER";
+        let HOST_FOLDER_HANDLE_DB = "boxedwine-host-folder-handles";
+        let HOST_FOLDER_HANDLE_DB_VERSION = 1;
+        let HOST_FOLDER_HANDLE_STORE = "handles";
+        let HOST_FOLDER_HANDLE_KEY = "d";
+        let HOST_FOLDER_REFRESH_INTERVAL_MS = 10000;
 
         let DEFAULT_AUTO_RUN = true;
         let DEFAULT_LOAD_DESKTOP = false;
@@ -28,6 +34,7 @@
         Config.locateOverlayBaseUrl = "";
         Config.urlParams = "";
         Config.storageMode = STORAGE_INDEXED_DB;
+        Config.rootStorageMode = "";
         Config.persist_d_drive = true;
         Config.showUploadDownload = false;
         Config.showSaveJITCache = true;
@@ -102,6 +109,14 @@
       	var progressElement = document.getElementById('progress');
       	var spinnerElement = document.getElementById('spinner');
         var dropzone = document.getElementById("dropzone");
+        var hostFolderBusy = false;
+        var awaitingStart = false;
+        var hostFolderRefreshBusy = false;
+        var hostFolderRefreshPendingReason = "";
+        var hostFolderRefreshTimer = null;
+        var hostFolderRefreshObserver = null;
+        var hostFolderRefreshEventsConfigured = false;
+        var hostFolderInvalidateWarningShown = false;
 
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
@@ -109,6 +124,7 @@
             Config.locateAppBaseUrl = getBaseUrl("appBase");
             Config.locateOverlayBaseUrl = getBaseUrl("overlayBase");
             Config.storageMode = getStorageMode();
+            Config.rootStorageMode = getRootStorageMode();
             Config.isAutoRunSet = getAutoRun();
             Config.loadDesktop = getLoadDesktop();
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
@@ -136,6 +152,14 @@
 			Config.ddrawOverridePath = getDDrawOverridePath();
 			Config.networking = getNetworkingConfig();
 			Config.payloadZipFile = "app.zip";
+			Config.hostFolderHandle = null;
+			Config.hostFolderPersistedHandle = null;
+			Config.hostFolderPersistedName = "";
+			Config.hostFolderPermissionState = "unknown";
+			Config.hostFolderEnabled = false;
+			Config.hostFolderReadWrite = true;
+			Config.hostFolderManifest = new Map();
+			Config.hostFolderMounted = false;
             configureBrowserStorage();
         }
         function configureBrowserStorage() {
@@ -175,6 +199,10 @@
             if (storage === "indexed_db" || storage === "indexeddb" || storage === "idb") {
                 console.log("setting storage mode to: " + STORAGE_INDEXED_DB);
                 return STORAGE_INDEXED_DB;
+            }
+            if (storage === "hostfolder" || storage === "host_folder" || storage === "host-folder") {
+                console.log("setting storage mode to: " + STORAGE_HOST_FOLDER);
+                return STORAGE_HOST_FOLDER;
             }
             console.log("unknown storage mode: " + storage);
             return Config.storageMode;
@@ -354,6 +382,9 @@
             }else{
                 auto = DEFAULT_AUTO_RUN;
             }
+            if (Config.storageMode === STORAGE_HOST_FOLDER) {
+                auto = false;
+            }
             console.log("setting auto run to: "+auto);
             return auto;
         }        
@@ -377,6 +408,24 @@
                 payload = "";
             }
             return payload;
+        }
+        function getRootStorageMode() {
+            var defaultRootStorageMode = Config.storageMode === STORAGE_MEMORY ? STORAGE_MEMORY : STORAGE_INDEXED_DB;
+            var rootStorageMode = Config.rootStorageMode || defaultRootStorageMode;
+            var rootStorageParam = getParameter("rootfs");
+            if (allowParameterOverride() && rootStorageParam.length > 0) {
+                rootStorageMode = rootStorageParam;
+            }
+            rootStorageMode = rootStorageMode.toLowerCase();
+            if (rootStorageMode === "memory") {
+                rootStorageMode = STORAGE_MEMORY;
+            } else if (rootStorageMode === "indexeddb" || rootStorageMode === "indexed_db") {
+                rootStorageMode = STORAGE_INDEXED_DB;
+            } else {
+                rootStorageMode = defaultRootStorageMode;
+            }
+            console.log("setting root fs storage mode to: " + rootStorageMode);
+            return rootStorageMode;
         }
         function getSound() {
             var soundEnabled =  getParameter("sound");
@@ -676,24 +725,32 @@
         }
         function initBrowserFilesystem(callback) {
     		console.log("Use Storage mode: "+Config.storageMode);
+            console.log("Use Root FS storage mode: "+Config.rootStorageMode);
             FS.mkdirTree(ROOT);
             FS.mkdirTree(Config.d_drive);
-			if (Config.storageMode == STORAGE_INDEXED_DB) {
-	  			FS.mount(IDBFS, {autoPersist: true}, ROOT);
-	  			if (Config.persist_d_drive) {
-	  				FS.mount(IDBFS, {autoPersist: true}, Config.d_drive);
-	  			}
-  				FS.syncfs(true, function (err) {
-  					if (err) {
-  						console.log('unable to sync folder: ' + ROOT);
-  					} else {
-  						callback();
-  					}
-				});
-			} else {
-				callback();
-			}
-		}
+            var mountedPersistentFileSystem = false;
+            if (Config.rootStorageMode == STORAGE_INDEXED_DB) {
+                FS.mount(IDBFS, {autoPersist: true}, ROOT);
+                mountedPersistentFileSystem = true;
+            }
+            if (Config.storageMode == STORAGE_INDEXED_DB) {
+                if (Config.persist_d_drive) {
+                    FS.mount(IDBFS, {autoPersist: true}, Config.d_drive);
+                    mountedPersistentFileSystem = true;
+                }
+            }
+            if (mountedPersistentFileSystem) {
+                FS.syncfs(true, function (err) {
+                    if (err) {
+                        console.log('unable to sync browser storage');
+                    } else {
+                        callback();
+                    }
+                });
+            } else {
+                callback();
+            }
+        }
         function buildBrowserFileSystem() {
             if(Config.showUploadDownload){
                 document.getElementById('uploadbtn').style.display = "";
@@ -706,21 +763,31 @@
             if(Config.isAutoRunSet){
                 start();
             }else{
+                // Downloads are done, but the "setupBoxedWine" run dependency stays
+                // pending until start(), so emscripten will not clear the status yet.
+                awaitingStart = true;
+                Module.setStatus('');
                 var startBtn = document.getElementById('startbtn');
                 startBtn.disabled = false;
+                startBtn.textContent = getHostFolderStartButtonText();
                 startBtn.style.display = "";
-                var soundToggle = document.getElementById('soundToggle');
-                if(Config.isSoundEnabled){
-                    soundToggle.checked = true;
-                }
-                document.getElementById('sound-checkbox').style.display = "";
+                updateHostFolderControls();
             }
         }
         function closeGetFilesModal() { //called by boxedwine.html
 		}
-        function start() { //called by boxedwine.html
+        async function start() { //called by boxedwine.html
         	if(isRunning){
                 return;
+            }
+            if (hostFolderBusy) {
+                return;
+            }
+            if (isHostFolderStorage() && !Config.hostFolderEnabled) {
+                if (!(await mountHostFolder())) {
+                    updateHostFolderControls();
+                    return;
+                }
             }
             startEmulator();
         }
@@ -728,7 +795,6 @@
             isRunning = true;
 
             document.getElementById('startbtn').style.display = 'none';
-            document.getElementById('sound-checkbox').style.display = 'none';
             if (!isPointerLockEnabled()) {
                 Config.disableHideCursor = true;
             }
@@ -743,6 +809,7 @@
             }
 
             document.getElementById('startbtn').textContent = "Running...";
+            awaitingStart = false;
             Module["removeRunDependency"]("setupBoxedWine");
         }
         function isPointerLockEnabled() {
@@ -821,19 +888,21 @@
             }
 
             Module["addRunDependency"]("setupBoxedWine");
-            initBrowserFilesystem(() => {
-            	spinnerElement.style.display = '';
-            	spinnerElement.hidden = false;
-            
-	        	buildExtraFileSystems(() => {
-    	        	buildAppFileSystem(() => {
-    	            	loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
-    	            	    createFile("/", Config.rootZipFile, rootZipfileBytes);
-                        	buildBrowserFileSystem();
-						});
-                	});
-	        	});
-	        });
+            loadPersistedHostFolderHandle().then(function() {
+                initBrowserFilesystem(() => {
+                    spinnerElement.style.display = '';
+                    spinnerElement.hidden = false;
+
+                    buildExtraFileSystems(() => {
+                        buildAppFileSystem(() => {
+                            loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
+                                createFile("/", Config.rootZipFile, rootZipfileBytes);
+                                buildBrowserFileSystem();
+                            });
+                        });
+                    });
+                });
+            });
         }
         function getEntriesAsPromise(item, exeFiles, allFiles, firstCall) {
             return new Promise((resolve, reject) => {
@@ -923,8 +992,501 @@
                 getEntriesAsPromise(items[i].webkitGetAsEntry(), exeFiles, allFiles, true);
             }
         }, false);
-        function getEmulatorParams() {        
-            let params = ["-root", ROOT];
+        function isHostFolderAccessSupported() {
+            return typeof window !== "undefined" && typeof window.showDirectoryPicker === "function";
+        }
+        function isHostFolderStorage() {
+            return Config.storageMode === STORAGE_HOST_FOLDER;
+        }
+        function getHostFolderPermissionMode() {
+            return Config.hostFolderReadWrite ? "readwrite" : "read";
+        }
+        function getHostFolderStartButtonText() {
+            if (!isHostFolderStorage()) {
+                return "Start";
+            }
+            if (Config.hostFolderEnabled) {
+                return "Start";
+            }
+            return Config.hostFolderPersistedHandle ? "Reconnect d:" : "Mount d:";
+        }
+        function updateHostFolderControls() {
+            var startBtn = document.getElementById('startbtn');
+            if (startBtn && !isRunning) {
+                startBtn.textContent = getHostFolderStartButtonText();
+                startBtn.disabled = hostFolderBusy;
+            }
+        }
+        function logHostFolderMessage(message, isError) {
+            if (!message) {
+                return;
+            }
+            if (isError) {
+                console.error(message);
+            } else {
+                console.log(message);
+            }
+            var output = document.getElementById('output');
+            if (output) {
+                output.value += message + "\n";
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+        function setHostFolderStatus(message, isError) {
+            if (message) {
+                logHostFolderMessage(message, isError);
+            }
+        }
+        function setHostFolderBusy(busy, message) {
+            hostFolderBusy = busy;
+            if (message) {
+                setHostFolderStatus(message, false);
+            }
+            updateHostFolderControls();
+        }
+        function summarizeHostFolderRefresh(result) {
+            if (!result) {
+                return 0;
+            }
+            return (result.created || 0) + (result.updated || 0) + (result.removed || 0);
+        }
+        function getHostFolderRefreshMount() {
+            let mount = getHostFolderMount();
+            if (!mount || !mount.type || typeof mount.type.refreshFromHost !== "function") {
+                return null;
+            }
+            return mount;
+        }
+        function syncHostFolderBoxedwineDirectories(mount, result) {
+            if (typeof Module === "undefined" || typeof Module.ccall !== "function") {
+                return false;
+            }
+            // Boxedwine only needs the directories whose entries changed, as native
+            // paths relative to the mount ("." for the mount itself).
+            let dirs = new Set();
+            result.changedPaths.forEach(function(path) {
+                let relative = path.substring(mount.mountpoint.length).replace(/^\/+/, "");
+                let slash = relative.lastIndexOf("/");
+                dirs.add(slash > 0 ? relative.substring(0, slash) : ".");
+            });
+            try {
+                Module.ccall("boxedwineHostFolderSyncDirectories", null, ["string", "string"],
+                    ["/mnt/drive_d", Array.from(dirs).sort().join("\n")]);
+                return true;
+            } catch (e) {
+                if (!hostFolderInvalidateWarningShown) {
+                    hostFolderInvalidateWarningShown = true;
+                    logHostFolderMessage("Unable to notify Boxedwine about host folder refresh: " + e, true);
+                }
+                return false;
+            }
+        }
+        function refreshHostFolderFromHost(reason) {
+            if (!Config.hostFolderMounted) {
+                return Promise.resolve(false);
+            }
+            let mount = getHostFolderRefreshMount();
+            if (!mount) {
+                return Promise.resolve(false);
+            }
+            if (hostFolderRefreshBusy) {
+                hostFolderRefreshPendingReason = reason || "pending";
+                return Promise.resolve(false);
+            }
+            hostFolderRefreshBusy = true;
+            return new Promise(function(resolve) {
+                mount.type.refreshFromHost(mount, function(err, result) {
+                    hostFolderRefreshBusy = false;
+                    if (err) {
+                        logHostFolderMessage("Host folder refresh failed: " + err, true);
+                        resolve(false);
+                    } else {
+                        let changeCount = summarizeHostFolderRefresh(result);
+                        if (changeCount > 0) {
+                            syncHostFolderBoxedwineDirectories(mount, result);
+                            logHostFolderMessage("Refreshed D: folder from host (" + changeCount + " change" + (changeCount === 1 ? "" : "s") + ")", false);
+                        }
+                        resolve(changeCount > 0);
+                    }
+                    if (hostFolderRefreshPendingReason) {
+                        let pendingReason = hostFolderRefreshPendingReason;
+                        hostFolderRefreshPendingReason = "";
+                        setTimeout(function() {
+                            refreshHostFolderFromHost(pendingReason);
+                        }, 0);
+                    }
+                });
+            });
+        }
+        function scheduleHostFolderRefresh(reason) {
+            if (!Config.hostFolderMounted) {
+                return;
+            }
+            setTimeout(function() {
+                refreshHostFolderFromHost(reason);
+            }, 0);
+        }
+        async function startHostFolderObserver() {
+            if (typeof FileSystemObserver !== "function" || !Config.hostFolderHandle) {
+                return;
+            }
+            try {
+                hostFolderRefreshObserver = new FileSystemObserver(function(records) {
+                    for (let i = 0; i < records.length; i++) {
+                        if (records[i].type === "errored") {
+                            logHostFolderMessage("Host folder observer stopped; falling back to periodic refresh", true);
+                            if (hostFolderRefreshObserver) {
+                                hostFolderRefreshObserver.disconnect();
+                            }
+                            hostFolderRefreshObserver = null;
+                            return;
+                        }
+                    }
+                    scheduleHostFolderRefresh("observer");
+                });
+                await hostFolderRefreshObserver.observe(Config.hostFolderHandle, {recursive: true});
+                logHostFolderMessage("Watching D: folder for host changes", false);
+            } catch (e) {
+                hostFolderRefreshObserver = null;
+                logHostFolderMessage("Host folder change observer is unavailable; using periodic refresh", false);
+            }
+        }
+        function startHostFolderRefresh() {
+            if (!Config.hostFolderMounted || hostFolderRefreshTimer) {
+                return;
+            }
+            if (!hostFolderRefreshEventsConfigured) {
+                hostFolderRefreshEventsConfigured = true;
+                window.addEventListener("focus", function() {
+                    scheduleHostFolderRefresh("focus");
+                }, false);
+                document.addEventListener("visibilitychange", function() {
+                    if (document.visibilityState === "visible") {
+                        scheduleHostFolderRefresh("visible");
+                    }
+                }, false);
+            }
+            hostFolderRefreshTimer = setInterval(function() {
+                refreshHostFolderFromHost("poll");
+            }, HOST_FOLDER_REFRESH_INTERVAL_MS);
+            startHostFolderObserver();
+        }
+        function stopHostFolderRefresh() {
+            if (hostFolderRefreshTimer) {
+                clearInterval(hostFolderRefreshTimer);
+                hostFolderRefreshTimer = null;
+            }
+            if (hostFolderRefreshObserver) {
+                hostFolderRefreshObserver.disconnect();
+                hostFolderRefreshObserver = null;
+            }
+            hostFolderRefreshBusy = false;
+            hostFolderRefreshPendingReason = "";
+        }
+        function isHostFolderHandlePersistenceSupported() {
+            return typeof indexedDB !== "undefined";
+        }
+        function idbRequestAsPromise(request) {
+            return new Promise(function(resolve, reject) {
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+                request.onerror = function() {
+                    reject(request.error);
+                };
+            });
+        }
+        function idbTransactionAsPromise(transaction) {
+            return new Promise(function(resolve, reject) {
+                transaction.oncomplete = function() {
+                    resolve();
+                };
+                transaction.onerror = function() {
+                    reject(transaction.error);
+                };
+                transaction.onabort = function() {
+                    reject(transaction.error || new Error("IndexedDB transaction aborted"));
+                };
+            });
+        }
+        function openHostFolderHandleDb() {
+            return new Promise(function(resolve, reject) {
+                if (!isHostFolderHandlePersistenceSupported()) {
+                    reject(new Error("IndexedDB is not available"));
+                    return;
+                }
+                var request = indexedDB.open(HOST_FOLDER_HANDLE_DB, HOST_FOLDER_HANDLE_DB_VERSION);
+                request.onupgradeneeded = function() {
+                    var db = request.result;
+                    if (!db.objectStoreNames.contains(HOST_FOLDER_HANDLE_STORE)) {
+                        db.createObjectStore(HOST_FOLDER_HANDLE_STORE);
+                    }
+                };
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+                request.onerror = function() {
+                    reject(request.error);
+                };
+                request.onblocked = function() {
+                    reject(new Error("Host folder handle database is blocked"));
+                };
+            });
+        }
+        async function readPersistedHostFolderRecord() {
+            var db = await openHostFolderHandleDb();
+            try {
+                var transaction = db.transaction(HOST_FOLDER_HANDLE_STORE, "readonly");
+                var store = transaction.objectStore(HOST_FOLDER_HANDLE_STORE);
+                return await idbRequestAsPromise(store.get(HOST_FOLDER_HANDLE_KEY));
+            } finally {
+                db.close();
+            }
+        }
+        async function writePersistedHostFolderHandle(handle) {
+            if (!handle) {
+                return;
+            }
+            var db = await openHostFolderHandleDb();
+            try {
+                var transaction = db.transaction(HOST_FOLDER_HANDLE_STORE, "readwrite");
+                var store = transaction.objectStore(HOST_FOLDER_HANDLE_STORE);
+                store.put({
+                    handle: handle,
+                    name: handle.name || "Host folder",
+                    storedAt: Date.now()
+                }, HOST_FOLDER_HANDLE_KEY);
+                await idbTransactionAsPromise(transaction);
+            } finally {
+                db.close();
+            }
+        }
+        async function deletePersistedHostFolderHandle() {
+            var db = await openHostFolderHandleDb();
+            try {
+                var transaction = db.transaction(HOST_FOLDER_HANDLE_STORE, "readwrite");
+                var store = transaction.objectStore(HOST_FOLDER_HANDLE_STORE);
+                store.delete(HOST_FOLDER_HANDLE_KEY);
+                await idbTransactionAsPromise(transaction);
+            } finally {
+                db.close();
+            }
+        }
+        async function forgetPersistedHostFolderHandle(removeStoredHandle) {
+            Config.hostFolderPersistedHandle = null;
+            Config.hostFolderPersistedName = "";
+            Config.hostFolderPermissionState = "unknown";
+            updateHostFolderControls();
+            if (!removeStoredHandle || !isHostFolderHandlePersistenceSupported()) {
+                return;
+            }
+            try {
+                await deletePersistedHostFolderHandle();
+            } catch (e) {
+                logHostFolderMessage("Unable to forget remembered D: folder: " + e, true);
+            }
+        }
+        async function loadPersistedHostFolderHandle() {
+            if (!isHostFolderStorage() || !isHostFolderAccessSupported()) {
+                return;
+            }
+            if (!isHostFolderHandlePersistenceSupported()) {
+                logHostFolderMessage("Remembered D: folder is not available because IndexedDB is disabled", false);
+                return;
+            }
+            try {
+                var record = await readPersistedHostFolderRecord();
+                var handle = record && record.handle ? record.handle : record;
+                if (!handle) {
+                    return;
+                }
+                if (handle.kind && handle.kind !== "directory") {
+                    logHostFolderMessage("Remembered D: folder is no longer a directory handle", true);
+                    await forgetPersistedHostFolderHandle(true);
+                    return;
+                }
+                var permissionState = await queryHostFolderPermission(handle, getHostFolderPermissionMode());
+                Config.hostFolderPersistedHandle = handle;
+                Config.hostFolderPersistedName = record && record.name ? record.name : (handle.name || "Host folder");
+                Config.hostFolderPermissionState = permissionState;
+                if (Config.hostFolderPermissionState === "granted") {
+                    logHostFolderMessage("Remembered D: folder is ready to reconnect: " + Config.hostFolderPersistedName, false);
+                } else if (Config.hostFolderPermissionState === "prompt") {
+                    logHostFolderMessage("Remembered D: folder needs permission; click Reconnect d:", false);
+                } else {
+                    logHostFolderMessage("Remembered D: folder permission is denied; choose a folder again", true);
+                    await forgetPersistedHostFolderHandle(true);
+                }
+            } catch (e) {
+                await forgetPersistedHostFolderHandle(false);
+                logHostFolderMessage("Unable to load remembered D: folder: " + e, true);
+            }
+        }
+        async function rememberHostFolderHandle(handle) {
+            Config.hostFolderPersistedHandle = handle;
+            Config.hostFolderPersistedName = handle && handle.name ? handle.name : "Host folder";
+            Config.hostFolderPermissionState = "granted";
+            updateHostFolderControls();
+            if (!isHostFolderHandlePersistenceSupported()) {
+                logHostFolderMessage("D: folder mounted, but IndexedDB is disabled so it cannot be remembered", false);
+                return;
+            }
+            try {
+                await writePersistedHostFolderHandle(handle);
+                logHostFolderMessage("Remembered D: folder for future sessions", false);
+            } catch (e) {
+                logHostFolderMessage("D: folder mounted, but could not be remembered: " + e, true);
+            }
+        }
+        async function queryHostFolderPermission(handle, mode) {
+            if (!handle || typeof handle.queryPermission !== "function") {
+                return "granted";
+            }
+            return await handle.queryPermission({mode: mode});
+        }
+        async function ensureHostFolderPermission(handle, mode) {
+            if (!handle || typeof handle.queryPermission !== "function") {
+                return true;
+            }
+            let state = await queryHostFolderPermission(handle, mode);
+            Config.hostFolderPermissionState = state;
+            if (state === "granted") {
+                return true;
+            }
+            if (typeof handle.requestPermission !== "function") {
+                return false;
+            }
+            state = await handle.requestPermission({mode: mode});
+            Config.hostFolderPermissionState = state;
+            return state === "granted";
+        }
+        async function getHostFolderHandleForMount(mode) {
+            if (Config.hostFolderPersistedHandle) {
+                setHostFolderStatus("Reconnecting remembered D: folder...", false);
+                if (await ensureHostFolderPermission(Config.hostFolderPersistedHandle, mode)) {
+                    return Config.hostFolderPersistedHandle;
+                }
+                setHostFolderStatus("Remembered D: folder permission was not granted; click Mount d: to choose a folder", true);
+                await forgetPersistedHostFolderHandle(true);
+                return null;
+            }
+            return await window.showDirectoryPicker({
+                id: "boxedwine-host-drive-d",
+                mode: mode
+            });
+        }
+        function getHostFolderMount() {
+            if (!Config.hostFolderMounted) {
+                return null;
+            }
+            let lookup = FS.lookupPath(Config.d_drive, {follow_mount: false});
+            return lookup && lookup.node ? lookup.node.mounted : null;
+        }
+        function syncHostFolderMount(populate) {
+            return new Promise(function(resolve, reject) {
+                let mount = getHostFolderMount();
+                if (!mount || !mount.type || typeof mount.type.syncfs !== "function") {
+                    resolve();
+                    return;
+                }
+                mount.type.syncfs(mount, populate, function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        }
+        async function unmountHostFolder() {
+            if (!Config.hostFolderMounted) {
+                return;
+            }
+            await syncHostFolderMount(false);
+            FS.unmount(Config.d_drive);
+            Config.hostFolderMounted = false;
+            Config.hostFolderEnabled = false;
+            Config.hostFolderHandle = null;
+            stopHostFolderRefresh();
+        }
+        async function mountHostFolder() {
+            if (isRunning || hostFolderBusy) {
+                return false;
+            }
+            if (!isHostFolderStorage()) {
+                setHostFolderStatus("Host folder mounting is only available when storage=hostfolder", true);
+                return false;
+            }
+            if (!isHostFolderAccessSupported()) {
+                setHostFolderStatus("Host folder mounting is not supported by this browser", true);
+                return false;
+            }
+            if (typeof installFSFS !== "function") {
+                setHostFolderStatus("Host folder mounting support was not loaded", true);
+                return false;
+            }
+            try {
+                let permissionMode = getHostFolderPermissionMode();
+                let handle = await getHostFolderHandleForMount(permissionMode);
+                if (!handle) {
+                    return false;
+                }
+                setHostFolderBusy(true, "Mounting host folder...");
+                if (!(await ensureHostFolderPermission(handle, permissionMode))) {
+                    setHostFolderStatus("Host folder permission was not granted", true);
+                    return false;
+                }
+                await unmountHostFolder();
+                let fsfs = installFSFS();
+                Config.hostFolderHandle = handle;
+                FS.mount(fsfs, {
+                    dirHandle: handle,
+                    autoPersist: true,
+                    onPersistError: function(error) {
+                        logHostFolderMessage("Host folder auto-sync failed: " + error, true);
+                    },
+                    onPersistComplete: function() {
+                        logHostFolderMessage("Synced D: folder", false);
+                    },
+                    onConflict: function(source, conflicts) {
+                        if (conflicts.length > 0) {
+                            logHostFolderMessage("Host folder " + source + " skipped " + conflicts.length + " conflicting path" + (conflicts.length === 1 ? "" : "s"), true);
+                        }
+                    }
+                }, Config.d_drive);
+                Config.hostFolderMounted = true;
+                await syncHostFolderMount(true);
+                Config.hostFolderEnabled = true;
+                await rememberHostFolderHandle(handle);
+                startHostFolderRefresh();
+                setHostFolderStatus("Mounted D: folder (auto-sync enabled)", false);
+                return true;
+            } catch (e) {
+                if (Config.hostFolderMounted && !Config.hostFolderEnabled) {
+                    // The initial populate failed: drop the partial mount without
+                    // syncing it back, so a retry does not hit the same error.
+                    try { FS.unmount(Config.d_drive); } catch (unmountError) {}
+                    Config.hostFolderMounted = false;
+                    Config.hostFolderHandle = null;
+                    stopHostFolderRefresh();
+                }
+                if (e && (e.name === "NotFoundError" || e.name === "NotAllowedError")) {
+                    // The remembered folder was moved, deleted or revoked; forget it
+                    // so the next click offers the folder picker again.
+                    await forgetPersistedHostFolderHandle(true);
+                }
+                if (e && e.name === "AbortError") {
+                    setHostFolderStatus("Host folder selection canceled", false);
+                } else {
+                    setHostFolderStatus("Unable to mount host folder: " + e, true);
+                }
+                return false;
+            } finally {
+                setHostFolderBusy(false);
+            }
+        }
+		        function getEmulatorParams() {
+	            let params = ["-root", ROOT];
             params.push("-zip");
     		params.push(Config.rootZipFile);
     		
@@ -949,11 +1511,11 @@
     			params.push(Config.appDirPrefix);          			
             }
                         
-            params.push("-mount_drive"); // -mount_drive "/d_drive" d
-            params.push(Config.d_drive);
-            params.push("d");
-            
-            if (Config.resolution != null) {
+	            params.push("-mount_drive"); // -mount_drive "/d_drive" d
+	            params.push(Config.d_drive);
+	            params.push("d");
+
+	            if (Config.resolution != null) {
             	params.push("-resolution");
             	params.push(Config.resolution);
             }
@@ -1317,10 +1879,12 @@
         })(),
         setStatus: function(text) {
           if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
-          if (text === Module.setStatus.text) return;
+          if (text === Module.setStatus.last.text) return;
           var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
           var now = Date.now();
-          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
+          if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
+          Module.setStatus.last.time = now;
+          Module.setStatus.last.text = text;
           if (m) {
             text = m[1];
             progressElement.value = parseInt(m[2])*100;
@@ -1338,7 +1902,8 @@
         totalDependencies: 0,
         monitorRunDependencies: function(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
-          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : '');
+          // Keep the status clear while the page waits for the user to press start.
+          Module.setStatus(left && !awaitingStart ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : '');
         }
       };
       Module.setStatus('Downloading...');
@@ -1442,10 +2007,6 @@ function setupCanvasFullscreen(canvas) {
     });
 }
 
-function toggleSound() {
-    var el = document.getElementById('soundToggle');
-    Config.isSoundEnabled = el.checked;
-}
 
 // ---------------------------------------------------------------------------
 // WASM JIT module persistence

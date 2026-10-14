@@ -739,6 +739,90 @@ void testFileCacheIdentitySurvivesRenameAndHardLink() {
     cleanupRoot(root);
 }
 
+void testHostFolderSyncUpdatesLoadedChildren() {
+    const BString root = B("tmp/test-host-folder-sync-root");
+    cleanupRoot(root);
+    initTestFileSystem(root);
+    expectZero("make host folder", Fs::makeLocalDirs(B("/tmp/hostsync/sub")));
+    expectZero("make other folder", Fs::makeLocalDirs(B("/tmp/other")));
+    std::shared_ptr<FsNode> dir = Fs::getNodeFromLocalPath(B(""), B("/tmp/hostsync"), false);
+    std::shared_ptr<FsNode> other = Fs::getNodeFromLocalPath(B(""), B("/tmp/other"), false);
+    if (!dir || !other) {
+        testFail("host folder sync directories were not created");
+        cleanupRoot(root);
+        return;
+    }
+    auto nativePath = [&](const char* name) {
+        return std::filesystem::path(dir->nativePath.stringByApppendingPath(B(name)).c_str());
+    };
+    auto writeNativeFile = [](const std::filesystem::path& path) {
+        FILE* file = fopen(path.string().c_str(), "wb");
+        if (file) {
+            fputs("host", file);
+            fclose(file);
+        }
+    };
+    std::error_code error;
+
+    // Entries created on the host appear in an already loaded directory.
+    dir->getChildCount();
+    writeNativeFile(nativePath("kept"));
+    writeNativeFile(nativePath("removed"));
+    dir->syncLoadedChildrenWithFileSystem();
+    std::shared_ptr<FsNode> kept = dir->getChildByName(B("kept"));
+    if (!kept || !dir->getChildByName(B("removed"))) {
+        testFail("host folder sync did not add new host files");
+    }
+    if (dir->getLoadedChildByNativePath(dir->nativePath.stringByApppendingPath(B("kept"))) != kept) {
+        testFail("loaded child lookup by native path did not find the synced file");
+    }
+
+    // Removed, added and replaced entries are applied; unchanged nodes stay.
+    std::filesystem::remove(nativePath("removed"), error);
+    writeNativeFile(nativePath("added"));
+    std::filesystem::create_directory(nativePath("newdir"), error);
+    writeNativeFile(nativePath("newdir") / "inner");
+    std::filesystem::remove_all(nativePath("sub"), error);
+    writeNativeFile(nativePath("sub"));
+    Fs::addRootDirectoryNode(B("/tmp/hostsync/mounted"), other->nativePath, dir);
+    dir->syncLoadedChildrenWithFileSystem();
+
+    if (dir->getChildByName(B("kept")) != kept) {
+        testFail("host folder sync replaced an unchanged node");
+    }
+    if (dir->getChildByName(B("removed"))) {
+        testFail("host folder sync kept a file removed on the host");
+    }
+    std::shared_ptr<FsNode> added = dir->getChildByName(B("added"));
+    if (!added || added->isDirectory()) {
+        testFail("host folder sync did not add a new host file");
+    }
+    std::shared_ptr<FsNode> sub = dir->getChildByName(B("sub"));
+    if (!sub || sub->isDirectory()) {
+        testFail("host folder sync did not replace a directory that became a file");
+    }
+    if (!dir->getChildByName(B("mounted"))) {
+        testFail("host folder sync removed a node backed by another native directory");
+    }
+
+    // A directory whose children were never loaded is not loaded by the sync.
+    std::shared_ptr<FsNode> newDir = dir->getChildByName(B("newdir"));
+    if (!newDir || !newDir->isDirectory()) {
+        testFail("host folder sync did not add a new host directory");
+    } else {
+        BString innerNativePath = newDir->nativePath.stringByApppendingPath(B("inner"));
+        newDir->syncLoadedChildrenWithFileSystem();
+        if (newDir->getLoadedChildByNativePath(innerNativePath)) {
+            testFail("host folder sync loaded children of an unloaded directory");
+        }
+        newDir->getChildCount();
+        if (!newDir->getLoadedChildByNativePath(innerNativePath)) {
+            testFail("loaded child lookup missed a child after the directory loaded");
+        }
+    }
+    cleanupRoot(root);
+}
+
 void testHardLinksShareIdentityDataAndXattrs() {
     TestContext& context = testContext();
     KProcessPtr process = context.process;
