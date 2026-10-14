@@ -430,7 +430,7 @@ static void checkNativeSocketConnectCompletion(bool listening, bool readErrorFir
         memory->writeb(ADDRESS + 4, 127);
         memory->writeb(ADDRESS + 7, 1);
         memory->writed(LENGTH, 16);
-        // Keeping the refused endpoint bound reserves the port without a listener.
+        // Reserve the destination port until the connection has been started.
         if (kbind(thread, server, ADDRESS, 16) != 0 ||
                 kgetsockname(thread, server, ADDRESS, LENGTH) != 0 ||
                 (listening && klisten(thread, server, 1) != 0)) {
@@ -438,6 +438,12 @@ static void checkNativeSocketConnectCompletion(bool listening, bool readErrorFir
         } else {
             context.process->getFileDescriptor(client)->kobject->setBlocking(false);
             S32 result = (S32)kconnect(thread, client, ADDRESS, 16);
+            if (!listening) {
+                // macOS leaves a connection to a bound, non-listening socket
+                // pending. Close the endpoint to trigger refusal there too.
+                context.process->close(server);
+                server = (U32)-1;
+            }
             if (result != -K_EINPROGRESS && result != (listening ? 0 : -K_ECONNREFUSED)) {
                 testFail("native nonblocking connect returned %d", result);
             } else if (result == -K_ECONNREFUSED) {
