@@ -1,0 +1,45 @@
+diff --git a/dlls/dxgi/swapchain.c b/dlls/dxgi/swapchain.c
+index 5c49c7f2482..1c834a1daf4 100644
+--- a/dlls/dxgi/swapchain.c
++++ b/dlls/dxgi/swapchain.c
+@@ -371,7 +371,7 @@ static HRESULT STDMETHODCALLTYPE DECLSPEC_HOTPATCH d3d11_swapchain_SetFullscreen
+     struct wined3d_swapchain_state *state;
+     struct dxgi_output *dxgi_output;
+     LONG in_set_fullscreen_state;
+-    BOOL old_fs;
++    BOOL old_fs, activate = FALSE;
+     HRESULT hr;
+ 
+     TRACE("iface %p, fullscreen %#x, target %p.\n", iface, fullscreen, target);
+@@ -409,6 +409,7 @@ static HRESULT STDMETHODCALLTYPE DECLSPEC_HOTPATCH d3d11_swapchain_SetFullscreen
+     state = wined3d_swapchain_get_state(swapchain->wined3d_swapchain);
+     wined3d_swapchain_get_desc(swapchain->wined3d_swapchain, &swapchain_desc);
+     swapchain_desc.output = dxgi_output->wined3d_output;
++    activate = fullscreen && swapchain_desc.windowed;
+     swapchain_desc.windowed = !fullscreen;
+     hr = wined3d_swapchain_state_set_fullscreen(state, &swapchain_desc, NULL);
+     if (FAILED(hr))
+@@ -430,6 +431,10 @@ static HRESULT STDMETHODCALLTYPE DECLSPEC_HOTPATCH d3d11_swapchain_SetFullscreen
+ 
+ done:
+     wined3d_mutex_unlock();
++    /* Activation can send window messages. Keep it outside the wined3d lock,
++     * but inside the guard against reentrant fullscreen changes. */
++    if (SUCCEEDED(hr) && activate)
++        SetForegroundWindow(swapchain_desc.device_window);
+     InterlockedExchange(&swapchain->in_set_fullscreen_state, 0);
+     return hr;
+ }
+@@ -1059,6 +1064,12 @@ HRESULT d3d11_swapchain_init(struct d3d11_swapchain *swapchain, struct dxgi_devi
+     }
+     wined3d_mutex_unlock();
+ 
++    /* Native DXGI activates the output window when entering fullscreen.
++     * 3DMark Vantage depends on this before attaching its benchmark thread's
++     * input queue: its main window thread is waiting for that thread to exit. */
++    if (fullscreen)
++        SetForegroundWindow(desc->device_window);
++
+     return S_OK;
+ 
+ cleanup:

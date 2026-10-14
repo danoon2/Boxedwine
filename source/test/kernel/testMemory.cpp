@@ -14,6 +14,54 @@
 #include "../cpu/testCPU.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
 #include <cstdlib>
+#ifdef BOXEDWINE_MULTI_THREADED
+#include <atomic>
+#include <thread>
+#endif
+
+void testRamPageMetadataConcurrentGrowth() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    // Grow the RAM table while other threads inspect live pages, as WineD3D
+    // and PhysX do during 3DMark Vantage CPU test 2. Even an existing-key
+    // lookup must synchronize with the table's insertions and rehashes.
+    constexpr U32 readerCount = 3;
+    constexpr U32 pageCount = 16384;
+    std::vector<U8> storage((pageCount + 1) * K_PAGE_SIZE);
+    U8* base = (U8*)(((uintptr_t)storage.data() + K_PAGE_SIZE - 1) & ~(uintptr_t)(K_PAGE_SIZE - 1));
+    std::vector<RamPage> pages;
+    pages.reserve(pageCount);
+    for (U32 i = 0; i < readerCount; i++) {
+        pages.push_back(ramPageAllocNative(base + i * K_PAGE_SIZE));
+    }
+    std::atomic<U32> ready{0};
+    std::atomic<bool> done{false};
+    std::atomic<bool> failed{false};
+    std::vector<std::thread> readers;
+    for (U32 i = 0; i < readerCount; i++) {
+        const RamPage page = pages[i];
+        readers.emplace_back([&, page]() {
+            ready.fetch_add(1);
+            do {
+                ramPageMarkSystem(page, true);
+                if (!ramPageIsSystem(page) || !ramPageIsNative(page)) failed = true;
+                ramPageMarkSystem(page, false);
+                if (ramPageIsSystem(page) || !ramPageIsNative(page)) failed = true;
+            } while (!done.load());
+        });
+    }
+    while (ready.load() != readerCount) std::this_thread::yield();
+    for (U32 i = readerCount; i < pageCount; i++) {
+        pages.push_back(ramPageAllocNative(base + i * K_PAGE_SIZE));
+    }
+    done = true;
+    for (auto& reader : readers) reader.join();
+    for (RamPage page : pages) {
+        if (ramPageUseCount(page) != 1 || !ramPageIsNative(page) || ramPageIsSystem(page)) failed = true;
+        ramPageRelease(page);
+    }
+    if (failed.load()) testFail("RAM page flags or reference counts changed during concurrent table growth");
+#endif
+}
 
 void testMlockValidatesMappedAccessibleRange() {
     constexpr U32 MAP_ADDRESS = 0xc1000000;

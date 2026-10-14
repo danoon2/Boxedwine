@@ -176,6 +176,8 @@ const GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     case GL_UNSIGNED_INT_8_8_8_8_REV:
     case GL_UNSIGNED_INT_10_10_10_2:
     case GL_UNSIGNED_INT_2_10_10_10_REV:
+    case GL_UNSIGNED_INT_10F_11F_11F_REV:
+    case GL_UNSIGNED_INT_5_9_9_9_REV:
         return marshalArray<GLuint>(cpu, pixel, 1);
     case GL_UNSIGNED_INT:
         return marshalArray<GLuint>(cpu, pixel, len);
@@ -273,6 +275,8 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
     case GL_UNSIGNED_INT_8_8_8_8_REV:
     case GL_UNSIGNED_INT_10_10_10_2:
     case GL_UNSIGNED_INT_2_10_10_10_REV:
+    case GL_UNSIGNED_INT_10F_11F_11F_REV:
+    case GL_UNSIGNED_INT_5_9_9_9_REV:
     case GL_UNSIGNED_INT:
         bytes_per_comp = 4;
         break;

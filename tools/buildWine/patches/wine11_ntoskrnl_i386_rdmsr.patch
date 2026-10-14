@@ -1,0 +1,48 @@
+diff --git a/dlls/ntoskrnl.exe/instr.c b/dlls/ntoskrnl.exe/instr.c
+index 03f48152b94..ec33ce6f500 100644
+--- a/dlls/ntoskrnl.exe/instr.c
++++ b/dlls/ntoskrnl.exe/instr.c
+@@ -413,9 +413,43 @@ static DWORD emulate_instruction( EXCEPTION_RECORD *rec, CONTEXT *context )
+                 context->Eip += prefixlen + 3;
+                 return ExceptionContinueExecution;
+             }
++        case 0x32: /* rdmsr */
++            /* 3DMark Vantage's GPUZ.sys queries MSRs during its system scan.
++             * Match the x86-64 fallback for MSRs without an emulated value. */
++            FIXME("reg %#lx, returning 0.\n", context->Ecx);
++            context->Edx = 0;
++            context->Eax = 0;
++            context->Eip += prefixlen + 2;
++            return ExceptionContinueExecution;
+         }
+         break;
+ 
++    case 0xec: /* in dx, al */
++    case 0xed: /* in dx, eax/ax */
++    case 0xee: /* out al, dx */
++    case 0xef: /* out eax/ax, dx */
++    {
++        WORD port = context->Edx;
++        unsigned int size = (*instr & 1) ? (long_op ? 4 : 2) : 1;
++
++        /* No PCI configuration space is exposed to Wine drivers. GPUZ.sys
++         * (3DMark Vantage) probes it directly rather than using HalGetBusData.
++         * Ignore address/data writes and return an absent device on reads. */
++        if (port == 0xcf8 && *instr == 0xef && size == 4)
++        {
++            context->Eip += prefixlen + 1;
++            return ExceptionContinueExecution;
++        }
++        if (port < 0xcfc || port + size > 0xd00) break;
++        if (!(*instr & 2))
++        {
++            DWORD mask = size == 4 ? ~0u : (1u << (size * 8)) - 1;
++            context->Eax |= mask;
++        }
++        context->Eip += prefixlen + 1;
++        return ExceptionContinueExecution;
++    }
++
+     case 0x8a: /* mov Eb, Gb */
+     case 0x8b: /* mov Ev, Gv */
+     {

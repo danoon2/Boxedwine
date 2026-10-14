@@ -5635,7 +5635,10 @@ void glcommon_glViewportArrayv(CPU* cpu) {
     if (!ext_glViewportArrayv)
         kpanic("ext_glViewportArrayv is NULL");
     {
-    GL_FUNC(ext_glViewportArrayv)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, ARG2*4));
+    // An empty array is host memory, not a guest buffer offset.
+    const GLfloat empty[4] = {};
+    GL_FUNC(ext_glViewportArrayv)(ARG1, ARG2,
+        (S32)ARG2 > 0 ? marshalArray<GLfloat>(cpu, ARG3, ARG2*4) : empty);
     GL_LOG ("glViewportArrayv GLuint first=%d, GLsizei count=%d, const GLfloat* v=%.08x",ARG1,ARG2,ARG3);
     }
 }

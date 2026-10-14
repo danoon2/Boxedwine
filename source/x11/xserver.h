@@ -112,6 +112,9 @@ public:
 	U32 grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbed, XWindowPtr confined, U32 mask, U32 time);
 	U32 ungrabPointer(U32 time);
 	U32 setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo, U32 time, bool trace = false);
+	U32 getInputFocus(U32& revertTo);
+	XWindowPtr getInputFocusWindow();
+	void revertInputFocus(const XWindowPtr& unmapped);
 	int mapWindow(const DisplayDataPtr& data, const XWindowPtr& window);
 	int unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window);
 	U32 createColorMap(const Visual* visual, int alloc);
@@ -121,9 +124,6 @@ public:
 
 	static U32 getNextId();
 
-	XWindowPtr inputFocus;
-	bool inputFocusIsPointerRoot = false;
-	U32 inputFocusRevertTo = 0;
 	XWindowPtr selectionWindow;
 	U32 selectionOwner = 0;
 	BString sdlLastSelection;
@@ -146,6 +146,22 @@ public:
 	void iterateFbConfigs(std::function<bool(const CLXFBConfigPtr& cfg)> callback);
 
 private:
+	BOXEDWINE_MUTEX inputFocusMutex;
+	XWindowPtr inputFocus;
+	bool inputFocusIsPointerRoot = false;
+	U32 inputFocusRevertTo = 0;
+	U32 inputFocusTime = 0;
+	bool inputFocusTimeSet = false;
+	struct FocusNotification {
+		XWindowPtr window;
+		bool in;
+		S32 detail;
+	};
+	std::vector<FocusNotification> pendingFocusNotifications;
+	bool deliveringFocusNotifications = false;
+	XWindowPtr getPointerWindowForFocus();
+	void changeInputFocus(const XWindowPtr& window, bool pointerRoot, const XWindowPtr& pointer); // Caller holds inputFocusMutex.
+	void deliverFocusNotifications();
 	// A presented GL/Vulkan window occupies the host client area. Map its input
 	// back to guest desktop coordinates, including its parent window offsets.
 	BOXEDWINE_MUTEX fakeFullScreenMutex;

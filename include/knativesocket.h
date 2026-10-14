@@ -56,6 +56,7 @@ public:
     bool isReadReady() override;
     bool isPriorityReadReady() override;
     bool isWriteReady() override;
+    U32 getPollEvents(U32 events) override;
     void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
     U32 writeNative(U8* buffer, U32 len) override;
     U32 readNative(U8* buffer, U32 len) override;
@@ -84,6 +85,14 @@ public:
 
     BOXEDWINE_CONDITION readingCond;
     BOXEDWINE_CONDITION writingCond;
+
+private:
+    // connectMutex protects completion and consumption of the native SO_ERROR.
+    void updateConnectStatus();
+    BOXEDWINE_MUTEX connectMutex;
+    bool connectPending = false;
+    bool connectFailed = false;
+    S32 connectError = 0;
 };
 
 bool checkWaitingNativeSockets(int timeout);

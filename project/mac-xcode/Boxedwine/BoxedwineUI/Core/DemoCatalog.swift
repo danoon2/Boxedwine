@@ -66,6 +66,8 @@ struct Demo: Identifiable, Equatable, Sendable {
     var cncDDrawRenderer: CNCDDrawRenderer? = nil
     var cncDDrawUncapped: Bool = false
     var cncDDrawMode: CNCDDrawMode? = nil
+    // Seeded into editable per-app arguments on first install.
+    var wineDllOverrides: String? = nil
     var isZip: Bool { url.pathExtension.lowercased() == "zip" }
 }
 
@@ -134,7 +136,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes: [String: String]) {
         switch stack.count {
         case 0:
-            guard name == "XML", !rootSeen, ["1", "2", "3", "4", "5", "6", "7"].contains(attributes["schemaVersion"] ?? ""),
+            guard name == "XML", !rootSeen, ["1", "2", "3", "4", "5", "6", "7", "8"].contains(attributes["schemaVersion"] ?? ""),
                   Set(attributes.keys) == ["schemaVersion", "release"], let version = attributes["release"],
                   !version.isEmpty, version.utf8.count <= 128 else { fail(parser, "Unsupported catalog version."); return }
             rootSeen = true; release = version
@@ -143,7 +145,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
             guard name == "Demo", attributes.isEmpty, demos.count < 256 else { fail(parser, "Expected a Demo entry."); return }
             fields = [:]
         case 2:
-            guard (allowed.contains(name) || ["2", "3", "4", "5", "6", "7"].contains(schema) && DemoSettings.catalogFields.contains(name) || ["4", "5", "6", "7"].contains(schema) && name == "Glide" || ["5", "6", "7"].contains(schema) && name == "CNCDDrawRenderer" || ["6", "7"].contains(schema) && name == "CNCDDrawUncapped" || schema == "7" && name == "CNCDDrawFakeMode"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
+            guard (allowed.contains(name) || ["2", "3", "4", "5", "6", "7", "8"].contains(schema) && DemoSettings.catalogFields.contains(name) || ["4", "5", "6", "7", "8"].contains(schema) && name == "Glide" || ["5", "6", "7", "8"].contains(schema) && name == "CNCDDrawRenderer" || ["6", "7", "8"].contains(schema) && name == "CNCDDrawUncapped" || ["7", "8"].contains(schema) && name == "CNCDDrawFakeMode" || schema == "8" && name == "WineDllOverrides"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
             fields[name] = ""
         default: fail(parser, "Nested recipe fields are unsupported."); return
         }
@@ -213,10 +215,20 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
             guard settings?.cncDDraw == true else { throw DemoError.catalog("CNCDDrawFakeMode requires CNCDDraw.") }
             cncMode = try Demo.CNCDDrawMode(program: shortcut, value: field("CNCDDrawFakeMode"))
         }
+        var dllOverrides: String?
+        if fields["WineDllOverrides"] != nil {
+            let value = field("WineDllOverrides")
+            guard !value.isEmpty, value.count <= 1024,
+                  !value.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) else {
+                throw DemoError.catalog("WineDllOverrides requires a nonempty single-line value of at most 1024 characters.")
+            }
+            try BoxedwineArguments.validate(["-env", "WINEDLLOVERRIDES=" + value])
+            dllOverrides = value
+        }
         return Demo(origin: DemoOrigin(id: id, catalogRelease: release, packageSHA256: hash, shortcutExe: shortcut),
                     name: name, summary: field("Summary"), help: field("Help").replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\t", with: "    "),
                     icon: icon, url: url, bytes: bytes, type: type, installExe: installer.isEmpty ? nil : installer, wineVersion: field("WineVersion"),
-                    settings: settings, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode)
+                    settings: settings, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode, wineDllOverrides: dllOverrides)
     }
 }
 

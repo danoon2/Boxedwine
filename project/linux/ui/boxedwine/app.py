@@ -376,6 +376,7 @@ class Window(Adw.ApplicationWindow):
                 self.status('Try Something Familiar', self.catalog_error or 'Download the verified demo catalog to browse classic Windows apps and games.',
                             'applications-games-symbolic', ('Load Catalog', self.load_demos)); return
             items = [d for d in self.catalog if self.query in (d['name'] + ' ' + d['summary']).casefold()]
+            items.sort(key=lambda d: d['name'].casefold())
         elif self.view == 'Removed Apps':
             items = [r['app'] for r in self.document['removedApps'] if self.query in r['app']['name'].casefold()]
         else:

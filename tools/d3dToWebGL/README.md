@@ -1,14 +1,20 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current source series is pinned by
-[`webgl-test-divergences-v45.json`](../wineTests/webgl-test-divergences-v45.json).
-It contains 65 production patches and one separate, complete Wine graphics-test
-adaptation. The [v45 inventory](../wineTests/webgl-patch-inventory-v45.json)
+[`webgl-test-divergences-v46.json`](../wineTests/webgl-test-divergences-v46.json).
+It contains 67 production patches and one separate, complete Wine graphics-test
+adaptation. The [v46 inventory](../wineTests/webgl-patch-inventory-v46.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 44 retain earlier build and test selections for reproducing historical
+Versions 2 through 45 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
+
+Filesystem 18 selects v46. Patches 66 and 67 add the shared WineD3D stream-output
+overflow query and DXGI fullscreen activation fixes used by 3DMark Vantage.
+Overflow queries remain conditional on host OpenGL support; WebGL does not gain
+that capability. Wine test policy is unchanged. The rebuilt DLLs and archives
+are pinned by [`webgl_filesystems_v18.json`](../buildWine/webgl_filesystems_v18.json).
 
 The published v11 filesystem is pinned to v41. Its September 19 download
 matches the candidate used for the focused regression checks; see
@@ -252,7 +258,7 @@ Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
 python3 tools/wineTests/webglTestDivergences.py \
-  --manifest tools/wineTests/webgl-test-divergences-v43.json
+  --manifest tools/wineTests/webgl-test-divergences-v46.json
 ```
 
 The validator checks patch hashes, forbids production changes to Wine test
@@ -274,7 +280,7 @@ import sys
 
 repo = Path.cwd()
 source = Path(sys.argv[1]).resolve()
-manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v43.json").read_text())
+manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v46.json").read_text())
 head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
 if head != manifest["wine_source_commit"]:
     raise SystemExit("Wine checkout is not at the pinned source commit")

@@ -482,6 +482,13 @@ double dARG(CPU* cpu, int address) {
 #ifndef DISABLE_GL_EXTENSIONS
 static const char* extentions[] = {
 #include "glfunctions_ext_def.h"
+    // Shader-language capabilities have no entry points in the generated list.
+    // Wine needs integer mix for SM4 / D3D10 (e.g. 3DMark Vantage). Only expose
+    // it when it is present in the host's extension string.
+    "GL_EXT_shader_integer_mix",
+    // This extension adds query targets, using the existing query entry points.
+    // Wine uses it for stream-output overflow queries (3DMark Vantage).
+    "GL_ARB_transform_feedback_overflow_query",
 #ifdef __EMSCRIPTEN__
     // Capability-only WebGL extensions. Preserve the browser's actual list so
     // Wine can distinguish float storage, rendering, blending and filtering.

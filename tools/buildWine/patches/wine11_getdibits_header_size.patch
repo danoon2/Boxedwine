@@ -1,0 +1,24 @@
+--- a/dlls/win32u/dib.c
++++ b/dlls/win32u/dib.c
+@@ -980,7 +980,7 @@
+ {
+     BITMAPINFOHEADER header;
+ 
+-    header.biSize   = info->bmiHeader.biSize; /* Ensure we don't overwrite the original size when we copy back */
++    header.biSize   = sizeof(header);
+     header.biWidth  = bmp->dib.dsBm.bmWidth;
+     header.biHeight = bmp->dib.dsBm.bmHeight;
+     header.biPlanes = 1;
+@@ -1045,6 +1045,12 @@
+     }
+     else
+     {
++        /* GetDIBits returns a BITMAPINFOHEADER even for larger input headers.
++         * 3DMark Vantage passes its whole font-atlas info buffer as biSize;
++         * placing the palette after that size corrupts the next heap block. */
++        memset( (char *)dst + sizeof(BITMAPINFOHEADER), 0,
++                dst->bmiHeader.biSize - sizeof(BITMAPINFOHEADER) );
++        dst->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+         dst->bmiHeader.biClrUsed = src->bmiHeader.biClrUsed;
+ 
+         if (src->bmiHeader.biCompression == BI_BITFIELDS)

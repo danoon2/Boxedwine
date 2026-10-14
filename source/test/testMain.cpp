@@ -151,6 +151,7 @@ void testMmapCacheAcquireDoesNotHoldMemoryLock();
 void testExecutableFixedReplacementPreparationFailurePreservesState();
 void testNativeHeapSmallFreeQueueFailureIsRetryable();
 void testNativeHeapConcurrentAllocFree();
+void testRamPageMetadataConcurrentGrowth();
 void testCachedPositionedReadUsesCheckedOffsetAndSeek();
 void testFtruncateBackendLengthBoundaries();
 void testPrivateMappedWriteDoesNotChangePread();
@@ -196,6 +197,7 @@ void testPollRegistrationCanSignalParentCondition();
 void testNativeSocketSetOobInlineCanBeReadBack();
 void testNativeSocketBindUnavailableAddressReturnsEaddrnotavail();
 void testNativeSocketRecvmsgReceivesOobData();
+void testNativeSocketConnectCompletion();
 #if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
 void stopNativeSocketsThread();
 #endif
@@ -1161,6 +1163,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testNativeHeapSmallFreeQueueFailureIsRetryable, "Test native heap small free queue failure is retryable", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testNativeHeapConcurrentAllocFree, "Test native heap concurrent alloc and free", TEST_ENTRY_SERIAL},
+    {testRamPageMetadataConcurrentGrowth, "Test RAM page metadata during concurrent growth", TEST_ENTRY_SERIAL},
 #endif
     {testCachedPositionedReadUsesCheckedOffsetAndSeek, "Test cached positioned read uses checked offset and seek", TEST_ENTRY_SERIAL},
     {testFtruncateBackendLengthBoundaries, "Test ftruncate backend length boundaries", TEST_ENTRY_SERIAL},
@@ -1210,6 +1213,7 @@ const TestEntry TEST_ENTRIES[] = {
         "Test poll registration can signal parent condition", TEST_ENTRY_SERIAL},
     {testNativeSocketSetOobInlineCanBeReadBack, "Test native socket SO_OOBINLINE can be read back", TEST_ENTRY_SERIAL},
     {testNativeSocketRecvmsgReceivesOobData, "Test native socket recvmsg receives OOB data", TEST_ENTRY_SERIAL},
+    {testNativeSocketConnectCompletion, "Test native socket nonblocking connect completion", TEST_ENTRY_SERIAL},
     {testNativeDatagramSocketPollDoesNotReportHangup,
         "Test native datagram socket poll does not report hangup", TEST_ENTRY_SERIAL},
     {testNativeDatagramRecvmsgPeekScattersOnce,

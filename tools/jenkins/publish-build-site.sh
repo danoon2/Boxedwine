@@ -8,8 +8,8 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SITE_DIR="$(mktemp -d)"
-BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-https://boxedwine.org/v2/17/TinyCore15Wine11.0-web.zip}"
-DEMO_ROOT_CONFIG="${BUILD_SITE_DEMO_ROOT_CONFIG:-$ROOT_DIR/tools/buildWine/webgl_filesystems_v17.json}"
+BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-https://boxedwine.org/v2/18/TinyCore15Wine11.0-web.zip}"
+DEMO_ROOT_CONFIG="${BUILD_SITE_DEMO_ROOT_CONFIG:-$ROOT_DIR/tools/buildWine/webgl_filesystems_v18.json}"
 REMOTE_LOCK_ACQUIRED=0
 REMOTE_HOST="${BUILD_SITE_REMOTE%%:*}"
 REMOTE_PATH="${BUILD_SITE_REMOTE#*:}"

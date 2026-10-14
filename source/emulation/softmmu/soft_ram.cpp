@@ -55,6 +55,8 @@ public:
 #endif
 };
 
+// All accesses need ramMutex, including existing-page lookups: another
+// thread can insert pages and rehash the table (Vantage CPU test 2).
 static std::unordered_map<U64, RamInfo> refCounts;
 static std::vector<RAM_TYPE> freeIndexes;
 
@@ -979,14 +981,17 @@ U32 ramPageUseCount(RamPage page) {
 }
 
 void ramPageMarkSystem(RamPage page, bool isSystem) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
     refCounts[page.value].isSystem = isSystem ? 1 : 0;
 }
 
 bool ramPageIsSystem(RamPage page) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
     return refCounts[page.value].isSystem != 0;
 }
 
 bool ramPageIsNative(RamPage page) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
     return refCounts[page.value].isNative != 0;
 }
 

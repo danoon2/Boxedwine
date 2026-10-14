@@ -31,11 +31,11 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
 loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the
-v45 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+v46 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 17. Its `changes.txt` comes from
+The filesystem revision is 18. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -51,21 +51,29 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v17.json`](webgl_filesystems_v17.json) and the
-[v45 patch manifest](../wineTests/webgl-test-divergences-v45.json). To test that
+[`webgl_filesystems_v18.json`](webgl_filesystems_v18.json) and the
+[v46 patch manifest](../wineTests/webgl-test-divergences-v46.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v17 WebGL configuration pins DLLs, source patches, and the filesystem
-ZIP in its `full-v17` and `web-v17` profiles for Jenkins demo validation. The complete filesystem
+The v18 WebGL configuration pins DLLs, source patches, and the filesystem
+ZIP in its `full-v18` and `web-v18` profiles for Jenkins demo validation. The complete filesystem
 is assembled by `filesystem_wine11.json`.
-The v17 prefix leaves the renderer registry values unset. The profile records
+The v18 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
+
+Revision 18 is an upload-ready candidate; publish both versioned archives and
+refresh the `/v2/latest/` aliases before distributing consumers of the new pins.
+It adds the Vantage stream-output overflow query, CPU-lockable format support,
+DXGI fullscreen activation, GetDIBits header/palette, and LFH publication fixes.
+The separate WebGL PE DLLs carry the applicable DXGI and WineD3D changes too.
+See [the Vantage regression notes](../../docs/3dmark-vantage.md).
 
 Revision 17 includes six compiler patches for 3DMark06: static HLSL helpers,
 constant disassembly/reassembly (including scientific notation), separated
 folding passes, safe loop unrolling, legacy constant `pow`, and `texCUBElod`.
 The source series for regular Wine and the separate WebGL D3DX DLLs includes
-these fixes. The PE D3DX DLLs import Wine's shared builtin compiler modules. The
-unpublished revision remains 17. These patches change shader compilation, not
+these fixes. The PE D3DX DLLs import Wine's shared builtin compiler modules.
+Revision 17 is published; subsequent filesystem changes require a new revision
+and URL. These patches change shader compilation, not
 the selected graphics renderer. See [the regression notes](../../docs/3dmark06-shaders.md)
 for the aggregate probe and the upstream/local patch origins.
 
@@ -219,7 +227,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
-Build and validate with `--config tools/buildWine/webgl_filesystems_v17.json`.
+Build and validate with `--config tools/buildWine/webgl_filesystems_v18.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises
@@ -361,19 +369,23 @@ python3 tools/buildWine/webgl_filesystem.py validate \
 ### Historical v3/v10 filesystems
 
 The following v3/v10 commands and manifest remain available for historical
-filesystem reproduction and validation.
+filesystem reproduction and validation. Normal commands now default to
+`webgl_filesystems_v18.json`; pass the historical config explicitly below.
+The dedicated `validate-set` command retains its v3/v10 default.
 
 `webgl_filesystem.py` is the pinned build, packaging, and validation command
 for the Wine 11 PE32 DLL overrides used by Emscripten. Its checked-in
 `webgl_filesystems_v3.json` records the exact Wine commit, ordered patch
-manifest, reproducible DLL hashes, GL shim/cache hashes, and the current v3
+manifest, reproducible DLL hashes, GL shim/cache hashes, and the historical v3
 and v10 filesystem identities.
 
 From WSL, verify the patch inputs and perform a clean build with:
 
 ```bash
-python3 tools/buildWine/webgl_filesystem.py verify-patches
+python3 tools/buildWine/webgl_filesystem.py verify-patches \
+  --config tools/buildWine/webgl_filesystems_v3.json
 python3 tools/buildWine/webgl_filesystem.py build \
+  --config tools/buildWine/webgl_filesystems_v3.json \
   --work-dir /tmp/boxedwine-webgl-wine11 \
   --wine-repository /path/to/wine \
   --jobs 12
@@ -392,6 +404,7 @@ Create a new candidate without modifying its input ZIP:
 
 ```bash
 python3 tools/buildWine/webgl_filesystem.py package \
+  --config tools/buildWine/webgl_filesystems_v3.json \
   --input /path/to/boxedwine.3.zip \
   --dll-dir /tmp/boxedwine-webgl-wine11/wine-build/boxedwine-webgl-dlls \
   --output /tmp/candidate/boxedwine.3.zip
@@ -406,6 +419,7 @@ Validate the complete installed set and write final sidecars with:
 
 ```bash
 python3 tools/buildWine/webgl_filesystem.py validate-set \
+  --config tools/buildWine/webgl_filesystems_v3.json \
   --normal /path/to/boxedwine.3.zip \
   --gdi /path/to/boxedwine.gdi.3.zip \
   --full /path/to/TinyCore15Wine11.0-v10-candidate.zip \

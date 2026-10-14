@@ -1,3 +1,5 @@
+v18 Oct 13, 2026 Fix 3DMark Vantage DirectX 10 capability detection and fullscreen activation; prevent GetDIBits palette writes beyond oversized headers and synchronize low-fragmentation heap block publication.
+
 v17 Oct 12, 2026 Fix 3DMark06 shaders: static HLSL functions, constant disassembly/reassembly, loop unrolling, legacy power folding and cube-map LOD compilation.
 
 v16 Oct 12, 2026 Fix idle COM surrogate shutdown and apartment factory reference leaks, allowing 3DMark03 to close normally with Futuremark SystemInfo enabled

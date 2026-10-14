@@ -113,7 +113,7 @@ public partial class MainWindow : Window
         switch (section)
         {
             case "Demos":
-                rows.AddRange(demos.Select(d => new LibraryRow { Demo = d, Name = d.Name, Description = document.Apps.Any(a => a.Demo?.Id == d.Origin.Id) ? "In your library" : document.RemovedApps.Any(a => a.App.Demo?.Id == d.Origin.Id) ? "In Removed Apps" : $"{Math.Max(1, d.Bytes / 1048576.0):0.#} MB · Wine {d.WineVersion}", Icon = Icons.FromFile(Path.Combine(catalogDirectory, d.Icon)), Glyph = "\uE7FC" })); break;
+                rows.AddRange(demos.OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).Select(d => new LibraryRow { Demo = d, Name = d.Name, Description = document.Apps.Any(a => a.Demo?.Id == d.Origin.Id) ? "In your library" : document.RemovedApps.Any(a => a.App.Demo?.Id == d.Origin.Id) ? "In Removed Apps" : $"{Math.Max(1, d.Bytes / 1048576.0):0.#} MB · Wine {d.WineVersion}", Icon = Icons.FromFile(Path.Combine(catalogDirectory, d.Icon)), Glyph = "\uE7FC" })); break;
             case "Removed Apps": rows.AddRange(document.RemovedApps.OrderByDescending(a => a.RemovedAt).Select(a => Row(a.App, a))); break;
             case "Unfinished Work": rows.AddRange(pending.Select(o => new LibraryRow { Operation = o, Name = o.Name, Description = o.Ready ? "Ready to finish" : "Interrupted copy", Glyph = "\uE823" })); break;
             case "Recently Opened": rows.AddRange(document.Apps.Where(a => a.LastOpened != null).OrderByDescending(a => a.LastOpened).Select(a => Row(a))); break;
