@@ -59,9 +59,74 @@ void FsNode::removeNodeFromParent() {
     }
 }
 
+namespace {
+
+// loadChildren() and the host folder refresh share this lock, so a directory is
+// never synced while another thread is still loading it for the first time.
+[[maybe_unused]] BOXEDWINE_MUTEX& loadChildrenMutex() {
+    static BOXEDWINE_MUTEX mutex;
+    return mutex;
+}
+
+enum class NativeEntryKind { Skip, Plain, Link, HardLink };
+
+// Maps a native directory entry to the local path loadChildren() gives it.
+// n.name is converted to its local form.
+NativeEntryKind getNativeEntryLocalPath(const BString& parentPath, const BString& parentNativePath, Platform::ListNodeResult& n, BString& localPath, BString& remotePath) {
+    localPath = parentPath;
+    remotePath = parentNativePath.stringByApppendingPath(n.name);
+    if (!localPath.endsWith("/")) {
+        localPath += "/";
+    }
+    Fs::remoteNameToLocal(n.name);
+    localPath+=n.name;
+    if (localPath.endsWith(EXT_MIXED)) {
+        localPath.remove(localPath.length() - 6);
+    }
+    if (localPath.endsWith(EXT_DOSATTRIB) || localPath.endsWith(EXT_WINEREPARSE) || localPath.endsWith(EXT_HARDLINK_BACKING)) {
+        return NativeEntryKind::Skip;
+    }
+    if (localPath.endsWith(EXT_HARDLINK)) {
+        localPath = localPath.substr(0, localPath.length() - BString(EXT_HARDLINK, true).length());
+        return NativeEntryKind::HardLink;
+    }
+    if (localPath.endsWith(EXT_LINK)) {
+        localPath = localPath.substr(0, localPath.length()-5);
+        return NativeEntryKind::Link;
+    }
+    return NativeEntryKind::Plain;
+}
+
+void addChildFromNativeEntry(const std::shared_ptr<FsNode>& parent, NativeEntryKind kind, const Platform::ListNodeResult& n, const BString& localPath, const BString& remotePath) {
+    if (kind == NativeEntryKind::HardLink) {
+        std::shared_ptr<FsHardLinkState> state = FsFileNode::readHardLinkMetadata(remotePath);
+        if (!state) {
+            kwarn_fmt("Could not read hard link file from filesystem: %s", localPath.c_str());
+            return;
+        }
+        BString visibleNativePath = remotePath.substr(0, remotePath.length() - BString(EXT_HARDLINK, true).length());
+        std::shared_ptr<FsFileNode> node = Fs::addFileNode(localPath, B(""), visibleNativePath, false, parent);
+        state->linkCount++;
+        node->setHardLinkState(state);
+    } else if (kind == NativeEntryKind::Link) {
+        U8 tmp[MAX_FILEPATH_LEN];
+        U32 result = Fs::readNativeFile(remotePath, tmp, MAX_FILEPATH_LEN-1);
+        tmp[result]=0;
+        if (result==0) {
+            kwarn_fmt("Could not read link file from filesystem: %s", localPath.c_str());
+            return;
+        }
+        Fs::addFileNode(localPath, BString::copy((const char*)tmp), remotePath, n.isDirectory, parent);
+    } else if (kind == NativeEntryKind::Plain) {
+        Fs::addFileNode(localPath, B(""), remotePath, n.isDirectory, parent);
+    }
+}
+
+}
+
 void FsNode::loadChildren() {
     if (!this->hasLoadedChildrenFromFileSystem) {
-        BOXEDWINE_CRITICAL_SECTION;
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(loadChildrenMutex());
         if (this->hasLoadedChildrenFromFileSystem) {
             return;
         }
@@ -69,46 +134,12 @@ void FsNode::loadChildren() {
         if (this->nativePath.length()) {
             std::vector<Platform::ListNodeResult> results;
             Platform::listNodes(nativePath, results);
+            std::shared_ptr<FsNode> self = shared_from_this();
             for (auto& n : results) {
-                BString localPath = this->path;
-                BString remotePath = this->nativePath.stringByApppendingPath(n.name);
-                if (!localPath.endsWith("/")) {
-                    localPath += "/";
-                }
-                Fs::remoteNameToLocal(n.name);
-                localPath+=n.name;
-                if (localPath.endsWith(EXT_MIXED)) {
-                    localPath.remove(localPath.length() - 6);
-                }
-                if (localPath.endsWith(EXT_DOSATTRIB) || localPath.endsWith(EXT_WINEREPARSE) || localPath.endsWith(EXT_HARDLINK_BACKING)) {
-                    continue;
-                }
-                if (localPath.endsWith(EXT_HARDLINK)) {
-                    std::shared_ptr<FsHardLinkState> state = FsFileNode::readHardLinkMetadata(remotePath);
-                    if (!state) {
-                        kwarn_fmt("Could not read hard link file from filesystem: %s", localPath.c_str());
-                        continue;
-                    }
-                    localPath = localPath.substr(0, localPath.length() - BString(EXT_HARDLINK, true).length());
-                    BString visibleNativePath = remotePath.substr(0, remotePath.length() - BString(EXT_HARDLINK, true).length());
-                    std::shared_ptr<FsFileNode> node = Fs::addFileNode(localPath, B(""), visibleNativePath, false, shared_from_this());
-                    state->linkCount++;
-                    node->setHardLinkState(state);
-                    continue;
-                }
-                if (!localPath.endsWith(EXT_LINK)) {
-                    Fs::addFileNode(localPath, B(""), remotePath, n.isDirectory, shared_from_this());
-                } else {
-                    U8 tmp[MAX_FILEPATH_LEN];
-                    U32 result = Fs::readNativeFile(remotePath, tmp, MAX_FILEPATH_LEN-1);
-                    tmp[result]=0;
-                    if (result==0) {
-                        kwarn_fmt("Could not read link file from filesystem: %s", localPath.c_str());
-                        continue;
-                    }
-                    localPath = localPath.substr(0, localPath.length()-5);
-                    Fs::addFileNode(localPath, BString::copy((const char*)tmp), remotePath, n.isDirectory, shared_from_this());
-                }           
+                BString localPath;
+                BString remotePath;
+                NativeEntryKind kind = getNativeEntryLocalPath(this->path, this->nativePath, n, localPath, remotePath);
+                addChildFromNativeEntry(self, kind, n, localPath, remotePath);
             }
         }
     }
@@ -257,10 +288,7 @@ BOXEDWINE_MUTEX* FsNode::getChildrenVisibilityMutexForTest() const {
 }
 #endif
 
-void FsNode::invalidateChildrenFromFileSystem() {
-    if (!this->isDirectory()) {
-        return;
-    }
+std::shared_ptr<FsNode> FsNode::getLoadedChildByNativePath(const BString& childNativePath) {
 #ifdef BOXEDWINE_MULTI_THREADED
     std::unique_lock<std::recursive_mutex> visibilityLock;
     BOXEDWINE_MUTEX* visibilityMutex =
@@ -269,26 +297,69 @@ void FsNode::invalidateChildrenFromFileSystem() {
         visibilityLock = std::unique_lock<std::recursive_mutex>(*visibilityMutex);
     }
 #endif
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
-    this->childrenByName.clear();
-    this->hasLoadedChildrenFromFileSystem = false;
-}
-
-void FsNode::invalidateChildrenFromFileSystemRecursive() {
-    if (!this->isDirectory()) {
-        return;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(loadChildrenMutex());
+    if (!this->hasLoadedChildrenFromFileSystem) {
+        return nullptr;
     }
     std::vector<std::shared_ptr<FsNode> > children;
-    {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
-        for (auto& n : this->childrenByName) {
-            children.push_back(n.value);
+    this->getAllChildren(children);
+    for (auto& child : children) {
+        if (child->nativePath == childNativePath) {
+            return child;
         }
     }
-    for (auto& child : children) {
-        child->invalidateChildrenFromFileSystemRecursive();
+    return nullptr;
+}
+
+void FsNode::syncLoadedChildrenWithFileSystem() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::unique_lock<std::recursive_mutex> visibilityLock;
+    BOXEDWINE_MUTEX* visibilityMutex =
+        childrenVisibilityMutex.load(std::memory_order_acquire);
+    if (visibilityMutex) {
+        visibilityLock = std::unique_lock<std::recursive_mutex>(*visibilityMutex);
     }
-    this->invalidateChildrenFromFileSystem();
+#endif
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(loadChildrenMutex());
+    if (!this->hasLoadedChildrenFromFileSystem || !this->nativePath.length()) {
+        return;
+    }
+    std::vector<Platform::ListNodeResult> results;
+    Platform::listNodes(this->nativePath, results);
+    std::shared_ptr<FsNode> self = shared_from_this();
+    BHashTable<BString, bool> listedNames;
+    for (auto& n : results) {
+        BString localPath;
+        BString remotePath;
+        NativeEntryKind kind = getNativeEntryLocalPath(this->path, this->nativePath, n, localPath, remotePath);
+        if (kind == NativeEntryKind::Skip) {
+            continue;
+        }
+        BString childName = Fs::getFileNameFromPath(localPath);
+        listedNames.set(childName, true);
+        std::shared_ptr<FsNode> existing = this->getChildByName(childName);
+        if (existing) {
+            // Keep the existing node so open files keep their identity, unless
+            // a file was replaced by a directory or the other way round.
+            if (existing->isDirectory() == n.isDirectory || !existing->nativePath.length()) {
+                continue;
+            }
+            this->removeChildByName(childName);
+        }
+        addChildFromNativeEntry(self, kind, n, localPath, remotePath);
+    }
+    std::vector<std::shared_ptr<FsNode> > children;
+    this->getAllChildren(children);
+    for (auto& child : children) {
+        // Only native entries of this directory can disappear from its listing;
+        // virtual nodes and mounts backed by other directories stay.
+        if (!child->nativePath.length() || Fs::getNativeParentPath(child->nativePath) != this->nativePath) {
+            continue;
+        }
+        if (!listedNames.contains(child->name)) {
+            this->removeChildByName(child->name);
+        }
+    }
 }
 
 bool FsNode::unlock(KFileLock* lock) {

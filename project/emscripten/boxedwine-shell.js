@@ -1057,12 +1057,21 @@
             }
             return mount;
         }
-        function invalidateHostFolderBoxedwineCache() {
+        function syncHostFolderBoxedwineDirectories(mount, result) {
             if (typeof Module === "undefined" || typeof Module.ccall !== "function") {
                 return false;
             }
+            // Boxedwine only needs the directories whose entries changed, as native
+            // paths relative to the mount ("." for the mount itself).
+            let dirs = new Set();
+            result.changedPaths.forEach(function(path) {
+                let relative = path.substring(mount.mountpoint.length).replace(/^\/+/, "");
+                let slash = relative.lastIndexOf("/");
+                dirs.add(slash > 0 ? relative.substring(0, slash) : ".");
+            });
             try {
-                Module.ccall("boxedwineInvalidateFsNodeCache", null, ["string"], ["/mnt/drive_d"]);
+                Module.ccall("boxedwineHostFolderSyncDirectories", null, ["string", "string"],
+                    ["/mnt/drive_d", Array.from(dirs).sort().join("\n")]);
                 return true;
             } catch (e) {
                 if (!hostFolderInvalidateWarningShown) {
@@ -1094,7 +1103,7 @@
                     } else {
                         let changeCount = summarizeHostFolderRefresh(result);
                         if (changeCount > 0) {
-                            invalidateHostFolderBoxedwineCache();
+                            syncHostFolderBoxedwineDirectories(mount, result);
                             logHostFolderMessage("Refreshed D: folder from host (" + changeCount + " change" + (changeCount === 1 ? "" : "s") + ")", false);
                         }
                         resolve(changeCount > 0);

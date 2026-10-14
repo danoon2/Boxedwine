@@ -23,14 +23,41 @@
 
 extern "C" {
 
+// Called by the browser host folder refresh after it changed files under the
+// native directory mounted at mountPath. relativeDirs holds one directory per
+// line, as a native path relative to the mount ("." for the mount itself).
+// Only directories whose children were already loaded are updated, and only
+// entries that changed are added or removed: unchanged nodes, including open
+// files, keep their identity. In multi-threaded builds this runs on the browser
+// thread while guest threads use the same nodes, so all changes go through the
+// FsNode locks.
 EMSCRIPTEN_KEEPALIVE
-void boxedwineInvalidateFsNodeCache(const char* path) {
-    if (!path || !path[0]) {
+void boxedwineHostFolderSyncDirectories(const char* mountPath, const char* relativeDirs) {
+    if (!mountPath || !mountPath[0] || !relativeDirs) {
         return;
     }
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), BString::copy(path), true);
-    if (node) {
-        node->invalidateChildrenFromFileSystemRecursive();
+    std::shared_ptr<FsNode> mountNode = Fs::getNodeFromLocalPath(B(""), BString::copy(mountPath), true);
+    if (!mountNode) {
+        return;
+    }
+    std::vector<BString> dirs;
+    BString::copy(relativeDirs).split('\n', dirs);
+    for (auto& dir : dirs) {
+        std::shared_ptr<FsNode> node = mountNode;
+        std::vector<BString> parts;
+        dir.split('/', parts);
+        for (auto& part : parts) {
+            if (!node) {
+                break;
+            }
+            if (part.length() == 0 || part == ".") {
+                continue;
+            }
+            node = node->getLoadedChildByNativePath(node->nativePath.stringByApppendingPath(part));
+        }
+        if (node && node->isDirectory()) {
+            node->syncLoadedChildrenWithFileSystem();
+        }
     }
 }
 

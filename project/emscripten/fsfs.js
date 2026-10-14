@@ -105,6 +105,8 @@
                 created: 0,
                 updated: 0,
                 removed: 0,
+                // Paths a host refresh created, updated or removed in the guest copy.
+                changedPaths: [],
                 conflicts: []
             };
         }
@@ -494,6 +496,7 @@
                                 FSFS.storeLocalEntry(remotePath, newEntry);
                             });
                             nextBaseline[remotePath] = makeBaselineEntry(FSFS.statToEntry(FS.stat(remotePath)), remoteEntry);
+                            result.changedPaths.push(remotePath);
                             result.created++;
                         }
                     } else if (remoteChanged) {
@@ -508,6 +511,7 @@
                             FSFS.storeLocalEntry(remotePath, changedEntry);
                         });
                         nextBaseline[remotePath] = makeBaselineEntry(FSFS.statToEntry(FS.stat(remotePath)), remoteEntry);
+                        result.changedPaths.push(remotePath);
                         result.updated++;
                     }
                 }
@@ -531,6 +535,7 @@
                         FSFS.removeLocalEntry(localPath);
                     });
                     delete nextBaseline[localPath];
+                    result.changedPaths.push(localPath);
                     result.removed++;
                 }
 
