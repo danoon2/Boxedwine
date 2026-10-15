@@ -811,6 +811,14 @@
         }
         function closeGetFilesModal() { //called by boxedwine.html
 		}
+        // The dialogs open and close through the URL fragment (CSS :target), so
+        // closing one leaves #close in the address bar; drop it once closed.
+        function removeCloseFragment() {
+            if (window.location.hash === "#close") {
+                history.replaceState(null, "", window.location.pathname + window.location.search);
+            }
+        }
+        window.addEventListener("hashchange", removeCloseFragment);
         async function start() { //called by boxedwine.html
         	if(isRunning){
                 return;
@@ -1579,9 +1587,8 @@
         }
         function getEmulatorParams() {
             let params = ["-root", ROOT];
-            params.push("-zip");
-    		params.push(Config.rootZipFile);
-    		
+            // overlays go first: the first zip holding a path wins, so an
+            // overlay's files replace the same files in the root zip
             if(Config.extraZipFiles.length > 0){
                 for(let i = 0; i < Config.extraZipFiles.length; i++) {
 		            params.push("-zip");
@@ -1592,6 +1599,8 @@
 		        params.push("-zip");
     			params.push("overlay.zip");
             }
+            params.push("-zip");
+            params.push(Config.rootZipFile);
             
             if (Config.appZipFile.length > 0) { // -mount $appZipFile "/home/username/files/"
     			params.push("-mount");
@@ -1710,6 +1719,7 @@
         }
       var Module = {
         preRun: [initialSetup],
+        thisProgram: "./boxedwine", // argv[0]; emscripten's default is ./this.program
         arguments: [],
         postRun: [],
         boxedwineNetworking: { enabled: false },
@@ -2625,6 +2635,10 @@ var files = [];
 var selectedItem;
 var selectedFilename;
 var selectedPath = "";
+var drives = []; // [{drive: "c:", dir}] for the tops of the Get File(s) tree
+function driveOf(path) {
+	return drives.find(function(drive) { return path.startsWith(drive.dir); });
+}
 function select(index, dir, filename) {
 	if(selectedItem != null){
 		selectedItem.style.backgroundColor = "";
@@ -2636,8 +2650,9 @@ function select(index, dir, filename) {
 		fullpath = fullpath + filename;
 	}
 	selectedPath = fullpath;
-	// show the path as Wine sees it; files[0] is the top of d:
-	document.getElementById('selectedItem').value = "d:/" + fullpath.substring(files[0].dir.length);
+	// show the path as Wine sees it
+	let drive = driveOf(fullpath);
+	document.getElementById('selectedItem').value = drive.drive + "/" + fullpath.substring(drive.dir.length);
 	selectedFilename = filename
 }
 function endsWith(str, suffix) {
@@ -2654,14 +2669,32 @@ async function extract() {
 		downloadBlob(new Blob([FS.readFile(file, { encoding: 'binary' })], {type: "octet/stream"}), selectedFilename);
 		return;
 	}
-	// the top of the tree is d: itself, whose folder name is internal
-	let name = file === files[0].dir ? "d" : file.substring(0, file.length - 1).split("/").pop();
+	// the top of a drive downloads as c.zip or d.zip; its folder name is internal
+	let drive = driveOf(file);
+	await downloadZip(file, files, file === drive.dir ? drive.drive.charAt(0) : file.substring(0, file.length - 1).split("/").pop());
+}
+// Zips everything Wine and programs changed (ROOT) as overlay.zip. Loaded with
+// ?overlay=overlay.zip on a fresh browser, Wine starts without setting itself up again.
+async function saveOverlay() {
+	let entries = [];
+	readFiles(ROOT + "/", entries);
+	// leave out the emulator's deleted-file lists and its transient or virtual folders
+	entries = entries.filter(function(entry) {
+		let path = (entry.dir + entry.filename).substring(ROOT.length + 1);
+		return !/^(tmp|dev|proc|mnt)\//.test(path) && !/^[^\/]*\.deleted$/.test(path);
+	});
+	await downloadZip(ROOT + "/", entries, "overlay");
+}
+async function downloadZip(folder, entries, name) {
+	if (zipping) {
+		return;
+	}
 	let status = document.getElementById('loadStatus');
 	status.textContent = "Zipping " + name + "...";
 	status.style.display = "";
 	zipping = true;
 	try {
-		downloadBlob(await zipFolder(file), name + ".zip");
+		downloadBlob(await zipFolder(folder, entries), name + ".zip");
 		status.style.display = "none";
 	} catch (e) {
 		status.textContent = "Unable to zip " + name + ": " + e.message;
@@ -2679,11 +2712,11 @@ function downloadBlob(blob, filename) {
 	document.body.removeChild(link);
 	window.URL.revokeObjectURL(url);
 }
-// Zips everything under folder (a path ending in "/") as listed in the tree,
-// with paths relative to the folder.
-async function zipFolder(folder) {
+// Zips the entries (from readFiles) under folder, a path ending in "/", with
+// paths relative to the folder.
+async function zipFolder(folder, entries) {
 	let items = [];
-	files.forEach(function(entry) {
+	entries.forEach(function(entry) {
 		let path = entry.dir + entry.filename;
 		if (path.length > folder.length && path.startsWith(folder)) {
 			let item = { name: path.substring(folder.length), date: new Date(FS.stat(path).mtime) };
@@ -2755,7 +2788,7 @@ function branch(entries) {
 	return treeRow([
 		treeToggle(id, "-expand", "+", ""),
 		treeToggle(id, "-contract", "-", "none"),
-		treeItem(id, "[" + (dir === entries[0].dir ? "d:" : dirName) + "]", function() { select(id, dir, null); }),
+		treeItem(id, "[" + (dir === driveOf(dir).dir ? driveOf(dir).drive : dirName) + "]", function() { select(id, dir, null); }),
 		children
 	]);
 }
@@ -2766,9 +2799,10 @@ function parentDir(childDir) {
     return childDir.substring(0, childDir.lastIndexOf('/') + 1);
 }
 function buildGetFilesModal() {
-	buildGetFilesModalForFolder(Config.d_drive);
+	// c: only holds what programs created or changed: the rest of c: is still in the zips
+	buildGetFilesModalForDrives({ "c:": ROOT + "/home/username/.wine/drive_c", "d:": Config.d_drive });
 }
-function buildGetFilesModalForFolder(folder) {
+function buildGetFilesModalForDrives(folders) {
     document.getElementById('modalLink').click();
     let root = document.getElementById('tree');
     //reset
@@ -2776,15 +2810,25 @@ function buildGetFilesModalForFolder(folder) {
     selectedPath = "";
     selectedFilename = null;
 	files = [];
+	drives = [];
     root.innerHTML = "";
     index = 0;
-	readFiles(folder + "/", files);
 
 	let table = document.createElement("table");
-	table.appendChild(branch(files));
+	let tops = [];
+	Object.keys(folders).forEach(function(drive) {
+		let dir = folders[drive] + "/";
+		if (!FS.analyzePath(dir).exists) {
+			return; // c: has no files of its own until a program writes one
+		}
+		drives.push({ drive: drive, dir: dir });
+		readFiles(dir, files);
+		tops.push(String(index + 1));
+		table.appendChild(branch(files));
+	});
 	document.getElementById('loadStatus').style.display="none";
 	root.appendChild(table);
-	toggleDirectory('1');
+	tops.forEach(toggleDirectory);
 }
 function readFiles(currentDir, files) {
     console.log("adding directory: " + currentDir);

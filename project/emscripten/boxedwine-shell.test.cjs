@@ -13,7 +13,7 @@ function launcher(url) {
     const mounts = [];
     const directories = [];
     const context = vm.createContext({
-        window: { location: { href: url } },
+        window: { location: { href: url }, addEventListener() {} },
         document: {
             addEventListener() {},
             getElementById(id) {
@@ -89,7 +89,7 @@ function dialogShell(tree, url = 'http://localhost/') {
     const DIR = 0o040000, FILE = 0o100000, LINK = 0o120000;
     const names = (path) => path.split('/').filter(Boolean);
     const lookup = (path, follow) => {
-        const node = names(path).reduce((dir, name) => dir[name], tree);
+        const node = names(path).reduce((dir, name) => dir && dir[name], tree);
         return follow && node instanceof Link ? lookup(node.target, true) : node;
     };
     const mode = (node) => node instanceof Link ? LINK : typeof node === 'string' || ArrayBuffer.isView(node) ? FILE : DIR;
@@ -104,7 +104,10 @@ function dialogShell(tree, url = 'http://localhost/') {
                 },
                 revokeObjectURL(href) { blobs.delete(href); },
             },
+            listeners: {},
+            addEventListener(type, listener) { this.listeners[type] = listener; },
         },
+        history: { urls: [], replaceState(state, title, url) { this.urls.push(url); } },
         document: {
             addEventListener() {},
             createElement: () => new Element(),
@@ -126,6 +129,7 @@ function dialogShell(tree, url = 'http://localhost/') {
             },
             stat: () => ({ mtime: fileDate }),
             lookupPath: (path, options) => ({ node: { mode: mode(lookup(path, options.follow)) } }),
+            analyzePath: (path) => ({ exists: lookup(path, true) !== undefined }),
             isDir: (value) => value === DIR,
             isLink: (value) => value === LINK,
             mkdirTree: (path) => names(path).reduce((dir, name) => (dir[name] ||= {}), tree),
@@ -251,7 +255,7 @@ test('file dialogs show hostile file names as text', () => {
     const { context, htmlWrites, byId } = dialogShell({ d: { [file]: 'data', [dir]: { 'inner.txt': 'data' } } });
 
     htmlWrites.length = 0; // ignore the page's own startup status text
-    context.buildGetFilesModalForFolder('/d');
+    context.buildGetFilesModalForDrives({ 'd:': '/d' });
     context.populateModalExe([exe]);
     assert.deepEqual(htmlWrites.filter((html) => html !== ''), []);
 
@@ -273,7 +277,7 @@ test('file dialogs show hostile file names as text', () => {
 
 test('Get File(s) lists files but does not follow symlinks', () => {
     const { context, byId } = dialogShell({ d: { 'save.dat': 'data', loop: new Link('/d'), saves: { 'slot1.dat': 'data' } } });
-    context.buildGetFilesModalForFolder('/d');
+    context.buildGetFilesModalForDrives({ 'd:': '/d' });
     const labels = byId.get('tree').all().filter((element) => element.listeners.click && /-data$/.test(element.id))
         .map((element) => element.textContent);
     assert.deepEqual(labels.sort(), ['[d:]', '[saves]', 'save.dat', 'slot1.dat']);
@@ -346,7 +350,7 @@ test('Get File(s) downloads a folder as a zip of everything in it', async () => 
     const random = crypto.randomBytes(4000);
     const saves = { 'slot1.dat': random, 'notes.txt': 'hello '.repeat(200), 'ünï.txt': 'unicode', empty: {}, nested: { 'deep.txt': 'deep' } };
     const { context, byId, downloads } = dialogShell({ d: { saves, 'top.txt': 'top' } });
-    context.buildGetFilesModalForFolder('/d');
+    context.buildGetFilesModalForDrives({ 'd:': '/d' });
     await getFromTree(context, byId, '[saves]');
 
     assert.deepEqual(downloads.map((download) => download.name), ['saves.zip']);
@@ -373,10 +377,65 @@ test('Get File(s) downloads a folder as a zip of everything in it', async () => 
     assert.deepEqual(Buffer.from(tree.d.saves['slot1.dat']), random);
 });
 
+test('Get File(s) shows the files programs changed on c: next to d:', async () => {
+    const driveC = { users: { username: { 'save.dat': 'progress' } }, windows: { 'win.ini': '[fonts]' } };
+    const tree = { root: { home: { username: { '.wine': { drive_c: driveC } } } }, d: { 'notes.txt': 'notes' } };
+    const { context, byId, downloads } = dialogShell(tree);
+    vm.runInContext('Config.d_drive = "/d";', context);
+    context.buildGetFilesModal(); // c: is ROOT's drive_c, ROOT is "/root" before configuration
+
+    const tops = byId.get('tree').children[0].children.map((row) => row.textContent.match(/\[[cd]:\]/)[0]);
+    assert.deepEqual(tops, ['[c:]', '[d:]']);
+    assert.equal(byId.get('1').style.display, ''); // both drives start expanded
+    await getFromTree(context, byId, 'save.dat');
+    assert.equal(byId.get('selectedItem').value, 'c:/users/username/save.dat');
+    await getFromTree(context, byId, '[c:]');
+    assert.deepEqual(downloads.map((download) => download.name), ['save.dat', 'c.zip']);
+    assert.deepEqual(Object.keys(readZip(new Uint8Array(await downloads[1].blob.arrayBuffer()))).sort(),
+        ['users/', 'users/username/', 'users/username/save.dat', 'windows/', 'windows/win.ini']);
+    await getFromTree(context, byId, 'notes.txt');
+    assert.equal(byId.get('selectedItem').value, 'd:/notes.txt');
+
+    // before any program has written to c: only d: is listed
+    const fresh = dialogShell({ d: { 'notes.txt': 'notes' } });
+    vm.runInContext('Config.d_drive = "/d";', fresh.context);
+    fresh.context.buildGetFilesModal();
+    assert.equal(fresh.byId.get('tree').children[0].children.length, 1);
+    assert.equal(fresh.byId.get('tree').textContent, '+-[d:]notes.txt');
+});
+
+test('Save Overlay zips what Wine changed, without the emulator bookkeeping', async () => {
+    const wine = { '.update-timestamp': '1700000000\n', 'user.reg': 'WINE REGISTRY', drive_c: { windows: { 'win.ini': '[fonts]' } } };
+    const tree = { root: {
+        home: { username: { '.wine': wine } },
+        var: { cache: { fontconfig: { 'fonts.cache-7': 'cache' } } },
+        tmp: { '.wine-1': { 'server-100-d77': { lock: '' } } },
+        dev: {}, proc: {}, mnt: {},
+        'boxedwine.zip.deleted': '/home/username/.wine/user.reg\n',
+    } };
+    const { context, downloads } = dialogShell(tree);
+    await context.saveOverlay(); // ROOT is "/root" before configuration
+
+    assert.deepEqual(downloads.map((download) => download.name), ['overlay.zip']);
+    const zip = readZip(new Uint8Array(await downloads[0].blob.arrayBuffer()));
+    assert.deepEqual(Object.keys(zip).sort(), [
+        'home/', 'home/username/', 'home/username/.wine/', 'home/username/.wine/.update-timestamp',
+        'home/username/.wine/drive_c/', 'home/username/.wine/drive_c/windows/', 'home/username/.wine/drive_c/windows/win.ini',
+        'home/username/.wine/user.reg', 'var/', 'var/cache/', 'var/cache/fontconfig/', 'var/cache/fontconfig/fonts.cache-7',
+    ]);
+    assert.equal(zip['home/username/.wine/.update-timestamp'].data.toString(), '1700000000\n');
+});
+
+test('overlays are mounted before the root zip so their files win', () => {
+    const { params } = launcher('http://localhost/?overlay=prefix.zip;fonts&p=notepad');
+    const zips = params.filter((_, i) => params[i - 1] === '-zip');
+    assert.deepEqual(zips, ['prefix.zip', 'fonts.zip', 'boxedwine.zip']);
+});
+
 test('zipping a folder reports a file it cannot read, then works again', async () => {
     const tree = { d: { saves: { 'a.txt': 'a', 'b.txt': 'b' } } };
     const { context, byId, downloads } = dialogShell(tree);
-    context.buildGetFilesModalForFolder('/d');
+    context.buildGetFilesModalForDrives({ 'd:': '/d' });
     delete tree.d.saves['b.txt']; // deleted after the dialog listed it
     await getFromTree(context, byId, '[saves]');
     assert.deepEqual(downloads, []);
@@ -429,6 +488,17 @@ test('createZip adds Zip64 end records past 65535 entries', async () => {
     assert.equal(zip.readUInt32LE(record), 0x06064b50);
     assert.equal(Number(zip.readBigUInt64LE(record + 32)), count);
     assert.equal(zip.readUInt32LE(Number(zip.readBigUInt64LE(record + 48))), 0x02014b50); // central directory
+});
+
+test('closing a dialog removes #close from the address bar', () => {
+    const { context } = dialogShell({});
+    const page = { pathname: '/boxedwine.html', search: '?app=game&auto=false' };
+    context.window.location = { ...page, hash: '#openModal' };
+    context.window.listeners.hashchange();
+    assert.deepEqual(context.history.urls, []); // an open dialog keeps its fragment
+    context.window.location = { ...page, hash: '#close' };
+    context.window.listeners.hashchange();
+    assert.deepEqual(context.history.urls, ['/boxedwine.html?app=game&auto=false']);
 });
 
 test('auto=false shows Start and Get File(s), auto run shows neither', () => {
