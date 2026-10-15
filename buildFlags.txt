@@ -31,13 +31,25 @@ settings:
  - specify a zip file to appear uncompressed mounted as c:/files
  	i.e. app=chomp.zip would appear as /home/username/.wine/dosdevices/c:/files/. Use: zip -r9qdgds 10m chomp.zip ./chomp/*
  - change the program to execute via ?p=/home/username/chomp/CHOMP.EXE. surround in quotes if path includes spaces. Can call a .BAT file.
- - set the working directory via ?work=chomp. This simplifies p as it can then be relative to the working directory.
+ - set the working directory via ?w=c:/chomp (or ?workingDir=).
+ 	Rarely needed: with app= and a relative p it defaults to the app's folder.
  - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system.
  - set the initial emulated screen size via ?resolution=WxH. Ie resolution=640x480.
- - use c:/ as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/)
+ - run registry presets before the program via ?registry=[gdi,cdrom]. Ie app=PERF_W95.EXE&p=PERF_W95.EXE&bpp=8&registry=[gdi]
+ 	The brackets are optional and names can be separated by , or ; so registry=gdi;cdrom also works. Unknown names are skipped.
+ 	The presets run in order as cmd /c reg add ... && <program>. They also work with a hand-written p=cmd&args=/c ... chain.
+ 	gdi   = reg add "HKCU\Software\Wine\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f
+ 	cdrom = reg add "HKLM\Software\Wine\Drives" /v d: /d cdrom /f
+ 	Add presets to REGISTRY_PRESETS in boxedwine-shell.js. Registry changes persist in the game's IndexedDB storage.
+ - add Wine dll override presets via ?wine-override=[nomono]. They are added after Boxedwine's built-in WebGL WINEDLLOVERRIDES
+ 	(Wine uses the last entry for a dll) and merged with any WINEDLLOVERRIDES passed via ?env=.
+ 	Accepts the same list forms as registry, ie wine-override=nomono.
+ 	nomono = mscoree,mshtml= (skip the Wine Mono and Gecko installs)
+ 	Add presets to WINE_OVERRIDE_PRESETS in boxedwine-shell.js.
+ - in p and w, c:/ can be used as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/)
 Some simplifications are possible:
 boxedwine.html?p=notepad - run notepad in the root fs
-boxedwine.html?root=win32&app=chomp&work=chomp&p=CHOMP.EXE - no need to add .zip for root and app zip file name
+boxedwine.html?root=win32&app=chomp&p=CHOMP.EXE - no need to add .zip for root and app zip file name. A relative p runs from c:/files, or c:/files/chomp if chomp.zip has a chomp/ folder
 
 Dynamically sending files
 The *-payload parameters can be used to pass in a base64 encoded zip file. 
@@ -53,8 +65,10 @@ AUTO_RUN - indicates if start button is shown or page auto-runs. default true. H
 ALLOW_PARAM_OVERRIDE_FROM_URL - indicates if url can be appended with params as above for dir, app, m & p.
 
 see var Module and configure as appropriate
-As an example to set linux ENV variables use the following format:
-?env="LIBGL_NPOT:2;LIBGL_DEFAULT_WRAP:0;LIBGL_MIPMAP:3;"
+As an example to set a linux ENV variable (one per url) use the following format:
+?env="WINEDEBUG:-all"
+To set Emscripten ENV variables (; separated) use:
+?em-env="LIBGL_NPOT:2;LIBGL_DEFAULT_WRAP:0;LIBGL_MIPMAP:3;"
 
 You can avoid using url params and hardcode the values.  Search for MANUAL:
 

@@ -16,7 +16,7 @@ function launcher(url) {
             addEventListener() {},
             getElementById(id) {
                 if (!elements.has(id)) {
-                    elements.set(id, { style: {}, value: '', addEventListener() {}, getContext() {} });
+                    elements.set(id, { style: {}, value: '', addEventListener() {}, getContext() {}, contains() { return false; } });
                 }
                 return elements.get(id);
             },
@@ -89,6 +89,76 @@ test('memory and regression launches do not mount persistent storage', () => {
     for (const query of ['storage=memory', 'regressionBuild=1']) {
         assert.deepEqual(launcher('http://localhost/?app=mw3&' + query).mounts, []);
     }
+});
+
+test('registry presets launch the same command as hand-written reg add args', () => {
+    const preset = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=PERF_W95.EXE&bpp=8&resolution=640x480&registry=[gdi]');
+    const manual = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=cmd&bpp=8&resolution=640x480&args=/c%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20DirectDrawRenderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20%22PERF_W95.EXE%22');
+    assert.deepEqual(preset.params, manual.params);
+});
+
+test('registry presets stack in order and skip unknown names', () => {
+    const wine = (url) => {
+        const { params } = launcher(url);
+        return params.slice(params.indexOf('/bin/wine') + 1);
+    };
+    const expected = [
+        'cmd', '/c',
+        'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
+        'reg', 'add', 'HKLM\\Software\\Wine\\Drives', '/v', 'd:', '/d', 'cdrom', '/f', '&&',
+        'GAME.EXE', '-x',
+    ];
+    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&args=-x&registry=[gdi,cdrom]'), expected);
+    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&args=-x&registry=gdi;cdrom'), expected);
+    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&args=-x&registry=%5Bgdi%3B%20bogus%3BCDROM%5D'), expected);
+    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&registry=[bogus]'), ['GAME.EXE']);
+});
+
+test('registry presets run before a hand-written cmd /c chain', () => {
+    const { params } = launcher('http://localhost/?app=game&p=cmd&args=/c%20reg%20add%20X%20%26%26%20GAME.EXE&registry=[gdi]');
+    assert.deepEqual(params.slice(params.indexOf('/bin/wine') + 1), [
+        'cmd', '/c', 'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
+        'cmd', '/c', 'reg', 'add', 'X', '&&', 'GAME.EXE',
+    ]);
+});
+
+test('preset params only run allow-listed values', () => {
+    const tail = (query) => {
+        const { params } = launcher('http://localhost/?app=game&p=GAME.EXE&' + query);
+        return params.slice(params.indexOf('-env') >= 0 ? params.indexOf('-env') : params.indexOf('/bin/wine'));
+    };
+    const plain = tail('');
+    for (const name of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
+        assert.deepEqual(tail('registry=' + name + '&wine-override=' + name), plain);
+    }
+    // operators, quotes and newlines stay inside an unknown name instead of reaching cmd
+    for (const hostile of ['gdi%20%26%26%20calc', 'gdi%22%20%26%20calc', 'gdi%0Acalc', 'gdi%7Ccalc', '%22gdi%22']) {
+        assert.deepEqual(tail('registry=' + hostile + '&wine-override=' + hostile), plain);
+    }
+});
+
+test('working directory accepts drive shorthand like p', () => {
+    const w = (query) => {
+        const { params } = launcher('http://localhost/?app=game&p=GAME.EXE&' + query);
+        return params[params.indexOf('-w') + 1];
+    };
+    assert.equal(w('w=c:/files/sub'), '/home/username/.wine/dosdevices/c:/files/sub');
+    assert.equal(w('workingDir=D:%5Csaves%5Cslot1'), '/home/username/.wine/dosdevices/d:/saves/slot1');
+    assert.equal(w('w=d:'), '/home/username/.wine/dosdevices/d:/');
+    assert.equal(w('w=/home/username/game'), '/home/username/game');
+});
+
+test('wine-override presets pass a single WINEDLLOVERRIDES', () => {
+    const env = (url) => {
+        const { params } = launcher(url);
+        return params.filter((_, i) => params[i - 1] === '-env');
+    };
+    assert.deepEqual(env('http://localhost/?app=game&p=GAME.EXE&wine-override=[nomono]'), ['WINEDLLOVERRIDES=mscoree,mshtml=']);
+    assert.deepEqual(env('http://localhost/?app=game&p=GAME.EXE&wine-override=[bogus]'), []);
+    assert.deepEqual(env('http://localhost/?app=game&p=GAME.EXE&env=%22WINEDLLOVERRIDES:ddraw=b%22&wine-override=nomono'),
+        ['WINEDLLOVERRIDES=ddraw=b;mscoree,mshtml=']);
+    assert.deepEqual(env('http://localhost/?app=game&p=GAME.EXE&env=%22WINEDEBUG:-all%22&wine-override=nomono'),
+        ['WINEDEBUG=-all', 'WINEDLLOVERRIDES=mscoree,mshtml=']);
 });
 
 test('desktop launches without archives retain the existing storage', () => {

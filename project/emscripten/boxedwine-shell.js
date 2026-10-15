@@ -27,6 +27,15 @@
         let DEFAULT_FRAME_SKIP = "0";
         let DEFAULT_AUDIO_FREQ = 11025;
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
+        // registry=[name,...] runs these commands, in order, before the program
+        let REGISTRY_PRESETS = {
+            gdi: 'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f',
+            cdrom: 'reg add "HKLM\\Software\\Wine\\Drives" /v d: /d cdrom /f'
+        };
+        // wine-override=[name,...] adds these to WINEDLLOVERRIDES
+        let WINE_OVERRIDE_PRESETS = {
+            nomono: "mscoree,mshtml=" // skip the Wine Mono and Gecko installs
+        };
         //params
         let Config = {};
         Config.locateRootBaseUrl = ""; // ie "assets/"
@@ -134,6 +143,8 @@
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
             Config.ProgramArgs = getProgramArgs();
+            Config.registryCommands = getRegistryCommands();
+            Config.dllOverrides = getPresets("wine-override", WINE_OVERRIDE_PRESETS).join(";");
             Config.WorkingDir = getWorkingDir();
             Config.PlayScript = getPlayScript();
             Config.runLinux = getRunLinux();
@@ -150,7 +161,6 @@
 			Config.emEnvProps = getEmscriptenEnvProps();
 			Config.frameSkip = getFrameSkip();
 			Config.resolution = getResolution();
-			Config.ddrawOverridePath = getDDrawOverridePath();
 			Config.networking = getNetworkingConfig();
 			Config.payloadZipFile = "app.zip";
 			Config.hostFolderHandle = null;
@@ -250,18 +260,6 @@
             	});
             }
             return allProps;
-        }
-        function getDDrawOverridePath() {
-            var property = getParameter("ddrawOverride").trim();
-            if(allowParameterOverride() && property.length > 0){
-                if( (property.startsWith("%22") && property.endsWith("%22") )
-                	|| (property.startsWith('%27') && property.endsWith('%27'))){
-                    return property.substring(3, property.length - 3);
-                }else{
-	                console.log("ddrawOverride path must be in quoted string");
-                }
-            }
-            return null;
         }
         function getNetworkingConfig() {
             var mode = getParameter("network").trim().toLowerCase();
@@ -543,6 +541,36 @@
             }
             return result;
         }
+        // param=[name,...] -> the values of the named presets, in order
+        function getPresets(param, presets) {
+            var list = getParameter(param);
+            if (!allowParameterOverride() || list === "") {
+                return [];
+            }
+            list = decodeUrlValue(list).trim();
+            if (list.startsWith("[") && list.endsWith("]")) {
+                list = list.substring(1, list.length - 1);
+            }
+            let values = [];
+            list.split(/[,;]/).forEach(function(item) {
+                let name = item.trim().toLowerCase();
+                if (name.length == 0) {
+                    return;
+                }
+                if (!Object.prototype.hasOwnProperty.call(presets, name)) {
+                    console.log("unknown " + param + " preset: " + name);
+                    return;
+                }
+                console.log("setting " + param + " preset " + name + " to: " + presets[name]);
+                values.push(presets[name]);
+            });
+            return values;
+        }
+        function getRegistryCommands() {
+            return getPresets("registry", REGISTRY_PRESETS).map(function(command) {
+                return splitCommandLine(command);
+            });
+        }
         function getWorkingDir() {
             var workingDir = getParameter("w");
             if (workingDir === "") {
@@ -552,6 +580,12 @@
                 return "";
             }
             workingDir = decodeUrlValue(workingDir);
+            // c:/files -> /home/username/.wine/dosdevices/c:/files, as Wine resolves it for p
+            let drive = workingDir.match(/^([a-z]):(?:[\/\\]|$)/i);
+            if (drive) {
+                workingDir = "/home/username/.wine/dosdevices/" + drive[1].toLowerCase() + ":/"
+                    + workingDir.substring(drive[0].length).replace(/\\/g, "/");
+            }
             console.log("setting working directory to: " + workingDir);
             return workingDir;
         }
@@ -1524,10 +1558,6 @@
             	params.push("-resolution");
             	params.push(Config.resolution);
             }
-            if (Config.ddrawOverridePath != null) {
-            	params.push("-ddrawOverride");
-            	params.push(Config.ddrawOverridePath);
-            }
             if (Config.frameSkip != "0") {
             	params.push("-skipFrameFPS");
             	params.push(Config.frameSkip);
@@ -1556,9 +1586,20 @@
             if(Config.cpu.length > 0){
                 params.push("-" + Config.cpu);
             }
+            let dllOverrides = Config.dllOverrides;
             if(Config.envProp.length > 0){
                 params.push("-env");
-                params.push(Config.envProp);
+                if (dllOverrides.length > 0 && Config.envProp.startsWith("WINEDLLOVERRIDES=")) {
+                    // keep a single WINEDLLOVERRIDES, the presets win for the same dll
+                    params.push(Config.envProp + ";" + dllOverrides);
+                    dllOverrides = "";
+                } else {
+                    params.push(Config.envProp);
+                }
+            }
+            if (dllOverrides.length > 0) {
+                params.push("-env");
+                params.push("WINEDLLOVERRIDES=" + dllOverrides);
             }
 
 			if (!Config.loadDesktop) {
@@ -1588,6 +1629,15 @@
                 }
             } else {
                 params.push("/bin/wine");
+                if (Config.registryCommands.length > 0) {
+                    // cmd /c reg add ... && reg add ... && <program>
+                    params.push("cmd");
+                    params.push("/c");
+                    for (let i = 0; i < Config.registryCommands.length; i++) {
+                        params.push(...Config.registryCommands[i]);
+                        params.push("&&");
+                    }
+                }
                 if(Config.Program.length > 0 && !Config.loadDesktop){
                     if (Config.Program.endsWith('.bat')) {
                         params.push("cmd");

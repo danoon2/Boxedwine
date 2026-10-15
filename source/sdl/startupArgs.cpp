@@ -513,7 +513,7 @@ bool StartUpArgs::apply() {
 
 #ifdef __EMSCRIPTEN__
     envValues.push_back(B("WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1"));
-    envValues.push_back(B("WINEDLLOVERRIDES=ddraw,d3d9,d3d8,dxgi,wined3d,d3dxof,d3dx9_36,d3dx9_43=n,b"));
+    addWineDllOverrides(envValues, "ddraw,d3d9,d3d8,dxgi,wined3d,d3dxof,d3dx9_36,d3dx9_43=n,b");
     std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/windows/system32"), true);
     std::shared_ptr<FsNode> webglParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/webgl"), true);
     if (!webglParent) {
