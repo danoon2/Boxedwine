@@ -193,3 +193,19 @@ canvas.boxedwine-webgl-canvas {
     max-height: 250px;
     overflow-y: scroll;
 }
+/* Get File(s): path and Get button on one line, folder contents indented */
+#selectedItem {
+    box-sizing: border-box;
+    width: calc(100% - 4em);
+}
+#tree td > div {
+    padding-left: 1.5em;
+}
+#tree a, #tree span[id$="-data"] {
+    cursor: pointer;
+}
+#tree a {
+    display: inline-block;
+    width: 1em; /* + and - differ in width; keep the folder name still when toggling */
+    text-align: center;
+}

@@ -61,7 +61,7 @@ example:
 
 
 Other configuration options:
-AUTO_RUN - indicates if start button is shown or page auto-runs. default true. Host folder storage forces this off so the user can select a folder before startup.
+AUTO_RUN - indicates if start button is shown or page auto-runs. default true, or set ?auto=false. When off the Get File(s) button is shown too. Host folder storage forces this off so the user can select a folder before startup.
 ALLOW_PARAM_OVERRIDE_FROM_URL - indicates if url can be appended with params as above for dir, app, m & p.
 
 see var Module and configure as appropriate
@@ -72,7 +72,9 @@ To set Emscripten ENV variables (; separated) use:
 
 You can avoid using url params and hardcode the values.  Search for MANUAL:
 
-Drag and drop is supported. Set AUTO_RUN to false. Simply drag a directory into the page. A dialog will appear and list entries for all executable files found. This is very useful.
-Getting files into/out of the emulator is provided behind the SHOW_UPLOAD_DOWNLOAD flag.
-By default uploading/downloading occurs inside the directory mapped to d:
+Drag and drop is supported. Set AUTO_RUN to false. Simply drag a folder into the page: it is copied onto d: keeping its folders, then a dialog lists the executable files found so one can be started.
+A .zip dropped on its own is unzipped into a folder named after it, ie game.zip becomes d:/game (zips inside a dropped folder stay as files).
+To get files out of the emulator use the Get File(s) button (shown when AUTO_RUN is off). It lists the files on d:.
+Selecting a folder downloads it as <folder>.zip of everything in it (d.zip for the whole drive); dropping that zip back restores the folder.
+To work directly on a folder on your computer use host folder storage (?storage=hostfolder) instead.
 
