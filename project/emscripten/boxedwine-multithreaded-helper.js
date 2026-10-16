@@ -8,6 +8,10 @@ addToLibrary({
   // quotes around the pre-6.0 command through both preprocessing and emission.
   $bwCallHandlerCmd: {{{ JSON.stringify(typeof CMD_CALL_HANDLER != 'undefined' ? CMD_CALL_HANDLER : "'callHandler'") }}},
 
+  // Message ID of the 'start this pthread' command the main thread posts to a
+  // worker. The module broker recognises it to preload modules first.
+  $bwRunCmd: {{{ JSON.stringify(typeof CMD_RUN != 'undefined' ? CMD_RUN : "'run'") }}},
+
   // SDL2 WebAudio stores its state on Module.SDL2 in the browser main thread.
   // With PROXY_TO_PTHREAD, SDL audio can call plain EM_ASM_INT from the pthread;
   // if that happens, Module.SDL2 is missing and audio startup fails. Proxy only
