@@ -180,6 +180,55 @@ PreparedJitCodeInvalidation prepareJitCodeInvalidation(KMemory* memory, const st
     return PreparedJitCodeInvalidation(const_cast<std::vector<void*>*>(&jitEntries), commitNativeJitInvalidation, discardNativeJitInvalidation);
 }
 
+void claimJitBlockOps(DecodedOp* blockStart, U32 blockOpCount, U32 blockLen) {
+    if (blockStart->blockOpCount && (blockStart->blockOpCount != blockOpCount || blockStart->blockLen != blockLen)) {
+        // The block previously registered here may have covered more ops.
+        releaseJitBlockOps(blockStart);
+    }
+    blockStart->blockOpCount = blockOpCount;
+    blockStart->blockLen = blockLen;
+    // Blocks that start inside this one start later than it.
+    std::vector<DecodedOp*> laterStarts;
+    DecodedOp* op = blockStart;
+    for (U32 i = 0; i < blockOpCount && op && op->inst != Done; ++i) {
+        DecodedOp* owner = op->blockStart;
+        if (!owner || owner == blockStart || owner == op || !owner->blockOpCount ||
+                std::find(laterStarts.begin(), laterStarts.end(), owner) != laterStarts.end()) {
+            op->blockStart = blockStart;
+        }
+        if (op != blockStart && op->blockOpCount) {
+            laterStarts.push_back(op);
+        }
+        op = op->next;
+    }
+}
+
+void releaseJitBlockOps(DecodedOp* blockStart) {
+    U32 blockOpCount = blockStart->blockOpCount;
+    blockStart->blockOpCount = 0;
+    blockStart->blockLen = 0;
+    std::vector<DecodedOp*> laterStarts;
+    DecodedOp* op = blockStart;
+    for (U32 i = 0; i < blockOpCount && op && op->inst != Done; ++i) {
+        if (op->blockStart == blockStart) {
+            op->blockStart = nullptr;
+        }
+        if (op != blockStart && op->blockOpCount) {
+            laterStarts.push_back(op);
+        }
+        op = op->next;
+    }
+    // Only blocks starting inside this one also cover the ops it owned. Those
+    // with a live or pending entry take them over; the rest are released too.
+    for (DecodedOp* laterStart : laterStarts) {
+        if (laterStart->pfnJitCode || (laterStart->flags2 & OP_FLAG2_WASM_JIT_PENDING)) {
+            claimJitBlockOps(laterStart, laterStart->blockOpCount, laterStart->blockLen);
+        } else {
+            releaseJitBlockOps(laterStart);
+        }
+    }
+}
+
 void jitCodeInvalidated(KMemory* memory, const std::vector<DecodedOp*>& decodedOps, const std::vector<void*>& jitEntries) {
     PreparedJitCodeInvalidation prepared = prepareJitCodeInvalidation(memory, decodedOps, jitEntries);
     prepared.commit();

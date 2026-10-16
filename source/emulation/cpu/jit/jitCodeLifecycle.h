@@ -77,4 +77,16 @@ void jitMemoryInvalidated(KMemory* memory, const std::vector<void*>& jitEntries)
 void jitThreadStartPreparing(CPU* cpu);
 void jitThreadStartCancelled(CPU* cpu);
 
+// Wasm JIT blocks can overlap. Each decoded op's blockStart is the earliest-
+// starting block that covers it, so every block covering an op starts inside
+// its owner's chain, where code invalidation can find it.
+
+// Records blockStart as a block of blockOpCount ops and takes the ops it
+// covers that no earlier-starting block owns.
+void claimJitBlockOps(DecodedOp* blockStart, U32 blockOpCount, U32 blockLen);
+
+// Forgets blockStart's block and hands the ops it owned to the blocks that
+// start inside it and still have an entry. The others are forgotten too.
+void releaseJitBlockOps(DecodedOp* blockStart);
+
 #endif

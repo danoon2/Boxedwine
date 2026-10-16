@@ -4064,12 +4064,10 @@ static void disableWasmJitBlockAfterSlotMiss(DecodedOp* op) {
         cur->flags |= OP_FLAG_NO_JIT;
         cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
         cur->runCount = JIT_RUN_COUNT + 1;
-        cur->blockStart = nullptr;
-        cur->blockOpCount = 0;
-        cur->blockLen = 0;
         cur->pfn = NormalCPU::getFunctionForOp(cur);
         cur = cur->next;
     }
+    releaseJitBlockOps(blockOp);
 }
 #endif
 
@@ -4779,24 +4777,12 @@ static bool isNestedWasmJitEntry(const WasmJitPendingBlock& pending, DecodedOp* 
 }
 
 static void markPendingBlock(WasmJitPendingBlock& pending) {
-    pending.op->blockLen = pending.emulatedLen;
-    pending.op->blockOpCount = pending.blockOpCount;
+    claimJitBlockOps(pending.op, pending.blockOpCount, pending.emulatedLen);
     pending.op->runCount = JIT_RUN_COUNT;
-    DecodedOp* cur = pending.op;
-    for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
-        DecodedOp* owner = cur->blockStart;
-        if (!owner || owner->blockLen < pending.emulatedLen) {
-            owner = pending.op;
-        }
-        cur->blockStart = owner;
-        if (cur == pending.op) {
-            cur->pfnJitCode = nullptr;
-            cur->flags &= ~OP_FLAG_JIT;
-            cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
-            cur->flags2 |= OP_FLAG2_WASM_JIT_PENDING;
-        }
-        cur = cur->next;
-    }
+    pending.op->pfnJitCode = nullptr;
+    pending.op->flags &= ~OP_FLAG_JIT;
+    pending.op->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+    pending.op->flags2 |= OP_FLAG2_WASM_JIT_PENDING;
 }
 
 static void registerPendingWasmJitBlock(std::unique_ptr<WasmJitPendingBlock> pending) {
@@ -4818,19 +4804,12 @@ static void publishWasmJitBlock(WasmJitPendingBlock& pending, int tableIdx) {
         }
     }
 
-    pending.op->blockLen = pending.emulatedLen;
-    pending.op->blockOpCount = pending.blockOpCount;
+    claimJitBlockOps(pending.op, pending.blockOpCount, pending.emulatedLen);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileCompiledBlock(pending.blockOpCount);
 #endif
     DecodedOp* cur = pending.op;
     for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
-        DecodedOp* owner = cur->blockStart;
-        if (!owner || owner->blockLen < pending.emulatedLen) {
-            owner = pending.op;
-        }
-        cur->blockStart = owner;
-
         if (cur == pending.op) {
             cur->pfnJitCode = (void*)(uintptr_t)(U32)tableIdx;
             cur->flags |= OP_FLAG_JIT;
@@ -4860,14 +4839,11 @@ static void failPendingWasmJitBlock(WasmJitPendingBlock& pending) {
             cur->flags &= ~OP_FLAG_JIT;
             cur->flags2 &= ~(OP_FLAG2_WASM_JIT_PENDING | OP_FLAG2_WASM_JIT_MEM_ARRAYS);
             cur->runCount = JIT_RUN_COUNT + 1;
-            if (cur->blockStart == pending.op) {
-                cur->blockStart = nullptr;
-                cur->blockOpCount = 0;
-                cur->blockLen = 0;
-            }
         }
         cur = cur->next;
     }
+    // Nested entries stay live, so they take back the ops they share.
+    releaseJitBlockOps(pending.op);
 }
 
 static void erasePendingWasmJitBlock(U64 id) {
@@ -5352,25 +5328,13 @@ static bool isNestedMtWasmJitEntry(const WasmJitMtPendingBlock& pending, Decoded
 }
 
 static void markMtPendingBlock(WasmJitMtPendingBlock& pending) {
-    pending.op->blockLen = pending.emulatedLen;
-    pending.op->blockOpCount = pending.blockOpCount;
+    claimJitBlockOps(pending.op, pending.blockOpCount, pending.emulatedLen);
     pending.op->runCount = JIT_RUN_COUNT;
-    DecodedOp* cur = pending.op;
-    for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
-        DecodedOp* owner = cur->blockStart;
-        if (!owner || owner->blockLen < pending.emulatedLen) {
-            owner = pending.op;
-        }
-        cur->blockStart = owner;
-        if (cur == pending.op) {
-            wasmJitMtUnpublishCode(cur);
-            cur->pfn = firstDynamicOp;
-            cur->flags &= ~OP_FLAG_JIT;
-            cur->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
-            cur->flags2 |= OP_FLAG2_WASM_JIT_PENDING;
-        }
-        cur = cur->next;
-    }
+    wasmJitMtUnpublishCode(pending.op);
+    pending.op->pfn = firstDynamicOp;
+    pending.op->flags &= ~OP_FLAG_JIT;
+    pending.op->flags2 &= ~OP_FLAG2_WASM_JIT_MEM_ARRAYS;
+    pending.op->flags2 |= OP_FLAG2_WASM_JIT_PENDING;
 }
 
 static void failMtPendingBlock(WasmJitMtPendingBlock& pending) {
@@ -5382,14 +5346,11 @@ static void failMtPendingBlock(WasmJitMtPendingBlock& pending) {
             cur->flags &= ~OP_FLAG_JIT;
             cur->flags2 &= ~(OP_FLAG2_WASM_JIT_PENDING | OP_FLAG2_WASM_JIT_MEM_ARRAYS);
             cur->runCount = JIT_RUN_COUNT + 1;
-            if (cur->blockStart == pending.op) {
-                cur->blockStart = nullptr;
-                cur->blockOpCount = 0;
-                cur->blockLen = 0;
-            }
         }
         cur = cur->next;
     }
+    // Nested entries stay live, so they take back the ops they share.
+    releaseJitBlockOps(pending.op);
 }
 
 static void eraseMtPendingBlockLocked(WasmJitBatchEntryId id) {
@@ -5470,18 +5431,12 @@ static void wasmJitMtCancelPendingMemory(KMemory* memory) {
 }
 
 static void publishMtPendingBlock(WasmJitMtPendingBlock& pending, int tableIdx) {
-    pending.op->blockLen = pending.emulatedLen;
-    pending.op->blockOpCount = pending.blockOpCount;
+    claimJitBlockOps(pending.op, pending.blockOpCount, pending.emulatedLen);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileCompiledBlock(pending.blockOpCount);
 #endif
     DecodedOp* cur = pending.op;
     for (U32 i = 0; i < pending.blockOpCount && cur; ++i) {
-        DecodedOp* owner = cur->blockStart;
-        if (!owner || owner->blockLen < pending.emulatedLen) {
-            owner = pending.op;
-        }
-        cur->blockStart = owner;
         if (cur == pending.op) {
             cur->flags |= OP_FLAG_JIT;
             cur->flags2 &= ~OP_FLAG2_WASM_JIT_PENDING;
@@ -15186,19 +15141,12 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
     // interior ops keep normal dispatch and only record the owner block.
     // The owner's invalidation sweep frees any subblock table entries it
     // finds in the covered range. Only callable entries get OP_FLAG_JIT.
-    op->blockLen     = this->emulatedLen;
-    op->blockOpCount = this->blockOpCount;
+    claimJitBlockOps(op, this->blockOpCount, this->emulatedLen);
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
     wasmJitProfileCompiledBlock(this->blockOpCount);
 #endif
     DecodedOp* cur = op;
     for (U32 i = 0; i < this->blockOpCount && cur; i++) {
-        DecodedOp* owner = cur->blockStart;
-        if (!owner || owner->blockLen < this->emulatedLen) {
-            owner = op;
-        }
-        cur->blockStart = owner;
-
         if (cur == op) {
             cur->flags |= OP_FLAG_JIT;
             if (m_needsWasmMemoryPageArrays) {
