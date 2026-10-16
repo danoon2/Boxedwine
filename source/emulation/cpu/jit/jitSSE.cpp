@@ -20,16 +20,55 @@
 
 #ifdef BOXEDWINE_JIT
 #include "jitSSE.h"
+#include <cstdlib>
 
 static constexpr U32 MXCSR_INVALID_OPERATION_MASK = 1u << 7;
 static constexpr U32 MXCSR_DIVIDE_BY_ZERO_MASK = 1u << 9;
 static constexpr U32 MXCSR_DIV_EXCEPTION_MASKS = MXCSR_INVALID_OPERATION_MASK | MXCSR_DIVIDE_BY_ZERO_MASK;
 
 void JitSSE::guardSseDiv() {
+    if (reuseSseDivGuard()) return;
     RegPtr exceptionsUnmasked = readCPU(JitWidth::b32, offsetof(CPU, sseDivExceptionsUnmasked));
     If(JitWidth::b32, exceptionsUnmasked); {
-        emulateSingleOp();
+        emitSseDivSlowPath();
     } EndIf();
+    lastSseDivGuardEip = currentEip;
+    hasSseDivGuard = true;
+}
+
+bool JitSSE::reuseSseDivGuard() {
+#ifndef BOXEDWINE_WASM_JIT
+    // Wasm benefits from coalescing these checks. Native x64 measurements
+    // showed no gain; ARM already handles this in its scalar-region emitter.
+    return false;
+#endif
+    if (!hasSseDivGuard || std::getenv("BOXEDWINE_JIT_DIV_GUARDS_SLOW")) return false;
+    const size_t first = findBlockInstruction(lastSseDivGuardEip);
+    const size_t last = findBlockInstruction(currentEip);
+    if (first >= last || last >= blockInstructions.size() || last - first > 64) return false;
+    for (size_t i = first; i <= last; ++i) {
+        const auto& entry = blockInstructions[i];
+        auto* op = entry.op;
+        U32 location = 0;
+        if (op->lock || (i != first && (op->flags2 & OP_FLAG2_JUMP_TARGET)) ||
+            !eipToBufferPos.get(entry.eip, location) || location == SKIPPED_OP ||
+            (i != first && (blockInstructions[i - 1].op->next != op ||
+                blockInstructions[i - 1].eip + blockInstructions[i - 1].op->len != entry.eip))) return false;
+        // Register-only operations with no helper, fault, MXCSR write or guest
+        // control transfer. Memory forms deliberately retain their own guard.
+        switch (op->inst) {
+        case AddssXmm: case SubssXmm: case MulssXmm: case DivssXmm: case SqrtssXmm:
+        case AddpsXmm: case SubpsXmm: case MulpsXmm: case DivpsXmm: case SqrtpsXmm:
+        case AddsdXmmXmm: case SubsdXmmXmm: case MulsdXmmXmm: case DivsdXmmXmm: case SqrtsdXmmXmm:
+        case MovssXmmXmm: case MovsdXmmXmm:
+        case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+        case MovdqaXmmXmm: case MovdquXmmXmm: case Nop:
+            break;
+        default: return false;
+        }
+    }
+    for (size_t i = first + 1; i <= last; ++i) protectedInternalEntries.insert(blockInstructions[i].eip);
+    return true;
 }
 
 void JitSSE::updateSseDivExceptionState() {
@@ -1131,9 +1170,59 @@ void JitSSE::dynamic_FSIN(DecodedOp* op) {
 }
 
 // Note that this is only used when there are no segments involved
-void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
+void JitSSE::compareStringPrefix(U32 size, bool scan, bool backward, bool repZero,
+        RegPtr accumulator, RegPtr scratch, bool useHelper,
+        const std::function<void()>& helper, const std::function<void()>& onFailure) {
+    RegPtr esi = scan ? nullptr : getStringRegEsi();
+    RegPtr edi = getStringRegEdi(), ecx = getStringRegEcx();
+    SSERegPtr left = getTmpSSE(), right = getTmpSSE();
+    if (scan) {
+        movd(left, accumulator);
+        if (size == 1) punpcklbwXmmXmm(left, left);
+        if (size <= 2) punpcklwdXmmXmm(left, left);
+        pshufdXmmXmm(left, left, 0);
+    }
+    auto vectorFailure = [&]() {
+        // A wide read may cross a page even when an earlier element stops.
+        // The interpreter shares the RAM prefix, then performs exact accesses.
+        onFailure();
+    };
+    U32 label = LoopBegin();
+    IfGreaterThan(JitWidth::b32, ComparisonType::Unsigned, ecx, 16 / size); {
+        if (!scan) {
+            RegPtr address = esi;
+            if (backward) { address = getTmpReg(); subValueWithDest(JitWidth::b32, address, esi, 16 - size); }
+            read(JitWidth::b128, address, [&](MemPtr host) { loadXMMFromMem128(-1, host, left); }, vectorFailure);
+        }
+        {
+            RegPtr address = edi;
+            if (backward) { address = getTmpReg(); subValueWithDest(JitWidth::b32, address, edi, 16 - size); }
+            read(JitWidth::b128, address, [&](MemPtr host) { loadXMMFromMem128(-1, host, right); }, vectorFailure);
+        }
+        if (size == 1) pcmpeqbXmmXmm(right, left);
+        else if (size == 2) pcmpeqwXmmXmm(right, left);
+        else pcmpeqdXmmXmm(right, left);
+        // The scalar tail overwrites scratch before calculating exact flags.
+        pmovmskbR32Xmm(scratch, right);
+        IfEqual(JitWidth::b32, scratch, repZero ? 0xffff : 0); {
+            if (backward) {
+                subValue(JitWidth::b32, edi, 16);
+                if (!scan) subValue(JitWidth::b32, esi, 16);
+            } else {
+                addValue(JitWidth::b32, edi, 16);
+                if (!scan) addValue(JitWidth::b32, esi, 16);
+            }
+            subValue(JitWidth::b32, ecx, 16 / size);
+            if (useHelper) helper();
+            else Goto(label);
+        } EndIf();
+    } EndIf();
+    LoopEnd();
+}
+
+void JitSSE::movsrLoop(JitWidth valueWidth, U32 size, JitWidth regWidth) {
     bool stubFirstRun = currentOp->runCount == 0;
-#ifdef __TEST
+#if defined(__TEST) && !defined(BOXEDWINE_WASM_JIT)
     stubFirstRun = false;
 #endif
     if (stubFirstRun) {
@@ -1141,9 +1230,10 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         emulateSingleOp(); // since this was never run, just stub it out so that we save jit code cache since its a lot of code
         return;
     }
-#ifndef BOXEDWINE_64
-    // 32-bit build, even with sse, can't handle this pass because it will run out of tmp registers.  8 registers on x86 just isn't enough.
-    Jit::movsr(valueWidth, size, regWidth);
+#ifdef BOXEDWINE_JIT_X86
+    // Only legacy x86 lacks enough registers. Wasm has virtual registers even
+    // though its pointers are 32-bit, so it can use the vector loop below.
+    Jit::movsrLoop(valueWidth, size, regWidth);
 #else
     // A shared memcpy/memmove can see only tiny copies during JIT warmup and
     // large buffers later. Always retain the vector path; the scalar tail
@@ -1160,6 +1250,9 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
         forceSyncBackIfNotCached(edi);
         forceSyncBackIfNotCached(ecx);
         emulateSingleOp();
+        // The fallback completes the remaining REP. Do not rejoin the vector
+        // load/store or advance the string registers again.
+        blockExit();
     };
 
     SSERegPtr sseReg = getTmpSSE();
@@ -1199,27 +1292,32 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             RegPtr delta = getTmpReg();
             mov(regWidth, delta, esi);
             subReg(regWidth, delta, edi);
+            // Aliased guest mappings preserve page offsets. Conservatively
+            // detect overlap within a vector even when guest pages differ.
+            andValue(regWidth, delta, K_PAGE_MASK);
             IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
                 If(regWidth, delta); {
                     // Overlapping backward copies with EDI below ESI must observe each
                     // element's previous write before reading the next lower source.
-                    U32 label = MarkJumpLocation();
+                    U32 label = LoopBegin();
                     If(regWidth, ecx); {
                         copyOneBackward();
                         Goto(label);
                     } EndIf();
+                    LoopEnd();
                 } EndIf();
             } EndIf();
         }
 
         // Backward direction (DF=1)
-        U32 label1 = MarkJumpLocation();
+        U32 label1 = LoopBegin();
         IfTest(regWidth, ecx, mask); {
             copyOneBackward();
             Goto(label1);
         } EndIf();
+        LoopEnd();
 
-        U32 label = MarkJumpLocation();
+        U32 label = LoopBegin();
         If(regWidth, ecx); {
             RegPtr addr = getTmpReg();
 
@@ -1238,6 +1336,7 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             subValue(regWidth, ecx, bytesPerIter / size);
             Goto(label);
         } EndIf();
+        LoopEnd();
     }
     if (doDF1 && doDF0) {
         StartElse();
@@ -1247,27 +1346,31 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             RegPtr delta = getTmpReg();
             mov(regWidth, delta, edi);
             subReg(regWidth, delta, esi);
+            // Use page offsets here too: distinct guest pages can alias RAM.
+            andValue(regWidth, delta, K_PAGE_MASK);
             IfLessThan(regWidth, ComparisonType::Unsigned, delta, bytesPerIter); {
                 If(regWidth, delta); {
                     // Overlapping forward copies with EDI above ESI must read source
                     // elements after earlier writes have happened.
-                    U32 label = MarkJumpLocation();
+                    U32 label = LoopBegin();
                     If(regWidth, ecx); {
                         copyOneForward();
                         Goto(label);
                     } EndIf();
+                    LoopEnd();
                 } EndIf();
             } EndIf();
         }
 
         // Forward direction (DF=0)
-        U32 label1 = MarkJumpLocation();
+        U32 label1 = LoopBegin();
         IfTest(regWidth, ecx, mask); {
             copyOneForward();
             Goto(label1);
         } EndIf();
+        LoopEnd();
 
-        U32 label = MarkJumpLocation();
+        U32 label = LoopBegin();
         If(regWidth, ecx); {
             read(JitWidth::b128, esi, [sseReg, this](MemPtr address) {
                 loadXMMFromMem128(-1, address, sseReg);
@@ -1282,6 +1385,7 @@ void JitSSE::movsr(JitWidth valueWidth, U32 size, JitWidth regWidth) {
             subValue(regWidth, ecx, bytesPerIter / size);
             Goto(label);
         } EndIf();
+        LoopEnd();
     } 
     if (doDF1 && doDF0) {
         EndIf();

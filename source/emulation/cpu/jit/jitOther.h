@@ -127,7 +127,7 @@ void Jit::dynamic_retn16(DecodedOp* op) {
 void Jit::dynamic_retn32(DecodedOp* op) {
     RegPtr eip = getTmpReg();
     pop32(eip);
-    jumpEip(eip);
+    jumpIndirectEip(eip, op);
 }
 void Jit::dynamic_invalid(DecodedOp* op) {
     emulateSingleOp();
@@ -466,7 +466,7 @@ void Jit::dynamic_callR32(DecodedOp* op) {
         push32(eip);
         mov(JitWidth::b32, eip, getReadOnlyReg(op->reg));
     }
-    jumpEip(eip);
+    jumpIndirectEip(eip, op);
 }
 void Jit::dynamic_callE16(DecodedOp* op) {
     RegPtr newEip = read(JitWidth::b16, calculateEaa(op)); // read before push, in case esp is used
@@ -485,7 +485,7 @@ void Jit::dynamic_callE32(DecodedOp* op) {
     movValue(JitWidth::b32, eip, this->currentEip + op->len - this->cpu->seg[CS].address);
     push32(eip);
     eip = nullptr;
-    jumpEip(newEip);
+    jumpIndirectEip(newEip, op);
 }
 void Jit::dynamic_jmpR16(DecodedOp* op) {
     RegPtr eip = getTmpReg();

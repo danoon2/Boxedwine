@@ -5,6 +5,9 @@
 tools/jenkins/*.py text eol=lf
 tools/jenkins/*.sh text eol=lf
 tools/d3dToWebGL/*.patch text eol=lf
+tools/buildWine/patches/wine11_wined3d_fog_uniform_cache.patch text eol=lf
+tools/buildWine/patches/wine11_wined3d_projection_constant_cache.patch text eol=lf
+tools/buildWine/patches/wine11_wined3d_direct_map_dispatch.patch text eol=lf
 tools/wineTests/webgl-test-divergences-*.json text eol=lf
 tools/wineTests/graphics-baseline-v*-candidate.json text eol=lf
 tools/opengl/*.sh text eol=lf

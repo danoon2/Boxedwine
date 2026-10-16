@@ -20,7 +20,9 @@
     <Content Include="..\..\mac-xcode\Boxedwine\BoxedwineUI\Resources\WindowsSupport\*" Link="Resources\WindowsSupport\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\mac-xcode\Boxedwine\BoxedwineUI\Resources\AppIcons\*" Link="Resources\AppIcons\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\resources\demo-catalog.lock.json" Link="Resources\demo-catalog.lock.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\Catalog\**\*" Link="Resources\Demos\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Catalog ZIPs use fixed timestamps, so a new release can have the same
+         timestamps as the catalog already in an incremental build's output. -->
+    <Content Include="Assets\Catalog\**\*" Link="Resources\Demos\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" />
     <Content Include="..\..\..\license.txt" Link="Resources\license.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

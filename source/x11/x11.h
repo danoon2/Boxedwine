@@ -881,6 +881,9 @@ class XrrData;
 #define InputFocus           1L	/* destination window in SendEvent */
 
 #define PointerRoot          1L	/* focus window in SetInputFocus */
+#define RevertToNone         0
+#define RevertToPointerRoot  1
+#define RevertToParent       2
 
 #define XYBitmap		0	/* depth 1, XYFormat */
 #define XYPixmap		1	/* depth == drawable depth */

@@ -22,6 +22,9 @@
 
 #include "../cpu/testCPU.h"
 
+#include <chrono>
+#include <future>
+
 void testUnixSocketPollOutClearsPeerCondition() {
     std::shared_ptr<KUnixSocketObject> first = std::make_shared<KUnixSocketObject>(K_AF_UNIX, K_SOCK_STREAM, 0);
     std::shared_ptr<KUnixSocketObject> second = std::make_shared<KUnixSocketObject>(K_AF_UNIX, K_SOCK_STREAM, 0);
@@ -411,7 +414,224 @@ static bool createNativeTcpTestPair(TestContext& context, U32& client, U32& serv
     }
     return true;
 }
+
+static void checkNativeSocketConnectCompletion(bool listening, bool readErrorFirst) {
+    TestContext& context = testContext();
+    KThread* thread = context.thread;
+    KMemory* memory = context.memory;
+    constexpr U32 ADDRESS = TEST_HEAP_ADDRESS + 0xa40;
+    constexpr U32 LENGTH = TEST_HEAP_ADDRESS + 0xa60;
+    constexpr U32 VALUE = TEST_HEAP_ADDRESS + 0xa80;
+    U32 server = ksocket(K_AF_INET, K_SOCK_STREAM, K_IPPROTO_TCP);
+    U32 client = ksocket(K_AF_INET, K_SOCK_STREAM, K_IPPROTO_TCP);
+
+    if ((S32)server < 0 || (S32)client < 0) {
+        testFail("native connect test socket creation failed");
+    } else {
+        memory->memset(ADDRESS, 0, 16);
+        memory->writew(ADDRESS, K_AF_INET);
+        memory->writeb(ADDRESS + 4, 127);
+        memory->writeb(ADDRESS + 7, 1);
+        memory->writed(LENGTH, 16);
+        // Reserve the destination port until the connection has been started.
+        if (kbind(thread, server, ADDRESS, 16) != 0 ||
+                kgetsockname(thread, server, ADDRESS, LENGTH) != 0 ||
+                (listening && klisten(thread, server, 1) != 0)) {
+            testFail("native connect test endpoint setup failed");
+        } else {
+            context.process->getFileDescriptor(client)->kobject->setBlocking(false);
+            S32 result = (S32)kconnect(thread, client, ADDRESS, 16);
+            if (!listening) {
+                // macOS leaves a connection to a bound, non-listening socket
+                // pending. Close the endpoint to trigger refusal there too.
+                context.process->close(server);
+                server = (U32)-1;
+            }
+            if (result != -K_EINPROGRESS && result != (listening ? 0 : -K_ECONNREFUSED)) {
+                testFail("native nonblocking connect returned %d", result);
+            } else if (result == -K_ECONNREFUSED) {
+                // Some hosts can reject the connection synchronously; no async
+                // completion is owed when connect itself reports the failure.
+            } else {
+                U32 expectedError = listening ? 0 : K_ECONNREFUSED;
+                KPollData pollData = {};
+                pollData.fd = client;
+                pollData.events = K_POLLOUT;
+                U32 socketError = 0;
+                for (U32 i = 0; i < 5000; ++i) {
+                    if (readErrorFirst) {
+                        memory->writed(LENGTH, 4);
+                        if (kgetsockopt(thread, client, K_SOL_SOCKET, K_SO_ERROR, VALUE, LENGTH) != 0) {
+                            testFail("native connect SO_ERROR query failed");
+                            break;
+                        }
+                        socketError = memory->readd(VALUE);
+                        if (socketError) {
+                            break;
+                        }
+                    } else {
+                        result = internal_poll(thread, &pollData, 1, 0);
+                        if (result != 0) {
+                            break;
+                        }
+                    }
+                    Platform::nanoSleep(1000000);
+                }
+                if (!readErrorFirst) {
+                    U32 requiredEvents = listening ? K_POLLOUT : K_POLLERR | K_POLLHUP | K_POLLOUT;
+                    if (result != 1 || (pollData.revents & requiredEvents) != requiredEvents ||
+                            (listening && (pollData.revents & (K_POLLERR | K_POLLHUP | K_POLLPRI)))) {
+                        testFail("native connect poll (listening=%d) returned %d, events=0x%X",
+                            listening, result, pollData.revents);
+                    }
+                    // Readiness checks and unrelated options must not consume a pending error.
+                    auto socket = context.process->getFileDescriptor(client)->kobject;
+                    if (!listening && socket->getPollEvents(0) != (K_POLLERR | K_POLLHUP)) {
+                        testFail("native connect error was not reported without requested events");
+                    }
+                    socket->getPollEvents(K_POLLIN | K_POLLOUT | K_POLLPRI);
+                    socket->isPriorityReadReady();
+                    memory->writed(LENGTH, 4);
+                    kgetsockopt(thread, client, K_SOL_SOCKET, K_SO_TYPE, VALUE, LENGTH);
+                    memory->writed(LENGTH, 4);
+                    if (kgetsockopt(thread, client, K_SOL_SOCKET, K_SO_ERROR, VALUE, LENGTH) != 0) {
+                        testFail("native connect SO_ERROR query failed");
+                    }
+                    socketError = memory->readd(VALUE);
+                }
+                if (socketError != expectedError) {
+                    testFail("native connect SO_ERROR expected %u, got %u (query first=%d)",
+                        expectedError, socketError, readErrorFirst);
+                }
+                memory->writed(LENGTH, 4);
+                if (kgetsockopt(thread, client, K_SOL_SOCKET, K_SO_ERROR, VALUE, LENGTH) != 0 || memory->readd(VALUE)) {
+                    testFail("native connect SO_ERROR was not cleared after being read");
+                }
+                if (context.process->getFileDescriptor(client)->kobject->getPollEvents(K_POLLOUT) & K_POLLERR) {
+                    testFail("native connect poll retained a consumed error");
+                }
+            }
+        }
+    }
+    if ((S32)client >= 0) context.process->close(client);
+    if ((S32)server >= 0) context.process->close(server);
+}
 #endif
+
+void testNativeSocketConnectCompletion() {
+#ifndef __EMSCRIPTEN__
+    checkNativeSocketConnectCompletion(false, false);
+    checkNativeSocketConnectCompletion(false, true);
+    checkNativeSocketConnectCompletion(true, false);
+#endif
+}
+
+void testNativeSocketBlockingConnectDoesNotBlockPoll() {
+#if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
+    TestContext& context = testContext();
+    constexpr U32 ADDRESS = TEST_HEAP_ADDRESS + 0xa40;
+    constexpr U32 LENGTH = TEST_HEAP_ADDRESS + 0xa60;
+    constexpr U32 VALUE = TEST_HEAP_ADDRESS + 0xa80;
+    U32 server = ksocket(K_AF_INET, K_SOCK_STREAM, K_IPPROTO_TCP);
+    U32 client = ksocket(K_AF_INET, K_SOCK_STREAM, K_IPPROTO_TCP);
+    auto cleanup = [&]() {
+        if ((S32)client >= 0) context.process->close(client);
+        if ((S32)server >= 0) context.process->close(server);
+    };
+    if ((S32)server < 0 || (S32)client < 0) {
+        testFail("blocking connect test socket creation failed");
+        cleanup();
+        return;
+    }
+    context.memory->memset(ADDRESS, 0, 16);
+    context.memory->writew(ADDRESS, K_AF_INET);
+    context.memory->writeb(ADDRESS + 4, 127);
+    context.memory->writeb(ADDRESS + 7, 1);
+    context.memory->writed(LENGTH, 16);
+    if (kbind(context.thread, server, ADDRESS, 16) != 0 ||
+            kgetsockname(context.thread, server, ADDRESS, LENGTH) != 0 ||
+            klisten(context.thread, server, 1) != 0) {
+        testFail("blocking connect test endpoint setup failed");
+        cleanup();
+        return;
+    }
+
+    auto socket = std::dynamic_pointer_cast<KNativeSocketObject>(context.process->getFileDescriptor(client)->kobject);
+    KThread* connector = context.process->createThread();
+    KThread* poller = context.process->createThread();
+    std::promise<void> entered, release, polled;
+    auto enteredFuture = entered.get_future();
+    auto releaseFuture = release.get_future();
+    auto polledFuture = polled.get_future();
+    // Hold the native-call boundary open until poll returns, avoiding reliance
+    // on host-specific TCP retry delays or unreachable external addresses.
+    socket->testBeforeNativeConnect = [&]() {
+        entered.set_value();
+        releaseFuture.wait();
+    };
+    S32 connectResult = 0;
+    std::thread connectWorker([&]() {
+        KThread::setCurrentThread(connector);
+        connectResult = (S32)kconnect(connector, client, ADDRESS, 16);
+        KThread::setCurrentThread(nullptr);
+    });
+    bool enteredConnect = enteredFuture.wait_for(std::chrono::seconds(5)) == std::future_status::ready;
+    bool polledDuringConnect = false;
+    S32 pollResult = -1;
+    S32 errorResult = -1;
+    S32 secondConnectResult = 0;
+    U32 socketError = 0;
+    bool openDuringConnect = false;
+    KPollData pollData = {};
+    pollData.fd = client;
+    pollData.events = K_POLLIN | K_POLLOUT | K_POLLPRI;
+    std::thread pollWorker;
+    if (enteredConnect) {
+        pollWorker = std::thread([&]() {
+            KThread::setCurrentThread(poller);
+            pollResult = internal_poll(poller, &pollData, 1, 0);
+            openDuringConnect = socket->isOpen();
+            context.memory->writed(LENGTH, 4);
+            errorResult = (S32)kgetsockopt(poller, client, K_SOL_SOCKET, K_SO_ERROR, VALUE, LENGTH);
+            socketError = context.memory->readd(VALUE);
+            secondConnectResult = (S32)kconnect(poller, client, ADDRESS, 16);
+            polled.set_value();
+            KThread::setCurrentThread(nullptr);
+        });
+        polledDuringConnect = polledFuture.wait_for(std::chrono::seconds(5)) == std::future_status::ready;
+    }
+    // Always release the connector before joining or touching descriptors: a
+    // regressed poll can hold the process descriptor mutex while it waits.
+    release.set_value();
+    connectWorker.join();
+    if (pollWorker.joinable()) pollWorker.join();
+    socket->testBeforeNativeConnect = nullptr;
+    context.process->deleteThread(connector);
+    context.process->deleteThread(poller);
+
+    if (!enteredConnect || !polledDuringConnect) {
+        testFail("zero-timeout poll or socket query waited for blocking connect to finish");
+    } else {
+        if (pollResult != 0 || pollData.revents != 0 || !openDuringConnect) {
+            testFail("pending blocking connect poll returned %d, events=0x%X, open=%d",
+                pollResult, pollData.revents, openDuringConnect);
+        }
+        if (errorResult != 0 || socketError != 0 || secondConnectResult != -K_EALREADY) {
+            testFail("pending blocking connect SO_ERROR result=%d error=%u, second connect=%d",
+                errorResult, socketError, secondConnectResult);
+        }
+    }
+    if (connectResult != 0) {
+        testFail("blocking loopback connect returned %d", connectResult);
+    }
+    pollData.events = K_POLLOUT;
+    pollResult = internal_poll(context.thread, &pollData, 1, 0);
+    if (pollResult != 1 || pollData.revents != K_POLLOUT) {
+        testFail("completed blocking connect poll returned %d, events=0x%X", pollResult, pollData.revents);
+    }
+    cleanup();
+#endif
+}
 
 void testNativeSocketRecvmsgReceivesOobData() {
 #if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)

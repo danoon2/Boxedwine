@@ -22,6 +22,11 @@
 #if defined(BOXEDWINE_JIT_ARMV8)
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
 void ensureArmV8HardwareTSOForThread();
+bool armJitHasFlagM();
+bool armJitHasFlagM2();
+#ifdef __TEST
+U32 armJitLargePollFallbackCount();
+#endif
 #endif
 
 #endif

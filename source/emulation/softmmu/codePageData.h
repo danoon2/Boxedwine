@@ -22,7 +22,12 @@
 #define MAX_DYNAMIC_COUNT 0xff
 
 #include "soft_ram.h"
+#ifdef BOXEDWINE_JIT_ARMV8
+#include "../cpu/decoder.h"
+#endif
 #include <map>
+#include <unordered_map>
+#include <memory>
 
 class KMemory;
 class CPU;
@@ -38,8 +43,10 @@ public:
 	~DecodedOpPageCache();
 	
 	DecodedOp* ops[K_PAGE_SIZE];
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     void** jitEntries = nullptr;
+    bool ownsJitEntries = true;
+    U16 jitEntryXorMask = 0;
 #endif
 };
 
@@ -49,9 +56,21 @@ class DecodedOpCache {
 public:
 	DecodedOpCache();
 	~DecodedOpCache();
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     void**** getJitPageGroups() const { return jitPageGroups; }
     void** getJitEntryLocation(U32 address);
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    void** getDirectJitEntryLocation(U32 address);
+    void** getFlatJitEntries() const { return flatJitEntries; }
+    bool hasFlatJitHash() const { return flatJitHash; }
+    bool hasFlatJitPageHash() const { return flatJitPageHash; }
+    U32 getFlatJitHashShift() const { return flatJitHashShift; }
+    U32 getFlatJitEntryIndex(U32 address) const {
+        if (!flatJitHash) return address;
+        return address ^ (address >> flatJitHashShift) ^
+            (flatJitPageHash ? (address & 0xffff0000u) >> 4 : 0);
+    }
 #endif
 
 	DecodedOp* get(U32 address) {
@@ -87,13 +106,30 @@ private:
 	friend class CPU;
 	void removeAll();
 	void removeStartAt(U32 address, U32 len, bool becauseOfWrite);
+	void removePageRange(U32 address, U32 len, bool becauseOfWrite);
 	DecodedOp* getPreviousOp(U32 address, U32* foundAddress, DecodedOpPageCache** foundPage);
 	DecodedOpPageCache* getPageCache(U32 pageIndex, bool create);
 	DecodedOpPageCache** pageData[0x400];
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     // 10 group bits, 10 page bits, then a 12-bit instruction-byte offset.
     void**** jitPageGroups = nullptr;
     void** emptyJitPageGroup[0x400] = {};
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    void** flatJitEntries = nullptr;
+    bool flatJitHash = false;
+    bool flatJitPageHash = false;
+    U32 flatJitHashShift = K_PAGE_SHIFT;
+    // Pointer chunks remain stable as the index grows. Keep cells until all
+    // compiled code and decoded instructions are retired by removeAll().
+    struct DirectJitEntry {
+        DecodedOpJitEntries binding;
+        void* scatteredCode = nullptr;
+    };
+    std::unordered_map<U32, DirectJitEntry> directJitEntries;
+    static constexpr U32 DIRECT_ENTRY_CHUNK_SIZE = 512;
+    std::vector<std::unique_ptr<void*[]>> directJitEntryChunks;
+    U32 directJitEntryCount = 0;
 #endif
 	DecodedOpPageCache* emptyPageCacheLevel1[0x400];
 	U8* getWriteCounts(U32 pageIndex, bool create);

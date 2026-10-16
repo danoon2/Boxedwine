@@ -1,0 +1,17 @@
+diff --git a/dlls/d3d11/device.c b/dlls/d3d11/device.c
+index 60ce120c254..841feeafeef 100644
+--- a/dlls/d3d11/device.c
++++ b/dlls/d3d11/device.c
+@@ -4693,6 +4693,12 @@ static HRESULT STDMETHODCALLTYPE d3d11_device_CheckFormatSupport(ID3D11Device5 *
+         }
+     }
+ 
++    /* Staging resources are CPU mappable independently of GPU bind flags.
++     * 3DMark Vantage checks this flag before creating its float textures. */
++    if (*format_support & (D3D11_FORMAT_SUPPORT_BUFFER | D3D11_FORMAT_SUPPORT_TEXTURE1D
++            | D3D11_FORMAT_SUPPORT_TEXTURE2D | D3D11_FORMAT_SUPPORT_TEXTURE3D))
++        *format_support |= D3D11_FORMAT_SUPPORT_CPU_LOCKABLE;
++
+     /* d3d11 requires 4 and 8 sample counts support for formats reported to
+      * support multisample. */
+     if (wined3d_check_device_multisample_type(wined3d_adapter, params.device_type, wined3d_format,

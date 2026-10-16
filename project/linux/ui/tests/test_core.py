@@ -21,7 +21,7 @@ from boxedwine.library import Library, DRIVE_C, new_app
 from boxedwine.packages import Resources, WineChecks, import_wine, validate_wine, download, trusted_url
 from boxedwine.runtime import (Session, WindowMarker, build_arguments, configuration_script, read_configuration,
                               run_configuration, validate_overrides, apply_configuration, WINE_TOOLS, refresh_configuration, read_graphics_settings)
-from boxedwine.demos import load_catalog, configure_cnc
+from boxedwine.demos import load_catalog, configure_cnc, install as install_demo
 from boxedwine.icons import Reader
 
 
@@ -320,6 +320,37 @@ class CoreTests(unittest.TestCase):
         self.assertFalse(unused.exists()); self.assertTrue(self.library.package_path(self.wine).exists())
 
 
+    def test_demo_dll_overrides_survive_install_and_launch(self):
+        overrides = 'cpuz136_x32.sys,cpuz136_x64.sys,GPUZ.sys='
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, 'w') as archive:
+            archive.writestr('game.exe', b'MZ game')
+        data = payload.getvalue()
+        xml = ('<XML schemaVersion="8" release="test"><Demo><ID>scanner</ID><Name>Scanner</Name><FileSHA256>' +
+               'a' * 64 + '</FileSHA256><ShortcutExe>game.exe</ShortcutExe><FileURL>https://boxedwine.org/game.zip</FileURL>' +
+               f'<FileSizeBytes>{len(data)}</FileSizeBytes><InstallType>Zip</InstallType><WineVersion>11.0</WineVersion>' +
+               f'<WineDllOverrides>{overrides}</WineDllOverrides></Demo></XML>')
+        recipe = load_catalog(xml.encode())[0]
+        def fetch(url, size, checksum, target, work):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        with patch('boxedwine.demos.download', side_effect=fetch):
+            installed = install_demo(self.library, recipe, self.wine, Work())
+        saved = self.library.load()['apps'][0]
+        self.assertEqual(saved['id'], installed['id'])
+        self.assertEqual(saved['boxedwineArguments'], ['-env', 'WINEDLLOVERRIDES=' + overrides])
+        args = build_arguments(self.library, saved, self.library.wine_path(saved))
+        self.assertIn('WINEDLLOVERRIDES=' + overrides, args)
+        self.assertEqual(args[args.index('WINEDLLOVERRIDES=' + overrides) - 1], '-env')
+        saved['boxedwineArguments'] = []
+        self.assertNotIn('WINEDLLOVERRIDES=' + overrides, build_arguments(self.library, saved, self.library.wine_path(saved)))
+        for invalid in [xml.replace('schemaVersion="8"', 'schemaVersion="7"'), xml.replace(overrides, ''),
+                        xml.replace(overrides, 'GPUZ.sys=&#10;foo=b'), xml.replace(overrides, 'x' * 1025),
+                        xml.replace('</Demo>', '<WineDllOverrides>GPUZ.sys=</WineDllOverrides></Demo>')]:
+            with self.assertRaises(ValueError):
+                load_catalog(invalid.encode())
+
+
 class ParsingTests(unittest.TestCase):
     def test_win16_icon_resources_and_mask_height(self):
         dib = struct.pack('<IiiHHIIiiII', 40, 1, 2, 1, 32, 0, 4, 0, 0, 0, 0) + b'\x00\x00\xff\xff' + b'\x00' * 4
@@ -367,6 +398,7 @@ class ParsingTests(unittest.TestCase):
             load_catalog(xml.replace(b'<Name>Sample</Name>', b'<Name>Sample</Name><Name>Duplicate</Name>'))
         with self.assertRaises(ValueError):
             load_catalog(b'<!DOCTYPE XML><XML/>')
+
 
 
 if __name__ == '__main__':

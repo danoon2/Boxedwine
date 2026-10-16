@@ -1,0 +1,34 @@
+Subject: [Wine 11.0] Preserve color semantic indices in shader disassembly.
+
+Base: Wine 11.0, db11d0fe6a169c457e23d007e20404643d067aa8
+
+3DMark06 Perlin Noise compiles, disassembles, and reassembles its shaders.
+The Wine/vkd3d disassembler turns dcl_color1 into dcl_specular0, which is not
+valid shader assembly. Wine's assembler rejects it with D3DXERR_INVALIDDATA.
+Keep the COLOR usage and its original index, including indices above one.
+This is a local fix, not an upstream backport.
+
+Regression: tools/buildWine/probes/shader-color-roundtrip.c covers every
+color index from 0 through 15 for VS 2 input, VS 3 input/output, and PS 3
+input declarations. It requires byte-for-byte identical assembled bytecode
+after disassembly/reassembly. The v18 Wine filesystem fails 60/64 cases.
+Repeat the 3DMark06 Perlin Noise feature test after rebuilding Wine.
+
+--- a/libs/vkd3d/libs/vkd3d-shader/d3d_asm.c
++++ b/libs/vkd3d/libs/vkd3d-shader/d3d_asm.c
+@@ -516,14 +516,8 @@
+             usage = "psize";
+             break;
+         case VKD3D_DECL_USAGE_COLOR:
+-            if (semantic->usage_idx)
+-            {
+-                usage = "specular";
+-                indexed = true;
+-                --usage_idx;
+-                break;
+-            }
+             usage = "color";
++            indexed = true;
+             break;
+         case VKD3D_DECL_USAGE_TEXCOORD:
+             usage = "texcoord";

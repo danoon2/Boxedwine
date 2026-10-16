@@ -1,6 +1,12 @@
-v14 Oct 04, 2026 This is the web version of the full Wine 11.0 file system, including the SimTower popup cursor-release fix.
+v19 Oct 15, 2026 Preserve shader color declaration indices in the shared Wine compiler used by regular Wine and the WebGL D3DX overrides. The separate WebGL PE DLLs are unchanged from v18.
 
-Removed for the web version, compared with the full v14 file system:
+v18 Oct 13, 2026 Include the Vantage capability, fullscreen activation, GetDIBits header and heap synchronization fixes; rebuild the separate WebGL DXGI and WineD3D DLLs. Stream-output overflow queries still require host OpenGL support.
+
+v17 Oct 12, 2026 Fix 3DMark06 shaders in regular Wine and WebGL DLLs: static HLSL functions, constant disassembly/reassembly, loop unrolling, legacy power folding and cube-map LOD compilation.
+
+v16 Oct 12, 2026 Web version of the full Wine 11.0 filesystem, including the COM surrogate lifetime fix.
+
+Removed for the web version, compared with the full v16 file system (v14 measurements; retained components and removals unchanged):
 
 Removed component                                      Saved (MiB)
 -----------------------------------------------------  -----------

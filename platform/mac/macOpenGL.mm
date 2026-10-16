@@ -15,12 +15,14 @@
 #import <Cocoa/Cocoa.h>
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl.h>
+#include <OpenGL/glext.h>
 #include <SDL.h>
 #include <SDL_syswm.h>
 #include <atomic>
 #include <cstdio>
 #include "platformtypes.h"
 #include "macOpenGL.h"
+#include "macOpenGLFramebuffer.h"
 #import <objc/runtime.h>
 
 @interface BoxedwineGLPresentationView : NSView

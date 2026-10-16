@@ -979,7 +979,9 @@ void Jit::dynamic_dimulcr32e32(DecodedOp* op) {
         imulRRI(JitWidth::b32, getReg(op->reg), read(JitWidth::b32, calculateEaa(op)), op->imm);
     } else {
         RegPtr overflow = getTmpRegWithHint(2);
-        imulRRI(JitWidth::b32, getReg(op->reg, 0, false), read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg()), op->imm, overflow); // getTmpReg call so that x86 eax will be available as tmp
+        RegPtr src = read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg()); // keep x86 EAX available as a temporary
+        storeLazyFlagType(FLAGS_NONE); // publish only after the potentially faulting read
+        imulRRI(JitWidth::b32, getReg(op->reg, 0, false), src, op->imm, overflow);
 
         setImulOverflowFlags(JitWidth::b32, getReg(op->reg), overflow, 0x80000000, 0xffffffff);
     }
@@ -1027,6 +1029,7 @@ void Jit::dynamic_dimulr32r32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
         imulRR(JitWidth::b32, getReg(op->reg), getReadOnlyReg(op->rm));
     } else {
+        storeLazyFlagType(FLAGS_NONE);
         RegPtr overflow = getTmpRegWithHint(2);
         imulRR(JitWidth::b32, getReg(op->reg, 0), getReadOnlyReg(op->rm), overflow);
 
@@ -1039,7 +1042,9 @@ void Jit::dynamic_dimulr32e32(DecodedOp* op) {
         imulRR(JitWidth::b32, getReg(op->reg), read(JitWidth::b32, calculateEaa(op)));
     } else {
         RegPtr overflow = getTmpRegWithHint(2);
-        imulRR(JitWidth::b32, getReg(op->reg, 0), read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg()), overflow);
+        RegPtr src = read(JitWidth::b32, calculateEaa(op), nullptr, nullptr, getTmpReg());
+        storeLazyFlagType(FLAGS_NONE); // a failed source read must retain the incoming flags
+        imulRR(JitWidth::b32, getReg(op->reg, 0), src, overflow);
 
         setImulOverflowFlags(JitWidth::b32, getReg(op->reg), overflow, 0x80000000, 0xffffffff);
     }

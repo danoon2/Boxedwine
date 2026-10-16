@@ -213,6 +213,63 @@ class DownloadAndArchiveTests(unittest.TestCase):
             self.assertFalse(destination.exists())
             self.assertFalse(destination.with_suffix(destination.suffix + ".part").exists())
 
+    def test_latest_filesystem_refreshes_and_preserves_each_run_archive(self) -> None:
+        def filesystem_bytes(revision):
+            data = io.BytesIO()
+            with zipfile.ZipFile(data, "w") as archive:
+                archive.writestr("version.txt", str(revision))
+                archive.writestr("wineVersion.txt", "11.0")
+            return data.getvalue()
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            opener = mock.Mock(side_effect=[FakeResponse(filesystem_bytes(15)),
+                                            FakeResponse(filesystem_bytes(16))])
+            first, first_identity = self.runner.prepare_filesystem(
+                self.runner.FILESYSTEM_URL, cache, opener=opener
+            )
+            second, second_identity = self.runner.prepare_filesystem(
+                self.runner.FILESYSTEM_URL, cache, opener=opener
+            )
+            self.assertNotEqual(first, second)
+            self.assertEqual(first_identity["revision"], "15")
+            self.assertEqual(second_identity["revision"], "16")
+            self.assertEqual(second_identity["wine_version"], "11.0")
+            with zipfile.ZipFile(first) as archive:
+                self.assertEqual(archive.read("version.txt"), b"15")
+            self.assertEqual(opener.call_count, 2)
+            for call in opener.call_args_list:
+                self.assertEqual(call.args[0].full_url, self.runner.FILESYSTEM_URL)
+                self.assertEqual(call.args[0].get_header("Cache-control"), "no-cache")
+
+            # An offline run must fail instead of silently testing the last revision.
+            with self.assertRaisesRegex(self.runner.RunnerError, "network down"):
+                self.runner.prepare_filesystem(
+                    self.runner.FILESYSTEM_URL, cache,
+                    opener=mock.Mock(side_effect=OSError("network down")),
+                )
+            self.assertTrue(first.is_file())
+            self.assertTrue(second.is_file())
+
+    def test_filesystem_overrides_have_independent_caches(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            sources = [base / "first.zip", base / "second.zip"]
+            for revision, source in enumerate(sources, start=14):
+                with zipfile.ZipFile(source, "w") as archive:
+                    archive.writestr("version.txt", str(revision))
+            first, first_identity = self.runner.prepare_filesystem(sources[0].as_uri(), base / "cache")
+            second, second_identity = self.runner.prepare_filesystem(sources[1].as_uri(), base / "cache")
+            self.assertNotEqual(first, second)
+            self.assertEqual(first_identity["revision"], "14")
+            self.assertEqual(second_identity["revision"], "15")
+            cached, identity = self.runner.prepare_filesystem(
+                sources[0].as_uri(), base / "cache",
+                opener=mock.Mock(side_effect=AssertionError("pinned URL should be cached")),
+            )
+            self.assertEqual(cached, first)
+            self.assertEqual(identity, first_identity)
+
     def test_valid_pe32_i386_archive_is_accepted(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             archive = Path(directory) / "tests.zip"
@@ -321,7 +378,7 @@ class BuildAndCommandTests(unittest.TestCase):
             with self.assertRaisesRegex(self.runner.RunnerError, "did not produce"):
                 self.runner.build_boxedwine(repo_root, runner=fake_run)
 
-    def test_normal_group_uses_wine_directly(self) -> None:
+    def test_normal_group_uses_normal_wine_preloader_startup(self) -> None:
         command = self.runner.command_for_group(
             Path("/build/boxedwine"),
             Path("/tmp/root"),
@@ -338,6 +395,10 @@ class BuildAndCommandTests(unittest.TestCase):
                 "-zip",
                 "/cache/TinyCore15Wine11.0.zip",
                 "-novideo",
+                "/bin/sh",
+                "-c",
+                'unset WINELOADERNOEXEC; exec "$@"',
+                "wine-tests",
                 "/bin/wine",
                 "/ntdll_test.exe",
                 "file",
@@ -357,7 +418,7 @@ class BuildAndCommandTests(unittest.TestCase):
             [
                 "/bin/sh",
                 "-c",
-                "/bin/wine /ntdll_test.exe wow64; "
+                "unset WINELOADERNOEXEC; /bin/wine /ntdll_test.exe wow64; "
                 "/opt/wine/bin/wineserver -k && "
                 "echo BOXEDWINE_WINESERVER_CLEANUP_OK",
             ],
@@ -386,6 +447,10 @@ class BuildAndCommandTests(unittest.TestCase):
                 "WINEDLLOVERRIDES=mscoree,mshtml=",
                 "-w",
                 "/home/username",
+                "/bin/sh",
+                "-c",
+                'unset WINELOADERNOEXEC; exec "$@"',
+                "wine-tests",
                 "/bin/wine",
                 "/home/username/kernel32_test.exe",
                 "virtual",
@@ -414,6 +479,10 @@ class BuildAndCommandTests(unittest.TestCase):
                 "WINEDLLOVERRIDES=mscoree,mshtml=",
                 "-w",
                 "/home/username",
+                "/bin/sh",
+                "-c",
+                'unset WINELOADERNOEXEC; exec "$@"',
+                "wine-tests",
                 "/bin/wine",
                 "/home/username/ws2_32_test.exe",
                 "afd",
@@ -442,6 +511,10 @@ class BuildAndCommandTests(unittest.TestCase):
                 "WINEDLLOVERRIDES=mscoree,mshtml=",
                 "-w",
                 "/home/username",
+                "/bin/sh",
+                "-c",
+                'unset WINELOADERNOEXEC; exec "$@"',
+                "wine-tests",
                 "/bin/wine",
                 "/home/username/advapi32_test.exe",
                 "registry",
@@ -1203,12 +1276,12 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(arguments.tests_url, "file:///tmp/tests.zip")
         self.assertEqual(arguments.boxedwine, Path("/tmp/boxedwine"))
 
-    def test_default_filesystem_uses_version_10(self) -> None:
+    def test_default_filesystem_uses_latest_alias(self) -> None:
         arguments = self.runner.parse_arguments([])
 
         self.assertEqual(
             arguments.filesystem_url,
-            "https://boxedwine.org/v2/10/TinyCore15Wine11.0.zip",
+            "https://boxedwine.org/v2/latest/TinyCore15Wine11.0.zip",
         )
 
     def test_default_graphics_filesystem_uses_demo_version_3(self) -> None:
@@ -1268,7 +1341,10 @@ class CommandLineTests(unittest.TestCase):
                 )
 
             self.assertEqual(status, 0)
-            self.assertTrue((cache_dir / "TinyCore15Wine11.0-v10.zip").is_file())
+            self.assertTrue(run_suite.call_args.args[2].is_file())
+            identity = json.loads((run_suite.call_args.args[4] / "inputs.json").read_text())["filesystem"]
+            self.assertEqual(identity["url"], filesystem_source.as_uri())
+            self.assertEqual(identity["sha256"], self.runner._sha256(filesystem_source))
             self.assertTrue((cache_dir / "wine_tests_v4.zip").is_file())
             self.assertEqual(
                 run_suite.call_args.args[0],

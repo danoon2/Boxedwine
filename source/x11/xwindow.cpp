@@ -787,6 +787,8 @@ int XWindow::unmapWindow() {
 			log.append(id, 16);
 		}
 		});
+	// X11 requires UnmapNotify before the focus events caused by the unmap.
+	XServer::getServer()->revertInputFocus(shared_from_this());
 	if (c_class == InputOutput && parent) {
 		XServer::getServer()->iterateEventMask(parent->id, ExposureMask, [this](const DisplayDataPtr& data) {
 			exposeNofity(data, 0, 0, parent->width(), parent->height(), 0);
@@ -1122,29 +1124,27 @@ XWindowPtr XWindow::getWindowFromPoint(S32 screenX, S32 screenY) {
 	XWindowPtr result;
 
 	iterateMappedChildrenFrontToBack([screenX, screenY, &result](const XWindowPtr& child) {
-		if (!child->isMapped) {
-			return true;
-		}
-		S32 x = screenX;
-		S32 y = screenY;
-
-		child->parent->screenToWindow(x, y);
-		
-		bool inChild = x >= child->left && x < child->left + (S32)child->width() && y >= child->top && y < child->top + (S32)child->height();
-		XWindowPtr found = child->getWindowFromPoint(screenX, screenY);
-		if (found && (inChild || found->isTransient())) {
-			result = found;
-			return false;
-		}
-		if ((inChild || child->isTransient())) {
-			result = child;
-			return false;
-		}
-
-		return true;
+		result = child->getWindowFromPoint(screenX, screenY);
+		return !result;
 		}, true);
 	if (result) {
 		return result;
+	}
+	// Owned popups may extend beyond their owners, so search them first.
+	// Ownership affects stacking, not pointer capture: SimTower's tutorial
+	// popup must not intercept clicks on the ground outside its rectangle.
+	// Clip ordinary children against their actual X parents, not their owners.
+	if (parent) {
+		S32 x = screenX;
+		S32 y = screenY;
+		screenToWindow(x, y);
+		for (XWindowPtr window = shared_from_this(); window; window = window->parent) {
+			if (x < 0 || y < 0 || x >= (S32)window->width() || y >= (S32)window->height()) {
+				return nullptr;
+			}
+			x += window->left;
+			y += window->top;
+		}
 	}
 	return shared_from_this();
 }
@@ -1288,7 +1288,7 @@ bool XWindow::isThisAndAncestorsMapped() {
 
 bool XWindow::doesThisOrAncestorHaveFocus() {
 	XWindowPtr w = shared_from_this();
-	XWindowPtr focus = XServer::getServer()->inputFocus;
+	XWindowPtr focus = XServer::getServer()->getInputFocusWindow();
 
 	if (!focus) {
 		return false;
@@ -1337,15 +1337,15 @@ void XWindow::crossingNotify(const DisplayDataPtr& data, bool in, S32 x, S32 y, 
 	}
 }
 
-void XWindow::focusOut() {
-	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [this](const DisplayDataPtr& data) {
-		focusNotify(data, false, NotifyNormal, NotifyDetailNone);
+void XWindow::focusOut(S32 detail) {
+	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [this, detail](const DisplayDataPtr& data) {
+		focusNotify(data, false, NotifyNormal, detail);
 		});
 }
 
-void XWindow::focusIn() {
-	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [this](const DisplayDataPtr& data) {
-		focusNotify(data, true, NotifyNormal, NotifyDetailNone);
+void XWindow::focusIn(S32 detail) {
+	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [this, detail](const DisplayDataPtr& data) {
+		focusNotify(data, true, NotifyNormal, detail);
 		});
 }
 

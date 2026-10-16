@@ -156,6 +156,95 @@
       "reason": "Deliver cursor-release notifications after a popup is destroyed so SimTower floor selection does not leave mouse coordinates clipped"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_surrogate_lifetime.patch",
+      "reason": "Retire idle COM surrogates using DLL unload readiness while preserving active objects, factories and server locks"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_static_functions.patch",
+      "reason": "Backport vkd3d static HLSL function support, fixing 3DMark06 shader compilation while preserving declaration and entry-point checks"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_shader_disassembly_constants.patch",
+      "reason": "Fix shader constant disassembly and scientific-notation reassembly for 3DMark06 HDR"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_shader_disassembly_color.patch",
+      "reason": "Preserve indexed color declaration semantics during shader disassembly, fixing 3DMark06 Perlin Noise reassembly"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_folding_passes.patch",
+      "reason": "Separate HLSL folding from branch flattening before loop unrolling"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_unroll_loops.patch",
+      "reason": "Backport safe loop-unrolling traversal, fixing the 3DMark06 HDR compiler hang"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_legacy_pow.patch",
+      "reason": "Fold finite legacy HLSL powers before lowering them to logarithms"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_hlsl_texcubelod.patch",
+      "reason": "Backport texCUBElod support for 3DMark06 HDR2 Deep Freeze"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_wined3d_fog_uniform_cache.patch",
+      "reason": "Cache identical fixed-function fog uniforms per linked OpenGL program"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_wined3d_projection_constant_cache.patch",
+      "reason": "Avoid redundant fixed-function projection constant uploads while invalidating on reset and full state changes"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_wined3d_direct_map_dispatch.patch",
+      "reason": "Dispatch immediate single-threaded resource map and unmap callbacks directly after upload-buffer and synchronization handling"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_wined3d_so_overflow_query.patch",
+      "reason": "Implement native OpenGL stream-output overflow queries so 3DMark Vantage passes its Direct3D 10 startup check"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_d3d11_cpu_lockable.patch",
+      "reason": "Report CPU-mappable resource formats so 3DMark Vantage accepts its staging textures"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_dxgi_fullscreen_activation.patch",
+      "reason": "Activate the DXGI output window on entering fullscreen, matching Windows and avoiding 3DMark Vantage's attached-input-queue deadlock"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_ntdll_lfh_header_lock.patch",
+      "reason": "Protect LFH backing-block header updates against neighboring allocations and frees; found while investigating 3DMark Vantage's intermittent heap crash"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_getdibits_header_size.patch",
+      "reason": "Normalize GetDIBits output headers and palette placement like Windows, preventing 3DMark Vantage font-atlas heap corruption"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

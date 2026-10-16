@@ -111,6 +111,13 @@ KMemoryData::KMemoryData(KMemory* memory, bool enableLinearMemory, U8* adjacentL
     };
 #endif
     codeMemory.isCodeMemory = true;
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+    if (const char* value = std::getenv("BOXEDWINE_TEST_CODE_ALIGNMENT")) {
+        U32 alignment = strtoul(value, nullptr, 0);
+        if (alignment == 16 || alignment == 32 || alignment == 64)
+            codeMemory.testAlignment = alignment;
+    }
+#endif
 }
 
 KMemoryData::~KMemoryData() {

@@ -291,6 +291,7 @@ static XDrawablePtr eglGetSurfacelessDrawable() {
     if (!pixmap) {
         return nullptr;
     }
+    pixmap->isEglSurfaceless = true;
     drawableId = pixmap->id;
     return pixmap;
 }

@@ -1,0 +1,52 @@
+Subject: [PATCH] vkd3d-shader/hlsl: Implement texCUBElod().
+
+Backport of vkd3d 1ad9870a0750d7c6435afc8f4c6ba2084fa0629d
+Author: Elizabeth Figura <zfigura@codeweavers.com>
+Upstream: https://gitlab.winehq.org/wine/vkd3d/-/commit/1ad9870a0750d7c6435afc8f4c6ba2084fa0629d
+Wine-Bug: https://bugs.winehq.org/show_bug.cgi?id=55915
+
+Fixes 3DMark06 HDR2 Deep Freeze's vertex shader error that texCUBElod
+is not defined. Retest this scene when changing the patch.
+
+Adapted to Wine 11's intrinsic_tex() helper, which selects the resource load
+type by function name rather than an explicit enum argument. Extend its
+LOD branch to consume xyz coordinates and the w LOD for cube sampling.
+
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl.y
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl.y
+@@ -4835,11 +4835,12 @@
+ 
+     if (!strcmp(name, "tex2Dbias")
+             || !strcmp(name, "tex2Dlod")
+-            || !strcmp(name, "texCUBEbias"))
++            || !strcmp(name, "texCUBEbias")
++            || !strcmp(name, "texCUBElod"))
+     {
+         struct hlsl_ir_node *lod, *c;
+ 
+-        if (!strcmp(name, "tex2Dlod"))
++        if (!strcmp(name, "tex2Dlod") || !strcmp(name, "texCUBElod"))
+             load_params.type = HLSL_RESOURCE_SAMPLE_LOD;
+         else
+             load_params.type = HLSL_RESOURCE_SAMPLE_LOD_BIAS;
+@@ -4997,6 +4998,12 @@
+         const struct parse_initializer *params, const struct vkd3d_shader_location *loc)
+ {
+     return intrinsic_tex(ctx, params, loc, "texCUBEgrad", HLSL_SAMPLER_DIM_CUBE);
++}
++
++static bool intrinsic_texCUBElod(struct hlsl_ctx *ctx,
++        const struct parse_initializer *params, const struct vkd3d_shader_location *loc)
++{
++    return intrinsic_tex(ctx, params, loc, "texCUBElod", HLSL_SAMPLER_DIM_CUBE);
+ }
+ 
+ static bool intrinsic_texCUBEproj(struct hlsl_ctx *ctx,
+@@ -5491,6 +5498,7 @@
+     {"texCUBE",                            -1, false, intrinsic_texCUBE},
+     {"texCUBEbias",                         2, false, intrinsic_texCUBEbias},
+     {"texCUBEgrad",                         4, false, intrinsic_texCUBEgrad},
++    {"texCUBElod",                          2, false, intrinsic_texCUBElod},
+     {"texCUBEproj",                         2, false, intrinsic_texCUBEproj},
+     {"transpose",                           1, true,  intrinsic_transpose},
+     {"trunc",                               1, true,  intrinsic_trunc},

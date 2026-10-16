@@ -140,6 +140,7 @@
             Config.isSoundEnabled = getSound();
             Config.recordJITCache = getJitRecord();
             Config.wasmModuleBrokerEnabled = getWasmModuleBrokerEnabled();
+            Config.safeMemory = getSafeMemory();
             Config.audioFreq = getAudioFreq();
             Config.disableHideCursor = getDisableHideCursor();
             Config.disableWasmJitForWrittenCode = getDisableWasmJitForWrittenCode();
@@ -466,6 +467,10 @@
                 return true;
             }
             return value != "0";
+        }
+
+        function getSafeMemory() {
+            return allowParameterOverride() && getParameter("safe-memory") === "true";
         }
 
         function getAudioFreq() {
@@ -1485,8 +1490,8 @@
                 setHostFolderBusy(false);
             }
         }
-		        function getEmulatorParams() {
-	            let params = ["-root", ROOT];
+        function getEmulatorParams() {
+            let params = ["-root", ROOT];
             params.push("-zip");
     		params.push(Config.rootZipFile);
     		
@@ -1540,6 +1545,9 @@
             }
             if (Config.disableWasmJitForWrittenCode) {
                 params.push("-disableWasmJitForWrittenCode");
+            }
+            if (Config.safeMemory) {
+                params.push("-safe-memory");
             }
             if(Config.bpp != DEFAULT_BPP){
                 params.push("-bpp");

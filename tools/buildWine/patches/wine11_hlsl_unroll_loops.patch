@@ -1,0 +1,112 @@
+Subject: [PATCH] vkd3d-shader/hlsl: Unroll loops one at a time.
+
+Backport of vkd3d e9ba90e768bea82fc731d987c3eacfe17dbf4fe8
+Author: Francisco Casas <fcasas@codeweavers.com>
+Upstream: https://gitlab.winehq.org/wine/vkd3d/-/commit/e9ba90e768bea82fc731d987c3eacfe17dbf4fe8
+
+Fixes a shader-compiler hang observed in 3DMark06 HDR/SM3.0 tests.
+Unrolling can remove branches or instructions that the current traversal
+is still using, including the loop itself. Restart traversal after each
+unroll and avoid simplifying the whole program from inside that traversal.
+
+Adapted to Wine 11: its unroll limit is still an integer, and its split-copy
+passes are not factored into split_copies(). Those unrelated changes are
+not included. Requires wine11_hlsl_folding_passes.patch. Regression probe:
+tools/buildWine/probes/hlsl-loop-unrolling.c (upstream loop.shader_test case).
+
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl_codegen.c
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl_codegen.c
+@@ -924,6 +924,50 @@
+     }
+ 
+     return progress;
++}
++
++static bool hlsl_transform_ir_once(struct hlsl_ctx *ctx,
++        bool (*func)(struct hlsl_ctx *ctx, struct hlsl_ir_node *, void *),
++        struct hlsl_block *block, void *context)
++{
++    struct hlsl_ir_node *instr, *next;
++
++    if (ctx->result)
++        return false;
++
++    LIST_FOR_EACH_ENTRY_SAFE(instr, next, &block->instrs, struct hlsl_ir_node, entry)
++    {
++        if (instr->type == HLSL_IR_IF)
++        {
++            struct hlsl_ir_if *iff = hlsl_ir_if(instr);
++
++            if (hlsl_transform_ir_once(ctx, func, &iff->then_block, context))
++                return true;
++            if (hlsl_transform_ir_once(ctx, func, &iff->else_block, context))
++                return true;
++        }
++        else if (instr->type == HLSL_IR_LOOP)
++        {
++            if (hlsl_transform_ir_once(ctx, func, &hlsl_ir_loop(instr)->body, context))
++                return true;
++        }
++        else if (instr->type == HLSL_IR_SWITCH)
++        {
++            struct hlsl_ir_switch *s = hlsl_ir_switch(instr);
++            struct hlsl_ir_switch_case *c;
++
++            LIST_FOR_EACH_ENTRY(c, &s->cases, struct hlsl_ir_switch_case, entry)
++            {
++                if (hlsl_transform_ir_once(ctx, func, &c->body, context))
++                    return true;
++            }
++        }
++
++        if (func(ctx, instr, context))
++            return true;
++    }
++
++    return false;
+ }
+ 
+ typedef struct hlsl_ir_node *(*PFN_replace_func)(struct hlsl_ctx *, struct hlsl_ir_node *, struct hlsl_block *);
+@@ -14297,9 +14341,10 @@
+ 
+     max_iterations = loop_unrolling_get_max_iterations(ctx, loop);
+     copy_propagation_state_init(&state, ctx);
+-    index = 2;
++
+     state.stop = &loop->node;
+-    loop_unrolling_simplify(ctx, block, &state, &index);
++    index_instructions(block, 2);
++    copy_propagation_transform_block(ctx, block, &state);
+     state.stopped = false;
+     index = loop->node.index;
+ 
+@@ -14385,12 +14430,12 @@
+     struct hlsl_ir_loop *loop;
+ 
+     if (node->type != HLSL_IR_LOOP)
+-        return true;
++        return false;
+ 
+     loop = hlsl_ir_loop(node);
+ 
+-    if (loop->unroll_type != HLSL_LOOP_UNROLL && loop->unroll_type != HLSL_LOOP_FORCE_UNROLL)
+-        return true;
++    if (loop->unroll_type == HLSL_LOOP_FORCE_LOOP)
++        return false;
+ 
+     if (!loop_unrolling_unroll_loop(ctx, program, loop))
+         loop->unroll_type = HLSL_LOOP_FORCE_LOOP;
+@@ -14506,7 +14551,12 @@
+     } while (progress);
+     hlsl_transform_ir(ctx, split_matrix_copies, block, NULL);
+ 
+-    hlsl_transform_ir(ctx, unroll_loops, block, block);
++    for (;;)
++    {
++        hlsl_run_folding_passes(ctx, block);
++        if (!hlsl_transform_ir_once(ctx, unroll_loops, block, block))
++            break;
++    }
+     resolve_continues(ctx, block, NULL);
+     hlsl_transform_ir(ctx, resolve_loops, block, NULL);
+ }

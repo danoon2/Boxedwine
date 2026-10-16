@@ -54,31 +54,55 @@ BoxedWine checkout:
 python3 tools/wineTests/runWineTests.py
 ```
 
-The normal command downloads its inputs when they are absent, runs
+The normal command downloads the latest Wine 11 filesystem on every invocation,
+downloads the test archive when absent, runs
 `make release` in `project/linux`, and executes all 26 NTDLL groups followed
 by all 33 kernel32 groups, the ws2_32 `afd` group, and all 12 advapi32 groups.
 
+Native test groups launch Wine through `/bin/sh`, explicitly unsetting
+`WINELOADERNOEXEC` before executing Wine. Boxedwine's direct application launch
+default, introduced in `c473fc3a` for the Halo Trial installer, skips the initial
+Wine preloader while child processes still use it. This can give parent and
+child processes different DLL addresses, breaking the cross-process assumptions
+in `ntdll/exception`, `ntdll/info`, `kernel32/debugger`, and `kernel32/process`.
+Setting the variable to `0` does not help: Wine checks its presence.
+
+This launch policy applies to the entire native suite, including the `wow64`
+group's existing wineserver cleanup. It leaves normal application startup and
+the filesystem unchanged. The tests cover normal Wine preloader startup; they
+do not validate the application's preloader-bypass mode.
+
 ## Inputs and cache
 
-The versioned inputs are:
+The inputs are:
 
 - BoxedWine Wine 11 filesystem:
-  `https://boxedwine.org/v2/10/TinyCore15Wine11.0.zip`
+  `https://boxedwine.org/v2/latest/TinyCore15Wine11.0.zip`
 - Wine 11 tests:
   `https://boxedwine.org/v2/1/wine_tests_v4.zip`
 - Prepared local graphics-test bundle:
   `tools/wineTests/wine_tests_v6.zip`
 
 They are cached in
-`${XDG_CACHE_HOME:-$HOME/.cache}/boxedwine/wineTests`. A nonempty cached file is
-reused. Downloads use a `.part` file so an interrupted transfer does not
-replace a cached artifact.
+`${XDG_CACHE_HOME:-$HOME/.cache}/boxedwine/wineTests`. The `/latest/` filesystem
+is fetched afresh with HTTP cache revalidation requested on every run. If the
+download fails, the run fails instead of falling back to an older filesystem.
+The downloaded archive is stored by SHA-256 so each run keeps using the same
+revision even if another run fetches a newer release. Its revision and SHA-256
+are printed before tests start.
+
+An explicit versioned `--filesystem-url` uses a separate cache for that URL and
+reuses nonempty cached downloads. The versioned test archive is also reused.
+Downloads use a `.part` file so an interrupted transfer does not replace a
+cached artifact.
 
 Each invocation creates a timestamped directory below `runs/`. It contains:
 
 - `logs/<suite>/<group>.log`: combined BoxedWine stdout and stderr.
 - `manifest.json`: suite name, parsed counts, ceilings, status, and failure
   reason.
+- `inputs.json`: filesystem URL, packaged revision, Wine version, cache path,
+  and SHA-256 identifying the exact archive used.
 - `roots/<suite>/<group>/`: retained guest state for a failed or timed-out
   group.
 - `input/ntdll_test.exe`, `input/kernel32_test.exe`,
@@ -131,7 +155,7 @@ Other useful overrides are:
 
 ```text
 --cache-dir PATH       Download and run cache directory
---filesystem-url URL   BoxedWine Wine 11 filesystem ZIP
+--filesystem-url URL   BoxedWine Wine 11 filesystem ZIP (default: /v2/latest/)
 --tests-url URL        Wine 11 test ZIP
 --timeout SECONDS      Per-group timeout (default: 180)
 ```

@@ -1,3 +1,11 @@
+v19 Oct 15, 2026 Preserve color declaration indices during shader disassembly and reassembly, fixing the 3DMark06 Perlin Noise feature test.
+
+v18 Oct 13, 2026 Fix 3DMark Vantage DirectX 10 capability detection and fullscreen activation; prevent GetDIBits palette writes beyond oversized headers and synchronize low-fragmentation heap block publication.
+
+v17 Oct 12, 2026 Fix 3DMark06 shaders: static HLSL functions, constant disassembly/reassembly, loop unrolling, legacy power folding and cube-map LOD compilation.
+
+v16 Oct 12, 2026 Fix idle COM surrogate shutdown and apartment factory reference leaks, allowing 3DMark03 to close normally with Futuremark SystemInfo enabled
+v15 Oct 09, 2026 Cache unchanged fog and projection constants and reduce immediate resource map/unmap dispatch overhead in regular Wine and WebGL WineD3D; accelerate WebGL RGB565 texture uploads with exact SSE2 conversion
 v14 Oct 04, 2026 Fix lost cursor-release notifications after a popup is destroyed, preventing SimTower floor selection from leaving mouse input clipped
 v13 Sep 30, 2026 Omit Wine development headers and static/import libraries from runtime archives
 v13 Sep 29, 2026 Rebuilt Wine 11.0 in WSL; fixed localhost file URLs; installed Gecko 2.47.4 without its MSI cache; disabled unsupported ISDN, camera, packet-capture, smart-card and OpenCL backends; preserved empty Wine prefix directories required by installers; fixed psVoodoo saturated W-depth to prevent moving F-16 cockpit panels flickering over instruments; fixed WineD3D GDI buffer lifetime in both the main Wine runtime and the WebGL DLL to prevent the Daytona USA startup crash

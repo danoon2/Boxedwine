@@ -6236,9 +6236,13 @@ void DecodedOp::reset() {
 #endif
 #ifdef BOXEDWINE_JIT
     this->runCount = 0;
+#ifdef BOXEDWINE_JIT_X64
+    this->indirectTargetHits = 0;
+    this->indirectTargetEip = 0;
+#endif
     this->jitLen = 0;
     this->pfnJitCode = nullptr;
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     jitEntrySlot = nullptr;
 #endif
     blockStart = nullptr;

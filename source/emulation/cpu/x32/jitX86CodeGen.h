@@ -23,4 +23,17 @@
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
 #endif
 
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+struct NativeJitPolicyTestCounts {
+    U32 fusedMemoryReads = 0;
+    U32 borrowedReadAddresses = 0;
+    U32 nativeCarryArithmetic = 0;
+    U32 trustedCarry = 0;
+    U32 pinnedLinearEntries = 0;
+    U32 foldedLinearReads = 0;
+    U32 stackPairTopSpills = 0;
+};
+NativeJitPolicyTestCounts nativeJitPolicyTestCounts();
+#endif
+
 #endif

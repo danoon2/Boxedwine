@@ -23,6 +23,7 @@
 #include "../emulation/softmmu/soft_rw_page.h"
 #include "../emulation/softmmu/soft_copy_on_write_page.h"
 #include "../emulation/cpu/normal/normalCPU.h"
+#include <cstdlib>
 
 #ifdef BOXEDWINE_JIT
 #include "../emulation/cpu/jit/jitCodeLifecycle.h"
@@ -790,6 +791,13 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             U32 alignmentPhase = 0;
             if (mappedFile && ramPageUseLinearMemoryFileCacheBlock()) {
                 alignmentPhase = (U32)(off >> K_PAGE_SHIFT) & (ramPageLinearMemoryPageCount() - 1);
+            } else if (alignForLinearMemory && !addr && (flags & K_MAP_STACK) &&
+                (flags & K_MAP_ANONYMOUS) && !std::getenv("BOXEDWINE_ALIGN_PTHREAD_STACK_SLOW")) {
+                // Downward-growing thread stacks are hottest at the end. A
+                // bottom guard can leave that end in a partial native group
+                // when the mapping's start is aligned. Keep the exact guest
+                // extent and permissions, but prefer an aligned stack top.
+                alignmentPhase = (0u - pageCount) & (ramPageLinearMemoryPageCount() - 1);
             }
             if (!data->reserveAddress(pageStart, pageCount, &pageStart, false,
                 addr == 0 || alignForLinearMemory, PAGE_MAPPED, alignmentPhase)) {

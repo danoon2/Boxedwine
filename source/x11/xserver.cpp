@@ -245,30 +245,191 @@ XWindowPtr XServer::createNewWindow(U32 displayId, const XWindowPtr& parent, U32
 }
 
 U32 XServer::setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo, U32 time, bool trace) {
-	if (trace && this->trace) {
-		BString log;
+	if (revertTo != RevertToNone && revertTo != RevertToParent && revertTo != RevertToPointerRoot) {
+		return BadValue;
+	}
+	// Look up the window before locking focus state; event delivery must not
+	// hold windowsMutex while clients or the native UI process their events.
+	XWindowPtr w = window == PointerRoot ? getRoot() : getWindow(window);
+	if (window != None && window != PointerRoot && !w) {
+		return BadWindow;
+	}
+	XWindowPtr pointer = getPointerWindowForFocus();
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(inputFocusMutex);
+		if (w && !w->isThisAndAncestorsMapped()) {
+			return BadMatch;
+		}
+		U32 now = getEventTime();
+		if (time == 0) { // CurrentTime
+			time = now;
+		}
+		// X timestamps wrap at 32 bits. Compare relative to the current time and
+		// the last accepted request, rather than comparing unsigned magnitudes.
+		if ((S32)(time - now) > 0 || (inputFocusTimeSet && (S32)(time - inputFocusTime) < 0)) {
+			return Success;
+		}
+		if (trace && this->trace) {
+			BString log;
 
-		log.append(data->displayId, 16);
-		log += " SetInputFocus";
-		log += " revert-to=";
-		log.append(this->inputFocusRevertTo, 16);
-		log += " focus=";
-		log.append(window, 16);
-	}
-	inputFocusRevertTo = revertTo;
-	inputFocusIsPointerRoot = window == PointerRoot;
-	XWindowPtr w = inputFocusIsPointerRoot ? getRoot() : getWindow(window);
-	
-	if (this->inputFocus != w) {
-		if (this->inputFocus) {
-			this->inputFocus->focusOut();
+			log.append(data->displayId, 16);
+			log += " SetInputFocus";
+			log += " revert-to=";
+			log.append(revertTo, 16);
+			log += " focus=";
+			log.append(window, 16);
+			klog(log.c_str());
 		}
-		this->inputFocus = w;
-		if (w) {
-			w->focusIn();
-		}
+		inputFocusTime = time;
+		inputFocusTimeSet = true;
+		inputFocusRevertTo = revertTo;
+		changeInputFocus(w, window == PointerRoot, pointer);
 	}
+	deliverFocusNotifications();
 	return Success;
+}
+
+U32 XServer::getInputFocus(U32& revertTo) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(inputFocusMutex);
+	revertTo = inputFocusRevertTo;
+	return inputFocusIsPointerRoot ? PointerRoot : (inputFocus ? inputFocus->id : None);
+}
+
+XWindowPtr XServer::getInputFocusWindow() {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(inputFocusMutex);
+	return inputFocus;
+}
+
+static bool focusAncestor(const XWindowPtr& ancestor, XWindowPtr window) {
+	if (!ancestor) return false;
+	for (; window; window = window->getParent()) {
+		if (window == ancestor) return true;
+	}
+	return false;
+}
+
+XWindowPtr XServer::getPointerWindowForFocus() {
+	// Native pointer queries take grab/viewport locks. Keep them outside the
+	// focus lock, which input event delivery can acquire while holding a grab.
+	S32 x = 0, y = 0;
+	KNativeSystem::getCurrentInput()->getMousePos(&x, &y, false);
+	return root->getWindowFromPoint(x, y);
+}
+
+void XServer::changeInputFocus(const XWindowPtr& window, bool pointerRoot, const XWindowPtr& pointer) {
+	if (inputFocus == window && inputFocusIsPointerRoot == pointerRoot) return;
+	XWindowPtr from = inputFocusIsPointerRoot ? nullptr : inputFocus;
+	XWindowPtr to = pointerRoot ? nullptr : window;
+	bool fromPointerRoot = inputFocusIsPointerRoot;
+	// Publish the complete new state before waking clients with focus events.
+	inputFocus = window;
+	inputFocusIsPointerRoot = pointerRoot;
+
+	// 'stop' is excluded. FocusOut travels up; FocusIn travels down.
+	auto notify = [this](const XWindowPtr& w, bool in, S32 detail) {
+		pendingFocusNotifications.push_back({w, in, detail});
+	};
+	auto path = [&notify](XWindowPtr bottom, const XWindowPtr& stop, bool in, S32 detail) {
+		std::vector<XWindowPtr> windows;
+		for (; bottom && bottom != stop; bottom = bottom->getParent()) windows.push_back(bottom);
+		if (in) {
+			for (auto it = windows.rbegin(); it != windows.rend(); ++it) notify(*it, true, detail);
+		} else {
+			for (auto& w : windows) notify(w, false, detail);
+		}
+	};
+	// Core X11 focus events (one screen). None and PointerRoot are distinct
+	// focus states, not ordinary transitions to the root window.
+	// https://www.x.org/releases/X11R7.6/doc/xproto/x11protocol.html
+	if (!from || !to) {
+		if (from) {
+			if (pointer != from && focusAncestor(from, pointer)) path(pointer, from, false, NotifyPointer);
+			notify(from, false, NotifyNonlinear);
+			path(from->getParent(), nullptr, false, NotifyNonlinearVirtual);
+		} else {
+			if (fromPointerRoot) path(pointer, nullptr, false, NotifyPointer);
+			notify(root, false, fromPointerRoot ? NotifyPointerRoot : NotifyDetailNone);
+		}
+		if (to) {
+			path(to->getParent(), nullptr, true, NotifyNonlinearVirtual);
+			notify(to, true, NotifyNonlinear);
+			if (pointer != to && focusAncestor(to, pointer)) path(pointer, to, true, NotifyPointer);
+		} else {
+			notify(root, true, pointerRoot ? NotifyPointerRoot : NotifyDetailNone);
+			if (pointerRoot) path(pointer, nullptr, true, NotifyPointer);
+		}
+	} else if (focusAncestor(to, from)) {
+		notify(from, false, NotifyAncestor);
+		path(from->getParent(), to, false, NotifyVirtual);
+		notify(to, true, NotifyInferior);
+		if (pointer != to && focusAncestor(to, pointer) &&
+			!focusAncestor(from, pointer) && !focusAncestor(pointer, from)) {
+			path(pointer, to, true, NotifyPointer);
+		}
+	} else if (focusAncestor(from, to)) {
+		if (pointer != from && focusAncestor(from, pointer) &&
+			!focusAncestor(to, pointer) && !focusAncestor(pointer, to)) {
+			path(pointer, from, false, NotifyPointer);
+		}
+		notify(from, false, NotifyInferior);
+		path(to->getParent(), from, true, NotifyVirtual);
+		notify(to, true, NotifyAncestor);
+	} else {
+		XWindowPtr common = from->getParent();
+		while (common && !focusAncestor(common, to)) common = common->getParent();
+		if (pointer != from && focusAncestor(from, pointer)) path(pointer, from, false, NotifyPointer);
+		notify(from, false, NotifyNonlinear);
+		path(from->getParent(), common, false, NotifyNonlinearVirtual);
+		path(to->getParent(), common, true, NotifyNonlinearVirtual);
+		notify(to, true, NotifyNonlinear);
+		if (pointer != to && focusAncestor(to, pointer)) path(pointer, to, true, NotifyPointer);
+	}
+}
+
+void XServer::revertInputFocus(const XWindowPtr& unmapped) {
+	XWindowPtr pointer = getPointerWindowForFocus();
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(inputFocusMutex);
+		if (inputFocusIsPointerRoot || !focusAncestor(unmapped, inputFocus)) return;
+		XWindowPtr next;
+		bool pointerRoot = inputFocusRevertTo == RevertToPointerRoot;
+		if (pointerRoot) {
+			next = root;
+		} else if (inputFocusRevertTo == RevertToParent) {
+			next = inputFocus->getParent();
+			while (next && !next->isThisAndAncestorsMapped()) next = next->getParent();
+			inputFocusRevertTo = RevertToNone;
+		}
+		// Automatic reversion must not update the last-focus-change timestamp.
+		changeInputFocus(next, pointerRoot, pointer);
+	}
+	deliverFocusNotifications();
+}
+
+void XServer::deliverFocusNotifications() {
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(inputFocusMutex);
+		if (deliveringFocusNotifications) return;
+		deliveringFocusNotifications = true;
+	}
+	// Clients can query focus while holding their event queue lock. Never hold
+	// inputFocusMutex while delivering events. One drainer preserves transition
+	// order if another thread changes focus while delivery is in progress.
+	for (;;) {
+		std::vector<FocusNotification> notifications;
+		{
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(inputFocusMutex);
+			if (pendingFocusNotifications.empty()) {
+				deliveringFocusNotifications = false;
+				return;
+			}
+			notifications.swap(pendingFocusNotifications);
+		}
+		for (const auto& event : notifications) {
+			if (event.in) event.window->focusIn(event.detail);
+			else event.window->focusOut(event.detail);
+		}
+	}
 }
 
 const XWindowPtr& XServer::getRoot() {
@@ -281,6 +442,11 @@ const XWindowPtr& XServer::getRoot() {
 		U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
 		root->setProperty(atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
 		root->isMapped = true; // so that grab works
+		// Like an X server without a window manager, initially deliver keys to
+		// the pointer window. A rejected early focus request (e.g. AoE focusing
+		// its still-hidden window) must not leave keyboard input disabled.
+		inputFocus = root;
+		inputFocusIsPointerRoot = true;
 		root->colorMap = getDefaultColorMap();
 		root->attributes.colormap = root->colorMap->id;
 		root->cursor = std::make_shared<XCursor>(132); // XC_top_left_arrow
@@ -455,11 +621,17 @@ bool XServer::requestCloseWindow(const XWindowPtr& wnd) {
 }
 
 int XServer::destroyWindow(U32 window) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
-	XWindowPtr w = windows.get(window);
-	if (!w) {
-		return BadWindow;
+	XWindowPtr w;
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
+		w = windows.get(window);
+		if (!w) return BadWindow;
+		if (w == root) return Success;
+		windows.remove(window);
 	}
+	// DestroyWindow unmaps first, including focus reversion for descendants.
+	// Do not hold windowsMutex across native window updates during unmap.
+	w->unmapWindow();
 	if (pointerWindow) {
 		XWindowPtr current = pointerWindow;
 		while (current) {
@@ -471,7 +643,6 @@ int XServer::destroyWindow(U32 window) {
 		}
 	}
 	w->onDestroy();
-	windows.remove(window);
 	if (w->id == grabbedId) {
 		ungrabPointer(0);
 	}
@@ -1155,15 +1326,20 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 }
 
 void XServer::key(U32 key, bool pressed) {
-	if (inputFocus) {
+	XWindowPtr focus = getInputFocusWindow(); // PointerRoot is stored as root.
+	if (focus) {
 		S32 x = 0;
 		S32 y = 0;
 		KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
-		XWindowPtr wnd = inputFocus;
-		if (inputFocusIsPointerRoot && root) {
-			wnd = root->getWindowFromPoint(x, y);
-		}
+		XWindowPtr pointer = root ? root->getWindowFromPoint(x, y) : nullptr;
+		// Keyboard events start at the pointer window when it is within the
+		// focus subtree, including when focus reverts to the explicit root.
+		// Otherwise they start at the focus window, and never propagate above it.
+		XWindowPtr wnd = focusAncestor(focus, pointer) ? pointer : focus;
 		while (wnd && !wnd->keyScreenCoords(key, x, y, pressed)) {
+			if (wnd == focus) {
+				break;
+			}
 			wnd = wnd->getParent();
 		}
 	}

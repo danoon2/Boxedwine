@@ -14,6 +14,7 @@ void testSelfModifying();
 void testSelfModifyingMovsb();
 void testSelfModifyingFront();
 void testSelfModifyingBack();
+void testCodePageCopyOnWriteReferences();
 void testLinearMemoryAliasAndFaults();
 void testLinearMemoryFileFirstTouches();
 void testLinearMemoryWraparound();
@@ -21,6 +22,7 @@ void testJitMemoryReadOperands();
 void testJitMemoryReadFaultState();
 void testLinearMemoryCloneMappings();
 void testLinearMemoryCodeInvalidation();
+void testDecodedOpLargeRangeRemoval();
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void testDecodedOpInvalidationDefersCrossThreadReuse();

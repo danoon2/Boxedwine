@@ -1,0 +1,70 @@
+Subject: [Wine 11.0 tests] Verify constant disassembly/reassembly.
+
+Apply after wine11_shader_disassembly_constants.patch when building Wine unit tests.
+The standalone shader-disassembly-roundtrip.c probe also exercises packaged DLLs.
+
+--- a/dlls/d3dcompiler_43/tests/asm.c
++++ b/dlls/d3dcompiler_43/tests/asm.c
+@@ -1755,6 +1755,55 @@
+     ID3D10Blob_Release(blob);
+ }
+ 
++
++/* 3DMark06 HDR/SM3.0 disassembles and reassembles compiled shaders. */
++static void test_disassemble_constants(void)
++{
++    static const char *sources[] =
++    {
++        "ps_2_0\ndef c3, -0.5, 0.25, 1, 0\nmov oC0, c3\n",
++        "vs_2_0\ndef c3, -0.5, 0.25, 1, 0\nmov oPos, c3\n",
++        "ps_3_0\ndefi i0, 2, 0, 1, 0\nmov oC0, c0\n",
++        "ps_3_0\ndefb b0, true\ndefb b1, false\nmov oC0, c0\n",
++    };
++    ID3DBlob *shader, *disassembly, *reassembled, *messages;
++    unsigned int i;
++    HRESULT hr;
++
++    for (i = 0; i < ARRAY_SIZE(sources); ++i)
++    {
++        shader = disassembly = reassembled = messages = NULL;
++        hr = pD3DAssemble(sources[i], strlen(sources[i]), NULL, NULL, NULL, 0, &shader, &messages);
++        ok(hr == S_OK, "Shader %u: Got unexpected hr %#lx.\n", i, hr);
++        if (messages) ID3D10Blob_Release(messages);
++        if (FAILED(hr)) continue;
++
++        hr = D3DDisassemble(ID3D10Blob_GetBufferPointer(shader), ID3D10Blob_GetBufferSize(shader),
++                0, NULL, &disassembly);
++        ok(hr == S_OK, "Shader %u: Got unexpected hr %#lx.\n", i, hr);
++        if (SUCCEEDED(hr))
++        {
++            messages = NULL;
++            hr = pD3DAssemble(ID3D10Blob_GetBufferPointer(disassembly), ID3D10Blob_GetBufferSize(disassembly),
++                    NULL, NULL, NULL, 0, &reassembled, &messages);
++            ok(hr == S_OK, "Shader %u: Failed to reassemble, hr %#lx, messages %s.\n", i, hr,
++                    messages ? (char *)ID3D10Blob_GetBufferPointer(messages) : "(none)");
++            if (messages) ID3D10Blob_Release(messages);
++            if (SUCCEEDED(hr))
++            {
++                ok(ID3D10Blob_GetBufferSize(shader) == ID3D10Blob_GetBufferSize(reassembled),
++                        "Shader %u: Bytecode size changed.\n", i);
++                if (ID3D10Blob_GetBufferSize(shader) == ID3D10Blob_GetBufferSize(reassembled))
++                    ok(!memcmp(ID3D10Blob_GetBufferPointer(shader), ID3D10Blob_GetBufferPointer(reassembled),
++                            ID3D10Blob_GetBufferSize(shader)), "Shader %u: Bytecode changed.\n", i);
++                ID3D10Blob_Release(reassembled);
++            }
++            ID3D10Blob_Release(disassembly);
++        }
++        ID3D10Blob_Release(shader);
++    }
++}
++
+ START_TEST(asm)
+ {
+     HMODULE d3dcompiler;
+@@ -1782,4 +1831,5 @@
+ 
+     d3dpreprocess_test();
+     test_disassemble_shader();
+-}
++    test_disassemble_constants();
++}

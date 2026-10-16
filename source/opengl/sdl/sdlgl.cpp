@@ -1168,7 +1168,11 @@ static void* getSdlOpenGLProcAddress(const char* name) {
         return nullptr;
     }
 #endif
-    return SDL_GL_GetProcAddress(name);
+    void* proc = SDL_GL_GetProcAddress(name);
+#ifdef __APPLE__
+    if (!proc) proc = macOpenGLGetProcAddressFallback(name);
+#endif
+    return proc;
 }
 
 #ifdef BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY
@@ -1272,6 +1276,21 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
 #endif
         return true;
     } else {
+#ifdef __APPLE__
+        if (d->isEglSurfaceless) {
+            // Wine's service-desktop rendering uses FBOs with EGL_NO_SURFACE.
+            // Attaching the shared placeholder to a hidden Cocoa window makes
+            // glFinish try to present it and can crash Apple's GL renderer.
+            KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+                macOpenGLDetachContext(context->context);
+                });
+            if (!macOpenGLMakeCurrent(context->context)) return false;
+            context->currentWindow = nullptr;
+            context->currentPbufferWindow = nullptr;
+            loadSdlExtensions();
+            return true;
+        }
+#endif
         if (d->isPBuffer) {
             void* nativePbuffer = nullptr;
             {
@@ -1558,6 +1577,12 @@ static void initSdlOpenGL() {
 
     pglFinish = (pfnglFinish)getSdlOpenGLProcAddress("glFinish");
     pglFlush = (pfnglFlush)getSdlOpenGLProcAddress("glFlush");
+#ifdef __APPLE__
+    // Apple's framework lookup is context-independent. Wine resolves the DSA
+    // functions for its internal offscreen surfaces before making a context
+    // current, so publish extensions (including our fallbacks) at bootstrap.
+    loadSdlExtensions();
+#endif
 }
 
 KOpenGLPtr SDLGL::create() {

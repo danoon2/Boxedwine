@@ -20,12 +20,14 @@
 #define __JIT_CODE_GEN_H__
 
 #include "jit.h"
+#include <set>
 
 // Implementation of JIT that is host instruction independent
 class JitCodeGen : public Jit {
 public:    
     JitCodeGen(CPU* cpu) : Jit(cpu) {}
     virtual ~JitCodeGen() {}
+    void initializeProcessHelpers();
     DecodedOp* firstOp = nullptr;
 
     const U32 SKIPPED_OP = 0xffffffff;
@@ -37,17 +39,26 @@ public:
     
     // per instruction, not per block.  
     bool canJumpInBlock(DecodedOp* op) override {
-        return currentEip < lastOpEip && isBlockOpBoundary(currentEip + op->len + op->imm);
+        return canJumpInBlock(currentEip, op);
     }
 
     bool canJumpInBlock(U32 opEip, DecodedOp* op) override {
-        return opEip < lastOpEip && isBlockOpBoundary(opEip + op->len + op->imm);
+        // Side-exit backends may keep compiling the fall-through even when
+        // the taken target is outside this block or not an instruction start.
+        return opEip < lastOpEip && ((supportsConditionalSideExit(opEip, opEip + op->len + op->imm) && op->isJumpCC()) ||
+            isBlockOpBoundary(opEip + op->len + op->imm));
     }
 
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void compile(DecodedOp* op) override;
     void postCompile(DecodedOp* op) override;
     void tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback, U32 supportedFlags = FMASK_TEST) override;
+#ifdef BOXEDWINE_JIT_ARMV8
+    // The callback may emit several producers, leaving currentEip at the last.
+    bool tryDirectConsumers(DecodedOp* producer, const std::function<void()>& callback,
+        U32 supportedFlags, U32 producerOffset = 0, U32 minimumConsumers = 2);
+#endif
+    static U32 getDirectFlagWindow();
     virtual bool supportsDirectCondition(JitConditional condition) { return true; }
 
     JitConditional getJumpConditionFromOp(DecodedOp* op);
@@ -58,12 +69,29 @@ public:
     virtual void onBlockPreCommit(DecodedOp* op) {}
     // Some interiors require live backend registers. Dispatch those through
     // the interpreter until the next independently enterable instruction.
-    virtual bool isExternalJitEntry(U32 eip) const { return true; }
+    virtual bool isExternalJitEntry(U32 eip) const { return !protectedInternalEntries.count(eip); }
+    // Keep real instruction/fault boundaries while preventing dispatch from
+    // bypassing a proof established earlier in this compiled block.
+    std::set<U32> protectedInternalEntries;
+    virtual bool hideTrustedCarryEntry(U32 eip) { return false; }
+    virtual bool materializeTrustedCarry(RegPtr result) { return false; }
+    // A backend may omit the lazy-type guard only after protecting every
+    // independent entry between the producer and this flag consumer.
+    virtual bool protectKnownLazyFlagType() { return false; }
+    bool protectCmpLazyFlagType();
+    bool canTrustAdjacentAddCarry() const;
+    bool protectCarryFallthroughEntries();
+    bool isAdc32Consumer(DecodedOp* op) const;
+    bool isAdc32RegisterPair(DecodedOp* op) const;
+    bool hasSimpleRegisterAddress32(DecodedOp* op) const;
+    bool hasFlatRegisterAddress32(DecodedOp* op) const;
     // Consulted per op while calculateLongestBlock extends a block (never for
     // the block's first op). Returning true ends the block before `op`, so a
     // backend can honor profile-guided split hints that want a hot interior
     // target compiled as its own block-start entry.
     virtual bool shouldStopBlockBefore(U32 eip, DecodedOp* op) { return false; }
+    // Permit conditional exits without ending the compiled fall-through path.
+    virtual bool supportsConditionalSideExit(U32 sourceEip, U32 targetEip) const { return false; }
     virtual void readMMU(RegPtr dest, RegPtr index, U32 offset = 0) = 0;
     virtual void readMMU(RegPtr dest, U32 index) = 0;
     virtual RegPtr getLinearMemoryBase(RegPtr tmp = nullptr) { kpanic("JitCodeGen::getLinearMemoryBase"); return nullptr; }
@@ -90,6 +118,8 @@ public:
     void writeWithMmuCheck(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool checkAlignment = true) override;
 
     RegPtr read(JitWidth width, MemPtr address, RegPtr result = nullptr) override;
+    void withRamPage(RegPtr address, bool store, const std::function<void(RegPtr)>& action,
+        const std::function<void()>& failed) override;
     void write(JitWidth width, MemPtr address, RegPtr src) override;
     void write(JitWidth width, MemPtr address, U32 imm) override;
 
@@ -149,15 +179,19 @@ public:
     void blockNext1(U32 eip, DecodedOp* op) override;
     void blockNext2(U32 eip, DecodedOp* op) override;
     void jumpEip(RegPtr reg) override;
+    void jumpIndirectEip(RegPtr reg, DecodedOp* op) override;
     void jumpInBlock(U32 address) override;
     void exitToRunLoopIfNeeded(U32 eip) override;
-    void exitToRunLoopIfNeeded(RegPtr eip);
+    virtual void exitToRunLoopIfNeeded(RegPtr eip);
 
     void doJIT(U32 address, DecodedOp* op);
     void onTestEnd(DecodedOp* op) override;
-    void jumpToEipIfCached(RegPtr eip);
+    virtual void jumpToEipIfCached(RegPtr eip);
     bool jumpToCachedJitEntry(U32 eip);
     U8* createEmulateSingleOp();    
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    U8* createIndirectTraceExit();
+#endif
     U8* createEmulateOpenGL();
     U8* createCalculationCF(LazyFlagType lazyFlagType);
     void getCF(LazyFlagType lazyFlagType, RegPtr result);
@@ -172,26 +206,58 @@ public:
 private:
     void writeMemory(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(MemPtr address)> customMemoryOp, std::function<void()> failedMemoryOp, bool checkAlignment, bool forceMmuCheck);
 
-    bool isBlockOpBoundary(U32 eip) {
-        if (eip < startingEip || eip > lastOpEip) {
-            return false;
-        }
-        U32 opEip = startingEip;
-        DecodedOp* nextOp = firstOp;
-        while (nextOp && opEip <= lastOpEip) {
-            if (opEip == eip) {
-                return true;
-            }
-            if (!nextOp->len) {
-                break;
-            }
-            opEip += nextOp->len;
-            nextOp = nextOp->next;
-        }
-        return false;
-    }
+    void analyzeBlockControlFlow(DecodedOp* op);
 
 protected:
+    bool isBlockOpBoundary(U32 eip) const {
+        return findBlockInstruction(eip) != blockInstructions.size();
+    }
+    struct BlockInstruction {
+        U32 eip;
+        DecodedOp* op;
+    };
+    struct BlockBranch {
+        U32 sourceEip;
+        U32 targetEip;
+    };
+    // Built once after selecting the block. Forward branches have an exact
+    // instruction target inside it; these contain no host labels or tokens.
+    std::vector<BlockInstruction> blockInstructions;
+    std::vector<BlockBranch> forwardBranches;
+    size_t findBlockInstruction(U32 eip) const;
+    std::vector<BlockBranch> findLoopBackedges() const;
+    // Consecutive scalar reads sharing an unchanged effective-address base.
+    // The backend must guard the entire span and refresh it on every entry.
+    struct ReadGroup {
+        U32 firstEip = 0, lastEip = 0, firstDisp = 0;
+        S32 minOffset = 0;
+        U32 span = 0, count = 0;
+    };
+    bool findReadGroup(U32 eip, ReadGroup& group) const;
+    // Taken conditional edge that leaves the contiguous compiled region.
+    void branchToSideExit(U32 address);
+    struct LoopRegisterUsage {
+        U8 gp = 0;
+        U8 gpWritten = 0;
+        U8 xmm = 0;
+        U8 xmmWritten = 0;
+        U8 segments = 0;
+        bool touchesMemory = false;
+    };
+    // Conservative region contract: these operations access architectural
+    // registers through the JIT register API. Memory operations use the JIT
+    // memory API, whose slow paths must publish dirty state and preserve locals.
+    bool accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage) const;
+    // A bounded acyclic region with enough forward joins to amortize
+    // preloading its GP/XMM inputs. Small memory spans use target-specific
+    // bounds and require publication at guest joins.
+    bool findForwardRegisterRegion(LoopRegisterUsage& usage) const;
+    // Adjacent register-only producer/consumer eligibility, independent of
+    // the backend's storage for the forwarded result.
+    bool canForwardFlagResult(DecodedOp* op) const;
+    // True when the entire region preserves carry and replaces other live
+    // flags. The caller must initialize cached carry on every region entry.
+    bool canCacheLoopCarry(U32 firstEip, U32 lastEip) const;
 
     virtual U32 getBufferSize() = 0;
     virtual U32 markBufferLocation() = 0;
@@ -224,5 +290,10 @@ protected:
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
 JitCodeGen* startNewJIT(CPU* cpu);
+
+#ifndef BOXEDWINE_WASM_JIT
+// Bind per-CPU helpers when entering code compiled by another CPU.
+void bindNativeCarryHelpers(CPU* cpu);
+#endif
 
 #endif

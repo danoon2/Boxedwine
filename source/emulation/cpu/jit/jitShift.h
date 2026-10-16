@@ -836,7 +836,9 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
 
             andValue(JitWidth::b32, src, 0x1f);
         }
-        If(JitWidth::b8, src); {
+        // Native x64 masks the instruction count, but the lazy-flag update
+        // must also be skipped when CL masks to zero (for example 32 or 64).
+        IfTest(JitWidth::b8, src, 0x1f); {
             readWriteMem(width, calculateEaa(op), [src, needsToSetFlags, flagType, flags, op, width, callback, this](RegPtr value) {
                 storeLazyFlagType(flagType);
                 if (flags && flags->usesSrc(needsToSetFlags)) {
@@ -852,6 +854,17 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
             }, -1, true);
         } EndIf();
         currentLazyFlags = FLAGS_NULL;
+    } else if (doesShiftNeedToMask()) {
+        // The ARM double-shift implementation requires a masked, nonzero count
+        // even when the result flags are dead. Keep a private count since the
+        // 16-bit implementation may adjust it while combining the operands.
+        RegPtr src = getTmpReg8(1, false, 1);
+        andValue(JitWidth::b32, src, 0x1f);
+        If(JitWidth::b8, src); {
+            readWriteMem(width, calculateEaa(op), [src, op, width, callback, this](RegPtr value) {
+                (this->*callback)(width, value, getReadOnlyReg(op->reg), src);
+            });
+        } EndIf();
     } else {
         readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
             (this->*callback)(width, value, getReadOnlyReg(op->reg), getReadOnlyReg(1, true, 1));
@@ -873,7 +886,8 @@ void Jit::dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFla
             andValue(JitWidth::b32, src, 0x1f);
         }
         
-        If(JitWidth::b8, src); {
+        // Preserve the previous flags when the effective shift count is zero.
+        IfTest(JitWidth::b8, src, 0x1f); {
             RegPtr dest = getReg(op->reg);
             RegPtr src2 = op->reg == op->rm ? dest : getReadOnlyReg(op->rm);
 
@@ -890,6 +904,14 @@ void Jit::dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFla
             }
         } EndIf();
         currentLazyFlags = FLAGS_NULL;
+    } else if (doesShiftNeedToMask()) {
+        RegPtr src = getTmpReg8(1, false, 1);
+        andValue(JitWidth::b32, src, 0x1f);
+        If(JitWidth::b8, src); {
+            RegPtr dest = getReg(op->reg);
+            RegPtr src2 = op->reg == op->rm ? dest : getReadOnlyReg(op->rm);
+            (this->*callback)(width, dest, src2, src);
+        } EndIf();
     } else {
         (this->*callback)(width, getReg(op->reg), getReadOnlyReg(op->rm), getReadOnlyReg(1, true, 1));
     }

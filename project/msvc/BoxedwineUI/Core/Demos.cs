@@ -9,7 +9,7 @@ using System.Xml.Linq;
 namespace Boxedwine.Library;
 
 public sealed record DemoRecipe(DemoOrigin Origin, string Name, string Summary, string Help, string Icon, string Url, long Bytes, string InstallType,
-    string? InstallExe, string WineVersion, DemoSettings Settings, string? Glide, string? CncRenderer, bool CncUncapped, string? CncMode);
+    string? InstallExe, string WineVersion, DemoSettings Settings, string? Glide, string? CncRenderer, bool CncUncapped, string? CncMode, string? WineDllOverrides = null);
 public static class Demos
 {
     public static List<DemoRecipe> Load(string path)
@@ -17,7 +17,7 @@ public static class Demos
         SafeFiles.NoLinks(path);
         using var reader = XmlReader.Create(path, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 1024 * 1024 });
         var xml = XDocument.Load(reader); var root = xml.Root ?? throw new InvalidDataException("The demo catalog is empty.");
-        if (root.Name != "XML" || !int.TryParse((string?)root.Attribute("schemaVersion"), out int schema) || schema is < 1 or > 7 || string.IsNullOrEmpty((string?)root.Attribute("release"))) throw new InvalidDataException("Unsupported demo catalog version.");
+        if (root.Name != "XML" || !int.TryParse((string?)root.Attribute("schemaVersion"), out int schema) || schema is < 1 or > 8 || string.IsNullOrEmpty((string?)root.Attribute("release"))) throw new InvalidDataException("Unsupported demo catalog version.");
         string release = (string)root.Attribute("release")!;
         var recipes = new List<DemoRecipe>(); var ids = new HashSet<string>();
         foreach (var item in root.Elements())
@@ -34,6 +34,12 @@ public static class Demos
             _ = SafeFiles.Beneath(Path.GetDirectoryName(path)!, shortcut);
             if (Field("Icon").Length > 0) _ = SafeFiles.Beneath(Path.GetDirectoryName(path)!, Field("Icon"));
             foreach (var unsupported in new[] { "Options", "InstallOptions", "Options_Mac", "InstallOptions_Mac" }) if (Field(unsupported).Length > 0) throw new InvalidDataException("Unsupported legacy options in demo " + name);
+            string? dllOverrides = Optional("WineDllOverrides");
+            if (dllOverrides != null)
+            {
+                if (schema < 8 || dllOverrides.Length is 0 or > 1024 || dllOverrides.Any(char.IsControl)) throw new InvalidDataException("WineDllOverrides requires schema 8 and a nonempty single-line value of at most 1024 characters.");
+                LaunchArguments.ValidateOverrides(["-env", "WINEDLLOVERRIDES=" + dllOverrides]);
+            }
             var settings = new DemoSettings { WindowsVersion = Optional("WindowsVersion"), Gdi = Boolean("GDIRenderer"), Resolution = Optional("Resolution"), InstallResolution = Optional("InstallResolution"), BitsPerPixel = Number("BitsPerPixel"), CpuCount = Number("CPUCount"), NativeOpenGL = Boolean("NativeOpenGL"), UseEGL = Boolean("UseEGL"), CncDDraw = Boolean("CNCDDraw"), DisableHideCursor = Boolean("DisableHideCursor"), ForceRelativeMouse = Boolean("ForceRelativeMouse") };
             if (settings.Resolution != null) LaunchArguments.ValidateResolution(settings.Resolution);
             if (settings.InstallResolution != null) LaunchArguments.ValidateResolution(settings.InstallResolution);
@@ -44,7 +50,7 @@ public static class Demos
             if (Optional("CNCDDrawRenderer") is string renderer && renderer is not ("gdi" or "opengl" or "direct3d9")) throw new InvalidDataException("Unknown CNC DDraw renderer.");
             if (Optional("CNCDDrawFakeMode") is string mode && !Regex.IsMatch(mode, "^[1-9][0-9]{0,3}x[1-9][0-9]{0,3}x(8|16|32)$")) throw new InvalidDataException("Invalid CNC DDraw display mode.");
             recipes.Add(new(new(id, release, hash, shortcut), name, Field("Summary"), Field("Help").Replace("\\n", "\n").Replace("\\t", "    "), Field("Icon"), url, bytes,
-                Field("InstallType"), Optional("InstallExe"), Field("WineVersion"), settings, Optional("Glide"), Optional("CNCDDrawRenderer"), Boolean("CNCDDrawUncapped") == true, Optional("CNCDDrawFakeMode")));
+                Field("InstallType"), Optional("InstallExe"), Field("WineVersion"), settings, Optional("Glide"), Optional("CNCDDrawRenderer"), Boolean("CNCDDrawUncapped") == true, Optional("CNCDDrawFakeMode"), dllOverrides));
         }
         return recipes;
     }
@@ -57,6 +63,7 @@ public static class Demos
         var app = new LibraryApp { Name = demo.Name, Demo = demo.Origin, DemoSettings = demo.Settings, WinePackage = wine, SavedWineVersion = wine.WineVersion, Resolution = demo.Settings.Resolution ?? "1024x768", WindowsOpenGL = "default" };
         // Seed an editable per-app value only on first install.
         if (demo.Origin.Id == "alice") app.BoxedwineArguments = LaunchArguments.WithMouseSensitivity([], 200);
+        if (demo.WineDllOverrides != null) (app.BoxedwineArguments ??= []).AddRange(["-env", "WINEDLLOVERRIDES=" + demo.WineDllOverrides]);
         if (demo.Settings.WindowsVersion is string version) app.ChooseWindows(version);
         // Explicit pending flags are required: the preferred values already inherit the recipe.
         if (demo.Settings.Gdi != null) { app.WineRenderer = app.PreferredRenderer; app.WineRendererPending = true; }

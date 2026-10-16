@@ -206,8 +206,18 @@ enum WasmJitBailoutReason : U32 {
 #endif
 
 class CPU: public DecodeBlockCallback {
+#ifdef BOXEDWINE_WASM_JIT
+    // The Wasm code generator embeds the protected decode-mode field's offset.
+    friend class JitWasmCodeGen;
+#endif
 public:
     static CPU* allocCPU(KMemory* memory);
+    // Windows and Linux x64 keep CPU state at a consistent cache-line phase.
+    // Tests follow the release policy; experiment builds cover other x64 hosts.
+#if defined(BOXEDWINE_JIT_X64) && (defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32))
+    static void* operator new(size_t size);
+    static void operator delete(void* address) noexcept;
+#endif
 
     CPU(KMemory* memory);
     virtual ~CPU();
@@ -293,8 +303,11 @@ public:
     U32 pendingDebugTrapCode = 0;
     U32 pendingDebugTrapDr6 = 0;
     DecodedOp*** opCache = nullptr;
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     void**** jitEntryPageGroups = nullptr;
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    void** jitFlatEntries = nullptr;
 #endif
 
     U64 fAbs = 0x7fffffffffffffffl;
