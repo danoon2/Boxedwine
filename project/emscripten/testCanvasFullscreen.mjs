@@ -7,7 +7,7 @@ import vm from 'node:vm';
 
 const shell = readFileSync(new URL('./boxedwine-shell.js', import.meta.url), 'utf8');
 const begin = shell.indexOf('function setupCanvasFullscreen(');
-const end = shell.indexOf('\n}\n', begin) + 3; // the closing brace of setupCanvasFullscreen
+const end = shell.indexOf('\n}', begin) + 2; // the closing brace of setupCanvasFullscreen (LF or CRLF)
 assert(begin >= 0 && end > begin);
 const source = shell.slice(begin, end);
 

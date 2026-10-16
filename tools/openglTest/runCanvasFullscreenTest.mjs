@@ -23,7 +23,7 @@ const canvasMarkup = template.toString().match(/<canvas\b[^>]*><\/canvas>/g);
 assert.equal(canvasMarkup?.length, 2);
 const source = await readFile(new URL(import.meta.url));
 const start = shell.indexOf('function setupCanvasFullscreen(');
-const end = shell.indexOf('\n}\n', start) + 3; // the closing brace of setupCanvasFullscreen
+const end = shell.indexOf('\n}', start) + 2; // the closing brace of setupCanvasFullscreen (LF or CRLF)
 assert(start >= 0 && end > start);
 const helper = shell.subarray(start,end).toString();
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
