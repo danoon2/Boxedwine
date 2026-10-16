@@ -1508,7 +1508,8 @@ void KMemory::prepareCodeInvalidation(U32 address, U32 len) {
             }
             block.decodedOps.reserve(blockOpCount);
             block.jitOps.reserve(blockOpCount);
-            for (U32 i = 0; i < blockOpCount; ++i) {
+            // An earlier removal can cut a chain short at a Done op.
+            for (U32 i = 0; i < blockOpCount && current; ++i) {
                 block.decodedOps.push_back(current);
                 if (current->pfnJitCode) {
                     block.jitOps.push_back((void*)current->pfnJitCode);
@@ -1534,6 +1535,7 @@ void KMemory::prepareCodeInvalidation(U32 address, U32 len) {
             }
         }
 #endif
+        // The requested range goes last; commit counts only it as a write.
         preparedCodeRemovalRanges.push_back({address, len});
         data->opCache.prepareRemoveRanges(preparedCodeRemovalRanges);
         if (codeMemoryFreeCount >
@@ -1555,7 +1557,7 @@ void KMemory::prepareCodeInvalidation(U32 address, U32 len) {
     }
 }
 
-void KMemory::commitPreparedCodeInvalidation() {
+void KMemory::commitPreparedCodeInvalidation(bool becauseOfWrite) {
     if (!codeInvalidationPrepared) {
         kpanic("code invalidation was not prepared");
     }
@@ -1603,8 +1605,9 @@ void KMemory::commitPreparedCodeInvalidation() {
     }
 #endif
 
-    for (const auto& range : preparedCodeRemovalRanges) {
-        data->opCache.remove(range.first, range.second, false);
+    for (size_t i = 0; i < preparedCodeRemovalRanges.size(); ++i) {
+        bool requestedRange = i + 1 == preparedCodeRemovalRanges.size();
+        data->opCache.remove(preparedCodeRemovalRanges[i].first, preparedCodeRemovalRanges[i].second, becauseOfWrite && requestedRange);
     }
     data->opCache.finishPreparedRemove();
 
@@ -1708,10 +1711,7 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     std::vector<DecodedOp*> decodedOps;
     decodedOps.reserve(blockOpCount);
     jitOps.reserve(blockOpCount);
-    for (U32 i = 0; i < blockOpCount; ++i) {
-        if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
-            kpanic("KMemory::removeCodeBlock nextOp->blockStart");
-        }
+    for (U32 i = 0; i < blockOpCount && nextOp; ++i) {
         if (nextOp->pfnJitCode) {
             jitOps.push_back(nextOp->pfnJitCode);
         }
@@ -1720,11 +1720,11 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
     }
     PreparedJitCodeInvalidation backendInvalidation = prepareJitCodeInvalidation(this, decodedOps, jitOps);
 
-    nextOp = blockOp;
-    for (U32 i = 0; i < blockOpCount; i++) {
-        if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
-            kpanic("KMemory::removeCodeBlock nextOp->blockStart");
-        }
+    for (DecodedOp* decodedOp : decodedOps) {
+        nextOp = decodedOp;
+        // A longer overlapping wasm JIT block keeps ownership of the ops it
+        // shares with this block, including this block's own start op.
+        bool owned = nextOp->blockStart == blockOp || !nextOp->blockStart || nextOp->inst == Done;
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
         void* jitCode;
         if (nextOp->flags2 & OP_FLAG2_WASM_JIT_RELOC_HAZARD) {
@@ -1738,9 +1738,13 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
             nextOp->setJitCode(nullptr);
         }
 #endif
-        nextOp->blockStart = nullptr;
-        nextOp->blockOpCount = 0;
-        nextOp->blockLen = 0;
+        if (owned) {
+            nextOp->blockStart = nullptr;
+        }
+        if (owned || nextOp == blockOp) {
+            nextOp->blockOpCount = 0;
+            nextOp->blockLen = 0;
+        }
         if (nextOp->runCount) {
             nextOp->runCount = 1; // so that tracing won't stub it out again
         }
@@ -1751,7 +1755,6 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
         nextOp->setJitCode(nullptr);
 #endif
         nextOp->jitLen = 0;
-        nextOp = nextOp->next;
     }
     backendInvalidation.commit();
     if (clearOps) {
@@ -1768,30 +1771,26 @@ void KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool clearOps) {
 #endif
 
 #if defined(BOXEDWINE_JIT)
-static void opCallback(U32 address, DecodedOp* op, void* p) {
-    KMemory* memory = (KMemory*)p;
+static void findCodeBlock(U32 address, DecodedOp* op, void* found) {
     if (op->blockStart) {
-        // Normal and JIT cpu's don't need to track eip on an op except for this case, but I don't think it's really worth increasing
-        // the size of DecodedOp just for this
-        DecodedOp* nextOp = op->blockStart;
-        U32 len = 0;
-        while (nextOp != op) {
-            len += nextOp->len;
-            nextOp = nextOp->next;
-        }
-        U32 blockAddress = address - len;
-        memory->removeCodeBlock(blockAddress, op->blockStart, true);
+        *static_cast<bool*>(found) = true;
     }
 }
 #endif
 void KMemory::removeCode(KThread* thread, U32 address, U32 len, bool becauseOfWrite) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
 #if defined(BOXEDWINE_JIT)
-    data->opCache.iterateOps(address, len, opCallback, this);
-    data->opCache.remove(address, len, becauseOfWrite);
-#else
-    data->opCache.remove(address, len, becauseOfWrite);
+    bool hasCodeBlock = false;
+    data->opCache.iterateOps(address, len, findCodeBlock, &hasCodeBlock);
+    if (hasCodeBlock) {
+        // Overlapping wasm JIT blocks share ops, so collect every block that
+        // overlaps the range before removing any of their ops.
+        prepareCodeInvalidation(address, len);
+        commitPreparedCodeInvalidation(becauseOfWrite);
+        return;
+    }
 #endif
+    data->opCache.remove(address, len, becauseOfWrite);
 }
 
 void KMemory::clearPageWriteCounts(U32 pageIndex) {
