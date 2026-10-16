@@ -938,6 +938,65 @@ void testDecodedOpLargeRangeRemoval() {
     }
 }
 
+void testJitOverlappingBlockUnmap() {
+#ifdef BOXEDWINE_JIT
+    // The wasm JIT lets the longer of two overlapping blocks own their shared
+    // ops. Unmapping only the first page reaches the block starting there, but
+    // must also retire the overlapping block that runs onto the second page.
+    constexpr U32 address = 0x21000000;
+    constexpr U32 start = address + K_PAGE_SIZE - 4;
+    constexpr U32 opCount = 32;
+    for (bool nestedStart : {false, true}) {
+        newInstruction(0);
+        U32 mapped = testMemory->mmap(testContext().thread, address, 2 * K_PAGE_SIZE,
+            K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+        if (mapped != address) {
+            failed("overlapping block unmap mmap failed: %x", mapped);
+            return;
+        }
+        for (U32 i = 0; i < opCount; ++i) {
+            testMemory->writeb(start + i, 0x90); // nop
+        }
+        testMemory->writeb(start + opCount, 0xc3); // ret
+        std::vector<DecodedOp*> ops;
+        for (DecodedOp* op = cpu->getOp(start, 0); op && op->inst != Done && ops.size() < opCount; op = op->next) {
+            ops.push_back(op);
+        }
+        if (ops.size() != opCount) {
+            failed("overlapping block unmap decoded %u ops", (U32)ops.size());
+            testMemory->unmap(address, 2 * K_PAGE_SIZE);
+            return;
+        }
+        auto publish = [&ops](U32 first, U32 count) {
+            ops[first]->blockOpCount = count;
+            ops[first]->blockLen = count;
+            for (U32 i = first; i < first + count; ++i) {
+                if (!ops[i]->blockStart || ops[i]->blockStart->blockLen < count) {
+                    ops[i]->blockStart = ops[first];
+                }
+            }
+        };
+        if (nestedStart) {
+            // The owner covers the nested block's start, but not its tail.
+            publish(0, 16);
+            publish(8, 12);
+        } else {
+            // A longer block starting inside the first one owns its tail.
+            publish(0, 8);
+            publish(4, 16);
+        }
+        testMemory->unmap(address, K_PAGE_SIZE);
+        if (testMemory->getDecodedOp(start + 19)) {
+            failed("overlapping block unmap kept the %s block's tail", nestedStart ? "nested" : "owning");
+        }
+        if (!testMemory->getDecodedOp(start + 24)) {
+            failed("overlapping block unmap removed an op outside both blocks");
+        }
+        testMemory->unmap(address + K_PAGE_SIZE, K_PAGE_SIZE);
+    }
+#endif
+}
+
 #ifdef BOXEDWINE_MULTI_THREADED
 #undef cpu
 #undef memory

@@ -1466,6 +1466,38 @@ void KMemory::prepareCodeInvalidation(U32 address, U32 len) {
                 context.blocks->push_back({opAddress - prefixLen, blockStart, {}, {}, nullptr});
             }, &context);
 
+        // Wasm JIT blocks can overlap: the longest block owns the shared ops,
+        // so a shorter block can start or end inside it. Removing one block's
+        // range removes ops the other still runs, so invalidate them together.
+        auto isPreparedBlock = [this](DecodedOp* blockStart) {
+            for (const PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
+                if (block.blockStart == blockStart) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        for (size_t blockIndex = 0; blockIndex < preparedCodeBlocks.size(); ++blockIndex) {
+            DecodedOp* blockStart = preparedCodeBlocks[blockIndex].blockStart;
+            U32 opAddress = preparedCodeBlocks[blockIndex].address;
+            DecodedOp* current = blockStart;
+            for (U32 i = 0; i < blockStart->blockOpCount && current && current->inst != Done; ++i) {
+                DecodedOp* owner = current->blockStart;
+                if (owner && owner != blockStart && !isPreparedBlock(owner)) {
+                    U32 prefixLen = 0;
+                    for (DecodedOp* prefix = owner; prefix != current; prefix = prefix->next) {
+                        prefixLen += prefix->len;
+                    }
+                    preparedCodeBlocks.push_back({opAddress - prefixLen, owner, {}, {}, nullptr});
+                }
+                if (current != blockStart && current->blockOpCount && !isPreparedBlock(current)) {
+                    preparedCodeBlocks.push_back({opAddress, current, {}, {}, nullptr});
+                }
+                opAddress += current->len;
+                current = current->next;
+            }
+        }
+
         for (PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
             DecodedOp* current = block.blockStart;
             U32 blockOpCount = block.blockStart->blockOpCount;
@@ -1529,12 +1561,20 @@ void KMemory::commitPreparedCodeInvalidation() {
     }
 
 #if defined(BOXEDWINE_JIT)
+    auto isPreparedBlock = [this](DecodedOp* blockStart) {
+        for (const PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
+            if (block.blockStart == blockStart) {
+                return true;
+            }
+        }
+        return false;
+    };
     for (PreparedCodeInvalidationBlock& block : preparedCodeBlocks) {
         DecodedOp* blockOp = block.blockStart;
-        DecodedOp* nextOp = blockOp;
-        U32 blockOpCount = blockOp->blockOpCount;
-        for (U32 i = 0; i < blockOpCount; ++i) {
-            if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
+        // Overlapping blocks share ops, so an earlier block may already have
+        // cleared some of them, including this block's start op and counts.
+        for (DecodedOp* nextOp : block.decodedOps) {
+            if (nextOp->blockStart && nextOp->blockStart != blockOp && nextOp->inst != Done && !isPreparedBlock(nextOp->blockStart)) {
                 kpanic("KMemory::commitPreparedCodeInvalidation nextOp->blockStart");
             }
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
@@ -1556,7 +1596,6 @@ void KMemory::commitPreparedCodeInvalidation() {
             nextOp->setJitCode(nullptr);
 #endif
             nextOp->jitLen = 0;
-            nextOp = nextOp->next;
         }
     }
     for (PreparedJitCodeInvalidation& invalidation : preparedBackendInvalidations) {

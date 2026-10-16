@@ -1057,6 +1057,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testLinearMemoryCloneMappings, "Test linear-memory COW and shared clone mappings", TEST_ENTRY_SERIAL},
     {testLinearMemoryCodeInvalidation, "Test linear-memory code invalidation", TEST_ENTRY_SERIAL},
     {testDecodedOpLargeRangeRemoval, "Test decoded op large-range removal"},
+    {testJitOverlappingBlockUnmap, "Test JIT overlapping block unmap", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testDecodedOpInvalidationDefersCrossThreadReuse, "Test decoded op invalidation defers cross-thread reuse"},
     {testDecodedOpCacheCloneExecDetach, "Test decoded op cache CLONE_VM exec detach"},
