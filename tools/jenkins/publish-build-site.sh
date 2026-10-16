@@ -7,6 +7,7 @@ if [ -z "${BUILD_SITE_REMOTE:-}" ]; then
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+BUILD_RESULT="$(printf '%s' "${BUILD_RESULT:-SUCCESS}" | tr '[:lower:]' '[:upper:]')"
 SITE_DIR="$(mktemp -d)"
 BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-https://boxedwine.org/v2/19/TinyCore15Wine11.0-web.zip}"
 DEMO_ROOT_CONFIG="${BUILD_SITE_DEMO_ROOT_CONFIG:-$ROOT_DIR/tools/buildWine/webgl_filesystems_v19.json}"
@@ -92,13 +93,17 @@ fi
 rsync -az --exclude=/.publish-lock "${SSH_ARGS[@]}" "${BUILD_SITE_REMOTE}/" "$SITE_DIR/"
 
 ARTIFACT_ARGS=()
-if [ -n "${BUILD_SITE_ARTIFACT:-}" ] && [ -f "$BUILD_SITE_ARTIFACT" ]; then
+if [ "$BUILD_RESULT" = SUCCESS ] && [ -n "${BUILD_SITE_ARTIFACT:-}" ] && [ -f "$BUILD_SITE_ARTIFACT" ]; then
     ARTIFACT_ARGS+=(--artifact "$BUILD_SITE_ARTIFACT")
 fi
 
 LOG_ARGS=()
 if [ -n "${BUILD_SITE_LOG:-}" ] && [ -f "$BUILD_SITE_LOG" ]; then
     LOG_ARGS+=(--log "$BUILD_SITE_LOG")
+fi
+if [ "$BUILD_RESULT" != SUCCESS ] && [ "${#LOG_ARGS[@]}" = 0 ]; then
+    echo "BUILD_SITE_LOG must name an existing log for a $BUILD_RESULT build." >&2
+    exit 1
 fi
 
 DEMO_ARGS=()
@@ -110,7 +115,11 @@ SINGLE_THREADED_DIR="${BUILD_SITE_SINGLE_THREADED_DIR:-$ROOT_DIR/project/linux/D
 MULTI_THREADED_DIR="${BUILD_SITE_MULTI_THREADED_DIR:-$ROOT_DIR/project/linux/Deploy/Web/MultiThreaded}"
 SINGLE_THREADED_JIT_DIR="${BUILD_SITE_SINGLE_THREADED_JIT_DIR:-$ROOT_DIR/project/linux/Deploy/Web/SingleThreadedJit}"
 MULTI_THREADED_JIT_DIR="${BUILD_SITE_MULTI_THREADED_JIT_DIR:-$ROOT_DIR/project/linux/Deploy/Web/MultiThreadedJit}"
-if [ -d "$SINGLE_THREADED_DIR" ] &&
+if [ "$BUILD_RESULT" != SUCCESS ]; then
+    # Old or partial outputs must not trigger downloads/validation or replace
+    # the last successful demos when publishing a failed build's log.
+    echo "Build result is $BUILD_RESULT; publishing the log without artifacts or demos."
+elif [ -d "$SINGLE_THREADED_DIR" ] &&
     [ -d "$MULTI_THREADED_DIR" ] &&
     [ -d "$SINGLE_THREADED_JIT_DIR" ] &&
     [ -d "$MULTI_THREADED_JIT_DIR" ]; then
@@ -134,7 +143,7 @@ fi
     --title "${BUILD_SITE_TITLE:-Boxedwine Builds}" \
     --branch "${BRANCH_NAME:-unknown}" \
     --build-number "${BUILD_NUMBER:-0}" \
-    --result "${BUILD_RESULT:-SUCCESS}" \
+    --result "$BUILD_RESULT" \
     --commit "${GIT_COMMIT:-}" \
     --commit-url "${GIT_URL:-}" \
     --build-url "${BUILD_URL:-}" \
