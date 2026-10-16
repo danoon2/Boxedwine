@@ -35,9 +35,9 @@ class DistributionResourcesTests(unittest.TestCase):
         for version in ("11.0", "10.0"):
             entry = ET.SubElement(xml, "Wine")
             url = "https://boxedwine.org/" + version + ".zip"
-            for key, value in {"WineVersion": version, "FileURL": url}.items():
+            for key, value in {"WineVersion": version, "FileURL": url, "FileVersion": "19"}.items():
                 ET.SubElement(entry, key).text = value
-            self.pins[url] = {"bytes": self.wine.stat().st_size, "sha256": hashlib.sha256(self.wine.read_bytes()).hexdigest(), "filesystemVersion": "15"}
+            self.pins[url] = {"bytes": self.wine.stat().st_size, "sha256": hashlib.sha256(self.wine.read_bytes()).hexdigest(), "fileVersion": "19", "filesystemVersion": "19"}
         (support / "filesV2.xml").write_bytes(ET.tostring(xml))
         (support / "packages.json").write_text(json.dumps(self.pins))
         (self.source / "PrivacyInfo.xcprivacy").write_bytes(plistlib.dumps({"NSPrivacyTracking": False, "NSPrivacyCollectedDataTypes": [{"test": "download logs"}]}))
@@ -60,6 +60,21 @@ class DistributionResourcesTests(unittest.TestCase):
         self.wine.write_bytes(b"fake package")  # Same byte count, different content.
         with self.assertRaisesRegex(ValueError, "checksum"):
             self.prepare(editions.STORE, self.wine)
+
+    def test_store_uses_current_bundled_catalog_revision(self):
+        xml, pins = editions.store_catalog()
+        revision = ET.fromstring(xml).find("Wine").findtext("FileVersion")
+        self.assertEqual(next(iter(pins.values()))["filesystemVersion"], revision)
+
+    def test_store_rejects_inconsistent_catalog_revisions(self):
+        for field in ("filesystemVersion", "fileVersion"):
+            with self.subTest(field=field):
+                pin = self.pins["https://boxedwine.org/11.0.zip"]
+                pin[field] = "18"
+                (self.source / "WindowsSupport/packages.json").write_text(json.dumps(self.pins))
+                with self.assertRaisesRegex(ValueError, "revision"):
+                    self.prepare(editions.STORE, self.wine)
+                pin[field] = "19"
 
     def test_switching_back_to_jenkins_restores_download_pins_and_removes_wine(self):
         self.prepare(editions.STORE, self.wine)

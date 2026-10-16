@@ -836,7 +836,9 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
 
             andValue(JitWidth::b32, src, 0x1f);
         }
-        If(JitWidth::b8, src); {
+        // Native x64 masks the instruction count, but the lazy-flag update
+        // must also be skipped when CL masks to zero (for example 32 or 64).
+        IfTest(JitWidth::b8, src, 0x1f); {
             readWriteMem(width, calculateEaa(op), [src, needsToSetFlags, flagType, flags, op, width, callback, this](RegPtr value) {
                 storeLazyFlagType(flagType);
                 if (flags && flags->usesSrc(needsToSetFlags)) {
@@ -884,7 +886,8 @@ void Jit::dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFla
             andValue(JitWidth::b32, src, 0x1f);
         }
         
-        If(JitWidth::b8, src); {
+        // Preserve the previous flags when the effective shift count is zero.
+        IfTest(JitWidth::b8, src, 0x1f); {
             RegPtr dest = getReg(op->reg);
             RegPtr src2 = op->reg == op->rm ? dest : getReadOnlyReg(op->rm);
 

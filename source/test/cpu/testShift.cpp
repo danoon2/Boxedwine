@@ -109,10 +109,12 @@ const ShiftCase SHIFT_CASES[] = {
 const DoubleShiftCase DOUBLE_SHIFT_CASES[] = {
     {0x00000000, 0xffffffff, 0, CF | PF | ZF | SF | OF},
     {0xffffc032, 0xffffffff, 32, 0},
+    {0xffffc032, 0xffffffff, 32, CF | PF | ZF | SF | OF},
     {0x12345678, 0x90abcdef, 33, 0},
     {0x12345678, 0x90abcdef, 16, 0},
     {0x12345678, 0x90abcdef, 48, 0},
     {0x12345678, 0x90abcdef, 64, 0},
+    {0x12345678, 0x90abcdef, 64, CF | PF | ZF | SF | OF},
     {0x12345678, 0x90abcdef, 4, 0},
     {0x12345678, 0x90abcdef, 12, 0},
     {0x80808080, 0x80000000, 1, 0},

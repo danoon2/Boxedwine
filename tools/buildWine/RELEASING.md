@@ -7,9 +7,11 @@ The [builder guide](README.md) explains the build internals and prerequisites.
 
 Review the release plan before starting builds. Commands below are for the later
 execution steps, run from the repository root in WSL unless noted otherwise.
-The inventory was reviewed against filesystem 18 on October 13, 2026. Resolve
-the currently selected profiles and pins again for each release. Revision 17 is
-published; revision 18 contains the Vantage fixes and awaits publication.
+The inventory was reviewed against filesystem 19 on October 15, 2026. Resolve
+the currently selected profiles and pins again for each release. Revision 19
+contains the shader color disassembly fix; its versioned and latest archives
+are published and verified. The hosted legacy UI catalog still needs updating. Earlier
+versioned archives and manifests retain their original identities.
 
 ## 1. Agree on the release scope
 
@@ -41,7 +43,7 @@ is a local workaround; release testing must use the candidate ZIP in a fresh roo
 | [`filesystem_wine11.json`](filesystem_wine11.json) | Set `filesystem_version` and select the release's `webgl_config`. Change `wine_tag`/`wine_commit` only when changing upstream Wine. |
 | [`changes_wine11.txt`](changes_wine11.txt) | Add the release entry; its first line must start with the configured `vN`. Preserve previous entries. |
 | [`changes_wine11_web.txt`](changes_wine11_web.txt) | Update the web release entry to the same `vN`. It is prepended to the full history. Update size-savings claims only from new measurements. |
-| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v18.json`](webgl_filesystems_v18.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
+| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v19.json`](webgl_filesystems_v19.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
 | [`webgl_filesystem.py`](webgl_filesystem.py), `DEFAULT_CONFIG` | Advance the build/validation default to the same manifest as the filesystem profile. Preserve the explicitly historical `validate-set` default and historical examples. |
 | [`README.md`](README.md) and this checklist | Update current revision, manifest links, publication status, and release examples; retain clearly labeled historical instructions. |
 
@@ -139,7 +141,9 @@ the same location. Do not edit generated `bin/`, `Build/`, or `artifacts/` copie
 | --- | --- |
 | [`packages.json`](../../project/mac-xcode/Boxedwine/BoxedwineUI/Resources/WindowsSupport/packages.json) | Set the final package URL key, exact `bytes`, `sha256`, `fileVersion`, and packaged `filesystemVersion`, using the **main ZIP**, not the web ZIP. |
 | [`filesV2.xml`](../../project/mac-xcode/Boxedwine/BoxedwineUI/Resources/WindowsSupport/filesV2.xml) | Update the Wine entry's `FileURL`, `FileVersion`, and rounded-up `FileSizeMB` alongside `packages.json`. All three native UIs consume the shared catalog. |
+| Hosted legacy UI catalog | The legacy UI reads `/v2/<BOXEDWINE_VERSION_STR>/filesV2.xml` (currently `/v2/26R2/filesV2.xml`), independently of the bundled native catalog. Download the current hosted XML, update only its Wine 11 entry, preserve other Wine versions/demos, and stage it for upload after the new ZIPs. Do not replace it with the single-version native catalog. |
 | Mac, Windows, and Linux UI distributions | Rebuild/stage their resources when shipping the updated catalog. Test package selection, clean download, verification, setup, and launch against the candidate. Existing applications retain their pinned package records. |
+| Mac App Store resources | Run `prepare-distribution-resources.py --variant BOXEDWINE_APP_STORE --wine <main ZIP> --output <staging directory>` against the final candidate. It requires matching XML/package revisions and the exact main ZIP size/hash. |
 | [`resources/demo-catalog.lock.json`](../../resources/demo-catalog.lock.json) | Conditional: update only if demo recipes/icons or their compatibility requirements change. This is a separate package from the Wine catalog; see the [catalog release procedure](../../resources/DEMO_CATALOG.md). |
 | Release documentation and provenance | Update current version/download descriptions and new validation records. Review applicable licensing/source records when components change; historical inventories and earlier test results remain evidence of their original artifacts. |
 

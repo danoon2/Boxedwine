@@ -10,11 +10,13 @@ Versions 2 through 45 retain earlier build and test selections for reproducing h
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 
-Filesystem 18 selects v46. Patches 66 and 67 add the shared WineD3D stream-output
+Filesystems 18 and 19 select v46. Patches 66 and 67 add the shared WineD3D stream-output
 overflow query and DXGI fullscreen activation fixes used by 3DMark Vantage.
 Overflow queries remain conditional on host OpenGL support; WebGL does not gain
-that capability. Wine test policy is unchanged. The rebuilt DLLs and archives
-are pinned by [`webgl_filesystems_v18.json`](../buildWine/webgl_filesystems_v18.json).
+that capability. Wine test policy is unchanged. The current DLLs and archives
+are pinned by [`webgl_filesystems_v19.json`](../buildWine/webgl_filesystems_v19.json).
+Revision 19 changes the shared Wine shader compiler used by the PE D3DX DLLs;
+the separate PE DLLs retain their v18 hashes.
 
 The published v11 filesystem is pinned to v41. Its September 19 download
 matches the candidate used for the focused regression checks; see

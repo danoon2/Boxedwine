@@ -35,14 +35,14 @@ struct WineCatalogTests {
         #expect(try WineCatalog.load(xml: Data(xml.utf8), fingerprints: fingerprints()).wines.count == 1)
     }
 
-    @Test func bundledListOffersOnlyWine11V18() throws {
+    @Test func bundledListOffersOnlyWine11V19() throws {
         let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources/WindowsSupport")
         let catalog = try WineCatalog.load(xml: Data(contentsOf: resources.appendingPathComponent("filesV2.xml")), fingerprints: Data(contentsOf: resources.appendingPathComponent("packages.json")))
         #expect(catalog.wines.map(\.wineVersion) == ["11.0"])
         #expect(catalog.wines.first?.name == "Wine 11.0")
         #expect(catalog.wines.allSatisfy { $0.url.scheme == "https" })
-        #expect(catalog.wines.first?.fileVersion == "18")
-        #expect(catalog.wines.first?.filesystemVersion == "18")
+        #expect(catalog.wines.first?.fileVersion == "19")
+        #expect(catalog.wines.first?.filesystemVersion == "19")
     }
 
     @Test func catalogStillSupportsMultipleReleasePackages() throws {
