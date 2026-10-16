@@ -77,6 +77,16 @@ and URL. These patches change shader compilation, not
 the selected graphics renderer. See [the regression notes](../../docs/3dmark06-shaders.md)
 for the aggregate probe and the upstream/local patch origins.
 
+The next Wine build also includes `wine11_shader_disassembly_color.patch`.
+3DMark06's Perlin Noise feature test disassembles and reassembles a vertex
+shader; Wine 11 changes `dcl_color1` to the invalid `dcl_specular0` syntax.
+The patch retains the color semantic and its index. Compile
+[`probes/shader-color-roundtrip.c`](probes/shader-color-roundtrip.c) with an
+i686 Windows C compiler and run it under Wine; a fixed build must report
+`SHADER_COLOR_ROUNDTRIP_PASS cases=64 failures=0` and preserve identical
+bytecode. This source fix is not included in the published v18 filesystem;
+it needs a new filesystem release before installed apps receive it.
+
 Revision 16 includes `wine11_surrogate_lifetime.patch`, which lets an idle
 COM surrogate exit after its hosted DLL releases its objects, factories and
 server locks. This fixes 3DMark03 shutdown with Futuremark SystemInfo enabled.

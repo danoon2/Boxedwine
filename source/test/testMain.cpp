@@ -181,6 +181,7 @@ void testInotifyReportsUnlinkAtDelete();
 void testInotifyFollowsWatchedSymlinkTarget();
 void testInotifyPollReportsChildDirectoryDelete();
 void testInotifyAsyncSignalsSigioOnDelete();
+void testStartupArgsWineDllOverrides();
 void testStartupArgsDefaultUtf8LocaleEnvironment();
 void testStartupArgsLinearMemoryOption();
 void testStartupArgsMouseSensitivity();
@@ -1195,6 +1196,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testInotifyFollowsWatchedSymlinkTarget, "Test inotify follows watched symlink target", TEST_ENTRY_SERIAL},
     {testInotifyPollReportsChildDirectoryDelete, "Test inotify poll reports child directory delete", TEST_ENTRY_SERIAL},
     {testInotifyAsyncSignalsSigioOnDelete, "Test inotify async signals SIGIO on delete", TEST_ENTRY_SERIAL},
+    {testStartupArgsWineDllOverrides, "Test startup args Wine DLL overrides"},
     {testStartupArgsDefaultUtf8LocaleEnvironment, "Test startup args default UTF-8 locale environment"},
     {testStartupArgsLinearMemoryOption, "Test startup args linear-memory option", TEST_ENTRY_SERIAL},
     {testStartupArgsMouseSensitivity, "Test startup args mouse sensitivity", TEST_ENTRY_SERIAL},

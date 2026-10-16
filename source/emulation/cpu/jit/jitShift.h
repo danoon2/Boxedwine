@@ -852,6 +852,17 @@ void Jit::dshiftClM(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFl
             }, -1, true);
         } EndIf();
         currentLazyFlags = FLAGS_NULL;
+    } else if (doesShiftNeedToMask()) {
+        // The ARM double-shift implementation requires a masked, nonzero count
+        // even when the result flags are dead. Keep a private count since the
+        // 16-bit implementation may adjust it while combining the operands.
+        RegPtr src = getTmpReg8(1, false, 1);
+        andValue(JitWidth::b32, src, 0x1f);
+        If(JitWidth::b8, src); {
+            readWriteMem(width, calculateEaa(op), [src, op, width, callback, this](RegPtr value) {
+                (this->*callback)(width, value, getReadOnlyReg(op->reg), src);
+            });
+        } EndIf();
     } else {
         readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
             (this->*callback)(width, value, getReadOnlyReg(op->reg), getReadOnlyReg(1, true, 1));
@@ -890,6 +901,14 @@ void Jit::dshiftCl(DecodedOp* op, JitWidth width, InstRegRegCl callback, LazyFla
             }
         } EndIf();
         currentLazyFlags = FLAGS_NULL;
+    } else if (doesShiftNeedToMask()) {
+        RegPtr src = getTmpReg8(1, false, 1);
+        andValue(JitWidth::b32, src, 0x1f);
+        If(JitWidth::b8, src); {
+            RegPtr dest = getReg(op->reg);
+            RegPtr src2 = op->reg == op->rm ? dest : getReadOnlyReg(op->rm);
+            (this->*callback)(width, dest, src2, src);
+        } EndIf();
     } else {
         (this->*callback)(width, getReg(op->reg), getReadOnlyReg(op->rm), getReadOnlyReg(1, true, 1));
     }

@@ -123,8 +123,10 @@ public:
     bool disableLinearMemory = false;
 
 private:
+    static void addWineDllOverrides(std::vector<BString>& envValues, const char* overrides);
     static void addDefaultUtf8LocaleEnv(std::vector<BString>& envValues, bool guestHasUtf8Locale);
 #ifdef __TEST
+    friend void testStartupArgsWineDllOverrides();
     friend void testStartupArgsDefaultUtf8LocaleEnvironment();
 #endif
 

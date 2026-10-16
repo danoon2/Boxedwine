@@ -172,6 +172,11 @@
     },
     {
       "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_shader_disassembly_color.patch",
+      "reason": "Preserve indexed color declaration semantics during shader disassembly, fixing 3DMark06 Perlin Noise reassembly"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
       "apply_patch": "wine11_hlsl_folding_passes.patch",
       "reason": "Separate HLSL folding from branch flattening before loop unrolling"
     },

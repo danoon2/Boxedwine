@@ -108,6 +108,11 @@ const ShiftCase SHIFT_CASES[] = {
 
 const DoubleShiftCase DOUBLE_SHIFT_CASES[] = {
     {0x00000000, 0xffffffff, 0, CF | PF | ZF | SF | OF},
+    {0xffffc032, 0xffffffff, 32, 0},
+    {0x12345678, 0x90abcdef, 33, 0},
+    {0x12345678, 0x90abcdef, 16, 0},
+    {0x12345678, 0x90abcdef, 48, 0},
+    {0x12345678, 0x90abcdef, 64, 0},
     {0x12345678, 0x90abcdef, 4, 0},
     {0x12345678, 0x90abcdef, 12, 0},
     {0x80808080, 0x80000000, 1, 0},
@@ -833,10 +838,10 @@ void runShiftWidth(CountMode mode, int width, const char* name) {
     }
 }
 
-void runDoubleShiftRegisterCase(DoubleShiftOp op, int width, CountMode mode, int dstReg, int srcReg, const DoubleShiftCase& data, const char* name) {
+void runDoubleShiftRegisterCase(DoubleShiftOp op, int width, CountMode mode, int dstReg, int srcReg, const DoubleShiftCase& data, const char* name, bool deadFlags = false) {
     char caseName[180];
-    snprintf(caseName, sizeof(caseName), "%s %s dst=%d src=%d dstValue=%x srcValue=%x count=%u flags=%x",
-        name, doubleShiftName(op), dstReg, srcReg, data.dst, data.src, data.count, data.initialFlags);
+    snprintf(caseName, sizeof(caseName), "%s %s dst=%d src=%d dstValue=%x srcValue=%x count=%u flags=%x deadFlags=%d",
+        name, doubleShiftName(op), dstReg, srcReg, data.dst, data.src, data.count, data.initialFlags, deadFlags);
     U32 regs[8];
     initRegs(regs);
     applyRegValue(regs, dstReg, width, data.dst);
@@ -868,17 +873,24 @@ void runDoubleShiftRegisterCase(DoubleShiftOp op, int width, CountMode mode, int
 
     beginShift(data.initialFlags);
     emitDoubleShift(op, regForWidth(dstReg, width), regForWidth(srcReg, width), mode, data.count);
+    if (deadFlags) {
+        // Exercise the JIT path that skips computing the double-shift flags.
+        pushCode8(0x39); // cmp eax,eax
+        pushCode8(0xc0);
+    }
     writeRegsLocal(regs);
     runTestCPU();
     verifyRegisters(cpu, expectedRegs, caseName);
-    verifyFlags(expected, caseName);
+    if (!deadFlags) {
+        verifyFlags(expected, caseName);
+    }
 }
 
-void runDoubleShiftMemoryCase(DoubleShiftOp op, int width, CountMode mode, int srcReg, const DoubleShiftCase& data, const char* name) {
+void runDoubleShiftMemoryCase(DoubleShiftOp op, int width, CountMode mode, int srcReg, const DoubleShiftCase& data, const char* name, bool deadFlags = false) {
     for (int form = 0; form < 3; ++form) {
         char caseName[180];
-        snprintf(caseName, sizeof(caseName), "%s %s mem=%d src=%d dstValue=%x srcValue=%x count=%u flags=%x",
-            name, doubleShiftName(op), form, srcReg, data.dst, data.src, data.count, data.initialFlags);
+        snprintf(caseName, sizeof(caseName), "%s %s mem=%d src=%d dstValue=%x srcValue=%x count=%u flags=%x deadFlags=%d",
+            name, doubleShiftName(op), form, srcReg, data.dst, data.src, data.count, data.initialFlags, deadFlags);
         U32 regs[8];
         initRegs(regs);
         applyRegValue(regs, srcReg, width, data.src);
@@ -917,12 +929,18 @@ void runDoubleShiftMemoryCase(DoubleShiftOp op, int width, CountMode mode, int s
 
         beginShift(data.initialFlags);
         emitDoubleShift(op, mem, regForWidth(srcReg, width), mode, data.count);
+        if (deadFlags) {
+            pushCode8(0x39); // cmp eax,eax
+            pushCode8(0xc0);
+        }
         writeRegsLocal(regs);
         prepareMem(linear, data.dst, width);
         runTestCPU();
         verifyMem(linear, expected.result, width, caseName);
         verifyRegisters(cpu, regs, caseName);
-        verifyFlags(expected, caseName);
+        if (!deadFlags) {
+            verifyFlags(expected, caseName);
+        }
     }
 }
 
@@ -939,6 +957,9 @@ void runDoubleShiftWidth(DoubleShiftOp op, CountMode mode, int width, const char
                     continue;
                 }
                 runDoubleShiftRegisterCase(op, width, mode, dst, src, data, name);
+                if (mode == COUNT_CL) {
+                    runDoubleShiftRegisterCase(op, width, mode, dst, src, data, name, true);
+                }
             }
         }
         for (int src = 0; src < 8; ++src) {
@@ -946,6 +967,9 @@ void runDoubleShiftWidth(DoubleShiftOp op, CountMode mode, int width, const char
                 continue;
             }
             runDoubleShiftMemoryCase(op, width, mode, src, data, name);
+            if (mode == COUNT_CL) {
+                runDoubleShiftMemoryCase(op, width, mode, src, data, name, true);
+            }
         }
     }
 }

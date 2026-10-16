@@ -84,6 +84,19 @@ static void addDefaultEnvValue(std::vector<BString>& envValues, const char* valu
     }
 }
 
+void StartUpArgs::addWineDllOverrides(std::vector<BString>& envValues, const char* overrides) {
+    BString prefix = B("WINEDLLOVERRIDES=");
+    for (auto& value : envValues) {
+        if (value.startsWith(prefix)) {
+            // Wine reads only the first environment entry. Within that entry,
+            // later DLL rules win, so retain explicit per-app choices last.
+            value = prefix + overrides + ";" + value.substr(prefix.length());
+            return;
+        }
+    }
+    envValues.push_back(prefix + overrides);
+}
+
 void StartUpArgs::addDefaultUtf8LocaleEnv(std::vector<BString>& envValues, bool guestHasUtf8Locale) {
     if (!guestHasUtf8Locale) {
         return;
@@ -530,7 +543,7 @@ bool StartUpArgs::apply() {
     }
     if (this->enableDXVK) {
         envValues.push_back(B("DXVK_LOG_LEVEL=warn"));
-        envValues.push_back(B("WINEDLLOVERRIDES=d3d11,d3d10core,d3d9,d3d8,dxgi=n,b"));
+        addWineDllOverrides(envValues, "d3d11,d3d10core,d3d9,d3d8,dxgi=n,b");
         std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/windows/system32"), true);
         std::shared_ptr<FsNode> dxvkParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/dxvk"), true);
         if (!dxvkParent) {
