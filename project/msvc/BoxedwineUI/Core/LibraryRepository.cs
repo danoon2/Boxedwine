@@ -217,11 +217,11 @@ public sealed class LibraryRepository : IDisposable
         }
         return result.OrderBy(p => p.CreatedAt).ToList();
     }
-    public async Task<LibraryApp> Import(string source, string kind, string windows, WineReference wine, CancellationToken cancellation, IProgress<OperationProgress>? progress = null, string? installer = null)
+    public async Task<LibraryApp> Import(string source, string kind, string windows, WineReference wine, CancellationToken cancellation, IProgress<OperationProgress>? progress = null, string? installer = null, string? name = null, string? program = null)
     {
         source = Path.GetFullPath(source);
         if (SafeFiles.IsWithin(DirectoryPath, source) || SafeFiles.IsWithin(source, DirectoryPath) || source.Equals(DirectoryPath, StringComparison.OrdinalIgnoreCase)) throw new IOException("Choose a folder outside the Boxedwine library.");
-        var app = new LibraryApp { Name = kind == "installer" ? Path.GetFileNameWithoutExtension(source) : Path.GetFileName(Path.TrimEndingDirectorySeparator(source)), WinePackage = wine, SavedWineVersion = wine.WineVersion };
+        var app = new LibraryApp { Name = name ?? (kind == "installer" ? Path.GetFileNameWithoutExtension(source) : Path.GetFileName(Path.TrimEndingDirectorySeparator(source))), WinePackage = wine, SavedWineVersion = wine.WineVersion };
         app.ChooseWindows(windows);
         var operation = Begin(app, kind);
         try
@@ -232,7 +232,13 @@ public sealed class LibraryRepository : IDisposable
                 var programs = Programs(app);
                 if (programs.Count == 0) throw new IOException("This folder contains no Windows programs (.exe).");
                 var primary = programs.Where(p => !p.IsMaintenance).ToList();
-                if (primary.Count == 1) app.Executable = primary[0].Path;
+                if (program != null)
+                {
+                    string selected = DriveC + "/App/" + program;
+                    if (!programs.Any(p => p.Path == selected)) throw new IOException("The selected program is no longer in the source folder.");
+                    app.Executable = selected;
+                }
+                else if (primary.Count == 1) app.Executable = primary[0].Path;
             }
             else if (kind == "installerFolder")
             {

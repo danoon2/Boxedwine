@@ -331,7 +331,7 @@ class CoreTests(unittest.TestCase):
                f'<FileSizeBytes>{len(data)}</FileSizeBytes><InstallType>Zip</InstallType><WineVersion>11.0</WineVersion>' +
                f'<WineDllOverrides>{overrides}</WineDllOverrides></Demo></XML>')
         recipe = load_catalog(xml.encode())[0]
-        def fetch(url, size, checksum, target, work):
+        def fetch(url, size, checksum, target, work, allow_external=False):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
         with patch('boxedwine.demos.download', side_effect=fetch):

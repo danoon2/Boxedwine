@@ -5,12 +5,13 @@ from pathlib import Path
 import urllib.parse
 import xml.etree.ElementTree as ET
 import zipfile
-from .files import beneath, delete_tree, extract_zip
+from .files import beneath, delete_tree, extract_zip, validate_relative
 from .library import DRIVE_C, new_app, preference, resolution, check_installer
 from .packages import download, trusted_url
 
 
-def load_catalog(data):
+def load_catalog(data, allow_external=False):
+    from .imports import valid_url
     if len(data) > 1024**2 or b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
         raise ValueError('Invalid demo catalog XML.')
     root = ET.fromstring(data)
@@ -32,12 +33,12 @@ def load_catalog(data):
         shortcut = field('ShortcutExe')
         url, size, checksum = field('FileURL'), int(field('FileSizeBytes')), field('FileSHA256')
         if (not re.fullmatch('[a-z0-9][a-z0-9-]{0,63}', identifier) or identifier in ids or not 0 < len(field('Name')) <= 256 or
-                not trusted_url(url) or not 0 < size <= 1024**3 or not re.fullmatch('[a-f0-9]{64}', checksum) or
+                not (valid_url(url) if allow_external else trusted_url(url)) or not 0 < size <= 1024**3 or not re.fullmatch('[a-f0-9]{64}', checksum) or
                 not shortcut.lower().endswith('.exe') or '/' in shortcut or field('InstallType') not in ('Zip', 'Installer')):
             raise ValueError('Invalid demo identity or package.')
-        beneath('/tmp/boxedwine-catalog-validation', shortcut)
+        validate_relative(shortcut)
         if field('Icon'):
-            beneath('/tmp/boxedwine-catalog-validation', field('Icon'))
+            validate_relative(field('Icon'))
         ids.add(identifier)
         if any(field(key) for key in ('Options', 'InstallOptions', 'Options_Mac', 'InstallOptions_Mac')):
             raise ValueError('Unsupported legacy options in demo ' + field('Name'))
@@ -69,12 +70,12 @@ def load_catalog(data):
         if field('InstallType') == 'Zip' and not zipped:
             raise ValueError('Portable demos require a ZIP.')
         if field('InstallType') == 'Installer' and zipped:
-            beneath('/tmp/boxedwine-catalog-validation', field('InstallExe'))
+            validate_relative(field('InstallExe'))
         if values.get('Glide') not in (None, 'psVoodoo') or values.get('CNCDDrawRenderer') not in (None, 'gdi', 'opengl', 'direct3d9'):
             raise ValueError('Unsupported demo graphics recipe.')
         if 'CNCDDrawFakeMode' in values and not re.fullmatch(r'[1-9][0-9]{0,3}x[1-9][0-9]{0,3}x(8|16|32)', values['CNCDDrawFakeMode']):
             raise ValueError('Invalid CNC DDraw mode.')
-        recipes.append(dict(origin=dict(id=identifier, catalogRelease=root.get('release'), packageSHA256=checksum, shortcutExe=shortcut),
+        recipes.append(dict(custom=allow_external, origin=dict(id=identifier, catalogRelease=root.get('release'), packageSHA256=checksum, shortcutExe=shortcut),
                             name=field('Name'), summary=field('Summary'), help=field('Help').replace('\\n', '\n').replace('\\t', '    '),
                             icon=field('Icon'), url=url, bytes=size, installType=field('InstallType'), installExe=field('InstallExe'),
                             wineVersion=field('WineVersion'), settings=settings, glide=values.get('Glide'),
@@ -129,7 +130,7 @@ def install(library, recipe, wine, work):
     try:
         filename = Path(urllib.parse.urlsplit(recipe['url']).path).name
         package = beneath(library.path(app), 'Download/' + filename)
-        download(recipe['url'], recipe['bytes'], recipe['origin']['packageSHA256'], package, work)
+        download(recipe['url'], recipe['bytes'], recipe['origin']['packageSHA256'], package, work, allow_external=recipe.get('custom', False))
         installer = recipe['installType'] == 'Installer'
         payload = beneath(library.path(app), 'Installer') if installer else beneath(library.root(app), DRIVE_C + '/App')
         if filename.lower().endswith('.zip'):

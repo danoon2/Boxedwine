@@ -250,7 +250,7 @@ struct LibraryRepository: Sendable {
     }
 
     /// Imports into owned storage, so the runtime never needs access to the source folder.
-    func importFolder(_ source: URL, name: String, windowsVersion: WindowsVersion = .wineDefault,
+    func importFolder(_ source: URL, name: String, windowsVersion: WindowsVersion = .wineDefault, program: String? = nil,
                       wine: WineImportSelection? = nil, control: ImportControl = ImportControl()) throws -> LibraryApp {
         var app = LibraryApp(name: name)
         app.chooseWindowsVersion(windowsVersion)
@@ -263,7 +263,11 @@ struct LibraryRepository: Sendable {
             let candidates = try executables(for: app, control: control)
             try control.checkCancellation()
             guard !candidates.isEmpty else { throw LibraryError.noProgramsInFolder }
-            if candidates.count == 1, !ProgramCandidate(path: candidates[0]).isMaintenanceTool { app.executable = candidates[0] }
+            if let program {
+                let path = Self.driveC + "/App/" + program
+                guard candidates.contains(path) else { throw LibraryError.missingExecutable }
+                app.executable = path
+            } else if candidates.count == 1, !ProgramCandidate(path: candidates[0]).isMaintenanceTool { app.executable = candidates[0] }
             try saveImportWine(wine, for: &app, control: control)
             try markAppCopyReady(app, control: control)
             return app

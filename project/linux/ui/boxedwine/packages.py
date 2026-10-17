@@ -58,8 +58,11 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def download(url, size, sha256, destination, work):
-    if not trusted_url(url) or not 0 < size <= 4 * 1024**3 or not re.fullmatch('[a-f0-9]{64}', sha256):
+def download(url, size, sha256, destination, work, allow_external=False):
+    from .imports import valid_url
+    allowed = valid_url if allow_external else trusted_url
+    scheme = urllib.parse.urlsplit(url).scheme
+    if not allowed(url) or not 0 < size <= 4 * 1024**3 or not re.fullmatch('[a-f0-9]{64}', sha256):
         raise ValueError('Downloads require a supported URL and a pinned checksum.')
     target = no_links(destination)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -78,7 +81,7 @@ def download(url, size, sha256, destination, work):
                 location = error.headers.get('Location')
                 error.close()
                 url = urllib.parse.urljoin(url, location or '')
-                if not location or not trusted_url(url):
+                if not location or not allowed(url) or scheme == 'https' and urllib.parse.urlsplit(url).scheme != 'https':
                     raise ValueError('Download redirected outside boxedwine.org.')
         with response, partial.open('xb') as output:
             if response.headers.get('Content-Length') and int(response.headers['Content-Length']) != size:

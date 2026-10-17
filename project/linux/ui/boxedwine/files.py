@@ -40,13 +40,17 @@ def no_links(path):
             raise ValueError(f'Not a regular file or directory: {part}')
     return path
 
-def beneath(root, relative):
+def validate_relative(relative):
     if not isinstance(relative, str) or not relative or '\\' in relative or any(ord(c) < 32 for c in relative):
         raise ValueError('Invalid relative path.')
     parts = relative.split('/')
     if any(p in ('', '.', '..') for p in parts) or PurePosixPath(relative).is_absolute():
         raise ValueError('A file path escapes its folder.')
-    return no_links(Path(root).joinpath(*parts))
+    return parts
+
+
+def beneath(root, relative):
+    return no_links(Path(root).joinpath(*validate_relative(relative)))
 
 def within(path, root):
     path, root = Path(os.path.abspath(path)), Path(os.path.abspath(root))
@@ -149,7 +153,7 @@ def canonical_entries(entries):
     seen = set()
     for entry in entries:
         name, kind = entry['path'], entry['kind']
-        beneath('/tmp/boxedwine-inventory-validation', name)
+        validate_relative(name)
         if name in seen or kind not in ('directory', 'file'):
             raise ValueError('Duplicate or unsupported backup entry.')
         seen.add(name)

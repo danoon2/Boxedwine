@@ -29,6 +29,10 @@ public partial class MainWindow : Window
     private readonly string resources = Path.Combine(AppContext.BaseDirectory, "Resources");
     private readonly List<CatalogWine> wines;
     private List<DemoRecipe> demos = [];
+    private List<DemoRecipe> defaultDemos = [];
+    private List<string> collectionNames = [];
+    private bool IsCollection => section == "Demos" || collectionNames.Contains(section);
+    private bool canResetDemos;
     private string? catalogError;
     private string catalogDirectory = "";
     private readonly Dictionary<Guid, RuntimeSession> sessions = [];
@@ -56,7 +60,7 @@ public partial class MainWindow : Window
         App.ApplyTheme(preferences.Theme);
         wines = Packages.Catalog(resources);
         LoadCatalog();
-        InitializeComponent(); ready = true; Refresh();
+        InitializeComponent(); ready = true; RefreshCollections(); Refresh();
         Activated += (_, _) => DrainProgramChoices();
         Cards.PreviewMouseRightButtonDown += (_, e) =>
         {
@@ -74,9 +78,30 @@ public partial class MainWindow : Window
             catalogDirectory = folder;
             string? catalog = Directory.Exists(folder) ? Directory.EnumerateFiles(folder, "*.xml", SearchOption.AllDirectories).FirstOrDefault() : null;
             if (catalog == null) { catalogError = "The demo catalog is not installed. Use Download Catalog below, or run build.ps1 to include it."; return; }
-            demos = Demos.Load(catalog); catalogError = null;
+            defaultDemos = Demos.Load(catalog); demos = defaultDemos; catalogError = null;
         }
         catch (Exception error) { catalogError = error.Message; }
+    }
+    private void RefreshCollections()
+    {
+        var folders = Collections.Load().Folders;
+        var names = folders.Select(f => f.Name).Where(n => n != "Demos").ToList();
+        canResetDemos = folders.Any(f => f.Name == "Demos" && f.Apps.Count > 0);
+        refreshing = true;
+        try
+        {
+            foreach (var item in Navigation.Items.Cast<ListBoxItem>().Where(i => collectionNames.Contains((string)i.Tag)).ToList()) Navigation.Items.Remove(item);
+            foreach (string name in names) Navigation.Items.Add(new ListBoxItem { Content = name, Tag = name, Padding = new Thickness(12, 11, 12, 11) });
+            collectionNames = names;
+            foreach (var item in Navigation.Items.Cast<ListBoxItem>().Where(i => (string)i.Tag == "Demos" || names.Contains((string)i.Tag)))
+            {
+                string name = (string)item.Tag;
+                if (name == "Demos" && !canResetDemos) { item.ContextMenu = null; continue; }
+                var menu = new ContextMenu(); var remove = new MenuItem { Header = name == "Demos" ? "Reset Demos…" : "Delete Collection…" };
+                remove.Click += (_, _) => Safe(() => DeleteCollection(name)); menu.Items.Add(remove); item.ContextMenu = menu;
+            }
+        }
+        finally { refreshing = false; }
     }
     private string Emulator() => EngineLocation.Resolve(AppContext.BaseDirectory, emulatorOverride);
     private System.Runtime.InteropServices.Architecture OpenGLArchitecture()
@@ -112,7 +137,8 @@ public partial class MainWindow : Window
         LibraryRow Row(LibraryApp app, RemovedApp? removed = null) => new() { App = app, Removed = removed, Name = app.Name, Description = removed != null ? removed.DeletionStartedAt != null ? "Deletion needs finishing" : "Files kept · ready to restore" : AppStatus(app), Icon = Icons.ForApp(repository, app, resources, demos, catalogDirectory), Glyph = app.BuiltIn == "minesweeper" ? "\uE7FC" : "\uE8A5" };
         switch (section)
         {
-            case "Demos":
+            case var _ when IsCollection:
+                demos = Collections.Recipes(section, defaultDemos);
                 rows.AddRange(demos.OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).Select(d => new LibraryRow { Demo = d, Name = d.Name, Description = document.Apps.Any(a => a.Demo?.Id == d.Origin.Id) ? "In your library" : document.RemovedApps.Any(a => a.App.Demo?.Id == d.Origin.Id) ? "In Removed Apps" : $"{Math.Max(1, d.Bytes / 1048576.0):0.#} MB · Wine {d.WineVersion}", Icon = Icons.FromFile(Path.Combine(catalogDirectory, d.Icon)), Glyph = "\uE7FC" })); break;
             case "Removed Apps": rows.AddRange(document.RemovedApps.OrderByDescending(a => a.RemovedAt).Select(a => Row(a.App, a))); break;
             case "Unfinished Work": rows.AddRange(pending.Select(o => new LibraryRow { Operation = o, Name = o.Name, Description = o.Ready ? "Ready to finish" : "Interrupted copy", Glyph = "\uE823" })); break;
@@ -140,6 +166,7 @@ public partial class MainWindow : Window
     private void RenderDetails()
     {
         Details.Children.Clear();
+        if (IsCollection && (section != "Demos" || canResetDemos)) DetailAction(section == "Demos" ? "Reset Demos…" : "Delete Collection…", () => DeleteCollection(section), !busy);
         var row = Selected;
         if (row == null)
         {
@@ -179,7 +206,8 @@ public partial class MainWindow : Window
             var document = displayedLibrary; var installed = document.Apps.FirstOrDefault(a => a.Demo?.Id == demo.Origin.Id); var removed = document.RemovedApps.FirstOrDefault(a => a.App.Demo?.Id == demo.Origin.Id);
             DetailAction(installed != null ? "Show in Library" : removed != null ? "Show in Removed Apps" : "Download and Install", () => ActivateDemo(demo), !busy);
             Details.Children.Add(FormWindow.Paragraph($"{Math.Max(1, demo.Bytes / 1048576.0):0.#} MB download\nRequires Wine {demo.WineVersion}"));
-            if (!string.IsNullOrWhiteSpace(demo.Help)) { Details.Children.Add(FormWindow.Heading("About this demo")); Details.Children.Add(FormWindow.Paragraph(demo.Help)); }
+            Details.Children.Add(FormWindow.Paragraph("App download: " + new Uri(demo.Url).Host));
+            if (!string.IsNullOrWhiteSpace(demo.Help)) { Details.Children.Add(FormWindow.Heading("About this app")); Details.Children.Add(FormWindow.Paragraph(demo.Help)); }
             return;
         }
         var app = row.App!;

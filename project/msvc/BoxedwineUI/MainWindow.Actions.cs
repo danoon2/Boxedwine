@@ -38,6 +38,7 @@ public partial class MainWindow
         {
             busy = false; cancellation.Dispose(); operationCancellation = null; currentOperation = null;
             Progress.Visibility = Visibility.Collapsed; CancelOperation.Visibility = Visibility.Collapsed;
+            if (shuttingDown && result is IDisposable disposable) disposable.Dispose();
             if (!shuttingDown) { Safe(() => Refresh()); if (succeeded) Safe(() => completed?.Invoke(result!)); DrainProgramChoices(); }
         }
     }
@@ -49,15 +50,57 @@ public partial class MainWindow
         return reference;
     }
     private void AddAppClick(object sender, RoutedEventArgs e) => Safe(() => Add());
+    private CollectionStore Collections => new(repository.DirectoryPath, defaultDemos.Select(d => d.Origin.Id));
     private void Add(string? source = null)
     {
         if (busy) return;
-        var request = Dialogs.Add(this, AvailableWines(), repository.DefaultWine, source); if (request == null) return;
-        RunOperation("Adding app…", async (token, progress) =>
+        string? purpose = source == null ? Dialogs.AddPurpose(this) : "app";
+        if (purpose == null) return;
+        if (purpose == "backup") { RestoreBackupClick(this, new RoutedEventArgs()); return; }
+        ChooseImportSource(purpose == "collection", source);
+    }
+    private void ChooseImportSource(bool collection, string? dropped = null)
+    {
+        if (busy) return;
+        var request = dropped == null ? Dialogs.AddSource(this, collection) : new Dialogs.SourceRequest(dropped, false);
+        if (request == null) return;
+        if (request.Back) { Add(); return; }
+        RunOperation("Checking source…", (token, progress) => PreparedAppSource.Prepare(request.Source, request.Remote, collection, token, progress), prepared =>
         {
-            var wine = await EnsureWine(request.Wine, token, progress);
-            return await repository.Import(request.Source, request.Kind, request.Windows, wine, token, progress, request.Installer);
-        }, app => { Navigate("All Apps", app.Id.ToString()); if (app.Installer != null) Open(app, installing: true); else if (app.Executable == null) ChooseMain(app); });
+            bool retained = false;
+            try
+            {
+                if (prepared.Collection is CollectionSnapshot snapshot)
+                {
+                    string? destination = Dialogs.ReviewCollection(this, snapshot, Collections);
+                    if (destination == "") { ChooseImportSource(collection); return; }
+                    if (destination != null) { string name = Collections.Merge(snapshot, destination); RefreshCollections(); Navigate(name); }
+                    return;
+                }
+                var review = Dialogs.ReviewApp(this, prepared, AvailableWines(), repository.DefaultWine);
+                if (review == null) return;
+                if (review.Kind == "back") { ChooseImportSource(collection); return; }
+                retained = true;
+                RunOperation("Adding app…", async (token, progress) =>
+                {
+                    using (prepared)
+                    {
+                        var wine = await EnsureWine(review.Wine, token, progress);
+                        return await repository.Import(prepared.Source, review.Kind, review.Windows, wine, token, progress,
+                            review.Kind == "installerFolder" ? SafeFiles.Beneath(prepared.Source, review.Program) : null, review.Name, review.Kind == "folder" ? review.Program : null);
+                    }
+                }, app => { Navigate("All Apps", app.Id.ToString()); if (app.Installer != null) Open(app, installing: true); else if (app.Executable == null) ChooseMain(app); });
+            }
+            finally { if (!retained) prepared.Dispose(); }
+        });
+    }
+    private void DeleteCollection(string name)
+    {
+        if (name == "Demos" && !canResetDemos) return;
+        if (busy || !Dialogs.Confirm(this, name == "Demos" ? "Reset Demos?" : "Delete " + name + "?",
+            name == "Demos" ? "Restore the default demo listings. Installed apps and saves are kept." : "Remove this collection and its listings. Installed apps and saves are kept.",
+            name == "Demos" ? "Reset Demos" : "Delete Collection")) return;
+        Collections.Remove(name); RefreshCollections(); Navigate("Demos");
     }
     private void BuiltInClick(object sender, RoutedEventArgs e)
     {
@@ -265,6 +308,6 @@ public partial class MainWindow
             }
             catch { if (Directory.Exists(directory)) SafeFiles.DeleteTree(directory, Path.GetDirectoryName(directory)!); throw; }
             finally { if (File.Exists(zip)) File.Delete(zip); }
-        }, directory => { catalogDirectory = directory; demos = Demos.Load(Directory.EnumerateFiles(directory, "*.xml", SearchOption.AllDirectories).Single()); catalogError = null; Refresh(); });
+        }, directory => { catalogDirectory = directory; defaultDemos = Demos.Load(Directory.EnumerateFiles(directory, "*.xml", SearchOption.AllDirectories).Single()); catalogError = null; Refresh(); });
     }
 }

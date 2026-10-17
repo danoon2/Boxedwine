@@ -32,7 +32,7 @@ struct DemosView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         if compact {
                             Button { showsCompactDetails = false } label: {
-                                Label("All Demos", systemImage: "chevron.left")
+                                Label(store.collectionName, systemImage: "chevron.left")
                             }.padding(.horizontal, 24).padding(.top, 18)
                         }
                         details(demo)
@@ -61,9 +61,9 @@ struct DemosView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Try something familiar").font(.largeTitle.weight(.semibold))
-                    if store.demoCatalogProblem == nil {
-                        Text("\(store.demos.count) demos and free apps to get you started.").foregroundStyle(.secondary)
+                    Text(store.collectionName).font(.largeTitle.weight(.semibold))
+                    if (store.collectionName != "Demos" || store.demoCatalogProblem == nil || !store.demos.isEmpty) {
+                        Text("\(store.demos.count) \(store.demos.count == 1 ? "app" : "apps") available to install.").foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 0)
@@ -71,28 +71,31 @@ struct DemosView: View {
                     Button { showsDetails.toggle() } label: {
                         Image(systemName: "sidebar.right")
                     }
-                    .help(showsDetails ? "Hide demo details" : "Show demo details")
-                    .accessibilityLabel(showsDetails ? "Hide demo details" : "Show demo details")
+                    .help(showsDetails ? "Hide app details" : "Show app details")
+                    .accessibilityLabel(showsDetails ? "Hide app details" : "Show app details")
                     .disabled(selected == nil)
                 }
             }
+            if store.collectionName != "Demos" || store.canResetDemos {
+                Button(store.collectionName == "Demos" ? "Reset Demos…" : "Delete Collection…") { store.removeCollection(store.collectionName) }.disabled(store.importing || !store.canEdit)
+            }
             if store.importing { ImportProgressView(store: store) }
-            if let problem = store.demoCatalogProblem {
+            if let problem = store.demoCatalogProblem, store.collectionName == "Demos", store.demos.isEmpty {
                 Text(problem).foregroundStyle(.secondary)
                 Text("Your installed apps are still available in All Apps.").font(.callout)
                 Spacer()
             } else if visible.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "magnifyingglass").font(.largeTitle).foregroundStyle(.secondary)
-                    Text("No demos match your search.").font(.title3)
+                    Text("No apps match your search.").font(.title3)
                     Button("Clear Search") { store.query = "" }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 grid
             }
-            if store.demoCatalogProblem == nil {
+            if (store.collectionName != "Demos" || store.demoCatalogProblem == nil || !store.demos.isEmpty) {
                 HStack {
-                    Text("\(visible.count) \(visible.count == 1 ? "demo" : "demos")").font(.caption).foregroundStyle(.secondary)
+                    Text("\(visible.count) \(visible.count == 1 ? "app" : "apps")").font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     if compact, let demo = selected {
                         Button("Details…") { showsCompactDetails = true }
@@ -171,7 +174,7 @@ struct DemosView: View {
         .accessibilityLabel(demo.name)
         .accessibilityValue(tileStatus(demo))
         .accessibilityAddTraits(store.selectedDemoID == demo.id ? .isSelected : [])
-        .accessibilityHint("Select to see demo details. Use the arrow keys to browse. Double-click to \(doubleClickAction(demo)).")
+        .accessibilityHint("Select to see app details. Use the arrow keys to browse. Double-click to \(doubleClickAction(demo)).")
     }
 
     private func details(_ demo: Demo) -> some View {
@@ -194,11 +197,11 @@ struct DemosView: View {
                 if store.importing && showsCompactDetails { ImportProgressView(store: store) }
                 if !demo.help.isEmpty {
                     Divider()
-                    Text("About this demo").font(.headline)
+                    Text("About this app").font(.headline)
                     Text(demo.help).font(.callout).foregroundStyle(.secondary)
                 }
                 Divider()
-                Text("Downloads come from boxedwine.org. Each app keeps its own Windows files and stays pinned to its Wine package. Identical Wine packages share storage. Compatibility varies between apps.")
+                Text("App download: \(demo.url.host ?? demo.url.absoluteString). Each app keeps its own Windows files and stays pinned to its Wine package. Identical Wine packages share storage. Compatibility varies between apps.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             .textSelection(.enabled)
@@ -267,10 +270,11 @@ struct DemosView: View {
         if status == .available { return "\(size) download. \(wine.wineName) is already available; no Wine download needed." }
         let demoSize = ByteCountFormatter.string(fromByteCount: demo.bytes, countStyle: .file)
         let wineSize = ByteCountFormatter.string(fromByteCount: wine.bytes, countStyle: .file)
-        return "\(size) for the demo and Wine (\(demoSize) demo + \(wineSize) \(wine.wineName))."
+        return "\(size) for the app and Wine (\(demoSize) app + \(wineSize) \(wine.wineName))."
     }
 
     private func loadIcons() {
+        icons = [:]
         for demo in store.demos where icons[demo.id] == nil && !demo.icon.isEmpty {
             if let url = Bundle.main.url(forResource: demo.icon, withExtension: nil, subdirectory: "Demos"), let image = NSImage(contentsOf: url) {
                 icons[demo.id] = image

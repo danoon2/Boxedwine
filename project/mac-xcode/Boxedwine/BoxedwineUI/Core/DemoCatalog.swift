@@ -49,7 +49,7 @@ struct Demo: Identifiable, Equatable, Sendable {
     enum Glide: String, Sendable {
         case psVoodoo
     }
-    let origin: DemoOrigin
+    var origin: DemoOrigin
     var id: String { origin.id }
     let name: String
     let summary: String
@@ -68,6 +68,7 @@ struct Demo: Identifiable, Equatable, Sendable {
     var cncDDrawMode: CNCDDrawMode? = nil
     // Seeded into editable per-app arguments on first install.
     var wineDllOverrides: String? = nil
+    var customSource = false
     var isZip: Bool { url.pathExtension.lowercased() == "zip" }
 }
 
@@ -75,12 +76,13 @@ struct DemoCatalog: Sendable {
     let release: String
     let demos: [Demo]
 
-    static func load(_ data: Data) throws -> DemoCatalog {
+    static func load(_ data: Data, allowExternal: Bool = false) throws -> DemoCatalog {
         guard data.count <= 1024 * 1024, let text = String(data: data, encoding: .utf8),
               !text.contains("<!DOCTYPE"), !text.contains("<!ENTITY") else {
             throw DemoError.catalog("Use a UTF-8 XML file without document types or entities, at most 1 MB.")
         }
         let delegate = CatalogParser()
+        delegate.allowExternal = allowExternal
         let parser = XMLParser(data: data)
         parser.shouldResolveExternalEntities = false
         parser.delegate = delegate
@@ -123,6 +125,7 @@ public extension PackageCheck {
 }
 
 private final class CatalogParser: NSObject, XMLParserDelegate {
+    var allowExternal = false
     var rootSeen = false
     var stack: [String] = []
     var release = ""
@@ -174,7 +177,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
               DemoCatalog.validHash(hash), DemoCatalog.validRelativePath(shortcut), !shortcut.contains("/"),
               shortcut.lowercased().hasSuffix(".exe"),
               (icon.isEmpty || (DemoCatalog.validRelativePath(icon) && !icon.contains("/") && icon.hasSuffix(".png"))),
-              let url = URL(string: field("FileURL")), DemoCatalog.validDownloadURL(url),
+              let url = URL(string: field("FileURL")), (allowExternal ? PreparedAppSource.validURL(url) : DemoCatalog.validDownloadURL(url)),
               let bytes = Int64(field("FileSizeBytes")), bytes > 0, bytes <= 1024 * 1024 * 1024,
               let type = Demo.InstallType(rawValue: field("InstallType")),
               !field("WineVersion").isEmpty, field("WineVersion").utf8.count <= 128 else {
@@ -228,7 +231,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
         return Demo(origin: DemoOrigin(id: id, catalogRelease: release, packageSHA256: hash, shortcutExe: shortcut),
                     name: name, summary: field("Summary"), help: field("Help").replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\t", with: "    "),
                     icon: icon, url: url, bytes: bytes, type: type, installExe: installer.isEmpty ? nil : installer, wineVersion: field("WineVersion"),
-                    settings: settings, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode, wineDllOverrides: dllOverrides)
+                    settings: settings, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode, wineDllOverrides: dllOverrides, customSource: allowExternal)
     }
 }
 

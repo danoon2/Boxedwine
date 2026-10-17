@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "folder": "Classic Games",
+  "apps": [
+    {
+      "ID": "example-game",
+      "Name": "Example Game",
+      "Summary": "Replace this example with a real download and checksum.",
+      "Help": "Choose Download & Install to add this game.",
+      "FileURL": "https://example.com/example-game.zip",
+      "FileSizeBytes": "12345",
+      "FileSHA256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "InstallType": "Zip",
+      "ShortcutExe": "game.exe",
+      "WineVersion": "11.0"
+    }
+  ]
+}

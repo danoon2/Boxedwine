@@ -29,9 +29,9 @@ final class DroppedAppSource {
         do {
             let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isPackageKey, .isSymbolicLinkKey])
             guard values.isSymbolicLink != true, values.isPackage != true,
-                  values.isDirectory == true || (values.isRegularFile == true && ["exe", "msi"].contains(url.pathExtension.lowercased())) else {
+                  values.isDirectory == true || (values.isRegularFile == true && ["exe", "msi", "zip", "json"].contains(url.pathExtension.lowercased())) else {
                 throw NSError(domain: "AppDrop", code: 2, userInfo: [NSLocalizedDescriptionKey:
-                    "Drop an app folder or a Windows installer (.exe or .msi). Extract ZIP files first, and use Restore App Backup for Boxedwine backups."])
+                    "Drop an app folder, ZIP, Windows program, or collection JSON. Use Restore a backup for Boxedwine backups."])
             }
             self.url = url
             self.isDirectory = values.isDirectory == true
@@ -62,6 +62,12 @@ final class LibraryStore: ObservableObject {
     @Published var showingRecovery = false
     @Published var showingDemos = false
     @Published var selectedDemoID: String?
+    @Published var preparedSource: PreparedAppSource?
+    @Published var collectionNames: [String] = []
+    @Published private(set) var canResetDemos = false
+    @Published var collectionName = "Demos"
+    private var defaultDemos: [Demo] = []
+    var collectionStore: CollectionStore? { repository.map { CollectionStore(directory: $0.directory, defaultIDs: Set(defaultDemos.map(\.id))) } }
     @Published private(set) var demos: [Demo] = []
     @Published private(set) var demoCatalogProblem: String?
     @Published private(set) var recoveryItems: [RecoveryItem] = []
@@ -178,13 +184,14 @@ final class LibraryStore: ObservableObject {
         refreshRecovery()
 #if !BOXEDWINE_APP_STORE
         if let url = Bundle.main.url(forResource: "catalog", withExtension: "xml", subdirectory: "Demos") {
-            do { demos = try DemoCatalog.load(Data(contentsOf: url)).demos }
+            do { defaultDemos = try DemoCatalog.load(Data(contentsOf: url)).demos; demos = defaultDemos }
             catch { demoCatalogProblem = error.localizedDescription }
         } else {
             demoCatalogProblem = "Demos aren’t included in this build."
         }
 #endif
 
+        refreshCollections()
         wineActivationObserver = NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
             .sink { [weak self] _ in self?.refreshWineDownloads() }
     }
@@ -634,6 +641,83 @@ final class LibraryStore: ObservableObject {
 
 #endif
 
+    func refreshCollections() {
+        guard let collectionStore else { return }
+        do {
+            let folders = try collectionStore.load().folders
+            collectionNames = folders.map(\.name).filter { $0 != "Demos" }
+            canResetDemos = folders.contains { $0.name == "Demos" && !$0.apps.isEmpty }
+            demos = try collectionStore.recipes(in: collectionName, defaults: defaultDemos)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func showCollection(_ name: String) {
+        collectionName = name; selectedDemoID = nil
+        appIDToReveal = nil; showingDemos = true; showingRemoved = false; showingRecovery = false; recentOnly = false; query = ""
+        refreshCollections()
+    }
+
+    func addCollection(_ snapshot: CollectionSnapshot, destination: String) {
+        guard canEdit, !importing, let collectionStore else { return }
+        do {
+            let name = try collectionStore.merge(snapshot, destination: destination)
+            showAddApp = false; preparedSource = nil
+            showCollection(name)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func removeCollection(_ name: String) {
+        guard canEdit, !importing, let collectionStore else { return }
+        guard name != "Demos" || canResetDemos else { return }
+        let alert = NSAlert()
+        alert.messageText = name == "Demos" ? "Reset Demos?" : "Delete collection “\(name)”?"
+        alert.informativeText = name == "Demos" ? "Restore the default demo listings. Installed apps and saves are kept." : "Remove this collection and its listings. Installed apps and saves are kept."
+        alert.addButton(withTitle: name == "Demos" ? "Reset Demos" : "Delete Collection"); alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn, canEdit, !importing else { return }
+        do { try collectionStore.remove(name); showCollection("Demos") }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    func chooseAddSource(folder: Bool, collectionOnly: Bool) {
+        let panel = NSOpenPanel()
+        panel.title = collectionOnly ? "Choose Collection" : folder ? "Choose Folder" : "Choose File"
+        panel.canChooseDirectories = folder; panel.canChooseFiles = !folder; panel.allowsMultipleSelection = false
+        if !folder {
+            #if BOXEDWINE_APP_STORE
+            let extensions = ["zip", "exe", "msi"]
+            #else
+            let extensions = collectionOnly ? ["json"] : ["zip", "exe", "msi", "json"]
+            #endif
+            panel.allowedContentTypes = extensions.map { UTType(filenameExtension: $0) ?? .data }
+        }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        prepareAddSource(url, collectionOnly: collectionOnly)
+    }
+
+    func prepareAddSource(_ url: URL, collectionOnly: Bool = false) {
+        guard canEdit, !importing else { return }
+        preparedSource = nil
+        let control = beginImport(name: "Checking source")
+        let grant = droppedAppSource
+        Task {
+            defer { finishImport(); withExtendedLifetime(grant) {} }
+            do {
+                preparedSource = try await Task.detached { try await PreparedAppSource.prepare(url, collectionOnly: collectionOnly, control: control) }.value
+            } catch { if !(error is CancellationError) { errorMessage = error.localizedDescription } }
+        }
+    }
+
+    func importPrepared(_ prepared: PreparedAppSource, action: String, program: String, name: String, windows: WindowsVersion, wine: CatalogWine) {
+        guard prepared.programs.contains(program), !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if action == "app" && !prepared.isDirectory {
+            chooseAddSource(folder: true, collectionOnly: false); return
+        }
+        let kind: SourceKind = action == "app" ? .appFolder : prepared.isDirectory ? .installerFolder : .installerFile
+        importSource(prepared.source, kind: kind, windowsVersion: windows, wine: wine, allowDownload: wineDownloadStatus(wine) == .required,
+                     selectedInstaller: kind == .installerFolder ? prepared.source.appendingPathComponent(program) : nil,
+                     selectedProgram: action == "app" ? program : nil, proposedName: name, prepared: prepared)
+    }
+
     enum SourceKind { case appFolder, installerFile, installerFolder }
 
     func receiveAppDrop(_ urls: [URL]) -> Bool {
@@ -653,6 +737,7 @@ final class LibraryStore: ObservableObject {
     }
 
     func addAppSheetDismissed() {
+        preparedSource = nil
         droppedAppSource = nil
         presentNextProgramChoice()
     }
@@ -696,12 +781,14 @@ final class LibraryStore: ObservableObject {
         importSource(source, kind: kind, windowsVersion: windowsVersion, wine: wine, allowDownload: allowDownload)
     }
 
-    private func importSource(_ source: URL, kind: SourceKind, windowsVersion: WindowsVersion, wine: CatalogWine, allowDownload: Bool) {
+    private func importSource(_ source: URL, kind: SourceKind, windowsVersion: WindowsVersion, wine: CatalogWine, allowDownload: Bool, selectedInstaller: URL? = nil, selectedProgram: String? = nil, proposedName: String? = nil, prepared: PreparedAppSource? = nil) {
         guard canEdit, !importing, canSelectWine(wine.id), wineVersions.contains(wine), let repository else { return }
         let folder = kind == .appFolder || kind == .installerFolder
         let scoped = source.startAccessingSecurityScopedResource()
         let installer: URL?
-        if kind == .installerFolder {
+        if kind == .installerFolder, let selectedInstaller {
+            installer = selectedInstaller
+        } else if kind == .installerFolder {
             let selection = NSOpenPanel()
             selection.title = "Choose the Installer"
             selection.message = "Choose an .exe or .msi inside “\(source.lastPathComponent)”. Boxedwine will copy that entire folder and open the selected installer if Windows support is available."
@@ -727,7 +814,7 @@ final class LibraryStore: ObservableObject {
             if scoped { source.stopAccessingSecurityScopedResource() }
             return
         }
-        let name = folder ? source.lastPathComponent : source.deletingPathExtension().lastPathComponent
+        let name = proposedName ?? (folder ? source.lastPathComponent : source.deletingPathExtension().lastPathComponent)
         let candidates = catalogWineCandidates(wine)
         let control = beginImport(name: name)
         // The sheet can close before copying finishes. Keep the original drop's
@@ -741,6 +828,7 @@ final class LibraryStore: ObservableObject {
             defer {
                 if scoped { source.stopAccessingSecurityScopedResource() }
                 withExtendedLifetime(droppedSource) {}
+                withExtendedLifetime(prepared) {}
             }
             var imported: LibraryApp?
             do {
@@ -748,7 +836,7 @@ final class LibraryStore: ObservableObject {
                     let selection = WineImportSelection(package: package)
                     return try await Task.detached {
                         switch kind {
-                        case .appFolder: return try repository.importFolder(source, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
+                        case .appFolder: return try repository.importFolder(source, name: name, windowsVersion: windowsVersion, program: selectedProgram, wine: selection, control: control)
                         case .installerFile: return try repository.importInstaller(source, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
                         case .installerFolder: return try repository.importInstallerFolder(source, installer: installer!, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
                         }
@@ -761,7 +849,7 @@ final class LibraryStore: ObservableObject {
                 imported = nil
                 revealApp(app.id)
                 finishImport()
-                if kind == .appFolder { chooseProgram(app) }
+                if kind == .appFolder { if app.executable == nil { chooseProgram(app) } }
                 else { launch(app, installing: true) }
             } catch {
                 // A completed copy is still private until library.json commits successfully.
@@ -858,7 +946,7 @@ final class LibraryStore: ObservableObject {
     }
 
 #if !BOXEDWINE_APP_STORE
-    func showDemos() { appIDToReveal = nil; showingDemos = true; showingRemoved = false; showingRecovery = false; recentOnly = false; query = "" }
+    func showDemos() { showCollection("Demos") }
 
     func installedDemo(_ demo: Demo) -> LibraryApp? { apps.first { $0.demo?.id == demo.id } }
     func removedDemo(_ demo: Demo) -> RemovedApp? { removedApps.first { $0.app.demo?.id == demo.id } }
