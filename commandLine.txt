@@ -29,8 +29,6 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -disableLinearMemory : Disable linear memory and use the legacy guarded MMU memory cache.
 
--noErrorDialog : On a fatal error, log the message and exit with code 1 instead of showing an error dialog and waiting for it to be closed.  Use this for unattended runs.  It is on when -automation or -play is used.
-
 -dpiAware: will prevent Windows from scaling the screen if you are using display scaling.
 
 -env NAME=VALUE : Set a guest environment variable. For direct Wine application launches, Boxedwine defaults WINELOADERNOEXEC to 1 to skip Wine's initial preloader re-exec, since Boxedwine controls guest mappings. This default is not added for Wine command-line options, utility aliases, or shell scripts. Explicit values are preserved. Wine checks whether this variable exists, so 0 or an empty value also skips the re-exec. To test without it, launch through /bin/sh -c 'unset WINELOADERNOEXEC; exec /bin/wine program.exe'. Wine can still use its preloader when creating child processes.
