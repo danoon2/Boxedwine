@@ -97,6 +97,10 @@ bool doMainLoop() {
         } else if (nextTimer < timeout) {
             timeout = nextTimer;
         }
+        // tick() flushes the -log file at most once a second; a longer wait would hold output written meanwhile in the buffer
+        if (KSystem::logFile.isOpen() && timeout > 1000) {
+            timeout = 1000;
+        }
         KNativeSystem::tick();
 #ifdef BOXEDWINE_RECORDER
         if (Player::instance || Recorder::instance) {

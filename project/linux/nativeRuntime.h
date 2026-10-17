@@ -23,6 +23,10 @@ inline void startLinuxNativeControl() {
                 continue;
             }
             if (count <= 0) {
+                // std::_Exit skips stdio cleanup; preserve the final -log output.
+                if (KSystem::logFile.isOpen()) {
+                    KSystem::logFile.flush();
+                }
                 std::_Exit(0); // The owning launcher closed or crashed.
             }
             if (value == '\n') {
