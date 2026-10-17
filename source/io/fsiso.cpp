@@ -101,6 +101,12 @@ U32 FsIso::readData(U64 byteOffset, U8* buf, U32 len) {
     return (U32)fread(buf, 1, len, file);
 }
 
+bool FsIso::containsPath(const BString& path) const {
+    if (mountPath.isEmpty() || !path.startsWith(mountPath))
+        return false;
+    return path.length() == mountPath.length() || path.charAt(mountPath.length()) == '/';
+}
+
 BString FsIso::decodeFilename(const U8* nameData, U8 nameLen) {
     BString name;
     if (joliet) {
@@ -249,6 +255,8 @@ bool FsIso::init(const BString& isoPath, const BString& mountPath) {
         klog_fmt("FsIso: could not create mount point %s", mountPath.c_str());
         return false;
     }
+
+    this->mountPath = mountPath;
 
     klog_fmt("FsIso: mounting %s at %s (%s, %llu sectors)",
              isoPath.c_str(), mountPath.c_str(),

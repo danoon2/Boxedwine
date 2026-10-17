@@ -396,6 +396,95 @@ std::vector<BString> StartUpArgs::buildArgs() {
     return args;
 }
 
+// mountmgr reads each drive's type from HKLM\Software\Wine\Drives once, when Wine
+// starts, so the value has to be in system.reg before launch ("reg add" from the
+// launched command would only take effect on the next run). winecfg writes the
+// same value when a drive's type is set to CD-ROM.
+static void setWineDriveType(const char* drive, const char* type) {
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/system.reg"), true);
+    FsOpenNode* openNode = node ? node->open(K_O_RDONLY) : nullptr;
+    if (!openNode) {
+        klog_fmt("could not set drive %s to %s: system.reg was not found", drive, type);
+        return;
+    }
+    std::string reg;
+    U8 buffer[4096];
+    U32 len;
+    while ((len = openNode->readNative(buffer, sizeof(buffer))) > 0 && len != (U32)-1) {
+        reg.append((const char*)buffer, len);
+    }
+    openNode->close();
+    delete openNode;
+
+    auto lower = [](std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (char)tolower(c); });
+        return s;
+    };
+    // system.reg keys are relative to HKLM and escape their backslashes
+    const std::string section = "[Software\\\\Wine\\\\Drives]";
+    const std::string name = std::string("\"") + drive + "\"=";
+    const std::string entry = name + "\"" + type + "\"";
+    size_t insertAt = std::string::npos;
+    bool inSection = false;
+    bool replaced = false;
+    for (size_t pos = 0; pos < reg.size();) {
+        size_t next = reg.find('\n', pos);
+        next = (next == std::string::npos) ? reg.size() : next + 1;
+        std::string line = reg.substr(pos, next - pos);
+        while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) {
+            line.pop_back();
+        }
+        std::string lowerLine = lower(line);
+        if (!line.empty() && line[0] == '[') {
+            if (inSection) {
+                break;
+            }
+            inSection = lowerLine.compare(0, section.size(), lower(section)) == 0;
+            if (inSection) {
+                insertAt = next;
+            }
+        } else if (inSection) {
+            if (lowerLine.compare(0, name.size(), lower(name)) == 0) {
+                if (lowerLine == lower(entry)) {
+                    return;
+                }
+                reg.replace(pos, line.size(), entry);
+                replaced = true;
+                break;
+            }
+            if (!line.empty() && line[0] == '#') {
+                insertAt = next; // keep the value after the key's #time= line
+            }
+        }
+        pos = next;
+    }
+    if (!replaced) {
+        if (insertAt == std::string::npos) {
+            if (!reg.empty() && reg.back() != '\n') {
+                reg += "\n";
+            }
+            reg += "\n" + section + "\n";
+            insertAt = reg.size();
+        } else if (insertAt > 0 && reg[insertAt - 1] != '\n') {
+            reg.insert(insertAt++, "\n");
+        }
+        reg.insert(insertAt, entry + "\n");
+    }
+
+    openNode = node->open(K_O_WRONLY | K_O_TRUNC);
+    if (!openNode) {
+        klog_fmt("could not set drive %s to %s: system.reg could not be written", drive, type);
+        return;
+    }
+    if (openNode->writeNative((U8*)reg.data(), (U32)reg.size()) != reg.size()) {
+        klog_fmt("could not set drive %s to %s: system.reg write failed", drive, type);
+    } else {
+        klog_fmt("set Wine drive %s to %s in system.reg", drive, type);
+    }
+    openNode->close();
+    delete openNode;
+}
+
 bool StartUpArgs::apply() {
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
     wasmJitInitMemoryOrdering(this->safeMemory);
@@ -675,6 +764,7 @@ bool StartUpArgs::apply() {
             if (dosdevParent) {
                 Fs::addFileNode(B("/home/username/.wine/dosdevices/e:"),  B("/mnt/cdrom"), B(""), false, dosdevParent);
                 Fs::addFileNode(B("/home/username/.wine/dosdevices/e::"), B("/dev/sr0"),   B(""), false, dosdevParent);
+                setWineDriveType("e:", "cdrom");
             }
         }
     }
