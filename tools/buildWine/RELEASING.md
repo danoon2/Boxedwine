@@ -7,10 +7,11 @@ The [builder guide](README.md) explains the build internals and prerequisites.
 
 Review the release plan before starting builds. Commands below are for the later
 execution steps, run from the repository root in WSL unless noted otherwise.
-The inventory was reviewed against filesystem 19 on October 15, 2026. Resolve
-the currently selected profiles and pins again for each release. Revision 19
-contains the shader color disassembly fix; its versioned and latest archives
-are published and verified. The hosted legacy UI catalog still needs updating. Earlier
+The inventory was reviewed for filesystem 20 on October 16, 2026. Revision 20
+includes the partial stream-output fix in both WineD3D builds. Its `/v2/20/`
+archives are published and verified. Publication remains incomplete: both
+`/v2/latest/` archives still contain revision 19, and the hosted legacy UI
+catalog still selects revision 11. Update and verify those locations. Earlier
 versioned archives and manifests retain their original identities.
 
 ## 1. Agree on the release scope
@@ -43,7 +44,7 @@ is a local workaround; release testing must use the candidate ZIP in a fresh roo
 | [`filesystem_wine11.json`](filesystem_wine11.json) | Set `filesystem_version` and select the release's `webgl_config`. Change `wine_tag`/`wine_commit` only when changing upstream Wine. |
 | [`changes_wine11.txt`](changes_wine11.txt) | Add the release entry; its first line must start with the configured `vN`. Preserve previous entries. |
 | [`changes_wine11_web.txt`](changes_wine11_web.txt) | Update the web release entry to the same `vN`. It is prepended to the full history. Update size-savings claims only from new measurements. |
-| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v19.json`](webgl_filesystems_v19.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
+| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v20.json`](webgl_filesystems_v20.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
 | [`webgl_filesystem.py`](webgl_filesystem.py), `DEFAULT_CONFIG` | Advance the build/validation default to the same manifest as the filesystem profile. Preserve the explicitly historical `validate-set` default and historical examples. |
 | [`README.md`](README.md) and this checklist | Update current revision, manifest links, publication status, and release examples; retain clearly labeled historical instructions. |
 
@@ -261,7 +262,7 @@ or historical evidence; do not perform a global version/hash replacement:
 
 ```bash
 git grep -n -F -e '<old-main-sha256>' -e '<old-web-sha256>' \
-  -e 'v2/17/' -e 'webgl_filesystems_v17.json'
+  -e 'v2/19/' -e 'webgl_filesystems_v19.json'
 git grep -n -E 'automation[0-9]+\.zip|FILESYSTEM_URL|FILESYSTEM_CACHE_NAME|BOXEDWINE_AUTO_|ABIWORD_AUTO_|DEMO_ROOT_CONFIG'
 git diff --check
 ```

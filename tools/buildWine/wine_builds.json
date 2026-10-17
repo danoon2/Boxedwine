@@ -111,6 +111,11 @@
   ],
   "operations": [
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_wined3d_partial_stream_output.patch",
+      "reason": "Capture partial stream-output fields alongside rasterizer outputs so GPU cloth simulation in 3DMark Vantage can update its vertex buffers"
+    },
+    {
       "when": { "min": "9.3", "max": "10.8" },
       "cherry_pick": "6fee37c2b6eb486ae60d6af4dd6e45549be0b624",
       "reason": "Backport Wine fix used by previous Boxedwine 9.x and 10.x builds"

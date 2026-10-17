@@ -25,7 +25,7 @@ class ValidationError(RuntimeError):
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
-DEFAULT_CONFIG = SCRIPT_DIR / "webgl_filesystems_v19.json"
+DEFAULT_CONFIG = SCRIPT_DIR / "webgl_filesystems_v20.json"
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 PE_I386 = 0x014C
 PE32_MAGIC = 0x010B

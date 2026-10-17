@@ -31,11 +31,11 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
 loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the
-v46 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+v47 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 19. Its `changes.txt` comes from
+The filesystem revision is 20. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -51,19 +51,22 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v19.json`](webgl_filesystems_v19.json) and the
-[v46 patch manifest](../wineTests/webgl-test-divergences-v46.json). To test that
+[`webgl_filesystems_v20.json`](webgl_filesystems_v20.json) and the
+[v47 patch manifest](../wineTests/webgl-test-divergences-v47.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v19 WebGL configuration pins DLLs, source patches, and the filesystem
-ZIP in its `full-v19` and `web-v19` profiles for Jenkins demo validation. The complete filesystem
+The v20 WebGL configuration pins DLLs, source patches, and the filesystem
+ZIP in its `full-v20` and `web-v20` profiles for Jenkins demo validation. The complete filesystem
 is assembled by `filesystem_wine11.json`.
-The v19 prefix leaves the renderer registry values unset. The profile records
+The v20 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
-Revision 19 archives are published under `/v2/19/` and `/v2/latest/`.
-Both locations were verified against the release sizes and SHA-256 hashes.
-Update the hosted legacy UI catalog at `/v2/26R2/filesV2.xml` to revision 19
-before distributing consumers of the new pins.
+Revision 20 archives are published under `/v2/20/`; both were verified against
+the release sizes and SHA-256 hashes. The `/v2/latest/` copies still contain
+revision 19, and the hosted legacy UI catalog at `/v2/26R2/filesV2.xml` still
+selects revision 11. Update and verify those locations to complete publication.
+Revision 20 fixes partial stream output in both regular WineD3D and the separate
+WebGL PE DLL. The existing WebGL capability limits remain unchanged.
+See the D3D10 regression probe below. Revision 19 remains available for rollback.
 
 Revision 18 adds the Vantage stream-output overflow query, CPU-lockable format support,
 DXGI fullscreen activation, GetDIBits header/palette, and LFH publication fixes.
@@ -199,7 +202,7 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
   --variant web --work-dir "$HOME/boxedwine-wine11-web" --jobs 12
 ```
 
-This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 19.
+This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 20.
 Use `--variant web` again when retrying individual phases. The assembler checks
 the Wine configuration stamp and the addon manifest to prevent mixing variants.
 
@@ -243,7 +246,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
-Build and validate with `--config tools/buildWine/webgl_filesystems_v19.json`.
+Build and validate with `--config tools/buildWine/webgl_filesystems_v20.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises
@@ -386,7 +389,7 @@ python3 tools/buildWine/webgl_filesystem.py validate \
 
 The following v3/v10 commands and manifest remain available for historical
 filesystem reproduction and validation. Normal commands now default to
-`webgl_filesystems_v19.json`; pass the historical config explicitly below.
+`webgl_filesystems_v20.json`; pass the historical config explicitly below.
 The dedicated `validate-set` command retains its v3/v10 default.
 
 `webgl_filesystem.py` is the pinned build, packaging, and validation command
@@ -713,3 +716,34 @@ tmp_oss/        staged OSS header tree
 ```
 
 These paths are cleaned at the start of each run as needed, but the Wine build tree remains after the run for inspection.
+
+## D3D10 Partial Stream Output
+
+Wine 11.0's OpenGL shader backend skips partial stream-output fields when a
+rasterizer stream is selected. D3D10 selects stream zero even for draws that
+only update simulation buffers. Vantage's first graphics test requests these
+fields and logs `Unsupported component range` followed by `No varyings to
+record, disabling transform feedback`; its boat tarp stays flat.
+
+`wine11_wined3d_partial_stream_output.patch` declares separate float/vector
+varyings for the requested components while retaining the normal rasterizer
+outputs. Full-vector captures and the existing no-rasterizer path are unchanged.
+
+Build `probes/d3d10_partial_stream_output.cpp` from an x86 Visual Studio developer
+prompt:
+
+```bat
+cl /EHsc /O2 /MT probes\d3d10_partial_stream_output.cpp /link d3d10.lib d3dcompiler.lib
+```
+
+Run the executable natively and through Boxedwine `/bin/wine`. It must report
+eight `PASS` lines and `D3D10 SO failures=0`. The probe checks pass-through and
+explicit geometry shaders, partial fields, reordered fields and gaps,
+simultaneous capture and rasterization, and 16 repeated simulation passes.
+On Windows with build 90 and filesystem 19, the original Wine module fails five
+checks; the patched module and native D3D10 pass all eight. Check the guest
+markers, since Boxedwine's process exit code alone does not report probe failure.
+The same build and filesystem were checked visually in Vantage GT1: the original
+module leaves a flat roof over the boat, while the patched module produces a
+folded tarp draped over it. The partial-field and disabled-transform-feedback
+warnings also disappear from the scene log.

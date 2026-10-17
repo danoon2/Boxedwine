@@ -1,19 +1,26 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current source series is pinned by
-[`webgl-test-divergences-v46.json`](../wineTests/webgl-test-divergences-v46.json).
-It contains 67 production patches and one separate, complete Wine graphics-test
-adaptation. The [v46 inventory](../wineTests/webgl-patch-inventory-v46.json)
+[`webgl-test-divergences-v47.json`](../wineTests/webgl-test-divergences-v47.json).
+It contains 68 production patches and one separate, complete Wine graphics-test
+adaptation. The [v47 inventory](../wineTests/webgl-patch-inventory-v47.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 45 retain earlier build and test selections for reproducing historical
+Versions 2 through 46 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
+
+Filesystem 20 selects v47. Patch 68 adds partial stream-output varyings alongside
+rasterizer outputs, matching the main WineD3D tarp fix. It changes the separately
+built `wined3d.dll`; the other seven DLLs retain their previous identities.
+WebGL geometry-shader and stream-output capability limits remain unchanged.
+The candidate DLLs and archives are pinned by
+[`webgl_filesystems_v20.json`](../buildWine/webgl_filesystems_v20.json).
 
 Filesystems 18 and 19 select v46. Patches 66 and 67 add the shared WineD3D stream-output
 overflow query and DXGI fullscreen activation fixes used by 3DMark Vantage.
 Overflow queries remain conditional on host OpenGL support; WebGL does not gain
-that capability. Wine test policy is unchanged. The current DLLs and archives
+that capability. Wine test policy is unchanged. Those historical DLLs and archives
 are pinned by [`webgl_filesystems_v19.json`](../buildWine/webgl_filesystems_v19.json).
 Revision 19 changes the shared Wine shader compiler used by the PE D3DX DLLs;
 the separate PE DLLs retain their v18 hashes.
@@ -260,7 +267,7 @@ Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
 python3 tools/wineTests/webglTestDivergences.py \
-  --manifest tools/wineTests/webgl-test-divergences-v46.json
+  --manifest tools/wineTests/webgl-test-divergences-v47.json
 ```
 
 The validator checks patch hashes, forbids production changes to Wine test
@@ -282,7 +289,7 @@ import sys
 
 repo = Path.cwd()
 source = Path(sys.argv[1]).resolve()
-manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v46.json").read_text())
+manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v47.json").read_text())
 head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
 if head != manifest["wine_source_commit"]:
     raise SystemExit("Wine checkout is not at the pinned source commit")
