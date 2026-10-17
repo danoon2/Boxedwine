@@ -36,6 +36,7 @@
         let WINE_OVERRIDE_PRESETS = {
             nomono: "mscoree,mshtml=" // skip the Wine Mono and Gecko installs
         };
+        let DEFAULT_CDROM_DRIVE = "e";
         //params
         let Config = {};
         Config.locateRootBaseUrl = ""; // ie "assets/"
@@ -138,7 +139,9 @@
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
-            Config.cdromISOFile = getCDRomISOFile("cdrom");
+            let cdrom = getCDRom("cdrom"); //MANUAL:{file: "game.iso", drive: "e"}
+            Config.cdromISOFile = cdrom.file;
+            Config.cdromDrive = cdrom.drive;
             Config.appPayload = getPayload("app-payload"); 
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
@@ -609,15 +612,23 @@
             }
             return result;
         }
-        function getCDRomISOFile(param) {
+        // cdrom=e:game.iso mounts game.iso as drive e:, cdrom=game.iso uses DEFAULT_CDROM_DRIVE
+        function getCDRom(param) {
             var filename =  getParameter(param);
+            var drive = DEFAULT_CDROM_DRIVE;
             if(!allowParameterOverride() || filename===""){
                 filename = "";
                 console.log("not setting " + param + " ISO file");
             }else{
-                console.log("setting " + param + " ISO file to: "+filename);
+                filename = decodeUrlValue(filename);
+                let letter = filename.match(/^([a-z]):(.+)$/i);
+                if (letter) {
+                    drive = letter[1].toLowerCase();
+                    filename = letter[2];
+                }
+                console.log("setting " + param + " ISO file to: "+filename+" on drive "+drive+":");
             }
-            return filename;
+            return { file: filename, drive: drive };
         }
         function getAppZipFile(param) {
 
@@ -1628,6 +1639,7 @@
             if(Config.cdromISOFile.length > 0){
 				params.push("-cdrom");
 				params.push(Config.cdromISOFile);
+				params.push(Config.cdromDrive);
 			}
             
             if (Config.appZipFile.length > 0) { // -mount $appZipFile "/home/username/files/"

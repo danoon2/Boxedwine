@@ -271,6 +271,7 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (cdromPath.length()) {
         args.push_back(B("-cdrom"));
         args.push_back(cdromPath);
+        args.push_back(cdromDrive);
     }
     if (userId != UID) {
         args.push_back(B("-uid"));
@@ -762,12 +763,16 @@ bool StartUpArgs::apply() {
         std::shared_ptr<FsIso> fsIso = std::make_shared<FsIso>();
         if (fsIso->init(this->cdromPath, B("/mnt/cdrom"))) {
             setCdromIso(fsIso);
-            // Wire up Wine's E: drive letter to the ISO mount point
+            // Wire up the requested Wine drive letter to the ISO mount point
+            BString drive = this->cdromDrive + ":";
+            BString link = "/home/username/.wine/dosdevices/" + drive;
             std::shared_ptr<FsNode> dosdevParent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
-            if (dosdevParent) {
-                Fs::addFileNode(B("/home/username/.wine/dosdevices/e:"),  B("/mnt/cdrom"), B(""), false, dosdevParent);
-                Fs::addFileNode(B("/home/username/.wine/dosdevices/e::"), B("/dev/sr0"),   B(""), false, dosdevParent);
-                setWineDriveType("e:", "cdrom");
+            if (Fs::getNodeFromLocalPath(B(""), link, false)) {
+                klog_fmt("-cdrom: drive %s is already in use, so %s has no drive letter", drive.c_str(), this->cdromPath.c_str());
+            } else if (dosdevParent) {
+                Fs::addFileNode(link, B("/mnt/cdrom"), B(""), false, dosdevParent);
+                Fs::addFileNode(link + ":", B("/dev/sr0"), B(""), false, dosdevParent);
+                setWineDriveType(drive.c_str(), "cdrom");
             }
         }
     }
@@ -952,9 +957,15 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         if (!strcmp(argv[i], "-root") && i+1<argc) {
             this->setRoot(BString::copy(argv[i+1]));
             i++;
-        } else if (!strcmp(argv[i], "-cdrom") && i+1<argc) {
+        } else if (!strcmp(argv[i], "-cdrom")) {
+            if (i+2>=argc || strlen(argv[i+2])!=1 || !isalpha((unsigned char)argv[i+2][0])) {
+                klog("-cdrom expects 2 parameters: <iso file to mount> <drive letter to use for wine>");
+                klog("  example: -cdrom \"c:\\my games\\game.iso\" e");
+                return false;
+            }
             this->cdromPath = BString::copy(argv[i+1]);
-            i++;
+            this->cdromDrive = BString::copy(argv[i+2]).toLowerCase();
+            i+=2;
         } else if (!strcmp(argv[i], "-zip") && i+1<argc) {
 #ifdef BOXEDWINE_ZLIB
             this->addZip(BString::copy(argv[i+1]));

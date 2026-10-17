@@ -115,6 +115,7 @@ public:
 
     BString ddrawOverridePath;
     BString cdromPath;
+    BString cdromDrive; // wine drive letter for cdromPath, without the colon
     bool enableDXVK = false;
     bool disableHideCursor = false;
     bool forceRelativeMouse = false;
