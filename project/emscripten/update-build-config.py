@@ -18,7 +18,7 @@ COMPILE_KEYS = (
     "CC", "CXX", "AS", "CPPFLAGS", "CFLAGS", "CXXFLAGS", "ASFLAGS",
     "COMMON_INCLUDES", "SOFTFLOAT_INCLUDES", "WASM_EXCEPTION_CPPFLAGS",
 )
-LINK_KEYS = ("CC", "LDFLAGS", "OBJECTS", "TARGET")
+LINK_KEYS = ("CXX", "LDFLAGS", "OBJECTS", "TARGET")
 COMPILER_ENVIRONMENT_KEYS = ("EMCC_CFLAGS", "SOURCE_DATE_EPOCH")
 
 
@@ -38,7 +38,7 @@ def compiler_identity(command: str) -> dict:
 def configuration(kind: str, environment: dict) -> dict:
     keys = COMPILE_KEYS if kind == "compile" else LINK_KEYS
     settings = {key: environment.get("BW_BUILD_" + key, "") for key in keys}
-    compilers = ("CC", "CXX") if kind == "compile" else ("CC",)
+    compilers = ("CC", "CXX") if kind == "compile" else ("CXX",)
     return {"schema_version": 1, "kind": kind, "settings": settings,
         # Emscripten injects EMCC_CFLAGS after its --version early return.
         # SOURCE_DATE_EPOCH also changes compiler-generated timestamp bytes.

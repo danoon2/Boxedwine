@@ -329,7 +329,7 @@ LINK_INPUTS += $(if $(findstring boxedwine-wasm-jit-module-broker.js,$(EXTRA_LD_
 LINK_INPUTS += $(if $(findstring boxedwine-multithreaded-helper.js,$(EXTRA_LD_FLAGS)),boxedwine-multithreaded-helper.js,)
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(ALL) $(LINK_CONFIG) $(LINK_INPUTS)
-	@$(CC) $(ALL) -o $@ $(LDFLAGS)
+	@$(CXX) $(ALL) -o $@ $(LDFLAGS)
 
 # assembly
 $(BUILD_DIR)/%.s.o: %.s $(COMPILE_CONFIG)
