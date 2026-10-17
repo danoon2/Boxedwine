@@ -216,7 +216,7 @@ int boxedmain(int argc, const char **argv) {
             }
             GlobalSettings::startUpArgs.readyToLaunch = false;
             // the app's apply() may have turned it on for an automation run; the UI goes back to the command line's choice
-            KSystem::noErrorDialog = startupArgs.noErrorDialog;
+            KSystem::noErrorDialog = startupArgs.runAutomation.length() != 0;
 
             KNativeSystem::preReturnToUI();
             if (!GlobalSettings::keepUIRunning) {

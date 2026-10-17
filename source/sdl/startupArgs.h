@@ -105,7 +105,6 @@ public:
     bool readyToLaunch = false;
     BString openGlLib;
     bool ttyPrepend = false;
-    bool noErrorDialog = false;
     BString showAppPickerForContainerDir;
     std::function<void()> runOnRestartUI;
     BString logPath;
