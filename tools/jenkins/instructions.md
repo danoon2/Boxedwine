@@ -243,6 +243,38 @@ wsl bash -lc 'ps -ef | grep "project/emscripten/server.mjs" | grep -v grep'
 
 `publish-build-site.sh` is the Jenkins-side publishing workflow. It syncs the remote site down, updates the build/demo pages, and syncs the result back up to `BUILD_SITE_REMOTE`.
 
+The root `Jenkinsfile` packages artifacts only after a successful build. Its
+`post/always` handler still publishes after an earlier test or compile failure,
+or a packaging failure, even when no build stashes exist. Failed, unstable, and
+aborted builds show an **Error Log** link instead of ZIP downloads or demos.
+Historical failures with no saved log show **Log unavailable**.
+
+The handler captures the console output available at publication time using
+Token Macro's `tm('${BUILD_LOG, maxLines=2147483647, escapeHtml=false}')` and passes
+the UTF-8 file as `BUILD_SITE_LOG`. Token Macro is already a dependency of the
+email-ext plugin used by this Pipeline; no additional API credential or Groovy
+script approval is needed. The snapshot includes packaging errors, but cannot
+include later publishing or notification output. Failed publications require an
+existing `BUILD_SITE_LOG` and skip artifact copying, demo downloads, and demo
+validation, preserving the previous successful demos.
+
+These changes apply to new runs using the updated Jenkinsfile. Previously missed
+builds need their console logs and original build metadata passed through the
+publisher separately; updating the Jenkinsfile does not backfill them.
+
+Regression checks (the shell tests require POSIX bash and rsync):
+
+```bash
+python3 tools/jenkins/test_build_site.py -v
+python3 tools/jenkins/test_publish_build_site.py -v
+groovy tools/jenkins/test_publish_pipeline.groovy
+```
+
+The Groovy check executes the actual Jenkinsfile's `post/always` code with mocked
+Pipeline steps. It covers early failures, missing stashes, ZIP/archive failures,
+successful builds, and a publishing worker without a checkout. It makes no
+network connections and does not start a Jenkins build.
+
 Both scripts download the same filesystem:
 
 ```text

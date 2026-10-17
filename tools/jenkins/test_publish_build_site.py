@@ -25,6 +25,8 @@ if name == 'ssh':
     phase = 'release' if 'rmdir' in command else 'acquire' if 'if mkdir' in command else 'prepare'
 elif name == 'rsync':
     phase = 'download' if args[-2].startswith('fixture:') else 'upload'
+elif name == 'wget':
+    phase = 'demo-download'
 else:
     assert name == 'build_site.py', name
     phase = 'generate'
@@ -45,6 +47,8 @@ if name == 'ssh':
 if name == 'rsync':
     args = [arg.removeprefix('fixture:') for arg in args]
     raise SystemExit(subprocess.call([os.environ['FIXTURE_RSYNC'], *args]))
+if name == 'wget':
+    raise SystemExit(0)
 site = Path(args[args.index('--site-dir') + 1])
 assert not (site / '.publish-lock').exists(), 'lock copied into site'
 (site / 'new.html').write_text('new build')
@@ -74,14 +78,14 @@ class PublishWorkflowTests(unittest.TestCase):
         self.log.write_text("")
         binaries = self.root / "bin"
         binaries.mkdir()
-        for path in (binaries / "ssh", binaries / "rsync", scripts / "build_site.py"):
+        for path in (binaries / "ssh", binaries / "rsync", binaries / "wget", scripts / "build_site.py"):
             path.write_text(COMMAND)
             path.chmod(0o755)
         # Exercise all lock retries without spending two minutes waiting.
         (binaries / "sleep").write_text("#!/bin/sh\nexit 0\n")
         (binaries / "sleep").chmod(0o755)
         self.environment = {key: value for key, value in os.environ.items()
-                            if not key.startswith(("BUILD_SITE_", "FIXTURE_"))}
+                            if not key.startswith(("BUILD_SITE_", "FIXTURE_", "BUILD_RESULT"))}
         self.environment.update(
             PATH=str(binaries) + os.pathsep + os.environ["PATH"],
             TMPDIR=str(self.scratch), BUILD_SITE_REMOTE="fixture:" + str(self.remote),
@@ -101,6 +105,48 @@ class PublishWorkflowTests(unittest.TestCase):
         phases, _ = self.run_script()
         self.assertEqual(["prepare", "acquire", "download", "generate", "upload", "release"], phases)
         self.assertEqual("new build", (self.remote / "new.html").read_text())
+        self.assertFalse(self.lock.exists())
+
+    def prepare_build_outputs(self):
+        artifact = self.root / "build.zip"
+        artifact.write_bytes(b"stale or partial build")
+        self.environment["BUILD_SITE_ARTIFACT"] = str(artifact)
+        for mode in ("SingleThreaded", "MultiThreaded", "SingleThreadedJit", "MultiThreadedJit"):
+            (self.root / "project/linux/Deploy/Web" / mode).mkdir(parents=True)
+
+    def test_failed_builds_publish_only_logs_even_with_complete_stale_outputs(self):
+        self.prepare_build_outputs()
+        log = self.root / "console.log"
+        log.write_text("compiler failed before stashing web\n")
+        self.environment.update(BUILD_SITE_LOG=str(log), FIXTURE_FAIL_PHASES="demo-download")
+        for result in ("FAILURE", "UNSTABLE", "ABORTED", "NOT_BUILT", "failure"):
+            with self.subTest(result=result):
+                self.log.write_text("")
+                self.environment["BUILD_RESULT"] = result
+                phases, _ = self.run_script()
+                self.assertEqual(["prepare", "acquire", "download", "generate", "upload", "release"], phases)
+                args = next(json.loads(line)["args"] for line in self.log.read_text().splitlines()
+                            if json.loads(line)["phase"] == "generate")
+                self.assertEqual(str(log), args[args.index("--log") + 1])
+                self.assertEqual(result.upper(), args[args.index("--result") + 1])
+                self.assertNotIn("--artifact", args)
+                self.assertNotIn("--demo-source", args)
+                self.assertFalse(self.lock.exists())
+
+    def test_success_still_publishes_artifacts_and_demos(self):
+        self.prepare_build_outputs()
+        phases, _ = self.run_script()
+        self.assertIn("demo-download", phases)
+        args = next(json.loads(line)["args"] for line in self.log.read_text().splitlines()
+                    if json.loads(line)["phase"] == "generate")
+        self.assertIn("--artifact", args)
+        self.assertIn("--demo-source", args)
+
+    def test_failure_without_log_does_not_upload_and_releases_lock(self):
+        self.environment["BUILD_RESULT"] = "FAILURE"
+        phases, output = self.run_script(expected_status=1)
+        self.assertIn("BUILD_SITE_LOG must name an existing log", output)
+        self.assertNotIn("upload", phases)
         self.assertFalse(self.lock.exists())
 
     def test_existing_lock_is_never_removed_or_published_over(self):

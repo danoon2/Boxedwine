@@ -1,4 +1,7 @@
 import json
+import re
+import shutil
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -13,6 +16,82 @@ def create_zip(path, files=None):
     with zipfile.ZipFile(path, "w") as archive:
         for name, content in (files or {}).items():
             archive.writestr(name, content)
+
+
+class BuildFailureTests(unittest.TestCase):
+    def fixture_build(self, result, log=True):
+        return {"branchSlug": "test", "buildNumber": 3, "result": result,
+                "artifacts": [{"name": "build-3.zip", "path": "artifacts/build-3.zip", "size": 12}],
+                "log": {"path": "console.log", "size": 40} if log else None}
+
+    def test_failure_rendering_hides_old_artifacts_and_never_falls_back_to_demos(self):
+        for result in ("FAILURE", "UNSTABLE", "ABORTED", "NOT_BUILT", "failure"):
+            for log in (True, False):
+                with self.subTest(result=result, log=log):
+                    page = build_site.render_builds([self.fixture_build(result, log)])
+                    self.assertNotIn("build-3.zip", page)
+                    self.assertNotIn("Demos</a>", page)
+                    self.assertIn("Error Log" if log else "Log unavailable", page)
+
+    def test_success_rendering_keeps_download_and_demo_links(self):
+        page = build_site.render_builds([self.fixture_build("SUCCESS")])
+        self.assertIn("build-3.zip", page)
+        self.assertIn("Demos</a>", page)
+        self.assertNotIn("Error Log", page)
+
+    @unittest.skipUnless(shutil.which("node"), "requires Node.js for generated JavaScript")
+    def test_generated_javascript_renders_failure_links(self):
+        with tempfile.TemporaryDirectory() as directory:
+            site = Path(directory)
+            build_site.render_html(site, [], "Builds", "")
+            scripts = re.findall(r"<script>(.*?)</script>", (site / "index.html").read_text(), re.S)
+            cases = [self.fixture_build(result, log) for result in
+                     ("FAILURE", "UNSTABLE", "ABORTED", "NOT_BUILT", "failure", "SUCCESS")
+                     for log in (True, False)]
+            script = "const document = {getElementById: () => ({addEventListener() {}})};\n"
+            script += scripts[-1]
+            script += "\nconsole.log(JSON.stringify(" + json.dumps(cases) + ".map(renderArtifacts)));"
+            completed = subprocess.run(["node", "-e", script], text=True, capture_output=True, check=True)
+            for build, rendered in zip(cases, json.loads(completed.stdout)):
+                with self.subTest(build=build):
+                    if build["result"] == "SUCCESS":
+                        self.assertIn("build-3.zip", rendered)
+                        self.assertIn("Demos</a>", rendered)
+                    else:
+                        self.assertNotIn("build-3.zip", rendered)
+                        self.assertNotIn("Demos</a>", rendered)
+                        self.assertIn("Error Log" if build["log"] else "Log unavailable", rendered)
+
+    def test_failure_cli_preserves_previous_demos_and_publishes_log_without_build_inputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            site = base / "site"
+            previous_demo = site / "demos/index.html"
+            previous_demo.parent.mkdir(parents=True)
+            previous_demo.write_text("previous successful demos")
+            log = base / "console.log"
+            log.write_text("early compiler error <file> & details\n")
+            artifact = base / "stale.zip"
+            artifact.write_bytes(b"previous build")
+            with (
+                mock.patch("sys.argv", ["build_site.py", "--site-dir", str(site),
+                    "--branch", "test", "--build-number", "3", "--result", "FAILURE",
+                    "--artifact", str(artifact), "--log", str(log),
+                    "--demo-source", str(base / "missing-demos"),
+                    "--single-threaded-dir", str(base / "missing-runner"),
+                    "--skip-prune-removed-demo-branches"]),
+                mock.patch.object(build_site, "validate_demo_root_zips") as validate,
+                mock.patch.object(build_site, "update_demos") as update,
+            ):
+                build_site.main()
+            validate.assert_not_called()
+            update.assert_not_called()
+            metadata = json.loads((site / "branches/test/builds/3/build.json").read_text())
+            self.assertEqual([], metadata["artifacts"])
+            self.assertEqual(log.read_bytes(), (site / metadata["log"]["path"]).read_bytes())
+            self.assertEqual("previous successful demos", previous_demo.read_text())
+            self.assertFalse((site / "branches/test/builds/3/artifacts").exists())
+            self.assertEqual(3, json.loads((site / "builds.json").read_text())["branches"][0]["builds"][0]["buildNumber"])
 
 
 class DemoRootSelectionTests(unittest.TestCase):

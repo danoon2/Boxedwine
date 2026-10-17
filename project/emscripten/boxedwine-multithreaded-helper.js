@@ -4,7 +4,9 @@ addToLibrary({
   // hand-built {cmd: 'callHandler'} message is dropped as an unknown command.
   // Only --js-library files are preprocessed, so EM_JS and --pre-js code reads
   // the resolved value from here (declare it with EM_JS_DEPS).
-  $bwCallHandlerCmd: {{{ typeof CMD_CALL_HANDLER != 'undefined' ? CMD_CALL_HANDLER : "'callHandler'" }}},
+  // String library values are emitted as JavaScript expressions. Preserve the
+  // quotes around the pre-6.0 command through both preprocessing and emission.
+  $bwCallHandlerCmd: {{{ JSON.stringify(typeof CMD_CALL_HANDLER != 'undefined' ? CMD_CALL_HANDLER : "'callHandler'") }}},
 
   // SDL2 WebAudio stores its state on Module.SDL2 in the browser main thread.
   // With PROXY_TO_PTHREAD, SDL audio can call plain EM_ASM_INT from the pthread;
