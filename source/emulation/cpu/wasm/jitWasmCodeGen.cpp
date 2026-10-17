@@ -60,9 +60,9 @@
 
 #if defined(BOXEDWINE_MULTI_THREADED) && defined(__EMSCRIPTEN_PTHREADS__)
 // The module broker (boxedwine-wasm-jit-module-broker.js) and the MT test hooks
-// post call-handler messages using bwCallHandlerCmd from
-// boxedwine-multithreaded-helper.js.
-EM_JS_DEPS(boxedwine_wasm_jit_broker_deps, "$bwCallHandlerCmd");
+// post call-handler messages using bwCallHandlerCmd, and recognise pthread run
+// messages using bwRunCmd, from boxedwine-multithreaded-helper.js.
+EM_JS_DEPS(boxedwine_wasm_jit_broker_deps, "$bwCallHandlerCmd,$bwRunCmd");
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
