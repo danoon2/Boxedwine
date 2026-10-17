@@ -30,6 +30,8 @@ public:
 
     bool init(const BString& isoPath, const BString& mountPath);
     U32 readData(U64 byteOffset, U8* buf, U32 len);
+    // true for the mount point itself and everything below it
+    bool containsPath(const BString& path) const;
 
     U64 totalSectors = 0;
     BOXEDWINE_MUTEX readMutex;
@@ -37,6 +39,7 @@ public:
 private:
     FILE* file = nullptr;
     bool joliet = false;
+    BString mountPath;
 
     void scanDirectory(const BString& localPath, const std::shared_ptr<FsNode>& parentNode, U64 lba, U64 dataLength);
     BString decodeFilename(const U8* nameData, U8 nameLen);

@@ -23,5 +23,7 @@ class FsIso;
 
 FsOpenNode* openDevCDROM(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 void setCdromIso(const std::shared_ptr<FsIso>& iso);
+// the mounted ISO if path is on it, so statfs can report it as iso9660
+std::shared_ptr<FsIso> getCdromForPath(const BString& path);
 
 #endif

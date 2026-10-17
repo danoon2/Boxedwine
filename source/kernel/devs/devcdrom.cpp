@@ -167,3 +167,10 @@ FsOpenNode* openDevCDROM(const std::shared_ptr<FsNode>& node, U32 flags, U32 dat
 void setCdromIso(const std::shared_ptr<FsIso>& iso) {
     gActiveCdrom = iso;
 }
+
+std::shared_ptr<FsIso> getCdromForPath(const BString& path) {
+    if (gActiveCdrom && gActiveCdrom->containsPath(path)) {
+        return gActiveCdrom;
+    }
+    return nullptr;
+}
