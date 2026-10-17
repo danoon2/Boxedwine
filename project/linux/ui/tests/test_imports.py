@@ -9,7 +9,7 @@ import unittest
 import zipfile
 from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from boxedwine.imports import CollectionStore, PreparedSource, load_collection, valid_url
+from boxedwine.imports import CollectionIcons, CollectionStore, PreparedSource, load_collection, valid_url
 from boxedwine.files import Work, Cancelled
 from boxedwine.demos import load_catalog
 
@@ -23,6 +23,60 @@ class ImportTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def test_icon_urls_merge_without_duplicates_and_reject_unsafe_sources(self):
+        self.snapshot['apps'][0]['Icon'] = 'https://images.example/game.png?v=1'
+        self.store.add(self.snapshot, 'Classic Games')
+        self.assertEqual(self.store.recipes('Classic Games')[0]['icon'], self.snapshot['apps'][0]['Icon'])
+        self.snapshot['apps'][0]['Icon'] = 'https://images.example/game.png?v=2'
+        self.assertEqual(self.store.preview(self.snapshot, 'Classic Games'), (0, 1, 0))
+        self.store.add(self.snapshot, 'Classic Games')
+        self.assertEqual(len(self.store.recipes('Classic Games')), 1)
+        for value in ('file:///tmp/icon.png', 'https://user:password@example/icon.png', 'https://example/icon.png#fragment', '../icon.png'):
+            self.snapshot['apps'][0]['Icon'] = value
+            with self.assertRaises(ValueError):
+                load_collection(self.snapshot)
+
+    def test_remote_icon_cache_is_bounded_optional_and_reused_offline(self):
+        import base64
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=')
+        requests = []
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+            def do_GET(self):
+                requests.append(self.path)
+                if self.path == '/redirect':
+                    self.send_response(302); self.send_header('Location', '/icon.png'); self.end_headers(); return
+                if self.path == '/unsafe':
+                    self.send_response(302); self.send_header('Location', 'file:///tmp/icon.png'); self.end_headers(); return
+                data = b'not an image' if self.path == '/invalid' else png
+                if self.path == '/dimensions':
+                    data = png[:16] + bytes([0, 0, 16, 0]) + png[20:]
+                self.send_response(404 if self.path == '/missing' else 200)
+                self.send_header('Content-Length', str(1024**2 + 1 if self.path == '/large' else len(data)))
+                self.end_headers()
+                if self.path != '/large': self.wfile.write(data)
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+        cache = CollectionIcons(self.root)
+        base = 'http://127.0.0.1:' + str(server.server_port)
+        try:
+            cache.fetch(base + '/redirect')
+            self.assertEqual(cache.read(base + '/redirect'), png)
+            cache.fetch(base + '/redirect')
+            self.assertEqual(len(requests), 2)
+            for path in ('/invalid', '/large', '/dimensions', '/missing', '/unsafe'):
+                cache.fetch(base + path)
+                self.assertIsNone(cache.read(base + path))
+            self.assertIsNone(cache.read(base + '/redirect?v=2'))
+            self.assertEqual(len(list(cache.directory.iterdir())), 1)
+        finally:
+            server.shutdown(); server.server_close(); thread.join()
+        cache.fetch(base + '/redirect')
+        self.assertEqual(cache.read(base + '/redirect'), png)
 
     def test_reimport_updates_by_id_and_preserves_other_entries(self):
         self.store.add(self.snapshot, self.snapshot['folder'])

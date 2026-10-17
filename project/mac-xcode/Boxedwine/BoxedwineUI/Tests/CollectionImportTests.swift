@@ -36,6 +36,24 @@ struct CollectionImportTests {
         try reopened.merge(original, destination: original.folder)
         #expect(try reopened.recipes(in: original.folder, defaults: []).count == 2)
     }
+    @Test func collectionIconsAcceptURLsAndUpdateWithoutDuplicatingEntries() throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CollectionStore(directory: directory)
+        var value = try snapshot()
+        value.apps[0]["Icon"] = "https://images.example/game.png?v=1"
+        try store.merge(value, destination: value.folder)
+        #expect(try store.recipes(in: value.folder, defaults: [])[0].icon == value.apps[0]["Icon"])
+        value.apps[0]["Icon"] = "https://images.example/game.png?v=2"
+        #expect(try store.preview(value, destination: value.folder).updated == 1)
+        try store.merge(value, destination: value.folder)
+        #expect(try store.recipes(in: value.folder, defaults: []).count == 1)
+        for icon in ["file:///tmp/icon.png", "https://user:password@example/icon.png", "https://example/icon.png#fragment", "../icon.png"] {
+            value.apps[0]["Icon"] = icon
+            #expect(throws: (any Error).self) { try value.recipes() }
+        }
+        value.apps[0]["Icon"] = "abiword-2015.png"
+        #expect(try value.recipes()[0].icon == "abiword-2015.png")
+    }
     @Test func deleteAndResetPreserveInstalledFiles() throws {
         let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
         let save = directory.appendingPathComponent("save.dat"); try Data("progress".utf8).write(to: save)
@@ -96,6 +114,30 @@ struct CollectionImportTests {
 
 #if !BOXEDWINE_APP_STORE
 extension CollectionImportTests {
+    @Test func remoteIconsCacheValidPNGsAndRejectInvalidOrOversizedDownloads() async throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let cache = CollectionIconCache(directory: directory)
+        let configuration = URLSessionConfiguration.ephemeral; configuration.protocolClasses = [CollectionIconHTTPFixture.self]
+        let source = "https://icons.example/icon.png?v=1"
+        await cache.fetch(source, configuration: configuration)
+        let path = try #require(cache.cachedURL(source))
+        #expect(try Data(contentsOf: path) == CollectionIconHTTPFixture.png)
+        await cache.fetch(source, configuration: configuration)
+        #expect(cache.cachedURL(source) == path)
+        #expect(cache.cachedURL("https://icons.example/icon.png?v=2") == nil)
+        for name in ["invalid", "large", "dimensions", "missing"] {
+            let url = "https://icons.example/" + name
+            await cache.fetch(url, configuration: configuration)
+            #expect(cache.cachedURL(url) == nil)
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: path.deletingLastPathComponent().path).count == 1)
+        let original = directory.appendingPathComponent("original.png")
+        try FileManager.default.moveItem(at: path, to: original)
+        try FileManager.default.createSymbolicLink(at: path, withDestinationURL: original)
+        await cache.fetch(source, configuration: configuration)
+        #expect(cache.cachedURL(source) == nil)
+        #expect(try Data(contentsOf: original) == CollectionIconHTTPFixture.png)
+    }
     @Test func userDownloadAcceptsAnExternalSourceWithSizeLimitsButBundledDownloadsDoNot() async throws {
         let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
         let configuration = URLSessionConfiguration.ephemeral; configuration.protocolClasses = [CollectionHTTPFixture.self]
@@ -108,6 +150,23 @@ extension CollectionImportTests {
         await #expect(throws: (any Error).self) { try await downloader.fetch(source, bytes: 0, to: directory.appendingPathComponent("large.zip"), control: ImportControl(), allowExternal: true, maximumBytes: 2) }
         #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("large.zip").path))
     }
+}
+private final class CollectionIconHTTPFixture: URLProtocol, @unchecked Sendable {
+    static let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")!
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        var data = Self.png
+        let name = request.url!.lastPathComponent
+        if name == "invalid" { data = Data("not an image".utf8) }
+        if name == "large" { data = Data(repeating: 0, count: 1024 * 1024 + 1) }
+        if name == "dimensions" { data.replaceSubrange(16..<20, with: [0, 0, 16, 0]) }
+        let response = HTTPURLResponse(url: request.url!, statusCode: name == "missing" ? 404 : 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Length": String(data.count)])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() { }
 }
 private final class CollectionHTTPFixture: URLProtocol, @unchecked Sendable {
     override class func canInit(with request: URLRequest) -> Bool { true }

@@ -3,6 +3,51 @@
 import Foundation
 import CryptoKit
 
+/// Optional artwork is cached by its complete URL, independently of collection IDs.
+struct CollectionIconCache: Sendable {
+    let directory: URL
+    static func remoteURL(_ value: String) -> URL? {
+        guard !value.unicodeScalars.contains(where: { CharacterSet.whitespacesAndNewlines.contains($0) || CharacterSet.controlCharacters.contains($0) }),
+              let url = URL(string: value), PreparedAppSource.validURL(url) else { return nil }
+        return url
+    }
+    static func validPNG(_ data: Data) -> Bool {
+        guard (24...1024 * 1024).contains(data.count), data.prefix(16) == Data([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]) else { return false }
+        func dimension(_ offset: Int) -> UInt32 { data[offset..<offset + 4].reduce(0) { ($0 << 8) | UInt32($1) } }
+        return (1...1024).contains(dimension(16)) && (1...1024).contains(dimension(20))
+    }
+    private func path(_ value: String) throws -> URL {
+        let hash = SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
+        let folder = directory.appendingPathComponent("CollectionIcons")
+        for component in [folder, folder.appendingPathComponent(hash + ".png")] {
+            if (try? component.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true { throw LibraryError.invalidPath }
+        }
+        return try LibraryRepository(directory: directory).confinedURL("CollectionIcons/" + hash + ".png", beneath: directory)
+    }
+    func cachedURL(_ value: String) -> URL? {
+        guard Self.remoteURL(value) != nil, let file = try? path(value),
+              let size = try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize, size <= 1024 * 1024,
+              let data = try? Data(contentsOf: file), Self.validPNG(data) else { return nil }
+        return file
+    }
+    #if !BOXEDWINE_APP_STORE
+    func fetch(_ value: String, configuration: URLSessionConfiguration = .ephemeral) async {
+        guard let url = Self.remoteURL(value), cachedURL(value) == nil else { return }
+        var temporary: URL?
+        do {
+            let target = try path(value)
+            try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let download = target.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + ".tmp")
+            temporary = download
+            try await PackageDownloader(configuration: configuration).fetch(url, bytes: 0, to: download, control: ImportControl(), allowExternal: true, maximumBytes: 1024 * 1024, timeout: 20)
+            let data = try Data(contentsOf: download)
+            if Self.validPNG(data) { try data.write(to: target, options: .atomic) }
+        } catch { /* Optional artwork must never prevent using the collection. */ }
+        if let temporary { try? FileManager.default.removeItem(at: temporary) }
+    }
+    #endif
+}
+
 struct CollectionSnapshot: Codable, Equatable, Sendable {
     var schemaVersion: Int
     var folder: String
@@ -125,9 +170,9 @@ struct CollectionStore: Sendable {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
     }
-    func recipes(in name: String, defaults: [Demo]) throws -> [Demo] {
+    func recipes(in name: String, defaults: [Demo], document: CollectionDocument? = nil) throws -> [Demo] {
         var result = name == "Demos" ? defaults : []
-        if let folder = try load().folders.first(where: { $0.name.lowercased() == name.lowercased() }) {
+        if let folder = try (document ?? load()).folders.first(where: { $0.name.lowercased() == name.lowercased() }) {
             for var demo in try CollectionSnapshot(schemaVersion: 1, folder: folder.name, apps: folder.apps).recipes() {
                 // Keep the namespaced ID within the saved library's 64-character limit.
                 let id = name == "Demos" ? demo.id : "collection-" + SHA256.hash(data: Data((folder.name.lowercased() + "\0" + demo.id).utf8)).prefix(24).map { String(format: "%02x", $0) }.joined()

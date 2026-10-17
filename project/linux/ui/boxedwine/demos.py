@@ -37,7 +37,7 @@ def load_catalog(data, allow_external=False):
                 not shortcut.lower().endswith('.exe') or '/' in shortcut or field('InstallType') not in ('Zip', 'Installer')):
             raise ValueError('Invalid demo identity or package.')
         validate_relative(shortcut)
-        if field('Icon'):
+        if field('Icon') and not (allow_external and valid_url(field('Icon'))):
             validate_relative(field('Icon'))
         ids.add(identifier)
         if any(field(key) for key in ('Options', 'InstallOptions', 'Options_Mac', 'InstallOptions_Mac')):

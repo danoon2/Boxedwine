@@ -20,11 +20,11 @@ struct DemoDownloader: DemoDownloading, @unchecked Sendable {
 
 struct PackageDownloader: @unchecked Sendable {
     var configuration: URLSessionConfiguration = .ephemeral
-    func fetch(_ url: URL, bytes: Int64, to destination: URL, control: ImportControl, allowExternal: Bool = false, maximumBytes: Int64 = 1024 * 1024 * 1024) async throws {
+    func fetch(_ url: URL, bytes: Int64, to destination: URL, control: ImportControl, allowExternal: Bool = false, maximumBytes: Int64 = 1024 * 1024 * 1024, timeout: TimeInterval = 15 * 60) async throws {
         try control.checkCancellation()
         guard (allowExternal ? PreparedAppSource.validURL(url) : DemoCatalog.validDownloadURL(url)), bytes > 0 || allowExternal else { throw DemoError.download("Unsupported download URL.") }
         let operation = PackageDownloadOperation(url: url, bytes: bytes, destination: destination, control: control, allowExternal: allowExternal, maximumBytes: bytes > 0 ? bytes : maximumBytes)
-        try await operation.start(configuration: configuration)
+        try await operation.start(configuration: configuration, timeout: timeout)
     }
 }
 
@@ -44,13 +44,13 @@ private final class PackageDownloadOperation: NSObject, URLSessionDownloadDelega
     private var redirects = 0
 
     init(url: URL, bytes: Int64, destination: URL, control: ImportControl, allowExternal: Bool, maximumBytes: Int64) { self.url = url; self.bytes = bytes; self.destination = destination; self.control = control; self.allowExternal = allowExternal; self.maximumBytes = maximumBytes }
-    func start(configuration: URLSessionConfiguration) async throws {
+    func start(configuration: URLSessionConfiguration, timeout: TimeInterval) async throws {
         try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
             let config = configuration.copy() as! URLSessionConfiguration
             config.urlCache = nil; config.httpCookieStorage = nil; config.urlCredentialStorage = nil
             config.requestCachePolicy = .reloadIgnoringLocalCacheData
-            config.timeoutIntervalForRequest = 30; config.timeoutIntervalForResource = 15 * 60
+            config.timeoutIntervalForRequest = min(30, timeout); config.timeoutIntervalForResource = timeout
             let queue = OperationQueue(); queue.maxConcurrentOperationCount = 1
             let session = URLSession(configuration: config, delegate: self, delegateQueue: queue)
             self.session = session

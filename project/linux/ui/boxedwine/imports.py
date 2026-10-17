@@ -3,6 +3,7 @@
 """User-selected sources and persistent collection snapshots (shared native format)."""
 import copy
 import hashlib
+from http.client import HTTPException
 import json
 from pathlib import Path
 import re
@@ -11,8 +12,10 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import time
+import struct
+import uuid
 import xml.etree.ElementTree as ET
-from .files import atomic_json, beneath, extract_zip, no_links, read_json, walk
+from .files import Work, atomic_json, beneath, extract_zip, no_links, read_json, walk
 from .packages import NoRedirect
 
 MAX_DOWNLOAD = 1024**3
@@ -30,18 +33,21 @@ def valid_url(value):
         return False
 
 
-def download_file(url, destination, work, limit=MAX_DOWNLOAD):
+def download_file(url, destination, work, limit=MAX_DOWNLOAD, timeout=1800):
     if not valid_url(url):
         raise ValueError('Use a complete HTTP or HTTPS file link without a login or fragment.')
     original_scheme = urllib.parse.urlsplit(url).scheme
     opener = urllib.request.build_opener(NoRedirect)
-    deadline = time.monotonic() + 1800
+    deadline = time.monotonic() + timeout
     target = no_links(destination)
     try:
         for redirects in range(6):
             work.check()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError('The download exceeded its time limit.')
             try:
-                response = opener.open(urllib.request.Request(url, headers={'User-Agent': 'Boxedwine/1', 'Accept-Encoding': 'identity'}), timeout=20)
+                response = opener.open(urllib.request.Request(url, headers={'User-Agent': 'Boxedwine/1', 'Accept-Encoding': 'identity'}), timeout=min(20, remaining))
                 break
             except urllib.error.HTTPError as error:
                 location = error.headers.get('Location')
@@ -58,7 +64,7 @@ def download_file(url, destination, work, limit=MAX_DOWNLOAD):
             if not 0 <= total <= limit:
                 raise ValueError('The download is too large.')
             done = 0
-            while chunk := response.read(128 * 1024):
+            while chunk := response.read1(128 * 1024):
                 work.check()
                 done += len(chunk)
                 if done > limit or time.monotonic() > deadline:
@@ -71,6 +77,49 @@ def download_file(url, destination, work, limit=MAX_DOWNLOAD):
     except BaseException:
         target.unlink(missing_ok=True)
         raise
+
+
+class CollectionIcons:
+    """Optional PNG artwork, cached by its complete URL for offline use."""
+    def __init__(self, directory):
+        self.directory = Path(directory) / 'CollectionIcons'
+
+    @staticmethod
+    def valid_png(data):
+        return (24 <= len(data) <= 1024**2 and data[:16] == b'\x89PNG\r\n\x1a\n\0\0\0\rIHDR' and
+                all(0 < size <= 1024 for size in struct.unpack('>II', data[16:24])))
+
+    def path(self, url):
+        return beneath(self.directory, hashlib.sha256(url.encode()).hexdigest() + '.png')
+
+    def read(self, url):
+        if not valid_url(url):
+            return None
+        try:
+            with self.path(url).open('rb') as stream:
+                data = stream.read(1024**2 + 1)
+            return data if self.valid_png(data) else None
+        except (OSError, ValueError):
+            return None
+
+    def fetch(self, url):
+        if not valid_url(url) or self.read(url) is not None:
+            return
+        temporary = None
+        try:
+            no_links(self.directory).mkdir(parents=True, exist_ok=True)
+            temporary = beneath(self.directory, str(uuid.uuid4()) + '.tmp')
+            download_file(url, temporary, Work(), 1024**2, timeout=20)
+            if self.valid_png(temporary.read_bytes()):
+                temporary.replace(self.path(url))
+        except (OSError, ValueError, HTTPException):
+            pass  # Artwork is optional; failed downloads keep the normal fallback.
+        finally:
+            if temporary is not None:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
 
 class PreparedSource:
@@ -160,7 +209,7 @@ def load_collection(document):
         installer = entry.get('InstallExe', '').strip()
         needs_setup = entry.get('InstallType', '').strip() == 'Installer' and extension == '.zip'
         if (not wine or len(wine.encode()) > 128 or extension not in ('.zip', '.exe', '.msi') or
-                icon and ('/' in icon or '\\' in icon or not icon.endswith('.png')) or
+                icon and not valid_url(icon) and ('/' in icon or '\\' in icon or not icon.endswith('.png')) or
                 needs_setup and Path(installer).suffix.lower() not in ('.exe', '.msi') or
                 not needs_setup and installer):
             raise ValueError('Invalid collection Wine version, icon, or installation recipe.')
@@ -224,10 +273,10 @@ class CollectionStore:
         doc['folders'] = [f for f in doc['folders'] if f['name'].lower() != name.lower()]
         atomic_json(self.path, doc)
 
-    def recipes(self, name, defaults=()):
+    def recipes(self, name, defaults=(), document=None):
         from .demos import load_catalog
         result = {r['origin']['id']: r for r in defaults} if name == 'Demos' else {}
-        folder = next((f for f in self.load()['folders'] if f['name'].lower() == name.lower()), None)
+        folder = next((f for f in (document if document is not None else self.load())['folders'] if f['name'].lower() == name.lower()), None)
         if folder:
             root = ET.Element('XML', schemaVersion='8', release='custom-collection')
             for entry in folder['apps']:

@@ -176,7 +176,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
         guard DemoCatalog.validID(id), !demos.contains(where: { $0.id == id }), !name.isEmpty, name.utf8.count <= 256,
               DemoCatalog.validHash(hash), DemoCatalog.validRelativePath(shortcut), !shortcut.contains("/"),
               shortcut.lowercased().hasSuffix(".exe"),
-              (icon.isEmpty || (DemoCatalog.validRelativePath(icon) && !icon.contains("/") && icon.hasSuffix(".png"))),
+              (icon.isEmpty || (allowExternal && CollectionIconCache.remoteURL(icon) != nil) || (DemoCatalog.validRelativePath(icon) && !icon.contains("/") && icon.hasSuffix(".png"))),
               let url = URL(string: field("FileURL")), (allowExternal ? PreparedAppSource.validURL(url) : DemoCatalog.validDownloadURL(url)),
               let bytes = Int64(field("FileSizeBytes")), bytes > 0, bytes <= 1024 * 1024 * 1024,
               let type = Demo.InstallType(rawValue: field("InstallType")),

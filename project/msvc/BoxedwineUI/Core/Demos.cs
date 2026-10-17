@@ -36,7 +36,7 @@ public static class Demos
                 shortcut.Contains('/') || !shortcut.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !Uri.TryCreate(url, UriKind.Absolute, out var address) || !(allowExternal ? PreparedAppSource.ValidUrl(address) : Packages.TrustedUrl(address)) ||
                 !long.TryParse(Field("FileSizeBytes"), out long bytes) || bytes is <= 0 or > 1073741824 || Field("InstallType") is not ("Zip" or "Installer")) throw new InvalidDataException("Invalid demo identity, package, or install recipe.");
             _ = SafeFiles.Beneath(directory, shortcut);
-            if (Field("Icon").Length > 0) _ = SafeFiles.Beneath(directory, Field("Icon"));
+            if (Field("Icon").Length > 0 && !(allowExternal && CollectionIcons.IsRemote(Field("Icon")))) _ = SafeFiles.Beneath(directory, Field("Icon"));
             foreach (var unsupported in new[] { "Options", "InstallOptions", "Options_Mac", "InstallOptions_Mac" }) if (Field(unsupported).Length > 0) throw new InvalidDataException("Unsupported legacy options in demo " + name);
             string? dllOverrides = Optional("WineDllOverrides");
             if (dllOverrides != null)

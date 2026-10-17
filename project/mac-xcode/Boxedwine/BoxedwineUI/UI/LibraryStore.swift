@@ -67,6 +67,9 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var canResetDemos = false
     @Published var collectionName = "Demos"
     private var defaultDemos: [Demo] = []
+    private var iconDemos: [Demo] = []
+    private var requestedIcons: Set<String> = []
+    @Published private(set) var collectionIconRevision = 0
     var collectionStore: CollectionStore? { repository.map { CollectionStore(directory: $0.directory, defaultIDs: Set(defaultDemos.map(\.id))) } }
     @Published private(set) var demos: [Demo] = []
     @Published private(set) var demoCatalogProblem: String?
@@ -329,7 +332,14 @@ final class LibraryStore: ObservableObject {
     func isRunning(_ app: LibraryApp) -> Bool { sessions[app.id] != nil || launchPreparations[app.id] != nil }
     func defaultIconURL(for app: LibraryApp) -> URL? {
         if let program = app.wineProgram { return Bundle.main.url(forResource: program.command, withExtension: "png", subdirectory: "AppIcons") }
-        guard let id = app.demo?.id, let demo = demos.first(where: { $0.id == id }), !demo.icon.isEmpty else { return nil }
+        guard let id = app.demo?.id, let demo = iconDemos.first(where: { $0.id == id }) else { return nil }
+        return iconURL(for: demo)
+    }
+    func iconURL(for demo: Demo) -> URL? {
+        guard !demo.icon.isEmpty else { return nil }
+        if CollectionIconCache.remoteURL(demo.icon) != nil {
+            return repository.flatMap { CollectionIconCache(directory: $0.directory).cachedURL(demo.icon) }
+        }
         return Bundle.main.url(forResource: demo.icon, withExtension: nil, subdirectory: "Demos")
     }
     var launchingApps: [LibraryApp] { apps.filter { launching.contains($0.id) } }
@@ -644,11 +654,33 @@ final class LibraryStore: ObservableObject {
     func refreshCollections() {
         guard let collectionStore else { return }
         do {
-            let folders = try collectionStore.load().folders
+            let document = try collectionStore.load()
+            let folders = document.folders
             collectionNames = folders.map(\.name).filter { $0 != "Demos" }
             canResetDemos = folders.contains { $0.name == "Demos" && !$0.apps.isEmpty }
-            demos = try collectionStore.recipes(in: collectionName, defaults: defaultDemos)
+            iconDemos = try (["Demos"] + collectionNames).flatMap { try collectionStore.recipes(in: $0, defaults: defaultDemos, document: document) }
+            demos = try collectionStore.recipes(in: collectionName, defaults: defaultDemos, document: document)
+            loadCollectionIcons()
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    private func loadCollectionIcons() {
+        #if !BOXEDWINE_APP_STORE
+        guard let repository else { return }
+        let urls = iconDemos.map(\.icon).filter { CollectionIconCache.remoteURL($0) != nil && requestedIcons.insert($0).inserted }
+        guard !urls.isEmpty else { return }
+        let cache = CollectionIconCache(directory: repository.directory)
+        Task {
+            await Task.detached(priority: .utility) {
+                await withTaskGroup(of: Void.self) { group in
+                    for worker in 0..<min(4, urls.count) {
+                        group.addTask { for index in stride(from: worker, to: urls.count, by: 4) { await cache.fetch(urls[index]) } }
+                    }
+                }
+            }.value
+            collectionIconRevision += 1
+        }
+        #endif
     }
 
     func showCollection(_ name: String) {

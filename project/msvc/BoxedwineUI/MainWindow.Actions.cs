@@ -161,7 +161,7 @@ public partial class MainWindow
         }, prepared =>
         {
             prepared.App.LastOpened = DataFormat.Now; repository.Update(prepared.App);
-            var identity = Icons.ForRuntime(repository, prepared.App, resources, demos, catalogDirectory);
+            var identity = Icons.ForRuntime(repository, prepared.App, resources, iconDemos, catalogDirectory);
             var session = new RuntimeSession(emulator, prepared.Arguments, prepared.Wine, SafeFiles.Beneath(repository.AppDirectory(app), "Logs/latest.log"), installing, rotate: false, openGL: prepared.OpenGL, identity: identity);
             TrackSession(prepared.App, session);
         });

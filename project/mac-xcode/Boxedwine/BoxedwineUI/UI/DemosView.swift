@@ -51,6 +51,7 @@ struct DemosView: View {
         }
         .onChange(of: visible.map(\.id)) { _, _ in reconcileSelection() }
         .onChange(of: store.demos) { _, _ in loadIcons() }
+        .onChange(of: store.collectionIconRevision) { _, _ in loadIcons() }
         .onChange(of: focusedDemoID) { _, id in
             if let id, visible.contains(where: { $0.id == id }) { store.selectedDemoID = id }
         }
@@ -276,7 +277,7 @@ struct DemosView: View {
     private func loadIcons() {
         icons = [:]
         for demo in store.demos where icons[demo.id] == nil && !demo.icon.isEmpty {
-            if let url = Bundle.main.url(forResource: demo.icon, withExtension: nil, subdirectory: "Demos"), let image = NSImage(contentsOf: url) {
+            if let url = store.iconURL(for: demo), let image = NSImage(contentsOf: url) {
                 icons[demo.id] = image
             }
         }

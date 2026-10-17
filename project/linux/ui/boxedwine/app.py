@@ -21,7 +21,7 @@ except (ImportError, ValueError) as error:
                      'Debian/Ubuntu/Mint: sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1\n' + str(error))
 
 from . import demos, dialogs, desktop
-from .imports import CollectionStore
+from .imports import CollectionStore, CollectionIcons, valid_url
 from .files import Work, Cancelled, beneath, no_links, walk
 from .library import Library, DRIVE_C, built_in, now
 from .packages import Resources, WineChecks, catalog_files, ensure_wine, import_wine
@@ -47,6 +47,9 @@ class Window(Adw.ApplicationWindow):
         self.catalog, self.catalog_data, self.catalog_error = [], {}, None
         self.catalog_loaded = False
         self.collections = CollectionStore(library)
+        self.collection_icons = CollectionIcons(library.directory)
+        self.requested_icons = set()
+        self.icon_catalog = []
         self.collection_names = []
         self.can_reset_demos = False
         try:
@@ -75,7 +78,8 @@ class Window(Adw.ApplicationWindow):
 
     def refresh_collections(self):
         self.collections.default_ids = {d['origin']['id'] for d in self.default_catalog}
-        folders = self.collections.load()['folders']
+        document = self.collections.load()
+        folders = document['folders']
         names = [f['name'] for f in folders if f['name'] != 'Demos']
         self.can_reset_demos = any(f['name'] == 'Demos' and f['apps'] for f in folders)
         for name in self.collection_names:
@@ -87,8 +91,31 @@ class Window(Adw.ApplicationWindow):
                 item.set_child(Gtk.Label(label=name, xalign=0, margin_start=12, margin_end=12, margin_top=11, margin_bottom=11))
                 self.sections.append(item); self.section_rows[name] = item
         self.collection_names = names
-        self.catalog = self.collections.recipes(self.view, self.default_catalog) if self.is_collection else self.default_catalog
+        self.catalog = self.collections.recipes(self.view, self.default_catalog, document) if self.is_collection else self.default_catalog
+        self.icon_catalog = [recipe for name in ['Demos'] + names for recipe in self.collections.recipes(name, self.default_catalog, document)]
+        self.load_collection_icons()
         self.card_icons.clear()
+
+    def load_collection_icons(self):
+        urls = {recipe['icon'] for recipe in self.icon_catalog if valid_url(recipe['icon'])} - self.requested_icons
+        if not urls:
+            return
+        self.requested_icons.update(urls)
+        urls = list(urls)
+        remaining = min(4, len(urls))
+        def completed():
+            nonlocal remaining
+            remaining -= 1
+            if remaining == 0 and not self.closing:
+                self.refresh()
+        def download(batch):
+            for url in batch:
+                if self.closing:
+                    break
+                self.collection_icons.fetch(url)
+            idle(completed)
+        for worker in range(remaining):
+            threading.Thread(target=download, args=(urls[worker::4],), daemon=True).start()
 
     def remove_collection(self):
         name = self.view
@@ -543,12 +570,12 @@ class Window(Adw.ApplicationWindow):
         image = Gtk.Image(pixel_size=size)
         try:
             if demo:
-                data = self.catalog_data.get(app['icon'])
+                data = self.collection_icons.read(app['icon']) if valid_url(app['icon']) else self.catalog_data.get(app['icon'])
             elif app.get('customIconPNG'):
                 data = base64.b64decode(app['customIconPNG'])
             elif app.get('demo'):
-                recipe = next((d for d in self.catalog if d['origin']['id'] == app['demo']['id']), None)
-                data = self.catalog_data.get(recipe['icon']) if recipe else None
+                recipe = next((d for d in self.icon_catalog if d['origin']['id'] == app['demo']['id']), None)
+                data = (self.collection_icons.read(recipe['icon']) if valid_url(recipe['icon']) else self.catalog_data.get(recipe['icon'])) if recipe else None
             elif built_in(app):
                 name = 'notepad' if built_in(app) == 'notepad' else 'winemine'
                 data = self.resources.path('AppIcons/' + name + '.png').read_bytes()
@@ -1033,6 +1060,7 @@ class Window(Adw.ApplicationWindow):
                         self.stop(app)
             dialogs.confirm(self, 'Quit Boxedwine?', 'Running Windows apps will be stopped. Save your work before quitting.', 'Stop Apps and Quit', stop_all, True)
             return True
+        self.closing = True
         return False
 
 

@@ -8,6 +8,46 @@ using System.Xml.Linq;
 
 namespace Boxedwine.Library;
 
+/// <summary>Optional PNG artwork, cached by its complete URL for offline use.</summary>
+public sealed class CollectionIcons(string directory)
+{
+    public static bool IsRemote(string value) => !value.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)) && Uri.TryCreate(value, UriKind.Absolute, out var url) && PreparedAppSource.ValidUrl(url);
+    public static bool ValidPng(byte[] data) => data.Length is >= 24 and <= 1048576 &&
+        data.AsSpan(0, 16).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82 }) &&
+        System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(16, 4)) is > 0 and <= 1024 &&
+        System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(20, 4)) is > 0 and <= 1024;
+    private string Pathname(string value) => SafeFiles.Beneath(directory, "CollectionIcons/" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value))) + ".png");
+    public string? CachedPath(string value)
+    {
+        if (!IsRemote(value)) return null;
+        try
+        {
+            string path = Pathname(value);
+            return File.Exists(path) && new FileInfo(path).Length <= 1048576 && ValidPng(File.ReadAllBytes(path)) ? path : null;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return null; }
+    }
+    public async Task Fetch(string value)
+    {
+        if (!IsRemote(value) || CachedPath(value) != null) return;
+        string? temporary = null;
+        try
+        {
+            string target = Pathname(value);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            await PreparedAppSource.Download(value, temporary, 1048576, default, null, TimeSpan.FromSeconds(20));
+            if (ValidPng(File.ReadAllBytes(temporary))) File.Move(temporary, target, true);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or HttpRequestException or OperationCanceledException) { /* Use the normal fallback. */ }
+        finally
+        {
+            try { if (temporary != null && File.Exists(temporary)) File.Delete(temporary); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+        }
+    }
+}
+
 public sealed class CollectionSnapshot
 {
     public int SchemaVersion { get; set; }
@@ -44,7 +84,7 @@ public sealed class CollectionSnapshot
             string extension = Path.GetExtension(address.LocalPath).ToLowerInvariant();
             bool needsSetup = Field("InstallType") == "Installer" && extension == ".zip";
             if (Field("WineVersion").Length == 0 || Encoding.UTF8.GetByteCount(Field("WineVersion")) > 128 || !new[] { ".zip", ".exe", ".msi" }.Contains(extension) ||
-                icon.Length > 0 && (icon.Contains('/') || icon.Contains('\\') || !icon.EndsWith(".png", StringComparison.Ordinal)) ||
+                icon.Length > 0 && !CollectionIcons.IsRemote(icon) && (icon.Contains('/') || icon.Contains('\\') || !icon.EndsWith(".png", StringComparison.Ordinal)) ||
                 needsSetup && !new[] { ".exe", ".msi" }.Contains(Path.GetExtension(installer).ToLowerInvariant()) || !needsSetup && installer.Length > 0)
                 throw new InvalidDataException("Invalid collection Wine version, icon, or installation recipe.");
         }
@@ -119,10 +159,10 @@ public sealed class CollectionStore(string directory, IEnumerable<string>? defau
         var document = Load(); document.Folders.RemoveAll(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         SafeFiles.AtomicJson(Pathname, document);
     }
-    public List<DemoRecipe> Recipes(string name, List<DemoRecipe> defaults)
+    public List<DemoRecipe> Recipes(string name, List<DemoRecipe> defaults, CollectionDocument? document = null)
     {
         var result = name == "Demos" ? defaults.ToList() : [];
-        var folder = Load().Folders.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        var folder = (document ?? Load()).Folders.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         if (folder != null)
         {
             foreach (var entry in new CollectionSnapshot { SchemaVersion = 1, Folder = folder.Name, Apps = folder.Apps }.Recipes())
@@ -146,11 +186,11 @@ public sealed class PreparedAppSource : IDisposable
     public CollectionSnapshot? Collection { get; private set; }
     private readonly string temporary = Path.Combine(Path.GetTempPath(), "BoxedwineImport-" + Guid.NewGuid().ToString("N"));
     public static bool ValidUrl(Uri url) => url.IsAbsoluteUri && url.Scheme is "http" or "https" && url.Host.Length > 0 && url.UserInfo.Length == 0 && url.Fragment.Length == 0 && url.Port != 0;
-    public static async Task Download(string url, string destination, long limit, CancellationToken cancellation, IProgress<OperationProgress>? progress)
+    public static async Task Download(string url, string destination, long limit, CancellationToken cancellation, IProgress<OperationProgress>? progress, TimeSpan? timeLimit = null)
     {
         Uri address = new(url); string scheme = address.Scheme;
         if (!ValidUrl(address)) throw new InvalidDataException("Use a complete HTTP or HTTPS file link without a login or fragment.");
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation); timeout.CancelAfter(TimeSpan.FromMinutes(30));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation); timeout.CancelAfter(timeLimit ?? TimeSpan.FromMinutes(30));
         using var handler = new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false, UseDefaultCredentials = false };
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(30) };
         try

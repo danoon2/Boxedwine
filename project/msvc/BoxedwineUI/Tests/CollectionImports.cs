@@ -8,6 +8,66 @@ sealed partial class TestSuite
     private async Task CollectionImports()
     {
         var original = CollectionSnapshot.Load(Path.Combine(AppContext.BaseDirectory, "collection-example.json"));
+        await Test("Collection icon URLs update by stable ID and reject unsafe sources", async () =>
+        {
+            using var repository = Repository("collection-icons-update");
+            var store = new CollectionStore(repository.DirectoryPath);
+            var value = DataFormat.Clone(original); value.Apps[0]["Icon"] = "https://images.example/game.png?v=1";
+            store.Merge(value, value.Folder);
+            Check(store.Recipes(value.Folder, [])[0].Icon == value.Apps[0]["Icon"]);
+            value.Apps[0]["Icon"] = "https://images.example/game.png?v=2";
+            Check(store.Preview(value, value.Folder) == new CollectionChanges(0, 1, 0));
+            store.Merge(value, value.Folder); Check(store.Recipes(value.Folder, []).Count == 1);
+            foreach (string icon in new[] { "file:///tmp/icon.png", "https://user:password@example/icon.png", "https://example/icon.png#fragment", "../icon.png" })
+            {
+                value.Apps[0]["Icon"] = icon;
+                await Throws(() => Task.Run(() => value.Recipes()), "unsafe icon");
+            }
+        });
+        await Test("Remote PNGs cache offline; invalid, oversized, and missing icons use fallback", async () =>
+        {
+            using var repository = Repository("collection-icons-cache");
+            var cache = new CollectionIcons(repository.DirectoryPath);
+            byte[] png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0); listener.Start();
+            string url = $"http://127.0.0.1:{((System.Net.IPEndPoint)listener.LocalEndpoint).Port}";
+            var server = Task.Run(async () =>
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    using var client = await listener.AcceptTcpClientAsync(timeout.Token);
+                    await using var stream = client.GetStream();
+                    using var reader = new StreamReader(stream, leaveOpen: true);
+                    string request = await reader.ReadLineAsync(timeout.Token) ?? "";
+                    while (!string.IsNullOrEmpty(await reader.ReadLineAsync(timeout.Token))) { }
+                    byte[] data = request.Contains("/invalid") ? Encoding.UTF8.GetBytes("not an image") : (byte[])png.Clone();
+                    if (request.Contains("/dimensions")) { data[16] = 0; data[17] = 0; data[18] = 16; data[19] = 0; }
+                    bool large = request.Contains("/large");
+                    string status = request.Contains("/missing") ? "404 Not Found" : "200 OK";
+                    await stream.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 {status}\r\nContent-Length: {(large ? 1048577 : data.Length)}\r\nConnection: close\r\n\r\n"), timeout.Token);
+                    if (!large) await stream.WriteAsync(data, timeout.Token);
+                }
+            });
+            try
+            {
+                await cache.Fetch(url + "/icon.png");
+                string path = cache.CachedPath(url + "/icon.png") ?? throw new Exception("PNG not cached");
+                Check(File.ReadAllBytes(path).SequenceEqual(png));
+                await cache.Fetch(url + "/icon.png"); // Reuse must not make a sixth request.
+                foreach (string name in new[] { "invalid", "large", "dimensions", "missing" })
+                {
+                    await cache.Fetch(url + "/" + name);
+                    Check(cache.CachedPath(url + "/" + name) == null);
+                }
+                await server;
+                Check(cache.CachedPath(url + "/icon.png?v=2") == null);
+                Check(Directory.GetFiles(Path.GetDirectoryName(path)!).Length == 1);
+            }
+            finally { listener.Stop(); }
+            await cache.Fetch(url + "/icon.png");
+            Check(cache.CachedPath(url + "/icon.png") != null);
+        });
         await Test("Repeated collections merge stable IDs, preserve missing entries, and survive reopening", () =>
         {
             using var repository = Repository("collections-repeat");
