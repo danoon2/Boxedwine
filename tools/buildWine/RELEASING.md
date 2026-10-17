@@ -7,8 +7,12 @@ The [builder guide](README.md) explains the build internals and prerequisites.
 
 Review the release plan before starting builds. Commands below are for the later
 execution steps, run from the repository root in WSL unless noted otherwise.
-The inventory was updated for filesystem 14 on October 4, 2026. Resolve the
-currently selected profiles and pins again for each release.
+The inventory was reviewed for filesystem 20 on October 16, 2026. Revision 20
+includes the partial stream-output fix in both WineD3D builds. Its `/v2/20/`
+archives are published and verified. Publication remains incomplete: both
+`/v2/latest/` archives still contain revision 19, and the hosted legacy UI
+catalog still selects revision 11. Update and verify those locations. Earlier
+versioned archives and manifests retain their original identities.
 
 ## 1. Agree on the release scope
 
@@ -40,7 +44,9 @@ is a local workaround; release testing must use the candidate ZIP in a fresh roo
 | [`filesystem_wine11.json`](filesystem_wine11.json) | Set `filesystem_version` and select the release's `webgl_config`. Change `wine_tag`/`wine_commit` only when changing upstream Wine. |
 | [`changes_wine11.txt`](changes_wine11.txt) | Add the release entry; its first line must start with the configured `vN`. Preserve previous entries. |
 | [`changes_wine11_web.txt`](changes_wine11_web.txt) | Update the web release entry to the same `vN`. It is prepended to the full history. Update size-savings claims only from new measurements. |
-| Release's `webgl_filesystems_vN.json` | Start from the current config, such as [`webgl_filesystems_v14.json`](webgl_filesystems_v14.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
+| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v20.json`](webgl_filesystems_v20.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
+| [`webgl_filesystem.py`](webgl_filesystem.py), `DEFAULT_CONFIG` | Advance the build/validation default to the same manifest as the filesystem profile. Preserve the explicitly historical `validate-set` default and historical examples. |
+| [`README.md`](README.md) and this checklist | Update current revision, manifest links, publication status, and release examples; retain clearly labeled historical instructions. |
 
 - [ ] If the patch also affects the separately built `C:/webgl` DLLs, update the
   ordered series under [`../d3dToWebGL/`](../d3dToWebGL/README.md), its versioned
@@ -58,14 +64,14 @@ just to make validation pass.
 
 ## 3. Build and validate both candidates
 
-After the checklist review, choose dedicated WSL-native work directories. This
-example uses revision 14; replace it with the agreed revision before running:
+After updating the profile to the agreed new revision, choose dedicated
+WSL-native work directories. Read the revision and manifest from that profile:
 
 ```bash
-release_revision=14
+release_revision=$(python3 -c 'import json; print(json.load(open("tools/buildWine/filesystem_wine11.json"))["filesystem_version"])')
 release_main="$HOME/boxedwine-wine11-fs${release_revision}-main"
 release_web="$HOME/boxedwine-wine11-fs${release_revision}-web"
-release_config="tools/buildWine/webgl_filesystems_v${release_revision}.json"
+release_config="tools/buildWine/$(python3 -c 'import json; print(json.load(open("tools/buildWine/filesystem_wine11.json"))["webgl_config"])')"
 release_stage="tmp/filesystem-v${release_revision}-release"
 
 python3 tools/buildWine/build_filesystem.py \
@@ -119,8 +125,9 @@ python3 tools/buildWine/webgl_filesystem.py validate \
   --filesystem "$release_stage/TinyCore15Wine11.0-web.zip" --write-sidecar
 ```
 
-Always supply `--config`; the validator's default is a historical configuration.
-`validate-set` is also a historical v3/v10 comparison, not the validator for the
+Supply `--config` explicitly for release validation, even though normal commands
+default to the current manifest. `validate-set` retains its historical v3/v10
+configuration and comparison; it is not the validator for the
 current main/web pair. Profile validation checks hashes, CRCs, DLLs, GL libraries,
 links, cache, and registry expectations; inspect packaged version text separately.
 
@@ -134,7 +141,10 @@ the same location. Do not edit generated `bin/`, `Build/`, or `artifacts/` copie
 | File or consumer | Required review/update |
 | --- | --- |
 | [`packages.json`](../../project/mac-xcode/Boxedwine/BoxedwineUI/Resources/WindowsSupport/packages.json) | Set the final package URL key, exact `bytes`, `sha256`, `fileVersion`, and packaged `filesystemVersion`, using the **main ZIP**, not the web ZIP. |
+| [`filesV2.xml`](../../project/mac-xcode/Boxedwine/BoxedwineUI/Resources/WindowsSupport/filesV2.xml) | Update the Wine entry's `FileURL`, `FileVersion`, and rounded-up `FileSizeMB` alongside `packages.json`. All three native UIs consume the shared catalog. |
+| Hosted legacy UI catalog | The legacy UI reads `/v2/<BOXEDWINE_VERSION_STR>/filesV2.xml` (currently `/v2/26R2/filesV2.xml`), independently of the bundled native catalog. Download the current hosted XML, update only its Wine 11 entry, preserve other Wine versions/demos, and stage it for upload after the new ZIPs. Do not replace it with the single-version native catalog. |
 | Mac, Windows, and Linux UI distributions | Rebuild/stage their resources when shipping the updated catalog. Test package selection, clean download, verification, setup, and launch against the candidate. Existing applications retain their pinned package records. |
+| Mac App Store resources | Run `prepare-distribution-resources.py --variant BOXEDWINE_APP_STORE --wine <main ZIP> --output <staging directory>` against the final candidate. It requires matching XML/package revisions and the exact main ZIP size/hash. |
 | [`resources/demo-catalog.lock.json`](../../resources/demo-catalog.lock.json) | Conditional: update only if demo recipes/icons or their compatibility requirements change. This is a separate package from the Wine catalog; see the [catalog release procedure](../../resources/DEMO_CATALOG.md). |
 | Release documentation and provenance | Update current version/download descriptions and new validation records. Review applicable licensing/source records when components change; historical inventories and earlier test results remain evidence of their original artifacts. |
 
@@ -161,7 +171,7 @@ do not rewrite old validation reports as though they tested the new ZIP.
 | [`../../Jenkinsfile`](../../Jenkinsfile), Emscripten AbiWord stage | Update `BOXEDWINE_AUTO_URL` and `BOXEDWINE_AUTO_SHA256` together to the final **web ZIP**. The downloaded local name is `boxedwine.zip`. |
 | AbiWord overlay | Review `ABIWORD_AUTO_URL`/`ABIWORD_AUTO_SHA256` only if application scripts or screenshot references need changes. Requalify all four browser modes with the new filesystem even when the overlay stays byte-identical. |
 | [`../BoxedWineRunner/filesystem.properties`](../BoxedWineRunner/filesystem.properties) | Update `url`, `sha256`, and `size` together to the final **full ZIP**. Jenkins distributes this pin with the runner to Linux x64/ARM64, Mac ARM, and Windows x64/ARM64. Each worker downloads/verifies the filesystem separately. |
-| Native automation assets | `automation34.zip` contains no filesystem. Keep the asset bundle unchanged for filesystem-only Jenkins releases; update the checkout's pin instead. When publishing a successor bundle, use [`package_assets.py`](../BoxedWineRunner/package_assets.py) to preserve apps, scripts, captures, and performance scripts, refresh the bundled runner/launchers/pin, and verify retained content. Update every native download/extract filename in `Jenkinsfile` together. |
+| Native automation assets | The current `automation36.zip` contains no filesystem. Keep the asset bundle unchanged for filesystem-only Jenkins releases; update the checkout's pin instead. When publishing a successor bundle, use [`package_assets.py`](../BoxedWineRunner/package_assets.py) to preserve apps, scripts, captures, and performance scripts, refresh the bundled runner/launchers/pin, and verify retained content. Update every native download/extract filename in `Jenkinsfile` together. |
 
 **Preserve the native automation presets.** The runner's `PrepareFilesystem`
 reads `home/username/.wine/user.reg` from the pinned full ZIP and stages a separate
@@ -211,10 +221,11 @@ generate new `graphics-builds.json` identities for newly generated builds.
 ## 7. Review separately pinned test suites
 
 - [ ] [`../wineTests/runWineTests.py`](../wineTests/runWineTests.py) has its own
-  `FILESYSTEM_URL` and `FILESYSTEM_CACHE_NAME` (v10 at this audit). Decide whether
-  that suite moves to the release. If it does, update both defaults, corresponding
-  tests/docs, and use a fresh cache. A nonempty old cache can otherwise be reused
-  even with `--filesystem-url` set to a new URL.
+  native test entry point. Publish the final main ZIP at
+  `https://boxedwine.org/v2/latest/TinyCore15Wine11.0.zip` alongside its versioned
+  URL. The runner refreshes this alias on every invocation; verify that the
+  printed revision and `inputs.json` match the new release. Use an explicit
+  versioned `--filesystem-url` only when reproducing an older result.
 - [ ] Graphics qualification uses explicit filesystem, runtime, test-executable,
   divergence-manifest, and baseline identities. Use the
   [graphics test guide](../wineTests/GRAPHICS_README.md) and
@@ -251,7 +262,7 @@ or historical evidence; do not perform a global version/hash replacement:
 
 ```bash
 git grep -n -F -e '<old-main-sha256>' -e '<old-web-sha256>' \
-  -e 'v2/13/' -e 'webgl_filesystems_v13.json'
+  -e 'v2/19/' -e 'webgl_filesystems_v19.json'
 git grep -n -E 'automation[0-9]+\.zip|FILESYSTEM_URL|FILESYSTEM_CACHE_NAME|BOXEDWINE_AUTO_|ABIWORD_AUTO_|DEMO_ROOT_CONFIG'
 git diff --check
 ```

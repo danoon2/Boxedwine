@@ -442,6 +442,47 @@ void testSelfModifyingBack() {
     verifyReg32(0, 0x60, "self modifying back eax");
 }
 
+void testCodePageCopyOnWriteReferences() {
+    newInstruction(0);
+    pushCode8(0xb8); // MOV EAX,1
+    testPushCode32(1);
+    pushCode8(0xcd);
+    pushCode8(0x97);
+    runTestCPU();
+
+    MMU& entry = getMemData(testMemory)->mmu[TEST_CODE_ADDRESS >> K_PAGE_SHIFT];
+    if (entry.getPageType() != PageType::Code) {
+        failed("copy-on-write test did not create a code page");
+        return;
+    }
+    // Keep the original backing alive, as a fork sharing this code page does.
+    RamPage original = entry.getRamPageIndex();
+    ramPageRetain(original);
+    testMemory->writeb(TEST_CODE_ADDRESS + 1, 2);
+    RamPage copied = entry.getRamPageIndex();
+    if (copied.value == original.value || ramPageGet(original)[1] != 1 ||
+            testMemory->readb(TEST_CODE_ADDRESS + 1) != 2) {
+        failed("code-page copy-on-write did not isolate the write");
+    }
+    if (ramPageUseCount(copied) != 1) {
+        failed("copied code page retained an extra allocation reference");
+    }
+    ramPageRelease(original);
+
+    // Once private, repeated patches must reuse the page rather than leaking
+    // another page on every write (large JIT tests exhausted Linux mappings).
+    testMemory->writew(TEST_CODE_ADDRESS + 1, 3);
+    testMemory->writed(TEST_CODE_ADDRESS + 1, 4);
+    if (entry.getRamPageIndex().value != copied.value || ramPageUseCount(copied) != 1) {
+        failed("private code-page patches allocated another copy");
+    }
+    cpu->eip.u32 = 0;
+    cpu->nextOp = nullptr;
+    cpu->yield = false;
+    runTestCPU();
+    verifyReg32(0, 4, "copy-on-write patched code eax");
+}
+
 void testLinearMemoryAliasAndFaults() {
     if (!ramPageUseLinearMemory()) {
         return;
@@ -868,6 +909,180 @@ void testLinearMemoryCodeInvalidation() {
     }
 }
 
+void testDecodedOpLargeRangeRemoval() {
+    // A recursive page walk overflowed the native stack while cleaning up a
+    // 512 MiB sparse benchmark. Include partial pages and an end at 4 GiB.
+    for (const auto& range : {std::pair<U32, U32>{0x70000003, 0x20000000},
+            std::pair<U32, U32>{0xf0000003, 0x0ffffffd}}) {
+        DecodedOpCache cache;
+        const U32 start = range.first;
+        const U64 end = (U64)start + range.second;
+        std::vector<U32> addresses{start - 1, start, start + K_PAGE_SIZE - 4,
+            start + K_PAGE_SIZE - 3, (U32)(end - 1)};
+        if (end < ((U64)1 << 32)) addresses.push_back((U32)end);
+        for (U32 address : addresses) {
+            DecodedOp* op = DecodedOp::alloc();
+            op->inst = Nop;
+            op->len = 1;
+#ifdef _DEBUG
+            op->eip = address;
+#endif
+            cache.add(op, address, 1);
+        }
+        cache.remove(start, range.second, false);
+        for (U32 address : addresses) {
+            const bool removed = address >= start && (U64)address < end;
+            if ((cache.get(address) == nullptr) != removed)
+                failed("large decoded-op removal changed the wrong range at %x", address);
+        }
+    }
+}
+
+#ifdef BOXEDWINE_JIT
+namespace {
+constexpr U32 overlapAddress = 0x21000000;
+constexpr U32 overlapStart = overlapAddress + K_PAGE_SIZE - 4;
+constexpr U32 overlapOpCount = 32;
+
+// Decodes nops across a page boundary and registers two overlapping blocks
+// the way the wasm JIT does.
+bool setupOverlappingBlocks(bool nestedStart, std::vector<DecodedOp*>* decoded = nullptr) {
+    newInstruction(0);
+    U32 mapped = testMemory->mmap(testContext().thread, overlapAddress, 2 * K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+    if (mapped != overlapAddress) {
+        failed("overlapping block mmap failed: %x", mapped);
+        return false;
+    }
+    for (U32 i = 0; i < overlapOpCount; ++i) {
+        testMemory->writeb(overlapStart + i, 0x90); // nop
+    }
+    testMemory->writeb(overlapStart + overlapOpCount, 0xc3); // ret
+    std::vector<DecodedOp*> ops;
+    for (DecodedOp* op = cpu->getOp(overlapStart, 0); op && op->inst != Done && ops.size() < overlapOpCount; op = op->next) {
+        ops.push_back(op);
+    }
+    if (ops.size() != overlapOpCount) {
+        failed("overlapping block setup decoded %u ops", (U32)ops.size());
+        testMemory->unmap(overlapAddress, 2 * K_PAGE_SIZE);
+        return false;
+    }
+    if (nestedStart) {
+        // A shorter block starts inside the first and ends past it.
+        claimJitBlockOps(ops[0], 16, 16);
+        claimJitBlockOps(ops[8], 12, 12);
+    } else {
+        // A longer block starts inside the first and ends past it.
+        claimJitBlockOps(ops[0], 8, 8);
+        claimJitBlockOps(ops[4], 16, 16);
+    }
+    if (decoded) {
+        *decoded = ops;
+    }
+    return true;
+}
+
+// Both blocks reach the second page, so their invalidation must remove the
+// overlapping block's tail there while leaving later ops cached.
+void checkOverlappingBlocksRemoved(const char* action, bool nestedStart) {
+    if (testMemory->getDecodedOp(overlapStart + 19)) {
+        failed("overlapping block %s kept the %s block's tail", action, nestedStart ? "nested" : "owning");
+    }
+    if (!testMemory->getDecodedOp(overlapStart + 24)) {
+        failed("overlapping block %s removed an op outside both blocks", action);
+    }
+}
+}
+#endif
+
+void testJitOverlappingBlockUnmap() {
+#ifdef BOXEDWINE_JIT
+    // Unmapping only the first page reaches the block starting there, but
+    // must also retire the overlapping block that runs onto the second page.
+    for (bool nestedStart : {false, true}) {
+        if (!setupOverlappingBlocks(nestedStart)) {
+            return;
+        }
+        testMemory->unmap(overlapAddress, K_PAGE_SIZE);
+        checkOverlappingBlocksRemoved("unmap", nestedStart);
+        testMemory->unmap(overlapAddress + K_PAGE_SIZE, K_PAGE_SIZE);
+    }
+#endif
+}
+
+void testJitOverlappingBlockOwnership() {
+#ifdef BOXEDWINE_JIT
+    // Block A covers ops 0-7 and a longer block B covers ops 4-19, so B's
+    // ops 8-19 are all on the second page. Touching only those must still
+    // retire A, which also runs ops 4-7.
+    for (bool unmap : {false, true}) {
+        if (!setupOverlappingBlocks(false)) {
+            return;
+        }
+        if (unmap) {
+            testMemory->unmap(overlapAddress + K_PAGE_SIZE, K_PAGE_SIZE);
+        } else {
+            testMemory->writeb(overlapStart + 10, 0x40); // inc eax over a nop only B owns
+        }
+        if (testMemory->getDecodedOp(overlapStart)) {
+            failed("overlapping block %s of the later block kept the earlier block", unmap ? "unmap" : "code write");
+        }
+        testMemory->unmap(overlapAddress, 2 * K_PAGE_SIZE);
+    }
+
+    // When A fails to compile while B is still pending, B takes over the ops
+    // they share, so a later write there still finds B.
+    std::vector<DecodedOp*> ops;
+    if (!setupOverlappingBlocks(false, &ops)) {
+        return;
+    }
+    ops[4]->flags2 |= OP_FLAG2_WASM_JIT_PENDING;
+    releaseJitBlockOps(ops[0]);
+    if (ops[0]->blockStart || ops[0]->blockOpCount || ops[5]->blockStart != ops[4] || ops[4]->blockOpCount != 16) {
+        failed("releasing the earlier overlapping block did not hand its ops to the pending later block");
+    }
+    testMemory->writeb(overlapStart + 5, 0x40);
+    if (testMemory->getDecodedOp(overlapStart + 19)) {
+        failed("code write after release kept the later overlapping block");
+    }
+    testMemory->unmap(overlapAddress, 2 * K_PAGE_SIZE);
+
+    // Un-JITting A clears every entry in its chain, including B's, so B is
+    // forgotten too, along with its ops past A's end.
+    if (!setupOverlappingBlocks(false, &ops)) {
+        return;
+    }
+    testMemory->removeCodeBlock(overlapStart, ops[0], false);
+    for (U32 i = 0; i < 20; ++i) {
+        if (ops[i]->blockStart || ops[i]->blockOpCount) {
+            failed("un-JIT of overlapping blocks left op %u registered", i);
+            break;
+        }
+    }
+    testMemory->unmap(overlapAddress, 2 * K_PAGE_SIZE);
+#endif
+}
+
+void testJitOverlappingBlockRemoveCode() {
+#ifdef BOXEDWINE_JIT
+    // Code writes and removing PROT_EXEC invalidate through removeCode.
+    for (bool protect : {false, true}) {
+        for (bool nestedStart : {false, true}) {
+            if (!setupOverlappingBlocks(nestedStart)) {
+                return;
+            }
+            if (protect) {
+                testMemory->mprotect(testContext().thread, overlapAddress, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+            } else {
+                testMemory->writeb(overlapStart, 0x40); // inc eax over the first nop
+            }
+            checkOverlappingBlocksRemoved(protect ? "mprotect" : "code write", nestedStart);
+            testMemory->unmap(overlapAddress, 2 * K_PAGE_SIZE);
+        }
+    }
+#endif
+}
+
 #ifdef BOXEDWINE_MULTI_THREADED
 #undef cpu
 #undef memory
@@ -944,6 +1159,14 @@ void testDecodedOpCacheCloneExecDetach() {
     KThread* childThread = child->createThread();
     CPU* childCpu = childThread->cpu;
     auto& parentCache = getMemData(context.memory)->opCache;
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    if (childCpu->jitEntryPageGroups != parentCache.getJitPageGroups())
+        failed("CLONE_VM must share the compiled-entry cache");
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    if (childCpu->jitFlatEntries != parentCache.getFlatJitEntries())
+        failed("CLONE_VM must share the flat compiled-entry cache");
+#endif
     child->memory->synchronizeDecodedOpCache(childCpu,
         parentCache.getEpochAddress()->load(std::memory_order_acquire));
 
@@ -953,6 +1176,16 @@ void testDecodedOpCacheCloneExecDetach() {
         childThread->reset();
     }
     auto& childCache = getMemData(child->memory)->opCache;
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    if (childCpu->jitEntryPageGroups != childCache.getJitPageGroups() ||
+            (childCpu->jitEntryPageGroups && childCpu->jitEntryPageGroups == parentCache.getJitPageGroups()))
+        failed("CLONE_VM exec must rebind the compiled-entry cache");
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    if (childCpu->jitFlatEntries != childCache.getFlatJitEntries() ||
+            (childCpu->jitFlatEntries && childCpu->jitFlatEntries == parentCache.getFlatJitEntries()))
+        failed("CLONE_VM exec must rebind the flat compiled-entry cache");
+#endif
     if (childCpu->decodedOpCacheGlobalEpoch != childCache.getEpochAddress()) {
         failed("CLONE_VM exec must rebind the CPU to its new decoded-op epoch");
     }

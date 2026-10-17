@@ -5,10 +5,40 @@
 #include "kstat.h"
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
+#include <new>
 
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
 void wasmJitMtLeaveCpu(CPU* cpu);
 void wasmJitMtUnregisterCpu(CPU* cpu);
+#endif
+
+#if defined(BOXEDWINE_JIT_X64) && (defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32))
+void* CPU::operator new(size_t size) {
+#if defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT)
+    U32 phase = 0;
+    if (const char* value = std::getenv("BOXEDWINE_TEST_CPU_PHASE")) {
+        U32 requested = strtoul(value, nullptr, 10);
+        if (requested == 16 || requested == 32 || requested == 48) phase = requested;
+    }
+    // Identical allocation work for every cache-line phase. Keep the actual
+    // allocation pointer outside the object so offsets and vtable stay intact.
+    void* raw = ::operator new(size + 128);
+    uintptr_t aligned = ((uintptr_t)raw + sizeof(void*) + 63) & ~(uintptr_t)63;
+    void* address = (void*)(aligned + phase);
+    ((void**)address)[-1] = raw;
+    return address;
+#else
+    return ::operator new(size, std::align_val_t{64});
+#endif
+}
+
+void CPU::operator delete(void* address) noexcept {
+#if defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT)
+    if (address) ::operator delete(((void**)address)[-1]);
+#else
+    ::operator delete(address, std::align_val_t{64});
+#endif
+}
 #endif
 
 CPU* CPU::allocCPU(KMemory* memory) {
@@ -176,8 +206,11 @@ void CPU::reset() {
 #ifdef BOXEDWINE_MULTI_THREADED
     decodedOpCacheGlobalEpoch = getMemData(memory)->opCache.getEpochAddress();
 #endif
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     jitEntryPageGroups = getMemData(memory)->opCache.getJitPageGroups();
+#endif
+#ifdef BOXEDWINE_JIT_ARMV8
+    jitFlatEntries = getMemData(memory)->opCache.getFlatJitEntries();
 #endif
 #ifdef BOXEDWINE_JIT
     this->jitSignalPending.store(0, std::memory_order_release);
@@ -1460,6 +1493,27 @@ void* CPU::handleAccessException(DecodedOp* op) {
             memory->removeCodeBlock(faultEip - eipDistance, op->blockStart, false);
         }
     };
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64) && defined(__linux__)
+    if (op->inst == MovR32E32 && op->foldedLinearReadState() && exceptionReadAddress &&
+        ramPageUseLinearMemory() && !ramPageUseLinearMemoryAdjacent()) {
+        KMemoryData* memoryData = getMemData(memory);
+        const U64 base = (U64)memoryData->linearMemoryBase;
+        const U64 end = base + ramPageLinearMemoryApertureSize();
+        const U64 guard = (U64)Platform::getPageAllocationGranularity() << K_PAGE_SHIFT;
+        if (memoryData->useLinearMemoryJit() && exceptionAddress >= end && exceptionAddress < end + guard) {
+            // This is an owned speculative address failure, not a guest
+            // page first-touch. Preserve the sticky policy across code-only
+            // retirement, then execute the original wrapped load once.
+            op->disableFoldedLinearRead();
+            // The width can itself cross the guest-space end. Retain the
+            // existing checked-reader threshold as well as the policy byte.
+            op->exceptionCount = std::max<U32>(op->exceptionCount, LINEAR_MEMORY_RECOMPILE_FAULTS);
+            removeCurrentCodeBlock();
+            runNextSingleOp();
+            return this->thread->process->blockExit;
+        }
+    }
+#endif
     if (resolvedLinearFirstTouch) {
         if (op->exceptionCount < LINEAR_MEMORY_RECOMPILE_FAULTS) {
             op->exceptionCount++;

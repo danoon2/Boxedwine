@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 #include "startupArgs.h"
+#include "../emulation/cpu/wasm/wasmMemoryOrdering.h"
 
 #include "devtty.h"
 #include "devurandom.h"
@@ -81,6 +82,19 @@ static void addDefaultEnvValue(std::vector<BString>& envValues, const char* valu
     if (!hasEnvValue(envValues, name.c_str())) {
         envValues.push_back(BString::copy(value));
     }
+}
+
+void StartUpArgs::addWineDllOverrides(std::vector<BString>& envValues, const char* overrides) {
+    BString prefix = B("WINEDLLOVERRIDES=");
+    for (auto& value : envValues) {
+        if (value.startsWith(prefix)) {
+            // Wine reads only the first environment entry. Within that entry,
+            // later DLL rules win, so retain explicit per-app choices last.
+            value = prefix + overrides + ";" + value.substr(prefix.length());
+            return;
+        }
+    }
+    envValues.push_back(prefix + overrides);
 }
 
 void StartUpArgs::addDefaultUtf8LocaleEnv(std::vector<BString>& envValues, bool guestHasUtf8Locale) {
@@ -270,6 +284,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (ttyPrepend) {
         args.push_back(B("-ttyPrepend"));
     }
+    if (noErrorDialog) {
+        args.push_back(B("-noErrorDialog"));
+    }
     if (recordAutomation.length()) {
         args.push_back(B("-record"));
         args.push_back(recordAutomation);
@@ -329,6 +346,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->disableWasmJitForWrittenCode) {
         args.push_back(B("-disableWasmJitForWrittenCode"));
     }
+    if (this->safeMemory) {
+        args.push_back(B("-safe-memory"));
+    }
     if (this->disableLinearMemory) {
         args.push_back(B("-disableLinearMemory"));
     }
@@ -339,6 +359,12 @@ std::vector<BString> StartUpArgs::buildArgs() {
 }
 
 bool StartUpArgs::apply() {
+    // Set before anything below can kpanic. An automation script can't dismiss a dialog, and its
+    // timeout can't fire while one blocks the main thread.
+    KSystem::noErrorDialog = this->noErrorDialog || this->runAutomation.length();
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    wasmJitInitMemoryOrdering(this->safeMemory);
+#endif
     KSystem::init(this->disableLinearMemory);
     klog_fmt("BoxedWine build timestamp: %s %s", __DATE__, __TIME__);
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -493,7 +519,7 @@ bool StartUpArgs::apply() {
 
 #ifdef __EMSCRIPTEN__
     envValues.push_back(B("WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1"));
-    envValues.push_back(B("WINEDLLOVERRIDES=ddraw,d3d9,d3d8,dxgi,wined3d,d3dxof,d3dx9_36,d3dx9_43=n,b"));
+    addWineDllOverrides(envValues, "ddraw,d3d9,d3d8,dxgi,wined3d,d3dxof,d3dx9_36,d3dx9_43=n,b");
     std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/windows/system32"), true);
     std::shared_ptr<FsNode> webglParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/webgl"), true);
     if (!webglParent) {
@@ -523,7 +549,7 @@ bool StartUpArgs::apply() {
     }
     if (this->enableDXVK) {
         envValues.push_back(B("DXVK_LOG_LEVEL=warn"));
-        envValues.push_back(B("WINEDLLOVERRIDES=d3d11,d3d10core,d3d9,d3d8,dxgi=n,b"));
+        addWineDllOverrides(envValues, "d3d11,d3d10core,d3d9,d3d8,dxgi=n,b");
         std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/windows/system32"), true);
         std::shared_ptr<FsNode> dxvkParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/dxvk"), true);
         if (!dxvkParent) {
@@ -946,6 +972,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         }
         else if (!strcmp(argv[i], "-ttyPrepend")) { // used to send tty back to WaitDlg for winetricks when BOXEDWINE_UI_LAUNCH_IN_PROCESS is not defined
             this->ttyPrepend = true;
+        } else if (!strcmp(argv[i], "-noErrorDialog")) {
+            this->noErrorDialog = true;
+            // also cover a kpanic during startup, before apply() runs
+            KSystem::noErrorDialog = true;
         } else if (!strcmp(argv[i], "-cpuAffinity")) {
 #ifdef BOXEDWINE_MULTI_THREADED
             this->cpuAffinity = atoi(argv[i+1]);
@@ -994,6 +1024,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->cacheReads = true;
         }  else if (!strcmp(argv[i], "-disableWasmJitForWrittenCode")) {
             this->disableWasmJitForWrittenCode = true;
+        }  else if (!strcmp(argv[i], "-safe-memory")) {
+            this->safeMemory = true;
         }  else if (!strcmp(argv[i], "-disableLinearMemory")) {
             this->disableLinearMemory = true;
         }

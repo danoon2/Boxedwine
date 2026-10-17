@@ -21,7 +21,10 @@
 
 #include "jitArmV8CodeGen.h"
 #include "../jit/jitSSE.h"
+#include "../common/common_fpu.h"
+#include "../../softmmu/kmemory_soft.h"
 #include <array>
+#include <cmath>
 #include <set>
 
 #undef u8
@@ -43,6 +46,17 @@ enum class TSOMode {
 };
 
 static TSOMode tsoMode = TSOMode::Automatic;
+static thread_local bool forceInlinePoll = false;
+#ifdef __TEST
+static thread_local U32 largePollFallbacks = 0;
+U32 armJitLargePollFallbackCount() { return largePollFallbacks; }
+static thread_local U32 cachedMathRegions = 0;
+U32 armJitCachedMathRegionCount() { return cachedMathRegions; }
+static thread_local U32 cachedFpuExamines = 0;
+U32 armJitCachedFpuExamineCount() { return cachedFpuExamines; }
+static thread_local U32 elidedVectorCopies = 0;
+U32 armJitElidedVectorCopyCount() { return elidedVectorCopies; }
+#endif
 static std::once_flag s_tsoModeInitFlag;
 #ifdef __linux__
 static thread_local bool s_hardwareTsoChecked = false;
@@ -147,11 +161,13 @@ asmjit::a64::Gp R32(RegPtr reg) {
 #define xTmp3 23
 #define xTmp4 24
 #define xTmp5 25
-// this improves code density since every emulated read/write needs to compile this address, so instead of 3-4 mov/movk's, it's just a direct br xEmulateSingleOp
-// but I diddn't really notice this improving performance
+// Linear-memory code keeps its invariant RAM base in x26. Other memory modes
+// retain the emulation helper here.
 #define xEmulateSingleOp asmjit::a64::x26
+#define xLinearMemoryBase asmjit::a64::x26
 #define xWriteCacheToCPU asmjit::a64::x27
 #define xLoadCacheFromCPU asmjit::a64::x28
+#define xFlatJitBase asmjit::a64::x28
 #define xScratch asmjit::a64::x29
 #define wScratch asmjit::a64::w29
 #define regScratch 29
@@ -162,6 +178,40 @@ asmjit::a64::Gp R32(RegPtr reg) {
 using MakeSSE = Vec(SSERegPtr reg);
 
 bool enableHardwareTSO();
+
+static bool cacheFlatJitBase(CPU* cpu) {
+    // Reserving x28 speeds some dispatch loops, but enlarges the helper
+    // reload paths and regressed several narrow arithmetic kernels.
+    static const bool enabled = std::getenv("BOXEDWINE_ARM_FLAT_BASE") &&
+        !std::getenv("BOXEDWINE_ARM_FLAT_BASE_SLOW");
+    return enabled && getMemData(cpu->memory)->opCache.getFlatJitEntries();
+}
+
+static bool cacheLinearMemoryBase() {
+    static const bool enabled = !std::getenv("BOXEDWINE_ARM_LINEAR_BASE_SLOW");
+    return ramPageUseLinearMemory() && enabled;
+}
+
+// Process-launch controls retain the previous lowering for diagnosis.
+static bool armFpuHelpersEnabled() {
+    static const bool enabled = !std::getenv("BOXEDWINE_ARM_FPU_HELPERS_SLOW");
+    return enabled;
+}
+
+static bool armCachedFpuMathEnabled() {
+    static const bool enabled = !std::getenv("BOXEDWINE_ARM_CACHED_FPU_MATH_SLOW");
+    return enabled && armFpuHelpersEnabled();
+}
+
+static bool armCachedFpuExamineEnabled() {
+    static const bool enabled = !std::getenv("BOXEDWINE_ARM_CACHED_FPU_EXAMINE_SLOW");
+    return enabled && armFpuHelpersEnabled();
+}
+
+static bool armGpScalarConversionEnabled() {
+    static const bool enabled = !std::getenv("BOXEDWINE_ARM_SSE_GP_CONVERT_SLOW");
+    return enabled;
+}
 
 class JitArmV8CodeGen : public JitSSE, asmjit::ErrorHandler {
 public:  
@@ -179,11 +229,50 @@ public:
 
     static void initTSOMode();
 
+    // Start with forward guards; backward exits retain their polling path.
+    bool supportsConditionalSideExit(U32 sourceEip, U32 targetEip) const override { return targetEip > sourceEip; }
     void preOp(DecodedOp* op) override;
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void postCompile(DecodedOp* op) override;
     void compile(DecodedOp* op) override;
-    bool isExternalJitEntry(U32 eip) const override { return !fpuInternalEntries.count(eip); }
+    void jumpToEipIfCached(RegPtr eipReg) override;
+    void callLoadCacheFromCPU();
+    void callRuntimeHelper(void* address);
+    void exitToRunLoopIfNeeded(U32 eip) override;
+    void exitToRunLoopIfNeeded(RegPtr eip) override;
+    bool useColdPollExit() const;
+    void emitColdPollExit(const std::function<void()>& writeRestart);
+    bool compileOps(DecodedOp* op) override;
+    asmjit::Section* pollExitSection = nullptr;
+    bool compileNarrowIncDec(DecodedOp* op);
+    bool compileCarryChain(DecodedOp* op);
+    bool compileNarrowArithmetic(DecodedOp* op);
+    bool compileShiftFlags(DecodedOp* op);
+    bool compileIntegerParity(DecodedOp* op);
+    bool compileNarrowParity(DecodedOp* op);
+    void emitIntegerParity(RegPtr result);
+    bool compileMultiplyFlags(DecodedOp* op);
+    bool compileConditionalCompare(DecodedOp* op);
+    bool compileScalarSseRegion(DecodedOp* op);
+    bool compileCachedMathRegion(DecodedOp* op);
+    bool compileCachedFpuExamine(DecodedOp* op);
+    bool compilePureFpuHelper(DecodedOp* op);
+    bool isExternalJitEntry(U32 eip) const override {
+        return JitCodeGen::isExternalJitEntry(eip) && !fpuInternalEntries.count(eip) && !scalarInternalEntries.count(eip) && !flagInternalEntries.count(eip);
+    }
+    bool protectKnownLazyFlagType() override;
+    bool knownLazyTypeEnabled = std::getenv("BOXEDWINE_ARM_KNOWN_LAZY_TYPE_SLOW") == nullptr;
+    std::set<U32> flagInternalEntries;
+    bool canTrackScalarZero(DecodedOp* op) const;
+    void updateScalarZero(DecodedOp* op);
+    bool hasZeroUpper64(SSERegPtr reg) const;
+    bool scalarZeroEnabled = std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_SLOW") == nullptr;
+    bool scalarZeroCopyEnabled = std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_COPY_SLOW") == nullptr;
+    bool scalarZeroLanesEnabled = std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_LANES_SLOW") == nullptr;
+    bool scalarZeroDirectEnabled = std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_DIRECT_SLOW") == nullptr;
+    U8 scalarZeroMask = 0;
+    U8 scalarZeroLane1Mask = 0;
+    std::set<U32> scalarInternalEntries;
     bool supportsFpuStackCache() const override {
         static const bool enabled = !std::getenv("BOXEDWINE_DISABLE_NATIVE_FPU_CACHE");
         return enabled;
@@ -193,10 +282,11 @@ public:
     RegPtr getFpuCacheTagReg(U8 index) override;
     FPURegPtr getFpuCacheReg(U8 index) override;
     void moveFpuReg(FPURegPtr dst, FPURegPtr src) override;
-    void loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
+    bool loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
     void materializeFpuCache(U8 slotMask = 0xff) override;
     void nativeFpuIndex(U8 index);
     void spillFpuTag(U8 index);
+    void preserveFpuCacheTop(RegPtr top) override;
     void spillFpuTop();
     bool spillFpuTmp();
     U8 allocateFpuTag(JitReg* tag, bool load = true);
@@ -204,6 +294,8 @@ public:
     std::pair<U32, U32> saveFpuTemporaries(U8 result = INVALID_REG);
     void restoreFpuTemporaries(std::pair<U32, U32> saved);
     std::set<U32> fpuInternalEntries;
+    std::vector<FpuRegisterLoop> fpuRegisterLoops;
+    const FpuRegisterLoop* fpuRegisterLoop = nullptr;
     RegPtr getReadOnlyRegInLower(JitWidth width, U8 reg);
     RegPtr getReg(JitWidth width, U8 reg);
     RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) override;
@@ -364,6 +456,7 @@ public:
     void jmpHost(RegPtr reg) override;
     void jmpHost(DYN_PTR_SIZE address) override;
     RegPtr getReadOnlyFlags(RegPtr tmp = nullptr) override;
+    U32 ramAccessAlignment(JitWidth width) override;
     void storeLazyFlagType(LazyFlagType flags) override;
     void storeLazyFlagsResult(RegPtr reg) override;
     void storeLazyFlagsDest(RegPtr reg) override;
@@ -423,6 +516,8 @@ public:
     void fpuDiv(FPURegPtr dst, FPURegPtr src) override;
     void fpuXor(FPURegPtr dst, FPURegPtr src) override;
     void fpuAnd(FPURegPtr dst, FPURegPtr src) override;
+    void fpuAbs(FPURegPtr dst) override;
+    void fpuNeg(FPURegPtr dst) override;
     void fpuSqrt(FPURegPtr dst, FPURegPtr src) override;
     void fcompare(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) override;
    
@@ -532,6 +627,7 @@ public:
     void cvtpd2pi(SSERegPtr dst, SSERegPtr src, bool truncate);
     void sseConvertFloatToInt(Vec dst, Vec src, bool truncate);
     void sseConvertFloatToInt(RegPtr dst, Vec src, bool truncate);
+    void truncateScalarToInt32(RegPtr dst, SSERegPtr src, bool doublePrecision);
     void sseCmp(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, U8 pred, MakeSSE vMake);
     void comis(SSERegPtr dst, SSERegPtr src, MakeSSE vMake);
 
@@ -567,6 +663,8 @@ public:
     void movlhpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void movmskpsR32Xmm(RegPtr dst, SSERegPtr src) override;
     void movssXmmXmm(SSERegPtr dst, SSERegPtr src) override;
+    bool shuffleDwords(SSERegPtr dst, SSERegPtr src, U32 mask);
+    void shuffleWords(SSERegPtr dst, SSERegPtr src, U32 mask, bool high);
     void shufpsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 imm) override;
     void unpckhpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
     void unpcklpsXmmXmm(SSERegPtr dst, SSERegPtr src) override;
@@ -855,6 +953,10 @@ protected:
     BHashTable<U32, Label> opLabels;
     BHashTable<U32, Label> pendingLabels;
     bool cfInverted = false;
+    bool directFloatFlags = false;
+    bool directIntegerParity = false;
+    RegPtr directParityValue; // immutable even-parity bit across a fused region
+    bool directMultiplyFlags = false;
 };
 
 asmjit::JitRuntime JitArmV8CodeGen::rt;
@@ -906,12 +1008,160 @@ void ensureArmV8HardwareTSOForThread() {
 }
 
 bool JitArmV8CodeGen::canCacheFpuOp(DecodedOp* op) const {
+    if (supportsFpuStackCache() && !op->lock) {
+        if (op->inst == FXAM && armCachedFpuExamineEnabled()) return true;
+        if (armCachedFpuMathEnabled()) switch (op->inst) {
+        case FSIN: case FCOS: case F2XM1: case FPTAN: case FSINCOS:
+        case FYL2X: case FYL2XP1: case FPATAN: return true;
+        default: break;
+        }
+    }
     return canCacheNativeFpuOp(op);
 }
 
 
+bool JitArmV8CodeGen::protectKnownLazyFlagType() {
+    return knownLazyTypeEnabled && protectCmpLazyFlagType();
+}
+
+bool JitArmV8CodeGen::canTrackScalarZero(DecodedOp* op) const {
+    // A small whitelist keeps the proof local. Helpers and instructions that
+    // can overwrite packed lanes terminate it until another zeroing producer.
+    switch (op->inst) {
+    case Cvtps2pdXmmXmm: case Cvtps2pdXmmE64:
+        return scalarZeroLanesEnabled;
+    case Nop:
+    case MovR8R8: case MovR8I8: case MovR8E8: case MovE8R8: case MovE8I8:
+    case MovR16R16: case MovR16I16: case MovR16E16: case MovE16R16: case MovE16I16:
+    case MovR32R32: case MovR32I32: case MovR32E32: case MovE32R32: case MovE32I32:
+    case LeaR16: case LeaR32:
+    case MovsdXmmXmm: case MovsdXmmE64: case MovsdE64Xmm:
+    case MovqXmmXmm: case MovqXmmE64: case MovqE64Xmm:
+    case MovssXmmXmm: case MovssXmmE32: case MovssE32Xmm:
+    case MovdXmmR32: case MovdXmmE32: case MovdR32Xmm: case MovdE32Xmm:
+    case AddsdXmmXmm: case AddsdXmmE64:
+    case SubsdXmmXmm: case SubsdXmmE64:
+    case MulsdXmmXmm: case MulsdXmmE64:
+    case DivsdXmmXmm: case DivsdXmmE64:
+    case SqrtsdXmmXmm: case SqrtsdXmmE64:
+        return true;
+    case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+    case MovdqaXmmXmm: case MovdquXmmXmm:
+    case Cvtsi2sdXmmR32: case Cvtsi2sdXmmE32: case Cvtss2sdXmmXmm: case Cvtss2sdXmmE32:
+    case Cvtsi2ssXmmR32: case Cvtsi2ssXmmE32: case Cvtsd2ssXmmXmm: case Cvtsd2ssXmmE64:
+    case Cvtsd2siR32Xmm: case Cvtsd2siR32E64: case Cvttsd2siR32Xmm: case Cvttsd2siR32E64:
+    case Cvtss2siR32Xmm: case Cvtss2siR32E32: case Cvttss2siR32Xmm: case Cvttss2siR32E32:
+    case ComisdXmmXmm: case ComisdXmmE64: case UcomisdXmmXmm: case UcomisdXmmE64:
+    case AddR32E32: case AddE32R32: case AddR32R32: case AddR32I32: case AddE32I32:
+    case SubR32E32: case SubE32R32: case SubR32R32: case SubR32I32: case SubE32I32:
+    case AndR32E32: case AndE32R32: case AndR32R32: case AndR32I32: case AndE32I32:
+    case OrR32E32: case OrE32R32: case OrR32R32: case OrR32I32: case OrE32I32:
+    case XorR32E32: case XorE32R32: case XorR32R32: case XorR32I32: case XorE32I32:
+    case CmpR32E32: case CmpE32R32: case CmpR32R32: case CmpR32I32: case CmpE32I32:
+    case TestE32R32: case TestR32R32: case TestR32I32: case TestE32I32:
+        return scalarZeroCopyEnabled;
+    default:
+        return false;
+    }
+}
+
+void JitArmV8CodeGen::updateScalarZero(DecodedOp* op) {
+    if (!scalarZeroEnabled) return;
+    if (scalarZeroLanesEnabled) {
+        const U8 dst = op->reg < 8 ? 1u << op->reg : 0;
+        const bool sourceLane1Zero = op->rm < 8 && (scalarZeroLane1Mask & (1u << op->rm)) != 0;
+        switch (op->inst) {
+        case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+        case MovdqaXmmXmm: case MovdquXmmXmm:
+        case MovqXmmXmm: case MovsdXmmXmm:
+            scalarZeroLane1Mask &= ~dst;
+            if (sourceLane1Zero) scalarZeroLane1Mask |= dst;
+            break;
+        case MovssXmmE32: case MovdXmmR32: case MovdXmmE32:
+            scalarZeroLane1Mask |= dst;
+            break;
+        case XorpdXmmXmm: case XorpsXmmXmm: case PxorXmmXmm:
+            if (op->reg == op->rm) scalarZeroLane1Mask |= dst;
+            break;
+        case Cvtps2pdXmmXmm: case Cvtps2pdXmmE64:
+            // Positive zero in float lane 1 becomes an all-zero high double.
+            // Unknown values, including negative zero, cannot use this proof.
+            scalarZeroMask &= ~dst;
+            if (op->inst == Cvtps2pdXmmXmm && sourceLane1Zero) scalarZeroMask |= dst;
+            scalarZeroLane1Mask &= ~dst;
+            break;
+        case MovsdXmmE64: case MovqXmmE64:
+        case AddsdXmmXmm: case AddsdXmmE64:
+        case SubsdXmmXmm: case SubsdXmmE64:
+        case MulsdXmmXmm: case MulsdXmmE64:
+        case DivsdXmmXmm: case DivsdXmmE64:
+        case SqrtsdXmmXmm: case SqrtsdXmmE64:
+        case Cvtsi2sdXmmR32: case Cvtsi2sdXmmE32:
+        case Cvtss2sdXmmXmm: case Cvtss2sdXmmE32:
+            scalarZeroLane1Mask &= ~dst;
+            break;
+        default:
+            break;
+        }
+    }
+    switch (op->inst) {
+    case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+    case MovdqaXmmXmm: case MovdquXmmXmm:
+        if (scalarZeroCopyEnabled) {
+            const bool sourceZero = (scalarZeroMask & (1u << op->rm)) != 0;
+            scalarZeroMask &= ~(1u << op->reg);
+            if (sourceZero) scalarZeroMask |= 1u << op->reg;
+        }
+        break;
+    case MovsdXmmE64: case MovssXmmE32:
+    case MovqXmmXmm: case MovqXmmE64:
+    case MovdXmmR32: case MovdXmmE32:
+        scalarZeroMask |= 1u << op->reg;
+        break;
+    case XorpdXmmXmm: case XorpsXmmXmm: case PxorXmmXmm:
+        // These are not on the whitelist, so preCompile already discarded
+        // older proofs. A self XOR establishes a fresh zero value.
+        if (op->reg == op->rm) scalarZeroMask |= 1u << op->reg;
+        break;
+    default:
+        break;
+    }
+}
+
+bool JitArmV8CodeGen::hasZeroUpper64(SSERegPtr reg) const {
+    return reg->emulatedReg < 8 && (scalarZeroMask & (1u << reg->emulatedReg));
+}
+
 void JitArmV8CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
-    if (op->isBranch() || !canKeepFpuCache(op) || (op->flags2 & OP_FLAG2_JUMP_TARGET)) flushFpuCache();
+    if (!scalarZeroEnabled || !blockOpCount || op->isBranch() ||
+        (op->flags2 & OP_FLAG2_JUMP_TARGET) || !canTrackScalarZero(op)) {
+        scalarZeroMask = 0;
+        scalarZeroLane1Mask = 0;
+    }
+    // Every interior that carries a proof must reject independent entry, even
+    // if this particular instruction does not use it. Keep real boundaries
+    // for host fault recovery; an external dispatch can promote and recompile.
+    if (scalarZeroMask || scalarZeroLane1Mask) scalarInternalEntries.insert(currentEip);
+    if (!blockOpCount) fpuRegisterLoops = findFpuRegisterLoops(8);
+    if (fpuRegisterLoop && currentEip > fpuRegisterLoop->backedge) {
+        flushFpuCache();
+        fpuRegisterLoop = nullptr;
+    }
+    bool loopHeader = false;
+    if (!skippedOp) for (const auto& loop : fpuRegisterLoops) {
+        if (loop.lazyInputs || loop.backedge >= lastOpEip) continue;
+        if (currentEip == loop.header) {
+            flushFpuCache();
+            fpuRegisterLoop = &loop;
+            loopHeader = true;
+            break;
+        }
+    }
+    const bool cachedBackedge = fpuRegisterLoop && currentEip == fpuRegisterLoop->backedge;
+    // D8-D15 carry only the proved fixed-slot loop state. Other entries and
+    // branch paths retain the normal published CPU-state contract.
+    if ((op->isBranch() && !cachedBackedge) || !canKeepFpuCache(op) ||
+        ((op->flags2 & OP_FLAG2_JUMP_TARGET) && !loopHeader)) flushFpuCache();
     else if (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth) {
         materializeFpuCache();
         for (auto& slot : fpuStackCache.slots) slot.dirty = slot.tagDirty = false;
@@ -920,11 +1170,964 @@ void JitArmV8CodeGen::preCompile(DecodedOp* op, bool skippedOp) {
     JitCodeGen::preCompile(op, skippedOp);
 }
 
+bool armJitHasFlagM() {
+    return asmjit::CpuInfo::host().features().arm().has_flagm();
+}
+
+bool armJitHasFlagM2() {
+    return asmjit::CpuInfo::host().features().arm().has_flagm2();
+}
+
+bool JitArmV8CodeGen::compileCarryChain(DecodedOp* op) {
+    const bool subtract = op->inst == SubR32R32 || op->inst == SubR32I32;
+    if (op->lock || (!subtract && op->inst != AddR32R32 && op->inst != AddR32I32) ||
+            std::getenv("BOXEDWINE_ARM_CARRY_CHAIN_SLOW")) return false;
+    auto isCarry = [subtract](DecodedOp* next) {
+        return next && !next->lock && (subtract ?
+            (next->inst == SbbR32R32 || next->inst == SbbR32I32) :
+            (next->inst == AdcR32R32 || next->inst == AdcR32I32));
+    };
+    if (!isCarry(op->next)) return false;
+    std::array<DecodedOp*, 8> chain{op};
+    U32 count = 1, eip = currentEip + op->len, lastProducerEip = currentEip;
+    for (DecodedOp* next = op->next; isCarry(next) && count < chain.size(); eip += next->len, next = next->next) {
+        if (eip > lastOpEip || (next->flags2 & OP_FLAG2_JUMP_TARGET)) break;
+        chain[count++] = next;
+        lastProducerEip = eip;
+        if (!next->getNeededFlagsAfter(FMASK_TEST)) break;
+    }
+    if (count < 2) return false;
+    auto emit = [this, &chain, count, subtract]() {
+        for (U32 i = 0; i < count; ++i) {
+            DecodedOp* cur = chain[i];
+            if (i) preCompile(cur, true);
+            {
+                RegPtr dst = getReg(cur->reg);
+                const bool immediate = cur->inst == AddR32I32 || cur->inst == SubR32I32 ||
+                    cur->inst == AdcR32I32 || cur->inst == SbbR32I32;
+                RegPtr src = immediate ? getTmpReg() : getReadOnlyReg(cur->rm);
+                if (immediate) movValue(JitWidth::b32, src, cur->imm);
+                if (!i) {
+                    if (subtract) compiler.subs(R32(dst), R32(dst), R32(src));
+                    else compiler.adds(R32(dst), R32(dst), R32(src));
+                } else {
+                    if (subtract) compiler.sbcs(R32(dst), R32(dst), R32(src));
+                    else compiler.adcs(R32(dst), R32(dst), R32(src));
+                }
+            }
+            if (i + 1 < count) postCompile(cur);
+        }
+        cfInverted = subtract;
+    };
+    DecodedOp* last = chain[count - 1];
+    if (last->getNeededFlagsAfter(FMASK_TEST)) {
+        if (std::getenv("BOXEDWINE_ARM_CARRY_CONSUMERS_SLOW")) return false;
+        return tryDirectConsumers(last, emit, FMASK_TEST, lastProducerEip - currentEip, 1);
+    }
+    emit();
+    // Every interior is register-only and has no independent incoming edge.
+    // Final flags are either dead here or consumed directly above.
+    skipToOp = last;
+    return true;
+}
+
+bool JitArmV8CodeGen::compileNarrowArithmetic(DecodedOp* op) {
+    U32 bits;
+    bool immediate;
+    switch (op->inst) {
+    case AddR8R8: bits = 8; immediate = false; break;
+    case AddR8I8: bits = 8; immediate = true; break;
+    case AddR16R16: bits = 16; immediate = false; break;
+    case AddR16I16: bits = 16; immediate = true; break;
+    default: return false;
+    }
+    if (op->lock || (bits == 8 && op->reg >= 4) || !op->next ||
+            std::getenv("BOXEDWINE_ARM_NARROW_ARITH_SLOW")) return false;
+    DecodedOp* next = op->next;
+    JitConditional condition;
+    if (next->isJumpCC()) condition = getJumpConditionFromOp(next);
+    else if (next->isCMovCC()) condition = getCmovConditionFromOp(next);
+    else if (next->isSetCC()) condition = getSetConditionFromOp(next);
+    else return false;
+    if (condition != JitConditional::L && condition != JitConditional::NL &&
+            condition != JitConditional::LE && condition != JitConditional::NLE) return false;
+    // Native NZCV saves the compound SF/OF calculation. For simpler conditions,
+    // subtraction, or high-byte destinations, operand alignment cost dominated
+    // on the measured ARM host; retain the existing lazy-flag lowering there.
+    tryDirect(op, [this, op, bits, immediate]() {
+        RegPtr dst = bits == 8 ? getReg8(op->reg) : getReg(op->reg);
+        RegPtr left = getTmpReg();
+        compiler.ubfiz(R32(left), R32(dst), 32 - bits, bits);
+        cfInverted = false;
+        if (!immediate && !(bits == 8 && op->rm >= 4) &&
+                !std::getenv("BOXEDWINE_ARM_NARROW_SHIFTED_SLOW")) {
+            RegPtr src = bits == 8 ? getReadOnlyReg8(op->rm) : getReadOnlyReg(op->rm);
+            compiler.adds(R32(left), R32(left), R32(src), Shift(ShiftOp::kLSL, 32 - bits));
+        } else {
+            RegPtr right = getTmpReg();
+            if (immediate) movValue(JitWidth::b32, right, op->imm << (32 - bits));
+            else {
+                RegPtr src = bits == 8 ? getReadOnlyReg8(op->rm) : getReadOnlyReg(op->rm);
+                if (src->isHigh) {
+                    compiler.ubfx(R32(right), R32(src), 8, 8);
+                    compiler.lsl(R32(right), R32(right), 24);
+                } else compiler.ubfiz(R32(right), R32(src), 32 - bits, bits);
+            }
+            compiler.adds(R32(left), R32(left), R32(right));
+        }
+        compiler.bfxil(R32(dst), R32(left), 32 - bits, bits);
+    }, [this, op]() { JitCodeGen::compile(op); });
+    return true;
+}
+
+bool JitArmV8CodeGen::compileNarrowIncDec(DecodedOp* op) {
+    bool decrement;
+    U32 bits;
+    switch (op->inst) {
+    case IncR8: bits = 8; decrement = false; break;
+    case DecR8: bits = 8; decrement = true; break;
+    case IncR16: bits = 16; decrement = false; break;
+    case DecR16: bits = 16; decrement = true; break;
+    default: return false;
+    }
+    if (!armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_NARROW_FLAGS_SLOW")) return false;
+    tryDirect(op, [this, op, bits, decrement]() {
+        RegPtr dest = bits == 8 ? getReg8(op->reg) : getReg(op->reg);
+        RegPtr result = getTmpReg();
+        U32 shift = dest->isHigh ? 8 : 0;
+        // SETF observes the sign bit and the bit above it. Sign extension
+        // before arithmetic makes that pair encode narrow signed overflow.
+        compiler.sbfx(R32(result), R32(dest), shift, bits);
+        if (decrement) compiler.sub(R32(result), R32(result), 1);
+        else compiler.add(R32(result), R32(result), 1);
+        if (bits == 8) compiler.setf8(R32(result));
+        else compiler.setf16(R32(result));
+        compiler.bfi(R32(dest), R32(result), shift, bits);
+        // Native carry is irrelevant: fused consumers may only read NZV.
+    }, [this, op]() { JitCodeGen::compile(op); }, FMASK_TEST & ~CF);
+    return true;
+}
+
+bool JitArmV8CodeGen::compileConditionalCompare(DecodedOp* op) {
+    if (!std::getenv("BOXEDWINE_ARM_CCMP")) return false;
+    auto supportedCompare = [](DecodedOp* candidate) {
+        return candidate && !candidate->lock &&
+            (candidate->inst == CmpR32R32 || candidate->inst == CmpR32I32);
+    };
+    if (!supportedCompare(op)) return false;
+    DecodedOp* firstBranch = op->next;
+    DecodedOp* second = firstBranch ? firstBranch->next : nullptr;
+    DecodedOp* last = second ? second->next : nullptr;
+    if (!firstBranch || !firstBranch->isJumpCC() || !supportedCompare(second) ||
+            !last || !last->isJumpCC()) return false;
+    const U32 firstBranchEip = currentEip + op->len;
+    const U32 secondEip = firstBranchEip + firstBranch->len;
+    const U32 lastEip = secondEip + second->len;
+    const U32 target = firstBranchEip + firstBranch->len + firstBranch->imm;
+    if (lastEip > lastOpEip || target != lastEip + last->len + last->imm ||
+            ((firstBranch->flags2 | second->flags2 | last->flags2) & OP_FLAG2_JUMP_TARGET) ||
+            ((instructionInfo[firstBranch->inst].flagsUsed | instructionInfo[last->inst].flagsUsed) & PF) ||
+            !canJumpInBlock(firstBranchEip, firstBranch) || !canJumpInBlock(lastEip, last) ||
+            firstBranch->getNeededFlagsAfter(FMASK_TEST) || last->getNeededFlagsAfter(FMASK_TEST)) return false;
+    const JitConditional firstCondition = getJumpConditionFromOp(firstBranch);
+    const JitConditional lastCondition = getJumpConditionFromOp(last);
+    // CMP leaves ARM C as the inverse of x86 borrow. Choose an immediate NZCV
+    // state that takes the final failure branch when the first check failed.
+    auto accepts = [lastCondition](U32 flags) {
+        const bool n = (flags & 8) != 0, z = (flags & 4) != 0;
+        const bool c = (flags & 2) != 0, v = (flags & 1) != 0;
+        switch (lastCondition) {
+        case JitConditional::O: return v;
+        case JitConditional::NO: return !v;
+        case JitConditional::B: return !c;
+        case JitConditional::NB: return c;
+        case JitConditional::Z: return z;
+        case JitConditional::NZ: return !z;
+        case JitConditional::BE: return !c || z;
+        case JitConditional::NBE: return c && !z;
+        case JitConditional::S: return n;
+        case JitConditional::NS: return !n;
+        case JitConditional::L: return n != v;
+        case JitConditional::NL: return n == v;
+        case JitConditional::LE: return z || n != v;
+        case JitConditional::NLE: return !z && n == v;
+        default: return false;
+        }
+    };
+    U32 fallback = 0;
+    while (fallback < 16 && !accepts(fallback)) ++fallback;
+    if (fallback == 16) return false;
+    if (target <= lastEip) exitToRunLoopIfNeeded(currentEip);
+    cfInverted = true;
+    const auto firstNativeCondition = getCondCode(firstCondition);
+    const bool useImmediate = std::getenv("BOXEDWINE_ARM_CCMP_IMMEDIATE") != nullptr;
+    {
+        RegPtr left = getReadOnlyReg(op->reg);
+        if (useImmediate && op->inst == CmpR32I32) {
+            cmp(JitWidth::b32, left, op->imm);
+        } else {
+            RegPtr right = op->inst == CmpR32I32 ? loadConst(op->imm) : getReadOnlyReg(op->rm);
+            compiler.cmp(R32(left), R32(right));
+        }
+    }
+    postCompile(op);
+    preCompile(firstBranch, true);
+    postCompile(firstBranch);
+    preCompile(second, true);
+    {
+        RegPtr left = getReadOnlyReg(second->reg);
+        if (useImmediate && second->inst == CmpR32I32 && second->imm <= 31) {
+            compiler.ccmp(R32(left), second->imm, fallback, asmjit::arm::negate_cond(firstNativeCondition));
+        } else {
+            RegPtr right = second->inst == CmpR32I32 ? loadConst(second->imm) : getReadOnlyReg(second->rm);
+            compiler.ccmp(R32(left), R32(right), fallback, asmjit::arm::negate_cond(firstNativeCondition));
+        }
+    }
+    postCompile(second);
+    preCompile(last, true);
+    direct_jump(lastCondition, target);
+    skipToOp = last;
+    return true;
+}
+
+bool JitArmV8CodeGen::compileMultiplyFlags(DecodedOp* op) {
+    if (op->lock || std::getenv("BOXEDWINE_ARM_MULTIPLY_FLAGS_SLOW")) return false;
+    const bool oneOperand = op->inst == MulR32 || op->inst == IMulR32;
+    const bool unsignedMultiply = op->inst == MulR32;
+    const bool immediate = op->inst == ImulR32R32;
+    if (!oneOperand && !immediate && op->inst != DimulR32R32) return false;
+    if (op->getNeededFlagsAfter(FMASK_TEST & ~(CF | OF))) return false;
+    bool fused = false;
+    directMultiplyFlags = true;
+    tryDirect(op, [this, op, oneOperand, unsignedMultiply, immediate, &fused]() {
+        RegPtr left = getReadOnlyReg(oneOperand ? 0 : immediate ? op->rm : op->reg);
+        RegPtr right = immediate ? loadConst(op->imm) : getReadOnlyReg(oneOperand ? op->reg : op->rm);
+        RegPtr product = getTmpReg();
+        if (unsignedMultiply) compiler.umull(R64(product), R32(left), R32(right));
+        else compiler.smull(R64(product), R32(left), R32(right));
+        RegPtr upperOrExtended = getTmpReg();
+        if (unsignedMultiply) {
+            compiler.lsr(R64(upperOrExtended), R64(product), 32);
+            compiler.cmp(R32(upperOrExtended), 0);
+        } else {
+            compiler.sxtw(R64(upperOrExtended), R32(product));
+            compiler.cmp(R64(product), R64(upperOrExtended));
+        }
+        // CF and OF are the same overflow predicate for MUL/IMUL. Keep that
+        // predicate in Z; the other x86 arithmetic flags are undefined and
+        // cannot be consumed by this direct path.
+        if (oneOperand) compiler.lsr(R64(getReg(2)), R64(product), 32);
+        compiler.mov(R32(getReg(oneOperand ? 0 : op->reg)), R32(product));
+        cfInverted = false;
+        fused = true;
+    }, []() {}, CF | OF);
+    directMultiplyFlags = false;
+    return fused;
+}
+
+void JitArmV8CodeGen::emitIntegerParity(RegPtr result) {
+    const char* mode = std::getenv("BOXEDWINE_ARM_PARITY_VALUE");
+    if (!mode && !std::getenv("BOXEDWINE_ARM_PARITY_FUSION")) mode = "table";
+    if (mode && !strcmp(mode, "table")) {
+        directParityValue = getTmpReg();
+        compiler.and_(R32(directParityValue), R32(result), 0xff);
+        readCPU(JitWidth::b8, directParityValue, 0, offsetof(CPU, flagParityLookup), directParityValue);
+        return;
+    }
+    RegPtr folded = getTmpReg();
+    compiler.eor(R32(folded), R32(result), R32(result), Shift(ShiftOp::kLSR, 4));
+    compiler.eor(R32(folded), R32(folded), R32(folded), Shift(ShiftOp::kLSR, 2));
+    compiler.eor(R32(folded), R32(folded), R32(folded), Shift(ShiftOp::kLSR, 1));
+    if (mode && !strcmp(mode, "xor")) {
+        compiler.eor(R32(folded), R32(folded), 1);
+        compiler.and_(R32(folded), R32(folded), 1);
+        directParityValue = folded;
+    } else {
+        // V holds odd parity when no explicit value is retained.
+        compiler.embed_uint32(0xba000401u | (R64(folded).id() << 5));
+    }
+}
+
+bool JitArmV8CodeGen::compileIntegerParity(DecodedOp* op) {
+    if (op->lock || !armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_INTEGER_PARITY_SLOW")) return false;
+    enum class ParityOp { Add, Sub, Cmp, Test, And, Or, Xor };
+    ParityOp arithmetic;
+    bool immediate;
+    switch (op->inst) {
+    case AddR32R32: arithmetic = ParityOp::Add; immediate = false; break;
+    case AddR32I32: arithmetic = ParityOp::Add; immediate = true; break;
+    case SubR32R32: arithmetic = ParityOp::Sub; immediate = false; break;
+    case SubR32I32: arithmetic = ParityOp::Sub; immediate = true; break;
+    case CmpR32R32: arithmetic = ParityOp::Cmp; immediate = false; break;
+    case CmpR32I32: arithmetic = ParityOp::Cmp; immediate = true; break;
+    case TestR32R32: arithmetic = ParityOp::Test; immediate = false; break;
+    case TestR32I32: arithmetic = ParityOp::Test; immediate = true; break;
+    case AndR32R32: arithmetic = ParityOp::And; immediate = false; break;
+    case AndR32I32: arithmetic = ParityOp::And; immediate = true; break;
+    case OrR32R32: arithmetic = ParityOp::Or; immediate = false; break;
+    case OrR32I32: arithmetic = ParityOp::Or; immediate = true; break;
+    case XorR32R32: arithmetic = ParityOp::Xor; immediate = false; break;
+    case XorR32I32: arithmetic = ParityOp::Xor; immediate = true; break;
+    default: return false;
+    }
+    if (!op->getNeededFlagsAfter(PF)) return false;
+    bool fused = false;
+    directIntegerParity = true;
+    tryDirect(op, [this, op, arithmetic, immediate, &fused]() {
+        const bool noWrite = arithmetic == ParityOp::Cmp || arithmetic == ParityOp::Test;
+        RegPtr left = noWrite ? getReadOnlyReg(op->reg) : getReg(op->reg);
+        RegPtr right = immediate ? loadConst(op->imm) : getReadOnlyReg(op->rm);
+        RegPtr result = noWrite ? getTmpReg() : left;
+        cfInverted = false;
+        switch (arithmetic) {
+        case ParityOp::Add: compiler.adds(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Sub: case ParityOp::Cmp:
+            compiler.subs(R32(result), R32(left), R32(right)); cfInverted = true; break;
+        case ParityOp::And: case ParityOp::Test:
+            compiler.ands(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Or:
+            compiler.orr(R32(result), R32(left), R32(right));
+            compiler.ands(asmjit::a64::wzr, R32(result), R32(result)); break;
+        case ParityOp::Xor:
+            compiler.eor(R32(result), R32(left), R32(right));
+            compiler.ands(asmjit::a64::wzr, R32(result), R32(result)); break;
+        }
+        emitIntegerParity(result);
+        fused = true;
+    }, []() {}, CF | ZF | SF | PF);
+    directIntegerParity = false;
+    directParityValue.reset();
+    return fused;
+}
+
+bool JitArmV8CodeGen::compileNarrowParity(DecodedOp* op) {
+    if (op->lock || !armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_NARROW_PARITY_SLOW")) return false;
+    enum class ParityOp { Add, Sub, Cmp, Test, And, Or, Xor };
+    ParityOp operation;
+    U32 bits;
+    bool immediate;
+    switch (op->inst) {
+#define NARROW_PARITY_CASES(prefix, kind) \
+    case prefix##R8R8: operation = ParityOp::kind; bits = 8; immediate = false; break; \
+    case prefix##R8I8: operation = ParityOp::kind; bits = 8; immediate = true; break; \
+    case prefix##R16R16: operation = ParityOp::kind; bits = 16; immediate = false; break; \
+    case prefix##R16I16: operation = ParityOp::kind; bits = 16; immediate = true; break;
+    NARROW_PARITY_CASES(Add, Add)
+    NARROW_PARITY_CASES(Sub, Sub)
+    NARROW_PARITY_CASES(Cmp, Cmp)
+    NARROW_PARITY_CASES(Test, Test)
+    NARROW_PARITY_CASES(And, And)
+    NARROW_PARITY_CASES(Or, Or)
+    NARROW_PARITY_CASES(Xor, Xor)
+#undef NARROW_PARITY_CASES
+    default: return false;
+    }
+    // Terminal ops have no successor. Filter candidates before looking ahead,
+    // and leave truncated arithmetic chains on the established lowering.
+    if (!op->next || !op->getNeededFlagsAfter(PF)) return false;
+    // A standalone high-byte SETP/SETNP measured faster on the established
+    // path in changing-input tests. Retain that lowering;
+    // high-byte branch and CMOV consumers still benefit from fusion.
+    if (bits == 8 && op->reg >= 4 && op->next && op->next->isSetCC() &&
+            !op->next->getNeededFlagsAfter(FMASK_TEST) &&
+            !std::getenv("BOXEDWINE_ARM_NARROW_PARITY_HIGH_SET")) return false;
+    bool fused = false;
+    directIntegerParity = true;
+    tryDirect(op, [this, op, bits, immediate, operation, &fused]() {
+        const bool noWrite = operation == ParityOp::Cmp || operation == ParityOp::Test;
+        RegPtr dst = bits == 8 ? getReadOnlyReg8(op->reg) : getReadOnlyReg(op->reg);
+        RegPtr result = getTmpReg();
+        const bool lowBits = !std::getenv("BOXEDWINE_ARM_NARROW_PARITY_LOW_BITS_SLOW");
+        RegPtr left = dst;
+        if (!lowBits || dst->isHigh) {
+            compiler.ubfx(R32(result), R32(dst), dst->isHigh ? 8 : 0, bits);
+            left = result;
+        }
+        RegPtr right;
+        if (immediate) right = loadConst(op->imm);
+        else {
+            RegPtr src = bits == 8 ? getReadOnlyReg8(op->rm) : getReadOnlyReg(op->rm);
+            if (lowBits && !src->isHigh) right = src;
+            else {
+                right = getTmpReg();
+                compiler.ubfx(R32(right), R32(src), src->isHigh ? 8 : 0, bits);
+            }
+        }
+        // With CF/OF excluded, upper operand bits cannot affect the low
+        // result, its parity, or SETF8/16's N/Z. High-byte operands still
+        // need extraction; BFI below preserves the destination's other bits.
+        switch (operation) {
+        case ParityOp::Add: compiler.add(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Sub: case ParityOp::Cmp: compiler.sub(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Test: case ParityOp::And: compiler.and_(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Or: compiler.orr(R32(result), R32(left), R32(right)); break;
+        case ParityOp::Xor: compiler.eor(R32(result), R32(left), R32(right)); break;
+        }
+        // SETF obtains N/Z from the narrow result without aligning operands.
+        // Carry and overflow consumers remain on the established lowering.
+        if (op->getNeededFlagsAfter(ZF | SF)) {
+            if (bits == 8) compiler.setf8(R32(result));
+            else compiler.setf16(R32(result));
+        }
+        if (!noWrite) {
+            RegPtr write = bits == 8 ? getReg8(op->reg) : getReg(op->reg);
+            compiler.bfi(R32(write), R32(result), write->isHigh ? 8 : 0, bits);
+        }
+        emitIntegerParity(result);
+        fused = true;
+    }, []() {}, PF | ZF | SF);
+    directIntegerParity = false;
+    directParityValue.reset();
+    return fused;
+}
+
+bool JitArmV8CodeGen::compileShiftFlags(DecodedOp* op) {
+    const bool left = op->inst == ShlR32I8;
+    const bool arithmetic = op->inst == SarR32I8;
+    if ((!left && !arithmetic && op->inst != ShrR32I8) || op->lock ||
+            !armJitHasFlagM() || std::getenv("BOXEDWINE_ARM_SHIFT_FLAGS_SLOW")) return false;
+    const U32 count = op->imm & 31;
+    if (!count) return false;
+    const bool parity = !std::getenv("BOXEDWINE_ARM_SHIFT_PARITY_SLOW") &&
+        op->getNeededFlagsAfter(PF) && !op->getNeededFlagsAfter(OF);
+    const U32 supported = CF | ZF | SF | (parity ? PF : count == 1 ? OF : 0);
+    const bool needCarry = op->getNeededFlagsAfter(CF) != 0;
+    const bool needOverflow = count == 1 && op->getNeededFlagsAfter(OF);
+    bool fused = false;
+    directIntegerParity = parity;
+    tryDirect(op, [this, op, count, left, arithmetic, needCarry, needOverflow, parity, &fused]() {
+        RegPtr dst = getReg(op->reg);
+        if (left && count == 1) {
+            compiler.adds(R32(dst), R32(dst), R32(dst));
+        } else {
+            RegPtr original;
+            if (needCarry || (needOverflow && !arithmetic)) {
+                original = getTmpReg();
+                compiler.mov(R32(original), R32(dst));
+            }
+            if (left) compiler.lsl(R32(dst), R32(dst), count);
+            else if (arithmetic) compiler.asr(R32(dst), R32(dst), count);
+            else compiler.lsr(R32(dst), R32(dst), count);
+            // ANDS supplies N/Z and clears V. RMIF changes only the selected
+            // flag bits; x86 carry is the last bit shifted out of the source.
+            compiler.ands(asmjit::a64::wzr, R32(dst), R32(dst));
+            // This AsmJit version has no RMIF emitter. Encoding is the Arm
+            // FEAT_FlagM RMIF Xn,#shift,#mask form (validated with clang).
+            auto rmif = [&](U32 shift, U32 mask) {
+                compiler.embed_uint32(0xba000400u | (shift << 15) |
+                    (R64(original).id() << 5) | mask);
+            };
+            if (needCarry) rmif(left ? 31 - count : (count + 62) & 63, 2);
+            if (needOverflow && !arithmetic) rmif(31, 1);
+        }
+        if (parity) emitIntegerParity(dst);
+        cfInverted = false;
+        fused = true;
+    }, []() {}, supported);
+    directIntegerParity = false;
+    directParityValue.reset();
+    if (!fused) JitCodeGen::compile(op);
+    return true;
+}
+
+bool JitArmV8CodeGen::useColdPollExit() const {
+    return !forceInlinePoll && !std::getenv("BOXEDWINE_ARM_INLINE_POLL");
+}
+
+void JitArmV8CodeGen::exitToRunLoopIfNeeded(U32 eip) {
+    if (!useColdPollExit() || std::getenv("BOXEDWINE_ARM_POLL_EIP_INLINE")) {
+        JitCodeGen::exitToRunLoopIfNeeded(eip);
+        return;
+    }
+    emitColdPollExit([this, eip]() { writeEip(eip - cpu->seg[CS].address); });
+}
+
+void JitArmV8CodeGen::exitToRunLoopIfNeeded(RegPtr eip) {
+    if (!useColdPollExit()) {
+        JitCodeGen::exitToRunLoopIfNeeded(eip);
+        return;
+    }
+    emitColdPollExit([this, eip]() { writeEip(eip); });
+}
+
+bool JitArmV8CodeGen::compileOps(DecodedOp* op) {
+    if (!JitCodeGen::compileOps(op)) return false;
+    if (pollExitSection && (code.text_section()->buffer().size() + pollExitSection->buffer().size() > 512 * 1024 ||
+            pollExitSection->buffer().size() > 32 * 1024)) {
+        // Retry before publishing anything. Bound both CBZ/CBNZ displacement
+        // and the cold tail included in the final instruction's U16 jitLen.
+        struct Reset { bool previous; ~Reset() { forceInlinePoll = previous; } } reset{forceInlinePoll};
+        forceInlinePoll = true;
+#ifdef __TEST
+        ++largePollFallbacks;
+#endif
+        startNewJIT(cpu, startingEip, op);
+        return false;
+    }
+    return true;
+}
+
+void JitArmV8CodeGen::emitColdPollExit(const std::function<void()>& writeRestart) {
+    // Emit now, while the exact GP and x87 cache state at the poll is available.
+    // compileOps retries oversized blocks using inline exits before publishing.
+    if (!pollExitSection) {
+        auto error = code.new_section(asmjit::Out(pollExitSection), ".poll-exits", SIZE_MAX,
+            asmjit::SectionFlags::kExecutable, 4, 1);
+        if (error != asmjit::Error::kOk) kpanic("ARM JIT could not allocate poll exits");
+    }
+    Label exit = compiler.new_label();
+#ifdef BOXEDWINE_MULTI_THREADED
+    RegPtr pending = readCPU(JitWidth::b32, offsetof(CPU, jitSignalPending));
+    compiler.cbnz(R32(pending), exit);
+#else
+    RegPtr budget = readCPU(JitWidth::b32, offsetof(CPU, jitBranchBudget));
+    subValue(JitWidth::b32, budget, 1);
+    writeCPU(JitWidth::b32, offsetof(CPU, jitBranchBudget), budget);
+    compiler.cbz(R32(budget), exit);
+#endif
+    auto* hot = compiler.current_section();
+    compiler.section(pollExitSection);
+    compiler.bind(exit);
+    writeRestart();
+    writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+    blockExit();
+    compiler.section(hot);
+}
+
+void JitArmV8CodeGen::jumpToEipIfCached(RegPtr eipReg) {
+    auto& cache = getMemData(cpu->memory)->opCache;
+    // Flat lookup helps jumps and returns, but regressed the measured
+    // multi-target indirect-call loops. Keep calls on the page-tree path.
+    const bool flatCalls = std::getenv("BOXEDWINE_ARM_FLAT_CALL") &&
+        !std::getenv("BOXEDWINE_ARM_FLAT_CALL_SLOW");
+    if (!cache.getFlatJitEntries() ||
+            (currentOp && currentOp->isCall() && !flatCalls) ||
+            (currentOp && currentOp->isRet() && std::getenv("BOXEDWINE_ARM_FLAT_RETURN_SLOW"))) {
+        JitCodeGen::jumpToEipIfCached(eipReg);
+        return;
+    }
+    if (!eipReg) eipReg = readEip();
+    if (cpu->thread->process->hasSetSeg[CS]) addReg(JitWidth::b32, eipReg, getReadOnlySegAddress(CS));
+    RegPtr index = eipReg;
+    if (cache.hasFlatJitHash()) {
+        index = getTmpReg();
+        compiler.eor(R32(index), R32(eipReg), R32(eipReg), Shift(ShiftOp::kLSR, cache.getFlatJitHashShift()));
+        if (cache.hasFlatJitPageHash()) {
+            RegPtr high = getTmpReg();
+            compiler.and_(R32(high), R32(eipReg), 0xffff0000u);
+            compiler.eor(R32(index), R32(index), R32(high), Shift(ShiftOp::kLSR, 4));
+        }
+    }
+    // Diagnostic controls for separating index dependencies from code-size
+    // effects. Both leave the selected lookup mapping unchanged.
+    if (const char* padding = std::getenv("BOXEDWINE_ARM_HASH_DIAGNOSTIC")) {
+        if (!strcmp(padding, "nop")) {
+            compiler.nop(); compiler.nop();
+        } else if (!strcmp(padding, "unused")) {
+            RegPtr unused = getTmpReg();
+            compiler.and_(R32(unused), R32(eipReg), 0xffff0000u);
+            compiler.eor(R32(unused), R32(index), R32(unused), Shift(ShiftOp::kLSR, 4));
+        }
+    }
+    RegPtr target;
+    const bool preserveCallLookup = std::getenv("BOXEDWINE_ARM_FLAT_BASE_JUMPS_ONLY") &&
+        currentOp && (currentOp->isCall() || currentOp->isRet());
+    if (cacheFlatJitBase(cpu) && !preserveCallLookup) {
+        target = getTmpReg();
+        compiler.ldr(R64(target), Mem(xFlatJitBase, R64(index), Shift(ShiftOp::kLSL, DYN_PTR_LSL)));
+    } else {
+        target = readCPU(DYN_PTR, offsetof(CPU, jitFlatEntries));
+        readHost(DYN_PTR, createMemPtr(target, index, DYN_PTR_LSL, 0), target, false);
+    }
+    If(DYN_PTR, target); {
+        jmpHost(target);
+    } EndIf();
+}
+
 void JitArmV8CodeGen::compile(DecodedOp* op) {
-    if (!compileCachedFpuOp(op)) JitCodeGen::compile(op);
+    if (!compileScalarSseRegion(op) && !compileCachedMathRegion(op) && !compilePureFpuHelper(op) && !compileConditionalCompare(op) && !compileMultiplyFlags(op) && !compileIntegerParity(op) && !compileNarrowParity(op) && !compileShiftFlags(op) && !compileNarrowArithmetic(op) && !compileCarryChain(op) && !compileNarrowIncDec(op) && !compileCachedFpuOp(op)) JitCodeGen::compile(op);
+}
+
+static double armFpuExp2Minus1(double value) { return std::pow(2.0, value) - 1; }
+static double armFpuAtanYX(double x, double y) { return std::atan2(y, x); }
+
+bool JitArmV8CodeGen::compileCachedMathRegion(DecodedOp* op) {
+    static const bool enabled = !std::getenv("BOXEDWINE_ARM_CACHED_MATH_REGION_SLOW");
+    if (!enabled || !armCachedFpuMathEnabled() || !fpuStackCache.entryTop) return false;
+    auto eligible = [](DecodedOp* cur) {
+        return cur && !cur->lock && (cur->inst == FSIN || cur->inst == FCOS || cur->inst == F2XM1);
+    };
+    if (!eligible(op)) return false;
+    auto& slot = cachedFpuSlot(0);
+    if (!slot.loaded || slot.needsValidation) return false;
+    std::array<DecodedOp*, 256> region{};
+    U32 count = 0, eip = currentEip;
+    bool clearC2 = false;
+    for (auto* cur = op; eligible(cur) && count < region.size(); eip += cur->len, cur = cur->next) {
+        if (eip > lastOpEip || (count && (cur->flags2 & OP_FLAG2_JUMP_TARGET))) break;
+        region[count++] = cur;
+        clearC2 |= cur->inst != F2XM1;
+    }
+    if (count < 2) return false;
+#ifdef __TEST
+    ++cachedMathRegions;
+#endif
+    const U8 reg = slot.value->hardwareReg();
+    if (reg < 8 || reg > 15) kpanic("ARM cached math region requires a saved D register");
+    // Publish metadata before the first ABI call: postCompile must never spill
+    // a tag from a caller-clobbered register while the guest cache is saved.
+    for (U8 i = 0; i < 8; ++i) spillFpuTag(i);
+    spillFpuTop();
+    auto saved = saveFpuTemporaries();
+    compiler.blr(xWriteCacheToCPU);
+    compiler.fmov(asmjit::a64::d0, Vec::make_d(reg));
+    for (U32 i = 0; i < count; ++i) {
+        if (i) preCompile(region[i], true);
+        void* function = region[i]->inst == FSIN ? (void*)static_cast<double(*)(double)>(std::sin) :
+            region[i]->inst == FCOS ? (void*)static_cast<double(*)(double)>(std::cos) : (void*)armFpuExp2Minus1;
+        // Keep the exact sequence of library operations, with its intermediate
+        // result already in the next call's argument register. No guest memory,
+        // stack operation, branch, or independent entry crosses this region.
+        callRuntimeHelper(function);
+        if (i + 1 < count) postCompile(region[i]);
+    }
+    compiler.fmov(Vec::make_d(reg), asmjit::a64::d0);
+    callLoadCacheFromCPU();
+    restoreFpuTemporaries(saved);
+    slot.dirty = true;
+    if (clearC2) {
+        RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+        andValue(JitWidth::b32, sw, ~0x0400u);
+        writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), sw);
+    }
+    skipToOp = region[count - 1];
+    return true;
+}
+
+// A two-double homogeneous aggregate is returned in D0/D1 by AAPCS64,
+// including the Apple and Windows ARM64 variants.
+struct ArmFpuSinCosResult { double sine; double cosine; };
+static ArmFpuSinCosResult armFpuSinCos(double value) {
+    return {std::sin(value), std::cos(value)};
+}
+
+
+bool JitArmV8CodeGen::compileCachedFpuExamine(DecodedOp* op) {
+    if (op->inst != FXAM || !armCachedFpuExamineEnabled() ||
+            !fpuStackCache.entryTop) return false;
+    auto& slot = cachedFpuSlot(0);
+    if (!slot.loaded || slot.needsValidation) return false;
+#ifdef __TEST
+    ++cachedFpuExamines;
+#endif
+    RegPtr value = getTmpReg(), sign = getTmpReg(), result = getTmpReg(), scratch = getTmpReg();
+    compiler.fmov(R64(value), Vec::make_d(slot.value->hardwareReg()));
+    compiler.lsr(R64(sign), R64(value), 63);
+    compiler.lsl(R32(sign), R32(sign), 9);
+    Label empty = compiler.new_label(), nonzero = compiler.new_label();
+    Label hasExponent = compiler.new_label(), classified = compiler.new_label();
+    compiler.cmp(R32(cachedFpuTag(0)), TAG_Empty);
+    compiler.b_eq(empty);
+    compiler.lsl(R64(value), R64(value), 1); // discard sign; retain every fraction bit
+    movValue(JitWidth::b32, result, 0x0400);
+    compiler.cbnz(R64(value), nonzero);
+    movValue(JitWidth::b32, result, 0x4000);
+    compiler.b(classified);
+    compiler.bind(nonzero);
+    compiler.ubfx(R64(scratch), R64(value), 53, 11);
+    compiler.cbnz(R32(scratch), hasExponent);
+    // The common method compares subnormals with floating zero. Keep that
+    // comparison so the host's flush-input mode cannot change classification.
+    compiler.fcmp(Vec::make_d(slot.value->hardwareReg()), asmjit::Imm(0));
+    compiler.b_ne(classified);
+    movValue(JitWidth::b32, result, 0x4000);
+    compiler.b(classified);
+    compiler.bind(hasExponent);
+    compiler.cmp(R32(scratch), 0x7ff);
+    compiler.b_ne(classified);
+    movValue(JitWidth::b32, result, 0x0500);
+    compiler.lsl(R64(value), R64(value), 11);
+    compiler.cbz(R64(value), classified);
+    movValue(JitWidth::b32, result, 0x0100);
+    // Match the common NaN comparison's host exception status without changing
+    // the retained payload. Empty slots bypass all floating comparisons.
+    compiler.fcmp(Vec::make_d(slot.value->hardwareReg()), Vec::make_d(slot.value->hardwareReg()));
+    compiler.b(classified);
+    compiler.bind(empty);
+    movValue(JitWidth::b32, result, 0x4100);
+    compiler.bind(classified);
+    orReg(JitWidth::b32, result, sign);
+    RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+    andValue(JitWidth::b32, sw, ~0x4700u);
+    orReg(JitWidth::b32, sw, result);
+    writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), sw);
+    return true;
+}
+
+bool JitArmV8CodeGen::compilePureFpuHelper(DecodedOp* op) {
+    if (op->lock || !armFpuHelpersEnabled()) return false;
+    if (compileCachedFpuExamine(op)) return true;
+    void (*helper)(CPU*) = nullptr;
+    switch (op->inst) {
+    case F2XM1: helper = common_F2XM1; break;
+    case FSIN: helper = common_FSIN; break;
+    case FCOS: helper = common_FCOS; break;
+    case FPTAN: helper = common_FPTAN; break;
+    case FSINCOS: helper = common_FSINCOS; break;
+    case FYL2X: helper = common_FYL2X; break;
+    case FYL2XP1: helper = common_FYL2XP1; break;
+    case FPATAN: helper = common_FPATAN; break;
+    case FPREM: helper = common_FPREM; break;
+    case FPREM_nearest: helper = common_FPREM_nearest; break;
+    case FSCALE: helper = common_FSCALE; break;
+    case FXTRACT: helper = common_FXTRACT; break;
+    case FXAM: helper = common_FXAM; break;
+    default: return false;
+    }
+    const bool cachedBinary = armCachedFpuMathEnabled() &&
+        (op->inst == FYL2X || op->inst == FYL2XP1 || op->inst == FPATAN);
+    const bool cachedMath = armCachedFpuMathEnabled() &&
+        (op->inst == FSIN || op->inst == FCOS || op->inst == F2XM1 ||
+         op->inst == FPTAN || op->inst == FSINCOS);
+    if (cachedBinary && fpuStackCache.entryTop) {
+        auto& x = cachedFpuSlot(0);
+        auto& y = cachedFpuSlot(1);
+        if (x.loaded && !x.needsValidation && y.loaded && !y.needsValidation) {
+            // Both inputs are already binary64. Unknown/raw combinations retain
+            // the common helper's exact conversion and representation behavior.
+            // A retained value does not prove its slot is nonempty. The common
+            // FPOP sets stack-fault and exception-summary bits for an empty ST0.
+            {
+                RegPtr empty = getTmpReg8();
+                mov(JitWidth::b32, empty, cachedFpuTag(0));
+                compareValue(JitWidth::b8, empty, TAG_Empty, JitEvaluate::EQUALS, empty);
+                guardCachedFpuFallback(empty);
+            }
+            const U8 xReg = x.value->hardwareReg(), yReg = y.value->hardwareReg();
+            if (xReg < 8 || xReg > 15 || yReg < 8 || yReg > 15 || xReg == yReg)
+                kpanic("ARM cached binary math requires distinct saved D registers");
+            auto saved = saveFpuTemporaries();
+            auto function = op->inst == FYL2X ? common_fpuYLog2X :
+                op->inst == FYL2XP1 ? common_fpuYLog2XPlus1 : armFpuAtanYX;
+            compiler.blr(xWriteCacheToCPU);
+            compiler.fmov(asmjit::a64::d0, Vec::make_d(xReg));
+            compiler.fmov(asmjit::a64::d1, Vec::make_d(yReg));
+            callRuntimeHelper((void*)function);
+            compiler.fmov(Vec::make_d(yReg), asmjit::a64::d0);
+            callLoadCacheFromCPU();
+            restoreFpuTemporaries(saved);
+            y.dirty = true;
+            cachedFpuPop();
+            return true;
+        }
+    }
+    if (cachedMath && fpuStackCache.entryTop) {
+        auto& slot = cachedFpuSlot(0);
+        if (slot.loaded && !slot.needsValidation) {
+            // Only a value already proved to be cached binary64 can use this
+            // path. Raw or unknown inputs keep the common helper's exact
+            // representation/conversion behavior. D8-D15 survive the host ABI.
+            const U8 reg = slot.value->hardwareReg();
+            if (reg < 8 || reg > 15) kpanic("ARM cached math requires a callee-saved D register");
+            U8 cosineReg = INVALID_REG;
+            if (op->inst == FSINCOS) {
+                // Reserve the pushed result in the native cache before the
+                // call. Neither this helper nor libm can observe guest TOP.
+                cachedFpuPush(slot.value);
+                cosineReg = cachedFpuSlot(0).value->hardwareReg();
+                if (cosineReg < 8 || cosineReg > 15 || cosineReg == reg)
+                    kpanic("ARM cached sincos requires distinct saved D registers");
+            }
+            auto saved = saveFpuTemporaries();
+            void* function = op->inst == FSINCOS ? (void*)armFpuSinCos :
+                op->inst == FSIN ? (void*)static_cast<double(*)(double)>(std::sin) :
+                op->inst == FCOS ? (void*)static_cast<double(*)(double)>(std::cos) :
+                op->inst == FPTAN ? (void*)static_cast<double(*)(double)>(std::tan) : (void*)armFpuExp2Minus1;
+            compiler.blr(xWriteCacheToCPU);
+            compiler.fmov(asmjit::a64::d0, Vec::make_d(reg));
+            callRuntimeHelper(function);
+            compiler.fmov(Vec::make_d(reg), asmjit::a64::d0);
+            if (cosineReg != INVALID_REG) compiler.fmov(Vec::make_d(cosineReg), asmjit::a64::d1);
+            callLoadCacheFromCPU();
+            restoreFpuTemporaries(saved);
+            slot.dirty = true;
+            if (op->inst == FPTAN) cachedFpuLoadConst(offsetof(CPU, fOne));
+            if (op->inst != F2XM1) {
+                RegPtr sw = readCPU(JitWidth::b32, offsetof(CPU, fpu.sw));
+                andValue(JitWidth::b32, sw, ~0x0400u);
+                writeCPU(JitWidth::b32, offsetof(CPU, fpu.sw), sw);
+            }
+            return true;
+        }
+    }
+    // These register-only helpers neither access guest memory nor redirect
+    // execution. Preserve their cached/raw x87 semantics, but avoid decoding
+    // and dispatching the following instruction through jitRunSingleOp.
+    flushFpuCache();
+    writeCurrentEip(0);
+    callHostFunction((void*)helper, {DynParam(JitCallParamType::CPU)});
+    return true;
+}
+
+bool JitArmV8CodeGen::compileScalarSseRegion(DecodedOp* op) {
+    static const bool enabled = !std::getenv("BOXEDWINE_ARM_SCALAR_REGION_SLOW");
+    if (!enabled) return false;
+    static const bool elideCopies = !std::getenv("BOXEDWINE_ARM_SCALAR_ELIDE_COPIES_SLOW");
+    static const bool divss = !std::getenv("BOXEDWINE_ARM_SCALAR_DIVSS_REGION_SLOW");
+    const bool minMax = !std::getenv("BOXEDWINE_ARM_MINMAX_SELECT_SLOW");
+    auto fullCopy = [](DecodedOp* cur) {
+        if (!cur || cur->lock) return false;
+        switch (cur->inst) {
+        case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm:
+        case MovupdXmmXmm: case MovdqaXmmXmm: case MovdquXmmXmm: return true;
+        default: return false;
+        }
+    };
+    auto width = [minMax](DecodedOp* cur) -> U32 {
+        if (!cur || cur->lock) return 0;
+        switch (cur->inst) {
+        case AddssXmm: case SubssXmm: case MulssXmm: case SqrtssXmm: return 32;
+        case AddsdXmmXmm: case SubsdXmmXmm: case MulsdXmmXmm: case SqrtsdXmmXmm: return 64;
+        case MaxssXmm: case MinssXmm: return minMax ? 32 : 0;
+        case MaxsdXmmXmm: case MinsdXmmXmm: return minMax ? 64 : 0;
+        case DivssXmm: return divss ? 32 : 0;
+        case DivsdXmmXmm: return 64;
+        case MovssXmmXmm: return 32;
+        case MovsdXmmXmm: return 64;
+        case Cvtsi2ssXmmR32: return 32;
+        case Cvtsi2sdXmmR32: return 64;
+        default: return 0;
+        }
+    };
+    U32 bits = width(op);
+    if (!bits && !fullCopy(op)) return false;
+    std::array<DecodedOp*, 256> region{};
+    U32 count = 0, eip = currentEip, destinations = 0, arithmetic = 0;
+    for (DecodedOp* cur = op; cur && count < region.size(); eip += cur->len, cur = cur->next) {
+        if (eip > lastOpEip || (count && (cur->flags2 & OP_FLAG2_JUMP_TARGET))) break;
+        const bool copy = fullCopy(cur);
+        const U32 currentBits = width(cur);
+        if (!copy && (!currentBits || (bits && currentBits != bits))) break;
+        if (!bits && !copy) bits = currentBits;
+        region[count++] = cur;
+        if (copy) {
+            if (cur->reg != cur->rm) {
+                if (destinations & (1u << cur->rm)) destinations |= 1u << cur->reg;
+                else destinations &= ~(1u << cur->reg);
+            }
+        } else {
+            destinations |= 1u << cur->reg;
+            arithmetic += cur->inst != MovssXmmXmm && cur->inst != MovsdXmmXmm;
+        }
+    }
+    U32 destinationCount = 0;
+    for (U32 r = 0; r < 8; ++r) if (destinations & (1u << r)) ++destinationCount;
+    // A scalar move already costs one instruction. Only arithmetic contributes
+    // a removed merge; charge final merges for every written destination.
+    if (!bits || count < 2 || arithmetic <= destinationCount) return false;
+
+    // Keep only scalar results in temporaries. The cached guest XMM registers
+    // retain their upper lanes until one final merge per written destination.
+    // No memory, helper, branch, mixed width, or interior entry crosses the span.
+    std::array<SSERegPtr, 8> values{};
+    std::array<U8, 8> upperOrigins{0, 1, 2, 3, 4, 5, 6, 7};
+    auto lane = [bits](U8 reg) {
+        Vec result = bits == 64 ? Vec::make_d(reg).d2() : Vec::make_s(reg).s4();
+        result.set_element_index(0);
+        return result;
+    };
+    auto merge = [this, &values, &lane](U8 index) {
+        if (values[index]) {
+            compiler.ins(lane(xmmCache[index]), lane(values[index]->hardwareReg()));
+            values[index].reset();
+        }
+    };
+    auto scalar = [bits](SSERegPtr reg) {
+        return bits == 64 ? Vec::make_d(reg->hardwareReg()) : Vec::make_s(reg->hardwareReg());
+    };
+    auto source = [this, &values](U8 index) {
+        return values[index] ? values[index] : loadCpuXMMReg(index);
+    };
+    MakeSSE* make = bits == 64 ? +[](SSERegPtr r) { return Vec::make_d(r->hardwareReg()).d(); } :
+        +[](SSERegPtr r) { return Vec::make_s(r->hardwareReg()).s(); };
+    bool divisionGuarded = false;
+    for (U32 i = 0; i < count; ++i) {
+        auto* cur = region[i];
+        if (i) {
+            // Pending low lanes require the region's live temporaries. Hide
+            // these entries, but keep them promotable like scalar-zero proof
+            // interiors: an independent dispatch must recompile the region
+            // with a boundary here, rather than inherit its temporary state.
+            preCompile(cur);
+            scalarInternalEntries.insert(currentEip);
+        }
+        // preOp resets the per-instruction allocator; these values span ops.
+        for (const auto& value : values) if (value) vUsed[value->hardwareReg()] = true;
+        if (fullCopy(cur)) {
+            if (cur->reg != cur->rm) {
+                const bool redundant = elideCopies && values[cur->rm] &&
+                    upperOrigins[cur->reg] == upperOrigins[cur->rm];
+                // The cached Q registers still carry the correct upper
+                // lanes. Share the pending low value without serializing
+                // arithmetic through an INS and a full-width copy.
+                // Arithmetic below separates aliases before writing them.
+                values[cur->reg] = values[cur->rm];
+                // Scalar operations only write temporaries until the final
+                // merge. Equal origins therefore prove identical upper lanes.
+                // A pending low value supplies the rest of this full copy;
+                // without one, the physical low lane must still be copied.
+                if (!redundant) compiler.mov(Vec::make_q(xmmCache[cur->reg]), Vec::make_q(xmmCache[cur->rm]));
+#ifdef __TEST
+                else ++elidedVectorCopies;
+#endif
+                upperOrigins[cur->reg] = upperOrigins[cur->rm];
+            }
+            if (i + 1 < count) postCompile(cur);
+            continue;
+        }
+        if (cur->inst == DivssXmm && !divisionGuarded) {
+            // No instruction in this region changes MXCSR. Publish all
+            // preceding scalar results before interpreting this exact DIVSS
+            // when its exceptions are unmasked. The slow arm never rejoins.
+            auto savedCache = fpuStackCache;
+            RegPtr unmasked = readCPU(JitWidth::b32, offsetof(CPU, sseDivExceptionsUnmasked));
+            If(JitWidth::b32, unmasked); {
+                for (U8 r = 0; r < 8; ++r) if (values[r])
+                    compiler.ins(lane(xmmCache[r]), lane(values[r]->hardwareReg()));
+                emulateSingleOp();
+                blockExit();
+            } EndIf();
+            fpuStackCache = savedCache;
+            divisionGuarded = true;
+        }
+        auto left = source(cur->reg), right = source(cur->rm);
+        bool shared = false;
+        if (values[cur->reg]) for (U32 r = 0; r < values.size(); ++r)
+            if (r != cur->reg && values[r] == values[cur->reg]) shared = true;
+        if (!values[cur->reg] || shared) values[cur->reg] = getTmpSSE();
+        Vec dst = scalar(values[cur->reg]), lhs = scalar(left), rhs = scalar(right);
+        switch (cur->inst) {
+        case AddssXmm: case AddsdXmmXmm: compiler.fadd(dst, lhs, rhs); break;
+        case SubssXmm: case SubsdXmmXmm: compiler.fsub(dst, lhs, rhs); break;
+        case MulssXmm: case MulsdXmmXmm: compiler.fmul(dst, lhs, rhs); break;
+        case DivssXmm: case DivsdXmmXmm: compiler.fdiv(dst, lhs, rhs); break;
+        case SqrtssXmm: case SqrtsdXmmXmm: compiler.fsqrt(dst, rhs); break;
+        case MaxssXmm: case MaxsdXmmXmm: fmax(values[cur->reg], left, right, make); break;
+        case MinssXmm: case MinsdXmmXmm: fmin(values[cur->reg], left, right, make); break;
+        case MovssXmmXmm: case MovsdXmmXmm: compiler.fmov(dst, rhs); break;
+        case Cvtsi2ssXmmR32: case Cvtsi2sdXmmR32:
+            compiler.scvtf(dst, R32(getReadOnlyReg(cur->rm))); break;
+        default: kpanic("Unexpected scalar SSE region instruction");
+        }
+        if (i + 1 < count) postCompile(cur);
+    }
+    for (U8 r = 0; r < 8; ++r) merge(r);
+    skipToOp = region[count - 1];
+    return true;
 }
 
 void JitArmV8CodeGen::postCompile(DecodedOp* op) {
+    updateScalarZero(op);
     // Metadata uses ordinary GP temporaries; values have eight dedicated D regs.
     for (U8 i = 0; i < 8; ++i) spillFpuTag(i);
     spillFpuTop();
@@ -986,10 +2189,14 @@ void JitArmV8CodeGen::spillFpuTag(U8 index) {
     slot.tagDirty = false;
 }
 
+void JitArmV8CodeGen::preserveFpuCacheTop(RegPtr top) {
+    compiler.str(R32(top), Mem(xCPU, offsetof(CPU, armFpuCacheTop)));
+}
+
 void JitArmV8CodeGen::spillFpuTop() {
     auto& top = fpuStackCache.entryTop;
     if (!top || !top->isLoaded()) return;
-    compiler.str(R32(top), Mem(xCPU, offsetof(CPU, armFpuCacheTop)));
+    // Stack pushes/pops change the relative mapping, not the saved entry TOP.
     regUsed[top->hardwareReg()] = false;
     top->invalidateHardwareReg();
 }
@@ -1069,12 +2276,13 @@ void JitArmV8CodeGen::moveFpuReg(FPURegPtr dst, FPURegPtr src) {
 
 static void armCacheFpuValue(CPU* cpu, U32 index) { cpu->fpu.getF64(index); }
 
-void JitArmV8CodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
+bool JitArmV8CodeGen::loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest) {
     if (valid || !nearest) kpanic("unsupported ARM x87 cache validation");
     IfNotRegCached(index);
     callHostFunction((void*)armCacheFpuValue, {DynParam(JitCallParamType::CPU), DynParam(JitCallParamType::REG_32, index)});
     EndIf();
     loadCpuFpuReg(dst, index);
+    return false;
 }
 
 std::pair<U32, U32> JitArmV8CodeGen::saveFpuTemporaries(U8 result) {
@@ -1106,6 +2314,12 @@ void JitArmV8CodeGen::preOp(DecodedOp* op) {
     if (!opLabels.get(currentEip, label)) {
         label = compiler.new_label();
         opLabels.set(currentEip, label);
+    }
+    if (fpuRegisterLoop && currentEip == fpuRegisterLoop->header) {
+        // The public entry includes imports; the private backedge skips them.
+        // GP scratch metadata is reloaded per instruction, unlike D8-D15.
+        prepareFpuRegisterLoop(fpuRegisterLoop->slots);
+        spillFpuTop();
     }
     compiler.bind(label);
     pendingLabels.remove(currentEip);
@@ -1153,11 +2367,42 @@ FPURegPtr JitArmV8CodeGen::getFPUTmp() {
 }
 
 void JitArmV8CodeGen::emulateSingleOp() {
+    const bool memory = currentOp && (instructionInfo[currentOp->inst].readMemWidth ||
+        instructionInfo[currentOp->inst].writeMemWidth);
+    const bool cold = memory && !forceInlinePoll && !ifLabels.empty() &&
+        std::getenv("BOXEDWINE_ARM_MEMORY_EXIT_COLD");
+    asmjit::Section* originalSection = compiler.current_section();
+    if (cold) {
+        if (!pollExitSection) {
+            auto error = code.new_section(asmjit::Out(pollExitSection), ".poll-exits", SIZE_MAX,
+                asmjit::SectionFlags::kExecutable, 4, 1);
+            if (error != asmjit::Error::kOk) kpanic("ARM JIT could not allocate cold memory exits");
+        }
+        Label exit = compiler.new_label();
+        compiler.b(exit);
+        compiler.section(pollExitSection);
+        compiler.bind(exit);
+    }
     materializeFpuCache();
     writeCurrentEip(0);
 
-    //compiler.mov(xBranch, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
-    compiler.br(xEmulateSingleOp); // we won't return to here
+    if (cacheLinearMemoryBase()) {
+        if (std::getenv("BOXEDWINE_ARM_HELPER_LITERAL")) {
+            // This is a tail transfer: execution cannot fall through into the
+            // immutable pointer literal. The next guest entry follows it.
+            Label pointer = compiler.new_label();
+            compiler.ldr(xBranch, Mem(pointer));
+            compiler.br(xBranch);
+            compiler.bind(pointer);
+            compiler.embed_uint64((DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+        } else {
+            compiler.mov(xBranch, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+            compiler.br(xBranch);
+        }
+    } else {
+        compiler.br(xEmulateSingleOp);
+    } // we won't return to here
+    if (cold) compiler.section(originalSection);
 }
 
 U8 JitArmV8CodeGen::findTmpReg(bool allowInvalidReturn) {
@@ -1546,6 +2791,13 @@ void JitArmV8CodeGen::addRegWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, 
 }
 
 void JitArmV8CodeGen::addValue(JitWidth regWidth, RegPtr reg, U32 imm) {
+    // Guest address arithmetic wraps at 32 bits. A negative displacement can
+    // therefore use SUB immediate without materializing its unsigned value.
+    // Do not apply this to a 64-bit add, where that value is positive.
+    if (regWidth == JitWidth::b32 && asmjit::a64::Utils::is_add_sub_imm(0u - imm)) {
+        compiler.sub(R32(reg), R32(reg), 0u - imm);
+        return;
+    }
     if (!asmjit::a64::Utils::is_add_sub_imm(imm)) {
         addReg(regWidth, reg, loadConst(imm));
         return;
@@ -1556,11 +2808,18 @@ void JitArmV8CodeGen::addValue(JitWidth regWidth, RegPtr reg, U32 imm) {
 }
 
 void JitArmV8CodeGen::addValueWithDest(JitWidth regWidth, RegPtr dst, RegPtr reg, U32 value) {
-    if (asmjit::a64::Utils::is_add_sub_imm(value)) {
-        if (regWidth == JitWidth::b32) {
+    if (regWidth == JitWidth::b32) {
+        if (asmjit::a64::Utils::is_add_sub_imm(value)) {
             compiler.add(R32(dst), R32(reg), value);
-            return;
-        } else if (regWidth == JitWidth::b64) {
+        } else if (asmjit::a64::Utils::is_add_sub_imm(0u - value)) {
+            compiler.sub(R32(dst), R32(reg), 0u - value);
+        } else {
+            compiler.add(R32(dst), R32(reg), R32(loadConst(value)));
+        }
+        return;
+    }
+    if (asmjit::a64::Utils::is_add_sub_imm(value)) {
+        if (regWidth == JitWidth::b64) {
             compiler.add(R64(dst), R64(reg), value);
             return;
         }
@@ -2412,12 +3671,15 @@ void JitArmV8CodeGen::mulReg(JitWidth regWidth, RegPtr reg) {
 
 void JitArmV8CodeGen::imulRR(JitWidth regWidth, RegPtr dst, RegPtr src, RegPtr overflow) {
     if (regWidth == JitWidth::b32) {
-        compiler.smull(R64(dst), R32(dst), R32(src));
-
         if (overflow) {
+            compiler.smull(R64(dst), R32(dst), R32(src));
             compiler.lsr(R64(overflow), R64(dst), 32);
+            compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
+        } else {
+            // A truncated product has identical low bits for signed and
+            // unsigned inputs. The W form also clears the upper host bits.
+            compiler.mul(R32(dst), R32(dst), R32(src));
         }
-        compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
     } else if (regWidth == JitWidth::b16) {
         if (overflow) {
             kpanic("JitArmV8CodeGen::imulRR overflow");
@@ -2435,14 +3697,15 @@ void JitArmV8CodeGen::imulRR(JitWidth regWidth, RegPtr dst, RegPtr src, RegPtr o
 }
 
 void JitArmV8CodeGen::imulRRI(JitWidth regWidth, RegPtr dst, RegPtr src, U32 src2, RegPtr overflow) {    
-    RegPtr value = loadConst(src2);
     if (regWidth == JitWidth::b32) {
         RegPtr value = loadConst(src2);
-        compiler.smull(R64(dst), R32(src), R32(value));
         if (overflow) {
+            compiler.smull(R64(dst), R32(src), R32(value));
             compiler.ubfx(R64(overflow), R64(dst), 32, 32);
+            compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
+        } else {
+            compiler.mul(R32(dst), R32(src), R32(value));
         }
-        compiler.mov(R32(dst), R32(dst)); // clear out top 32-bits
     } else if (regWidth == JitWidth::b16) {
         RegPtr value = loadConst((S32)((S16)src2));
         RegPtr src16 = getTmpReg();
@@ -2596,7 +3859,6 @@ void JitArmV8CodeGen::idivRegRegWithRemainder(JitWidth regWidth, RegPtr dest, Re
     }
 }
 
-#include "../../softmmu/kmemory_soft.h"
 void JitArmV8CodeGen::readMMU(RegPtr dest, RegPtr index, U32 offset) {
     compiler.ldr(R64(dest), createMem(regMMU, index->hardwareReg(), 3, offset));
 }
@@ -2606,6 +3868,11 @@ void JitArmV8CodeGen::readMMU(RegPtr dest, U32 index) {
 }
 
 RegPtr JitArmV8CodeGen::getLinearMemoryBase(RegPtr tmp) {
+    if (cacheLinearMemoryBase()) {
+        // This callee-saved register is loaded at JIT entry and is never a
+        // destination or temporary, including when a guest access faults.
+        return std::make_shared<JitReg>(26, 0xff);
+    }
     // A grouped linear-memory read can fault when another guest page in the
     // host-page group prevents a direct mapping. Keep the address base out of
     // the load destination so the exception context retains a valid address
@@ -2759,6 +4026,21 @@ void JitArmV8CodeGen::readHost(JitWidth width, MemPtr mem, RegPtr dest, bool eml
 void JitArmV8CodeGen::readHostValue(JitWidth width, MemPtr mem, RegPtr dest, bool emlulatedMemory, bool signExtend) {
     // Always replace the whole W/X register, even for a byte or word load.
     // In particular, guest ESP-EDI destinations here do not mean AH-BH.
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    static const bool signedLoads = !std::getenv("BOXEDWINE_ARM_SIGNED_ACQUIRE_LOADS_SLOW");
+    const bool signedAcquire = signedLoads && signExtend &&
+        (width == JitWidth::b8 || width == JitWidth::b16);
+    if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 &&
+            currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT && signedAcquire) {
+        // Signed LDAPUR has the same acquire ordering and fault tier as
+        // the existing LDAPR path, and replaces the following SXTB/SXTH.
+        MemPtr address = mem->copy();
+        RegPtr base = calculateAddress(address);
+        U32 instruction = width == JitWidth::b8 ? 0x19c00000u : 0x59c00000u;
+        compiler.embed_uint32(instruction | (base->hardwareReg() << 5) | dest->hardwareReg());
+        return;
+    }
+#endif
     if (width == JitWidth::b32) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
         if (emlulatedMemory && tsoMode == TSOMode::FEAT_LRCPC2 && currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
@@ -2950,6 +4232,8 @@ RegPtr JitArmV8CodeGen::readCPU(JitWidth width, U32 offset, RegPtr reg) {
 }
 
 RegPtr JitArmV8CodeGen::readCPU(JitWidth width, RegPtr sib, U8 lsl, U32 offset, RegPtr reg) {
+    // Shared CPU-field guards use a null index for a direct field access.
+    if (!sib) return readCPU(width, offset, std::move(reg));
     if (!reg) {
         reg = getTmpReg();
     }
@@ -3165,6 +4449,21 @@ void JitArmV8CodeGen::setParams(const std::vector<DynParam>& params) {
     }
 }
 
+void JitArmV8CodeGen::callLoadCacheFromCPU() {
+    if (cacheFlatJitBase(cpu)) {
+        // The target-table base is hotter than the helper address. This helper
+        // follows the native ABI and preserves the callee-saved x28 base.
+        callRuntimeHelper((void*)cpu->thread->process->syncToHost);
+    } else {
+        compiler.blr(xLoadCacheFromCPU);
+    }
+}
+
+void JitArmV8CodeGen::callRuntimeHelper(void* address) {
+    compiler.mov(xBranch, (U64)address);
+    compiler.blr(xBranch);
+}
+
 void JitArmV8CodeGen::callHostFunction(void* address, const std::vector<DynParam>& params, bool restoreCache, bool saveCache) {
     materializeFpuCache();
     auto saved = saveFpuTemporaries();
@@ -3173,11 +4472,10 @@ void JitArmV8CodeGen::callHostFunction(void* address, const std::vector<DynParam
     }
     setParams(params);    
 
-    compiler.mov(xBranch, (U64)address);
-    compiler.blr(xBranch);
+    callRuntimeHelper(address);
 
     if (restoreCache) {
-        compiler.blr(xLoadCacheFromCPU);
+        callLoadCacheFromCPU();
     }
     restoreFpuTemporaries(saved);
 }
@@ -3197,10 +4495,9 @@ void JitArmV8CodeGen::callHostFunctionWithResult(RegPtr result, void* address, c
 
     setParams(params);
 
-    compiler.mov(xBranch, (U64)address);
-    compiler.blr(xBranch);
+    callRuntimeHelper(address);
     compiler.mov(R64(result), xEAX);
-    compiler.blr(xLoadCacheFromCPU);
+    callLoadCacheFromCPU();
     restoreFpuTemporaries(saved);
 }
 
@@ -3528,11 +4825,7 @@ RegPtr JitArmV8CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
                     }
                 } else if (disp) {
                     result = getTmpReg();
-                    if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
-                        compiler.add(R32(result), R32(getReadOnlyReg(op->sibIndex)), R32(loadConst(disp)));
-                    } else {
-                        compiler.add(R32(result), R32(getReadOnlyReg(op->sibIndex)), disp);
-                    }
+                    addValueWithDest(JitWidth::b32, result, getReadOnlyReg(op->sibIndex), disp);
                 } else if (base) {
                     result = getTmpReg();
                     compiler.add(R32(result), R32(getReadOnlyReg(op->sibIndex)), R32(base));
@@ -3552,20 +4845,12 @@ RegPtr JitArmV8CodeGen::calculateEaa(DecodedOp* op, U32 popEspAmount) {
                 }
             } else {
                 result = getTmpReg();
-                if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
-                    compiler.add(R32(result), R32(getReadOnlyReg(op->rm)), R32(loadConst(disp)));
-                } else {
-                    compiler.add(R32(result), R32(getReadOnlyReg(op->rm)), disp);
-                }
+                addValueWithDest(JitWidth::b32, result, getReadOnlyReg(op->rm), disp);
             }
         } else if (disp) {
             result = getTmpReg();
             if (base) {
-                if (!asmjit::a64::Utils::is_add_sub_imm(disp)) {
-                    compiler.add(R32(result), R32(base), R32(loadConst(disp)));
-                } else {
-                    compiler.add(R32(result), R32(base), disp);
-                }
+                addValueWithDest(JitWidth::b32, result, base, disp);
                 base = nullptr;
             } else {
                 movValue(JitWidth::b32, result, disp);
@@ -3615,7 +4900,13 @@ void JitArmV8CodeGen::clearIfSpansPage(JitWidth width, RegPtr offset, RegPtr reg
     clearMMUPermissionIfSpansPage(width, offset, reg);
 }
 
-void JitArmV8CodeGen::JumpIfCondition(JitConditional condition, U32 address) {    
+void JitArmV8CodeGen::JumpIfCondition(JitConditional condition, U32 address) {
+    if (!isBlockOpBoundary(address)) {
+        IfCondition(condition);
+        branchToSideExit(address);
+        EndIf();
+        return;
+    }
     Label label;
 
     bool negative = false;
@@ -3786,6 +5077,18 @@ void JitArmV8CodeGen::IfSseLessThan(SSERegPtr src1, SSERegPtr src2) {
 }
 
 void JitArmV8CodeGen::fmax(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake) {
+    if (!std::getenv("BOXEDWINE_ARM_MINMAX_SELECT_SLOW")) {
+        // x86 selects the right operand for unordered/equal inputs, including
+        // signed zero and the exact NaN payload. FCMGT is false in those cases.
+        bool leftAlias = dst->hardwareReg() == src1->hardwareReg();
+        bool rightAlias = dst->hardwareReg() == src2->hardwareReg();
+        SSERegPtr mask = leftAlias || rightAlias ? getTmpSSE() : dst;
+        compiler.fcmgt(vMake(mask), vMake(src1), vMake(src2));
+        if (leftAlias) compiler.bif(toSseB16(dst), toSseB16(src2), toSseB16(mask));
+        else if (rightAlias) compiler.bit(toSseB16(dst), toSseB16(src1), toSseB16(mask));
+        else compiler.bsl(toSseB16(dst), toSseB16(src1), toSseB16(src2));
+        return;
+    }
     SSERegPtr vTmpReg = getTmpSSE();
     SSERegPtr vTmpReg2 = getTmpSSE();    
 
@@ -3817,6 +5120,18 @@ void JitArmV8CodeGen::fmax(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSS
 }
 
 void JitArmV8CodeGen::fmin(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, MakeSSE vMake) {
+    if (!std::getenv("BOXEDWINE_ARM_MINMAX_SELECT_SLOW")) {
+        // x86 selects the right operand for unordered/equal inputs, including
+        // signed zero and the exact NaN payload. FCMGT is false in those cases.
+        bool leftAlias = dst->hardwareReg() == src1->hardwareReg();
+        bool rightAlias = dst->hardwareReg() == src2->hardwareReg();
+        SSERegPtr mask = leftAlias || rightAlias ? getTmpSSE() : dst;
+        compiler.fcmgt(vMake(mask), vMake(src2), vMake(src1));
+        if (leftAlias) compiler.bif(toSseB16(dst), toSseB16(src2), toSseB16(mask));
+        else if (rightAlias) compiler.bit(toSseB16(dst), toSseB16(src1), toSseB16(mask));
+        else compiler.bsl(toSseB16(dst), toSseB16(src1), toSseB16(src2));
+        return;
+    }
     SSERegPtr vTmpReg = getTmpSSE();
     SSERegPtr vTmpReg2 = getTmpSSE();
 
@@ -3882,6 +5197,28 @@ void JitArmV8CodeGen::sseConvertFloatToInt(RegPtr dst, Vec src, bool truncate) {
         } else if (roundingMode == ROUND_Chop) {
             compiler.fcvtzs(R32(dst), src);
         }
+    }
+}
+
+void JitArmV8CodeGen::truncateScalarToInt32(RegPtr dst, SSERegPtr src, bool doublePrecision) {
+    const Vec input = doublePrecision ? toSseD(src) : toSseS(src);
+    static const bool useFrintts = asmjit::CpuInfo::host().features().arm().has_frintts() &&
+        !std::getenv("BOXEDWINE_ARM_FRINTTS_SLOW");
+    if (useFrintts) {
+        // FRINT32Z produces the x86 indefinite value for NaN, infinity and
+        // overflow before FCVTZS converts the integral floating-point value.
+        SSERegPtr tmp = getTmpSSE();
+        const Vec rounded = doublePrecision ? toSseD(tmp) : toSseS(tmp);
+        compiler.frint32z(rounded, input);
+        compiler.fcvtzs(R32(dst), rounded);
+    } else {
+        // Negative overflow already saturates to INT_MIN. Keep the converted
+        // result only for an ordered value below +2^31; this also rejects NaN.
+        SSERegPtr limit = loadSSEConst(doublePrecision ? SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE : SSE_MAX_INT32_PLUS_ONE_AS_FLOAT);
+        compiler.fcvtzs(R32(dst), input);
+        compiler.fcmp(input, doublePrecision ? toSseD(limit) : toSseS(limit));
+        RegPtr indefinite = loadConst(0x80000000);
+        compiler.csel(R32(dst), R32(dst), R32(indefinite), asmjit::a64::CondCode::kMI);
     }
 }
 
@@ -4045,37 +5382,85 @@ void JitArmV8CodeGen::sseCmp(SSERegPtr dst, SSERegPtr src1, SSERegPtr src2, U8 p
 }
 
 void JitArmV8CodeGen::comis(SSERegPtr dst, SSERegPtr src, MakeSSE vMake) {
-    // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
-    // if (isnan(a.f64[0]) || isnan(b.f64[0])) {
-    //     cpu->flags |= CF | ZF | PF;
-    // } else if (a.f64[0] == b.f64[0]) {
-    //     cpu->flags |= ZF;
-    // } else if (a.f64[0] < b.f64[0]) {
-    //     cpu->flags |= CF;
-    // }
-    RegPtr tmpReg = getTmpReg();
+    auto materialize = [&] {
+        // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
+        // if (isnan(a.f64[0]) || isnan(b.f64[0])) {
+        //     cpu->flags |= CF | ZF | PF;
+        // } else if (a.f64[0] == b.f64[0]) {
+        //     cpu->flags |= ZF;
+        // } else if (a.f64[0] < b.f64[0]) {
+        //     cpu->flags |= CF;
+        // }
+        RegPtr tmpReg = getTmpReg();
 
-    // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
-    compiler.movn(R32(tmpReg), AF | OF | SF | CF | PF | ZF);
-    compiler.and_(xFLAGS, xFLAGS, R32(tmpReg));
-    
-    compiler.fcmp(vMake(dst), vMake(src));
+        // cpu->flags &= ~(AF | OF | SF | CF | PF | ZF);
+        compiler.movn(R32(tmpReg), AF | OF | SF | CF | PF | ZF);
+        compiler.and_(xFLAGS, xFLAGS, R32(tmpReg));
 
-    // if (isnan(a.f64[0]) || isnan(b.f64[0])) { cpu->flags |= CF | ZF | PF; }
-    compiler.mov(R32(tmpReg), CF | PF | ZF);
-    compiler.orr(R32(tmpReg), xFLAGS, R32(tmpReg));
-    compiler.csel(xFLAGS, R32(tmpReg), xFLAGS, asmjit::a64::CondCode::kVS);
+        compiler.fcmp(vMake(dst), vMake(src));
 
-    // else if (a.f64[0] == b.f64[0]) { cpu->flags |= ZF; }
-    compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kEQ);
-    compiler.orr(xFLAGS, xFLAGS, R32(tmpReg), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 6))); // 6 for ZF
+        // if (isnan(a.f64[0]) || isnan(b.f64[0])) { cpu->flags |= CF | ZF | PF; }
+        compiler.mov(R32(tmpReg), CF | PF | ZF);
+        compiler.orr(R32(tmpReg), xFLAGS, R32(tmpReg));
+        compiler.csel(xFLAGS, R32(tmpReg), xFLAGS, asmjit::a64::CondCode::kVS);
 
-    // else if (a.f64[0] < b.f64[0]) {cpu->flags |= CF; }
-    compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kLT);
-    compiler.orr(xFLAGS, xFLAGS, R32(tmpReg));
-    storeLazyFlagType(FLAGS_NONE);
-    currentLazyFlags = FLAGS_NONE;
+        // else if (a.f64[0] == b.f64[0]) { cpu->flags |= ZF; }
+        compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kEQ);
+        compiler.orr(xFLAGS, xFLAGS, R32(tmpReg), asmjit::Imm(asmjit::a64::Shift(asmjit::a64::ShiftOp::kLSL, 6))); // 6 for ZF
+
+        // else if (a.f64[0] < b.f64[0]) {cpu->flags |= CF; }
+        compiler.cset(R32(tmpReg), asmjit::a64::CondCode::kLT);
+        compiler.orr(xFLAGS, xFLAGS, R32(tmpReg));
+        storeLazyFlagType(FLAGS_NONE);
+        currentLazyFlags = FLAGS_NONE;
+    };
+    bool canFuseMemoryCompare = !std::getenv("BOXEDWINE_ARM_SSE_MEMORY_SLOW");
+    if (instructionInfo[currentOp->inst].readMemWidth) {
+        // read() has already emitted the guest load. A fused backward branch
+        // would insert a scheduler poll here and restart at the producer,
+        // potentially observing a different memory value. Keep that case on
+        // the ordinary path until the poll can be emitted before the load.
+        U32 eip = currentEip + currentOp->len;
+        DecodedOp* next = currentOp->next;
+        for (U32 i = 0; next && i < getDirectFlagWindow(); ++i, eip += next->len, next = next->next) {
+            if (next->isJumpCC() && eip + next->len + next->imm <= eip) {
+                canFuseMemoryCompare = false;
+                break;
+            }
+            if (instructionInfo[next->inst].flagsSets) break;
+        }
+    }
+    const bool canFuseCompare = !instructionInfo[currentOp->inst].readMemWidth || canFuseMemoryCompare;
+    if (canFuseCompare &&
+            !std::getenv("BOXEDWINE_ARM_SSE_NATIVE_FLAGS_SLOW") &&
+            !std::getenv("BOXEDWINE_ARM_SSE_COMPARE_SLOW")) {
+        // FCMP directly describes x86 below/below-or-equal and unordered.
+        // Keeping its native flags also makes parity available without
+        // constructing EFLAGS or saving/restoring the unordered bit.
+        bool fused = false;
+        directFloatFlags = true;
+        tryDirect(currentOp, [&] {
+            compiler.fcmp(vMake(dst), vMake(src));
+            fused = true;
+        }, [] {}, CF | ZF | PF);
+        directFloatFlags = false;
+        if (fused) return;
+    }
+    if (canFuseCompare &&
+            armJitHasFlagM2() &&
+            !std::getenv("BOXEDWINE_ARM_SSE_COMPARE_SLOW")) {
+        tryDirect(currentOp, [&] {
+            compiler.fcmp(vMake(dst), vMake(src));
+            // AXFLAG includes unordered in Z, clears N/V, and leaves C as
+            // the inverse of x86 CF. Parity still needs the materialized path.
+            compiler.axflag();
+            cfInverted = true;
+        }, materialize, CF | ZF | SF | OF);
+    } else {
+        materialize();
+    }
 }
+
 
 void JitArmV8CodeGen::storeCpuXMMReg(SSERegPtr reg, U32 index) {
     if (index >= 8) {
@@ -4454,8 +5839,11 @@ void JitArmV8CodeGen::cvtps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
 
 void JitArmV8CodeGen::cvtsi2ssXmmR32(SSERegPtr dst, RegPtr src) {
     SSERegPtr tmp = getTmpSSE();
-    compiler.ins(toSseS4(tmp, 0), R32(src));
-    compiler.scvtf(toSseS(tmp), toSseS(tmp));
+    if (armGpScalarConversionEnabled()) compiler.scvtf(toSseS(tmp), R32(src));
+    else {
+        compiler.ins(toSseS4(tmp, 0), R32(src));
+        compiler.scvtf(toSseS(tmp), toSseS(tmp));
+    }
     compiler.ins(toSseS4(dst, 0), toSseS4(tmp, 0)); // need to maintain the high 96-bits
 }
 
@@ -4470,9 +5858,7 @@ void JitArmV8CodeGen::cvttps2piMmxXmm(MMXRegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::cvttss2siR32Xmm(RegPtr dst, SSERegPtr src) {
-    SSERegPtr tmp = getTmpSSE();
-    cvtps2pi(tmp, src, true);
-    compiler.umov(R32(dst), toSseS4(tmp, 0));
+    truncateScalarToInt32(dst, src, false);
 }
 
 void JitArmV8CodeGen::movhlpsXmmXmm(SSERegPtr dst, SSERegPtr src) {
@@ -4487,10 +5873,93 @@ void JitArmV8CodeGen::movssXmmXmm(SSERegPtr dst, SSERegPtr src) {
     compiler.ins(toSseS4(dst, 0), toSseS4(src, 0));
 }
 
+bool JitArmV8CodeGen::shuffleDwords(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    switch (mask) {
+    case 0x00:
+    case 0x55:
+    case 0xaa:
+    case 0xff:
+        compiler.dup(toSseS4(dst), toSseS4(src, mask & 3));
+        break;
+    case 0xe4:
+        if (dst->hardwareReg() != src->hardwareReg()) {
+            compiler.mov(toSse128(dst), toSse128(src));
+        }
+        break;
+    case 0xb1:
+        compiler.rev64(toSseS4(dst), toSseS4(src));
+        break;
+    case 0x1b:
+        compiler.rev64(toSseS4(dst), toSseS4(src));
+        compiler.ext(toSseB16(dst), toSseB16(dst), toSseB16(dst), 8);
+        break;
+    case 0x39:
+    case 0x4e:
+    case 0x93:
+        compiler.ext(toSseB16(dst), toSseB16(src), toSseB16(src), (mask & 3) * 4);
+        break;
+    case 0x44:
+        compiler.zip1(toSseD2(dst), toSseD2(src), toSseD2(src));
+        break;
+    case 0xee:
+        compiler.zip2(toSseD2(dst), toSseD2(src), toSseD2(src));
+        break;
+    case 0x88:
+        compiler.uzp1(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0xdd:
+        compiler.uzp2(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0x50:
+        compiler.zip1(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0xfa:
+        compiler.zip2(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0xa0:
+        compiler.trn1(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    case 0xf5:
+        compiler.trn2(toSseS4(dst), toSseS4(src), toSseS4(src));
+        break;
+    default:
+        return false;
+    }
+    return true;
+}
+
 void JitArmV8CodeGen::shufpsXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    if (dst->hardwareReg() == src->hardwareReg() && shuffleDwords(dst, src, mask)) {
+        return;
+    }
+    // These selections preserve whole pairs or select even/odd lanes. ARM's
+    // vector shuffles read both inputs before writing the destination, so the
+    // same paths are also valid when the guest operands alias.
+    switch (mask) {
+    case 0x44:
+        compiler.zip1(toSseD2(dst), toSseD2(dst), toSseD2(src));
+        return;
+    case 0xee:
+        compiler.zip2(toSseD2(dst), toSseD2(dst), toSseD2(src));
+        return;
+    case 0xe4:
+        compiler.ins(toSseD2(dst, 1), toSseD2(src, 1));
+        return;
+    case 0x4e:
+        compiler.ext(toSseB16(dst), toSseB16(dst), toSseB16(src), 8);
+        return;
+    case 0x88:
+        compiler.uzp1(toSseS4(dst), toSseS4(dst), toSseS4(src));
+        return;
+    case 0xdd:
+        compiler.uzp2(toSseS4(dst), toSseS4(dst), toSseS4(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     
-    compiler.ins(toSseS4(tmp, 0), toSseS4(dst, mask & 3));
+    // Start with a complete write: inserting lane zero would retain a false
+    // dependency on the previous instruction that used this temporary.
+    compiler.dup(toSseS4(tmp), toSseS4(dst, mask & 3));
     compiler.ins(toSseS4(tmp, 1), toSseS4(dst, (mask >> 2) & 3));
     compiler.ins(toSseS4(tmp, 2), toSseS4(src, (mask >> 4) & 3));
     compiler.ins(toSseS4(tmp, 3), toSseS4(src, (mask >> 6) & 3));
@@ -4625,6 +6094,17 @@ RegPtr JitArmV8CodeGen::getLazyFlagTypeInTmp() {
 
 RegPtr JitArmV8CodeGen::getReadOnlyFlags(RegPtr tmp) {
     return std::make_shared<JitReg>(regFlags, 0xff);
+}
+
+U32 JitArmV8CodeGen::ramAccessAlignment(JitWidth width) {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    // LDAPR/STLUR can fault on unaligned accesses even to accessible RAM.
+    if (width <= JitWidth::b64 && tsoMode == TSOMode::FEAT_LRCPC2 &&
+            currentOp->exceptionCount < MAX_OP_EXCEPTION_COUNT) {
+        return 1u << (U32)width;
+    }
+#endif
+    return 1;
 }
 
 void JitArmV8CodeGen::comissXmmXmm(SSERegPtr dst, SSERegPtr src) {
@@ -4981,6 +6461,10 @@ void JitArmV8CodeGen::addpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::addsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fadd(toSseD(dst), toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fadd(toSseD(tmp), toSseD(dst), toSseD(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
@@ -4991,6 +6475,10 @@ void JitArmV8CodeGen::subpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::subsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fsub(toSseD(dst), toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fsub(toSseD(tmp), toSseD(dst), toSseD(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
@@ -5001,6 +6489,10 @@ void JitArmV8CodeGen::mulpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::mulsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fmul(toSseD(dst), toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fmul(toSseD(tmp), toSseD(dst), toSseD(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
@@ -5011,6 +6503,10 @@ void JitArmV8CodeGen::divpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::divsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fdiv(toSseD(dst), toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fdiv(toSseD(tmp), toSseD(dst), toSseD(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0)); // need to maintain the high 64-bits
@@ -5146,6 +6642,10 @@ void JitArmV8CodeGen::sqrtpdXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::sqrtsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (hasZeroUpper64(dst)) {
+        compiler.fsqrt(toSseD(dst), toSseD(src));
+        return;
+    }
     SSERegPtr tmp = getTmpSSE();
     compiler.fsqrt(toSse64(tmp), toSse64(src));
     compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0));
@@ -5400,9 +6900,12 @@ void JitArmV8CodeGen::cvtsd2ssXmmXmm(SSERegPtr dst, SSERegPtr src) {
 void JitArmV8CodeGen::cvtsi2sdXmmR32(SSERegPtr dst, RegPtr src) {
     // cpu->xmm[reg].pd.f64[0] = cpu->reg[rm].u32;
     SSERegPtr tmpReg = getTmpSSE();
-    compiler.ins(toSseS4(tmpReg, 0), R32(src));
-    compiler.sxtl(toSseD2(tmpReg), toSseS2(tmpReg));
-    compiler.scvtf(toSseD(tmpReg), toSseD(tmpReg));
+    if (armGpScalarConversionEnabled()) compiler.scvtf(toSseD(tmpReg), R32(src));
+    else {
+        compiler.ins(toSseS4(tmpReg, 0), R32(src));
+        compiler.sxtl(toSseD2(tmpReg), toSseS2(tmpReg));
+        compiler.scvtf(toSseD(tmpReg), toSseD(tmpReg));
+    }
     compiler.ins(toSseD2(dst, 0), toSseD2(tmpReg, 0));
 }
 
@@ -5426,10 +6929,14 @@ void JitArmV8CodeGen::cvttps2dqXmmXmm(SSERegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::cvttsd2siR32Xmm(RegPtr dst, SSERegPtr src) {
-    cvtsd2si(dst, src, true);
+    truncateScalarToInt32(dst, src, true);
 }
 
 void JitArmV8CodeGen::movsdXmmXmm(SSERegPtr dst, SSERegPtr src) {
+    if (scalarZeroDirectEnabled && hasZeroUpper64(dst)) {
+        compiler.fmov(toSseD(dst), toSseD(src));
+        return;
+    }
     compiler.ins(toSseD2(dst, 0), toSseD2(src, 0));
 }
 
@@ -5454,9 +6961,8 @@ void JitArmV8CodeGen::movd(RegPtr dst, SSERegPtr src) {
 }
 
 void JitArmV8CodeGen::movd(SSERegPtr dst, RegPtr src) {
-    // couldn't see a way to do this in 1 instruction, "mov s0, w0" is not valid
-    compiler.ins(toSseS4(dst, 0), R32(src));
-    compiler.mov(toSseS(dst), toSseS4(dst, 0));
+    // Bitwise transfer, with the upper 96 bits cleared as required by MOVD.
+    compiler.fmov(toSseS(dst), R32(src));
 }
 
 void JitArmV8CodeGen::movdq2q(MMXRegPtr dst, SSERegPtr src) {
@@ -5487,12 +6993,15 @@ void JitArmV8CodeGen::maskmovdqu(SSERegPtr src, SSERegPtr mask, MemPtr address) 
 }
 
 void JitArmV8CodeGen::pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    if (shuffleDwords(dst, src, mask)) {
+        return;
+    }
     SSERegPtr tmp = dst;
 
     if (dst->hardwareReg() == src->hardwareReg()) {
         tmp = getTmpSSE();
     }
-    compiler.ins(toSseS4(tmp, 0), toSseS4(src, mask & 3));
+    compiler.dup(toSseS4(tmp), toSseS4(src, mask & 3));
     compiler.ins(toSseS4(tmp, 1), toSseS4(src, (mask >> 2) & 3));
     compiler.ins(toSseS4(tmp, 2), toSseS4(src, (mask >> 4) & 3));
     compiler.ins(toSseS4(tmp, 3), toSseS4(src, (mask >> 6) & 3));
@@ -5501,54 +7010,59 @@ void JitArmV8CodeGen::pshufdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
     }
 }
 
-// from spec: The low quadword of the source operand is copied to the low quadword of the destination operand, for each 128-bit lane.
-void JitArmV8CodeGen::pshufhwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
-    SSERegPtr tmp = dst;
-
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        tmp = getTmpSSE();
+void JitArmV8CodeGen::shuffleWords(SSERegPtr dst, SSERegPtr src, U32 mask, bool high) {
+    const bool alias = dst->hardwareReg() == src->hardwareReg();
+    if (mask == 0xe4) {
+        if (!alias) compiler.mov(toSse128(dst), toSse128(src));
+        return;
     }
-    compiler.ins(toSseH8(tmp, 4), toSseH8(src, 4 + (mask & 3)));
-    compiler.ins(toSseH8(tmp, 5), toSseH8(src, 4 + ((mask >> 2) & 3)));
-    compiler.ins(toSseH8(tmp, 6), toSseH8(src, 4 + ((mask >> 4) & 3)));
-    compiler.ins(toSseH8(tmp, 7), toSseH8(src, 4 + ((mask >> 6) & 3)));
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        compiler.ins(toSseD2(dst, 1), toSseD2(tmp, 1));
+    SSERegPtr tmp = alias ? getTmpSSE() : dst;
+    const U32 first = high ? 4 : 0;
+    if (mask == 0xb1) {
+        compiler.rev32(toSseH8(tmp), toSseH8(src));
+    } else if (mask == 0x1b) {
+        compiler.rev64(toSseH8(tmp), toSseH8(src));
     } else {
-        compiler.ins(toSseD2(dst, 0), toSseD2(src, 0));
+        // A full write avoids a false dependency on the old temporary value.
+        compiler.dup(toSseH8(tmp), toSseH8(src, first + (mask & 3)));
+        if (mask != 0x00 && mask != 0x55 && mask != 0xaa && mask != 0xff) {
+            compiler.ins(toSseH8(tmp, first + 1), toSseH8(src, first + ((mask >> 2) & 3)));
+            compiler.ins(toSseH8(tmp, first + 2), toSseH8(src, first + ((mask >> 4) & 3)));
+            compiler.ins(toSseH8(tmp, first + 3), toSseH8(src, first + ((mask >> 6) & 3)));
+        }
+    }
+    // The other half is copied from the source, including when dst aliases it.
+    if (alias) {
+        compiler.ins(toSseD2(dst, high ? 1 : 0), toSseD2(tmp, high ? 1 : 0));
+    } else {
+        compiler.ins(toSseD2(dst, high ? 0 : 1), toSseD2(src, high ? 0 : 1));
     }
 }
 
-// from spec: The high quadword of the source operand is copied to the high quadword of the destination operand
-void JitArmV8CodeGen::pshuflwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
-    SSERegPtr tmp = dst;
+void JitArmV8CodeGen::pshufhwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    shuffleWords(dst, src, mask, true);
+}
 
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        tmp = getTmpSSE();
-    }
-    compiler.ins(toSseH8(tmp, 0), toSseH8(src, (mask & 3)));
-    compiler.ins(toSseH8(tmp, 1), toSseH8(src, (mask >> 2) & 3));
-    compiler.ins(toSseH8(tmp, 2), toSseH8(src, (mask >> 4) & 3));
-    compiler.ins(toSseH8(tmp, 3), toSseH8(src, (mask >> 6) & 3));
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        compiler.ins(toSseD2(dst, 0), toSseD2(tmp, 0));
-    } else {
-        compiler.ins(toSseD2(dst, 1), toSseD2(src, 1));
-    }
+void JitArmV8CodeGen::pshuflwXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
+    shuffleWords(dst, src, mask, false);
 }
 
 void JitArmV8CodeGen::shufpdXmmXmm(SSERegPtr dst, SSERegPtr src, U32 mask) {
-    // r.f64[0] = ((imm8 & 1) == 0) ? a.f64[0] : a.f64[1];
-    // r.f64[1] = ((imm8 & 2) == 0) ? b.f64[0] : b.f64[1];
-    SSERegPtr tmp = dst;
-
+    // Only the low two immediate bits select the two 64-bit lanes.
     if (dst->hardwareReg() == src->hardwareReg()) {
-        tmp = getTmpSSE();
-    }
-    compiler.ins(toSseD2(tmp, 0), toSseD2(dst, mask & 1));
-    compiler.ins(toSseD2(tmp, 1), toSseD2(src, (mask >> 1) & 1));
-    if (dst->hardwareReg() == src->hardwareReg()) {
-        compiler.mov(toSse128(dst), toSse128(tmp));
+        switch (mask & 3) {
+        case 0: compiler.dup(toSseD2(dst), toSseD2(src, 0)); break;
+        case 1: compiler.ext(toSseB16(dst), toSseB16(src), toSseB16(src), 8); break;
+        case 2: break;
+        case 3: compiler.dup(toSseD2(dst), toSseD2(src, 1)); break;
+        }
+    } else {
+        switch (mask & 3) {
+        case 0: compiler.zip1(toSseD2(dst), toSseD2(dst), toSseD2(src)); break;
+        case 1: compiler.ext(toSseB16(dst), toSseB16(dst), toSseB16(src), 8); break;
+        case 2: compiler.ins(toSseD2(dst, 1), toSseD2(src, 1)); break;
+        case 3: compiler.zip2(toSseD2(dst), toSseD2(dst), toSseD2(src)); break;
+        }
     }
 }
 
@@ -5883,6 +7397,14 @@ void JitArmV8CodeGen::fpuAnd(FPURegPtr dst, FPURegPtr src) {
     compiler.and_(toVec(dst), toVec(dst), toVec(src));
 }
 
+void JitArmV8CodeGen::fpuAbs(FPURegPtr dst) {
+    compiler.fabs(toVec(dst), toVec(dst));
+}
+
+void JitArmV8CodeGen::fpuNeg(FPURegPtr dst) {
+    compiler.fneg(toVec(dst), toVec(dst));
+}
+
 void JitArmV8CodeGen::fpuSqrt(FPURegPtr dst, FPURegPtr src) {
     compiler.fsqrt(toVec(dst), toVec(src));
 }
@@ -5946,6 +7468,8 @@ U32 JitArmV8CodeGen::getBufferLocation(U32 id) {
 
 U32 JitArmV8CodeGen::getBufferSize() {
     code.flatten();
+    auto error = code.resolve_cross_section_fixups();
+    if (error != asmjit::Error::kOk) kpanic("ARM JIT cross-section fixups failed");
     return (U32)code.code_size();
 }
 
@@ -7257,6 +8781,20 @@ void JitArmV8CodeGen::onBlockPreCommit(DecodedOp* op) {
 }
 
 bool JitArmV8CodeGen::supportsDirectCondition(JitConditional condition) {
+    if (directMultiplyFlags) {
+        return condition == JitConditional::O || condition == JitConditional::NO ||
+            condition == JitConditional::B || condition == JitConditional::NB;
+    }
+    if (directIntegerParity) {
+        return condition != JitConditional::O && condition != JitConditional::NO &&
+            condition != JitConditional::L && condition != JitConditional::NL &&
+            condition != JitConditional::LE && condition != JitConditional::NLE;
+    }
+    if (directFloatFlags) {
+        return condition == JitConditional::B || condition == JitConditional::NB ||
+            condition == JitConditional::BE || condition == JitConditional::NBE ||
+            condition == JitConditional::P || condition == JitConditional::NP;
+    }
     if (condition == JitConditional::P || condition == JitConditional::NP) {
         return false;
     }
@@ -7264,6 +8802,32 @@ bool JitArmV8CodeGen::supportsDirectCondition(JitConditional condition) {
 }
 
 asmjit::a64::CondCode JitArmV8CodeGen::getCondCode(JitConditional condition) {
+    if (directMultiplyFlags) {
+        if (condition == JitConditional::O || condition == JitConditional::B) return asmjit::a64::CondCode::kNE;
+        if (condition == JitConditional::NO || condition == JitConditional::NB) return asmjit::a64::CondCode::kEQ;
+        kpanic("Unsupported direct multiply condition");
+    }
+    if (directIntegerParity) {
+        if (directParityValue && (condition == JitConditional::P || condition == JitConditional::NP)) {
+            // Only parity conditions need V. The table value is even parity;
+            // N/Z/C remain available for the other consumers in this region.
+            compiler.embed_uint32(0xba000401u | (R64(directParityValue).id() << 5));
+            return condition == JitConditional::P ? asmjit::a64::CondCode::kVS : asmjit::a64::CondCode::kVC;
+        }
+        if (condition == JitConditional::P) return asmjit::a64::CondCode::kVC;
+        if (condition == JitConditional::NP) return asmjit::a64::CondCode::kVS;
+    }
+    if (directFloatFlags) {
+        switch (condition) {
+        case JitConditional::B: return asmjit::a64::CondCode::kLT;
+        case JitConditional::NB: return asmjit::a64::CondCode::kGE;
+        case JitConditional::BE: return asmjit::a64::CondCode::kLE;
+        case JitConditional::NBE: return asmjit::a64::CondCode::kGT;
+        case JitConditional::P: return asmjit::a64::CondCode::kVS;
+        case JitConditional::NP: return asmjit::a64::CondCode::kVC;
+        default: kpanic("Unsupported direct floating-point condition");
+        }
+    }
     switch (condition) {
     case JitConditional::O: return asmjit::a64::CondCode::kVS;
     case JitConditional::NO: return asmjit::a64::CondCode::kVC;
@@ -7274,11 +8838,13 @@ asmjit::a64::CondCode JitArmV8CodeGen::getCondCode(JitConditional condition) {
     case JitConditional::BE: 
         if (!cfInverted) {
             compiler.cfinv();
+            cfInverted = true;
         }
         return asmjit::a64::CondCode::kLS;
     case JitConditional::NBE: 
         if (!cfInverted) {
             compiler.cfinv();
+            cfInverted = true;
         }
         return asmjit::a64::CondCode::kHI;
     case JitConditional::S: return asmjit::a64::CondCode::kMI;
@@ -7296,6 +8862,28 @@ asmjit::a64::CondCode JitArmV8CodeGen::getCondCode(JitConditional condition) {
 }
 
 void JitArmV8CodeGen::direct_jump(JitConditional condition, U32 address) {
+    const bool parityValueBranch = directIntegerParity && directParityValue &&
+        (condition == JitConditional::P || condition == JitConditional::NP) &&
+        std::getenv("BOXEDWINE_ARM_PARITY_CBZ");
+    auto emitBranch = [&](Label label, bool inverse) {
+        if (parityValueBranch) {
+            // The retained value is 0/1, so CBZ/CBNZ can consume it directly.
+            // Both have the same signed 19-bit displacement as B.cond; this
+            // does not introduce TBZ's shorter branch-range restriction.
+            if ((condition == JitConditional::P) != inverse) compiler.cbnz(R32(directParityValue), label);
+            else compiler.cbz(R32(directParityValue), label);
+        } else {
+            auto nativeCondition = getCondCode(condition);
+            compiler.b(inverse ? asmjit::arm::negate_cond(nativeCondition) : nativeCondition, label);
+        }
+    };
+    if (!isBlockOpBoundary(address)) {
+        Label fallthrough = compiler.new_label();
+        emitBranch(fallthrough, true);
+        branchToSideExit(address);
+        compiler.bind(fallthrough);
+        return;
+    }
     Label label;
 
     if (!opLabels.get(address, label)) {
@@ -7304,7 +8892,7 @@ void JitArmV8CodeGen::direct_jump(JitConditional condition, U32 address) {
         pendingLabels.set(address, label);
     }
 
-    compiler.b(getCondCode(condition), label);
+    emitBranch(label, false);
 }
 
 void JitArmV8CodeGen::direct_cmov(JitWidth width, JitConditional condition, RegPtr dst, RegPtr src) {
@@ -7319,6 +8907,16 @@ void JitArmV8CodeGen::direct_cmov(JitWidth width, JitConditional condition, RegP
 }
 
 void JitArmV8CodeGen::direct_setcc(JitConditional condition, RegPtr dst) {
+    if (directIntegerParity && directParityValue &&
+            (condition == JitConditional::P || condition == JitConditional::NP)) {
+        RegPtr value = directParityValue;
+        if (condition == JitConditional::NP) {
+            value = getTmpReg();
+            compiler.eor(R32(value), R32(directParityValue), 1);
+        }
+        compiler.bfi(R32(dst), R32(value), dst->isHigh ? 8 : 0, 8);
+        return;
+    }
     RegPtr result = getTmpReg();
     compiler.mov(R32(result->hardwareReg()), 1);
     compiler.csel(R32(result), R32(result), asmjit::a64::wzr, getCondCode(condition));
@@ -7408,11 +9006,27 @@ U8* JitArmV8CodeGen::createStartJITCode() {
     static_assert(offsetof(KMemoryData, mmu) + sizeof(void*) * K_NUMBER_OF_PAGES == offsetof(KMemoryData, readCache));
     static_assert(offsetof(KMemoryData, mmu) + sizeof(void*) * K_NUMBER_OF_PAGES * 2 == offsetof(KMemoryData, writeCache));
 #endif
-    compiler.mov(xLoadCacheFromCPU, (U64)KThread::currentThread()->process->syncToHost);
+    if (cacheFlatJitBase(cpu)) compiler.ldr(xFlatJitBase, Mem(xCPU, offsetof(CPU, jitFlatEntries)));
+    else compiler.mov(xLoadCacheFromCPU, (U64)KThread::currentThread()->process->syncToHost);
     compiler.mov(xWriteCacheToCPU, (U64)KThread::currentThread()->process->syncFromHost);
-    compiler.mov(xEmulateSingleOp, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+    if (cacheLinearMemoryBase()) {
+        constexpr S32 offset = (S32)offsetof(KMemoryData, linearMemoryBase) - (S32)offsetof(KMemoryData, mmu);
+        compiler.ldr(xLinearMemoryBase, Mem(xMMU, offset));
+    } else {
+        compiler.mov(xEmulateSingleOp, (DYN_PTR_SIZE)cpu->thread->process->emulateSingleOp);
+    }
     loadCacheFromCPU();
     If(JitWidth::b64, std::make_shared<JitReg>(regBranch, 0xff)); {
+        // A reset CPU can enter another CPU's compiled code directly or via
+        // an interpreter tail. The host call uses xBranch, so preserve the
+        // selected entry explicitly and keep the native stack aligned.
+        IfNotCPU(DYN_PTR, nullptr, 0, offsetof(CPU, calculateCF)); {
+            compiler.sub(asmjit::a64::sp, asmjit::a64::sp, 16);
+            compiler.str(xBranch, Mem(asmjit::a64::sp));
+            callHostFunction((void*)bindNativeCarryHelpers, {DynParam(JitCallParamType::CPU)});
+            compiler.ldr(xBranch, Mem(asmjit::a64::sp));
+            compiler.add(asmjit::a64::sp, asmjit::a64::sp, 16);
+        } EndIf();
         compiler.blr(xBranch);
     } StartElse(); {
         // Invalidation can clear the entry after an interpreter tail call has
@@ -7425,8 +9039,14 @@ U8* JitArmV8CodeGen::createStartJITCode() {
 }
 
 void JitArmV8CodeGen::loadCacheFromCPU() {
+    static const bool pairLoads = !std::getenv("BOXEDWINE_ARM_SYNC_PAIRS_SLOW");
     for (int i = 0; i < 8; i++) {
-        if (regCache[i] != INVALID_REG) {
+        if (pairLoads && i + 1 < 8 &&
+                regCache[i] != INVALID_REG && regCache[i + 1] != INVALID_REG) {
+            compiler.ldp(R32(regCache[i]), R32(regCache[i + 1]),
+                Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
+            ++i;
+        } else if (regCache[i] != INVALID_REG) {
             compiler.ldr(R32(regCache[i]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
         }
     }
@@ -7445,8 +9065,14 @@ void JitArmV8CodeGen::loadCacheFromCPU() {
 }
 
 void JitArmV8CodeGen::writeCacheToCPU() {
+    static const bool pairStores = !std::getenv("BOXEDWINE_ARM_SYNC_PAIRS_SLOW");
     for (int i = 0; i < 8; i++) {
-        if (regCache[i] != INVALID_REG) {
+        if (pairStores && i + 1 < 8 &&
+                regCache[i] != INVALID_REG && regCache[i + 1] != INVALID_REG) {
+            compiler.stp(R32(regCache[i]), R32(regCache[i + 1]),
+                Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
+            ++i;
+        } else if (regCache[i] != INVALID_REG) {
             compiler.str(R32(regCache[i]), Mem(xCPU, (U32)(offsetof(CPU, reg[0].u32) + sizeof(U32) * i)));
         }
     }
@@ -7483,18 +9109,38 @@ void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
     data.doJIT(address, op);
 }
 
+#ifdef _WIN32
+static void clearArmJitBlockEntry(void* entry) noexcept {
+    ::memset(entry, 0, 4);
+}
+#else
 static void clearArmJitBlockEntries(void* opaque) noexcept {
     const std::vector<void*>& jitOps = *static_cast<const std::vector<void*>*>(opaque);
     for (void* p : jitOps) {
         ::memset(p, 0, 4);
     }
 }
+#endif
 
 void clearJitBlock(const std::vector<void*>& jitOps) {
-    U8* start = (U8*)jitOps[0];
-    U8* end = (U8*)jitOps[jitOps.size() - 1];
-    U32 len = static_cast<U32>(end - start) + 4;
-    Platform::writeCodeToMemory(start, len, clearArmJitBlockEntries, const_cast<std::vector<void*>*>(&jitOps));
+    if (jitOps.empty()) return;
+#ifdef _WIN32
+    // Windows changes protection only for the supplied address range. Each
+    // disjoint entry therefore needs its own protected write and cache flush.
+    for (void* entry : jitOps) {
+        Platform::writeCodeToMemory(entry, 4, clearArmJitBlockEntry, entry);
+    }
+#else
+    // Guest-address order does not imply native-address order, and entries
+    // can belong to disjoint executable allocations. A first-to-last range
+    // can underflow or cross unmapped memory during cache maintenance.
+    // Write all traps in one JIT write window, then flush only written words.
+    Platform::writeCodeToMemory(jitOps.front(), 4, clearArmJitBlockEntries,
+        const_cast<std::vector<void*>*>(&jitOps));
+    for (size_t i = 1; i < jitOps.size(); ++i) {
+        Platform::clearInstructionCache(jitOps[i], 4);
+    }
+#endif
 }
 
 #endif

@@ -320,6 +320,9 @@ void KProcess::onExec(KThread* thread) {
 #ifdef BOXEDWINE_JIT
     startJITOp = nullptr;
     emulateSingleOp = nullptr;
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    indirectTraceExit = nullptr;
+#endif
     emulateOpenGL = nullptr;
     syncToHost = nullptr;
     syncFromHost = nullptr;

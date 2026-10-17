@@ -247,6 +247,18 @@ const Lea32Case LEA32_CASES[] = {
     {0x04, true, 0x88, false, false, 0, 0x00900000},
     {0x44, true, 0x53, true, false, 0x11, 0x00a00011},
     {0x84, true, 0x9b, false, true, -0x20, 0x013fffe0},
+    // Negative displacements, including immediate boundaries and 32-bit wrap.
+    {0x80, false, 0, false, true, -1, 0x000fffff},
+    {0x80, false, 0, false, true, -4095, 0x000ff001},
+    {0x80, false, 0, false, true, -4096, 0x000ff000},
+    {0x80, false, 0, false, true, -4097, 0x000fefff},
+    {0x80, false, 0, false, true, -0x00fff000, 0xff101000},
+    {0x80, false, 0, false, true, -0x01000000, 0xff100000},
+    {0x80, false, 0, false, true, -0x00100001, 0xffffffff},
+    {0x80, false, 0, false, true, (-2147483647 - 1), 0x80100000},
+    {0x04, true, 0x85, false, true, -4096, 0x003ff000},
+    {0x04, true, 0x05, false, true, -4096, 0x000ff000},
+    {0x84, true, 0x4b, false, true, -0x00800001, 0xffffffff},
     {0x04, true, 0x25, false, true, 0x70000000, 0x70000000}
 };
 

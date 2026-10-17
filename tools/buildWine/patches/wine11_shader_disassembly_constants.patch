@@ -1,0 +1,69 @@
+Subject: [Wine 11.0] Fix shader constant disassembly and reassembly.
+
+Base: Wine 11.0, db11d0fe6a169c457e23d007e20404643d067aa8
+
+3DMark06 HDR/SM3.0 Canyon Flight (gametest_aeronaut / aero_benchmark)
+compiles, disassembles and reassembles its shaders. The disassembler emits
+"def c3 = ...", which both Wine and Microsoft's assemblers reject. Emit
+the required comma for def, defi and defb rather than weakening the parser.
+This is a local fix, not an upstream backport. Upstream vkd3d still emitted
+equals signs when checked on 2026-10-12.
+
+The disassembler also prints floats in scientific notation. Accept exponent
+syntax in the assembler, as native d3dcompiler does, and classify exponent
+literals as floats so integer-only operands remain checked.
+
+Tests cover disassemble/reassemble with byte-for-byte identical bytecode.
+Also run tools/buildWine/probes/shader-disassembly-roundtrip.c with native
+Microsoft D3DX9 and both regular Wine and C:/webgl modules, then repeat
+3DMark06's two HDR/SM3.0 tests when changing or removing this patch.
+
+--- a/libs/vkd3d/libs/vkd3d-shader/d3d_asm.c
++++ b/libs/vkd3d/libs/vkd3d-shader/d3d_asm.c
+@@ -1686,7 +1686,7 @@
+         case VSIR_OP_DEF:
+             vkd3d_string_buffer_printf(buffer, " %sc%u%s", compiler->colours.reg,
+                     ins->dst[0].reg.idx[0].offset, compiler->colours.reset);
+-            shader_print_float_literal(compiler, " = ", ins->src[0].reg.u.immconst_f32[0], "");
++            shader_print_float_literal(compiler, ", ", ins->src[0].reg.u.immconst_f32[0], "");
+             shader_print_float_literal(compiler, ", ", ins->src[0].reg.u.immconst_f32[1], "");
+             shader_print_float_literal(compiler, ", ", ins->src[0].reg.u.immconst_f32[2], "");
+             shader_print_float_literal(compiler, ", ", ins->src[0].reg.u.immconst_f32[3], "");
+@@ -1695,7 +1695,7 @@
+         case VSIR_OP_DEFI:
+             vkd3d_string_buffer_printf(buffer, " %si%u%s", compiler->colours.reg,
+                     ins->dst[0].reg.idx[0].offset, compiler->colours.reset);
+-            shader_print_int_literal(compiler, " = ", ins->src[0].reg.u.immconst_u32[0], "");
++            shader_print_int_literal(compiler, ", ", ins->src[0].reg.u.immconst_u32[0], "");
+             shader_print_int_literal(compiler, ", ", ins->src[0].reg.u.immconst_u32[1], "");
+             shader_print_int_literal(compiler, ", ", ins->src[0].reg.u.immconst_u32[2], "");
+             shader_print_int_literal(compiler, ", ", ins->src[0].reg.u.immconst_u32[3], "");
+@@ -1704,7 +1704,7 @@
+         case VSIR_OP_DEFB:
+             vkd3d_string_buffer_printf(buffer, " %sb%u%s", compiler->colours.reg,
+                     ins->dst[0].reg.idx[0].offset, compiler->colours.reset);
+-            shader_print_bool_literal(compiler, " = ", ins->src[0].reg.u.immconst_u32[0], "");
++            shader_print_bool_literal(compiler, ", ", ins->src[0].reg.u.immconst_u32[0], "");
+             break;
+ 
+         default:
+--- a/dlls/d3dcompiler_43/asmshader.l
++++ b/dlls/d3dcompiler_43/asmshader.l
+@@ -96,7 +96,7 @@
+ 
+ COMMA                   ","
+ 
+-IMMVAL                  (([0-9]+\.?)|([0-9]*\.[0-9]+))(f)?
++IMMVAL                  (([0-9]+\.?)|([0-9]*\.[0-9]+))([eE][+-]?[0-9]+)?(f)?
+ 
+ ANY                     (.)
+ 
+@@ -315,7 +315,7 @@
+ 
+ {IMMVAL}                {
+                             asmshader_lval.immval.val = atof(yytext);
+-                            asmshader_lval.immval.integer = ((strstr(yytext, ".") == NULL) && (strstr(yytext, "f") == NULL));
++                            asmshader_lval.immval.integer = !strpbrk(yytext, ".fEe");
+                             return IMMVAL;
+                         }
+ true                    {

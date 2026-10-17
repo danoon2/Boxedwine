@@ -23,6 +23,7 @@
 #include "../io/fsfilenode.h"
 #include "bufferaccess.h"
 #include "kstat.h"
+#include <cstdlib>
 
 static bool signalIsIgnoredByDefault(U32 signal) {
     return signal == K_SIGURG || signal == K_SIGCONT || signal == K_SIGCHLD || signal == K_SIGWINCH;
@@ -104,6 +105,12 @@ void KThread::setupStack() {
     U32 stackPageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
     U32 stackPageStart = stack >> K_PAGE_SHIFT;
     this->cpu->reg[4].u32 = (stackPageStart + stackPageCount - 1) << K_PAGE_SHIFT;  
+    // Keep the hot top of the stack out of a native page shared with the
+    // 4 KiB guard. The allocation and its guest permissions stay unchanged.
+    if (ramPageUseLinearMemory() && !std::getenv("BOXEDWINE_ALIGN_STACK_SLOW")) {
+        const U32 groupBytes = ramPageLinearMemoryPageCount() * K_PAGE_SIZE;
+        this->cpu->reg[4].u32 &= ~(groupBytes - 1);
+    }
     // touch the first 16 pages now so that they are ready
     for (int i = 1; i < 17; i++) {
         memory->readd(this->cpu->reg[4].u32 - K_PAGE_SIZE * i);
@@ -397,7 +404,9 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
         ramAddress = (U64)memory->getRamPtr(addr, 4, false, true);
     }
     if (ramAddress == 0) {
-        kpanic_fmt("Could not find futex address: %0.8X", addr);
+        // A shared futex may have been unmapped before this syscall.
+        // Report the guest memory error instead of terminating the emulator.
+        return -K_EFAULT;
     }
     /*
     * from kernel source, if I ever implement one of these I need to note pTime actually contains val2

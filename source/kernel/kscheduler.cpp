@@ -205,6 +205,11 @@ void runThreadSlice(KThread* thread) {
     // per millisecond. Share execution time rather than giving a fast thread
     // only a small fraction of the time used by a slower busy-polling thread.
     const U64 sliceEnd = schedulerMicroCounter() + 1000;
+#ifdef __EMSCRIPTEN__
+    // Browser clock calls are costly for short dispatches. Check the
+    // same timed deadline in instruction batches, but honor every yield below.
+    U32 nextClockCheck = 1024;
+#endif
     contextTimeRemaining = contextTime;
 #ifndef __EMSCRIPTEN__
     try {
@@ -216,7 +221,16 @@ void runThreadSlice(KThread* thread) {
             break;
         }
 #endif
-        if (cpu->yield || schedulerMicroCounter() >= sliceEnd) {
+        if (cpu->yield) {
+            break;
+        }
+#ifdef __EMSCRIPTEN__
+        if (cpu->blockInstructionCount < nextClockCheck) {
+            continue;
+        }
+        nextClockCheck = cpu->blockInstructionCount + 1024;
+#endif
+        if (schedulerMicroCounter() >= sliceEnd) {
             break;
         }
         if ((S32)cpu->blockInstructionCount >= contextTimeRemaining) {

@@ -16,14 +16,15 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO, Callable, NamedTuple
-from urllib.request import urlopen
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
 
 
-FILESYSTEM_URL = "https://boxedwine.org/v2/10/TinyCore15Wine11.0.zip"
-FILESYSTEM_CACHE_NAME = "TinyCore15Wine11.0-v10.zip"
+FILESYSTEM_URL = "https://boxedwine.org/v2/latest/TinyCore15Wine11.0.zip"
 TESTS_URL = "https://boxedwine.org/v2/1/wine_tests_v4.zip"
 TESTS_CACHE_NAME = "wine_tests_v4.zip"
 TEST_EXECUTABLES = {
@@ -625,17 +626,19 @@ def download_if_missing(
     destination: Path,
     *,
     opener: Callable[..., BinaryIO] = urlopen,
+    refresh: bool = False,
 ) -> bool:
-    """Download *url* atomically unless a nonempty destination exists."""
+    """Download atomically, reusing a nonempty cache unless refresh is requested."""
     destination = Path(destination)
-    if destination.is_file() and destination.stat().st_size:
+    if not refresh and destination.is_file() and destination.stat().st_size:
         return False
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     partial = destination.with_suffix(destination.suffix + ".part")
     partial.unlink(missing_ok=True)
     try:
-        with opener(url, timeout=60) as response, partial.open("wb") as output:
+        request = Request(url, headers={"Cache-Control": "no-cache"}) if refresh else url
+        with opener(request, timeout=60) as response, partial.open("wb") as output:
             shutil.copyfileobj(response, output)
         if not partial.stat().st_size:
             raise RunnerError(f"download was empty: {url}")
@@ -646,6 +649,45 @@ def download_if_missing(
             raise
         raise RunnerError(f"failed to download {url}: {error}") from error
     return True
+
+
+def prepare_filesystem(
+    url: str, cache_dir: Path, *, opener: Callable[..., BinaryIO] = urlopen
+) -> tuple[Path, dict]:
+    """Refresh latest aliases and retain the exact archive selected for this run."""
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    latest = "latest" in urlsplit(url).path.split("/")
+    # Overrides must never reuse a download from a different URL.
+    url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()
+    filesystem = cache_dir / f"filesystem-url-{url_hash}.zip"
+    with tempfile.TemporaryDirectory(prefix="wine-filesystem-", dir=cache_dir) as temporary:
+        if latest:
+            print(f"Refreshing latest Wine filesystem: {url}", flush=True)
+            filesystem = Path(temporary) / "filesystem.zip"
+        download_if_missing(url, filesystem, opener=opener, refresh=latest)
+        if not zipfile.is_zipfile(filesystem):
+            raise RunnerError(f"not a ZIP archive: {filesystem}")
+        with zipfile.ZipFile(filesystem) as archive:
+            def version(name: str) -> str | None:
+                return archive.read(name).decode("utf-8").strip() if name in archive.namelist() else None
+
+            identity = {
+                "url": url,
+                "revision": version("version.txt"),
+                "wine_version": version("wineVersion.txt"),
+                "sha256": _sha256(filesystem),
+            }
+        if latest:
+            # A later invocation may fetch a newer release while this suite runs.
+            # Content-addressed paths keep all groups on the same archive.
+            destination = cache_dir / f"filesystem-{identity['sha256']}.zip"
+            filesystem.replace(destination)
+            filesystem = destination
+    identity["path"] = str(filesystem)
+    print(f"Wine filesystem revision: {identity['revision'] or 'unknown'}; "
+          f"SHA-256: {identity['sha256']}", flush=True)
+    return filesystem, identity
 
 
 def _validate_pe32_i386(image: bytes, executable_name: str) -> None:
@@ -813,24 +855,31 @@ def command_for_group(
         "-novideo",
     ]
     if suite in (KERNEL32_SUITE, WS2_32_SUITE, ADVAPI32_SUITE):
-        return command + [
+        command += [
             "-env",
             "WINEDLLOVERRIDES=mscoree,mshtml=",
             "-w",
             "/home/username",
-            "/bin/wine",
-            f"/home/username/{suite.executable}",
-            group,
         ]
-    if group == "wow64":
+        guest_executable = f"/home/username/{suite.executable}"
+    else:
+        guest_executable = f"/{suite.executable}"
+    # Direct Wine launches default to WINELOADERNOEXEC=1 in Boxedwine. Children
+    # still use Wine's preloader, giving them different DLL addresses and breaking
+    # cross-process Wine tests. Use normal startup for the entire native suite.
+    # Wine checks presence, so setting the variable to 0 is not sufficient.
+    if suite == NTDLL_SUITE and group == "wow64":
         return command + [
             "/bin/sh",
             "-c",
-            "/bin/wine /ntdll_test.exe wow64; "
+            "unset WINELOADERNOEXEC; /bin/wine /ntdll_test.exe wow64; "
             "/opt/wine/bin/wineserver -k && "
             "echo BOXEDWINE_WINESERVER_CLEANUP_OK",
         ]
-    return command + ["/bin/wine", f"/{suite.executable}", group]
+    return command + [
+        "/bin/sh", "-c", 'unset WINELOADERNOEXEC; exec "$@"', "wine-tests",
+        "/bin/wine", guest_executable, group,
+    ]
 
 
 _ANSI_PATTERN = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
@@ -1726,7 +1775,7 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--filesystem-url",
         default=FILESYSTEM_URL,
-        help="Wine 11 BoxedWine filesystem ZIP URL",
+        help="Wine 11 filesystem ZIP URL (default: /v2/latest/, refreshed each run)",
     )
     parser.add_argument(
         "--tests-url",
@@ -2065,13 +2114,10 @@ def main(argv: list[str] | None = None) -> int:
 
         cache_dir = arguments.cache_dir.expanduser().resolve()
         cache_dir.mkdir(parents=True, exist_ok=True)
-        filesystem = cache_dir / FILESYSTEM_CACHE_NAME
+        filesystem, filesystem_identity = prepare_filesystem(arguments.filesystem_url, cache_dir)
         tests_archive = cache_dir / TESTS_CACHE_NAME
 
-        download_if_missing(arguments.filesystem_url, filesystem)
         download_if_missing(arguments.tests_url, tests_archive)
-        if not zipfile.is_zipfile(filesystem):
-            raise RunnerError(f"not a ZIP archive: {filesystem}")
         validate_test_archive(tests_archive)
 
         if arguments.boxedwine is None:
@@ -2082,6 +2128,9 @@ def main(argv: list[str] | None = None) -> int:
                 raise RunnerError(f"not an executable file: {boxedwine}")
 
         run_dir = _new_run_directory(cache_dir)
+        (run_dir / "inputs.json").write_text(
+            json.dumps({"filesystem": filesystem_identity}, indent=2) + "\n", encoding="utf-8"
+        )
         test_executables = extract_test_executables(tests_archive, run_dir / "input")
         selections = tuple(
             (suite, groups)

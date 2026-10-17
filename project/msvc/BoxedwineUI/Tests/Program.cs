@@ -361,6 +361,21 @@ sealed partial class TestSuite
                 Console.WriteLine($"Wine {reference.WineVersion}: full validation {fullMilliseconds:0} ms; SHA-256 launch check {hashMilliseconds:0} ms; shared cache {watch.Elapsed.TotalMilliseconds:0.0} ms.");
             });
         }
+        await Test("Demo DLL overrides preserve the disabled-driver value and require schema 8", async () =>
+        {
+            string value = "cpuz136_x32.sys,cpuz136_x64.sys,GPUZ.sys=";
+            string path = Path.Combine(work, "dll-override-catalog.xml");
+            string xml = $"<XML schemaVersion=\"8\" release=\"test\"><Demo><ID>scanner</ID><Name>Scanner</Name><FileSHA256>{new string('a', 64)}</FileSHA256><ShortcutExe>demo.exe</ShortcutExe><FileURL>https://boxedwine.org/demo.zip</FileURL><FileSizeBytes>5</FileSizeBytes><InstallType>Zip</InstallType><WineVersion>11.0</WineVersion><WineDllOverrides>{value}</WineDllOverrides></Demo></XML>";
+            File.WriteAllText(path, xml);
+            Check(Demos.Load(path).Single().WineDllOverrides == value);
+            foreach (string invalid in new[] { xml.Replace("schemaVersion=\"8\"", "schemaVersion=\"7\""), xml.Replace(value, ""), xml.Replace(value, "GPUZ.sys=&#10;foo=b"), xml.Replace(value, new string('x', 1025)), xml.Replace("</Demo>", "<WineDllOverrides>GPUZ.sys=</WineDllOverrides></Demo>") })
+            {
+                File.WriteAllText(path, invalid);
+                await Throws(() => { Demos.Load(path); return Task.CompletedTask; }, "invalid DLL override recipe");
+            }
+            File.WriteAllText(path, xml.Replace($"<WineDllOverrides>{value}</WineDllOverrides>", "").Replace("schemaVersion=\"8\"", "schemaVersion=\"7\""));
+            Check(Demos.Load(path).Single().WineDllOverrides == null);
+        });
         int catalogIndex = Array.IndexOf(args, "--catalog");
         if (catalogIndex >= 0) await Test("Pinned demo catalog parses", () => { var demos = Demos.Load(args[catalogIndex + 1]); Check(demos.Count > 0); Console.WriteLine($"{demos.Count} demo recipes"); return Task.CompletedTask; });
         int emulatorIndex = Array.IndexOf(args, "--emulator");

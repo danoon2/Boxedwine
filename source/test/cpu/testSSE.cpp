@@ -14,7 +14,14 @@
 #include "testSSE.h"
 #include "testCPU.h"
 #include "testX86Util.h"
+#include "../../emulation/cpu/common/common_sse.h"
+#include "../../emulation/cpu/common/common_sse2.h"
 #include <bit>
+#include <cstdlib>
+#include "ksignal.h"
+#ifdef BOXEDWINE_JIT
+#include "../../emulation/cpu/jit/jitCodeGen.h"
+#endif
 
 #define cpu (testContext().cpu)
 #define memory (testContext().memory)
@@ -65,11 +72,29 @@ void setXmm(int reg, U64 low, U64 high) {
     cpu->xmm[reg].pi.u64[1] = high;
 }
 
+#ifdef BOXEDWINE_JIT_ARMV8
+void checkScalarInternalEntries(std::initializer_list<U32> entries, const char* label) {
+    // Check the generated block before executing it. A legal first-touch or
+    // fallback memory fault can subsequently promote an interior entry, so
+    // its public-entry status after execution is not an optimization test.
+    pushCode8(0xcd); pushCode8(0x97);
+    auto* head = cpu->getOp(TEST_CODE_ADDRESS, 0);
+    startNewJIT(cpu, TEST_CODE_ADDRESS, head);
+    if (!head->pfnJitCode) failed("%s: block did not compile", label);
+    for (U32 entry : entries) {
+        auto* op = memory->getDecodedOp(entry);
+        if (!op || op->pfnJitCode) failed("%s: exposed an interior with a live proof", label);
+    }
+}
+#endif
+
 void verifyOnlyXmmChanged(int changed, U64 low, U64 high, const char* name) {
     for (int i = 0; i < 8; ++i) {
         if (i == changed) {
             if (cpu->xmm[i].pi.u64[0] != low || cpu->xmm[i].pi.u64[1] != high) {
-                failed("%s xmm value", name);
+                failed("%s xmm%d value %016llx:%016llx expected %016llx:%016llx", name, i,
+                    (unsigned long long)cpu->xmm[i].pi.u64[1], (unsigned long long)cpu->xmm[i].pi.u64[0],
+                    (unsigned long long)high, (unsigned long long)low);
             }
         } else if (cpu->xmm[i].pi.u64[0] != XMM_DEFAULT_LOW || cpu->xmm[i].pi.u64[1] != XMM_DEFAULT_HIGH) {
             failed("%s xmm unchanged", name);
@@ -273,7 +298,29 @@ void runSse128(U8 prefix1, U8 prefix2, U8 opcode, U64 dstLow, U64 dstHigh, U64 s
         writeXmmMem(MEM_SRC, srcLow, srcHigh);
         emitSseRegMem(prefix1, prefix2, opcode, dst, MEM_SRC);
         runTestCPU();
-        verifyOnlyXmmChanged(dst, expectedLow, expectedHigh, name);
+        U64 memExpectedLow = expectedLow, memExpectedHigh = expectedHigh;
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+        DecodedOp* memoryOp = memory->getDecodedOp(TEST_CODE_ADDRESS);
+        if (!prefix1 && (opcode == 0x52 || opcode == 0x53) && memoryOp && memoryOp->exceptionCount) {
+            // A host memory fault executes this instruction through SIMDe.
+            // Its reciprocal estimates need not match the native JIT's bits.
+            // Keep exact checks for that path, including preserved SS lanes.
+            simde__m128 input;
+            input.u64[0] = srcLow;
+            input.u64[1] = srcHigh;
+            simde__m128 result;
+            if (prefix2 == 0xf3) {
+                result = opcode == 0x52 ? simde_mm_rsqrt_ss(input) : simde_mm_rcp_ss(input);
+                memExpectedLow = (dstLow & 0xffffffff00000000ULL) | result.u32[0];
+                memExpectedHigh = dstHigh;
+            } else {
+                result = opcode == 0x52 ? simde_mm_rsqrt_ps(input) : simde_mm_rcp_ps(input);
+                memExpectedLow = result.u64[0];
+                memExpectedHigh = result.u64[1];
+            }
+        }
+#endif
+        verifyOnlyXmmChanged(dst, memExpectedLow, memExpectedHigh, name);
     }
 }
 
@@ -1310,6 +1357,654 @@ void testSseCompareImmediate_0x3c2() {
     testSse128ImmOp(0, 0xf3, 0xc2, 7, 0x7fd0000040800000ULL, 0xbdcccccdc0a00000ULL, 0x41a00000c1000000ULL, 0x40000000c0a00000ULL, 0x7fd00000ffffffffULL, 0xbdcccccdc0a00000ULL, "sse cmpordss");
 }
 
+void testArmScalarZeroLanes() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    auto& context = testContext();
+    const bool enabled = !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_SLOW");
+    constexpr U64 upper = 0xfedcba9876543210ull;
+    auto bits = [](double value) { return std::bit_cast<U64>(value); };
+    auto rr = [](U8 prefix, U8 opcode, U32 dst, U32 src) {
+        pushCode8(prefix); pushCode8(0x0f); pushCode8(opcode); pushCode8(0xc0 | (dst << 3) | src);
+    };
+    auto mem = [](U8 prefix, U8 opcode, U32 dst, U32 address) {
+        pushCode8(prefix); pushCode8(0x0f); pushCode8(opcode); pushCode8(0x05 | (dst << 3)); pushCode32(address);
+    };
+    constexpr U8 arithmetic[] = {0x58, 0x5c, 0x59, 0x5e, 0x51};
+    for (U32 producer = 0; producer < 4; ++producer)
+    for (U32 dst = 0; dst < 8; ++dst) for (U32 src = 0; src < 8; ++src)
+    for (U32 operation = 0; operation < 5; ++operation) for (bool fromMemory : {false, true}) {
+        if (fromMemory && src) continue;
+        initSse();
+        cpu->setFlags(CF | AF | OF, FMASK_TEST);
+        U64 expected[8][2];
+        for (U32 r = 0; r < 8; ++r) {
+            setXmm(r, bits(4), upper + r);
+            expected[r][0] = bits(4); expected[r][1] = upper + r;
+        }
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, bits(16));
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC + 16, bits(4));
+        if (producer == 0) mem(0xf2, 0x10, dst, MEM_SRC); // MOVSD clears upper.
+        else if (producer == 1) mem(0xf3, 0x7e, dst, MEM_SRC); // MOVQ clears upper.
+        else if (producer == 2) {
+            U32 producerSrc = (dst + 1) % 8;
+            setXmm(producerSrc, bits(16), upper + producerSrc);
+            expected[producerSrc][0] = bits(16);
+            rr(0xf3, 0x7e, dst, producerSrc);
+        } else mem(0x66, 0x12, dst, MEM_SRC); // MOVLPD preserves upper.
+        expected[dst][0] = bits(16);
+        if (producer != 3) expected[dst][1] = 0;
+        double rhs = fromMemory ? 4 : std::bit_cast<double>(expected[src][0]);
+        if (fromMemory) mem(0xf2, arithmetic[operation], dst, MEM_SRC + 16);
+        else rr(0xf2, arithmetic[operation], dst, src);
+        double result = operation == 0 ? 16 + rhs : operation == 1 ? 16 - rhs :
+            operation == 2 ? 16 * rhs : operation == 3 ? 16 / rhs : rhs == 16 ? 4 : 2;
+        expected[dst][0] = bits(result);
+        runTestCPU(); cpu->fillFlags();
+        for (U32 r = 0; r < 8; ++r) for (U32 lane = 0; lane < 2; ++lane)
+            if (cpu->xmm[r].pi.u64[lane] != expected[r][lane])
+                failed("scalar zero producer=%u dst=%u src=%u op=%u mem=%u xmm=%u lane=%u", producer, dst, src, operation, fromMemory, r, lane);
+        if ((cpu->flags & FMASK_TEST) != (CF | AF | OF)) failed("scalar zero changed integer flags");
+    }
+    // Every zeroing producer used by the analysis starts from nonzero lanes.
+    for (U32 producer = 0; producer < 6; ++producer) for (U32 dst = 0; dst < 8; ++dst) {
+        initSse();
+        const U32 src = (dst + 1) % 8;
+        setXmm(dst, bits(16), upper); setXmm(src, bits(4), upper + src);
+        memory->writed(TEST_HEAP_ADDRESS + MEM_SRC, 0);
+        cpu->reg[0].u32 = 0;
+        if (producer == 0) mem(0xf3, 0x10, dst, MEM_SRC); // MOVSS memory.
+        else if (producer == 1) rr(0x66, 0x6e, dst, 0); // MOVD register.
+        else if (producer == 2) mem(0x66, 0x6e, dst, MEM_SRC); // MOVD memory.
+        else if (producer == 3) rr(0x66, 0x57, dst, dst); // XORPD.
+        else if (producer == 4) {
+            pushCode8(0x0f); pushCode8(0x57); pushCode8(0xc0 | (dst << 3) | dst); // XORPS.
+        } else rr(0x66, 0xef, dst, dst); // PXOR.
+        const U32 arithmeticEntry = context.codeIp;
+        rr(0xf2, 0x58, dst, src);
+        if (enabled) checkScalarInternalEntries({arithmeticEntry}, "scalar zeroing producer");
+        runTestCPU();
+        if (cpu->xmm[dst].pi.u64[0] != bits(4) || cpu->xmm[dst].pi.u64[1] ||
+            cpu->xmm[src].pi.u64[0] != bits(4) || cpu->xmm[src].pi.u64[1] != upper + src)
+            failed("scalar zero additional producer=%u dst=%u", producer, dst);
+    }
+    // Copies must transfer both known and unknown state, including aliases.
+    const U8 copyPrefixes[] = {0, 0, 0x66, 0x66, 0x66, 0xf3};
+    const U8 copyOpcodes[] = {0x28, 0x10, 0x28, 0x10, 0x6f, 0x6f};
+    for (U32 form = 0; form < 6; ++form)
+    for (U32 dst = 0; dst < 8; ++dst) for (U32 src = 0; src < 8; ++src)
+    for (bool sourceZero : {false, true}) for (bool destinationZero : {false, true}) {
+        initSse();
+        U64 expected[8][2];
+        for (U32 r = 0; r < 8; ++r) {
+            setXmm(r, bits(4), upper + r);
+            expected[r][0] = bits(4); expected[r][1] = upper + r;
+        }
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, bits(16));
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC + 16, bits(4));
+        if (sourceZero) {
+            mem(0xf2, 0x10, src, MEM_SRC);
+            expected[src][0] = bits(16); expected[src][1] = 0;
+        }
+        if (destinationZero) {
+            mem(0xf2, 0x10, dst, MEM_SRC + 16);
+            expected[dst][0] = bits(4); expected[dst][1] = 0;
+        }
+        if (copyPrefixes[form]) pushCode8(copyPrefixes[form]);
+        pushCode8(0x0f); pushCode8(copyOpcodes[form]); pushCode8(0xc0 | (dst << 3) | src);
+        expected[dst][0] = expected[src][0]; expected[dst][1] = expected[src][1];
+        const U32 arithmeticEntry = context.codeIp;
+        rr(0xf2, 0x58, dst, src);
+        expected[dst][0] = bits(2 * std::bit_cast<double>(expected[dst][0]));
+        if (enabled && !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_COPY_SLOW") && !expected[dst][1])
+            checkScalarInternalEntries({arithmeticEntry}, "scalar copy");
+        runTestCPU();
+        for (U32 r = 0; r < 8; ++r) for (U32 lane = 0; lane < 2; ++lane)
+            if (cpu->xmm[r].pi.u64[lane] != expected[r][lane])
+                failed("scalar copy form=%u dst=%u src=%u sourceZero=%u destinationZero=%u xmm=%u lane=%u",
+                    form, dst, src, sourceZero, destinationZero, r, lane);
+    }
+    // Ordinary integer work between the producer and consumer keeps XMM state.
+    for (U8 opcode : {0x01, 0x29, 0x21, 0x09, 0x31, 0x39, 0x85}) {
+        initSse(); setXmm(1, bits(4), upper);
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, bits(16));
+        cpu->reg[0].u32 = 7; cpu->reg[3].u32 = 5;
+        mem(0xf2, 0x10, 0, MEM_SRC);
+        const U32 integerEntry = context.codeIp;
+        pushCode8(opcode); pushCode8(0xd8); // EAX,EBX.
+        const U32 arithmeticEntry = context.codeIp;
+        rr(0xf2, 0x58, 0, 1);
+        if (enabled && !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_COPY_SLOW"))
+            checkScalarInternalEntries({integerEntry, arithmeticEntry}, "scalar integer interior");
+        runTestCPU();
+        if (cpu->xmm[0].pi.u64[0] != bits(20) || cpu->xmm[0].pi.u64[1])
+            failed("scalar copy integer interior opcode=%x", opcode);
+        // Enter before the integer operation with arbitrary incoming XMM lanes.
+        setXmm(0, bits(3), upper);
+        cpu->eip.u32 = integerEntry - cpu->seg[CS].address; cpu->nextOp = nullptr;
+        runTestCPU();
+        if (cpu->xmm[0].pi.u64[0] != bits(7) || cpu->xmm[0].pi.u64[1] != upper)
+            failed("scalar copy independent integer entry lost upper lanes");
+    }
+    for (U32 conversion = 0; conversion < 4; ++conversion)
+    for (U32 dst = 0; dst < 8; ++dst) for (bool fromMemory : {false, true})
+    for (bool zero : {false, true}) {
+        initSse();
+        const U32 src = (dst + 1) % 8, rhs = (dst + 2) % 8;
+        setXmm(dst, bits(16), upper); setXmm(rhs, bits(4), upper + rhs);
+        setXmm(src, conversion == 1 ? 0x40a00000ull : bits(5), upper + src);
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, bits(16));
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC + 16,
+            conversion == 0 || conversion == 2 ? 5 : conversion == 1 ? 0x40a00000ull : bits(5));
+        cpu->reg[0].u32 = 5;
+        if (zero) mem(0xf2, 0x10, dst, MEM_SRC);
+        const U8 prefix = conversion == 0 || conversion == 3 ? 0xf2 : 0xf3;
+        const U8 opcode = conversion == 0 || conversion == 2 ? 0x2a : 0x5a;
+        if (fromMemory) mem(prefix, opcode, dst, MEM_SRC + 16);
+        else rr(prefix, opcode, dst, conversion == 0 || conversion == 2 ? 0 : src);
+        const U32 arithmeticEntry = context.codeIp;
+        rr(0xf2, 0x58, dst, rhs);
+        const U64 converted = conversion < 2 ? bits(5) : (bits(16) & 0xffffffff00000000ull) | 0x40a00000ull;
+        const U64 expectedLow = bits(std::bit_cast<double>(converted) + 4);
+        if (zero && enabled && !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_COPY_SLOW"))
+            checkScalarInternalEntries({arithmeticEntry}, "scalar conversion interior");
+        runTestCPU();
+        if (cpu->xmm[dst].pi.u64[0] != expectedLow || cpu->xmm[dst].pi.u64[1] != (zero ? 0 : upper))
+            failed("scalar copy conversion=%u dst=%u mem=%u zero=%u", conversion, dst, fromMemory, zero);
+    }
+    // Unknown writes must terminate the proof, including partial high-lane writes.
+    for (bool partial : {false, true}) for (U32 dst = 0; dst < 8; ++dst) {
+        initSse();
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, bits(16));
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC + 8, upper);
+        mem(0xf2, 0x10, dst, MEM_SRC);
+        if (partial) mem(0x66, 0x16, dst, MEM_SRC + 8); // MOVHPD.
+        else mem(0x66, 0x10, dst, MEM_SRC); // MOVUPD.
+        rr(0xf2, 0x58, dst, dst);
+        runTestCPU();
+        if (cpu->xmm[dst].pi.u64[0] != bits(32) || cpu->xmm[dst].pi.u64[1] != upper)
+            failed("scalar zero retained proof across packed/partial write");
+    }
+    // A branch can bypass the producer and supply arbitrary upper bits.
+    for (bool skip : {false, true}) {
+        initSse(); setXmm(0, bits(3), upper); setXmm(1, bits(4), upper);
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, bits(16));
+        cpu->reg[0].u32 = skip ? 0 : 1;
+        pushCode8(0x85); pushCode8(0xc0); pushCode8(0x74); pushCode8(8);
+        mem(0xf2, 0x10, 0, MEM_SRC); rr(0xf2, 0x58, 0, 1);
+        runTestCPU();
+        if (cpu->xmm[0].pi.u64[0] != bits(skip ? 7 : 20) || cpu->xmm[0].pi.u64[1] != (skip ? upper : 0))
+            failed("scalar zero branch bypassed producer incorrectly");
+    }
+    initSse(); setXmm(1, bits(4), upper); setXmm(2, bits(4), upper);
+    memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, bits(16));
+    mem(0xf2, 0x10, 0, MEM_SRC);
+    U32 entries[5];
+    entries[0] = context.codeIp; pushCode8(0x90);
+    entries[1] = context.codeIp; pushCode8(0xbf); pushCode32(99);
+    entries[2] = context.codeIp; rr(0xf2, 0x58, 0, 1);
+    entries[3] = context.codeIp; rr(0xf2, 0x59, 0, 2);
+    entries[4] = context.codeIp; mem(0xf2, 0x11, 0, MEM_DST);
+    if (enabled) checkScalarInternalEntries({entries[0], entries[1], entries[2], entries[3], entries[4]}, "scalar chain");
+    runTestCPU();
+    if (cpu->xmm[0].pi.u64[0] != bits(80) || cpu->xmm[0].pi.u64[1]) failed("scalar zero chain result");
+    for (U32 i = 0; i < 5; ++i) {
+        setXmm(0, bits(3), upper);
+        cpu->eip.u32 = entries[i] - cpu->seg[CS].address;
+        cpu->nextOp = nullptr;
+        DecodedOp* op = cpu->getOp(entries[i], 0);
+        startNewJIT(cpu, entries[i], op);
+        if (!op || !op->pfnJitCode) failed("scalar zero interior was not promoted");
+        runTestCPU();
+        if (cpu->xmm[0].pi.u64[0] != bits(i < 3 ? 28 : i == 3 ? 12 : 3) || cpu->xmm[0].pi.u64[1] != upper)
+            failed("scalar zero independent entry lost incoming lanes at %u", i);
+    }
+    // Change the zeroing producer to an equal-length preserving load.
+    memory->writeb(TEST_CODE_ADDRESS, 0x66);
+    memory->writeb(TEST_CODE_ADDRESS + 2, 0x12);
+    setXmm(0, bits(3), upper);
+    cpu->eip.u32 = TEST_CODE_ADDRESS - cpu->seg[CS].address; cpu->nextOp = nullptr;
+    runTestCPU();
+    if (cpu->xmm[0].pi.u64[0] != bits(80) || cpu->xmm[0].pi.u64[1] != upper)
+        failed("scalar zero proof survived producer invalidation");
+#endif
+}
+
+void testArmScalarZeroLanePropagation() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    auto& context = testContext();
+    constexpr U64 upper = 0xfedcba9876543210ull;
+    auto bits = [](double value) { return std::bit_cast<U64>(value); };
+    auto rr = [](U8 prefix, U8 opcode, U32 dst, U32 src) {
+        if (prefix) pushCode8(prefix);
+        pushCode8(0x0f); pushCode8(opcode); pushCode8(0xc0 | (dst << 3) | src);
+    };
+    auto mem = [](U8 prefix, U8 opcode, U32 dst, U32 address) {
+        if (prefix) pushCode8(prefix);
+        pushCode8(0x0f); pushCode8(opcode); pushCode8(0x05 | (dst << 3)); pushCode32(address);
+    };
+    const bool enabled = !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_SLOW") &&
+        !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_LANES_SLOW");
+    for (U32 producer = 0; producer < 10; ++producer)
+    for (U32 dst = 0; dst < 8; ++dst) for (U32 src = 0; src < 8; ++src)
+    for (U32 lane1 : {0u, 0x80000000u, 0x40000000u, 0x7fc12345u, 0x7f812345u}) {
+        initSse();
+        U64 expected[8][2];
+        for (U32 r = 0; r < 8; ++r) {
+            expected[r][0] = 0x4000000040800000ull;
+            expected[r][1] = upper + r;
+            setXmm(r, expected[r][0], expected[r][1]);
+        }
+        const U64 packed = ((U64)lane1 << 32) | 0x40800000u;
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, packed);
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC + 8, upper);
+        cpu->reg[0].u32 = 0x40800000;
+        U32 input = src;
+        if (producer == 0) mem(0xf3, 0x10, src, MEM_SRC); // MOVSS.
+        else if (producer == 1) rr(0x66, 0x6e, src, 0); // MOVD GPR.
+        else if (producer == 2) mem(0x66, 0x6e, src, MEM_SRC); // MOVD memory.
+        else if (producer == 3) mem(0xf3, 0x7e, src, MEM_SRC); // MOVQ memory.
+        else if (producer == 4) mem(0xf2, 0x10, src, MEM_SRC); // MOVSD memory.
+        else if (producer == 5) mem(0x66, 0x10, src, MEM_SRC); // MOVUPD memory.
+        else if (producer == 6) {
+            rr(0x66, 0xef, src, src);
+            rr(0xf3, 0x10, src, (src + 1) % 8); // Preserve zero lane 1.
+        } else {
+            mem(0xf3, 0x10, src, MEM_SRC);
+            if (producer == 7) rr(0xf3, 0x7e, src, src); // MOVQ alias.
+            else if (producer == 8) { rr(0xf2, 0x10, dst, src); input = dst; }
+            else { rr(0, 0x28, dst, src); input = dst; }
+        }
+        const bool known = producer < 3 || producer >= 6;
+        expected[src][0] = known ? 0x40800000u : packed;
+        expected[src][1] = producer == 5 ? upper : 0;
+        if (producer == 8) expected[dst][0] = expected[src][0];
+        if (producer == 9) {
+            expected[dst][0] = expected[src][0]; expected[dst][1] = expected[src][1];
+        }
+        rr(0, 0x5a, dst, input); // CVTPS2PD.
+        expected[dst][1] = bits((double)std::bit_cast<float>((U32)(expected[input][0] >> 32)));
+        expected[dst][0] = bits(4);
+        const U32 arithmeticEntry = context.codeIp;
+        rr(0xf2, 0x58, dst, dst);
+        expected[dst][0] = bits(8);
+        if (enabled && known && (producer != 9 || !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_COPY_SLOW")))
+            checkScalarInternalEntries({arithmeticEntry}, "scalar lane propagation");
+        runTestCPU();
+        for (U32 r = 0; r < 8; ++r) for (U32 lane = 0; lane < 2; ++lane)
+            if (cpu->xmm[r].pi.u64[lane] != expected[r][lane])
+                failed("scalar lane propagation producer=%u dst=%u src=%u lane1=%x xmm=%u lane=%u",
+                    producer, dst, src, lane1, r, lane);
+    }
+    for (U32 lane1 : {0u, 0x80000000u, 0x40000000u}) {
+        initSse();
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, ((U64)lane1 << 32) | 0x40800000u);
+        mem(0xf3, 0x10, 0, MEM_SRC);
+        mem(0, 0x5a, 0, MEM_SRC); // Memory conversion overwrites an existing proof.
+        rr(0xf2, 0x58, 0, 0);
+        runTestCPU();
+        if (cpu->xmm[0].pi.u64[0] != bits(8) ||
+            cpu->xmm[0].pi.u64[1] != bits((double)std::bit_cast<float>(lane1)))
+            failed("scalar lane memory conversion retained a stale proof");
+    }
+    // Keep only a lane-1 proof: the destination's upper 64 bits are unknown,
+    // and overwrite the original zeroing source before an independent entry.
+    initSse(); setXmm(1, bits(2), upper); setXmm(2, bits(3), upper);
+    memory->writed(TEST_HEAP_ADDRESS + MEM_SRC, 0x40800000);
+    mem(0xf3, 0x10, 0, MEM_SRC);
+    rr(0xf2, 0x10, 1, 0);
+    rr(0, 0x28, 0, 2);
+    const U32 onlyLaneEntry = context.codeIp; pushCode8(0x90);
+    rr(0, 0x5a, 1, 1); rr(0xf2, 0x58, 1, 1);
+    if (enabled && !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_COPY_SLOW"))
+        checkScalarInternalEntries({onlyLaneEntry}, "scalar lane-only interior");
+    runTestCPU();
+    setXmm(1, 0x8000000040800000ull, upper);
+    cpu->eip.u32 = onlyLaneEntry - cpu->seg[CS].address; cpu->nextOp = nullptr;
+    runTestCPU();
+    if (cpu->xmm[1].pi.u64[0] != bits(8) || cpu->xmm[1].pi.u64[1] != bits(-0.0))
+        failed("scalar lane-only proof survived independent entry");
+    // A double write replaces float lane 1, so an earlier MOVSS proof expires.
+    for (bool integerConversion : {false, true}) {
+        initSse();
+        memory->writed(TEST_HEAP_ADDRESS + MEM_SRC, 0x40800000);
+        setXmm(1, bits(2), upper); cpu->reg[0].u32 = 8;
+        mem(0xf3, 0x10, 0, MEM_SRC);
+        if (integerConversion) rr(0xf2, 0x2a, 0, 0);
+        else rr(0xf2, 0x58, 0, 1);
+        const double intermediate = integerConversion ? 8.0 : std::bit_cast<double>(0x40800000ull) + 2.0;
+        const U64 raw = bits(intermediate);
+        const U64 expectedHigh = bits((double)std::bit_cast<float>((U32)(raw >> 32)));
+        const double expectedLow = (double)std::bit_cast<float>((U32)raw) * 2;
+        rr(0, 0x5a, 0, 0); rr(0xf2, 0x58, 0, 0);
+        runTestCPU();
+        if (cpu->xmm[0].pi.u64[0] != bits(expectedLow) || cpu->xmm[0].pi.u64[1] != expectedHigh)
+            failed("scalar lane proof survived a double write");
+    }
+    for (bool skip : {false, true}) {
+        initSse(); setXmm(0, 0x8000000040800000ull, upper);
+        memory->writed(TEST_HEAP_ADDRESS + MEM_SRC, 0x40800000);
+        cpu->reg[0].u32 = skip ? 0 : 1;
+        pushCode8(0x85); pushCode8(0xc0); pushCode8(0x74); pushCode8(8);
+        mem(0xf3, 0x10, 0, MEM_SRC);
+        rr(0, 0x5a, 0, 0); rr(0xf2, 0x58, 0, 0);
+        runTestCPU();
+        if (cpu->xmm[0].pi.u64[0] != bits(8) || cpu->xmm[0].pi.u64[1] != (skip ? bits(-0.0) : 0))
+            failed("scalar lane branch bypassed producer incorrectly");
+    }
+    // Enter before conversion with a negative-zero lane that the producer
+    // would have cleared, then invalidate that producer with a packed load.
+    initSse();
+    memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, 0x8000000040800000ull);
+    memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC + 8, upper);
+    mem(0xf3, 0x10, 0, MEM_SRC);
+    const U32 conversionEntry = context.codeIp;
+    rr(0, 0x5a, 0, 0);
+    const U32 arithmeticEntry = context.codeIp;
+    rr(0xf2, 0x58, 0, 0);
+    runTestCPU();
+    if (cpu->xmm[0].pi.u64[0] != bits(8) || cpu->xmm[0].pi.u64[1])
+        failed("scalar lane initial chain failed");
+    for (U32 entry : {conversionEntry, arithmeticEntry}) {
+        setXmm(0, entry == conversionEntry ? 0x8000000040800000ull : bits(4), bits(-0.0));
+        cpu->eip.u32 = entry - cpu->seg[CS].address; cpu->nextOp = nullptr;
+        runTestCPU();
+        if (cpu->xmm[0].pi.u64[0] != bits(8) || cpu->xmm[0].pi.u64[1] != bits(-0.0))
+            failed("scalar lane independent entry lost negative zero");
+    }
+    memory->writeb(TEST_CODE_ADDRESS, 0x66); // MOVUPD replaces MOVSS, same length.
+    cpu->eip.u32 = TEST_CODE_ADDRESS - cpu->seg[CS].address; cpu->nextOp = nullptr;
+    runTestCPU();
+    if (cpu->xmm[0].pi.u64[0] != bits(8) || cpu->xmm[0].pi.u64[1] != bits(-0.0))
+        failed("scalar lane proof survived producer invalidation");
+#endif
+}
+
+void testArmScalarZeroFaults() {
+#if defined(BOXEDWINE_JIT_ARMV8) && defined(BOXEDWINE_HOST_EXCEPTIONS)
+    auto& context = testContext();
+    const U32 groupBytes = ramPageLinearMemoryPageCount() * K_PAGE_SIZE;
+    constexpr U32 target = 0x22000000;
+    constexpr U64 changedUpper = 0xfedcba9876543210ull;
+    auto bits = [](double value) { return std::bit_cast<U64>(value); };
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) pushCode8(b); };
+    for (U32 offset : {0u, 1u, K_PAGE_SIZE - 1u, groupBytes - 1u})
+    for (U32 tier : {0u, (U32)LINEAR_MEMORY_RECOMPILE_FAULTS, (U32)MAX_OP_EXCEPTION_COUNT})
+    for (bool signal : {false, true}) for (U32 mode = 0; mode < 5; ++mode) {
+        const bool laneExpansion = mode == 1;
+        initSse(); setXmm(1, bits(4), changedUpper);
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, laneExpansion ? 0x41800000ull : bits(16));
+        memory->writed(TEST_HEAP_ADDRESS + MEM_DST + 32, 0);
+        memory->mmap(context.thread, target, groupBytes * 2, K_PROT_READ | K_PROT_WRITE,
+            K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+        if (signal) {
+            if (mode == 2 || mode == 3) memory->writed(target + offset, mode == 2 ? 5 : 0x40a00000);
+            else memory->writeq(target + offset, bits(4));
+        }
+        cpu->reg[6].u32 = target + offset - TEST_HEAP_ADDRESS;
+        bytes({0xff, 0x05}); pushCode32(MEM_DST + 32); // Count completed prefix.
+        bytes({(U8)(laneExpansion ? 0xf3 : 0xf2), 0x0f, 0x10, 0x05}); pushCode32(MEM_SRC);
+        if (!laneExpansion) bytes({0xf2, 0x0f, 0x58, 0xc1});
+        U32 access = context.codeIp;
+        if (laneExpansion) {
+            bytes({0x8b, 0x06}); // Fault before the packed conversion.
+            bytes({0x0f, 0x5a, 0xc0, 0xf2, 0x0f, 0x59, 0xc1, 0xcd, 0x97});
+        } else if (mode == 4) {
+            bytes({0x8b, 0x06, 0xf2, 0x0f, 0x10, 0xc1, 0xcd, 0x97}); // Fault before MOVSD.
+        } else {
+            bytes({(U8)(mode == 3 ? 0xf3 : 0xf2), 0x0f,
+                (U8)(mode == 2 ? 0x2a : mode == 3 ? 0x5a : 0x59), 0x06});
+            bytes({0xf2, 0x0f, 0x58, 0xc1, 0xcd, 0x97});
+        }
+        U32 handler = TEST_CODE_ADDRESS + 0x6000;
+        context.codeIp = handler; bytes({0xcd, 0x97});
+        auto savedAction = context.process->sigActions[K_SIGSEGV];
+        auto& action = context.process->sigActions[K_SIGSEGV];
+        action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = handler;
+        auto* head = cpu->getOp(TEST_CODE_ADDRESS, 0);
+        auto* load = memory->getDecodedOp(access);
+        if (!load) { failed("scalar zero fault operand not decoded"); return; }
+        load->exceptionCount = tier;
+        startNewJIT(cpu, TEST_CODE_ADDRESS, head);
+        if (!head->pfnJitCode) failed("scalar zero fault block did not compile");
+        U32 protectedPage = (target + offset + (mode ? 3 : 7)) & ~K_PAGE_MASK;
+        if (signal) memory->mprotect(context.thread, protectedPage, K_PAGE_SIZE, 0);
+        runTestCPU();
+        if (signal) {
+            U32 uc = action.sigInfo[0] == K_SIGSEGV ? cpu->reg[2].u32 : 0;
+            if (!uc || memory->readd(uc + 0x4c) != access - TEST_CODE_ADDRESS ||
+                memory->readq(uc + 0x180) != (laneExpansion ? 0x41800000ull : bits(20)) || memory->readq(uc + 0x188)) {
+                failed("scalar zero fault state offset=%x tier=%u", offset, tier);
+            } else {
+                // Simulate a signal handler editing the saved XMM register.
+                if (laneExpansion) memory->writed(uc + 0x184, 0x40000000); // Float lane 1 = 2.
+                else memory->writeq(uc + 0x188, changedUpper);
+                memory->mprotect(context.thread, protectedPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+                if (cpu->pop32() != SIG_RETURN_ADDRESS) failed("scalar zero signal return address");
+                onExitSignal(cpu, nullptr); cpu->nextOp = nullptr;
+                runTestCPU();
+                const double expectedLow = mode == 0 ? 84 : mode == 1 ? 64 : mode == 4 ? 4 : 9;
+                if (cpu->xmm[0].pi.u64[0] != bits(expectedLow) ||
+                    cpu->xmm[0].pi.u64[1] != (laneExpansion ? bits(2) : changedUpper))
+                    failed("scalar zero signal resume discarded edited upper lanes");
+            }
+            memory->mprotect(context.thread, protectedPage, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        } else if (action.sigInfo[0] || cpu->xmm[0].pi.u64[0] != bits(laneExpansion ? 64 : 4) || cpu->xmm[0].pi.u64[1]) {
+            failed("scalar zero first-touch result offset=%x tier=%u", offset, tier);
+        }
+        if (memory->readd(TEST_HEAP_ADDRESS + MEM_DST + 32) != 1) failed("scalar zero replayed completed prefix");
+        context.process->sigActions[K_SIGSEGV] = savedAction;
+        memory->unmap(target, groupBytes * 2);
+    }
+#endif
+}
+
+void testArmScalarZeroDirectOps() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    auto& context = testContext();
+    constexpr U64 upper = 0xfedcba9876543210ull;
+    auto bits = [](double value) { return std::bit_cast<U64>(value); };
+    auto rr = [](U8 prefix, U8 opcode, U32 dst, U32 src) {
+        pushCode8(prefix); pushCode8(0x0f); pushCode8(opcode); pushCode8(0xc0 | (dst << 3) | src);
+    };
+    auto mem = [](U8 prefix, U8 opcode, U32 dst, U32 address) {
+        pushCode8(prefix); pushCode8(0x0f); pushCode8(opcode); pushCode8(0x05 | (dst << 3)); pushCode32(address);
+    };
+    for (U32 operation = 0; operation < 5; ++operation)
+    for (U32 dst = 0; dst < 8; ++dst) for (U32 src = 0; src < 8; ++src)
+    for (bool zero : {false, true})
+    for (U32 raw : {0u, 0x80000000u, 0x40a00000u, 0xc0a00000u, 0x7fffffffu, 0x7fc12345u, 1u}) {
+        if ((operation == 2 || operation == 4) && src) continue;
+        initSse(); cpu->setFlags(CF | ZF | OF, FMASK_TEST);
+        U64 expected[8][2];
+        for (U32 r = 0; r < 8; ++r) {
+            expected[r][0] = 0x3ff0000000000000ull | raw;
+            expected[r][1] = upper + r;
+            setXmm(r, expected[r][0], expected[r][1]);
+            if (r != 4) cpu->reg[r].u32 = raw;
+        }
+        // ESP must remain a usable test stack; still exercise it as an input.
+        const U32 integerInput = cpu->reg[src].u32;
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_SRC, raw);
+        memory->writeq(TEST_HEAP_ADDRESS + MEM_DST, bits(8));
+        if (zero) {
+            mem(0xf2, 0x10, dst, MEM_DST);
+            expected[dst][0] = bits(8); expected[dst][1] = 0;
+        }
+        const U32 entry = context.codeIp;
+        if (operation == 0) {
+            rr(0xf2, 0x10, dst, src);
+            expected[dst][0] = expected[src][0];
+        } else if (operation <= 2) {
+            if (operation == 1) rr(0xf2, 0x2a, dst, src);
+            else mem(0xf2, 0x2a, dst, MEM_SRC);
+            expected[dst][0] = bits((double)(S32)(operation == 1 ? integerInput : raw));
+        } else {
+            const U32 input = operation == 3 ? (U32)expected[src][0] : raw;
+            if (operation == 3) rr(0xf3, 0x5a, dst, src);
+            else mem(0xf3, 0x5a, dst, MEM_SRC);
+            expected[dst][0] = bits((double)std::bit_cast<float>(input));
+        }
+        if (zero && !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_SLOW") &&
+            (operation == 0 || !std::getenv("BOXEDWINE_ARM_SCALAR_ZERO_COPY_SLOW")))
+            checkScalarInternalEntries({entry}, "scalar direct operation");
+        runTestCPU(); cpu->fillFlags();
+        for (U32 r = 0; r < 8; ++r) for (U32 lane = 0; lane < 2; ++lane)
+            if (cpu->xmm[r].pi.u64[lane] != expected[r][lane])
+                failed("scalar direct op=%u dst=%u src=%u zero=%u raw=%x xmm=%u lane=%u",
+                    operation, dst, src, zero, raw, r, lane);
+        if ((cpu->flags & FMASK_TEST) != (CF | ZF | OF)) failed("scalar direct operation changed flags");
+    }
+#endif
+}
+
+void testArmScalarTruncateBoundaries() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    struct Input { U64 bits; U32 expected; };
+    const Input doubles[] = {
+        {0, 0}, {0x8000000000000000ULL, 0}, {1, 0},
+        {bitsFromDouble(1.75), 1}, {bitsFromDouble(-1.75), 0xffffffff},
+        {bitsFromDouble(2147483647.0), 0x7fffffff},
+        {bitsFromDouble(2147483647.75), 0x7fffffff},
+        {bitsFromDouble(2147483648.0), 0x80000000},
+        {bitsFromDouble(-2147483648.0), 0x80000000},
+        {bitsFromDouble(-2147483648.75), 0x80000000},
+        {bitsFromDouble(-2147483649.0), 0x80000000},
+        {0x7ff0000000000000ULL, 0x80000000}, {0xfff0000000000000ULL, 0x80000000},
+        {0x7ff8000000001234ULL, 0x80000000}, {0x7ff0000000001234ULL, 0x80000000},
+        {0xfff8000000001234ULL, 0x80000000}
+    };
+    const Input singles[] = {
+        {0, 0}, {0x80000000, 0}, {1, 0}, {0x80000001, 0},
+        {0x3fe00000, 1}, {0xbfe00000, 0xffffffff},
+        {0x4effffff, 0x7fffff80}, {0x4f000000, 0x80000000},
+        {0xcf000000, 0x80000000}, {0xcf000001, 0x80000000},
+        {0x7f800000, 0x80000000}, {0xff800000, 0x80000000},
+        {0x7fc12345, 0x80000000}, {0x7fa12345, 0x80000000}, {0xffc12345, 0x80000000}
+    };
+    auto check = [](const Input& input, bool doublePrecision) {
+        const U8 prefix = doublePrecision ? 0xf2 : 0xf3;
+        const U64 low = doublePrecision ? input.bits : input.bits | 0xaabbccdd00000000ULL;
+        for (U32 rounding = 0; rounding < 4; ++rounding) {
+            // Fault recovery can execute the interpreter even in a JIT build.
+            initSse();
+            cpu->setMxcsr(0x1f80 | (rounding << 13));
+            setXmm(0, low, XMM_SRC_HIGH);
+            writeXmmMem(MEM_SRC, low, XMM_SRC_HIGH);
+            if (doublePrecision) {
+                common_cvttsd2siR32Xmm(cpu, 0, 0);
+                common_cvttsd2siR32E64(cpu, 1, TEST_HEAP_ADDRESS + MEM_SRC);
+            } else {
+                common_cvttss2siR32Xmm(cpu, 0, 0);
+                common_cvttss2siR32E32(cpu, 1, TEST_HEAP_ADDRESS + MEM_SRC);
+            }
+            if (cpu->reg[0].u32 != input.expected || cpu->reg[1].u32 != input.expected) {
+                failed("Scalar truncation interpreter double=%u bits=%llx rounding=%u",
+                    doublePrecision, (unsigned long long)input.bits, rounding);
+            }
+            for (int dst = 0; dst < 8; ++dst) for (int src = 0; src <= 8; ++src) {
+                initSse();
+                cpu->setMxcsr(0x1f80 | (rounding << 13));
+                cpu->flags = SSE_FLAG_MASK;
+                cpu->reg[dst].u32 = 0x98765432;
+                if (src < 8) {
+                    setXmm(src, low, XMM_SRC_HIGH);
+                    emitSseRegReg(prefix, 0x2c, dst, src);
+                } else {
+                    writeXmmMem(MEM_SRC, low, XMM_SRC_HIGH);
+                    emitSseRegMem(prefix, 0x2c, dst, MEM_SRC);
+                }
+                if (dst == 4) {
+                    emitStoreReg32ToMem(4, MEM_DST);
+                    emitRestoreEsp();
+                }
+                runTestCPU();
+                const U32 actual = dst == 4 ? memory->readd(TEST_HEAP_ADDRESS + MEM_DST) : cpu->reg[dst].u32;
+                if (actual != input.expected) {
+                    failed("ARM truncation double=%u bits=%llx rounding=%u dst=%u src=%u expected=%x actual=%x",
+                        doublePrecision, (unsigned long long)input.bits, rounding, dst, src, input.expected, actual);
+                }
+                if ((TestX86::actualFlags(cpu, true) & SSE_FLAG_MASK) != SSE_FLAG_MASK) {
+                    failed("ARM truncation changed integer flags");
+                }
+                for (int r = 0; r < 8; ++r) {
+                    const U64 expectedLow = r == src ? low : XMM_DEFAULT_LOW;
+                    const U64 expectedHigh = r == src ? XMM_SRC_HIGH : XMM_DEFAULT_HIGH;
+                    if (cpu->xmm[r].pi.u64[0] != expectedLow || cpu->xmm[r].pi.u64[1] != expectedHigh) {
+                        failed("ARM truncation changed xmm%d", r);
+                    }
+                }
+            }
+        }
+    };
+    for (const auto& input : doubles) check(input, true);
+    for (const auto& input : singles) check(input, false);
+#endif
+}
+
+void testSseShuffleAllMasks() {
+    // Distinct bit patterns test lane selection without floating-point rounding,
+    // including preservation of NaN payloads and signed zero.
+    const U32 a[4] = {0x80000000, 0x7fc12345, 0x12345678, 0xfedcba98};
+    const U32 b[4] = {0x76543210, 0xff812345, 0x00000001, 0x3f800000};
+    for (U32 mask = 0; mask < 256; ++mask) {
+        U32 lane[4];
+        for (U32 i = 0; i < 4; ++i) {
+            lane[i] = (mask >> (2 * i)) & 3;
+        }
+        auto shuffleHalf = [&lane](U64 value) {
+            U64 result = 0;
+            for (U32 i = 0; i < 4; ++i) result |= ((value >> (lane[i] * 16)) & 0xffff) << (i * 16);
+            return result;
+        };
+        const U64 aLow = packFloatBits(a[0], a[1]), aHigh = packFloatBits(a[2], a[3]);
+        const U64 bLow = packFloatBits(b[0], b[1]), bHigh = packFloatBits(b[2], b[3]);
+        testSse128ImmOp(0, 0x66, 0xc6, (U8)mask, aLow, aHigh, bLow, bHigh,
+            (mask & 1) ? aHigh : aLow, (mask & 2) ? bHigh : bLow, "shufpd all masks");
+        for (int reg = 0; reg < 8; ++reg) {
+            initSse();
+            setXmm(reg, aLow, aHigh);
+            emitSseRegReg(0x66, 0xc6, reg, reg);
+            pushCode8((U8)mask);
+            runTestCPU();
+            verifyOnlyXmmChanged(reg, (mask & 1) ? aHigh : aLow,
+                (mask & 2) ? aHigh : aLow, "shufpd aliased all masks");
+        }
+        for (int high = 0; high < 2; ++high) {
+            const U8 prefix = high ? 0xf3 : 0xf2;
+            testSse128ImmOp(0, prefix, 0x70, (U8)mask, aLow, aHigh, bLow, bHigh,
+                high ? bLow : shuffleHalf(bLow), high ? shuffleHalf(bHigh) : bHigh,
+                high ? "pshufhw all masks" : "pshuflw all masks");
+            for (int reg = 0; reg < 8; ++reg) {
+                initSse();
+                setXmm(reg, aLow, aHigh);
+                emitSseRegReg(prefix, 0x70, reg, reg);
+                pushCode8((U8)mask);
+                runTestCPU();
+                verifyOnlyXmmChanged(reg, high ? aLow : shuffleHalf(aLow),
+                    high ? shuffleHalf(aHigh) : aHigh, "word shuffle aliased all masks");
+            }
+        }
+        for (int pshufd = 0; pshufd < 2; ++pshufd) {
+            const U32* lowSource = pshufd ? b : a;
+            testSse128ImmOp(0, pshufd ? 0x66 : 0, pshufd ? 0x70 : 0xc6, (U8)mask,
+                packFloatBits(a[0], a[1]), packFloatBits(a[2], a[3]),
+                packFloatBits(b[0], b[1]), packFloatBits(b[2], b[3]),
+                packFloatBits(lowSource[lane[0]], lowSource[lane[1]]),
+                packFloatBits(b[lane[2]], b[lane[3]]),
+                pshufd ? "pshufd all masks" : "shufps all masks");
+            for (int reg = 0; reg < 8; ++reg) {
+                initSse();
+                setXmm(reg, packFloatBits(a[0], a[1]), packFloatBits(a[2], a[3]));
+                emitSseRegReg(pshufd ? 0x66 : 0, pshufd ? 0x70 : 0xc6, reg, reg);
+                pushCode8((U8)mask);
+                runTestCPU();
+                verifyOnlyXmmChanged(reg, packFloatBits(a[lane[0]], a[lane[1]]),
+                    packFloatBits(a[lane[2]], a[lane[3]]), "shuffle aliased all masks");
+            }
+        }
+    }
+}
+
 void testSseInsertExtractShuffle_0x1c4_0x3c4_0x1c5_0x3c5_0x3c6() {
     runPinsrwXmm(0x1111222233334444ULL, 0x5555666677778888ULL, 0x11229900, 5, 0x1111222233334444ULL, 0x5555666699008888ULL, "sse2 pinsrw xmm");
     runPinsrwMmx(0x1111222233334444ULL, 0x5555, 2, 0x1111555533334444ULL, "sse pinsrw mmx");
@@ -1509,7 +2204,10 @@ void testSse2Arithmetic_0x151_0x351_0x154_0x155_0x156_0x157_0x158_0x358_0x159_0x
 }
 
 void testSse2Transfers_0x16e_0x17e_0x37e_0x1d6_0x3d6_0x3c3_0x1e7_0x1f7() {
-    testSseReg32Op(0, 0x66, 0x6e, 0x1111111122222222ULL, 0x3333333344444444ULL, 0x12345678, 0x0000000012345678ULL, 0, "sse2 movd xmm,r32");
+    for (U32 value : {0u, 1u, 0x7fffffffu, 0x80000000u, 0xffffffffu, 0x7fc12345u, 0x12345678u}) {
+        testSseReg32Op(0, 0x66, 0x6e, 0x1111111122222222ULL, 0x3333333344444444ULL,
+            value, value, 0, "sse2 movd xmm,r32 clears upper lanes");
+    }
     testSseE32ROp(0, 0x66, 0x7e, 0x12345678, 0x1111111122222222ULL, 0x3333333344444444ULL, 0x22222222, 0, "sse2 movd r32,xmm");
     testSse128Op(0, 0xf3, 0x7e, 0x1111111122222222ULL, 0x3333333344444444ULL, 0x5555555566666666ULL, 0x7777777788888888ULL, 0x5555555566666666ULL, 0, 0, 0, "sse2 movq xmm,e64");
     testSse128ROp(0, 0x66, 0xd6, 0x1111111122222222ULL, 0x3333333344444444ULL, 0x5555555566666666ULL, 0x7777777788888888ULL, 0x5555555566666666ULL, 0, 0x5555555566666666ULL, 0x3333333344444444ULL, "sse2 movq e64,xmm");

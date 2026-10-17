@@ -338,6 +338,92 @@ PY
     }
 }
 
+void prepareBuildSiteArtifacts() {
+    dir("project/linux") {
+        sh '''#!/bin/bash
+            rm -rf Deploy
+        '''
+        unstash "web"
+        unstash "linux64"
+        unstash "macArmv8"
+        unstash "linuxArm64"
+        unstash "windows"
+        unstash "windowsARM64"
+        dir('Deploy') {
+            sh '''
+            cat > readme.txt <<'README'
+Windows: extract the ZIP, then open Boxedwine.exe in the folder for your PC.
+Win64: x64 native Windows UI; requires .NET 10 Desktop Runtime for Windows x64.
+WinARM64: ARM64 native Windows UI; requires .NET 10 Desktop Runtime for Windows Arm64.
+Win32: existing 32-bit frontend.
+If .NET is missing, Boxedwine.exe offers to open Microsoft's download page.
+Install the matching Desktop Runtime, then open Boxedwine.exe again:
+https://dotnet.microsoft.com/en-us/download/dotnet/10.0
+The SDK is not required. The plain .NET Runtime alone does not include WPF.
+Boxedwine_console.exe in each Windows folder is the command-line/automation build.
+The console builds and Win32 frontend do not require .NET.
+The Runtime folder in Win64/WinARM64 contains the emulator; keep it with the other files.
+Wine packages are downloaded when selected in Boxedwine.
+Linux: each Linux/x64 or Linux/arm64 folder contains a .deb and a portable folder.
+Debian/Ubuntu/Mint: install the matching .deb with sudo apt install ./boxedwine_*.deb
+Debian calls x64 amd64. The .deb installs the menu entry, UI, and boxedwine command.
+Alternatively, open portable/boxedwine-ui; keep the portable folder together.
+arm64 is also called aarch64 by Linux tools.
+The Linux UI requires Python 3 with PyGObject, GTK 4.14+, and libadwaita 1.5+.
+Use Debian 13+, Ubuntu 24.04+, Mint 22+, or a supported Fedora with those libraries.
+Debian/Ubuntu/Mint dependencies: python3-gi gir1.2-gtk-4.0 gir1.2-adw-1
+Fedora dependencies: python3-gobject gtk4 libadwaita
+Keep Runtime and ui alongside boxedwine-ui; the launcher finds its engine automatically.
+portable/CommandLine/boxedwine in each Linux architecture folder is the standalone app.
+The command-line app does not require Python, GTK, or libadwaita.
+See each portable folder's README.md for full dependencies and installation options.
+Mac builds are included under Mac/.
+README
+            zip -r build-$BUILD_NUMBER.zip *
+            '''
+            archiveArtifacts artifacts: "build-${env.BUILD_NUMBER}.zip, Linux/*/*.deb", fingerprint: true, allowEmptyArchive: true
+        }
+    }
+}
+
+void publishBuildSite() {
+    // Post actions can land on a worker without the earlier stage's checkout.
+    if (!fileExists('tools/jenkins/publish-build-site.sh')) {
+        gitCheckout()
+    }
+    // A test/compile failure may leave no stashes at all. Packaging failures
+    // also become failed builds, but must still reach the log publisher.
+    if (currentBuild.currentResult == 'SUCCESS') {
+        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            prepareBuildSiteArtifacts()
+        }
+    }
+    withFolderProperties {
+        if (!env.BUILD_SITE_REMOTE) {
+            echo 'BUILD_SITE_REMOTE is not set; skipping static build site publish.'
+            return
+        }
+        def logFile = ''
+        if (currentBuild.currentResult != 'SUCCESS') {
+            logFile = "${env.WORKSPACE}/build-site-console-${env.BUILD_NUMBER}.log"
+            // Token Macro is already installed with email-ext. Unlike rawBuild,
+            // this Pipeline step needs no script approvals or API credentials.
+            // Capture all lines, including errors caught during packaging.
+            writeFile file: logFile, encoding: 'UTF-8',
+                text: "Build result: ${currentBuild.currentResult}\n\n" +
+                    tm('${BUILD_LOG, maxLines=2147483647, escapeHtml=false}')
+        }
+        withEnv([
+            "BUILD_RESULT=${currentBuild.currentResult}",
+            "GIT_COMMIT=${env.GIT_COMMIT ?: env.BOXEDWINE_GIT_COMMIT ?: ''}",
+            "BUILD_SITE_ARTIFACT=${env.WORKSPACE}/project/linux/Deploy/build-${env.BUILD_NUMBER}.zip",
+            "BUILD_SITE_LOG=${logFile}"
+        ]) {
+            sh 'bash "$WORKSPACE/tools/jenkins/publish-build-site.sh"'
+        }
+    }
+}
+
 pipeline {
     agent none
     options { 
@@ -680,8 +766,8 @@ pipeline {
                             # Keep the AbiWord captures paired with the Wine 11 window theme.
                             ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v3.zip'
                             ABIWORD_AUTO_SHA256='e71c79c0335da3d2b89e23b79c1f2162b954fedf68d442a210d8b28eb783eef5'
-                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/14/TinyCore15Wine11.0-web.zip'
-                            BOXEDWINE_AUTO_SHA256='3365e31caaf6a1fc832a0a7c4812592d25410b9f5c9536277131388c8e103a49'
+                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/20/TinyCore15Wine11.0-web.zip'
+                            BOXEDWINE_AUTO_SHA256='21beaeea9566fe214a5d5fd4d605cae467166d1e6cd1458a8e6fef79fe5bb631'
 
                             file_matches_sha256() {
                                 local file="$1"
@@ -750,9 +836,9 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation34.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
                                 rm -rf automation
-                                unzip automation34.zip
+                                unzip automation36.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -782,9 +868,9 @@ pipeline {
                     steps {
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation34.zip https://boxedwine.org/v2/1/automation34.zip --output automation34.zip
+                                curl -z automation36.zip https://boxedwine.org/v2/1/automation36.zip --output automation36.zip
                                 rm -rf automation
-                                unzip automation34.zip
+                                unzip automation36.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -819,9 +905,9 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation34.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
                                 rm -rf automation
-                                unzip automation34.zip
+                                unzip automation36.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -850,9 +936,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation34.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            unzip automation34.zip
+                            unzip automation36.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }
@@ -887,9 +973,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation34.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            tar -xf automation34.zip
+                            tar -xf automation36.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }
@@ -940,61 +1026,8 @@ pipeline {
     post {
         always {
             node('linux64') {
-                dir("project/linux") {
-                    sh '''#!/bin/bash
-                        rm -rf Deploy
-                    '''
-                    unstash "web"
-                    unstash "linux64"
-                    unstash "macArmv8"
-                    unstash "linuxArm64"
-                    unstash "windows"
-                    unstash "windowsARM64"
-                    dir('Deploy') {
-                        sh '''
-                        cat > readme.txt <<'README'
-Windows: extract the ZIP, then open Boxedwine.exe in the folder for your PC.
-Win64: x64 native Windows UI; requires .NET 10 Desktop Runtime for Windows x64.
-WinARM64: ARM64 native Windows UI; requires .NET 10 Desktop Runtime for Windows Arm64.
-Win32: existing 32-bit frontend.
-If .NET is missing, Boxedwine.exe offers to open Microsoft's download page.
-Install the matching Desktop Runtime, then open Boxedwine.exe again:
-https://dotnet.microsoft.com/en-us/download/dotnet/10.0
-The SDK is not required. The plain .NET Runtime alone does not include WPF.
-Boxedwine_console.exe in each Windows folder is the command-line/automation build.
-The console builds and Win32 frontend do not require .NET.
-The Runtime folder in Win64/WinARM64 contains the emulator; keep it with the other files.
-Wine packages are downloaded when selected in Boxedwine.
-Linux: each Linux/x64 or Linux/arm64 folder contains a .deb and a portable folder.
-Debian/Ubuntu/Mint: install the matching .deb with sudo apt install ./boxedwine_*.deb
-Debian calls x64 amd64. The .deb installs the menu entry, UI, and boxedwine command.
-Alternatively, open portable/boxedwine-ui; keep the portable folder together.
-arm64 is also called aarch64 by Linux tools.
-The Linux UI requires Python 3 with PyGObject, GTK 4.14+, and libadwaita 1.5+.
-Use Debian 13+, Ubuntu 24.04+, Mint 22+, or a supported Fedora with those libraries.
-Debian/Ubuntu/Mint dependencies: python3-gi gir1.2-gtk-4.0 gir1.2-adw-1
-Fedora dependencies: python3-gobject gtk4 libadwaita
-Keep Runtime and ui alongside boxedwine-ui; the launcher finds its engine automatically.
-portable/CommandLine/boxedwine in each Linux architecture folder is the standalone app.
-The command-line app does not require Python, GTK, or libadwaita.
-See each portable folder's README.md for full dependencies and installation options.
-Mac builds are included under Mac/.
-README
-                        zip -r build-$BUILD_NUMBER.zip *
-                        '''
-                        archiveArtifacts artifacts: "build-${env.BUILD_NUMBER}.zip, Linux/*/*.deb", fingerprint: true, allowEmptyArchive: true
-                    }
-                    script {
-                        withFolderProperties {
-                            withEnv([
-                                "BUILD_RESULT=${currentBuild.currentResult ?: 'SUCCESS'}",
-                                "GIT_COMMIT=${env.GIT_COMMIT ?: env.BOXEDWINE_GIT_COMMIT ?: ''}",
-                                "BUILD_SITE_ARTIFACT=${env.WORKSPACE}/project/linux/Deploy/build-${env.BUILD_NUMBER}.zip"
-                            ]) {
-                                sh "bash ${env.WORKSPACE}/tools/jenkins/publish-build-site.sh"
-                            }
-                        }
-                    }
+                script {
+                    publishBuildSite()
                 }
             }
         }

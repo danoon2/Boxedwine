@@ -206,8 +206,8 @@ public:
 	void setDirty() override;
 	XWindowPtr getWindowFromPoint(S32 screenX, S32 screenY);
 
-	void focusOut();
-	void focusIn();
+	void focusOut(S32 detail);
+	void focusIn(S32 detail);
 
 	bool doesThisOrAncestorHaveFocus();
 	XWindowPtr getLeastCommonAncestor(const XWindowPtr& wnd);

@@ -49,7 +49,10 @@ constexpr U32 FLAG_MASK = CF | PF | AF | ZF | SF | OF | DF;
 constexpr U32 CMPXCHG_FLAG_MASK = CF | PF | AF | ZF | SF | OF | DF;
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifdef __EMSCRIPTEN__
-constexpr U32 LOCKED_PLAIN_STORE_RACE_ITERATIONS = 1000;
+// ARM64 Wasm ordering failures can be intermittent at only 1,000 phases.
+// Exercise the interpreter warmup and enough generated-code iterations to
+// expose a missing ordering boundary without relying on repeated CI runs.
+constexpr U32 LOCKED_PLAIN_STORE_RACE_ITERATIONS = 10000;
 constexpr U32 LOCKED_ORDERING_ITERATIONS = 1000;
 #else
 constexpr U32 LOCKED_PLAIN_STORE_RACE_ITERATIONS = 100000;

@@ -33,6 +33,7 @@
 #include "cpu/testWasmJitBatch.h"
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
 #include "cpu/testWasmJitModuleBroker.h"
+#include "../emulation/cpu/wasm/wasmMemoryOrdering.h"
 #endif
 #include "cpu/testFPU.h"
 #include "cpu/testIncDec.h"
@@ -94,6 +95,7 @@ void testStatxEmptyPathUsesOpenFile();
 void testReadOnlyCreatePreservesZipFile();
 void testZipRandomAccess();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
+void testHostFolderSyncUpdatesLoadedChildren();
 void testSharedFileMappingGrowthKeepsPagesShared();
 void testSharedFileMappingTruncateClearsResidentBytes();
 void testSharedMappedWriteIsVisibleToPread();
@@ -117,6 +119,9 @@ void testFinalMappedRetirementShortWriteIsRetryable();
 void testFinalMappedRetirementSerializesNewRetain();
 void testMmapRejectsFileOffsetOverflowBeforeReplacement();
 void testMlockValidatesMappedAccessibleRange();
+void testInitialStackLinearAlignment();
+void testMmapStackEndAlignment();
+void testElfInterpreterHonorsProgramHeaderCount();
 void testMsyncRejectsUnmappedFileRange();
 void testMsyncFlushesRangeAcrossFixedFileOverlay();
 void testMsyncValidatesArgumentsAndAcceptsAnonymousRanges();
@@ -147,6 +152,7 @@ void testMmapCacheAcquireDoesNotHoldMemoryLock();
 void testExecutableFixedReplacementPreparationFailurePreservesState();
 void testNativeHeapSmallFreeQueueFailureIsRetryable();
 void testNativeHeapConcurrentAllocFree();
+void testRamPageMetadataConcurrentGrowth();
 void testCachedPositionedReadUsesCheckedOffsetAndSeek();
 void testFtruncateBackendLengthBoundaries();
 void testPrivateMappedWriteDoesNotChangePread();
@@ -176,10 +182,13 @@ void testInotifyReportsUnlinkAtDelete();
 void testInotifyFollowsWatchedSymlinkTarget();
 void testInotifyPollReportsChildDirectoryDelete();
 void testInotifyAsyncSignalsSigioOnDelete();
+void testStartupArgsWineDllOverrides();
 void testStartupArgsDefaultUtf8LocaleEnvironment();
 void testStartupArgsLinearMemoryOption();
 void testStartupArgsMouseSensitivity();
+void testStartupArgsSafeMemoryOption();
 void testTerminatingThreadDoesNotEnterFutexWait();
+void testSharedFutexUnmappedAddressReturnsEFAULT();
 void testUnixSocketPollOutClearsPeerCondition();
 void testUnixSocketSendmsgStreamPayloadCanBeRead();
 void testUnixSocketWritevInvalidSecondIovAfterZeroLengthFirstReturnsEfault();
@@ -190,6 +199,8 @@ void testPollRegistrationCanSignalParentCondition();
 void testNativeSocketSetOobInlineCanBeReadBack();
 void testNativeSocketBindUnavailableAddressReturnsEaddrnotavail();
 void testNativeSocketRecvmsgReceivesOobData();
+void testNativeSocketConnectCompletion();
+void testNativeSocketBlockingConnectDoesNotBlockPoll();
 #if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
 void stopNativeSocketsThread();
 #endif
@@ -225,6 +236,15 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
 #ifdef BOXEDWINE_WASM_JIT
     {testWasmJitMaterializedConditions, "Test WASM JIT materialized flag conditions"},
+    {testWasmJitLoopRegisterState, "Test WASM JIT loop carried registers"},
+    {testWasmJitLoopRegisterFaults, "Test WASM JIT loop carried fault state"},
+    {testWasmJitLoopRegisterCodeWrite, "Test WASM JIT loop carried code write state"},
+    {testWasmJitForwardLoopBranches, "Test WASM JIT forward branches within loops"},
+    {testWasmJitForwardBranches, "Test WASM JIT forward branches across blocks and loops"},
+    {testWasmJitRepMovsdState, "Test WASM JIT REP MOVSD cached state"},
+    {testWasmJitLoopReachability, "Test WASM JIT loop reachability and cleanup jumps"},
+    {testWasmJitMultipleLoops, "Test WASM JIT multiple separate loops"},
+    {testWasmJitConditionalSideExits, "Test WASM JIT conditional side exits"},
     {testWasmJitSseCompareConditions, "Test WASM JIT SSE compare conditions"},
     {testWasmJitFpuCache, "Test WASM JIT x87 stack cache"},
     {testWasmJitFpuMemory, "Test WASM JIT x87 cache memory paths"},
@@ -334,16 +354,24 @@ const TestEntry TEST_ENTRIES[] = {
     {testWasmJitGroupedOomRecovery, "Test WASM JIT grouped OOM recovery"},
     {testWasmJitOomRetryAfterRelease, "Test WASM JIT OOM retry after release"},
 #endif
+#ifdef BOXEDWINE_WASM_JIT
+    {testWasmJitIndirectCacheState, "Test WASM JIT indirect cache state"},
+#endif
+#ifdef BOXEDWINE_JIT_X64
+    {testJitIndirectTargetProfile, "Test JIT indirect target profile"},
+    {testJitIndirectTargetFlags, "Test JIT indirect target guard flags"},
+#endif
     {testFlagsAcrossIndirectJitBlockBoundary, "Test flags across indirect JIT block boundary"},
 #ifdef BOXEDWINE_JIT
     {testJitOverlappingDirectJumpTarget, "Test JIT overlapping direct jump target"},
+    {testJitBranchTargetBoundaries, "Test JIT branch target at block end"},
 #ifndef BOXEDWINE_WASM_JIT
     {testJitDirectTargetInvalidation, "Test JIT direct target invalidation"},
 #ifdef BOXEDWINE_JIT_ARMV8
     {testArmJitEntryInvalidatedBeforeDispatch, "Test ARM JIT entry invalidated before dispatch"},
 #endif
 #endif
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     {testJitEntryCacheInvalidation, "Test JIT compiled-entry cache invalidation"},
 #endif
 #if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
@@ -365,6 +393,18 @@ const TestEntry TEST_ENTRIES[] = {
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
     {testNativeJitRunCountWraps, "Test native JIT runCount wrap"},
     {testNativeJitCooperativeScheduling, "Test native JIT cooperative scheduling", TEST_ENTRY_SERIAL},
+    {testNativeAdaptiveReturnFirstCsChange, "Test native return first CS change and cached carry helper entry", TEST_ENTRY_SERIAL},
+    {testNativeJitPerformancePolicy, "Test native JIT production policy defaults and overrides", TEST_ENTRY_SERIAL},
+    {testNativeJitConditionalSideExits, "Test native JIT conditional side exits"},
+#endif
+#ifdef BOXEDWINE_JIT_X64
+    {testNativeX64MemoryPolicies, "Test x64 JIT memory policies and fault state", TEST_ENTRY_SERIAL},
+    {testNativeX64CarryPolicies, "Test x64 JIT carry policies and flags", TEST_ENTRY_SERIAL},
+    {testNativeX64AddressPolicies, "Test x64 JIT address policies and wraparound", TEST_ENTRY_SERIAL},
+    {testNativeX64FpuPolicies, "Test x64 JIT x87 stack policy and fallbacks", TEST_ENTRY_SERIAL},
+#endif
+#ifdef BOXEDWINE_JIT
+    {testJitDecodedChainBoundary, "Test JIT decoded chain boundary", TEST_ENTRY_SERIAL},
 #endif
     {testMemoryAccess32, "Test 32-bit Memory Access"},
     {testMemoryAccess16, "Test 16-bit Memory Access"},
@@ -732,9 +772,12 @@ const TestEntry TEST_ENTRIES[] = {
     {testX87DivFastPathDecision, "Test x87 divide fast path decision"},
     {testX87ExceptionSummaryState, "Test x87 exception summary state"},
     {testX87FwaitRaisesPendingException, "Test x87 fwait raises pending exception", TEST_ENTRY_SERIAL},
+#ifdef BOXEDWINE_JIT_ARMV8
+    {testArmJitPollExitState, "Test ARM JIT poll exit state", TEST_ENTRY_SERIAL},
+#endif
     {testJitSignalPendingReset, "Test JIT signal pending reset", TEST_ENTRY_SERIAL},
     {testJitSignalPendingQueuedSignal, "Test JIT signal pending queued signal", TEST_ENTRY_SERIAL},
-    {testWasmJitSignalPendingDispatch, "Test WASM JIT signal pending dispatch", TEST_ENTRY_SERIAL},
+    {testJitSignalPendingDispatch, "Test JIT signal pending dispatch", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointRaisesTrap, "Test hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testHardwareBreakpointIgnoresNonExecutableAddress, "Test hardware breakpoint ignores non-executable address", TEST_ENTRY_SERIAL},
     {testDataHardwareBreakpointRaisesTrap, "Test data hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
@@ -984,6 +1027,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testXaddE32R32_0x3c1, "Test Xadd E32,R32 3c1"},
     {testSseCompareImmediate_0x3c2, "Test SSE Compare Immediate 3c2"},
     {testSseInsertExtractShuffle_0x1c4_0x3c4_0x1c5_0x3c5_0x3c6, "Test SSE Insert/Extract/Shuffle"},
+    {testSseShuffleAllMasks, "Test SSE shuffle all masks and aliases"},
+    {testArmScalarTruncateBoundaries, "Test ARM scalar truncation boundaries"},
     {testCmpXchg8b_0x3c7, "Test CmpXchg8b 3c7"},
     {testBswap_0x3c8_0x3cf, "Test Bswap 3c8-3cf"},
     {testFxsave_0x3ae, "Test Fxsave 3ae"},
@@ -1003,6 +1048,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingMovsb, "Test Self Modifying Code using movsb"},
     {testSelfModifyingFront, "Test Self Modifying Code Same Block(Previous)"},
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
+    {testCodePageCopyOnWriteReferences, "Test code-page copy-on-write references"},
     {testLinearMemoryAliasAndFaults, "Test linear-memory alias and fault handling", TEST_ENTRY_SERIAL},
     {testLinearMemoryFileFirstTouches, "Test linear-memory file and COW first touches", TEST_ENTRY_SERIAL},
     {testLinearMemoryWraparound, "Test linear-memory wraparound loads and stores", TEST_ENTRY_SERIAL},
@@ -1010,6 +1056,10 @@ const TestEntry TEST_ENTRIES[] = {
     {testJitMemoryReadFaultState, "Test JIT memory load preserves fault state", TEST_ENTRY_SERIAL},
     {testLinearMemoryCloneMappings, "Test linear-memory COW and shared clone mappings", TEST_ENTRY_SERIAL},
     {testLinearMemoryCodeInvalidation, "Test linear-memory code invalidation", TEST_ENTRY_SERIAL},
+    {testDecodedOpLargeRangeRemoval, "Test decoded op large-range removal"},
+    {testJitOverlappingBlockUnmap, "Test JIT overlapping block unmap", TEST_ENTRY_SERIAL},
+    {testJitOverlappingBlockRemoveCode, "Test JIT overlapping block code removal", TEST_ENTRY_SERIAL},
+    {testJitOverlappingBlockOwnership, "Test JIT overlapping block ownership", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testDecodedOpInvalidationDefersCrossThreadReuse, "Test decoded op invalidation defers cross-thread reuse"},
     {testDecodedOpCacheCloneExecDetach, "Test decoded op cache CLONE_VM exec detach"},
@@ -1050,6 +1100,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testThreadStartPublishesHandleBeforeEntry, "Test thread start publishes handle before entry", TEST_ENTRY_SERIAL},
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs", TEST_ENTRY_SERIAL},
     {testFileCacheIdentitySurvivesRenameAndHardLink, "Test mapped-file cache identity survives rename and hard link", TEST_ENTRY_SERIAL},
+    {testHostFolderSyncUpdatesLoadedChildren, "Test host folder sync updates loaded children", TEST_ENTRY_SERIAL},
     {testSharedFileMappingGrowthKeepsPagesShared, "Test shared file mapping stays shared after growth", TEST_ENTRY_SERIAL},
     {testSharedFileMappingTruncateClearsResidentBytes, "Test shared file mapping clears resident bytes after truncate", TEST_ENTRY_SERIAL},
     {testSharedMappedWriteIsVisibleToPread, "Test shared mapped write is visible to pread", TEST_ENTRY_SERIAL},
@@ -1073,6 +1124,19 @@ const TestEntry TEST_ENTRIES[] = {
     {testFinalMappedRetirementSerializesNewRetain, "Test final mapped retirement serializes a new retain", TEST_ENTRY_SERIAL},
     {testMmapRejectsFileOffsetOverflowBeforeReplacement, "Test mmap rejects file offset overflow before replacement", TEST_ENTRY_SERIAL},
     {testMlockValidatesMappedAccessibleRange, "Test mlock validates mapped accessible ranges", TEST_ENTRY_SERIAL},
+    {testInitialStackLinearAlignment, "Test initial stack linear alignment", TEST_ENTRY_SERIAL},
+    {testArmLinearReadAddress, "Test ARM linear read address", TEST_ENTRY_SERIAL},
+    {testArmScalarZeroLanes, "Test ARM scalar zero lanes", TEST_ENTRY_SERIAL},
+    {testArmScalarZeroFaults, "Test ARM scalar zero fault recovery", TEST_ENTRY_SERIAL},
+    {testCloneVmCompiledEntryHelpers, "Test CLONE_VM child enters compiled parent code", TEST_ENTRY_SERIAL},
+    {testMmapStackEndAlignment, "Test mmap thread stack end alignment", TEST_ENTRY_SERIAL},
+    {testElfInterpreterHonorsProgramHeaderCount, "Test ELF interpreter program header count", TEST_ENTRY_SERIAL},
+    {testArmScalarZeroLanePropagation, "Test ARM scalar zero lane propagation", TEST_ENTRY_SERIAL},
+    {testArmScalarZeroDirectOps, "Test ARM direct scalar zero-lane operations", TEST_ENTRY_SERIAL},
+    {testJitScalarSseRegions, "Test JIT scalar SSE regions", TEST_ENTRY_SERIAL},
+    {testNativePureFpuHelpers, "Test native x87 math helpers", TEST_ENTRY_SERIAL},
+    {testNativeKnownLazyFlagType, "Test native known lazy flag type", TEST_ENTRY_SERIAL},
+    {testNativeKnownLazyFlagFaults, "Test native known lazy flag fault recovery", TEST_ENTRY_SERIAL},
     {testMsyncRejectsUnmappedFileRange, "Test msync rejects unmapped file range", TEST_ENTRY_SERIAL},
     {testMsyncFlushesRangeAcrossFixedFileOverlay, "Test msync flushes range across fixed file overlay", TEST_ENTRY_SERIAL},
     {testMsyncValidatesArgumentsAndAcceptsAnonymousRanges, "Test msync validates arguments and accepts anonymous ranges", TEST_ENTRY_SERIAL},
@@ -1106,6 +1170,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testNativeHeapSmallFreeQueueFailureIsRetryable, "Test native heap small free queue failure is retryable", TEST_ENTRY_SERIAL},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testNativeHeapConcurrentAllocFree, "Test native heap concurrent alloc and free", TEST_ENTRY_SERIAL},
+    {testRamPageMetadataConcurrentGrowth, "Test RAM page metadata during concurrent growth", TEST_ENTRY_SERIAL},
 #endif
     {testCachedPositionedReadUsesCheckedOffsetAndSeek, "Test cached positioned read uses checked offset and seek", TEST_ENTRY_SERIAL},
     {testFtruncateBackendLengthBoundaries, "Test ftruncate backend length boundaries", TEST_ENTRY_SERIAL},
@@ -1136,10 +1201,13 @@ const TestEntry TEST_ENTRIES[] = {
     {testInotifyFollowsWatchedSymlinkTarget, "Test inotify follows watched symlink target", TEST_ENTRY_SERIAL},
     {testInotifyPollReportsChildDirectoryDelete, "Test inotify poll reports child directory delete", TEST_ENTRY_SERIAL},
     {testInotifyAsyncSignalsSigioOnDelete, "Test inotify async signals SIGIO on delete", TEST_ENTRY_SERIAL},
+    {testStartupArgsWineDllOverrides, "Test startup args Wine DLL overrides"},
     {testStartupArgsDefaultUtf8LocaleEnvironment, "Test startup args default UTF-8 locale environment"},
     {testStartupArgsLinearMemoryOption, "Test startup args linear-memory option", TEST_ENTRY_SERIAL},
     {testStartupArgsMouseSensitivity, "Test startup args mouse sensitivity", TEST_ENTRY_SERIAL},
+    {testStartupArgsSafeMemoryOption, "Test startup args safe-memory option", TEST_ENTRY_SERIAL},
     {testCapturedMouseSensitivity, "Test captured mouse sensitivity and recentering"},
+    {testSharedFutexUnmappedAddressReturnsEFAULT, "Test unmapped shared futex returns EFAULT"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testTerminatingThreadDoesNotEnterFutexWait, "Test terminating thread does not enter futex wait"},
 #endif
@@ -1153,6 +1221,9 @@ const TestEntry TEST_ENTRIES[] = {
         "Test poll registration can signal parent condition", TEST_ENTRY_SERIAL},
     {testNativeSocketSetOobInlineCanBeReadBack, "Test native socket SO_OOBINLINE can be read back", TEST_ENTRY_SERIAL},
     {testNativeSocketRecvmsgReceivesOobData, "Test native socket recvmsg receives OOB data", TEST_ENTRY_SERIAL},
+    {testNativeSocketConnectCompletion, "Test native socket nonblocking connect completion", TEST_ENTRY_SERIAL},
+    {testNativeSocketBlockingConnectDoesNotBlockPoll,
+        "Test native socket blocking connect does not block zero-timeout poll", TEST_ENTRY_SERIAL},
     {testNativeDatagramSocketPollDoesNotReportHangup,
         "Test native datagram socket poll does not report hangup", TEST_ENTRY_SERIAL},
     {testNativeDatagramRecvmsgPeekScattersOnce,
@@ -1185,6 +1256,7 @@ struct TestRunArgs {
     U32 workerCount = 0;
     bool fast = false;
     bool disableLinearMemory = false;
+    bool safeMemory = true; // Test builds always default to ordered execution.
     U32 shardIndex = 0;
     U32 shardCount = 0;
     bool list = false;
@@ -1231,6 +1303,10 @@ TestRunArgs parseTestRunArgs(int argc, char** argv) {
         }
         if (!strcmp(argv[i], "-disableLinearMemory")) {
             args.disableLinearMemory = true;
+            continue;
+        }
+        if (!strcmp(argv[i], "-safe-memory")) {
+            args.safeMemory = true;
             continue;
         }
 
@@ -1332,9 +1408,12 @@ int runTestTests(size_t startEntry = 0, size_t requestedCount = 0, U32 workerCou
 int runTestTestsFromArgs(int argc, char** argv) {
     TestRunArgs args = parseTestRunArgs(argc, argv);
     if (!args.valid) {
-        fprintf(stderr, "Usage: tests [start [count [threads]]] [-fast] [-disableLinearMemory] [-shard index count] [-list]\nShard indexes start at zero.\n");
+        fprintf(stderr, "Usage: tests [start [count [threads]]] [-fast] [-disableLinearMemory] [-safe-memory] [-shard index count] [-list]\nShard indexes start at zero.\n");
         return 2;
     }
+#if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    wasmJitInitMemoryOrdering(args.safeMemory);
+#endif
     return runTestTests(args.startEntry, args.requestedCount, args.workerCount, args.fast,
         args.disableLinearMemory, args.shardIndex, args.shardCount, args.list);
 }
@@ -1357,16 +1436,21 @@ extern "C" BOXEDWINE_TEST_EXPORT __attribute__((used, retain)) int runMacOpenGLP
 #endif
 
 extern "C" BOXEDWINE_TEST_EXPORT int runCpuTestsMac(void) {
+    if (getenv("BOXEDWINE_TEST_LIST")) {
+        return runTestTests(0, 0, 1, true, false, 0, 0, true);
+    }
     const char* start = getenv("BOXEDWINE_TEST_START");
     const char* count = getenv("BOXEDWINE_TEST_COUNT");
     const char* threads = getenv("BOXEDWINE_TEST_THREADS");
     const char* fast = getenv("BOXEDWINE_TEST_FAST");
-    if (start || count || threads || fast) {
+    const char* disableLinearMemory = getenv("BOXEDWINE_TEST_DISABLE_LINEAR_MEMORY");
+    if (start || count || threads || fast || disableLinearMemory) {
         return runTestTests(
             start ? (size_t)strtoul(start, nullptr, 0) : 0,
             count ? (size_t)strtoul(count, nullptr, 0) : 0,
             threads ? (U32)strtoul(threads, nullptr, 0) : 0,
-            fast && strcmp(fast, "0"));
+            fast && strcmp(fast, "0"),
+            disableLinearMemory && strcmp(disableLinearMemory, "0"));
     }
     return runTestTests();
 }

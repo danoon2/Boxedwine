@@ -20,6 +20,19 @@
 #include <string>
 #include <vector>
 
+#ifndef GL_R11F_G11F_B10F
+#define GL_R11F_G11F_B10F 0x8C3A
+#define GL_UNSIGNED_INT_10F_11F_11F_REV 0x8C3B
+#endif
+#ifndef GL_RGB9_E5
+#define GL_RGB9_E5 0x8C3D
+#define GL_UNSIGNED_INT_5_9_9_9_REV 0x8C3E
+#endif
+#ifndef GL_UNPACK_SKIP_IMAGES
+#define GL_UNPACK_SKIP_IMAGES 0x806D
+#define GL_UNPACK_IMAGE_HEIGHT 0x806E
+#endif
+
 #ifndef WGL_NUMBER_PIXEL_FORMATS_ARB
 #define WGL_NUMBER_PIXEL_FORMATS_ARB 0x2000
 #endif
@@ -5456,6 +5469,110 @@ static bool rgbaEquals(const unsigned char* p, unsigned char r, unsigned char g,
 
 static bool rgbaEquals(const unsigned char* p, const unsigned char* expected) {
     return rgbaEquals(p, expected[0], expected[1], expected[2], expected[3]);
+}
+
+static TestResult testPackedFloatPixels(TestContext&) {
+    if (!hasExtensionString("GL_EXT_packed_float") || !hasExtensionString("GL_EXT_texture_shared_exponent")) {
+        return skip("packed HDR texture formats are unavailable");
+    }
+    PageBytes upload, readback, clearValue;
+    if (!upload.init(96, 71) || !readback.init(48, 25) || !clearValue.init(4, 2)) {
+        return skip("VirtualAlloc failed for packed HDR pixel buffers");
+    }
+    const struct {
+        GLenum internalFormat, type;
+        GLuint pixels[4];
+    } formats[] = {
+        { GL_R11F_G11F_B10F, GL_UNSIGNED_INT_10F_11F_11F_REV,
+            { 0, 0x3c0u, 0x3c0u << 11, (0x200u << 22) | (0x3c0u << 11) | 0x380u } },
+        { GL_RGB9_E5, GL_UNSIGNED_INT_5_9_9_9_REV,
+            { 0, (16u << 27) | 256u, (16u << 27) | (256u << 9),
+                (17u << 27) | (256u << 18) | (128u << 9) | 64u } },
+    };
+    for (const auto& format : formats) {
+        // Three pixels per row, aligned to eight bytes, with one skipped row/pixel.
+        const size_t offsets[] = { 20, 24, 36, 40 };
+        std::memset(upload.data, 0, upload.size);
+        std::memset(readback.data, 0xcd, readback.size);
+        for (int i = 0; i < 4; ++i) {
+            std::memcpy(upload.data + offsets[i], &format.pixels[i], 4);
+        }
+        GLuint tex = 0;
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 8);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 3);
+        glPixelStorei(GL_UNPACK_SKIP_ROWS, 1);
+        glPixelStorei(GL_UNPACK_SKIP_PIXELS, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, format.internalFormat, 2, 2, 0, GL_RGB, format.type, upload.data);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+        glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        glPixelStorei(GL_PACK_ALIGNMENT, 8);
+        glPixelStorei(GL_PACK_ROW_LENGTH, 3);
+        glPixelStorei(GL_PACK_SKIP_ROWS, 1);
+        glPixelStorei(GL_PACK_SKIP_PIXELS, 1);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, format.type, readback.data);
+        glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+        glPixelStorei(GL_PACK_SKIP_ROWS, 0);
+        glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+        GLenum err = glGetError();
+        bool matched = true;
+        for (int i = 0; i < 4; ++i) {
+            matched &= std::memcmp(readback.data + offsets[i], &format.pixels[i], 4) == 0;
+        }
+        // Exercise the single-pixel marshaller as well as texture-sized transfers.
+        bool cleared = true;
+        if (glx.ClearTexImage) {
+            std::memcpy(clearValue.data, &format.pixels[3], 4);
+            glx.ClearTexImage(tex, 0, GL_RGB, format.type, clearValue.data);
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, format.type, readback.data);
+            for (int i = 0; i < 4; ++i) {
+                cleared &= std::memcmp(readback.data + i * 4, &format.pixels[3], 4) == 0;
+            }
+            if (err == GL_NO_ERROR) err = glGetError();
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &tex);
+        if (err != GL_NO_ERROR || !matched || !cleared) {
+            return fail("packed HDR type " + std::to_string(format.type) + " error=" +
+                std::to_string(err) + " transfer=" + std::to_string(matched) + " clear=" + std::to_string(cleared));
+        }
+        if (glx.TexImage3D && glx.TexSubImage3D) {
+            // 3DMark Vantage uploads this type through TexSubImage3D.
+            const GLuint zeroes[8] = {};
+            for (int i = 0; i < 4; ++i) {
+                std::memcpy(upload.data + 48 + offsets[i], &format.pixels[i], 4);
+            }
+            glGenTextures(1, &tex);
+            glBindTexture(GL_TEXTURE_3D, tex);
+            glx.TexImage3D(GL_TEXTURE_3D, 0, format.internalFormat, 2, 2, 2, 0, GL_RGB, format.type, zeroes);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 8);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 3);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 1);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 1);
+            glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, 3);
+            glPixelStorei(GL_UNPACK_SKIP_IMAGES, 1);
+            glx.TexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 1, 2, 2, 1, GL_RGB, format.type, upload.data);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            glPixelStorei(GL_UNPACK_IMAGE_HEIGHT, 0);
+            glPixelStorei(GL_UNPACK_SKIP_IMAGES, 0);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            glGetTexImage(GL_TEXTURE_3D, 0, GL_RGB, format.type, readback.data);
+            err = glGetError();
+            glBindTexture(GL_TEXTURE_3D, 0);
+            glDeleteTextures(1, &tex);
+            if (err != GL_NO_ERROR || std::memcmp(readback.data, zeroes, 16) ||
+                std::memcmp(readback.data + 16, format.pixels, 16)) {
+                return fail("packed HDR 3D subimage/skipped image transfer failed, error=" + std::to_string(err));
+            }
+        }
+    }
+    return pass("packed HDR page-boundary upload/readback, row padding/skips, and supported texture clears matched");
 }
 
 static TestResult testTexturePageBoundaryUploadReadback(TestContext&) {
@@ -15942,6 +16059,7 @@ static std::vector<TestCase> tests() {
         { "uniform-array-getters", testUniformArrayGetters },
         { "uniform-matrix-shape-getters", testUniformMatrixShapeGetters },
         { "texture-page-boundary-upload-readback", testTexturePageBoundaryUploadReadback },
+        { "packed-float-pixels", testPackedFloatPixels },
         { "texture-subimage-page-boundary", testTextureSubImagePageBoundary },
         { "texture-level-update-mipmap-row-pitch", testTextureLevelUpdateMipmapRowPitch },
         { "texture-subimage2d-pbo-offset", testTextureSubImage2DPBOOffset },

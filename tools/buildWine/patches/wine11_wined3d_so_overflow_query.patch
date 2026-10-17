@@ -1,0 +1,280 @@
+diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
+index e33e27b4cc3..594de1591d7 100644
+--- a/dlls/wined3d/adapter_gl.c
++++ b/dlls/wined3d/adapter_gl.c
+@@ -155,6 +155,7 @@ static const struct wined3d_extension_map gl_extension_map[] =
+     {"GL_ARB_timer_query",                  ARB_TIMER_QUERY               },
+     {"GL_ARB_transform_feedback2",          ARB_TRANSFORM_FEEDBACK2       },
+     {"GL_ARB_transform_feedback3",          ARB_TRANSFORM_FEEDBACK3       },
++    {"GL_ARB_transform_feedback_overflow_query", ARB_TRANSFORM_FEEDBACK_OVERFLOW_QUERY},
+     {"GL_ARB_uniform_buffer_object",        ARB_UNIFORM_BUFFER_OBJECT     },
+     {"GL_ARB_vertex_array_bgra",            ARB_VERTEX_ARRAY_BGRA         },
+     {"GL_ARB_vertex_buffer_object",         ARB_VERTEX_BUFFER_OBJECT      },
+@@ -3312,6 +3313,7 @@ static BOOL wined3d_adapter_init_gl_caps(struct wined3d_adapter_gl *adapter_gl,
+         {ARB_TEXTURE_GATHER,               MAKEDWORD_VERSION(4, 0)},
+         {ARB_TRANSFORM_FEEDBACK2,          MAKEDWORD_VERSION(4, 0)},
+         {ARB_TRANSFORM_FEEDBACK3,          MAKEDWORD_VERSION(4, 0)},
++        {ARB_TRANSFORM_FEEDBACK_OVERFLOW_QUERY, MAKEDWORD_VERSION(4, 6)},
+ 
+         {ARB_ES2_COMPATIBILITY,            MAKEDWORD_VERSION(4, 1)},
+         {ARB_VIEWPORT_ARRAY,               MAKEDWORD_VERSION(4, 1)},
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+index fc480f5a440..5eb78269588 100644
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -1316,6 +1316,7 @@ static void wined3d_context_gl_cleanup(struct wined3d_context_gl *context_gl)
+     struct wined3d_pipeline_statistics_query *pipeline_statistics_query;
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+     struct wined3d_so_statistics_query *so_statistics_query;
++    struct wined3d_so_overflow_query *so_overflow_query;
+     struct wined3d_timestamp_query *timestamp_query;
+     struct wined3d_occlusion_query *occlusion_query;
+     struct wined3d_context_gl *current;
+@@ -1438,6 +1439,15 @@ static void wined3d_context_gl_cleanup(struct wined3d_context_gl *context_gl)
+         so_statistics_query->context_gl = NULL;
+     }
+ 
++    LIST_FOR_EACH_ENTRY(so_overflow_query, &context_gl->so_overflow_queries,
++            struct wined3d_so_overflow_query, entry)
++    {
++        if (context_gl->valid)
++            GL_EXTCALL(glDeleteQueries(1, &so_overflow_query->id));
++        so_overflow_query->context_gl = NULL;
++        so_overflow_query->started = FALSE;
++    }
++
+     LIST_FOR_EACH_ENTRY(timestamp_query, &context_gl->timestamp_queries, struct wined3d_timestamp_query, entry)
+     {
+         if (context_gl->valid)
+@@ -2021,6 +2031,7 @@ HRESULT wined3d_context_gl_init(struct wined3d_context_gl *context_gl, struct wi
+     list_init(&context_gl->fences);
+     list_init(&context_gl->timestamp_queries);
+     list_init(&context_gl->so_statistics_queries);
++    list_init(&context_gl->so_overflow_queries);
+     list_init(&context_gl->pipeline_statistics_queries);
+ 
+     for (i = 0; i < ARRAY_SIZE(context_gl->tex_unit_map); ++i)
+diff --git a/dlls/wined3d/query.c b/dlls/wined3d/query.c
+index 26e4f5e51f2..7c5b16f76cc 100644
+--- a/dlls/wined3d/query.c
++++ b/dlls/wined3d/query.c
+@@ -1263,6 +1263,165 @@ static HRESULT wined3d_so_statistics_query_create(struct wined3d_device *device,
+     return WINED3D_OK;
+ }
+ 
++static void wined3d_so_overflow_query_end(struct wined3d_so_overflow_query *query,
++        struct wined3d_context_gl *context_gl)
++{
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++
++    if (gl_info->supported[ARB_TRANSFORM_FEEDBACK3])
++        GL_EXTCALL(glEndQueryIndexed(query->target, query->stream_idx));
++    else
++        GL_EXTCALL(glEndQuery(query->target));
++    query->started = FALSE;
++    checkGLcall("end SO overflow query");
++}
++
++static BOOL wined3d_so_overflow_query_ops_poll(struct wined3d_query *query, uint32_t flags)
++{
++    struct wined3d_so_overflow_query *oq = CONTAINING_RECORD(query, struct wined3d_so_overflow_query, query);
++    const struct wined3d_gl_info *gl_info;
++    struct wined3d_context_gl *context_gl;
++    GLuint available, overflow;
++
++    if (!oq->context_gl)
++        return TRUE;
++    if (!(context_gl = wined3d_context_gl_reacquire(oq->context_gl)))
++    {
++        WARN("Cannot poll SO overflow query %p from this thread.\n", query);
++        return FALSE;
++    }
++    gl_info = context_gl->gl_info;
++
++    GL_EXTCALL(glGetQueryObjectuiv(oq->id, GL_QUERY_RESULT_AVAILABLE, &available));
++    if (available)
++    {
++        GL_EXTCALL(glGetQueryObjectuiv(oq->id, GL_QUERY_RESULT, &overflow));
++        oq->overflow = !!overflow;
++    }
++    checkGLcall("poll SO overflow query");
++    context_release(&context_gl->c);
++
++    return available;
++}
++
++static BOOL wined3d_so_overflow_query_ops_issue(struct wined3d_query *query, uint32_t flags)
++{
++    struct wined3d_so_overflow_query *oq = CONTAINING_RECORD(query, struct wined3d_so_overflow_query, query);
++    const struct wined3d_gl_info *gl_info;
++    struct wined3d_context_gl *context_gl;
++    BOOL poll = FALSE;
++
++    if (!(flags & (WINED3DISSUE_BEGIN | WINED3DISSUE_END)))
++        return FALSE;
++    if (oq->context_gl)
++    {
++        if (!(context_gl = wined3d_context_gl_reacquire(oq->context_gl)))
++        {
++            WARN("Cannot issue SO overflow query %p from this thread.\n", query);
++            return FALSE;
++        }
++    }
++    else
++    {
++        if (!(flags & WINED3DISSUE_BEGIN))
++            return FALSE;
++        context_gl = wined3d_context_gl(context_acquire(query->device, NULL, 0));
++        gl_info = context_gl->gl_info;
++        GL_EXTCALL(glGenQueries(1, &oq->id));
++        oq->context_gl = context_gl;
++        list_add_head(&context_gl->so_overflow_queries, &oq->entry);
++    }
++    gl_info = context_gl->gl_info;
++
++    if (flags & WINED3DISSUE_BEGIN)
++    {
++        if (oq->started)
++            wined3d_so_overflow_query_end(oq, context_gl);
++        oq->overflow = FALSE;
++        if (gl_info->supported[ARB_TRANSFORM_FEEDBACK3])
++            GL_EXTCALL(glBeginQueryIndexed(oq->target, oq->stream_idx, oq->id));
++        else
++            GL_EXTCALL(glBeginQuery(oq->target, oq->id));
++        oq->started = TRUE;
++        checkGLcall("begin SO overflow query");
++    }
++    if ((flags & WINED3DISSUE_END) && oq->started)
++    {
++        wined3d_so_overflow_query_end(oq, context_gl);
++        poll = TRUE;
++    }
++    context_release(&context_gl->c);
++
++    return poll;
++}
++
++static void wined3d_so_overflow_query_ops_destroy(struct wined3d_query *query)
++{
++    struct wined3d_so_overflow_query *oq = CONTAINING_RECORD(query, struct wined3d_so_overflow_query, query);
++    const struct wined3d_gl_info *gl_info;
++    struct wined3d_context_gl *context_gl;
++
++    if (oq->context_gl)
++    {
++        list_remove(&oq->entry);
++        if ((context_gl = wined3d_context_gl_reacquire(oq->context_gl)))
++        {
++            gl_info = context_gl->gl_info;
++            if (oq->started)
++                wined3d_so_overflow_query_end(oq, context_gl);
++            GL_EXTCALL(glDeleteQueries(1, &oq->id));
++            checkGLcall("delete SO overflow query");
++            context_release(&context_gl->c);
++        }
++        else
++        {
++            WARN("Leaking GL query %u until its context is destroyed.\n", oq->id);
++        }
++    }
++    free(oq);
++}
++
++static const struct wined3d_query_ops so_overflow_query_ops =
++{
++    wined3d_so_overflow_query_ops_poll,
++    wined3d_so_overflow_query_ops_issue,
++    wined3d_so_overflow_query_ops_destroy,
++};
++
++static HRESULT wined3d_so_overflow_query_create(struct wined3d_device *device,
++        enum wined3d_query_type type, void *parent, const struct wined3d_parent_ops *parent_ops,
++        struct wined3d_query **query)
++{
++    const struct wined3d_gl_info *gl_info = &wined3d_adapter_gl(device->adapter)->gl_info;
++    struct wined3d_so_overflow_query *object;
++    unsigned int stream_idx = type == WINED3D_QUERY_TYPE_SO_OVERFLOW
++            ? 0 : type - WINED3D_QUERY_TYPE_SO_OVERFLOW_STREAM0;
++
++    /* 3DMark Vantage creates this query during its Direct3D 10 capability check.
++     * Use a separate GL target so SO statistics can be collected concurrently. */
++    if (!gl_info->supported[ARB_TRANSFORM_FEEDBACK_OVERFLOW_QUERY])
++    {
++        WARN("OpenGL implementation does not support SO overflow queries.\n");
++        return WINED3DERR_NOTAVAILABLE;
++    }
++    if (stream_idx && !gl_info->supported[ARB_TRANSFORM_FEEDBACK3])
++    {
++        WARN("OpenGL implementation does not support indexed queries.\n");
++        return WINED3DERR_NOTAVAILABLE;
++    }
++    if (!(object = calloc(1, sizeof(*object))))
++        return E_OUTOFMEMORY;
++
++    wined3d_query_init(&object->query, device, type, &object->overflow,
++            sizeof(object->overflow), &so_overflow_query_ops, parent, parent_ops);
++    object->target = type == WINED3D_QUERY_TYPE_SO_OVERFLOW
++            ? GL_TRANSFORM_FEEDBACK_OVERFLOW_ARB : GL_TRANSFORM_FEEDBACK_STREAM_OVERFLOW_ARB;
++    object->stream_idx = stream_idx;
++    *query = &object->query;
++
++    return WINED3D_OK;
++}
++
+ static void wined3d_pipeline_query_ops_destroy(struct wined3d_query *query)
+ {
+     struct wined3d_pipeline_statistics_query *pq = wined3d_pipeline_statistics_query_from_query(query);
+@@ -1334,6 +1493,13 @@ HRESULT wined3d_query_gl_create(struct wined3d_device *device, enum wined3d_quer
+         case WINED3D_QUERY_TYPE_SO_STATISTICS_STREAM3:
+             return wined3d_so_statistics_query_create(device, type, parent, parent_ops, query);
+ 
++        case WINED3D_QUERY_TYPE_SO_OVERFLOW:
++        case WINED3D_QUERY_TYPE_SO_OVERFLOW_STREAM0:
++        case WINED3D_QUERY_TYPE_SO_OVERFLOW_STREAM1:
++        case WINED3D_QUERY_TYPE_SO_OVERFLOW_STREAM2:
++        case WINED3D_QUERY_TYPE_SO_OVERFLOW_STREAM3:
++            return wined3d_so_overflow_query_create(device, type, parent, parent_ops, query);
++
+         case WINED3D_QUERY_TYPE_PIPELINE_STATISTICS:
+             return wined3d_pipeline_query_create(device, type, parent, parent_ops, query);
+ 
+diff --git a/dlls/wined3d/wined3d_gl.h b/dlls/wined3d/wined3d_gl.h
+index 00c82c7ac0a..a93f2e5800e 100644
+--- a/dlls/wined3d/wined3d_gl.h
++++ b/dlls/wined3d/wined3d_gl.h
+@@ -148,6 +148,7 @@ enum wined3d_gl_extension
+     ARB_TIMER_QUERY,
+     ARB_TRANSFORM_FEEDBACK2,
+     ARB_TRANSFORM_FEEDBACK3,
++    ARB_TRANSFORM_FEEDBACK_OVERFLOW_QUERY,
+     ARB_UNIFORM_BUFFER_OBJECT,
+     ARB_VERTEX_ARRAY_BGRA,
+     ARB_VERTEX_BUFFER_OBJECT,
+@@ -540,6 +541,19 @@ struct wined3d_so_statistics_query
+     BOOL started;
+ };
+ 
++struct wined3d_so_overflow_query
++{
++    struct wined3d_query query;
++
++    struct list entry;
++    struct wined3d_context_gl *context_gl;
++    GLuint id;
++    GLenum target;
++    unsigned int stream_idx;
++    BOOL overflow;
++    BOOL started;
++};
++
+ union wined3d_gl_pipeline_statistics_query
+ {
+     GLuint id[11];
+@@ -667,6 +681,7 @@ struct wined3d_context_gl
+     struct list fences;
+     struct list timestamp_queries;
+     struct list so_statistics_queries;
++    struct list so_overflow_queries;
+     struct list pipeline_statistics_queries;
+ 
+     GLuint *free_occlusion_queries;

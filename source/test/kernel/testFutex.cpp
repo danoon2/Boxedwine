@@ -35,6 +35,34 @@ bool waitForFutexWorker(const std::atomic<bool>& done, U32 timeoutMs) {
 
 } // namespace
 
+void testSharedFutexUnmappedAddressReturnsEFAULT() {
+    TestContext& context = testContext();
+    constexpr U32 address = 0x61000000;
+    if (context.memory->mmap(context.thread, address, K_PAGE_SIZE,
+        K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0) != address) {
+        testFail("map shared-futex test page");
+        return;
+    }
+    context.memory->writed(address, TEST_FUTEX_VALUE);
+    if (context.thread->futex(address, TEST_FUTEX_WAKE, 1, 0, 0, 0, false) != 0) {
+        testFail("mapped shared futex wake without waiters must return zero");
+    }
+    if (context.memory->unmap(address, K_PAGE_SIZE) != 0) {
+        testFail("unmap shared-futex test page");
+        return;
+    }
+    for (bool time64 : {false, true}) {
+        for (U32 command : {TEST_FUTEX_WAIT, TEST_FUTEX_WAKE}) {
+            U32 result = context.thread->futex(address, command, TEST_FUTEX_VALUE,
+                0, 0, 0, time64);
+            if (result != (U32)-K_EFAULT) {
+                testFail("unmapped shared futex command %u time64 %d expected EFAULT, got %d",
+                    command, time64, (S32)result);
+            }
+        }
+    }
+}
+
 void testTerminatingThreadDoesNotEnterFutexWait() {
 #ifdef BOXEDWINE_MULTI_THREADED
     TestContext& context = testContext();

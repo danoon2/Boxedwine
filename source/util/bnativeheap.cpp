@@ -83,8 +83,12 @@ bool BNativeHeap::containsAddress(void* p) {
 }
 
 void* BNativeHeap::alloc(U32 len, U32* blockSize) {
+    U32 alignment = 4;
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+    alignment = testAlignment;
+#endif
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
-	U32 index = powerOf2(len + 4);
+	U32 index = powerOf2(len + alignment);
 	if (index < 4) {
 		index = 4;
 	}
@@ -103,7 +107,7 @@ void* BNativeHeap::alloc(U32 len, U32* blockSize) {
 		}
 	}
 	if (size >= BNATIVEHEAD_64K_BLOCK_SIZE) {
-		U32 count = (len + 4 + BNATIVEHEAD_64K_BLOCK_SIZE - 1) / BNATIVEHEAD_64K_BLOCK_SIZE;
+		U32 count = (len + alignment + BNATIVEHEAD_64K_BLOCK_SIZE - 1) / BNATIVEHEAD_64K_BLOCK_SIZE;
 		
 		U8* result = Platform::alloc64kBlock(count, isCodeMemory);
         if (isCodeMemory) {
@@ -115,9 +119,19 @@ void* BNativeHeap::alloc(U32 len, U32* blockSize) {
         }
 		largeBlocks.set(result, count * BNATIVEHEAD_64K_BLOCK_SIZE);
 		if (blockSize) {
-			*blockSize = BNATIVEHEAD_64K_BLOCK_SIZE * count - 4;
+			*blockSize = BNATIVEHEAD_64K_BLOCK_SIZE * count - alignment;
 		}
-		return result + 4;
+        if (alignment > 4) {
+            U32* info = (U32*)(result + alignment - 4);
+            if (isCodeMemory) {
+                Platform::writeCodeToMemory(info, 4, [info, count]() {
+                    *info = count * BNATIVEHEAD_64K_BLOCK_SIZE;
+                });
+            } else {
+                *info = count * BNATIVEHEAD_64K_BLOCK_SIZE;
+            }
+        }
+        return result + alignment;
 	}
 	if (buckets.contains(index) && buckets[index].size()) {
 		void* result = buckets[index].back();
@@ -149,7 +163,7 @@ void* BNativeHeap::alloc(U32 len, U32* blockSize) {
                 *address = index;
             }
 			if (blockSize) {
-				*blockSize = size - 4;
+				*blockSize = size - alignment;
 			}
 			return result;
 		}
@@ -161,25 +175,29 @@ void* BNativeHeap::alloc(U32 len, U32* blockSize) {
 	for (U8* start = address; start < address + BNATIVEHEAD_64K_BLOCK_SIZE; start += size) {
         // on mac, you can't write to mmap'd memory that was allocated for a JIT without unprotecting it
         if (isCodeMemory) {
-            Platform::writeCodeToMemory(start, 4, [start, index, this]() {
-                *((U32*)start) = delayedFree ? 0 : index;
+            Platform::writeCodeToMemory(start + alignment - 4, 4, [start, index, alignment, this]() {
+                *((U32*)(start + alignment - 4)) = delayedFree ? 0 : index;
             });
         } else {
-            *((U32*)start) = delayedFree ? 0 : index;
+            *((U32*)(start + alignment - 4)) = delayedFree ? 0 : index;
         }
-		buckets[index].push_back(start + 4);
+		buckets[index].push_back(start + alignment);
 	}
 	return alloc(len, blockSize);
 }
 
 void BNativeHeap::free(void* address) {
+    U32 alignment = 4;
+#if defined(__TEST) && defined(BOXEDWINE_JIT_X64)
+    alignment = testAlignment;
+#endif
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
 	if (!address) {
 		return;
 	}
 	U32 index = *(((U32*)address) - 1);
 	if (index >= BNATIVEHEAD_64K_BLOCK_SIZE) {
-		U8* rawAddress = ((U8*)address) - 4;
+		U8* rawAddress = ((U8*)address) - alignment;
 		if (delayedFree) {
 			delayedFreeLargeBlocks.set(rawAddress, KSystem::getMilliesSinceStart());
 		} else {

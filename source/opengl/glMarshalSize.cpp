@@ -784,6 +784,13 @@ GLint get_bytes_per_pixel(GLenum format, GLenum type)
             return sizeof(GLushort);
          else
             return -1;
+      case GL_UNSIGNED_INT_10F_11F_11F_REV:
+      case GL_UNSIGNED_INT_5_9_9_9_REV:
+         // Packed HDR formats contain all three RGB components in one word.
+         if (format == GL_RGB)
+            return sizeof(GLuint);
+         else
+            return -1;
       case GL_UNSIGNED_INT_8_8_8_8:
       case GL_UNSIGNED_INT_8_8_8_8_REV:
       case GL_UNSIGNED_INT_10_10_10_2:

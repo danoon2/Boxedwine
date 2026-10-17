@@ -357,17 +357,7 @@ static void x11_SetInputFocus(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
-    U32 focus = ARG2;
-    XWindowPtr w;
-
-    if (focus != PointerRoot && focus != None) {
-        w = server->getWindow(ARG2);
-        if (!w) {
-            EAX = BadWindow;
-            return;
-        }
-    }    
-    EAX = server->setInputFocus(data, focus, ARG3, ARG4, true);
+    EAX = server->setInputFocus(data, ARG2, ARG3, ARG4, true);
 }
 
 // int XSelectInput(Display* display, Window w, long event_mask)
@@ -420,9 +410,10 @@ static void x11_GetInputFocus(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
-    U32 focus = server->inputFocusIsPointerRoot ? PointerRoot : (server->inputFocus ? server->inputFocus->id : None);
+    U32 revertTo;
+    U32 focus = server->getInputFocus(revertTo);
     memory->writed(ARG2, focus);
-    memory->writed(ARG3, server->inputFocusRevertTo);
+    memory->writed(ARG3, revertTo);
     EAX = Success;
     if (server->trace) {
         BString log;
@@ -430,7 +421,7 @@ static void x11_GetInputFocus(CPU* cpu) {
         log.append(data->displayId, 16);
         log += " GetInputFocus";
         log += " revert_to=";
-        log.append(server->inputFocusRevertTo, 16);
+        log.append(revertTo, 16);
         log += " focus=";
         log.append(focus, 16);
         klog(log.c_str());

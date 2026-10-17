@@ -11,6 +11,12 @@
         let ROOT = "/root";
         let STORAGE_INDEXED_DB = "INDEXED_DB";
         let STORAGE_MEMORY = "MEMORY";
+        let STORAGE_HOST_FOLDER = "HOST_FOLDER";
+        let HOST_FOLDER_HANDLE_DB = "boxedwine-host-folder-handles";
+        let HOST_FOLDER_HANDLE_DB_VERSION = 1;
+        let HOST_FOLDER_HANDLE_STORE = "handles";
+        let HOST_FOLDER_HANDLE_KEY = "d";
+        let HOST_FOLDER_REFRESH_INTERVAL_MS = 10000;
 
         let DEFAULT_AUTO_RUN = true;
         let DEFAULT_LOAD_DESKTOP = false;
@@ -21,6 +27,15 @@
         let DEFAULT_FRAME_SKIP = "0";
         let DEFAULT_AUDIO_FREQ = 11025;
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
+        // registry=[name,...] runs these commands, in order, before the program
+        let REGISTRY_PRESETS = {
+            gdi: 'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f',
+            cdrom: 'reg add "HKLM\\Software\\Wine\\Drives" /v d: /d cdrom /f'
+        };
+        // wine-override=[name,...] adds these to WINEDLLOVERRIDES
+        let WINE_OVERRIDE_PRESETS = {
+            nomono: "mscoree,mshtml=" // skip the Wine Mono and Gecko installs
+        };
         //params
         let Config = {};
         Config.locateRootBaseUrl = ""; // ie "assets/"
@@ -28,8 +43,8 @@
         Config.locateOverlayBaseUrl = "";
         Config.urlParams = "";
         Config.storageMode = STORAGE_INDEXED_DB;
+        Config.rootStorageMode = "";
         Config.persist_d_drive = true;
-        Config.showUploadDownload = false;
         Config.showSaveJITCache = true;
         Config.runLinux = false;
         Config.WorkingDir = "";
@@ -38,7 +53,6 @@
         Config.appSubfolder = "";
 				
         var isRunning = false;
-        var ExeFileTimer = null;
         var pointerLockEventsConfigured = false;
 
         (function() {
@@ -102,6 +116,14 @@
       	var progressElement = document.getElementById('progress');
       	var spinnerElement = document.getElementById('spinner');
         var dropzone = document.getElementById("dropzone");
+        var hostFolderBusy = false;
+        var awaitingStart = false;
+        var hostFolderRefreshBusy = false;
+        var hostFolderRefreshPendingReason = "";
+        var hostFolderRefreshTimer = null;
+        var hostFolderRefreshObserver = null;
+        var hostFolderRefreshEventsConfigured = false;
+        var hostFolderInvalidateWarningShown = false;
 
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
@@ -109,6 +131,7 @@
             Config.locateAppBaseUrl = getBaseUrl("appBase");
             Config.locateOverlayBaseUrl = getBaseUrl("overlayBase");
             Config.storageMode = getStorageMode();
+            Config.rootStorageMode = getRootStorageMode();
             Config.isAutoRunSet = getAutoRun();
             Config.loadDesktop = getLoadDesktop();
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
@@ -118,12 +141,15 @@
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
             Config.ProgramArgs = getProgramArgs();
+            Config.registryCommands = getRegistryCommands();
+            Config.dllOverrides = getPresets("wine-override", WINE_OVERRIDE_PRESETS).join(";");
             Config.WorkingDir = getWorkingDir();
             Config.PlayScript = getPlayScript();
             Config.runLinux = getRunLinux();
             Config.isSoundEnabled = getSound();
             Config.recordJITCache = getJitRecord();
             Config.wasmModuleBrokerEnabled = getWasmModuleBrokerEnabled();
+            Config.safeMemory = getSafeMemory();
             Config.audioFreq = getAudioFreq();
             Config.disableHideCursor = getDisableHideCursor();
             Config.disableWasmJitForWrittenCode = getDisableWasmJitForWrittenCode();
@@ -133,9 +159,16 @@
 			Config.emEnvProps = getEmscriptenEnvProps();
 			Config.frameSkip = getFrameSkip();
 			Config.resolution = getResolution();
-			Config.ddrawOverridePath = getDDrawOverridePath();
 			Config.networking = getNetworkingConfig();
 			Config.payloadZipFile = "app.zip";
+			Config.hostFolderHandle = null;
+			Config.hostFolderPersistedHandle = null;
+			Config.hostFolderPersistedName = "";
+			Config.hostFolderPermissionState = "unknown";
+			Config.hostFolderEnabled = false;
+			Config.hostFolderReadWrite = true;
+			Config.hostFolderManifest = new Map();
+			Config.hostFolderMounted = false;
             configureBrowserStorage();
         }
         function configureBrowserStorage() {
@@ -175,6 +208,10 @@
             if (storage === "indexed_db" || storage === "indexeddb" || storage === "idb") {
                 console.log("setting storage mode to: " + STORAGE_INDEXED_DB);
                 return STORAGE_INDEXED_DB;
+            }
+            if (storage === "hostfolder" || storage === "host_folder" || storage === "host-folder") {
+                console.log("setting storage mode to: " + STORAGE_HOST_FOLDER);
+                return STORAGE_HOST_FOLDER;
             }
             console.log("unknown storage mode: " + storage);
             return Config.storageMode;
@@ -221,18 +258,6 @@
             	});
             }
             return allProps;
-        }
-        function getDDrawOverridePath() {
-            var property = getParameter("ddrawOverride").trim();
-            if(allowParameterOverride() && property.length > 0){
-                if( (property.startsWith("%22") && property.endsWith("%22") )
-                	|| (property.startsWith('%27') && property.endsWith('%27'))){
-                    return property.substring(3, property.length - 3);
-                }else{
-	                console.log("ddrawOverride path must be in quoted string");
-                }
-            }
-            return null;
         }
         function getNetworkingConfig() {
             var mode = getParameter("network").trim().toLowerCase();
@@ -354,6 +379,9 @@
             }else{
                 auto = DEFAULT_AUTO_RUN;
             }
+            if (Config.storageMode === STORAGE_HOST_FOLDER) {
+                auto = false;
+            }
             console.log("setting auto run to: "+auto);
             return auto;
         }        
@@ -377,6 +405,24 @@
                 payload = "";
             }
             return payload;
+        }
+        function getRootStorageMode() {
+            var defaultRootStorageMode = Config.storageMode === STORAGE_MEMORY ? STORAGE_MEMORY : STORAGE_INDEXED_DB;
+            var rootStorageMode = Config.rootStorageMode || defaultRootStorageMode;
+            var rootStorageParam = getParameter("rootfs");
+            if (allowParameterOverride() && rootStorageParam.length > 0) {
+                rootStorageMode = rootStorageParam;
+            }
+            rootStorageMode = rootStorageMode.toLowerCase();
+            if (rootStorageMode === "memory") {
+                rootStorageMode = STORAGE_MEMORY;
+            } else if (rootStorageMode === "indexeddb" || rootStorageMode === "indexed_db") {
+                rootStorageMode = STORAGE_INDEXED_DB;
+            } else {
+                rootStorageMode = defaultRootStorageMode;
+            }
+            console.log("setting root fs storage mode to: " + rootStorageMode);
+            return rootStorageMode;
         }
         function getSound() {
             var soundEnabled =  getParameter("sound");
@@ -417,6 +463,10 @@
                 return true;
             }
             return value != "0";
+        }
+
+        function getSafeMemory() {
+            return allowParameterOverride() && getParameter("safe-memory") === "true";
         }
 
         function getAudioFreq() {
@@ -489,6 +539,36 @@
             }
             return result;
         }
+        // param=[name,...] -> the values of the named presets, in order
+        function getPresets(param, presets) {
+            var list = getParameter(param);
+            if (!allowParameterOverride() || list === "") {
+                return [];
+            }
+            list = decodeUrlValue(list).trim();
+            if (list.startsWith("[") && list.endsWith("]")) {
+                list = list.substring(1, list.length - 1);
+            }
+            let values = [];
+            list.split(/[,;]/).forEach(function(item) {
+                let name = item.trim().toLowerCase();
+                if (name.length == 0) {
+                    return;
+                }
+                if (!Object.prototype.hasOwnProperty.call(presets, name)) {
+                    console.log("unknown " + param + " preset: " + name);
+                    return;
+                }
+                console.log("setting " + param + " preset " + name + " to: " + presets[name]);
+                values.push(presets[name]);
+            });
+            return values;
+        }
+        function getRegistryCommands() {
+            return getPresets("registry", REGISTRY_PRESETS).map(function(command) {
+                return splitCommandLine(command);
+            });
+        }
         function getWorkingDir() {
             var workingDir = getParameter("w");
             if (workingDir === "") {
@@ -498,6 +578,12 @@
                 return "";
             }
             workingDir = decodeUrlValue(workingDir);
+            // c:/files -> /home/username/.wine/dosdevices/c:/files, as Wine resolves it for p
+            let drive = workingDir.match(/^([a-z]):(?:[\/\\]|$)/i);
+            if (drive) {
+                workingDir = "/home/username/.wine/dosdevices/" + drive[1].toLowerCase() + ":/"
+                    + workingDir.substring(drive[0].length).replace(/\\/g, "/");
+            }
             console.log("setting working directory to: " + workingDir);
             return workingDir;
         }
@@ -676,29 +762,33 @@
         }
         function initBrowserFilesystem(callback) {
     		console.log("Use Storage mode: "+Config.storageMode);
+            console.log("Use Root FS storage mode: "+Config.rootStorageMode);
             FS.mkdirTree(ROOT);
             FS.mkdirTree(Config.d_drive);
-			if (Config.storageMode == STORAGE_INDEXED_DB) {
-	  			FS.mount(IDBFS, {autoPersist: true}, ROOT);
-	  			if (Config.persist_d_drive) {
-	  				FS.mount(IDBFS, {autoPersist: true}, Config.d_drive);
-	  			}
-  				FS.syncfs(true, function (err) {
-  					if (err) {
-  						console.log('unable to sync folder: ' + ROOT);
-  					} else {
-  						callback();
-  					}
-				});
-			} else {
-				callback();
-			}
-		}
-        function buildBrowserFileSystem() {
-            if(Config.showUploadDownload){
-                document.getElementById('uploadbtn').style.display = "";
-                document.getElementById('downloadbtn').style.display = "";
+            var mountedPersistentFileSystem = false;
+            if (Config.rootStorageMode == STORAGE_INDEXED_DB) {
+                FS.mount(IDBFS, {autoPersist: true}, ROOT);
+                mountedPersistentFileSystem = true;
             }
+            if (Config.storageMode == STORAGE_INDEXED_DB) {
+                if (Config.persist_d_drive) {
+                    FS.mount(IDBFS, {autoPersist: true}, Config.d_drive);
+                    mountedPersistentFileSystem = true;
+                }
+            }
+            if (mountedPersistentFileSystem) {
+                FS.syncfs(true, function (err) {
+                    if (err) {
+                        console.log('unable to sync browser storage');
+                    } else {
+                        callback();
+                    }
+                });
+            } else {
+                callback();
+            }
+        }
+        function buildBrowserFileSystem() {
             // The Save JIT Cache button is handled by updateSaveJitButton(),
             // called from initWasmJitCache once the persistence mode is known.
             spinnerElement.style.display = 'none';
@@ -706,21 +796,41 @@
             if(Config.isAutoRunSet){
                 start();
             }else{
+                // Downloads are done, but the "setupBoxedWine" run dependency stays
+                // pending until start(), so emscripten will not clear the status yet.
+                awaitingStart = true;
+                Module.setStatus('');
                 var startBtn = document.getElementById('startbtn');
                 startBtn.disabled = false;
+                startBtn.textContent = getHostFolderStartButtonText();
                 startBtn.style.display = "";
-                var soundToggle = document.getElementById('soundToggle');
-                if(Config.isSoundEnabled){
-                    soundToggle.checked = true;
-                }
-                document.getElementById('sound-checkbox').style.display = "";
+                // Get File(s) copies files off d:; files go in by drag and drop or a mounted host folder
+                document.getElementById('downloadbtn').style.display = "";
+                updateHostFolderControls();
             }
         }
         function closeGetFilesModal() { //called by boxedwine.html
 		}
-        function start() { //called by boxedwine.html
+        // The dialogs open and close through the URL fragment (CSS :target), so
+        // closing one leaves #close in the address bar; drop it once closed.
+        function removeCloseFragment() {
+            if (window.location.hash === "#close") {
+                history.replaceState(null, "", window.location.pathname + window.location.search);
+            }
+        }
+        window.addEventListener("hashchange", removeCloseFragment);
+        async function start() { //called by boxedwine.html
         	if(isRunning){
                 return;
+            }
+            if (hostFolderBusy) {
+                return;
+            }
+            if (isHostFolderStorage() && !Config.hostFolderEnabled) {
+                if (!(await mountHostFolder())) {
+                    updateHostFolderControls();
+                    return;
+                }
             }
             startEmulator();
         }
@@ -728,7 +838,6 @@
             isRunning = true;
 
             document.getElementById('startbtn').style.display = 'none';
-            document.getElementById('sound-checkbox').style.display = 'none';
             if (!isPointerLockEnabled()) {
                 Config.disableHideCursor = true;
             }
@@ -743,6 +852,7 @@
             }
 
             document.getElementById('startbtn').textContent = "Running...";
+            awaitingStart = false;
             Module["removeRunDependency"]("setupBoxedWine");
         }
         function isPointerLockEnabled() {
@@ -821,74 +931,122 @@
             }
 
             Module["addRunDependency"]("setupBoxedWine");
-            initBrowserFilesystem(() => {
-            	spinnerElement.style.display = '';
-            	spinnerElement.hidden = false;
-            
-	        	buildExtraFileSystems(() => {
-    	        	buildAppFileSystem(() => {
-    	            	loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
-    	            	    createFile("/", Config.rootZipFile, rootZipfileBytes);
-                        	buildBrowserFileSystem();
-						});
-                	});
-	        	});
-	        });
-        }
-        function getEntriesAsPromise(item, exeFiles, allFiles, firstCall) {
-            return new Promise((resolve, reject) => {
-                if(firstCall){
-                    if(!Config.isAutoRunSet && !isRunning){
-                        loadExeModal(exeFiles, allFiles);
-                    }
-                }
-                if(item.isDirectory){
-                    let reader = item.createReader();
-                    let doBatch = () => {
-                        reader.readEntries(entries => {
-                            if (entries.length > 0) {
-                                entries.forEach(function(entry){
-                                    getEntriesAsPromise(entry, exeFiles, allFiles, false);
-                                });
-                                doBatch();
-                            } else {
-                                resolve();
-                            }
-                        }, reject);
-                    };
-                    doBatch();
-                }else{
-                    let fullPath = item.fullPath;
-                    let uppercase = fullPath.toUpperCase();
-                    allFiles.push(fullPath);
-                    if(uppercase.endsWith(".EXE") || uppercase.endsWith(".BAT")){
-                        exeFiles.push(fullPath);
-                    }
-                    item.file(function(item){uploadFile(item, fullPath, allFiles);}, e => console.log(e));
-                }
+            loadPersistedHostFolderHandle().then(function() {
+                initBrowserFilesystem(() => {
+                    spinnerElement.style.display = '';
+                    spinnerElement.hidden = false;
+
+                    buildExtraFileSystems(() => {
+                        buildAppFileSystem(() => {
+                            loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
+                                createFile("/", Config.rootZipFile, rootZipfileBytes);
+                                buildBrowserFileSystem();
+                            });
+                        });
+                    });
+                });
             });
         }
-        function loadExeModal(exeFiles, allFiles) {
-            document.getElementById('modalLinkExe').click();
-            var message = document.getElementById('message');
-            message.innerHTML = "<p>Uploading files...</p>";
-            ExeFileTimer = setInterval(function(){readyCheck(exeFiles, allFiles);}, 100);
+        // Copies a dropped file, or a folder and everything in it, onto d: keeping
+        // its folders. Finishes only once every file is written or has failed.
+        async function copyDroppedEntry(entry, copied) {
+            try {
+                if (entry.isDirectory) {
+                    let reader = entry.createReader();
+                    let children;
+                    do { // a folder's entries come in batches, ending with an empty one
+                        children = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+                        for (let child of children) {
+                            await copyDroppedEntry(child, copied);
+                        }
+                    } while (children.length > 0);
+                } else {
+                    let file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+                    let path = Config.d_drive + entry.fullPath;
+                    FS.mkdirTree(path.substring(0, path.lastIndexOf("/")));
+                    FS.writeFile(path, new Uint8Array(await file.arrayBuffer()));
+                    addDroppedProgram(entry.fullPath, copied);
+                }
+            } catch (e) {
+                copied.failed++;
+                console.log("Unable to copy " + entry.fullPath + " to d: " + e);
+            }
+        }
+        function addDroppedProgram(fullPath, copied) {
+            let uppercase = fullPath.toUpperCase();
+            if (uppercase.endsWith(".EXE") || uppercase.endsWith(".BAT")) {
+                copied.exeFiles.push(fullPath);
+            }
+        }
+        // A zip dropped on its own is unzipped into a d: folder named after it, so
+        // game.zip becomes d:/game. Zips inside dropped folders stay as files.
+        async function expandDroppedZip(entry, copied) {
+            let zipName = entry.fullPath.substring(entry.fullPath.lastIndexOf("/") + 1);
+            let folderName = zipName.substring(0, zipName.length - 4);
+            let items = [];
+            let data = null;
+            try {
+                if (/^\.*$/.test(folderName)) {
+                    throw new Error("no folder name");
+                }
+                let file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+                data = new Uint8Array(await file.arrayBuffer());
+                items = getZipEntries(data).slice(1).map(function(zipEntry) {
+                    let parts = zipEntry.filename.replace(/\\/g, "/").split("/").filter((part) => part != "" && part != ".");
+                    return { zipEntry: zipEntry, parts: parts };
+                }).filter((item) => item.parts[0] != "__MACOSX"); // macOS Finder metadata, never needed
+                if (items.length == 0) {
+                    throw new Error("not a zip file");
+                }
+            } catch (e) {
+                copied.failed++;
+                console.log("Unable to unzip " + entry.fullPath + " to d: " + e);
+                return;
+            }
+            // zip -r game.zip game/ already holds a game folder: don't make d:/game/game
+            let top = folderName.toLowerCase();
+            if (items.every((item) => item.parts.length > 0 && item.parts[0].toLowerCase() == top
+                    && (item.parts.length > 1 || item.zipEntry.directory))) {
+                items.forEach((item) => item.parts.shift());
+            }
+            for (let item of items) {
+                if (item.parts.length == 0) {
+                    continue;
+                }
+                let fullPath = "/" + folderName + "/" + item.parts.join("/");
+                try {
+                    // zip paths are untrusted: never write outside the folder
+                    if (item.parts.indexOf("..") >= 0) {
+                        throw new Error("path leaves the folder");
+                    }
+                    let path = Config.d_drive + fullPath;
+                    if (item.zipEntry.directory) {
+                        FS.mkdirTree(path);
+                    } else {
+                        FS.mkdirTree(path.substring(0, path.lastIndexOf("/")));
+                        FS.writeFile(path, await extractZipEntry(data, item.zipEntry));
+                        addDroppedProgram(fullPath, copied);
+                    }
+                } catch (e) {
+                    copied.failed++;
+                    console.log("Unable to unzip " + item.zipEntry.filename + " from " + entry.fullPath + " to d: " + e);
+                }
+            }
         }
         function populateModalExe(exeFiles) {
             var root = document.getElementById('items');
-            root.innerHTML = '';
-            let listElement = document.createElement("lu");
+            root.textContent = '';
+            let listElement = document.createElement("ul");
             for(let i = 0; i < exeFiles.length; i++) {
                 let fullPath = exeFiles[i];
                 let element = document.createElement("li");
                 element.addEventListener("click", function(event){execute(fullPath);}, false);
-                element.innerHTML = fullPath;
+                element.textContent = fullPath; // dropped file names are text, never HTML
                 listElement.appendChild(element);
             }
             root.appendChild(listElement);
         }
         function execute(filename) {
-            var root = document.getElementById('items');
             document.getElementById('openModalExeClick').click();
 
             var file = filename.substring(filename.lastIndexOf("/")+1, filename.length);
@@ -899,35 +1057,538 @@
 
             startEmulator();
         }
-        function readyCheck(exeFiles, allFiles) {
-            if(allFiles.length==0){
-                clearInterval(ExeFileTimer);
-                var message = document.getElementById('message');
-                if (exeFiles.length == 0) {
-	                message.innerHTML = 'No executable files found';                
-                } else {
-	                message.innerHTML = '';
-                }
-                populateModalExe(exeFiles);
-            }
-        }
         dropzone.addEventListener("dragover", function(event){
             event.preventDefault();
         }, false);
-        dropzone.addEventListener("drop", function(event){
+        dropzone.addEventListener("drop", async function(event){
             event.preventDefault();
-            let items = event.dataTransfer.items;
-            let exeFiles = [];
-            let allFiles = [];
-            for(let i =0; i < items.length; i++){
-                getEntriesAsPromise(items[i].webkitGetAsEntry(), exeFiles, allFiles, true);
+            // the dropped items are only readable until the first await
+            let entries = Array.from(event.dataTransfer.items, (item) => item.webkitGetAsEntry()).filter(Boolean);
+            // with auto run off, list the dropped programs so one can be started
+            let showExecute = !Config.isAutoRunSet && !isRunning;
+            let message = document.getElementById('message');
+            if (showExecute) {
+                document.getElementById('modalLinkExe').click();
+                message.textContent = "Uploading files...";
+                populateModalExe([]);
+            }
+            let copied = { exeFiles: [], failed: 0 };
+            for (let entry of entries) {
+                if (!entry.isDirectory && /\.zip$/i.test(entry.fullPath)) {
+                    await expandDroppedZip(entry, copied);
+                } else {
+                    await copyDroppedEntry(entry, copied);
+                }
+            }
+            if (showExecute) {
+                let problems = [];
+                if (copied.failed > 0) {
+                    problems.push(copied.failed + (copied.failed == 1 ? " file or folder" : " files or folders") + " could not be copied to d:");
+                }
+                if (copied.exeFiles.length == 0) {
+                    problems.push("No executable files found");
+                }
+                message.textContent = problems.join(". ");
+                populateModalExe(copied.exeFiles);
             }
         }, false);
-        function getEmulatorParams() {        
+        function isHostFolderAccessSupported() {
+            return typeof window !== "undefined" && typeof window.showDirectoryPicker === "function";
+        }
+        function isHostFolderStorage() {
+            return Config.storageMode === STORAGE_HOST_FOLDER;
+        }
+        function getHostFolderPermissionMode() {
+            return Config.hostFolderReadWrite ? "readwrite" : "read";
+        }
+        function getHostFolderStartButtonText() {
+            if (!isHostFolderStorage()) {
+                return "Start";
+            }
+            if (Config.hostFolderEnabled) {
+                return "Start";
+            }
+            return Config.hostFolderPersistedHandle ? "Reconnect d:" : "Mount d:";
+        }
+        function updateHostFolderControls() {
+            var startBtn = document.getElementById('startbtn');
+            if (startBtn && !isRunning) {
+                startBtn.textContent = getHostFolderStartButtonText();
+                startBtn.disabled = hostFolderBusy;
+            }
+        }
+        function logHostFolderMessage(message, isError) {
+            if (!message) {
+                return;
+            }
+            if (isError) {
+                console.error(message);
+            } else {
+                console.log(message);
+            }
+            var output = document.getElementById('output');
+            if (output) {
+                output.value += message + "\n";
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+        function setHostFolderStatus(message, isError) {
+            if (message) {
+                logHostFolderMessage(message, isError);
+            }
+        }
+        function setHostFolderBusy(busy, message) {
+            hostFolderBusy = busy;
+            if (message) {
+                setHostFolderStatus(message, false);
+            }
+            updateHostFolderControls();
+        }
+        function summarizeHostFolderRefresh(result) {
+            if (!result) {
+                return 0;
+            }
+            return (result.created || 0) + (result.updated || 0) + (result.removed || 0);
+        }
+        function getHostFolderRefreshMount() {
+            let mount = getHostFolderMount();
+            if (!mount || !mount.type || typeof mount.type.refreshFromHost !== "function") {
+                return null;
+            }
+            return mount;
+        }
+        function syncHostFolderBoxedwineDirectories(mount, result) {
+            if (typeof Module === "undefined" || typeof Module.ccall !== "function") {
+                return false;
+            }
+            // Boxedwine only needs the directories whose entries changed, as native
+            // paths relative to the mount ("." for the mount itself).
+            let dirs = new Set();
+            result.changedPaths.forEach(function(path) {
+                let relative = path.substring(mount.mountpoint.length).replace(/^\/+/, "");
+                let slash = relative.lastIndexOf("/");
+                dirs.add(slash > 0 ? relative.substring(0, slash) : ".");
+            });
+            try {
+                Module.ccall("boxedwineHostFolderSyncDirectories", null, ["string", "string"],
+                    ["/mnt/drive_d", Array.from(dirs).sort().join("\n")]);
+                return true;
+            } catch (e) {
+                if (!hostFolderInvalidateWarningShown) {
+                    hostFolderInvalidateWarningShown = true;
+                    logHostFolderMessage("Unable to notify Boxedwine about host folder refresh: " + e, true);
+                }
+                return false;
+            }
+        }
+        function refreshHostFolderFromHost(reason) {
+            if (!Config.hostFolderMounted) {
+                return Promise.resolve(false);
+            }
+            let mount = getHostFolderRefreshMount();
+            if (!mount) {
+                return Promise.resolve(false);
+            }
+            if (hostFolderRefreshBusy) {
+                hostFolderRefreshPendingReason = reason || "pending";
+                return Promise.resolve(false);
+            }
+            hostFolderRefreshBusy = true;
+            return new Promise(function(resolve) {
+                mount.type.refreshFromHost(mount, function(err, result) {
+                    hostFolderRefreshBusy = false;
+                    if (err) {
+                        logHostFolderMessage("Host folder refresh failed: " + err, true);
+                        resolve(false);
+                    } else {
+                        let changeCount = summarizeHostFolderRefresh(result);
+                        if (changeCount > 0) {
+                            syncHostFolderBoxedwineDirectories(mount, result);
+                            logHostFolderMessage("Refreshed D: folder from host (" + changeCount + " change" + (changeCount === 1 ? "" : "s") + ")", false);
+                        }
+                        resolve(changeCount > 0);
+                    }
+                    if (hostFolderRefreshPendingReason) {
+                        let pendingReason = hostFolderRefreshPendingReason;
+                        hostFolderRefreshPendingReason = "";
+                        setTimeout(function() {
+                            refreshHostFolderFromHost(pendingReason);
+                        }, 0);
+                    }
+                });
+            });
+        }
+        function scheduleHostFolderRefresh(reason) {
+            if (!Config.hostFolderMounted) {
+                return;
+            }
+            setTimeout(function() {
+                refreshHostFolderFromHost(reason);
+            }, 0);
+        }
+        async function startHostFolderObserver() {
+            if (typeof FileSystemObserver !== "function" || !Config.hostFolderHandle) {
+                return;
+            }
+            try {
+                hostFolderRefreshObserver = new FileSystemObserver(function(records) {
+                    for (let i = 0; i < records.length; i++) {
+                        if (records[i].type === "errored") {
+                            logHostFolderMessage("Host folder observer stopped; falling back to periodic refresh", true);
+                            if (hostFolderRefreshObserver) {
+                                hostFolderRefreshObserver.disconnect();
+                            }
+                            hostFolderRefreshObserver = null;
+                            return;
+                        }
+                    }
+                    scheduleHostFolderRefresh("observer");
+                });
+                await hostFolderRefreshObserver.observe(Config.hostFolderHandle, {recursive: true});
+                logHostFolderMessage("Watching D: folder for host changes", false);
+            } catch (e) {
+                hostFolderRefreshObserver = null;
+                logHostFolderMessage("Host folder change observer is unavailable; using periodic refresh", false);
+            }
+        }
+        function startHostFolderRefresh() {
+            if (!Config.hostFolderMounted || hostFolderRefreshTimer) {
+                return;
+            }
+            if (!hostFolderRefreshEventsConfigured) {
+                hostFolderRefreshEventsConfigured = true;
+                window.addEventListener("focus", function() {
+                    scheduleHostFolderRefresh("focus");
+                }, false);
+                document.addEventListener("visibilitychange", function() {
+                    if (document.visibilityState === "visible") {
+                        scheduleHostFolderRefresh("visible");
+                    }
+                }, false);
+            }
+            hostFolderRefreshTimer = setInterval(function() {
+                refreshHostFolderFromHost("poll");
+            }, HOST_FOLDER_REFRESH_INTERVAL_MS);
+            startHostFolderObserver();
+        }
+        function stopHostFolderRefresh() {
+            if (hostFolderRefreshTimer) {
+                clearInterval(hostFolderRefreshTimer);
+                hostFolderRefreshTimer = null;
+            }
+            if (hostFolderRefreshObserver) {
+                hostFolderRefreshObserver.disconnect();
+                hostFolderRefreshObserver = null;
+            }
+            hostFolderRefreshBusy = false;
+            hostFolderRefreshPendingReason = "";
+        }
+        function isHostFolderHandlePersistenceSupported() {
+            return typeof indexedDB !== "undefined";
+        }
+        function idbRequestAsPromise(request) {
+            return new Promise(function(resolve, reject) {
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+                request.onerror = function() {
+                    reject(request.error);
+                };
+            });
+        }
+        function idbTransactionAsPromise(transaction) {
+            return new Promise(function(resolve, reject) {
+                transaction.oncomplete = function() {
+                    resolve();
+                };
+                transaction.onerror = function() {
+                    reject(transaction.error);
+                };
+                transaction.onabort = function() {
+                    reject(transaction.error || new Error("IndexedDB transaction aborted"));
+                };
+            });
+        }
+        function openHostFolderHandleDb() {
+            return new Promise(function(resolve, reject) {
+                if (!isHostFolderHandlePersistenceSupported()) {
+                    reject(new Error("IndexedDB is not available"));
+                    return;
+                }
+                var request = indexedDB.open(HOST_FOLDER_HANDLE_DB, HOST_FOLDER_HANDLE_DB_VERSION);
+                request.onupgradeneeded = function() {
+                    var db = request.result;
+                    if (!db.objectStoreNames.contains(HOST_FOLDER_HANDLE_STORE)) {
+                        db.createObjectStore(HOST_FOLDER_HANDLE_STORE);
+                    }
+                };
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+                request.onerror = function() {
+                    reject(request.error);
+                };
+                request.onblocked = function() {
+                    reject(new Error("Host folder handle database is blocked"));
+                };
+            });
+        }
+        async function readPersistedHostFolderRecord() {
+            var db = await openHostFolderHandleDb();
+            try {
+                var transaction = db.transaction(HOST_FOLDER_HANDLE_STORE, "readonly");
+                var store = transaction.objectStore(HOST_FOLDER_HANDLE_STORE);
+                return await idbRequestAsPromise(store.get(HOST_FOLDER_HANDLE_KEY));
+            } finally {
+                db.close();
+            }
+        }
+        async function writePersistedHostFolderHandle(handle) {
+            if (!handle) {
+                return;
+            }
+            var db = await openHostFolderHandleDb();
+            try {
+                var transaction = db.transaction(HOST_FOLDER_HANDLE_STORE, "readwrite");
+                var store = transaction.objectStore(HOST_FOLDER_HANDLE_STORE);
+                store.put({
+                    handle: handle,
+                    name: handle.name || "Host folder",
+                    storedAt: Date.now()
+                }, HOST_FOLDER_HANDLE_KEY);
+                await idbTransactionAsPromise(transaction);
+            } finally {
+                db.close();
+            }
+        }
+        async function deletePersistedHostFolderHandle() {
+            var db = await openHostFolderHandleDb();
+            try {
+                var transaction = db.transaction(HOST_FOLDER_HANDLE_STORE, "readwrite");
+                var store = transaction.objectStore(HOST_FOLDER_HANDLE_STORE);
+                store.delete(HOST_FOLDER_HANDLE_KEY);
+                await idbTransactionAsPromise(transaction);
+            } finally {
+                db.close();
+            }
+        }
+        async function forgetPersistedHostFolderHandle(removeStoredHandle) {
+            Config.hostFolderPersistedHandle = null;
+            Config.hostFolderPersistedName = "";
+            Config.hostFolderPermissionState = "unknown";
+            updateHostFolderControls();
+            if (!removeStoredHandle || !isHostFolderHandlePersistenceSupported()) {
+                return;
+            }
+            try {
+                await deletePersistedHostFolderHandle();
+            } catch (e) {
+                logHostFolderMessage("Unable to forget remembered D: folder: " + e, true);
+            }
+        }
+        async function loadPersistedHostFolderHandle() {
+            if (!isHostFolderStorage() || !isHostFolderAccessSupported()) {
+                return;
+            }
+            if (!isHostFolderHandlePersistenceSupported()) {
+                logHostFolderMessage("Remembered D: folder is not available because IndexedDB is disabled", false);
+                return;
+            }
+            try {
+                var record = await readPersistedHostFolderRecord();
+                var handle = record && record.handle ? record.handle : record;
+                if (!handle) {
+                    return;
+                }
+                if (handle.kind && handle.kind !== "directory") {
+                    logHostFolderMessage("Remembered D: folder is no longer a directory handle", true);
+                    await forgetPersistedHostFolderHandle(true);
+                    return;
+                }
+                var permissionState = await queryHostFolderPermission(handle, getHostFolderPermissionMode());
+                Config.hostFolderPersistedHandle = handle;
+                Config.hostFolderPersistedName = record && record.name ? record.name : (handle.name || "Host folder");
+                Config.hostFolderPermissionState = permissionState;
+                if (Config.hostFolderPermissionState === "granted") {
+                    logHostFolderMessage("Remembered D: folder is ready to reconnect: " + Config.hostFolderPersistedName, false);
+                } else if (Config.hostFolderPermissionState === "prompt") {
+                    logHostFolderMessage("Remembered D: folder needs permission; click Reconnect d:", false);
+                } else {
+                    logHostFolderMessage("Remembered D: folder permission is denied; choose a folder again", true);
+                    await forgetPersistedHostFolderHandle(true);
+                }
+            } catch (e) {
+                await forgetPersistedHostFolderHandle(false);
+                logHostFolderMessage("Unable to load remembered D: folder: " + e, true);
+            }
+        }
+        async function rememberHostFolderHandle(handle) {
+            Config.hostFolderPersistedHandle = handle;
+            Config.hostFolderPersistedName = handle && handle.name ? handle.name : "Host folder";
+            Config.hostFolderPermissionState = "granted";
+            updateHostFolderControls();
+            if (!isHostFolderHandlePersistenceSupported()) {
+                logHostFolderMessage("D: folder mounted, but IndexedDB is disabled so it cannot be remembered", false);
+                return;
+            }
+            try {
+                await writePersistedHostFolderHandle(handle);
+                logHostFolderMessage("Remembered D: folder for future sessions", false);
+            } catch (e) {
+                logHostFolderMessage("D: folder mounted, but could not be remembered: " + e, true);
+            }
+        }
+        async function queryHostFolderPermission(handle, mode) {
+            if (!handle || typeof handle.queryPermission !== "function") {
+                return "granted";
+            }
+            return await handle.queryPermission({mode: mode});
+        }
+        async function ensureHostFolderPermission(handle, mode) {
+            if (!handle || typeof handle.queryPermission !== "function") {
+                return true;
+            }
+            let state = await queryHostFolderPermission(handle, mode);
+            Config.hostFolderPermissionState = state;
+            if (state === "granted") {
+                return true;
+            }
+            if (typeof handle.requestPermission !== "function") {
+                return false;
+            }
+            state = await handle.requestPermission({mode: mode});
+            Config.hostFolderPermissionState = state;
+            return state === "granted";
+        }
+        async function getHostFolderHandleForMount(mode) {
+            if (Config.hostFolderPersistedHandle) {
+                setHostFolderStatus("Reconnecting remembered D: folder...", false);
+                if (await ensureHostFolderPermission(Config.hostFolderPersistedHandle, mode)) {
+                    return Config.hostFolderPersistedHandle;
+                }
+                setHostFolderStatus("Remembered D: folder permission was not granted; click Mount d: to choose a folder", true);
+                await forgetPersistedHostFolderHandle(true);
+                return null;
+            }
+            return await window.showDirectoryPicker({
+                id: "boxedwine-host-drive-d",
+                mode: mode
+            });
+        }
+        function getHostFolderMount() {
+            if (!Config.hostFolderMounted) {
+                return null;
+            }
+            let lookup = FS.lookupPath(Config.d_drive, {follow_mount: false});
+            return lookup && lookup.node ? lookup.node.mounted : null;
+        }
+        function syncHostFolderMount(populate) {
+            return new Promise(function(resolve, reject) {
+                let mount = getHostFolderMount();
+                if (!mount || !mount.type || typeof mount.type.syncfs !== "function") {
+                    resolve();
+                    return;
+                }
+                mount.type.syncfs(mount, populate, function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        }
+        async function unmountHostFolder() {
+            if (!Config.hostFolderMounted) {
+                return;
+            }
+            await syncHostFolderMount(false);
+            FS.unmount(Config.d_drive);
+            Config.hostFolderMounted = false;
+            Config.hostFolderEnabled = false;
+            Config.hostFolderHandle = null;
+            stopHostFolderRefresh();
+        }
+        async function mountHostFolder() {
+            if (isRunning || hostFolderBusy) {
+                return false;
+            }
+            if (!isHostFolderStorage()) {
+                setHostFolderStatus("Host folder mounting is only available when storage=hostfolder", true);
+                return false;
+            }
+            if (!isHostFolderAccessSupported()) {
+                setHostFolderStatus("Host folder mounting is not supported by this browser", true);
+                return false;
+            }
+            if (typeof installFSFS !== "function") {
+                setHostFolderStatus("Host folder mounting support was not loaded", true);
+                return false;
+            }
+            try {
+                let permissionMode = getHostFolderPermissionMode();
+                let handle = await getHostFolderHandleForMount(permissionMode);
+                if (!handle) {
+                    return false;
+                }
+                setHostFolderBusy(true, "Mounting host folder...");
+                if (!(await ensureHostFolderPermission(handle, permissionMode))) {
+                    setHostFolderStatus("Host folder permission was not granted", true);
+                    return false;
+                }
+                await unmountHostFolder();
+                let fsfs = installFSFS();
+                Config.hostFolderHandle = handle;
+                FS.mount(fsfs, {
+                    dirHandle: handle,
+                    autoPersist: true,
+                    onPersistError: function(error) {
+                        logHostFolderMessage("Host folder auto-sync failed: " + error, true);
+                    },
+                    onPersistComplete: function() {
+                        logHostFolderMessage("Synced D: folder", false);
+                    },
+                    onConflict: function(source, conflicts) {
+                        if (conflicts.length > 0) {
+                            logHostFolderMessage("Host folder " + source + " skipped " + conflicts.length + " conflicting path" + (conflicts.length === 1 ? "" : "s"), true);
+                        }
+                    }
+                }, Config.d_drive);
+                Config.hostFolderMounted = true;
+                await syncHostFolderMount(true);
+                Config.hostFolderEnabled = true;
+                await rememberHostFolderHandle(handle);
+                startHostFolderRefresh();
+                setHostFolderStatus("Mounted D: folder (auto-sync enabled)", false);
+                return true;
+            } catch (e) {
+                if (Config.hostFolderMounted && !Config.hostFolderEnabled) {
+                    // The initial populate failed: drop the partial mount without
+                    // syncing it back, so a retry does not hit the same error.
+                    try { FS.unmount(Config.d_drive); } catch (unmountError) {}
+                    Config.hostFolderMounted = false;
+                    Config.hostFolderHandle = null;
+                    stopHostFolderRefresh();
+                }
+                if (e && (e.name === "NotFoundError" || e.name === "NotAllowedError")) {
+                    // The remembered folder was moved, deleted or revoked; forget it
+                    // so the next click offers the folder picker again.
+                    await forgetPersistedHostFolderHandle(true);
+                }
+                if (e && e.name === "AbortError") {
+                    setHostFolderStatus("Host folder selection canceled", false);
+                } else {
+                    setHostFolderStatus("Unable to mount host folder: " + e, true);
+                }
+                return false;
+            } finally {
+                setHostFolderBusy(false);
+            }
+        }
+        function getEmulatorParams() {
             let params = ["-root", ROOT];
-            params.push("-zip");
-    		params.push(Config.rootZipFile);
-    		
+            // overlays go first: the first zip holding a path wins, so an
+            // overlay's files replace the same files in the root zip
             if(Config.extraZipFiles.length > 0){
                 for(let i = 0; i < Config.extraZipFiles.length; i++) {
 		            params.push("-zip");
@@ -938,6 +1599,8 @@
 		        params.push("-zip");
     			params.push("overlay.zip");
             }
+            params.push("-zip");
+            params.push(Config.rootZipFile);
             
             if (Config.appZipFile.length > 0) { // -mount $appZipFile "/home/username/files/"
     			params.push("-mount");
@@ -949,17 +1612,13 @@
     			params.push(Config.appDirPrefix);          			
             }
                         
-            params.push("-mount_drive"); // -mount_drive "/d_drive" d
-            params.push(Config.d_drive);
-            params.push("d");
-            
-            if (Config.resolution != null) {
+	            params.push("-mount_drive"); // -mount_drive "/d_drive" d
+	            params.push(Config.d_drive);
+	            params.push("d");
+
+	            if (Config.resolution != null) {
             	params.push("-resolution");
             	params.push(Config.resolution);
-            }
-            if (Config.ddrawOverridePath != null) {
-            	params.push("-ddrawOverride");
-            	params.push(Config.ddrawOverridePath);
             }
             if (Config.frameSkip != "0") {
             	params.push("-skipFrameFPS");
@@ -979,6 +1638,9 @@
             if (Config.disableWasmJitForWrittenCode) {
                 params.push("-disableWasmJitForWrittenCode");
             }
+            if (Config.safeMemory) {
+                params.push("-safe-memory");
+            }
             if(Config.bpp != DEFAULT_BPP){
                 params.push("-bpp");
                 params.push("" + Config.bpp);
@@ -986,9 +1648,20 @@
             if(Config.cpu.length > 0){
                 params.push("-" + Config.cpu);
             }
+            let dllOverrides = Config.dllOverrides;
             if(Config.envProp.length > 0){
                 params.push("-env");
-                params.push(Config.envProp);
+                if (dllOverrides.length > 0 && Config.envProp.startsWith("WINEDLLOVERRIDES=")) {
+                    // keep a single WINEDLLOVERRIDES, the presets win for the same dll
+                    params.push(Config.envProp + ";" + dllOverrides);
+                    dllOverrides = "";
+                } else {
+                    params.push(Config.envProp);
+                }
+            }
+            if (dllOverrides.length > 0) {
+                params.push("-env");
+                params.push("WINEDLLOVERRIDES=" + dllOverrides);
             }
 
 			if (!Config.loadDesktop) {
@@ -1018,6 +1691,15 @@
                 }
             } else {
                 params.push("/bin/wine");
+                if (Config.registryCommands.length > 0) {
+                    // cmd /c reg add ... && reg add ... && <program>
+                    params.push("cmd");
+                    params.push("/c");
+                    for (let i = 0; i < Config.registryCommands.length; i++) {
+                        params.push(...Config.registryCommands[i]);
+                        params.push("&&");
+                    }
+                }
                 if(Config.Program.length > 0 && !Config.loadDesktop){
                     if (Config.Program.endsWith('.bat')) {
                         params.push("cmd");
@@ -1037,6 +1719,7 @@
         }
       var Module = {
         preRun: [initialSetup],
+        thisProgram: "./boxedwine", // argv[0]; emscripten's default is ./this.program
         arguments: [],
         postRun: [],
         boxedwineNetworking: { enabled: false },
@@ -1317,10 +2000,12 @@
         })(),
         setStatus: function(text) {
           if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
-          if (text === Module.setStatus.text) return;
+          if (text === Module.setStatus.last.text) return;
           var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
           var now = Date.now();
-          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
+          if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
+          Module.setStatus.last.time = now;
+          Module.setStatus.last.text = text;
           if (m) {
             text = m[1];
             progressElement.value = parseInt(m[2])*100;
@@ -1338,7 +2023,8 @@
         totalDependencies: 0,
         monitorRunDependencies: function(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
-          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : '');
+          // Keep the status clear while the page waits for the user to press start.
+          Module.setStatus(left && !awaitingStart ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : '');
         }
       };
       Module.setStatus('Downloading...');
@@ -1360,58 +2046,6 @@
         var reason = event && event.reason;
         Module.printErr('Unhandled promise rejection: ' + (reason && reason.stack ? reason.stack : reason));
       };
-        function startWithFiles(files) {
-            for (let i = 0; i < files.length; i++) {
-                uploadFile(files[i]);
-            }
-        }
-        function uploadFile(file, fullPath, allFiles) {
-            let filename = null;
-            if(fullPath){
-                filename = fullPath.startsWith("/") ? fullPath.substring(1) : fullPath;
-            }else{
-                filename = file.webkitRelativePath.length == 0 ? file.name : file.webkitRelativePath;
-            }
-            var filereader = new FileReader();
-            filereader.file_name = file.name;
-            filereader.onload = function(){readFile(this.result, filename, allFiles)};
-            filereader.readAsArrayBuffer(file);
-        }
-        function readFile(data, name, allFiles) {
-        	let filename = name.substring(name.lastIndexOf("/")+1,name.length);
-            if(name.toLowerCase().endsWith('zip')){
-				createFile(Config.d_drive, filename, new Uint8Array(data));
-            }else{
-                var done = false;
-                var startIndex = 0;
-                var base = Config.d_drive + "/";
-                while(!done){
-                    var dirIndex = name.indexOf("/", startIndex);
-                    if(dirIndex == -1){
-                        done =true;
-                    }else{
-                        var dirName = name.substring(startIndex, dirIndex);
-                        if(dirName.length > 0) {
-                            createFolder(base, dirName);
-                            base = base + dirName + "/";
-                        }
-                        startIndex = dirIndex + 1;
-                    }
-                }
-                createFile(base.substring(0,base.length-1), filename, new Uint8Array(data));
-            }
-            if(allFiles){
-                allFiles.pop();
-            }
-        }
-function createFolder(parent, dir) {
-    try {
-        FS.createPath(parent, dir, true, true);
-    	console.log("Directory created :" + parent +  dir);
-    } catch(ef) {
-    	console.log("Unable to create folder:" + parent + dir + " error:" + ef);
-    }
-}
 function createFile(dir, name, buf) {
     try {
         FS.createDataFile(dir, name, buf, true, true);
@@ -1442,10 +2076,6 @@ function setupCanvasFullscreen(canvas) {
     });
 }
 
-function toggleSound() {
-    var el = document.getElementById('soundToggle');
-    Config.isSoundEnabled = el.checked;
-}
 
 // ---------------------------------------------------------------------------
 // WASM JIT module persistence
@@ -1866,13 +2496,9 @@ async function importJitModulesFromBuffer(bytes) {
     }
 }
 
-// Export all cached JIT modules as a DEFLATE-compressed ZIP and trigger a
-// browser download.  Each entry uses compression method 8 (deflate-raw) via
-// the Compression Streams API, typically halving file size versus STORED.
-// All entries are compressed in parallel with Promise.all before the ZIP
-// structure is assembled so the compressed sizes are known before headers
-// are written (avoiding the need for a data-descriptor extension).
-// The ZIP is built entirely in JavaScript; minizip is not involved.
+// Export all cached JIT modules as a ZIP and trigger a browser download.
+// createZip deflates the entries in parallel (typically halving file size versus
+// STORED) and builds the ZIP entirely in JavaScript; minizip is not involved.
 async function saveJitModules() {
     // For MT builds, sync g_wasmCacheByKey → Module.wasmJitCache first so worker-
     // compiled blocks (which only the C++ map saw) are included in the ZIP.
@@ -1884,31 +2510,14 @@ async function saveJitModules() {
         return;
     }
     try {
-        // CRC-32/ISO-HDLC — computed on uncompressed data, as ZIP requires.
-        var crcTable = new Uint32Array(256);
-        for (var n = 0; n < 256; n++) {
-            var c = n >>> 0;
-            for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
-            crcTable[n] = c;
-        }
-        function crc32(data) {
-            var c = 0xFFFFFFFF;
-            for (var i = 0; i < data.length; i++) c = (c >>> 8) ^ crcTable[(c ^ data[i]) & 0xFF];
-            return (c ^ 0xFFFFFFFF) >>> 0;
-        }
-
-        // Compress all entries in parallel so we know each compressed size
-        // before writing any local file header.
-        var cacheEntries = Array.from(Module.wasmJitCache.entries());
+        var items = [];
         var exportedCacheKeys = new Set();
-        var compressed = await Promise.all(cacheEntries.map(async function(kv) {
-            var key = String(kv[0]), data = kv[1];
-            if (!parseWasmJitCacheKey(key)) return null;
+        Module.wasmJitCache.forEach(function(data, key) {
+            key = String(key);
+            if (!parseWasmJitCacheKey(key)) return;
             exportedCacheKeys.add(key);
-            var compData = await deflateRaw(data);
-            return { name: key + '.wasm', data: data, compData: compData, crc: crc32(data) };
-        }));
-        compressed = compressed.filter(function(e) { return e !== null; });
+            items.push({ name: key + '.wasm', data: data });
+        });
 
         // Per-block exit metadata + runtime constants, consumed by the offline
         // cache pipeline (boxedwine-wasm-jit-cache-pipeline.mjs) to build the
@@ -1926,93 +2535,24 @@ async function saveJitModules() {
                 runtime: Module.wasmJitRuntimeConstants || null,
                 entries: manifestEntries
             };
-            var manifestData = new TextEncoder().encode(JSON.stringify(manifest, null, 2));
-            compressed.push({
+            items.push({
                 name: 'boxedwine-jit-manifest.json',
-                data: manifestData,
-                compData: await deflateRaw(manifestData),
-                crc: crc32(manifestData)
+                data: new TextEncoder().encode(JSON.stringify(manifest, null, 2))
             });
         }
 
         // Interior-transition profile sidecar; the pipeline parses it (or a
         // pasted console log) into profile-guided split hints.
         if (Module.wasmJitInteriorProfileLines && Module.wasmJitInteriorProfileLines.length > 0) {
-            var profileData = new TextEncoder().encode(Module.wasmJitInteriorProfileLines.join('\n') + '\n');
-            compressed.push({
+            items.push({
                 name: 'boxedwine-jit-profile.txt',
-                data: profileData,
-                compData: await deflateRaw(profileData),
-                crc: crc32(profileData)
+                data: new TextEncoder().encode(Module.wasmJitInteriorProfileLines.join('\n') + '\n')
             });
         }
 
-        var parts   = [];
-        var cdParts = [];
-        var offset  = 0;
-
-        compressed.forEach(function(e) {
-            var name      = e.name;
-            var nameBytes = new TextEncoder().encode(name);
-            var nl        = nameBytes.length;
-            var cSize     = e.compData.length;
-            var uSize     = e.data.length;
-
-            // Local file header (30 bytes fixed + filename).
-            var lh = new DataView(new ArrayBuffer(30 + nl));
-            lh.setUint32(0,  0x04034B50, true); // local file header signature
-            lh.setUint16(4,  20,         true); // version needed to extract (2.0)
-            lh.setUint16(8,  8,          true); // compression method: DEFLATE
-            lh.setUint32(14, e.crc,      true); // crc-32 of uncompressed data
-            lh.setUint32(18, cSize,      true); // compressed size
-            lh.setUint32(22, uSize,      true); // uncompressed size
-            lh.setUint16(26, nl,         true); // filename length
-            new Uint8Array(lh.buffer, 30).set(nameBytes);
-
-            // Central directory file header (46 bytes fixed + filename).
-            var cd = new DataView(new ArrayBuffer(46 + nl));
-            cd.setUint32(0,  0x02014B50, true); // central directory signature
-            cd.setUint16(4,  20,         true); // version made by
-            cd.setUint16(6,  20,         true); // version needed
-            cd.setUint16(10, 8,          true); // compression method: DEFLATE
-            cd.setUint32(16, e.crc,      true); // crc-32
-            cd.setUint32(20, cSize,      true); // compressed size
-            cd.setUint32(24, uSize,      true); // uncompressed size
-            cd.setUint16(28, nl,         true); // filename length
-            cd.setUint32(42, offset,     true); // offset of local file header
-            new Uint8Array(cd.buffer, 46).set(nameBytes);
-
-            parts.push(new Uint8Array(lh.buffer));
-            parts.push(e.compData);
-            cdParts.push(new Uint8Array(cd.buffer));
-            offset += 30 + nl + cSize;
-        });
-
-        // Central directory followed by end-of-central-directory record.
-        var cdOffset = offset;
-        var cdSize   = cdParts.reduce(function(s, cd) { return s + cd.length; }, 0);
-        cdParts.forEach(function(cd) { parts.push(cd); });
-
-        var count = compressed.length;
-        var eocd  = new DataView(new ArrayBuffer(22));
-        eocd.setUint32(0,  0x06054B50, true); // end of central directory signature
-        eocd.setUint16(8,  count,      true); // total entries on this disk
-        eocd.setUint16(10, count,      true); // total entries
-        eocd.setUint32(12, cdSize,     true); // size of central directory
-        eocd.setUint32(16, cdOffset,   true); // offset of start of central directory
-        parts.push(new Uint8Array(eocd.buffer));
-
-        var blob = new Blob(parts, { type: 'application/zip' });
-        var url  = URL.createObjectURL(blob);
-        var a    = document.createElement('a');
-        a.href   = url;
         var zipFilename = getJitCacheZipFilename();
-        a.download = zipFilename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        console.log('[WASM JIT] exported ' + count + ' blocks to ' + zipFilename);
+        downloadBlob(await createZip(items), zipFilename);
+        console.log('[WASM JIT] exported ' + items.length + ' blocks to ' + zipFilename);
     } catch(e) {
         console.error('[WASM JIT] export failed:', e);
     }
@@ -2094,6 +2634,11 @@ var index = 0;
 var files = [];
 var selectedItem;
 var selectedFilename;
+var selectedPath = "";
+var drives = []; // [{drive: "c:", dir}] for the tops of the Get File(s) tree
+function driveOf(path) {
+	return drives.find(function(drive) { return path.startsWith(drive.dir); });
+}
 function select(index, dir, filename) {
 	if(selectedItem != null){
 		selectedItem.style.backgroundColor = "";
@@ -2104,33 +2649,119 @@ function select(index, dir, filename) {
 	if(filename != null){
 		fullpath = fullpath + filename;
 	}
-	document.getElementById('selectedItem').value = fullpath
+	selectedPath = fullpath;
+	// show the path as Wine sees it
+	let drive = driveOf(fullpath);
+	document.getElementById('selectedItem').value = drive.drive + "/" + fullpath.substring(drive.dir.length);
 	selectedFilename = filename
 }
 function endsWith(str, suffix) {
     return str.indexOf(suffix, str.length - suffix.length) !== -1;
 }
-function extract() {
-	let file = document.getElementById('selectedItem').value;
-	if(file != null && file.length > 0 && files.length > 1) {
-        if(endsWith(file,"/")){
-			return;
-        }
-        let data = FS.readFile(file, { encoding: 'binary' });
-		let blob =  new Blob([data], {type: "octet/stream"});
-		
-      	let link = document.createElement('a');
-      	link.setAttribute('download', selectedFilename);
-      	link.setAttribute('href', window.URL.createObjectURL(blob));
-      	document.body.appendChild(link);
-      	link.click();
-      	document.body.removeChild(link);
+var zipping = false;
+// Downloads the selected file, or the selected folder as a zip of everything in it.
+async function extract() {
+	let file = selectedPath;
+	if (file == null || file.length == 0 || files.length <= 1 || zipping) {
+		return;
 	}
+	if (!endsWith(file, "/")) {
+		downloadBlob(new Blob([FS.readFile(file, { encoding: 'binary' })], {type: "octet/stream"}), selectedFilename);
+		return;
+	}
+	// the top of a drive downloads as c.zip or d.zip; its folder name is internal
+	let drive = driveOf(file);
+	await downloadZip(file, files, file === drive.dir ? drive.drive.charAt(0) : file.substring(0, file.length - 1).split("/").pop());
+}
+// Zips everything Wine and programs changed (ROOT) as overlay.zip. Loaded with
+// ?overlay=overlay.zip on a fresh browser, Wine starts without setting itself up again.
+async function saveOverlay() {
+	let entries = [];
+	readFiles(ROOT + "/", entries);
+	// leave out the emulator's deleted-file lists and its transient or virtual folders
+	entries = entries.filter(function(entry) {
+		let path = (entry.dir + entry.filename).substring(ROOT.length + 1);
+		return !/^(tmp|dev|proc|mnt)\//.test(path) && !/^[^\/]*\.deleted$/.test(path);
+	});
+	await downloadZip(ROOT + "/", entries, "overlay");
+}
+async function downloadZip(folder, entries, name) {
+	if (zipping) {
+		return;
+	}
+	let status = document.getElementById('loadStatus');
+	status.textContent = "Zipping " + name + "...";
+	status.style.display = "";
+	zipping = true;
+	try {
+		downloadBlob(await zipFolder(folder, entries), name + ".zip");
+		status.style.display = "none";
+	} catch (e) {
+		status.textContent = "Unable to zip " + name + ": " + e.message;
+	} finally {
+		zipping = false;
+	}
+}
+function downloadBlob(blob, filename) {
+	let url = window.URL.createObjectURL(blob);
+	let link = document.createElement('a');
+	link.setAttribute('download', filename);
+	link.setAttribute('href', url);
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	window.URL.revokeObjectURL(url);
+}
+// Zips the entries (from readFiles) under folder, a path ending in "/", with
+// paths relative to the folder.
+async function zipFolder(folder, entries) {
+	let items = [];
+	entries.forEach(function(entry) {
+		let path = entry.dir + entry.filename;
+		if (path.length > folder.length && path.startsWith(folder)) {
+			let item = { name: path.substring(folder.length), date: new Date(FS.stat(path).mtime) };
+			if (entry.filename.length > 0) {
+				item.data = FS.readFile(path);
+			}
+			items.push(item);
+		}
+	});
+	return createZip(items);
+}
+// The tree is built with DOM nodes, never HTML strings: file names come from
+// the emulated file system, so they must only ever be set as text.
+function treeRow(content) {
+	let row = document.createElement("tr");
+	let cell = document.createElement("td");
+	content.forEach(function(child) {
+		cell.appendChild(child);
+	});
+	row.appendChild(cell);
+	return row;
+}
+function treeItem(id, text, onClick) {
+	let span = document.createElement("span");
+	span.id = id + "-data";
+	span.textContent = text;
+	span.addEventListener("click", onClick, false);
+	return span;
+}
+function treeToggle(id, suffix, label, display) {
+	let span = document.createElement("span");
+	span.id = id + suffix;
+	span.style.display = display;
+	let link = document.createElement("a");
+	link.addEventListener("click", function() { toggleDirectory(id); }, false);
+	let strong = document.createElement("strong");
+	strong.textContent = label;
+	link.appendChild(strong);
+	span.appendChild(link);
+	return span;
 }
 function leaf(entry) {
     index++;
-	var text = "<tr><td ><span id=\"" + index + "-data\" onclick=\"select(" + index + ",'" + entry.dir + "','" + entry.filename + "')\">" + entry.filename + "</span></td></tr>";
-	return text;
+	let id = String(index);
+	return treeRow([treeItem(id, entry.filename, function() { select(id, entry.dir, entry.filename); })]);
 }
 function branch(entries) {
 	var item = entries[index];
@@ -2138,28 +2769,28 @@ function branch(entries) {
 	var dir = item.dir;
     var dirName = dir.substring(0, dir.length - 1);
     dirName = dirName.substring(dirName.lastIndexOf("/")+1,dirName.length);
-	var text = "<tr>";
-    text = text + "<td>";
-	text = text + "<span id=\"" + index + "-expand\"><a onclick=\"toggleDirectory('" + index + "')\"><strong>+</strong></a></span>";
-    text = text + "<span id=\"" + index + "-contract\" style=\"display:none;\"><a onclick=\"toggleDirectory('" + index + "')\"><strong>-</strong></a></span>";
-    text = text + "<span id=\"" + index + "-data\" onclick=\"select(" + index + ",'" + dir + "', null)\">[" + dirName + "]</span>";
-    text = text + "<div id='" + index + "' style=\"display:none;\">";
-    text = text + "<table>";
+	let id = String(index);
+	let children = document.createElement("div");
+	children.id = id;
+	children.style.display = "none";
+	let table = document.createElement("table");
     while(index < entries.length){
     	var nextItem = entries[index];
     	if(nextItem.dir === item.dir){
-    		text = text + leaf(nextItem);
+    		table.appendChild(leaf(nextItem));
     	}else if(parentDir(nextItem.dir) === item.dir){
-    		text = text + branch(entries, index);
+    		table.appendChild(branch(entries));
     	}else{
     		break;
     	}
     }
-    text = text + "</table>";
-    text = text + "</div>";
-	text = text + "</td>";
-	text = text + "</tr>";
-	return text;
+	children.appendChild(table);
+	return treeRow([
+		treeToggle(id, "-expand", "+", ""),
+		treeToggle(id, "-contract", "-", "none"),
+		treeItem(id, "[" + (dir === driveOf(dir).dir ? driveOf(dir).drive : dirName) + "]", function() { select(id, dir, null); }),
+		children
+	]);
 }
 function parentDir(childDir) {
     if(endsWith(childDir,"/")){
@@ -2168,23 +2799,36 @@ function parentDir(childDir) {
     return childDir.substring(0, childDir.lastIndexOf('/') + 1);
 }
 function buildGetFilesModal() {
-	buildGetFilesModalForFolder(Config.d_drive);
+	// c: only holds what programs created or changed: the rest of c: is still in the zips
+	buildGetFilesModalForDrives({ "c:": ROOT + "/home/username/.wine/drive_c", "d:": Config.d_drive });
 }
-function buildGetFilesModalForFolder(folder) {
+function buildGetFilesModalForDrives(folders) {
     document.getElementById('modalLink').click();
     let root = document.getElementById('tree');
     //reset
     document.getElementById('selectedItem').value = "";
+    selectedPath = "";
     selectedFilename = null;
 	files = [];
+	drives = [];
     root.innerHTML = "";
     index = 0;
-	readFiles(folder + "/", files);
 
-	let contents = "<table>" + branch(files) + "</table>";
+	let table = document.createElement("table");
+	let tops = [];
+	Object.keys(folders).forEach(function(drive) {
+		let dir = folders[drive] + "/";
+		if (!FS.analyzePath(dir).exists) {
+			return; // c: has no files of its own until a program writes one
+		}
+		drives.push({ drive: drive, dir: dir });
+		readFiles(dir, files);
+		tops.push(String(index + 1));
+		table.appendChild(branch(files));
+	});
 	document.getElementById('loadStatus').style.display="none";
-	root.innerHTML = contents;
-	toggleDirectory('1');
+	root.appendChild(table);
+	tops.forEach(toggleDirectory);
 }
 function readFiles(currentDir, files) {
     console.log("adding directory: " + currentDir);
@@ -2193,8 +2837,11 @@ function readFiles(currentDir, files) {
         return param !== "." && param !== "..";
     });
     entries.forEach(function(entry) {
-        var fileEntry = FS.lookupPath(currentDir + entry, { follow: true });
-        if (fileEntry.node.isFolder) {
+        var node = FS.lookupPath(currentDir + entry, { follow: false }).node;
+        if (FS.isLink(node.mode)) {
+            return; // a link back up the tree would recurse forever
+        }
+        if (FS.isDir(node.mode)) {
             readFiles(currentDir + entry + "/", files);
         }else{
             console.log("adding file: " + currentDir + entry);
@@ -2242,6 +2889,8 @@ function getZipEntries(data) {
       break;
     }
     var bitFlag = view.getUint16(offset + 8, true);
+    var compressionMethod = view.getUint16(offset + 10, true);
+    var compressedSize = view.getUint32(offset + 20, true);
     var uncompressedSize = view.getUint32(offset + 24, true);
     var fileNameLength = view.getUint16(offset + 28, true);
     var extraFieldLength = view.getUint16(offset + 30, true);
@@ -2253,8 +2902,134 @@ function getZipEntries(data) {
       directory: filename.endsWith('/'),
       filename: filename,
       uncompressedSize: uncompressedSize,
+      // used by extractZipEntry
+      encrypted: (bitFlag & 0x1) != 0,
+      compressionMethod: compressionMethod,
+      compressedSize: compressedSize,
+      localHeaderOffset: view.getUint32(offset + 42, true),
     });
     offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
   }
   return entries;
 };
+// Returns the uncompressed bytes of a getZipEntries() entry. Stored and
+// deflated entries are supported, using the browser's own inflate.
+async function extractZipEntry(data, entry) {
+  if (entry.encrypted || (entry.compressionMethod != 0 && entry.compressionMethod != 8)) {
+    throw new Error("unsupported zip entry (encrypted or compression method " + entry.compressionMethod + ")");
+  }
+  var view = new DataView(data.buffer, data.byteOffset, data.length);
+  var offset = entry.localHeaderOffset;
+  if (offset + 30 > data.length || view.getUint32(offset) != 0x504b0304) {
+    throw new Error("bad zip local header");
+  }
+  // the local header's name and extra field lengths can differ from the central directory's
+  var start = offset + 30 + view.getUint16(offset + 26, true) + view.getUint16(offset + 28, true);
+  var compressed = data.subarray(start, start + entry.compressedSize);
+  return entry.compressionMethod == 0 ? compressed : inflateRaw(compressed);
+}
+var crc32Table = null;
+function crc32(data) {
+  if (!crc32Table) {
+    crc32Table = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      crc32Table[n] = c >>> 0;
+    }
+  }
+  var crc = 0xFFFFFFFF;
+  for (var i = 0; i < data.length; i++) {
+    crc = crc32Table[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+// zip stores local time as MS-DOS date (high 16 bits) and time (low 16 bits)
+function dosDateTime(date) {
+  if (!(date.getFullYear() >= 1980)) {
+    date = new Date(1980, 0, 1); // the earliest MS-DOS date, also used for invalid dates
+  }
+  return ((date.getFullYear() - 1980) << 25 | (date.getMonth() + 1) << 21 | date.getDate() << 16
+    | date.getHours() << 11 | date.getMinutes() << 5 | date.getSeconds() >> 1) >>> 0;
+}
+// Builds a zip Blob from [{name, data, date}] for folder downloads and the JIT
+// cache export. Folder names end in "/" and have no data; no date means now.
+// Entries are deflated in parallel, each kept only if that makes it smaller.
+async function createZip(items) {
+  var bodies = await Promise.all(items.map(async function(item) {
+    var data = item.data || new Uint8Array(0);
+    var deflated = data.length > 0 ? await deflateRaw(data) : data;
+    return deflated.length < data.length ? { method: 8, data: deflated } : { method: 0, data: data };
+  }));
+  var encoder = new TextEncoder();
+  var parts = [];
+  var directory = [];
+  var offset = 0;
+  items.forEach(function(item, i) {
+    var name = encoder.encode(item.name);
+    var data = item.data || new Uint8Array(0);
+    var body = bodies[i].data;
+    var method = bodies[i].method;
+    if (offset + 30 + name.length + body.length > 0xFFFFFFFF) {
+      throw new Error("too big for a zip (over 4 GB)");
+    }
+    var crc = crc32(data);
+    var time = dosDateTime(item.date || new Date());
+    var local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);       // version needed: 2.0 for deflate and folders
+    local.setUint16(6, 0x800, true);    // names are UTF-8
+    local.setUint16(8, method, true);
+    local.setUint32(10, time, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, body.length, true);
+    local.setUint32(22, data.length, true);
+    local.setUint16(26, name.length, true);
+    var entry = new DataView(new ArrayBuffer(46));
+    entry.setUint32(0, 0x02014b50, true);
+    entry.setUint16(4, 20, true);       // made by MS-DOS, so attributes below are DOS ones
+    entry.setUint16(6, 20, true);
+    entry.setUint16(8, 0x800, true);
+    entry.setUint16(10, method, true);
+    entry.setUint32(12, time, true);
+    entry.setUint32(16, crc, true);
+    entry.setUint32(20, body.length, true);
+    entry.setUint32(24, data.length, true);
+    entry.setUint16(28, name.length, true);
+    entry.setUint32(38, item.name.endsWith("/") ? 0x10 : 0, true); // DOS directory attribute
+    entry.setUint32(42, offset, true);
+    parts.push(new Uint8Array(local.buffer), name, body);
+    directory.push(new Uint8Array(entry.buffer), name);
+    offset += 30 + name.length + body.length;
+  });
+  var directorySize = directory.reduce(function(size, part) { return size + part.length; }, 0);
+  if (offset + directorySize > 0xFFFFFFFF) {
+    throw new Error("too big for a zip (over 4 GB)");
+  }
+  if (items.length >= 0xFFFF) {
+    // the end record's 16-bit counts can't hold this many entries, so add Zip64
+    // end records; sizes and offsets still fit in 32 bits, so the entries need none
+    var zip64 = new DataView(new ArrayBuffer(56 + 20));
+    zip64.setUint32(0, 0x06064b50, true);              // Zip64 end of central directory record
+    zip64.setUint32(4, 44, true);                      // size of the rest of the record
+    zip64.setUint16(12, 45, true);                     // version made by: 4.5 for Zip64
+    zip64.setUint16(14, 45, true);                     // version needed
+    zip64.setUint32(24, items.length, true);           // entries on this disk
+    zip64.setUint32(32, items.length, true);           // total entries
+    zip64.setUint32(40, directorySize, true);
+    zip64.setUint32(48, offset, true);                 // central directory offset
+    zip64.setUint32(56, 0x07064b50, true);             // Zip64 end of central directory locator
+    zip64.setUint32(64, offset + directorySize, true); // where the Zip64 record starts
+    zip64.setUint32(72, 1, true);                      // total disks
+    directory.push(new Uint8Array(zip64.buffer));
+  }
+  var end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, Math.min(items.length, 0xFFFF), true);
+  end.setUint16(10, Math.min(items.length, 0xFFFF), true);
+  end.setUint32(12, directorySize, true);
+  end.setUint32(16, offset, true);
+  return new Blob(parts.concat(directory, [new Uint8Array(end.buffer)]), { type: "application/zip" });
+}

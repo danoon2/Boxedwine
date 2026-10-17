@@ -266,13 +266,21 @@
 
     globalThis.bwWasmJitBrokerTestLocalSnapshot = snapshotLocalStats;
 
+    // Emscripten 6 dropped PThread.runningWorkers; a running worker is now only
+    // reachable as a value of PThread.pthreads. Test hooks still replace
+    // runningWorkers to control which workers this sees.
+    function runningAndUnusedWorkers() {
+        var running = PThread.runningWorkers || Object.values(PThread.pthreads);
+        return running.concat(PThread.unusedWorkers);
+    }
+
     function allocatedWorkers() {
         var workers = [];
         var seen = new Set();
         if (typeof PThread === 'undefined') {
             return workers;
         }
-        PThread.runningWorkers.concat(PThread.unusedWorkers).forEach(function(worker) {
+        runningAndUnusedWorkers().forEach(function(worker) {
             if (worker && !seen.has(worker)) {
                 seen.add(worker);
                 workers.push(worker);
@@ -412,7 +420,7 @@
         if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
             try {
                 postToMain({
-                    cmd: 'callHandler',
+                    cmd: bwCallHandlerCmd,
                     handler: 'bwWasmJitBrokerPublish',
                     args: [moduleId, memoryId, memoryIncarnation, module,
                         typeof _pthread_self === 'function' ? _pthread_self() : 0,
@@ -905,7 +913,7 @@
             retireOwner, groupInstanceKeys);
         if (typeof ENVIRONMENT_IS_PTHREAD !== 'undefined' && ENVIRONMENT_IS_PTHREAD) {
             postToMain({
-                cmd: 'callHandler',
+                cmd: bwCallHandlerCmd,
                 handler: 'bwWasmJitBrokerReleaseMemory',
                 args: [memoryId, memoryIncarnation, moduleIds, tableSlots,
                     retireOwner, groupInstanceKeys]
@@ -1172,7 +1180,7 @@
         worker.bwWasmJitBrokerOriginalPostMessage = originalPostMessage;
         worker.postMessage = function(message) {
             var originalArgs = arguments;
-            if (!message || message.cmd !== 'run') {
+            if (!message || message.cmd !== bwRunCmd) {
                 return originalPostMessage.apply(null, originalArgs);
             }
             if (dropNextTestRun) {
@@ -1245,7 +1253,7 @@
         PThread.getNewWorker = function() {
             return wrapWorkerRun(originalGetNewWorker.apply(this, arguments));
         };
-        PThread.runningWorkers.concat(PThread.unusedWorkers).forEach(wrapWorkerRun);
+        runningAndUnusedWorkers().forEach(wrapWorkerRun);
     }
 
     function applyWorkerPurge(message) {
@@ -1301,7 +1309,7 @@
             Atomics.notify(HEAP32, message.received >> 2);
         } else if (message.type === 'statsRequest') {
             postToMain({
-                cmd: 'callHandler',
+                cmd: bwCallHandlerCmd,
                 handler: 'bwWasmJitBrokerStatsReply',
                 args: [message.requestId, message.token || workerStatsToken, snapshotLocalStats()]
             });
@@ -1574,7 +1582,7 @@
             var makeWorker = function(record) {
                 return wrapWorkerRun({
                     postMessage: function(message) {
-                        if (message && message.cmd === 'run') {
+                        if (message && message.cmd === bwRunCmd) {
                             record.runs += 1;
                         }
                         var payload = message && message.bwWasmJitModuleBroker;
@@ -1598,7 +1606,7 @@
                     memoryId: memoryId >>> 0,
                     memoryIncarnation: memoryIncarnation >>> 0
                 });
-                worker.postMessage({cmd: 'run', arg: startArg});
+                worker.postMessage({cmd: bwRunCmd, arg: startArg});
             };
 
             forcedDeliveryOomIds.add(firstModuleId >>> 0);
@@ -1700,15 +1708,15 @@
             proxyMainBootstrapOwnerPending = true;
             var worker = wrapWorkerRun({
                 postMessage: function(message) {
-                    if (message && message.cmd === 'run') {
+                    if (message && message.cmd === bwRunCmd) {
                         forwardedRuns += 1;
                     }
                 }
             });
             forcedTestThreadStartOwners.set(firstArg, {result: 0});
             forcedTestThreadStartOwners.set(secondArg, {result: 0});
-            worker.postMessage({cmd: 'run', arg: firstArg});
-            worker.postMessage({cmd: 'run', arg: secondArg});
+            worker.postMessage({cmd: bwRunCmd, arg: firstArg});
+            worker.postMessage({cmd: bwRunCmd, arg: secondArg});
             var ownerMissDelta =
                 mainStats.preloadOwnerMisses - beforeOwnerMisses;
             mainStats.preloadOwnerMisses = beforeOwnerMisses;

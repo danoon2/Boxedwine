@@ -1,0 +1,88 @@
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -1090,14 +1090,13 @@
+             {
+                 if (so_desc->rasterizer_stream_idx != WINED3D_NO_RASTERIZER_STREAM)
+                 {
+-                    FIXME("Unsupported component range %u-%u.\n", component_idx, e->component_count);
+-                    append_transform_feedback_skip_components(varyings, &count,
+-                            &strings, &length, buffer, e->component_count);
+-                    continue;
++                    string_buffer_sprintf(buffer, "so_output%u", i);
+                 }
+-
+-                string_buffer_sprintf(buffer, "shader_in_out.reg%u_%u_%u",
+-                        register_idx, component_idx, component_idx + e->component_count - 1);
++                else
++                {
++                    string_buffer_sprintf(buffer, "shader_in_out.reg%u_%u_%u",
++                            register_idx, component_idx, component_idx + e->component_count - 1);
++                }
+                 append_transform_feedback_varying(varyings, &count, &strings, &length, buffer);
+             }
+             else
+@@ -7507,6 +7506,44 @@
+     shader_addline(buffer, "}\n");
+ }
+ 
++/* OpenGL cannot capture a swizzle of a varying. Keep the normal rasterizer
++ * interface and expose each partial stream-output element as a separate varying.
++ * D3D10 always selects rasterizer stream zero, even for SO-only draws. */
++static void shader_glsl_generate_partial_stream_output(struct wined3d_string_buffer *buffer,
++        const struct wined3d_shader *shader, BOOL declarations)
++{
++    const struct wined3d_stream_output_desc *so_desc;
++    unsigned int i, register_idx, component_idx;
++
++    if (shader->reg_maps.shader_version.type != WINED3D_SHADER_TYPE_GEOMETRY
++            || !(so_desc = shader->u.gs.so_desc))
++        return;
++
++    for (i = 0; i < so_desc->element_count; ++i)
++    {
++        const struct wined3d_stream_output_element *e = &so_desc->elements[i];
++        char mask[6];
++
++        if (e->stream_idx || !e->semantic_name
++                || !shader_get_stream_output_register_info(shader, e, &register_idx, &component_idx)
++                || (!component_idx && e->component_count == 4))
++            continue;
++
++        if (declarations)
++        {
++            if (e->component_count == 1)
++                shader_addline(buffer, "out float so_output%u;\n", i);
++            else
++                shader_addline(buffer, "out vec%u so_output%u;\n", e->component_count, i);
++        }
++        else
++        {
++            shader_glsl_write_mask_to_str(wined3d_mask_from_size(e->component_count) << component_idx, mask);
++            shader_addline(buffer, "so_output%u = outputs[%u]%s;\n", i, register_idx, mask);
++        }
++    }
++}
++
+ static void shader_glsl_generate_sm4_output_setup(struct shader_glsl_priv *priv,
+         const struct wined3d_shader *shader, unsigned int input_count,
+         const struct wined3d_gl_info *gl_info, BOOL rasterizer_setup, const uint32_t *interpolation_mode)
+@@ -7519,6 +7556,9 @@
+ 
+     if (input_count)
+         shader_glsl_declare_shader_outputs(gl_info, buffer, input_count, rasterizer_setup, interpolation_mode);
++
++    if (rasterizer_setup)
++        shader_glsl_generate_partial_stream_output(buffer, shader, TRUE);
+ 
+     shader_addline(buffer, "void setup_%s_output(in vec4 outputs[%u])\n{\n",
+             prefix, shader->limits->packed_output);
+@@ -7529,6 +7569,9 @@
+     else
+         shader_glsl_setup_sm4_shader_output(priv, input_count, &shader->output_signature,
+                 &shader->reg_maps, "shader_out", rasterizer_setup);
++
++    if (rasterizer_setup)
++        shader_glsl_generate_partial_stream_output(buffer, shader, FALSE);
+ 
+     shader_addline(buffer, "}\n");
+ }

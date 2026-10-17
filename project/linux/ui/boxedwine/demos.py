@@ -14,7 +14,7 @@ def load_catalog(data):
     if len(data) > 1024**2 or b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
         raise ValueError('Invalid demo catalog XML.')
     root = ET.fromstring(data)
-    if root.tag != 'XML' or not 1 <= int(root.get('schemaVersion', '0')) <= 7 or not root.get('release'):
+    if root.tag != 'XML' or not 1 <= int(root.get('schemaVersion', '0')) <= 8 or not root.get('release'):
         raise ValueError('Unsupported demo catalog.')
     recipes, ids = [], set()
     for element in root:
@@ -41,6 +41,13 @@ def load_catalog(data):
         ids.add(identifier)
         if any(field(key) for key in ('Options', 'InstallOptions', 'Options_Mac', 'InstallOptions_Mac')):
             raise ValueError('Unsupported legacy options in demo ' + field('Name'))
+        dll_overrides = values.get('WineDllOverrides')
+        if dll_overrides is not None:
+            if (int(root.get('schemaVersion')) < 8 or not 0 < len(dll_overrides) <= 1024 or
+                    any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in dll_overrides)):
+                raise ValueError('WineDllOverrides requires schema 8 and a nonempty single-line value of at most 1024 characters.')
+            from .runtime import validate_overrides
+            validate_overrides(['-env', 'WINEDLLOVERRIDES=' + dll_overrides])
         settings = {}
         for source, key in [('WindowsVersion', 'windowsVersion'), ('Resolution', 'resolution'), ('InstallResolution', 'installResolution')]:
             if source in values:
@@ -72,7 +79,7 @@ def load_catalog(data):
                             icon=field('Icon'), url=url, bytes=size, installType=field('InstallType'), installExe=field('InstallExe'),
                             wineVersion=field('WineVersion'), settings=settings, glide=values.get('Glide'),
                             cncRenderer=values.get('CNCDDrawRenderer'), cncUncapped=boolean('CNCDDrawUncapped') is True,
-                            cncMode=values.get('CNCDDrawFakeMode')))
+                            cncMode=values.get('CNCDDrawFakeMode'), wineDllOverrides=dll_overrides))
     return recipes
 
 
@@ -112,6 +119,8 @@ def install(library, recipe, wine, work):
     # Seed an editable per-app value only on first install.
     if recipe['origin']['id'] == 'alice':
         app['boxedwineArguments'] = ['-rel_mouse_sensitivity', '200']
+    if recipe.get('wineDllOverrides') is not None:
+        app.setdefault('boxedwineArguments', []).extend(['-env', 'WINEDLLOVERRIDES=' + recipe['wineDllOverrides']])
     for setting, field in [('windowsVersion', 'windowsVersion'), ('gdi', 'wineRenderer'), ('useEGL', 'openGLBackend')]:
         if setting in recipe['settings']:
             app[field] = preference(app, field)

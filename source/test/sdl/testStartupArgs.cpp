@@ -45,6 +45,50 @@ static bool hasExactEnvValue(const std::vector<BString>& envValues, const char* 
     return false;
 }
 
+void testStartupArgsSafeMemoryOption() {
+    StartUpArgs defaults;
+    auto defaultArgs = defaults.buildArgs();
+    if (defaults.safeMemory || std::find(defaultArgs.begin(), defaultArgs.end(), B("-safe-memory")) != defaultArgs.end()) {
+        testFail("safe-memory must be off by default");
+    }
+    StartUpArgs startup;
+    const char* argv[] = {"boxedwine", "-safe-memory", "/bin/wine", "game.exe"};
+    if (!startup.parseStartupArgs(4, argv) || !startup.safeMemory) {
+        testFail("-safe-memory was not parsed");
+    }
+    auto child = startup.buildArgs();
+    auto option = std::find(child.begin(), child.end(), B("-safe-memory"));
+    auto program = std::find(child.begin(), child.end(), B("/bin/wine"));
+    if (option == child.end() || program == child.end() || option >= program) {
+        testFail("-safe-memory must precede the guest program in child arguments");
+    }
+    StartUpArgs guestOption;
+    const char* guestArgv[] = {"boxedwine", "/bin/wine", "game.exe", "-safe-memory"};
+    if (!guestOption.parseStartupArgs(4, guestArgv) || guestOption.safeMemory) {
+        testFail("guest arguments must not change emulator memory ordering");
+    }
+}
+
+void testStartupArgsWineDllOverrides() {
+    const char* dxvk = "d3d11,d3d10core,d3d9,d3d8,dxgi=n,b";
+    std::vector<BString> empty;
+    StartUpArgs::addWineDllOverrides(empty, dxvk);
+    if (empty.size() != 1 || !hasExactEnvValue(empty, "WINEDLLOVERRIDES=d3d11,d3d10core,d3d9,d3d8,dxgi=n,b")) {
+        testFail("DXVK DLL overrides missing without per-app settings");
+    }
+    std::vector<BString> app = {B("WINEDEBUG=+loaddll"), B("WINEDLLOVERRIDES=cpuz136_x32.sys,GPUZ.sys=;d3d9=b")};
+    StartUpArgs::addWineDllOverrides(app, dxvk);
+    if (app.size() != 2 || !hasExactEnvValue(app, "WINEDEBUG=+loaddll") ||
+            !hasExactEnvValue(app, "WINEDLLOVERRIDES=d3d11,d3d10core,d3d9,d3d8,dxgi=n,b;cpuz136_x32.sys,GPUZ.sys=;d3d9=b")) {
+        testFail("DXVK must share one override entry and preserve explicit app choices last");
+    }
+    std::vector<BString> blank = {B("WINEDLLOVERRIDES=")};
+    StartUpArgs::addWineDllOverrides(blank, dxvk);
+    if (blank.size() != 1 || !hasExactEnvValue(blank, "WINEDLLOVERRIDES=d3d11,d3d10core,d3d9,d3d8,dxgi=n,b;")) {
+        testFail("Empty app DLL overrides must not hide DXVK defaults");
+    }
+}
+
 void testStartupArgsDefaultUtf8LocaleEnvironment() {
     std::vector<BString> unsupportedEnvValues;
     StartUpArgs::addDefaultUtf8LocaleEnv(unsupportedEnvValues, false);

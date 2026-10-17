@@ -19,6 +19,8 @@
 #ifndef __CPU_DECODER_H__
 #define __CPU_DECODER_H__
 
+#include "jit/jitPerformancePolicy.h"
+
 #define eaa1(cpu, op) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->data.disp)
 #define eaa3(cpu, op) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->data.disp
 #define eaa(cpu, op) (op->ea16)?(eaa1(cpu, op)):(eaa3(cpu, op))
@@ -1560,6 +1562,16 @@ typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 #define OP_FLAG2_JUMP_TARGET 4
 #define OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE 8
 #define OP_FLAG2_WASM_JIT_MEM_ARRAYS 16
+#ifdef BOXEDWINE_JIT_ARMV8
+// Backend-private bit; ARM, x64 and Wasm code generators are mutually exclusive.
+#define OP_FLAG2_ARM_DUAL_JIT_ENTRY 16
+struct DecodedOpJitEntries {
+    void** flat = nullptr;
+    void** direct = nullptr;
+};
+#elif defined(BOXEDWINE_JIT_X64)
+#define OP_FLAG2_NATIVE_ADAPTIVE_RETURN 16
+#endif
 #define OP_FLAG2_WASM_JIT_PENDING 32
 #define OP_FLAG2_WASM_JIT_RELOC_HAZARD 64
 #define OP_FLAG2_DECODED_32BIT 128
@@ -1613,18 +1625,58 @@ public:
     void* pfnJitCode;
     void setJitCode(void* code) {
         pfnJitCode = code;
-#ifdef BOXEDWINE_JIT_X64
-        if (jitEntrySlot) *jitEntrySlot = code;
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+        if (void** slot = getJitEntrySlot()) *slot = code;
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (void** slot = getDirectJitEntrySlot()) *slot = code;
+#endif
 #endif
     }
-#ifdef BOXEDWINE_JIT_X64
-    // Owned by the decoded-page cache. Detach before deferred DecodedOp reuse.
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    // Most instructions need only one slot. Direct-target bindings live in
+    // the cache's stable index nodes, so they add no pointer to every op.
+#ifdef BOXEDWINE_JIT_ARMV8
+    union {
+        void** jitEntrySlot = nullptr;
+        DecodedOpJitEntries* jitEntryBinding;
+    };
+#else
     void** jitEntrySlot = nullptr;
+#endif
+    void** getJitEntrySlot() const {
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (flags2 & OP_FLAG2_ARM_DUAL_JIT_ENTRY) return jitEntryBinding->flat;
+#endif
+        return jitEntrySlot;
+    }
+    void bindJitEntry(void** slot) {
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (flags2 & OP_FLAG2_ARM_DUAL_JIT_ENTRY) jitEntryBinding->flat = slot;
+        else
+#endif
+            jitEntrySlot = slot;
+        if (slot) *slot = pfnJitCode;
+    }
+#ifdef BOXEDWINE_JIT_ARMV8
+    void** getDirectJitEntrySlot() const {
+        return (flags2 & OP_FLAG2_ARM_DUAL_JIT_ENTRY) ? jitEntryBinding->direct : nullptr;
+    }
+    void bindDirectJitEntry(DecodedOpJitEntries* binding) {
+        binding->flat = getJitEntrySlot();
+        jitEntryBinding = binding;
+        flags2 |= OP_FLAG2_ARM_DUAL_JIT_ENTRY;
+        if (binding->direct) *binding->direct = pfnJitCode;
+    }
+#endif
+    // Detach both publications before deferred DecodedOp reuse or leaf release.
     void detachJitEntry() {
-        if (jitEntrySlot) {
-            *jitEntrySlot = nullptr;
-            jitEntrySlot = nullptr;
-        }
+        if (void** slot = getJitEntrySlot()) *slot = nullptr;
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (void** slot = getDirectJitEntrySlot()) *slot = nullptr;
+        if (flags2 & OP_FLAG2_ARM_DUAL_JIT_ENTRY) jitEntryBinding->flat = nullptr;
+        flags2 &= ~OP_FLAG2_ARM_DUAL_JIT_ENTRY;
+#endif
+        jitEntrySlot = nullptr;
     }
 #endif
 #endif
@@ -1661,18 +1713,93 @@ public:
 #define DF1 sibIndex
 #define STR_COUNT imm
 #define STR_TOTAL data.disp
+// String instructions have no ModRM operand; reuse it for sticky JIT policy.
+#define STR_FLAGS rm
+#define STR_LARGE_COPY 1
+#define STR_WIDE_COPY 2
+#define STR_UNROLLED_COPY 4
+// REP MOVSD uses the displacement as two 16-bit hit counters, not a sum.
+#define MOVSD_SIZE_HITS data.disp
 
     U8 runCount;
 #endif
     U8 flags2;
+#ifdef BOXEDWINE_JIT_X64
+    // Native x64 profile metadata occupies existing alignment padding.
+    // Only CallR32, CallE32 and Retn32 observe targets during warmup.
+    U8 indirectTargetHits;
+    // Simple MOV loads do not observe indirect targets. Reuse the native
+    // padding byte for a distinct fault-driven read policy: 0 unseen,
+    // 1 folded code has been emitted, 2 requires wrapped guest EAA.
+    enum NativeLinearReadPolicy : U8 { LINEAR_READ_UNSEEN, LINEAR_READ_FOLDED, LINEAR_READ_WRAPPED };
+    U8 foldedLinearReadState() {
+        return std::atomic_ref<U8>(indirectTargetHits).load(std::memory_order_acquire);
+    }
+    bool markFoldedLinearRead() {
+        std::atomic_ref<U8> state(indirectTargetHits);
+        U8 expected = LINEAR_READ_UNSEEN;
+        state.compare_exchange_strong(expected, LINEAR_READ_FOLDED, std::memory_order_acq_rel, std::memory_order_acquire);
+        return expected != LINEAR_READ_WRAPPED;
+    }
+    void disableFoldedLinearRead() {
+        std::atomic_ref<U8>(indirectTargetHits).store(LINEAR_READ_WRAPPED, std::memory_order_release);
+    }
+    void observeIndirectTarget(U32 target) {
+        std::atomic_ref<U8> hits(indirectTargetHits);
+        U8 count = hits.load(std::memory_order_acquire);
+#if defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)
+        if (inst == Retn32 &&
+            nativeJitPerformanceEnabled("BOXEDWINE_TEST_ADAPTIVE_RETURN", true) &&
+            nativeJitPerformanceEnabled("BOXEDWINE_TEST_EARLY_RETURN_PROFILE", true)) {
+            if (!count) {
+                if (hits.compare_exchange_strong(count, 0xfe, std::memory_order_acquire, std::memory_order_relaxed)) {
+                    std::atomic_ref<U32>(indirectTargetEip).store(target, std::memory_order_relaxed);
+                    hits.store(1, std::memory_order_release);
+                }
+            } else if (count >= 1 && count <= 76) {
+                U32 first = std::atomic_ref<U32>(indirectTargetEip).load(std::memory_order_relaxed);
+                if (count <= 12) {
+                    if (first == target) {
+                        if (count < 12) hits.compare_exchange_strong(count, count + 1, std::memory_order_release, std::memory_order_relaxed);
+                    } else if (hits.compare_exchange_strong(count, 0xfe, std::memory_order_acquire, std::memory_order_relaxed)) {
+                        std::atomic_ref<U32>(imm).store(target, std::memory_order_relaxed);
+                        hits.store(13, std::memory_order_release);
+                    }
+                } else if (first != target) {
+                    U32 second = std::atomic_ref<U32>(imm).load(std::memory_order_relaxed);
+                    if (second != target) hits.compare_exchange_strong(count, 0xff, std::memory_order_release, std::memory_order_relaxed);
+                    else if (count < 76) hits.compare_exchange_strong(count, count + 1, std::memory_order_release, std::memory_order_relaxed);
+                }
+            }
+            return;
+        }
+#endif
+        if (!count) {
+            if (hits.compare_exchange_strong(count, 0xff, std::memory_order_acquire, std::memory_order_relaxed)) {
+                std::atomic_ref<U32>(indirectTargetEip).store(target, std::memory_order_relaxed);
+                hits.store(1, std::memory_order_release);
+            }
+        } else if (count != 0xff) {
+            U32 first = std::atomic_ref<U32>(indirectTargetEip).load(std::memory_order_relaxed);
+            if (first != target) hits.store(0xff, std::memory_order_release);
+            else if (count < 12) hits.compare_exchange_strong(count, count + 1, std::memory_order_release, std::memory_order_relaxed);
+        }
+    }
+#endif
 #ifdef BOXEDWINE_JIT
     U16 jitLen;
     U16 blockOpCount;
     U16 blockLen; // emulated code length of the block
+#if defined(BOXEDWINE_JIT_X64) && !defined(_DEBUG)
+    U32 indirectTargetEip;
+#endif
     DecodedOp* blockStart;
 #endif
 #ifdef _DEBUG
     U16 originalOp;
+#ifdef BOXEDWINE_JIT_X64
+    U32 indirectTargetEip; // Use the debug layout's trailing alignment padding.
+#endif
 #endif
     void reset();
 };

@@ -105,6 +105,7 @@ public:
     bool readyToLaunch = false;
     BString openGlLib;
     bool ttyPrepend = false;
+    bool noErrorDialog = false;
     BString showAppPickerForContainerDir;
     std::function<void()> runOnRestartUI;
     BString logPath;
@@ -119,11 +120,14 @@ public:
     bool forceRelativeMouse = false;
     bool cacheReads = false;
     bool disableWasmJitForWrittenCode = false;
+    bool safeMemory = false; // Opt into MT Wasm JIT guest-memory fences.
     bool disableLinearMemory = false;
 
 private:
+    static void addWineDllOverrides(std::vector<BString>& envValues, const char* overrides);
     static void addDefaultUtf8LocaleEnv(std::vector<BString>& envValues, bool guestHasUtf8Locale);
 #ifdef __TEST
+    friend void testStartupArgsWineDllOverrides();
     friend void testStartupArgsDefaultUtf8LocaleEnvironment();
 #endif
 

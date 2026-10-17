@@ -1,0 +1,106 @@
+From: Elizabeth Figura <zfigura@codeweavers.com>
+Subject: [Backport Wine 11.0] vkd3d-shader/hlsl: Allow "static" on functions.
+
+Upstream: https://codeberg.org/vkd3d/vkd3d/commit/4746e55a8b3be83bcf3d4b5df89bdabe0e2f4b2d
+Wine-Bug: https://bugs.winehq.org/show_bug.cgi?id=59189
+Base: Wine 11.0, db11d0fe6a169c457e23d007e20404643d067aa8
+
+Source changes from upstream vkd3d 1.19, with paths adjusted for Wine's
+embedded copy. Preserve static declaration checks and entry-point filtering.
+This fixes 3DMark06's E5001 "Unexpected modifier used on a function" while
+compiling the static skinning helpers in surface/skinned-cubelit-metal.txt.
+The same compiler is used by D3DX9 and d3dcompiler; no Vulkan renderer is needed.
+
+Regression: tools/buildWine/probes/hlsl-static-functions.c. Compare the native
+D3DX9 compiler, regular Wine modules, and the separate C:/webgl PE modules.
+Also launch a 3DMark06 graphics scene with Wine's built-in d3dx9_28.dll.
+
+diff --git a/libs/vkd3d/libs/vkd3d-shader/hlsl.c b/libs/vkd3d/libs/vkd3d-shader/hlsl.c
+index b62a087d..389e444a 100644
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl.c
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl.c
+@@ -3131,7 +3131,7 @@ struct hlsl_ir_node *hlsl_clone_instr(struct hlsl_ctx *ctx, const struct hlsl_ir
+     return ret;
+ }
+ 
+-struct hlsl_ir_function_decl *hlsl_new_func_decl(struct hlsl_ctx *ctx,
++struct hlsl_ir_function_decl *hlsl_new_func_decl(struct hlsl_ctx *ctx, uint32_t storage_modifiers,
+         struct hlsl_type *return_type, const struct hlsl_func_parameters *parameters,
+         const struct hlsl_semantic *semantic, const struct vkd3d_shader_location *loc)
+ {
+@@ -3141,6 +3141,7 @@ struct hlsl_ir_function_decl *hlsl_new_func_decl(struct hlsl_ctx *ctx,
+     if (!(decl = hlsl_alloc(ctx, sizeof(*decl))))
+         return NULL;
+     hlsl_block_init(&decl->body);
++    decl->storage_modifiers = storage_modifiers;
+     decl->return_type = return_type;
+     decl->parameters = *parameters;
+     decl->loc = *loc;
+@@ -5321,6 +5322,8 @@ int hlsl_parse(const struct vkd3d_shader_compile_info *compile_info,
+         {
+             if (!decl->has_body)
+                 continue;
++            if (decl->storage_modifiers & HLSL_STORAGE_STATIC)
++                continue;
+             if (entry_func)
+             {
+                 /* Depending on d3dcompiler version, either the first or last is
+diff --git a/libs/vkd3d/libs/vkd3d-shader/hlsl.h b/libs/vkd3d/libs/vkd3d-shader/hlsl.h
+index 434094b8..23f31f9e 100644
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl.h
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl.h
+@@ -637,6 +637,9 @@ struct hlsl_ir_function_decl
+     /* Item entry in hlsl_ir_function.overloads. */
+     struct list entry;
+ 
++    /* Storage modifiers (HLSL_STORAGE_*). */
++    uint32_t storage_modifiers;
++
+     /* Function to which this declaration corresponds. */
+     struct hlsl_ir_function *func;
+ 
+@@ -1709,7 +1712,7 @@ struct hlsl_ir_node *hlsl_new_cast(struct hlsl_ctx *ctx, struct hlsl_ir_node *no
+ struct hlsl_ir_node *hlsl_new_constant(struct hlsl_ctx *ctx, struct hlsl_type *type,
+         const struct hlsl_constant_value *value, const struct vkd3d_shader_location *loc);
+ struct hlsl_ir_node *hlsl_new_copy(struct hlsl_ctx *ctx, struct hlsl_ir_node *node);
+-struct hlsl_ir_function_decl *hlsl_new_func_decl(struct hlsl_ctx *ctx,
++struct hlsl_ir_function_decl *hlsl_new_func_decl(struct hlsl_ctx *ctx, uint32_t storage_modifiers,
+         struct hlsl_type *return_type, const struct hlsl_func_parameters *parameters,
+         const struct hlsl_semantic *semantic, const struct vkd3d_shader_location *loc);
+ struct hlsl_ir_node *hlsl_new_if(struct hlsl_ctx *ctx, struct hlsl_ir_node *condition, struct hlsl_block *then_block,
+diff --git a/libs/vkd3d/libs/vkd3d-shader/hlsl.y b/libs/vkd3d/libs/vkd3d-shader/hlsl.y
+index a45fa1d8..cc310c5e 100644
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl.y
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl.y
+@@ -7764,7 +7764,7 @@ func_prototype_no_attrs:
+             /* Functions are unconditionally inlined. */
+             modifiers &= ~HLSL_MODIFIER_INLINE;
+ 
+-            if (modifiers & ~(HLSL_MODIFIERS_MAJORITY_MASK | HLSL_MODIFIER_EXPORT))
++            if (modifiers & ~(HLSL_MODIFIERS_MAJORITY_MASK | HLSL_MODIFIER_EXPORT | HLSL_STORAGE_STATIC))
+                 hlsl_error(ctx, &@1, VKD3D_SHADER_ERROR_HLSL_INVALID_MODIFIER,
+                         "Unexpected modifier used on a function.");
+             if (!(type = apply_type_modifiers(ctx, $2, &modifiers, true, &@1)))
+@@ -7800,6 +7800,13 @@ func_prototype_no_attrs:
+                     hlsl_note(ctx, &$$.decl->loc, VKD3D_SHADER_LOG_ERROR, "\"%s\" was previously declared here.", $3);
+                 }
+ 
++                if (($$.decl->storage_modifiers & HLSL_STORAGE_STATIC) != (modifiers & HLSL_STORAGE_STATIC))
++                {
++                    hlsl_error(ctx, &@3, VKD3D_SHADER_ERROR_HLSL_REDEFINED,
++                            "\"%s\" was already declared with different storage modifiers.", $3);
++                    hlsl_note(ctx, &$$.decl->loc, VKD3D_SHADER_LOG_ERROR, "\"%s\" was previously declared here.", $3);
++                }
++
+                 vkd3d_free($3);
+ 
+                 /* We implement function invocation by copying to input
+@@ -7860,7 +7867,7 @@ func_prototype_no_attrs:
+             }
+             else
+             {
+-                if (!($$.decl = hlsl_new_func_decl(ctx, type, &$5, &$7.semantic, &@3)))
++                if (!($$.decl = hlsl_new_func_decl(ctx, modifiers, type, &$5, &$7.semantic, &@3)))
+                     YYABORT;
+ 
+                 hlsl_add_function(ctx, $3, $$.decl);

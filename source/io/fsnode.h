@@ -115,6 +115,10 @@ public:
     void removeChildByName(BString name);
     void getAllChildren(std::vector<std::shared_ptr<FsNode> > & results);
     void reserveChildren(std::size_t capacity);
+    // Host folder refresh support. Neither call loads children that were never
+    // loaded, so such directories pick up host changes when first listed.
+    std::shared_ptr<FsNode> getLoadedChildByNativePath(const BString& childNativePath);
+    void syncLoadedChildrenWithFileSystem();
     void setChildrenVisibilityMutex(BOXEDWINE_MUTEX* mutex);
 #ifdef __TEST
     bool trySetChildrenVisibilityMutexForTest(BOXEDWINE_MUTEX* mutex);

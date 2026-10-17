@@ -28,7 +28,7 @@ FULL_DEMO_ROOT_ZIP = "TinyCore15Wine11.0.zip"
 LEGACY_DEMO_ROOT_ZIP = "boxedwine.zip"
 PREVIOUS_DEMO_ROOT_ZIP = "boxedwine.3.zip"
 PREVIOUS_GDI_ROOT_ZIP = "boxedwine.gdi.3.zip"
-DEFAULT_DEMO_ROOT_CONFIG = BUILD_WINE_DIR / "webgl_filesystems_v14.json"
+DEFAULT_DEMO_ROOT_CONFIG = BUILD_WINE_DIR / "webgl_filesystems_v20.json"
 DEMO_RUNNER_SPECS = (
     ("st", "Single Threaded", "single_threaded_dir"),
     ("mt", "Multi Threaded", "multi_threaded_dir"),
@@ -712,19 +712,19 @@ def render_html(site_dir, branches, title, public_url):
     }}
 
     function renderArtifacts(build) {{
+      if (String(build.result).toUpperCase() !== "SUCCESS") {{
+        return build.log
+          ? `<a class="artifact" href="${{escapeHtml(build.log.path)}}">` +
+            `Error Log <span class="meta">${{escapeHtml(formatSize(build.log.size))}}</span></a>`
+          : '<span class="meta">Log unavailable</span>';
+      }}
       const artifacts = build.artifacts || [];
       const links = artifacts.map((artifact) => (
         `<a class="artifact" href="${{escapeHtml(artifact.path)}}">` +
         `${{escapeHtml(artifact.name)}} <span class="meta">${{escapeHtml(formatSize(artifact.size))}}</span>` +
         "</a>"
       ));
-      if (build.log && statusClass(build.result) === "failure") {{
-        links.push(
-          `<a class="artifact" href="${{escapeHtml(build.log.path)}}">` +
-          `Error Log <span class="meta">${{escapeHtml(formatSize(build.log.size))}}</span>` +
-          "</a>"
-        );
-      }} else if (build.branchSlug && build.buildNumber) {{
+      if (build.branchSlug && build.buildNumber) {{
         links.push(
           `<a class="artifact" href="${{escapeHtml(demoBuildUrl(build))}}">Demos</a>`
         );
@@ -1313,28 +1313,29 @@ def render_builds(builds, public_url=""):
         if build.get("buildUrl"):
             build_link = f"<a href=\"{html.escape(build['buildUrl'])}\">{build_link}</a>"
 
+        successful = str(build.get("result", "")).upper() == "SUCCESS"
         artifacts = []
-        for artifact in build.get("artifacts", []):
+        for artifact in build.get("artifacts", []) if successful else []:
             artifacts.append(
                 f"<a class=\"artifact\" href=\"{html.escape(artifact['path'])}\">"
                 f"{html.escape(artifact['name'])} <span class=\"meta\">{html.escape(format_size(artifact.get('size', 0)))}</span>"
                 "</a>"
             )
-        failed = str(build.get("result", "")).lower() in ("failure", "failed", "unstable", "aborted")
-        if failed and build.get("log"):
+        if not successful and build.get("log"):
             log = build["log"]
             artifacts.append(
                 f"<a class=\"artifact\" href=\"{html.escape(log['path'])}\">"
                 f"Error Log <span class=\"meta\">{html.escape(format_size(log.get('size', 0)))}</span>"
                 "</a>"
             )
-        elif build.get("branchSlug") and build.get("buildNumber"):
+        elif successful and build.get("branchSlug") and build.get("buildNumber"):
             demo_href = secure_public_href(demo_build_path(build["branchSlug"], build["buildNumber"]), public_url)
             artifacts.append(
                 f"<a class=\"artifact\" href=\"{html.escape(demo_href)}\">"
                 "Demos</a>"
             )
-        artifact_html = "\n".join(artifacts) if artifacts else "<span class=\"meta\">No artifact</span>"
+        empty_label = "No artifact" if successful else "Log unavailable"
+        artifact_html = "\n".join(artifacts) if artifacts else f"<span class=\"meta\">{empty_label}</span>"
 
         rendered.append(f"""
         <article class="build">
@@ -1381,7 +1382,8 @@ def main():
     parser.add_argument("--skip-prune-removed-demo-branches", action="store_true")
     args = parser.parse_args()
 
-    demo_runners = demo_runners_from_args(args)
+    successful = str(args.result).upper() == "SUCCESS"
+    demo_runners = demo_runners_from_args(args) if successful else []
     discovered_demos = None
     build_identities = None
     if args.validate_demo_roots_only and not args.demo_source:
@@ -1425,7 +1427,7 @@ def main():
         shutil.rmtree(build_dir)
     build_dir.mkdir(parents=True, exist_ok=True)
 
-    artifacts = copy_artifacts(args.artifact, build_dir)
+    artifacts = copy_artifacts(args.artifact, build_dir) if successful else []
     log = copy_log(args.log, build_dir)
     built_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     commit_url = ""

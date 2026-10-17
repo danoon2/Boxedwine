@@ -57,7 +57,7 @@ struct DemoTests {
 
     @Test func catalogRejectsUnpinnedOrUnsupportedRecipes() throws {
         let xml = DemoCatalogFixture.xml
-        for altered in [xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"8\""),
+        for altered in [xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"9\""),
                         xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"6\""),
                         xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"5\""),
                         xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"4\""),
@@ -84,6 +84,34 @@ struct DemoTests {
                        DemoCatalogFixture.entry("arguments", fields: "<JavaArguments>-Xmx768M</JavaArguments>")] {
             let xml = "<XML schemaVersion=\"7\" release=\"test-1\">" + recipe + "</XML>"
             #expect(throws: DemoError.self) { try DemoCatalog.load(Data(xml.utf8)) }
+        }
+    }
+
+    @Test func catalogDllOverridesSurviveInstallAndLaunch() async throws {
+        let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
+        let overrides = "cpuz136_x32.sys,cpuz136_x64.sys,GPUZ.sys="
+        let data = payload
+        let checksum = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        let xml = ("<XML schemaVersion=\"8\" release=\"test-1\">" +
+                   DemoCatalogFixture.entry("scanner", fields: "<WineDllOverrides>\(overrides)</WineDllOverrides>") + "</XML>")
+            .replacingOccurrences(of: String(repeating: "a", count: 64), with: checksum)
+            .replacingOccurrences(of: "1126214", with: String(data.count))
+        let entry = try #require(try DemoCatalog.load(Data(xml.utf8)).demos.first)
+        #expect(entry.wineDllOverrides == overrides)
+        let app = try await f.repository.importDemo(entry, runtime: f.runtime, downloader: Download(data: data))
+        var saved = try f.repository.recoverApp(app.id, control: ImportControl())
+        #expect(saved.boxedwineArguments == ["-env", "WINEDLLOVERRIDES=" + overrides])
+        let args = try LaunchRequest(app: saved, repository: f.repository, wineZip: f.repository.savedRuntimeURL(for: saved)).arguments()
+        let index = try #require(args.firstIndex(of: "WINEDLLOVERRIDES=" + overrides))
+        #expect(index > 0 && args[index - 1] == "-env")
+        saved.boxedwineArguments = []
+        #expect(try !LaunchRequest(app: saved, repository: f.repository, wineZip: f.repository.savedRuntimeURL(for: saved)).arguments().contains("WINEDLLOVERRIDES=" + overrides))
+        for invalid in [xml.replacingOccurrences(of: "schemaVersion=\"8\"", with: "schemaVersion=\"7\""),
+                        xml.replacingOccurrences(of: overrides, with: ""),
+                        xml.replacingOccurrences(of: overrides, with: "GPUZ.sys=&#10;foo=b"),
+                        xml.replacingOccurrences(of: overrides, with: String(repeating: "x", count: 1025)),
+                        xml.replacingOccurrences(of: "</Demo>", with: "<WineDllOverrides>GPUZ.sys=</WineDllOverrides></Demo>")] {
+            #expect(throws: (any Error).self) { try DemoCatalog.load(Data(invalid.utf8)) }
         }
     }
 

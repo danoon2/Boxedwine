@@ -59,7 +59,326 @@ void requireFpJit() {
 }
 }
 
+static void testFpuSignBits() {
+    static const U64 patterns[] = {
+        0, 0x8000000000000000ull, 1, 0x8000000000000001ull,
+        0x000fffffffffffffull, 0x800fffffffffffffull,
+        0x0010000000000000ull, 0x8010000000000000ull,
+        0x3ff4000000000000ull, 0xbff4000000000000ull,
+        0x7fefffffffffffffull, 0xffefffffffffffffull,
+        0x7ff0000000000000ull, 0xfff0000000000000ull,
+        0x7ff0000000000001ull, 0xfff0000000000001ull,
+        0x7ff8000000000123ull, 0xfff8000000000123ull
+    };
+    // Integer bit comparisons preserve NaN payloads and signed zero. Guest
+    // SSE denormal controls must not turn these x87 sign operations into math.
+    for (U32 top = 0; top < 8; ++top) for (U64 bits : patterns)
+    for (U32 kind : {0u, 1u, 2u}) for (U32 count : {1u, 2u, 65u})
+    for (U32 mxcsr : {0x1f80u, 0x9fc0u}) {
+        beginFp(top); auto& ctx = testContext(); auto& fpu = ctx.cpu->fpu;
+        ctx.cpu->setMxcsr(mxcsr);
+        ctx.cpu->flags = CF | OF | SF | AF; ctx.cpu->lazyFlagType = FLAGS_NONE;
+        fpu.regCache[top].l = bits; fpu.isRegCached[top] = true; fpu.tags[top] = TAG_Valid;
+        U32 other = (top + 3) & 7;
+        fpu.FLD_I64(9007199254740993ll, other); fpu.tags[other] = TAG_Valid;
+        auto raw = fpu.regs[other];
+        ctx.cpu->reg[1].u32 = count; U32 header = ctx.codeIp;
+        if (kind != 1) fp(0xd9, 0xe0);
+        if (kind != 0) fp(0xd9, 0xe1);
+        testPushCode8(0x49); testPushCode8(0x75); testPushCode8((U8)(header - ctx.codeIp - 1));
+        runFpWithHostRegisterCheck(); requireFpJit(); ctx.cpu->fillFlags();
+        U64 expected = kind == 0 ? bits ^ ((count & 1) ? 0x8000000000000000ull : 0) : bits & 0x7fffffffffffffffull;
+        if (!fpu.isRegCached[top] || fpu.regCache[top].l != expected || fpu.top != top ||
+            fpu.tags[top] != TAG_Valid || ctx.cpu->reg[1].u32 ||
+            (ctx.cpu->flags & FMASK_TEST) != (CF | ZF | PF))
+            testFail("x87 sign bits top=%u kind=%u count=%u mxcsr=%x got=%llx expected=%llx", top, kind, count, mxcsr,
+                (unsigned long long)fpu.regCache[top].l, (unsigned long long)expected);
+        if (fpu.isRegCached[other] || fpu.regs[other].signif != raw.signif || fpu.regs[other].signExp != raw.signExp)
+            testFail("x87 sign changed an untouched raw slot");
+    }
+    testContext().cpu->setMxcsr(0x1f80);
+}
+
+static void testFpuEagerMemoryLoops() {
+    extern void startNewJIT(CPU*, U32, DecodedOp*);
+    auto seed = [](U32 top, bool cached) {
+        beginFp(top); auto& fpu = testContext().cpu->fpu;
+        for (U32 i = 0; i < 8; ++i) {
+            U32 physical = (top + i) & 7;
+            fpu.FLD_I64(3 + i, physical); fpu.tags[physical] = TAG_Valid;
+            if (cached) fpu.getF64(physical);
+        }
+    };
+    auto backedge = [](U32 header) {
+        testPushCode8(0x49); testPushCode8(0x75);
+        testPushCode8((U8)(header - testContext().codeIp - 1));
+    };
+    for (U32 top = 0; top < 8; ++top) for (bool cached : {false, true})
+    for (bool wide : {false, true}) for (U32 address : {0x100u, 0x101u, 0x1fffu})
+    for (U32 count : {1u, 65u, 257u}) {
+        seed(top, cached); auto& ctx = testContext();
+        ctx.cpu->reg[1].u32 = count;
+        if (wide) ctx.memory->writeq(TEST_HEAP_ADDRESS + address, 0x3ff0000000000000ull);
+        else ctx.memory->writed(TEST_HEAP_ADDRESS + address, 0x3f800000);
+        U32 header = ctx.codeIp;
+        fp(0xd8, 0xc7); // use both cached values before any potential fault
+        fpMem(wide ? 0xdc : 0xd8, 1, address); // multiply by one
+        backedge(header);
+        runFpWithHostRegisterCheck();
+        // Guarded cross-page reads can invalidate the entry while switching
+        // to single-op fallback; those cases check restart/result state below.
+        if (address != 0x1fff) requireFpJit();
+        expectFp(0, 3 + count * 10);
+        for (U32 i = 1; i < 8; ++i) expectFp(i, 3 + i);
+        if (ctx.cpu->fpu.top != top || ctx.cpu->reg[1].u32) testFail("eager memory loop lost progress");
+    }
+    for (U32 top : {0u, 7u}) for (bool cached : {false, true})
+    for (U32 completed : {0u, 1u, 63u, 64u, 65u}) for (U32 crossing : {0u, 2u}) {
+        seed(top, cached); auto& ctx = testContext();
+        U32 faultOffset = 0x2000 - crossing;
+        ctx.cpu->reg[1].u32 = 130;
+        ctx.cpu->reg[6].u32 = faultOffset - 4 * completed;
+        for (U32 i = 0; i < completed; ++i)
+            ctx.memory->writed(TEST_HEAP_ADDRESS + faultOffset - 4 * (i + 1), 0x3f800000);
+        U32 header = ctx.codeIp;
+        fp(0xd8, 0xc7); // completed even when the subsequent load faults
+        fp(0xd8, 0x0e); // fmul dword [esi]
+        fp(0x8d, 0x76); testPushCode8(4);
+        backedge(header);
+        auto oldAction = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = ctx.codeIp;
+        fp(0xcd, 0x97);
+        DecodedOp* entry = ctx.cpu->getNextOp(); entry->runCount = JIT_RUN_COUNT + 1;
+        startNewJIT(ctx.cpu, TEST_CODE_ADDRESS, entry);
+        if (!entry->pfnJitCode) testFail("eager fault loop not compiled");
+        ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, 0);
+        testRunCPU();
+        ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        U32 uc = action.sigInfo[0] == K_SIGSEGV ? ctx.cpu->reg[2].u32 : 0;
+        if (!uc || ctx.cpu->fpu.top != top || ctx.memory->readd(uc + 0x3c) != 130 - completed ||
+            ctx.memory->readd(uc + 0x28) != faultOffset || ctx.memory->readd(uc + 0x4c) != header + 2 - TEST_CODE_ADDRESS)
+            testFail("eager memory loop fault lost carried state");
+        expectFp(0, 3 + 10 * (completed + 1)); expectFp(7, 10);
+        ctx.process->sigActions[K_SIGSEGV] = oldAction;
+    }
+}
+
+#ifdef BOXEDWINE_WASM_JIT
+static void testWasmFixedFpuMemoryLoops() {
+    extern void startNewJIT(CPU*, U32, DecodedOp*);
+    auto counter = [](U32 count) { testPushCode8(0xb9); testPushCode32(count); };
+    auto backedge = [](U32 header) {
+        testPushCode8(0x49); testPushCode8(0x75);
+        testPushCode8((U8)(header - testContext().codeIp - 1));
+    };
+    for (U32 top = 0; top < 8; ++top) for (bool cached : {false, true})
+    for (U8 opcode : {0xd8, 0xdc, 0xda, 0xde}) for (U8 group : {0, 1, 4, 5})
+    for (U32 address : {0x100u, 0x101u, 0x1fffu}) for (U32 count : {1u, 65u}) {
+        beginFp(top); auto& ctx = testContext(); auto& fpu = ctx.cpu->fpu;
+        fpu.FLD_I64(3, top); fpu.tags[top] = TAG_Valid;
+        if (cached) fpu.getF64(top);
+        U32 unused = (top + 5) & 7;
+        fpu.FLD_I64(9007199254740993ll, unused); fpu.tags[unused] = TAG_Valid;
+        auto raw = fpu.regs[unused];
+        if (opcode == 0xdc) ctx.memory->writeq(TEST_HEAP_ADDRESS + address, 0x3ff0000000000000ull);
+        else if (opcode == 0xd8) ctx.memory->writed(TEST_HEAP_ADDRESS + address, 0x3f800000);
+        else if (opcode == 0xda) ctx.memory->writed(TEST_HEAP_ADDRESS + address, 1);
+        else ctx.memory->writew(TEST_HEAP_ADDRESS + address, 1);
+        counter(count); U32 header = ctx.codeIp; fpMem(opcode, group, address); backedge(header);
+        testRunCPU(); requireFpJit();
+        double expected = 3;
+        for (U32 i = 0; i < count; ++i) {
+            if (group == 0) expected += 1;
+            else if (group == 4) expected -= 1;
+            else if (group == 5) expected = 1 - expected;
+        }
+        expectFp(0, expected);
+        if (fpu.top != top || ctx.cpu->reg[1].u32 || fpu.isRegCached[unused] ||
+            fpu.regs[unused].signif != raw.signif || fpu.regs[unused].signExp != raw.signExp)
+            testFail("fixed memory loop changed untouched x87 state");
+    }
+    // Prefix pushes and exchanges change the logical-to-physical mapping.
+    // Preserve dirty values outside the selected mask as well.
+    for (U32 top = 0; top < 8; ++top) for (U32 prefix : {0u, 1u, 2u}) {
+        beginFp(top); auto& ctx = testContext(); auto& fpu = ctx.cpu->fpu;
+        double expected[8];
+        for (U32 i = 0; i < 8; ++i) {
+            expected[i] = i + 3; U32 physical = (top + i) & 7;
+            fpu.FLD_I64(i + 3, physical); fpu.tags[physical] = TAG_Valid;
+        }
+        fp(0xdc, 0xc5); expected[5] += expected[0]; // dirty ST5 before loop
+        if (prefix == 1) {
+            fp(0xd9, 0xe8);
+            for (U32 i = 7; i; --i) expected[i] = expected[i-1];
+            expected[0] = 1;
+        } else if (prefix == 2) {
+            fp(0xd9, 0xcf); std::swap(expected[0], expected[7]);
+        }
+        ctx.memory->writed(TEST_HEAP_ADDRESS + 0x100, 0x3f800000);
+        counter(65); U32 header = ctx.codeIp;
+        fpMem(0xd8, 0, 0x100); fp(0xd8, 0xc7); backedge(header);
+        expected[0] += 65 * (1 + expected[7]);
+        testRunCPU(); requireFpJit();
+        for (U32 i = 0; i < 8; ++i) expectFp(i, expected[i]);
+        if (fpu.top != ((top + (prefix == 1 ? 7 : 0)) & 7)) testFail("memory loop lost prefix TOP");
+    }
+    // Fault at entry and on both sides of the loop-budget boundary. Preserve
+    // the exact raw value if no arithmetic has completed, and publish progress
+    // if earlier iterations have executed before the protected load.
+    for (U32 top : {0u, 7u}) for (bool cached : {false, true})
+    for (U32 completed : {0u, 1u, 63u, 64u, 65u}) {
+        beginFp(top); auto& ctx = testContext(); auto& fpu = ctx.cpu->fpu;
+        fpu.FLD_I64(completed ? 3 : 9007199254740993ll, top); fpu.tags[top] = TAG_Valid;
+        if (cached) fpu.getF64(top);
+        auto raw = fpu.regs[top];
+        for (U32 i = 0; i < completed; ++i)
+            ctx.memory->writed(TEST_HEAP_ADDRESS + 0x2000 - 4 * (i + 1), 0x3f800000);
+        ctx.cpu->reg[6].u32 = 0x2000 - 4 * completed;
+        counter(130); U32 header = ctx.codeIp;
+        fp(0xd8, 0x06); // fadd dword [esi]
+        fp(0x83, 0xc6); testPushCode8(4);
+        backedge(header);
+        auto oldAction = ctx.process->sigActions[K_SIGSEGV];
+        auto& action = ctx.process->sigActions[K_SIGSEGV];
+        action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = ctx.codeIp;
+        fp(0xcd, 0x97);
+        DecodedOp* entry = ctx.cpu->getNextOp(); entry->runCount = JIT_RUN_COUNT + 1;
+        startNewJIT(ctx.cpu, TEST_CODE_ADDRESS, entry);
+        if (!entry->pfnJitCode) testFail("fixed memory fault loop not compiled");
+        ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, 0);
+        testRunCPU();
+        ctx.memory->mprotect(ctx.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        U32 uc = action.sigInfo[0] == K_SIGSEGV ? ctx.cpu->reg[2].u32 : 0;
+        if (!uc || fpu.top != top || ctx.memory->readd(uc + 0x3c) != 130 - completed ||
+            ctx.memory->readd(uc + 0x28) != 0x2000 || ctx.memory->readd(uc + 0x4c) != header - TEST_CODE_ADDRESS)
+            testFail("fixed memory loop fault lost progress top=%u cached=%u completed=%u sig=%u ecx=%u esi=%x actualTop=%u", top, cached, completed, action.sigInfo[0], ctx.cpu->reg[1].u32, ctx.cpu->reg[6].u32, fpu.top);
+        if (!completed && !cached) {
+            if (fpu.isRegCached[top] || fpu.regs[top].signif != raw.signif || fpu.regs[top].signExp != raw.signExp)
+                testFail("fixed memory loop converted raw value before fault");
+        } else if (completed) expectFp(0, 3 + completed);
+        ctx.process->sigActions[K_SIGSEGV] = oldAction;
+    }
+}
+
+static void testWasmFixedFpuSlots() {
+    extern void startNewJIT(CPU*, U32, DecodedOp*);
+    auto counter = [](U32 count) { testPushCode8(0xb9); testPushCode32(count); };
+    auto backedge = [](U32 header) {
+        testPushCode8(0x49); testPushCode8(0x75);
+        testPushCode8((U8)(header - testContext().codeIp - 1));
+    };
+    auto seed = [](U32 top, U32 mask, bool cached) {
+        auto& fpu = testContext().cpu->fpu;
+        fpu.FINIT(); fpu.top = top;
+        for (U32 i = 0; i < 8; ++i) {
+            U32 physical = (top + i) & 7;
+            fpu.FLD_I64(mask & (1u << i) ? 3 + i : 0x20000000000001ll + i, physical);
+            fpu.tags[physical] = mask & (1u << i) ? TAG_Valid : (i & 1 ? TAG_Empty : TAG_Valid);
+            if (cached && (mask & (1u << i))) fpu.getF64(physical);
+        }
+    };
+    // Untouched extended values must stay raw, including bits lost by double
+    // conversion. Cover sparse/high slots and every physical TOP, plus the
+    // first budget boundary and re-entry from a later budget exit.
+    for (U32 top = 0; top < 8; ++top) for (bool cached : {false, true})
+    for (U32 mask : {1u, 3u, 0x89u, 0xffu}) for (U32 count : {1u, 4u, 63u, 64u, 65u, 257u}) {
+        beginFp(top); seed(top, mask, cached);
+        auto& context = testContext(); auto* cpu = context.cpu;
+        U64 low[8]; U16 high[8]; U32 tags[8];
+        for (U32 i = 0; i < 8; ++i) {
+            low[i] = cpu->fpu.regs[i].signif; high[i] = cpu->fpu.regs[i].signExp; tags[i] = cpu->fpu.tags[i];
+        }
+        cpu->flags = (cached ? CF : 0) | OF | SF | AF; cpu->lazyFlagType = FLAGS_NONE;
+        counter(count); U32 header = context.codeIp;
+        double increment = 0;
+        if (mask == 1) { fp(0xd9, 0xe0); fp(0xd9, 0xe1); }
+        else for (U32 i = 1; i < 8; ++i) if (mask & (1u << i)) {
+            fp(0xd8, (U8)(0xc0 + i)); increment += 3 + i;
+        }
+        backedge(header); testRunCPU(); requireFpJit(); cpu->fillFlags();
+        if (cpu->fpu.top != top || cpu->reg[1].u32 ||
+            (cpu->flags & FMASK_TEST) != (U32)((cached ? CF : 0) | PF | ZF))
+            testFail("WASM fixed x87 loop lost TOP/counter/flags");
+        for (U32 i = 0; i < 8; ++i) {
+            U32 physical = (top + i) & 7;
+            if (cpu->fpu.tags[physical] != tags[physical]) testFail("WASM fixed x87 loop changed tag");
+            if (mask & (1u << i)) expectFp(i, i ? 3 + i : 3 + increment * count);
+            else if (cpu->fpu.isRegCached[physical] || cpu->fpu.regs[physical].signif != low[physical] ||
+                cpu->fpu.regs[physical].signExp != high[physical]) testFail("WASM fixed x87 loop converted unused extended value");
+        }
+    }
+    // Prefix pushes/renames leave a nontrivial cache mapping and dirty values
+    // outside the loop's mask. Later instructions must still see those values.
+    for (U32 top = 0; top < 8; ++top) for (U32 prefix : {0u, 1u, 2u})
+    for (U32 count : {1u, 64u, 65u}) for (U16 precision : {(U16)0x007f, (U16)0x037f}) {
+        beginFp(top); seed(top, 0xff, false); testContext().cpu->fpu.SetCW(precision);
+        double expected[8] = {3,4,5,6,7,8,9,10};
+        U32 expectedTop = top;
+        if (prefix == 1) {
+            fp(0xd9, 0xe8); expectedTop = (top + 7) & 7;
+            for (U32 i = 7; i; --i) expected[i] = expected[i-1]; expected[0] = 1;
+        } else if (prefix == 2) {
+            fp(0xd9, 0xcd); std::swap(expected[0], expected[5]);
+            fp(0xdc, 0xc6); expected[6] += expected[0];
+        }
+        counter(count); U32 header = testContext().codeIp;
+        fp(0xd8, 0xc7); backedge(header); expected[0] += expected[7] * count;
+        fp(0xdc, 0xc3); expected[3] += expected[0];
+        testRunCPU(); requireFpJit();
+        if (testContext().cpu->fpu.top != expectedTop) testFail("WASM fixed x87 prefix TOP");
+        for (U32 i = 0; i < 8; ++i) expectFp(i, expected[i]);
+    }
+    // Inspect a generated activation directly, before the wrapper chains its
+    // budget/SMC exit. Cache writeback must include the completed iterations.
+    for (U32 top : {0u, 7u}) for (bool bailout : {false, true}) {
+        beginFp(top); seed(top, 3, true);
+        auto& context = testContext(); auto* cpu = context.cpu;
+        cpu->reg[1].u32 = 130; fp(0xd8, 0xc1); backedge(TEST_CODE_ADDRESS); fp(0xcd, 0x97);
+        DecodedOp* entry = cpu->getNextOp(); entry->runCount = JIT_RUN_COUNT + 1;
+        startNewJIT(cpu, TEST_CODE_ADDRESS, entry);
+        if (!entry->pfnJitCode) testFail("WASM fixed x87 exit test not compiled");
+        cpu->wasmJitBailout = bailout ? WASM_JIT_BAILOUT_SMC : WASM_JIT_BAILOUT_NONE;
+        using BlockFn = void (*)(CPU*, U32);
+        reinterpret_cast<BlockFn>(entry->pfnJitCode)(cpu, 0);
+        U32 completed = bailout ? 1 : 64;
+        expectFp(0, 3 + 4 * completed);
+        if (cpu->reg[1].u32 != 130 - completed || cpu->fpu.top != top || cpu->eip.u32 != (bailout ? 3u : 0u))
+            testFail("WASM fixed x87 activation progress");
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_NONE; cpu->nextOp = nullptr;
+        testRunCPU(); expectFp(0, 523);
+    }
+    // A following fault must expose final loop state without applying a
+    // faulting store's pop, even when the access crosses a page boundary.
+    for (bool store : {false, true}) for (U32 address : {0x2000u, 0x1ffeu}) {
+        beginFp(4); seed(4, 3, false); counter(65);
+        auto& context = testContext(); U32 header = context.codeIp;
+        fp(0xd8, 0xc1); backedge(header);
+        context.memory->writed(TEST_HEAP_ADDRESS + address, 0x11223344);
+        fpMem(store ? 0xd9 : 0x8b, store ? 3 : 0, address);
+        auto oldAction = context.process->sigActions[K_SIGSEGV];
+        auto& action = context.process->sigActions[K_SIGSEGV];
+        action.reset(); action.handlerAndSigAction = context.codeIp;
+        context.memory->mprotect(context.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, 0);
+        testRunCPU();
+        context.memory->mprotect(context.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        if (action.sigInfo[0] != K_SIGSEGV || context.cpu->fpu.top != 4 || context.cpu->reg[1].u32 ||
+            context.memory->readd(TEST_HEAP_ADDRESS + address) != 0x11223344)
+            testFail("WASM fixed x87 exit fault changed progress");
+        expectFp(0, 263); context.process->sigActions[K_SIGSEGV] = oldAction;
+    }
+}
+#endif
+
+
 void testWasmJitFpuCache() {
+    testFpuSignBits();
+#ifdef BOXEDWINE_WASM_JIT
+    testFpuEagerMemoryLoops();
+    testWasmFixedFpuMemoryLoops();
+    testWasmFixedFpuSlots();
+#endif
+
     // Incoming extended-format values, every possible physical TOP, lazy
     // conversion after dirty pushes, register renaming, and duplicate aliases.
     for (U32 top = 0; top < 8; ++top) {
@@ -460,7 +779,149 @@ void testWasmJitFpuIntegerStores() {
 }
 
 #if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+static void testNativeFpuRegisterLoops() {
+    extern void startNewJIT(CPU*, U32, DecodedOp*);
+    auto counter = [](U32 count) { testPushCode8(0xb9); testPushCode32(count); };
+    auto backedge = [](U32 header) {
+        testPushCode8(0x49); // dec ecx
+        testPushCode8(0x75); testPushCode8((U8)(header - testContext().codeIp - 1));
+    };
+    auto seed = [](U32 top, bool cached) {
+        auto& fpu = testContext().cpu->fpu;
+        fpu.FINIT(); fpu.top = top;
+        for (U32 i = 0; i < 8; ++i) {
+            U32 physical = (top + i) & 7;
+            fpu.FLD_I64(3 + i, physical); fpu.tags[physical] = TAG_Valid;
+            if (cached) fpu.getF64(physical);
+        }
+    };
+    // One through four values fit x64's cache; the five-value case exercises
+    // the spill/fallback path; ARM can retain all eight. Raw inputs convert on entry.
+    for (U32 top = 0; top < 8; ++top) for (bool cached : {false, true}) {
+        for (U32 values : {1u, 2u, 3u, 4u, 5u, 7u, 8u}) for (U32 count : {1u, 2u, 7u, 64u, 65u, 257u}) {
+            beginFp(top); seed(top, cached); counter(count);
+            testContext().cpu->flags = (cached ? CF : 0) | OF | SF | AF;
+            testContext().cpu->lazyFlagType = FLAGS_NONE;
+            const U32 header = testContext().codeIp;
+            if (values == 1) fp(0xd8, 0xc0); // fadd st0,st0
+            else for (U32 i = 1; i < values; ++i) fp(0xd8, 0xc0 + i);
+            backedge(header);
+            testRunCPU(); requireFpJit();
+            testContext().cpu->fillFlags();
+            if ((testContext().cpu->flags & FMASK_TEST) != (U32)((cached ? CF : 0) | ZF | PF))
+                testFail("native x87 loop changed integer flags");
+            double increment = 0;
+            for (U32 i = 1; i < values; ++i) increment += 3 + i;
+            expectFp(0, values == 1 ? std::ldexp(3.0, count) : 3 + count * increment);
+            for (U32 i = 1; i < 8; ++i) expectFp(i, 3 + i);
+            if (testContext().cpu->fpu.top != top || testContext().cpu->reg[1].u32)
+                testFail("native x87 loop lost TOP or counter");
+            for (U32 i = 0; i < 8; ++i) if (testContext().cpu->fpu.tags[i] != TAG_Valid)
+                testFail("native x87 loop changed a tag");
+        }
+    }
+    // Noncontiguous high slots, both arithmetic destinations, reverse subtract,
+    // unary sign operations and mixed guest XMM work with 24-bit precision.
+    for (U32 top = 0; top < 8; ++top) for (U32 precision : {0x007fu, 0x037fu}) {
+        beginFp(top); seed(top, false);
+        testContext().cpu->fpu.SetCW(precision);
+        counter(65); const U32 header = testContext().codeIp;
+        fp(0xd8, 0xc7); // st0 += st7
+        fp(0xdc, 0xe7); // st7 = st0 - st7 (fsubr st7,st0)
+        fp(0xd9, 0xe0); fp(0xd9, 0xe1); // fchs; fabs
+        testPushCode8(0x66); testPushCode8(0x0f); fp(0xef, 0xc0); // pxor xmm0,xmm0
+        backedge(header);
+        testRunCPU(); requireFpJit();
+        double a = 3, b = 10;
+        for (U32 i = 0; i < 65; ++i) {
+            a += b; if (precision == 0x007f) a = (float)a;
+            b = a - b; if (precision == 0x007f) b = (float)b;
+        }
+        expectFp(0, a); expectFp(7, b);
+        for (U32 lane = 0; lane < 4; ++lane) if (testContext().cpu->xmm[0].pi.u32[lane])
+            testFail("native x87 loop clobbered guest XMM state");
+    }
+    // Enter the public loop header with a different physical TOP. It must run
+    // initialization, while its own private backedge must skip initialization.
+    beginFp(3); seed(3, false);
+    fp(0xd9, 0xe8); // prefix changes TOP
+    const U32 header = testContext().codeIp;
+    fp(0xd8, 0xc1); fp(0xd8, 0xc2);
+    backedge(header); testContext().cpu->reg[1].u32 = 3;
+    testRunCPU(); requireFpJit();
+    auto& context = testContext();
+    auto runAt = [&](U32 address, U32 top) {
+        seed(top, false); context.cpu->reg[1].u32 = 3;
+        context.cpu->eip.u32 = address - context.cpu->seg[CS].address;
+        context.cpu->nextOp = nullptr; testRunCPU();
+    };
+    for (U32 top : {0u, 7u, 2u}) {
+        runAt(header, top); expectFp(0, 30);
+        if (context.cpu->fpu.top != top) testFail("native loop header reused stale TOP");
+    }
+    // A later dispatch into the middle promotes an entry. The rebuilt owning
+    // block must reject loop retention instead of bypassing initialization.
+    runAt(header + 2, 6); expectFp(0, 26); // first +5, then two complete +9 passes
+    runAt(header, 1); expectFp(0, 30);
+    context.memory->writeb(header + 1, 0xc2); // replace first add with ST2
+    runAt(header, 4); expectFp(0, 33);
+
+    // An explicit incoming branch to the header/body must not reuse the cache
+    // created by a skipped fall-through prefix.
+    for (U32 skip : {0u, 2u}) {
+        beginFp(5); seed(5, false); counter(3);
+        testPushCode8(0xeb); testPushCode8(2 + skip);
+        fp(0xd9, 0xe8); // skipped
+        const U32 inner = context.codeIp;
+        fp(0xd8, 0xc1); fp(0xd8, 0xc2); backedge(inner);
+        testRunCPU(); expectFp(0, skip ? 26 : 30);
+    }
+#ifdef BOXEDWINE_MULTI_THREADED
+    // Inspect state at the scheduling exit itself, before the dispatcher can
+    // materialize or re-enter anything. A fused pair can poll before DEC;
+    // the ordinary branch polls after DEC. Both must preserve restart state.
+    beginFp(7); seed(7, false); context.cpu->reg[1].u32 = 9;
+    fp(0xd8, 0xc1); backedge(TEST_CODE_ADDRESS);
+    fp(0x31, 0xc0); // xor eax,eax: flags after the branch are dead
+    fp(0xcd, 0x97);
+    DecodedOp* entry = context.cpu->getNextOp();
+    startNewJIT(context.cpu, TEST_CODE_ADDRESS, entry);
+    if (!entry->pfnJitCode) testFail("native loop signal test was not compiled");
+    context.cpu->jitSignalPending.store(1, std::memory_order_release);
+    entry->pfn(context.cpu, entry);
+    context.cpu->jitSignalPending.store(0, std::memory_order_release);
+    expectFp(0, 7);
+    if (!((context.cpu->reg[1].u32 == 9 && context.cpu->getEipAddress() == TEST_CODE_ADDRESS + 2) ||
+        (context.cpu->reg[1].u32 == 8 && context.cpu->getEipAddress() == TEST_CODE_ADDRESS + 3)) || context.cpu->nextOp)
+        testFail("native x87 loop scheduling exit lost instruction progress: ecx=%u eip=%08x next=%p", context.cpu->reg[1].u32, context.cpu->getEipAddress(), (void*)context.cpu->nextOp);
+    context.cpu->nextOp = nullptr; testRunCPU(); expectFp(0, 39);
+#endif
+    // Faults immediately after an optimized loop must expose its final state
+    // without performing a faulting store's pop or the following instruction.
+    for (bool store : {false, true}) for (U32 address : {0x2000u, 0x1ffeu}) {
+        beginFp(4); seed(4, false); counter(65);
+        const U32 inner = context.codeIp;
+        fp(0xd8, 0xc1); backedge(inner);
+        context.memory->writed(TEST_HEAP_ADDRESS + address, 0x11223344);
+        fpMem(store ? 0xd9 : 0x8b, store ? 3 : 0, address);
+        fp(0xd8, 0xc0);
+        auto oldAction = context.process->sigActions[K_SIGSEGV];
+        auto& action = context.process->sigActions[K_SIGSEGV];
+        action.reset(); action.handlerAndSigAction = context.codeIp;
+        context.memory->mprotect(context.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, 0);
+        testRunCPU();
+        context.memory->mprotect(context.thread, TEST_HEAP_ADDRESS + 0x2000, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+        if (action.sigInfo[0] != K_SIGSEGV || context.cpu->fpu.top != 4 || context.cpu->reg[1].u32 ||
+            context.memory->readd(TEST_HEAP_ADDRESS + address) != 0x11223344)
+            testFail("native x87 loop exit fault changed progress");
+        expectFp(0, 263);
+        context.process->sigActions[K_SIGSEGV] = oldAction;
+    }
+}
+
 void testNativeJitFpuCachePressure() {
+    testFpuEagerMemoryLoops();
+    testNativeFpuRegisterLoops();
     // Fresh Wine prefixes can enter a block at a memory divide with only raw
     // incoming x87 state. Unlike a preceding FLD, this leaves entry TOP live
     // while the guarded MMU path and the division check need GP temporaries.

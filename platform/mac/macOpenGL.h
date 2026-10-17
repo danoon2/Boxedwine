@@ -13,6 +13,10 @@
 struct SDL_Window;
 #include "macOpenGLViewport.h"
 
+// Framebuffer DSA entry points needed by Wine's internal offscreen surfaces.
+// This is a subset, not support for the full ARB_direct_state_access extension.
+void* macOpenGLGetProcAddressFallback(const char* name);
+
 // Main-thread only. Offscreen/pbuffer windows never get a presentation view.
 void macOpenGLConfigureFullscreen(SDL_Window* window, U32 width, U32 height, bool aspect);
 bool macOpenGLResizeFullscreen(SDL_Window* window, U32 width, U32 height);

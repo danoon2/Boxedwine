@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check fullscreen input/layout and native GL backing using hidden windows."""
+"""Check macOS GL presentation and framebuffer fallbacks with native contexts."""
 from pathlib import Path
 import subprocess
 import sys
@@ -16,6 +16,21 @@ class OpenGLViewportTests(unittest.TestCase):
             subprocess.run([
                 "c++", "-std=c++17", "-I", str(ROOT / "platform/mac"),
                 str(ROOT / "tools/test_mac_opengl_viewport.cpp"), "-o", str(executable),
+            ], check=True)
+            subprocess.run([str(executable)], check=True)
+
+    @unittest.skipUnless(sys.platform == "darwin", "native macOS OpenGL test")
+    def test_framebuffer_fallbacks(self):
+        with tempfile.TemporaryDirectory(prefix="boxedwine-gl-framebuffer-") as output:
+            executable = Path(output) / "test-framebuffer"
+            subprocess.run([
+                "xcrun", "clang++", "-std=c++17", "-fobjc-arc",
+                "-I", str(ROOT / "include"), "-I", str(ROOT / "platform/mac"),
+                "-I", str(ROOT / "lib/mac/SDL2.framework/Headers"),
+                "-F", str(ROOT / "lib/mac"), "-Wl,-rpath," + str(ROOT / "lib/mac"),
+                "-framework", "SDL2", "-framework", "Cocoa", "-framework", "OpenGL",
+                str(ROOT / "platform/mac/macOpenGL.mm"),
+                str(ROOT / "tools/test_mac_opengl_framebuffer.cpp"), "-o", str(executable),
             ], check=True)
             subprocess.run([str(executable)], check=True)
 

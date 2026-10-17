@@ -3377,7 +3377,21 @@ void glcommon_glDepthRangeArrayv(CPU* cpu) {
     if (!ext_glDepthRangeArrayv)
         kpanic("ext_glDepthRangeArrayv is NULL");
     {
-    GL_FUNC(ext_glDepthRangeArrayv)(ARG1, ARG2, marshalArray<GLdouble>(cpu, ARG3, ARG2*2));
+    // NVIDIA reads and applies the first pair even for count zero. Wine's
+    // stream-output-only draws can have no viewports, so preserve the required
+    // no-op without passing a guest address to the driver. Keep invalid ranges
+    // on the driver's error path.
+    if (ARG2 == 0) {
+        GLint maxViewports = 0;
+        GL_FUNC(pglGetIntegerv)(0x825B /* GL_MAX_VIEWPORTS */, &maxViewports);
+        if (ARG1 <= (U32)maxViewports) {
+            return;
+        }
+    }
+    // marshalArray(count=0) preserves buffer offsets; these are host arrays.
+    const GLdouble empty[2] = {};
+    GL_FUNC(ext_glDepthRangeArrayv)(ARG1, ARG2,
+        (S32)ARG2 > 0 ? marshalArray<GLdouble>(cpu, ARG3, ARG2*2) : empty);
     GL_LOG ("glDepthRangeArrayv GLuint first=%d, GLsizei count=%d, const GLdouble* v=%.08x",ARG1,ARG2,ARG3);
     }
 }

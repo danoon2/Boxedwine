@@ -43,7 +43,9 @@ class BundleAuditTests(unittest.TestCase):
                        "-o", str(root / "Contents/MacOS" / name))
         resources = cls.template / "Contents/Resources"
         resources.mkdir()
-        shutil.copy2(Path(__file__).resolve().parents[1] / "Resources/PrivacyInfo.xcprivacy", resources)
+        # Keep the fixture independent of quarantine attributes on the checkout.
+        (resources / "PrivacyInfo.xcprivacy").write_bytes(
+            (Path(__file__).resolve().parents[1] / "Resources/PrivacyInfo.xcprivacy").read_bytes())
         (resources / "Boxedwine-LICENSE.txt").write_text("Test fixture only.\n")
         module.run(sys.executable, str(Path(__file__).with_name("prepare-third-party-notices.py")),
                    "--output", str(resources / "Licenses"))

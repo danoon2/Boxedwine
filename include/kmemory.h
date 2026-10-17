@@ -199,7 +199,7 @@ private:
     };
 
     void prepareCodeInvalidation(U32 address, U32 len);
-    void commitPreparedCodeInvalidation();
+    void commitPreparedCodeInvalidation(bool becauseOfWrite = false);
     void discardPreparedCodeInvalidation();
     void retryPendingCodeMemoryFrees();
 

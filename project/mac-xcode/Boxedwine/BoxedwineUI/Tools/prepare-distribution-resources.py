@@ -23,8 +23,9 @@ def store_catalog(source=SOURCE):
     entry = entries[0]
     url = entry.findtext("FileURL").replace("http://", "https://", 1)
     pin = json.loads((source / "WindowsSupport/packages.json").read_text())[url]
-    if pin["filesystemVersion"] != "14":
-        raise ValueError("The Store edition requires filesystem version 14")
+    revision = entry.findtext("FileVersion")
+    if not revision or pin.get("filesystemVersion") != revision or pin.get("fileVersion") != revision:
+        raise ValueError("The Store Wine filesystem revision differs from the catalog pin")
     root = ET.Element("XML")
     root.append(entry)
     return ET.tostring(root, encoding="utf-8", xml_declaration=True), {url: pin}

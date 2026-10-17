@@ -25,6 +25,7 @@
 #include "../armv7/armv7CPU.h"
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
+#include "../wasm/wasmMemoryOrdering.h"
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
 #include "../jit/jitCodeGen.h"
 #endif
@@ -33,7 +34,22 @@
 thread_local U32 normalWaitCallCount = 0;
 #endif
 
-#ifdef BOXEDWINE_MULTI_THREADED
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_WASM_JIT)
+static inline void normalOrderMemoryInstruction(DecodedOp* op) {
+    // Match the JIT's guest-memory instruction boundaries during warmup and
+    // single-op fallback. Ordinary Wasm loads/stores do not provide x86 TSO
+    // on weakly ordered hosts, even when another access uses a locked op.
+    if (instructionInfo[op->inst].readMemWidth || instructionInfo[op->inst].writeMemWidth) {
+        if (wasmJitNeedsMemoryFence) {
+            std::atomic_thread_fence(std::memory_order_seq_cst);
+        } else {
+            // Retain the C++ compiler barrier even without hardware fences.
+            std::atomic_signal_fence(std::memory_order_seq_cst);
+        }
+    }
+}
+#define START_OP(cpu, op) normalOrderMemoryInstruction(op)
+#elif defined(BOXEDWINE_MULTI_THREADED)
 #ifdef _DEBUG
 //#define START_OP(cpu, op) op->log(cpu)
 #define START_OP(cpu, op)
@@ -384,6 +400,9 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op);
 #endif
 
 NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {   
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_WASM_JIT)
+    wasmJitInitMemoryOrdering();
+#endif
     initNormalOps();
 #ifdef BOXEDWINE_JIT
     this->firstOp = firstDynamicOp;
@@ -503,15 +522,11 @@ void NormalCPU::run() {
     }
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifdef BOXEDWINE_JIT
-#ifdef BOXEDWINE_WASM_JIT
     // Most dispatches have no new signal. Avoid an atomic read-modify-write
     // in that case; a signal published after the load stays latched.
     if (this->jitSignalPending.load(std::memory_order_acquire)) {
         this->jitSignalPending.exchange(0, std::memory_order_acq_rel);
     }
-#else
-    this->jitSignalPending.exchange(0, std::memory_order_acq_rel);
-#endif
 #endif
     if (thread->pendingSignals && thread->runSignals()) {
         nextOp = getNextOp();

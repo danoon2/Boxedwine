@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include <array>
 #include <chrono>
 
 #ifdef BOXEDWINE_JIT
@@ -34,6 +35,24 @@ bool wasmJitCompilationPaused();
 #endif
 
 void clearJitBlock(const std::vector<void*>& jitOps);
+#ifndef BOXEDWINE_WASM_JIT
+void bindNativeCarryHelpers(CPU* cpu) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
+    // A CLONE_VM child can enter its parent's compiled code before compiling
+    // any block of its own. Initialize its process-local helpers before that
+    // code can fault or request a carry calculation.
+    if (!cpu->thread->process->startJITOp) {
+        std::unique_ptr<JitCodeGen> jit(startNewJIT(cpu));
+        jit->initializeProcessHelpers();
+    }
+    memcpy(cpu->calculateCF, cpu->thread->process->calculateCF, sizeof(cpu->calculateCF));
+}
+#endif
+
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+void* jitCreateIndirectTraceExit(CPU* cpu);
+
+#endif
 
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
 namespace {
@@ -159,6 +178,55 @@ PreparedJitCodeInvalidation prepareJitCodeInvalidation(KMemory* memory, const st
         return g_jitLifecycleCallbacks.prepareCodeInvalidation(memory, decodedOps, jitEntries);
     }
     return PreparedJitCodeInvalidation(const_cast<std::vector<void*>*>(&jitEntries), commitNativeJitInvalidation, discardNativeJitInvalidation);
+}
+
+void claimJitBlockOps(DecodedOp* blockStart, U32 blockOpCount, U32 blockLen) {
+    if (blockStart->blockOpCount && (blockStart->blockOpCount != blockOpCount || blockStart->blockLen != blockLen)) {
+        // The block previously registered here may have covered more ops.
+        releaseJitBlockOps(blockStart);
+    }
+    blockStart->blockOpCount = blockOpCount;
+    blockStart->blockLen = blockLen;
+    // Blocks that start inside this one start later than it.
+    std::vector<DecodedOp*> laterStarts;
+    DecodedOp* op = blockStart;
+    for (U32 i = 0; i < blockOpCount && op && op->inst != Done; ++i) {
+        DecodedOp* owner = op->blockStart;
+        if (!owner || owner == blockStart || owner == op || !owner->blockOpCount ||
+                std::find(laterStarts.begin(), laterStarts.end(), owner) != laterStarts.end()) {
+            op->blockStart = blockStart;
+        }
+        if (op != blockStart && op->blockOpCount) {
+            laterStarts.push_back(op);
+        }
+        op = op->next;
+    }
+}
+
+void releaseJitBlockOps(DecodedOp* blockStart) {
+    U32 blockOpCount = blockStart->blockOpCount;
+    blockStart->blockOpCount = 0;
+    blockStart->blockLen = 0;
+    std::vector<DecodedOp*> laterStarts;
+    DecodedOp* op = blockStart;
+    for (U32 i = 0; i < blockOpCount && op && op->inst != Done; ++i) {
+        if (op->blockStart == blockStart) {
+            op->blockStart = nullptr;
+        }
+        if (op != blockStart && op->blockOpCount) {
+            laterStarts.push_back(op);
+        }
+        op = op->next;
+    }
+    // Only blocks starting inside this one also cover the ops it owned. Those
+    // with a live or pending entry take them over; the rest are released too.
+    for (DecodedOp* laterStart : laterStarts) {
+        if (laterStart->pfnJitCode || (laterStart->flags2 & OP_FLAG2_WASM_JIT_PENDING)) {
+            claimJitBlockOps(laterStart, laterStart->blockOpCount, laterStart->blockLen);
+        } else {
+            releaseJitBlockOps(laterStart);
+        }
+    }
 }
 
 void jitCodeInvalidated(KMemory* memory, const std::vector<DecodedOp*>& decodedOps, const std::vector<void*>& jitEntries) {
@@ -393,7 +461,8 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         }
 #endif
     }
-    // find longest block where all direction jumps don't go past the block
+    // Trim branches whose lowering requires both successors to end the block.
+    // Backends with conditional side exits can retain the fall-through path.
     U32 lastFurthestEip = eip;
     while (true) {
         nextOp = op;
@@ -405,7 +474,8 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
             }
             if (nextOp->isDirectJumpBranch()) {
                 U32 target = this->lastOpEip + nextOp->len + nextOp->imm;
-                if (target >= lastFurthestEip || target < this->startingEip) {
+                if ((target >= lastFurthestEip || target < this->startingEip) &&
+                        !(supportsConditionalSideExit(this->lastOpEip, target) && nextOp->isJumpCC())) {
                     break;
                 }
             }
@@ -426,36 +496,93 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         lastFurthestEip = lastEip;
     }
 
-    BHashTable<U32, DecodedOp*> ops;
-
-    nextOp = op;
-    eip = this->startingEip;
-    while (nextOp && eip < this->lastOpEip) {
-        ops.set(eip, nextOp);
-        eip += nextOp->len;
-        nextOp = nextOp->next;
-    }
-
-    nextOp = op;
-    eip = this->startingEip;
-    while (nextOp && eip < this->lastOpEip) {
-        if (nextOp->isDirectBranch()) {
-            // MW3 preview will jump to this jnz, which means the cmp/jnz pair should not be optimized as direct, see Jit::dynamic_cmpr32r32
-            // without this check, MW3 will have weird drawing/camera
-            // 4d7d1e Cmp EBX, ESI
-            // 4d7d20 JNZ 7 -> 4d7d29
-            // ...
-            // 4d7d3e JLE ffffffe0 -> 4d7d20
-            U32 target = eip + nextOp->len + nextOp->imm;
-            DecodedOp* targetOp = nullptr;
-            if (ops.get(target, targetOp)) {
-                targetOp->flags2 |= OP_FLAG2_JUMP_TARGET;
-            }
-        }
-        eip += nextOp->len;
-        nextOp = nextOp->next;
-    }
+    analyzeBlockControlFlow(op);
     return true;
+}
+
+size_t JitCodeGen::findBlockInstruction(U32 eip) const {
+    auto found = std::lower_bound(blockInstructions.begin(), blockInstructions.end(), eip,
+        [](const BlockInstruction& entry, U32 address) { return entry.eip < address; });
+    return found != blockInstructions.end() && found->eip == eip ?
+        found - blockInstructions.begin() : blockInstructions.size();
+}
+
+void JitCodeGen::analyzeBlockControlFlow(DecodedOp* op) {
+    blockInstructions.clear();
+    forwardBranches.clear();
+    U32 eip = startingEip;
+    for (DecodedOp* cur = op; cur && eip <= lastOpEip; cur = cur->next) {
+        // Done caps a decoded chain; compileOps exits before emitting it.
+        // A jump to its address must dispatch to the real guest instruction.
+        if (cur->inst == Done) break;
+        blockInstructions.push_back({eip, cur});
+        if (!cur->len || eip + cur->len < eip) break;
+        eip += cur->len;
+    }
+    for (const auto& entry : blockInstructions) {
+        if (!entry.op->isDirectBranch()) continue;
+        U32 target = entry.eip + entry.op->len + entry.op->imm;
+        size_t index = findBlockInstruction(target);
+        if (index == blockInstructions.size()) continue;
+        // A branch may enter the consumer of a compare/branch pair. Mark
+        // every destination, including the final instruction, before fusion.
+        blockInstructions[index].op->flags2 |= OP_FLAG2_JUMP_TARGET;
+        if (entry.op->isDirectJumpBranch() && entry.eip < lastOpEip && target > entry.eip) {
+            forwardBranches.push_back({entry.eip, target});
+        }
+    }
+}
+
+std::vector<JitCodeGen::BlockBranch> JitCodeGen::findLoopBackedges() const {
+    std::vector<size_t> pending;
+    std::vector<bool> visited;
+    auto canReachBackedge = [&](size_t header, size_t backedge) {
+        pending.clear();
+        visited.assign(blockInstructions.size(), false);
+        auto enqueue = [&](size_t index) {
+            if (!visited[index]) {
+                visited[index] = true;
+                pending.push_back(index);
+            }
+        };
+        enqueue(header);
+        while (!pending.empty()) {
+            size_t index = pending.back();
+            pending.pop_back();
+            if (index == backedge) return true;
+            const auto& entry = blockInstructions[index];
+            DecodedOp* current = entry.op;
+            if (current->isRet()) continue;
+            if (current->isDirectJumpBranch()) {
+                size_t target = findBlockInstruction(entry.eip + current->len + current->imm);
+                // Unknown paths may re-enter the block. Incomplete analysis
+                // must not rule out a loop; only proven dead ends can do so.
+                if (target == blockInstructions.size()) return true;
+                enqueue(target);
+                if (!current->isDirectBranchWithNext()) continue;
+            } else if (current->isBranch() && !current->isCall()) {
+                return true;
+            }
+            // Calls may return. A return above ends its path; falling off
+            // the known instruction stream leaves reachability uncertain.
+            if (index + 1 == blockInstructions.size()) return true;
+            enqueue(index + 1);
+        }
+        return false;
+    };
+    std::vector<BlockBranch> backedges;
+    for (size_t index = 0; index < blockInstructions.size(); ++index) {
+        const auto& entry = blockInstructions[index];
+        if (!entry.op->isDirectJumpBranch()) continue;
+        U32 target = entry.eip + entry.op->len + entry.op->imm;
+        if (target >= entry.eip) continue;
+        size_t header = findBlockInstruction(target);
+        // A backward jump into cleanup ending in RET is not a loop.
+        if (header != blockInstructions.size() && canReachBackedge(header, index)) {
+            backedges.push_back({entry.eip, target});
+        }
+    }
+    return backedges;
 }
 
 static DecodedOp* removeJITBlock(DecodedOp* op) {
@@ -667,6 +794,15 @@ JitConditional JitCodeGen::getSetConditionFromOp(DecodedOp* op) {
     return JitConditional::O;
 }
 
+U32 JitCodeGen::getDirectFlagWindow() {
+#ifdef BOXEDWINE_JIT_ARMV8
+    static const bool narrow = std::getenv("BOXEDWINE_ARM_FLAG_WINDOW_SLOW") != nullptr;
+    return narrow ? 8 : 32;
+#else
+    return 8;
+#endif
+}
+
 enum class DirectType {
     None,
     Jump,
@@ -674,14 +810,96 @@ enum class DirectType {
     SetCC
 };
 
+#ifdef BOXEDWINE_JIT_ARMV8
+static bool canExtendDirectFlagWindow(DecodedOp* op) {
+    if (std::getenv("BOXEDWINE_ARM_FLAG_WINDOW_LEA")) return true;
+    // The longer window helps across copies. Address calculations can leave
+    // the loop limited by a value dependency, where the wider fusion did not
+    // help in measurements. Keep their established eight-instruction budget.
+    switch (op->inst) {
+    case MovR8R8: case MovR16R16: case MovR32R32:
+    case MovR8I8: case MovR16I16: case MovR32I32:
+        return true;
+    default: return false;
+    }
+}
+
+bool JitCodeGen::tryDirectConsumers(DecodedOp* producer, const std::function<void()>& callback,
+        U32 supportedFlags, U32 producerOffset, U32 minimumConsumers) {
+    if (std::getenv("BOXEDWINE_JIT_FLAG_CHAIN_SLOW")) return false;
+    struct Entry { DecodedOp* op; DirectType type; JitConditional condition; U32 eip; };
+    std::array<Entry, 32> entries{};
+    U32 limit = getDirectFlagWindow();
+    U32 entryCount = 0;
+    U32 eip = currentEip + producerOffset + producer->len;
+    U32 replacedFlags = FMASK_TEST;
+    if ((producer->inst == IncR8 || producer->inst == DecR8 || producer->inst == IncR16 || producer->inst == DecR16 || producer->inst == IncR32 || producer->inst == DecR32) && !std::getenv("BOXEDWINE_JIT_PRESERVED_CF_SLOW"))
+        replacedFlags &= ~CF;
+    unsigned consumers = 0;
+    bool complete = false;
+    for (DecodedOp* op = producer->next; op && entryCount < limit; eip += op->len, op = op->next) {
+        const auto& info = instructionInfo[op->inst];
+        if (eip > lastOpEip || (op->flags2 & OP_FLAG2_JUMP_TARGET) || info.readMemWidth || info.writeMemWidth) break;
+        Entry entry{op, DirectType::None, JitConditional::O, eip};
+        if (op->isJumpCC()) { entry.type = DirectType::Jump; entry.condition = getJumpConditionFromOp(op); }
+        else if (op->isCMovCC()) { entry.type = DirectType::CMov; entry.condition = getCmovConditionFromOp(op); }
+        else if (op->isSetCC()) { entry.type = DirectType::SetCC; entry.condition = getSetConditionFromOp(op); }
+        if (entry.type != DirectType::None) {
+            if ((info.flagsUsed & FMASK_TEST & ~supportedFlags) || !supportsDirectCondition(entry.condition)) break;
+            ++consumers;
+            entries[entryCount++] = entry;
+            if (!op->getNeededFlagsAfter(replacedFlags)) { complete = consumers >= minimumConsumers; break; }
+            if (entry.type == DirectType::Jump) break;
+        } else {
+            if (info.flagsSets || (info.flagsUsed & FMASK_TEST) || directDoesAffectFlags(op)) break;
+            if (!canExtendDirectFlagWindow(op)) limit = std::min(limit, 8u);
+            if (entryCount >= limit) break;
+            entries[entryCount++] = entry;
+        }
+    }
+    if (!complete) return false;
+    const Entry& last = entries[entryCount - 1];
+    if (last.type == DirectType::Jump) {
+        if (!canJumpInBlock(last.eip, last.op)) return false;
+        if (last.eip + last.op->len + last.op->imm <= last.eip) exitToRunLoopIfNeeded(currentEip);
+    }
+    callback();
+    postCompile(producer);
+    for (U32 i = 0; i < entryCount; ++i) {
+        const auto& entry = entries[i];
+        preCompile(entry.op, true);
+        switch (entry.type) {
+        case DirectType::None: compile(entry.op); break;
+        case DirectType::Jump: direct_jump(entry.condition, entry.eip + entry.op->len + entry.op->imm); break;
+        case DirectType::CMov: {
+            JitWidth width = entry.op->inst >= CmovO_R32R32 ? JitWidth::b32 : JitWidth::b16;
+            direct_cmov(width, entry.condition, getReg(entry.op->reg), getReadOnlyReg(entry.op->rm));
+            break;
+        }
+        case DirectType::SetCC: direct_setcc(entry.condition, getReg8(entry.op->reg, false)); break;
+        }
+        if (i + 1 < entryCount) postCompile(entry.op);
+    }
+    skipToOp = last.op;
+    return true;
+}
+
+#endif
+
 void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::function<void()> fallback, U32 supportedFlags) {
+#ifdef BOXEDWINE_JIT_ARMV8
+    if (tryDirectConsumers(op, callback, supportedFlags)) return;
+#endif
     DecodedOp* nextOp = op->next;
     U32 skipped = 0;
     DirectType directType = DirectType::None;
     JitConditional cond = JitConditional::O;
     bool pollForRunLoop = false;
 
-    for (int i = 0; i < 8 && nextOp; i++) {
+    U32 scanEip = currentEip + op->len;
+    U32 limit = getDirectFlagWindow();
+    for (U32 i = 0; i < limit && nextOp; i++) {
+        if (scanEip > lastOpEip) break;
         if (nextOp->flags2 & OP_FLAG2_JUMP_TARGET) {
             break;
         }
@@ -715,11 +933,24 @@ void JitCodeGen::tryDirect(DecodedOp* op, std::function<void()> callback, std::f
         if (directDoesAffectFlags(nextOp)) {
             break;
         }
+#ifdef BOXEDWINE_JIT_ARMV8
+        if (!canExtendDirectFlagWindow(nextOp)) limit = std::min(limit, 8u);
+        if (i >= limit) break;
+#endif
         skipped++;
+        scanEip += nextOp->len;
         nextOp = nextOp->next;
     }
     U32 unsupportedFlags = directType != DirectType::None ? instructionInfo[nextOp->inst].flagsUsed & FMASK_TEST & ~supportedFlags : 0;
-    if (directType != DirectType::None && !unsupportedFlags && !nextOp->getNeededFlagsAfter(FMASK_TEST) && supportsDirectCondition(cond)) {
+    U32 replacedFlags = FMASK_TEST;
+#ifdef BOXEDWINE_JIT_ARMV8
+    // Direct INC/DEC leaves the cached lazy-flag state intact. Carry may stay
+    // live because these instructions preserve it; only their new flags need
+    // to be dead after the fused consumer.
+    if ((op->inst == IncR8 || op->inst == DecR8 || op->inst == IncR16 || op->inst == DecR16 || op->inst == IncR32 || op->inst == DecR32) && !std::getenv("BOXEDWINE_JIT_PRESERVED_CF_SLOW"))
+        replacedFlags &= ~CF;
+#endif
+    if (directType != DirectType::None && !unsupportedFlags && !nextOp->getNeededFlagsAfter(replacedFlags) && supportsDirectCondition(cond)) {
         DecodedOp* nextOp = op->next;
         U32 opEip = currentEip + op->len;
 
@@ -855,39 +1086,8 @@ bool JitCodeGen::compileOps(DecodedOp* op) {
     return true;
 }
 
-void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
+void JitCodeGen::initializeProcessHelpers() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
-    // Did another thread beat us to compiling or queueing this block?
-    if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
-        return;
-    }
-    if (op->flags & OP_FLAG_JIT) {
-#ifndef BOXEDWINE_WASM_JIT
-        if (!op->pfnJitCode && op->blockStart &&
-            !(op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
-            // An external dispatch cannot inherit the owning block's live FPU
-            // cache. Recompile that whole block with a clean entry here, keeping
-            // the prefix compiled as well as the newly discovered target.
-            DecodedOp* owner = op->blockStart;
-            U32 offset = 0;
-            DecodedOp* entry = owner;
-            for (U32 i = 0; i < owner->blockOpCount && entry != op; ++i) {
-                offset += entry->len;
-                entry = entry->next;
-            }
-            if (entry != op) {
-                kpanic("JitCodeGen::doJIT: entry outside owning block");
-            }
-            op->flags2 |= OP_FLAG2_JUMP_TARGET;
-            address -= offset;
-            op = owner;
-        } else
-#endif
-        {
-            // Another thread may have published this entry while we waited.
-            return;
-        }
-    }
     if (!cpu->thread->process->startJITOp) {
         JitCodeGen* jit = startNewJIT(cpu);
         cpu->thread->process->syncToHost = jit->createSyncToHost();
@@ -922,6 +1122,42 @@ void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
             delete jit;
         }
     }
+}
+
+void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
+    // Did another thread beat us to compiling or queueing this block?
+    if (op->flags2 & OP_FLAG2_WASM_JIT_PENDING) {
+        return;
+    }
+    if (op->flags & OP_FLAG_JIT) {
+#ifndef BOXEDWINE_WASM_JIT
+        if (!op->pfnJitCode && op->blockStart &&
+            !(op->flags2 & OP_FLAG2_JUMP_TARGET_ASSUMED_FALSE)) {
+            // An external dispatch cannot inherit the owning block's live FPU
+            // cache. Recompile that whole block with a clean entry here, keeping
+            // the prefix compiled as well as the newly discovered target.
+            DecodedOp* owner = op->blockStart;
+            U32 offset = 0;
+            DecodedOp* entry = owner;
+            for (U32 i = 0; i < owner->blockOpCount && entry != op; ++i) {
+                offset += entry->len;
+                entry = entry->next;
+            }
+            if (entry != op) {
+                kpanic("JitCodeGen::doJIT: entry outside owning block");
+            }
+            op->flags2 |= OP_FLAG2_JUMP_TARGET;
+            address -= offset;
+            op = owner;
+        } else
+#endif
+        {
+            // Another thread may have published this entry while we waited.
+            return;
+        }
+    }
+    initializeProcessHelpers();
     if (!cpu->calculateCF[0]) {
         if (!cpu->thread->process->calculateCF[0]) {
             kpanic("JitCodeGen::doJIT");
@@ -971,7 +1207,13 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #endif
     if (allowStartJit) {
 #ifdef __TEST
+#ifdef BOXEDWINE_JIT_X64
+        bool shouldStartJit = std::getenv("BOXEDWINE_TEST_PROFILE_WARMUP")
+            ? (op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT))
+            : op->runCount == 0;
+#else
         bool shouldStartJit = op->runCount == 0;
+#endif
 #else
         // done check is for long blocks that get broken up, affects f-22/f-16
         bool shouldStartJit = op->runCount == JIT_RUN_COUNT && op->inst != Done && !(op->flags & OP_FLAG_JIT);
@@ -1019,7 +1261,114 @@ bool JitCodeGen::isParamTypeReg(JitCallParamType paramType) {
     return paramType == JitCallParamType::REG_8 || paramType == JitCallParamType::REG_16 || paramType == JitCallParamType::REG_32;
 }
 
+void JitCodeGen::jumpIndirectEip(RegPtr reg, DecodedOp* op) {
+#ifdef BOXEDWINE_JIT_X64
+    U8 hits = std::atomic_ref<U8>(op->indirectTargetHits).load(std::memory_order_acquire);
+    bool enabled = true;
+#ifdef __TEST
+    const char* slow = std::getenv("BOXEDWINE_TEST_INDIRECT_TARGET_SLOW");
+    enabled = !slow || strcmp(slow, "0") == 0;
+    const char* kindSlow = std::getenv(op->inst == Retn32
+        ? "BOXEDWINE_TEST_RETURN_TARGET_SLOW" : "BOXEDWINE_TEST_CALL_TARGET_SLOW");
+    if (kindSlow && strcmp(kindSlow, "0") != 0) enabled = false;
+    if (const char* policy = std::getenv("BOXEDWINE_TEST_INDIRECT_TARGET_POLICY")) {
+        enabled = !strcmp(policy,"calls") ? op->inst != Retn32 :
+            !strcmp(policy,"returns") ? op->inst == Retn32 : false;
+    }
+#endif
+    if (enabled && hits >= 12 && hits != 0xff) {
+#if defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)
+        if (op->inst == Retn32 && nativeJitPerformanceEnabled("BOXEDWINE_TEST_ADAPTIVE_RETURN", true) && hits < 140) {
+            op->flags2 |= OP_FLAG2_NATIVE_ADAPTIVE_RETURN;
+            if (!cpu->thread->process->indirectTraceExit) cpu->thread->process->indirectTraceExit = jitCreateIndirectTraceExit(cpu);
+            U32 targets[2] = {std::atomic_ref<U32>(op->indirectTargetEip).load(std::memory_order_relaxed), 0};
+            U32 count = hits >= 76 ? 2 : 1;
+            if (count == 2) targets[1] = std::atomic_ref<U32>(op->imm).load(std::memory_order_relaxed);
+            const bool targetFirst = nativeJitPerformanceEnabled("BOXEDWINE_TEST_TRACE_TARGET_FIRST", true);
+            U32 csOffset = offsetof(CPU, seg) + CS * sizeof(Seg) + offsetof(Seg, address);
+            auto beginCsGuard = [&]() {
+                if (!cpu->seg[CS].address) IfNotCPU(JitWidth::b32, nullptr, 0, csOffset);
+                else {
+                    RegPtr cs = readCPU(JitWidth::b32, csOffset);
+                    IfEqual(JitWidth::b32, cs, cpu->seg[CS].address);
+                }
+            };
+            if (!targetFirst) beginCsGuard();
+            for (U32 i = 0; i < count; ++i) {
+                U32 address = targets[i] + cpu->seg[CS].address;
+                if (getMemData(cpu->memory)->opCache.getJitEntryLocation(address)) {
+                    IfEqual(JitWidth::b32, reg, targets[i]); {
+                        if (targetFirst) beginCsGuard();
+                        exitToRunLoopIfNeeded(reg);
+                        jumpToCachedJitEntry(address);
+                        writeEip(reg);
+                        writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+                        blockExit();
+                        if (targetFirst) EndIf();
+                    } EndIf();
+                }
+            }
+            if (targetFirst) beginCsGuard();
+            exitToRunLoopIfNeeded(reg);
+            writeCPU(JitWidth::b32, offsetof(CPU, tmpReg), reg);
+            writeCurrentEip(0);
+            jmpHost((DYN_PTR_SIZE)cpu->thread->process->indirectTraceExit);
+            EndIf();
+            // Only a live CS mismatch reaches this exit. Dispatch through
+            // the run loop, which resolves the new base even if this block
+            // was compiled before the first nonzero CS was observed.
+            writeEip(reg);
+            writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+            blockExit();
+            return;
+        }
+#endif
+        U32 target = std::atomic_ref<U32>(op->indirectTargetEip).load(std::memory_order_relaxed);
+        U32 address = target + cpu->seg[CS].address;
+        // Never use data.nextJump: CallE32 owns its displacement union.
+        // A current entry slot also avoids callee identity/ABA assumptions.
+        if (getMemData(cpu->memory)->opCache.getJitEntryLocation(address)) {
+            IfEqual(JitWidth::b32, reg, target); {
+                // A CS-offset profile can be reused with a different segment
+                // base. Only the original linear target owns this entry slot.
+                RegPtr cs;
+                bool memoryCs = !cpu->seg[CS].address;
+#ifdef __TEST
+                if (const char* load = std::getenv("BOXEDWINE_TEST_CS_GUARD_LOAD"))
+                    if (strcmp(load, "0") != 0) memoryCs = false;
+#endif
+                U32 csOffset = offsetof(CPU, seg) + CS * sizeof(Seg) + offsetof(Seg, address);
+                if (memoryCs) IfNotCPU(JitWidth::b32, nullptr, 0, csOffset);
+                else {
+                    cs = readCPU(JitWidth::b32, csOffset);
+                    IfEqual(JitWidth::b32, cs, cpu->seg[CS].address);
+                }
+                {
+                    exitToRunLoopIfNeeded(reg);
+                    jumpToCachedJitEntry(address);
+                    writeEip(reg);
+                    writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+                    blockExit();
+                } EndIf();
+            } EndIf();
+        }
+    }
+#else
+    (void)op;
+#endif
+    jumpEip(reg);
+}
+
 void JitCodeGen::jumpEip(RegPtr reg) {
+    bool guardFlatCs = false;
+#ifndef BOXEDWINE_WASM_JIT
+    // A block compiled before the first nonzero CS can be reused at the same
+    // physical source with a different base. Its flat cached lookup is valid
+    // only while live CS remains zero; otherwise resolve through the run loop.
+    guardFlatCs = !cpu->thread->process->hasSetSeg[CS];
+    if (guardFlatCs) IfNotCPU(JitWidth::b32, nullptr, 0,
+        offsetof(CPU, seg) + CS * sizeof(Seg) + offsetof(Seg, address));
+#endif
     RegPtr tmp = getTmpReg();
     mov(JitWidth::b32, tmp, reg);
     exitToRunLoopIfNeeded(reg);
@@ -1027,6 +1376,12 @@ void JitCodeGen::jumpEip(RegPtr reg) {
     writeEip(reg);
     writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
     blockExit();
+    if (guardFlatCs) {
+        EndIf();
+        writeEip(reg);
+        writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), 0);
+        blockExit();
+    }
 }
 
 void JitCodeGen::exitToRunLoopIfNeeded(U32 eip) {
@@ -1063,9 +1418,183 @@ void JitCodeGen::jumpInBlock(U32 address) {
     JumpInBlock(address);
 }
 
+bool JitCodeGen::canCacheLoopCarry(U32 firstEip, U32 lastEip) const {
+    LoopRegisterUsage registers;
+    bool preservesLiveCarry = false;
+    for (const auto& entry : blockInstructions) {
+        if (entry.eip < firstEip) continue;
+        if (entry.eip > lastEip) break;
+        // Use the same conservative operation contract as register caching:
+        // no guest calls or unmodelled helpers that could change EFLAGS.
+        if (!accumulateLoopRegisters(entry.op, registers)) return false;
+        const auto& info = instructionInfo[entry.op->inst];
+        if ((info.flagsSets | info.flagsUndefined) & CF) return false;
+        // INC/DEC may need to save incoming carry when replacing lazy flags.
+        // Avoid an entry calculation if no instruction needs that value.
+        preservesLiveCarry |= (info.flagsSets & FMASK_TEST) && entry.op->getNeededFlagsAfter(CF);
+    }
+    return preservesLiveCarry;
+}
+
+bool JitCodeGen::canForwardFlagResult(DecodedOp* op) const {
+    const auto& info = instructionInfo[op->inst];
+    DecodedOp* next = op->next;
+    // Limit forwarding to unconditional register arithmetic immediately
+    // followed by a consumer with no other incoming edge. MAYBE includes
+    // zero-count shifts and repeated strings, whose flags may be unchanged.
+    return !op->lock && !info.branch && !info.readMemWidth && !info.writeMemWidth &&
+        (info.flagsSets & (ZF | SF | MAYBE)) == (ZF | SF) &&
+        next && !(next->flags2 & OP_FLAG2_JUMP_TARGET) &&
+        !instructionInfo[next->inst].readMemWidth && !instructionInfo[next->inst].writeMemWidth &&
+        (next->isJumpCC() || next->isSetCC() || next->isCMovCC());
+}
+
+bool JitCodeGen::findReadGroup(U32 eip, ReadGroup& group) const {
+    size_t index = findBlockInstruction(eip);
+    if (index == blockInstructions.size()) return false;
+    DecodedOp* first = blockInstructions[index].op;
+    ReadGroup found;
+    found.firstEip = eip;
+    found.firstDisp = first->data.disp;
+    S64 low = 0, high = 0;
+    // No branches, stores or other helpers may intervene. In particular, a
+    // failed read must not reuse a translation prepared before its helper.
+    // Four to eight neighboring dword reads amortize the guard/code cost in
+    // paired Wasm tests. Two-read gains were marginal. Limit the span to 32
+    // bytes; scattered reads and other widths retain their existing path.
+    for (; index < blockInstructions.size() && found.count < 8; ++index) {
+        const auto& entry = blockInstructions[index];
+        DecodedOp* op = entry.op;
+        if ((op->inst != MovR32E32 && op->inst != AddR32E32) ||
+                op->lock || op->ea16 || op->base >= 4 ||
+                (found.count && (op->flags2 & OP_FLAG2_JUMP_TARGET)) ||
+                op->base != first->base || op->rm != first->rm ||
+                op->sibIndex != first->sibIndex || op->sibScale != first->sibScale ||
+                op->reg == first->rm || op->reg == first->sibIndex) break;
+        S64 delta = (S32)(op->data.disp - first->data.disp);
+        S64 nextLow = std::min(low, delta), nextHigh = std::max(high, delta + 4);
+        if (nextHigh - nextLow > 32) break;
+        low = nextLow; high = nextHigh;
+        found.lastEip = entry.eip;
+        ++found.count;
+    }
+    if (found.count < 4) return false;
+    found.minOffset = (S32)low;
+    found.span = (U32)(high - low);
+    group = found;
+    return true;
+}
+
+bool JitCodeGen::findForwardRegisterRegion(LoopRegisterUsage& usage) const {
+    // Preloading pays off across several joins. Shorter regions did not
+    // improve in paired Wasm tests; cap the analysis and eager input set.
+    if (forwardBranches.size() < 4 || blockInstructions.size() > 128) return false;
+    LoopRegisterUsage registers;
+    // Longer spans improved ST, especially mixed GP/SIMD work. MT did not
+    // improve consistently with its ordered memory accesses, so keep its
+    // established bound. Four-operation spans remain on the original path.
+#ifdef BOXEDWINE_MULTI_THREADED
+    constexpr U32 maxMemoryOps = 1;
+#else
+    constexpr U32 maxMemoryOps = 3;
+#endif
+    U32 memoryOpsSinceBoundary = 0;
+    for (const auto& entry : blockInstructions) {
+        if (memoryOpsSinceBoundary) {
+            for (const auto& branch : forwardBranches) {
+                if (branch.targetEip == entry.eip) {
+                    memoryOpsSinceBoundary = 0;
+                    break;
+                }
+            }
+        }
+        const auto& info = instructionInfo[entry.op->inst];
+        if (info.readMemWidth || info.writeMemWidth) {
+            if (++memoryOpsSinceBoundary > maxMemoryOps) return false;
+        }
+        if (entry.op->isDirectJumpBranch()) {
+            memoryOpsSinceBoundary = 0;
+            U32 target = entry.eip + entry.op->len + entry.op->imm;
+            if (target <= entry.eip && isBlockOpBoundary(target)) return false;
+        }
+#ifdef __TEST
+        if (entry.op->inst == TestEnd && entry.eip == lastOpEip) continue;
+#endif
+        if (!accumulateLoopRegisters(entry.op, registers)) return false;
+    }
+    usage = registers;
+    return true;
+}
+
+bool JitCodeGen::accumulateLoopRegisters(DecodedOp* op, LoopRegisterUsage& usage) const {
+    auto gp = [&](U8 reg, bool written = false) {
+        if (reg < 8) {
+            usage.gp |= 1u << reg;
+            if (written) usage.gpWritten |= 1u << reg;
+        }
+    };
+    auto memoryAddress = [&]() {
+        usage.touchesMemory = true;
+        gp(op->rm); gp(op->sibIndex);
+        if (op->base < 6 && (op->ea16 || cpu->thread->process->hasSetSeg[op->base])) {
+            usage.segments |= 1u << op->base;
+        }
+    };
+    auto xmm = [&](U8 reg, bool written = false) {
+        usage.xmm |= 1u << reg;
+        if (written) usage.xmmWritten |= 1u << reg;
+    };
+    if (op->lock) return false;
+    if (op->isJumpCC()) return true;
+    switch (op->inst) {
+    case Nop: case JmpJb: case JmpJw: case JmpJd:
+        return true;
+    case AddR32R32: case SubR32R32: case AndR32R32: case OrR32R32:
+    case XorR32R32: case MovR32R32:
+        gp(op->reg, true); gp(op->rm); return true;
+    case AddR32I32: case SubR32I32: case AndR32I32: case OrR32I32:
+    case XorR32I32: case MovR32I32: case IncR32: case DecR32:
+        gp(op->reg, true); return true;
+    case LeaR32:
+        gp(op->reg, true); gp(op->rm); gp(op->sibIndex); return true;
+    case AddR32E32: case SubR32E32: case AndR32E32: case OrR32E32:
+    case XorR32E32: case MovR32E32:
+        gp(op->reg, true); memoryAddress(); return true;
+    case CmpR32E32: case CmpE32R32: case TestE32R32: case MovE32R32:
+        gp(op->reg); memoryAddress(); return true;
+    case CmpE32I32: case TestE32I32: case MovE32I32:
+        memoryAddress(); return true;
+    case CmpR32R32: case TestR32R32:
+        gp(op->reg); gp(op->rm); return true;
+    case CmpR32I32: case TestR32I32:
+        gp(op->reg); return true;
+    case MovdXmmR32:
+        xmm(op->reg, true); gp(op->rm); return true;
+    case MovdR32Xmm:
+        gp(op->reg, true); xmm(op->rm); return true;
+    case MovupsXmmXmm: case MovdqaXmmXmm: case MovdquXmmXmm:
+    case PadddXmmXmm: case PxorXmmXmm:
+        xmm(op->reg, true); xmm(op->rm); return true;
+    default:
+        // Other operations (including helpers, strings, guest calls and
+        // x87/MMX) retain the existing synchronization path.
+        return false;
+    }
+}
+
 bool JitCodeGen::jumpToCachedJitEntry(U32 eip) {
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+#ifdef BOXEDWINE_JIT_ARMV8
+    auto& cache = getMemData(cpu->memory)->opCache;
+    // Targets in the same guest page already share a compact flat-table leaf.
+    // Reserve separate cells for branches that would otherwise touch sparse
+    // leaves. This choice is made while translating, with no extra hot code.
+    const bool local = ((currentEip ^ eip) >> K_PAGE_SHIFT) == 0 &&
+        !std::getenv("BOXEDWINE_ARM_LOCAL_DIRECT_SLOW");
+    void** entry = local ? cache.getJitEntryLocation(eip) : cache.getDirectJitEntryLocation(eip);
+#else
     void** entry = getMemData(cpu->memory)->opCache.getJitEntryLocation(eip);
+#endif
     if (entry) {
         RegPtr jit = getTmpReg();
         movValue(DYN_PTR, jit, (DYN_PTR_SIZE)entry);
@@ -1079,6 +1608,14 @@ bool JitCodeGen::jumpToCachedJitEntry(U32 eip) {
     (void)eip;
 #endif
     return false;
+}
+
+void JitCodeGen::branchToSideExit(U32 address) {
+    size_t index = findBlockInstruction(currentEip);
+    if (index == blockInstructions.size()) kpanic("JitCodeGen::branchToSideExit missing branch");
+    // Reuse normal chaining, signal/scheduling checks and uncached fallback.
+    // The branch may have been fused with a preceding flag producer.
+    blockNext1(address, blockInstructions[index].op);
 }
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
@@ -1180,7 +1717,7 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
     RegPtr pageReg = getTmpReg();
     shrValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_SHIFT);
 
-#ifdef BOXEDWINE_JIT_X64
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     if (getMemData(cpu->memory)->opCache.getJitPageGroups()) {
         RegPtr groupReg = getTmpReg();
         shrValueWithDest(JitWidth::b32, groupReg, pageReg, 10);
@@ -1189,7 +1726,15 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
         andValue(JitWidth::b32, pageReg, 0x3ff);
         readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
         If(DYN_PTR, tmp); {
-            andValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_MASK);
+#ifdef BOXEDWINE_JIT_ARMV8
+            if (getMemData(cpu->memory)->opCache.hasFlatJitHash()) {
+                shrValueWithDest(JitWidth::b32, pageReg, eipReg,
+                    getMemData(cpu->memory)->opCache.getFlatJitHashShift());
+                xorReg(JitWidth::b32, pageReg, eipReg);
+                andValue(JitWidth::b32, pageReg, K_PAGE_MASK);
+            } else
+#endif
+                andValueWithDest(JitWidth::b32, pageReg, eipReg, K_PAGE_MASK);
             readHost(DYN_PTR, createMemPtr(tmp, pageReg, DYN_PTR_LSL, 0), tmp, false);
             If(DYN_PTR, tmp); {
                 jmpHost(tmp);
@@ -1240,6 +1785,52 @@ static DYN_PTR_SIZE jitNextBlockAfterHostCall(CPU* cpu) {
     return 0;
 }
 
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+static DYN_PTR_SIZE jitTraceIndirectExit(CPU* cpu) {
+    const U32 target = cpu->tmpReg;
+    U32 instructionAddress = cpu->getEipAddress();
+    DecodedOp* op = cpu->memory->getDecodedOp(instructionAddress);
+    cpu->eip.u32 = target;
+    try {
+    if (op && op->inst == Retn32 && (op->flags2 & OP_FLAG2_NATIVE_ADAPTIVE_RETURN)) {
+            auto hits = std::atomic_ref<U8>(op->indirectTargetHits);
+            U8 count = hits.load(std::memory_order_acquire);
+            bool retire = false;
+            if (target != std::atomic_ref<U32>(op->indirectTargetEip).load(std::memory_order_relaxed)) {
+                if (count == 12 && hits.compare_exchange_strong(count, 0xfe, std::memory_order_acq_rel)) {
+                    std::atomic_ref<U32>(op->imm).store(target, std::memory_order_relaxed);
+                    hits.store(13, std::memory_order_release);
+                } else if (count >= 13 && count < 76) {
+                    if (target != std::atomic_ref<U32>(op->imm).load(std::memory_order_relaxed)) {
+                        hits.store(0xff, std::memory_order_release); retire = true;
+                    } else {
+                        while (count >= 13 && count < 76 &&
+                            !hits.compare_exchange_weak(count, count + 1, std::memory_order_acq_rel)) {}
+                        retire = count == 75;
+                    }
+                } else if (count >= 76 && count < 140 &&
+                    target != std::atomic_ref<U32>(op->imm).load(std::memory_order_relaxed)) {
+                    while (count >= 76 && count < 140 &&
+                        !hits.compare_exchange_weak(count, count + 1, std::memory_order_acq_rel)) {}
+                    if (count == 139) { hits.store(0xff, std::memory_order_release); retire = true; }
+                }
+            }
+            if (retire) cpu->memory->removeCodeBlock(instructionAddress, op, false);
+    }
+#ifdef __TEST
+    // Diagnostic mutation simulates a write after RET's one architectural load.
+    if (const char* replacement = std::getenv("BOXEDWINE_TEST_TRACE_SWAP_STACK"))
+        cpu->memory->writed(cpu->seg[SS].address + ((cpu->reg[4].u32 - 4) & cpu->stackMask), strtoul(replacement, nullptr, 0));
+#endif
+    cpu->nextOp = cpu->getNextOp();
+    return jitNextBlockAfterHostCall(cpu);
+    } catch (...) {
+        cpu->nextOp = nullptr;
+        return 0;
+    }
+}
+
+#endif
 DYN_PTR_SIZE jitRunSingleOp(CPU* cpu) {
     if (!cpu->runNextSingleOp()) {
         return 0;
@@ -1312,6 +1903,25 @@ U8* JitCodeGen::createEmulateSingleOp() {
     return createDynamicExecutableMemory();
 }
 
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+U8* JitCodeGen::createIndirectTraceExit() {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(JitCallParamType::CPU));
+    RegPtr nextJitBlock = getTmpReg();
+    callHostFunctionWithResult(nextJitBlock, (void*)jitTraceIndirectExit, params);
+    If(DYN_PTR, nextJitBlock); {
+        jmpHost(nextJitBlock);
+    } EndIf();
+    blockExit();
+    return createDynamicExecutableMemory();
+}
+
+void* jitCreateIndirectTraceExit(CPU* cpu) {
+    std::unique_ptr<JitCodeGen> generator(startNewJIT(cpu));
+    return generator->createIndirectTraceExit();
+}
+
+#endif
 #ifndef BOXEDWINE_WASM_JIT
 // Native sampling profilers see generated code as anonymous addresses. Record
 // compilation-time ranges on request, without instrumenting block execution.
@@ -1430,8 +2040,8 @@ void JitCodeGen::commitJIT(DecodedOp* op) {
             nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
         } else {
             bufferIndex = getBufferLocation(bufferIndex);
-#ifdef BOXEDWINE_JIT_X64
-            if (!nextOp->jitEntrySlot) {
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+            if (!nextOp->getJitEntrySlot()) {
                 getMemData(cpu->memory)->opCache.getJitEntryLocation(address);
             }
 #endif
@@ -1671,6 +2281,23 @@ RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(Me
     }
 
     return tmp;
+}
+
+void JitCodeGen::withRamPage(RegPtr address, bool store, const std::function<void(RegPtr)>& action,
+        const std::function<void()>& failed) {
+    RegPtr host = getTmpReg();
+    shrValueWithDest(JitWidth::b32, host, address, K_PAGE_SHIFT);
+    readMMU(host, host);
+    IfNotTestBit(JitWidth::b32, host, store ? 1 : 0); {
+        failed();
+    } EndIf();
+    andValueNative(host, ~K_PAGE_MASK);
+    {
+        RegPtr offset = getTmpReg();
+        andValueWithDest(JitWidth::b32, offset, address, K_PAGE_MASK);
+        addReg(DYN_PTR, host, offset);
+    }
+    action(std::move(host));
 }
 
 RegPtr JitCodeGen::calculateAddress(MemPtr mem) {
@@ -2509,8 +3136,69 @@ void JitCodeGen::getCF(LazyFlagType flags, RegPtr result) {
     }    
 }
 
+bool JitCodeGen::isAdc32Consumer(DecodedOp* op) const {
+    if (!op) return false;
+    switch (op->inst) {
+    case AdcR32R32: case AdcR32E32: case AdcR32I32:
+    case AdcE32R32: case AdcE32I32: return true;
+    default: return false;
+    }
+}
+
+bool JitCodeGen::isAdc32RegisterPair(DecodedOp* op) const {
+    return op && op->inst == AdcR32R32;
+}
+
+bool JitCodeGen::hasSimpleRegisterAddress32(DecodedOp* op) const {
+    return !op->ea16 && op->rm < 8 && op->sibIndex == 8;
+}
+
+bool JitCodeGen::hasFlatRegisterAddress32(DecodedOp* op) const {
+    return hasSimpleRegisterAddress32(op) &&
+        (op->base >= 6 || !cpu->thread->process->hasSetSeg[op->base]);
+}
+
+bool JitCodeGen::canTrustAdjacentAddCarry() const {
+    if (currentLazyFlags != FLAGS_ADD32 || !currentOp || currentOp->lock ||
+        (currentOp->flags2 & OP_FLAG2_JUMP_TARGET)) return false;
+    if (currentOp->inst != AdcR32R32 && currentOp->inst != AdcR32I32) return false;
+    size_t index = findBlockInstruction(currentEip);
+    if (!index || index == blockInstructions.size()) return false;
+    bool allowMoves = false;
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__) || defined(_WIN32)) && defined(BOXEDWINE_JIT_X64)
+    allowMoves = nativeJitPerformanceEnabled("BOXEDWINE_TEST_TRUST_CARRY_MOVES", true);
+#endif
+    U32 moves = 0;
+    while (index) {
+        const auto& previous = blockInstructions[index - 1];
+        const auto& following = blockInstructions[index];
+        if (previous.eip + previous.op->len != following.eip || previous.op->next != following.op || previous.op->lock) return false;
+        if (previous.op->inst == AddR32R32 || previous.op->inst == AddR32I32 || previous.op->inst == AddR32E32) return true;
+        if (!allowMoves || moves == 2 || previous.op->inst != MovR32R32 ||
+            (previous.op->flags2 & OP_FLAG2_JUMP_TARGET)) return false;
+        ++moves; --index;
+    }
+    return false;
+}
+
+bool JitCodeGen::protectCarryFallthroughEntries() {
+    if (!hideTrustedCarryEntry(currentEip)) return false;
+    size_t index = findBlockInstruction(currentEip);
+    while (index && blockInstructions[index - 1].op->inst == MovR32R32) {
+        --index;
+        if (!hideTrustedCarryEntry(blockInstructions[index].eip)) return false;
+    }
+    return true;
+}
+
 RegPtr JitCodeGen::getCF() {
     RegPtr tmpReg = getConditionCalculationReg();
+    if (canTrustAdjacentAddCarry() && protectCarryFallthroughEntries()) {
+        getConditionCalculationReg(1);
+        getConditionCalculationReg(2);
+        if (!materializeTrustedCarry(tmpReg)) getCF(FLAGS_ADD32, tmpReg);
+        return tmpReg;
+    }
     RegPtr flagsType = getLazyFlagType();
 
     // make sure these tmps are not in use by checking if they are available
@@ -2520,10 +3208,11 @@ RegPtr JitCodeGen::getCF() {
     }    
 
     if (currentLazyFlags != FLAGS_NULL) {
-        IfEqual(JitWidth::b32, flagsType, currentLazyFlags); {
+        IfEqual(JitWidth::b32, flagsType, currentLazyFlags);
+        {
             getCF(currentLazyFlags, tmpReg);
         } StartElse();
-    }    
+    }
     readCPU(DYN_PTR, flagsType, DYN_PTR_LSL, offsetof(CPU, calculateCF), tmpReg);
     nakedCall(tmpReg);
     if (currentLazyFlags != FLAGS_NULL) {
@@ -2657,12 +3346,70 @@ RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
     return calculateCondition(condition, resultReg);
 }
 
+bool JitCodeGen::protectCmpLazyFlagType() {
+    if (!currentOp || currentOp->lock ||
+        (currentOp->flags2 & OP_FLAG2_JUMP_TARGET) ||
+        currentLazyFlags != FLAGS_SUB32) return false;
+    const size_t consumer = findBlockInstruction(currentEip);
+    U32 consumerLocation = 0;
+    if (!consumer || consumer == blockInstructions.size() ||
+        !eipToBufferPos.get(currentEip, consumerLocation) || consumerLocation == SKIPPED_OP) return false;
+    size_t index = consumer;
+    while (index && consumer - index <= 16) {
+        const auto& previous = blockInstructions[index - 1];
+        const auto& following = blockInstructions[index];
+        U32 location = 0;
+        if (previous.eip + previous.op->len != following.eip || previous.op->next != following.op ||
+            previous.op->lock || !eipToBufferPos.get(previous.eip, location) || location == SKIPPED_OP)
+            return false;
+        U32 producedType = FLAGS_NULL;
+        switch (previous.op->inst) {
+        case CmpR32E32: case CmpE32R32: case CmpR32R32: case CmpR32I32: case CmpE32I32:
+            producedType = FLAGS_SUB32; break;
+        default: break;
+        }
+        if (producedType != FLAGS_NULL) {
+            if (producedType != currentLazyFlags) return false;
+            // Keep real fault boundaries and the ordinary lazy registers.
+            // Entry promotion recompiles an interior without this proof.
+            for (size_t entry = index; entry <= consumer; ++entry)
+                protectedInternalEntries.insert(blockInstructions[entry].eip);
+            return true;
+        }
+        if (previous.op->flags2 & OP_FLAG2_JUMP_TARGET) return false;
+        switch (previous.op->inst) {
+        case Nop:
+        case MovR8R8: case MovR8I8: case MovR8E8: case MovE8R8: case MovE8I8:
+        case MovR16R16: case MovR16I16: case MovR16E16: case MovE16R16: case MovE16I16:
+        case MovR32R32: case MovR32I32: case MovR32E32: case MovE32R32: case MovE32I32:
+        case LeaR16: case LeaR32:
+        case MovapsXmmXmm: case MovupsXmmXmm: case MovapdXmmXmm: case MovupdXmmXmm:
+        case MovdqaXmmXmm: case MovdquXmmXmm:
+            break;
+        default: return false;
+        }
+        --index;
+    }
+    return false;
+}
+
 RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg) {
     if (!resultReg) {
         resultReg = getTmpReg8();
     }
     U32 flagWidth = lazyFlags[currentLazyFlags] ? lazyFlags[currentLazyFlags]->width : 0;
-    IfEqual(JitWidth::b32, getLazyFlagType(), currentLazyFlags);
+    bool clearsOverflow = false;
+    switch (currentLazyFlags) {
+    case FLAGS_AND8: case FLAGS_AND16: case FLAGS_AND32:
+    case FLAGS_OR8: case FLAGS_OR16: case FLAGS_OR32:
+    case FLAGS_XOR8: case FLAGS_XOR16: case FLAGS_XOR32:
+    case FLAGS_TEST8: case FLAGS_TEST16: case FLAGS_TEST32:
+        clearsOverflow = !std::getenv("BOXEDWINE_JIT_LOGICAL_CC_SLOW");
+        break;
+    default: break;
+    }
+    const bool knownType = protectKnownLazyFlagType();
+    if (!knownType) IfEqual(JitWidth::b32, getLazyFlagType(), currentLazyFlags);
     switch (condition) {
     case JitConditional::NO:
         genOF(currentLazyFlags, resultReg);
@@ -2751,7 +3498,10 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         genPF(resultReg);
         break;
     case JitConditional::NL:
-        if (currentLazyFlags == FLAGS_SUB8) {
+        if (clearsOverflow) {
+            compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(), 0,
+                JitEvaluate::GREATER_THAN_EQUAL_SIGNED, resultReg);
+        } else if (currentLazyFlags == FLAGS_SUB8) {
             compareReg(JitWidth::b8, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::GREATER_THAN_EQUAL_SIGNED, resultReg);
         } else if (currentLazyFlags == FLAGS_SUB16) {
             compareReg(JitWidth::b16, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::GREATER_THAN_EQUAL_SIGNED, resultReg);
@@ -2768,7 +3518,20 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         }
         break;
     case JitConditional::L: {
-        if (currentLazyFlags == FLAGS_SUB8) {
+        if (clearsOverflow) {
+#ifdef BOXEDWINE_JIT_ARMV8
+            // Logical operations clear OF, so L is simply the result's sign.
+            // Extracting that bit avoids a sign extension and native compare.
+            if (!std::getenv("BOXEDWINE_ARM_LOGICAL_SIGN_SLOW")) {
+                shrValueWithDest(JitWidth::b32, resultReg, getFlagResultReadOnly(), flagWidth - 1);
+                if (flagWidth != 32) andValue(JitWidth::b32, resultReg, 1);
+            } else
+#endif
+            {
+                compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(), 0,
+                    JitEvaluate::LESS_THAN_SIGNED, resultReg);
+            }
+        } else if (currentLazyFlags == FLAGS_SUB8) {
             compareReg(JitWidth::b8, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_SIGNED, resultReg);
         } else if (currentLazyFlags == FLAGS_SUB16) {
             compareReg(JitWidth::b16, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_SIGNED, resultReg);
@@ -2786,7 +3549,22 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         break;
     }
     case JitConditional::NLE:
-        if (currentLazyFlags == FLAGS_SUB8) {
+        if (clearsOverflow) {
+#ifdef BOXEDWINE_JIT_X64
+            // Keep the zero-result shortcut: on the measured x64/Rosetta
+            // path it is cheaper than always calculating the comparison.
+            getFlagResultTmp(resultReg);
+            if (flagWidth != 32) movzx(JitWidth::b32, resultReg, getWidthOfFlags(currentLazyFlags), resultReg);
+            If(getWidthOfFlags(currentLazyFlags), resultReg); {
+                compareValue(getWidthOfFlags(currentLazyFlags), resultReg, 0,
+                    JitEvaluate::GREATER_THAN_SIGNED, resultReg);
+            } EndIf();
+#else
+            // With OF=0, signed conditions compare the narrow result to zero.
+            compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(), 0,
+                JitEvaluate::GREATER_THAN_SIGNED, resultReg);
+#endif
+        } else if (currentLazyFlags == FLAGS_SUB8) {
             compareReg(JitWidth::b8, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::GREATER_THAN_SIGNED, resultReg);
         } else if (currentLazyFlags == FLAGS_SUB16) {
             compareReg(JitWidth::b16, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::GREATER_THAN_SIGNED, resultReg);
@@ -2808,7 +3586,21 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
         }
         break;
     case JitConditional::LE: {
-        if (currentLazyFlags == FLAGS_SUB8) {
+        if (clearsOverflow) {
+#ifdef BOXEDWINE_JIT_X64
+            getFlagResultTmp(resultReg);
+            if (flagWidth != 32) movzx(JitWidth::b32, resultReg, getWidthOfFlags(currentLazyFlags), resultReg);
+            If(getWidthOfFlags(currentLazyFlags), resultReg); {
+                compareValue(getWidthOfFlags(currentLazyFlags), resultReg, 0,
+                    JitEvaluate::GREATER_THAN_SIGNED, resultReg);
+            } EndIf();
+            xorValue(JitWidth::b32, resultReg, 1);
+#else
+            // With OF=0, signed conditions compare the narrow result to zero.
+            compareValue(getWidthOfFlags(currentLazyFlags), getFlagResultReadOnly(), 0,
+                JitEvaluate::LESS_THAN_EQUAL_SIGNED, resultReg);
+#endif
+        } else if (currentLazyFlags == FLAGS_SUB8) {
             compareReg(JitWidth::b8, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_EQUAL_SIGNED, resultReg);
         } else if (currentLazyFlags == FLAGS_SUB16) {
             compareReg(JitWidth::b16, getFlagDestReadOnly(), getFlagSrcReadOnly(), JitEvaluate::LESS_THAN_EQUAL_SIGNED, resultReg);
@@ -2834,9 +3626,11 @@ RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg
     }
     // no default, should get compiler error if not all enum cases handled
     }
-    StartElse(); {
-        callGetCondition(condition, resultReg);
-    } EndIf();
+    if (!knownType) {
+        StartElse(); {
+            callGetCondition(condition, resultReg);
+        } EndIf();
+    }
     return resultReg;
 }
 
@@ -2876,6 +3670,11 @@ void JitCodeGen::IfCondition(JitConditional condition) {
 
 void JitCodeGen::preIfCondition(JitConditional condition, bool& negative, RegPtr& reg) {
     if (condition == JitConditional::Z || condition == JitConditional::NZ) {
+        if (protectKnownLazyFlagType()) {
+            reg = getFlagResultReadOnly();
+            negative = condition == JitConditional::Z;
+            return;
+        }
         // hard to measure small difference, but it seems like this gives about a 1% improvement
         // 
         // for FLAGS_NONE, result will be 0 and flags will contain ZF

@@ -30,6 +30,7 @@ void CodePage::onDemmand(MMU* mmu, U32 pageIndex) {
         RamPage ram = ramPageAlloc();
         ::memcpy(ramPageGet(ram), ramPageGet((RamPage)mmu->ramIndex), K_PAGE_SIZE);
         mmu->setPage(thread->memory, pageIndex, PageType::Code, ram);
+        ramPageRelease(ram); // setPage retains; the new code page is private.
         getMemData(thread->memory)->onPageChanged(pageIndex);
     }
 }

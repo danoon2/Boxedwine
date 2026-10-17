@@ -7063,7 +7063,10 @@ void glcommon_glScissorArrayv(CPU* cpu) {
     if (!ext_glScissorArrayv)
         kpanic("ext_glScissorArrayv is NULL");
     {
-    GL_FUNC(ext_glScissorArrayv)(ARG1, ARG2, (GLint*)marshalArray<GLint>(cpu, ARG3, ARG2*4));
+    // An empty array is host memory, not a guest buffer offset.
+    const GLint empty[4] = {};
+    GL_FUNC(ext_glScissorArrayv)(ARG1, ARG2,
+        (S32)ARG2 > 0 ? marshalArray<GLint>(cpu, ARG3, ARG2*4) : empty);
     GL_LOG ("glScissorArrayv GLuint first=%d, GLsizei count=%d, const GLint* v=%.08x",ARG1,ARG2,ARG3);
     }
 }

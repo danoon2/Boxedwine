@@ -233,7 +233,10 @@ static constexpr U32 WASM_FPU_TAG_BASE = WASM_FPU_CACHE_BASE + 8;
 static constexpr U32 WASM_FPU_TOP_LOCAL = WASM_FPU_TAG_BASE + 8;
 // Total WASM local slots, including parameters.
 static constexpr U32 WASM_FPU_VALID_BASE = WASM_FPU_TOP_LOCAL + 1;
-static constexpr U32 WASM_LOCAL_COUNT = WASM_FPU_VALID_BASE + 8;
+// Adjacent flag consumers may reuse this value across scratch-pool resets.
+static constexpr U32 WASM_FLAG_RESULT_LOCAL = WASM_FPU_VALID_BASE + 8;
+static constexpr U32 WASM_LOOP_CARRY_LOCAL = WASM_FLAG_RESULT_LOCAL + 1;
+static constexpr U32 WASM_LOCAL_COUNT = WASM_LOOP_CARRY_LOCAL + 1;
 
 // ---------------------------------------------------------------------------
 // Mapping from emulated register index to WASM local index.
@@ -419,8 +422,6 @@ public:
     void blockNext1(U32 eip, DecodedOp* op) override;
     void blockNext2(U32 eip, DecodedOp* op) override;
     void jumpEip(RegPtr reg) override;
-    bool canJumpInBlock(DecodedOp* op) override;
-    bool canJumpInBlock(U32 opEip, DecodedOp* op) override;
     void onTestEnd(DecodedOp* op) override;
 
     // --- Memory access (JitCodeGen pure virtuals) ---
@@ -458,6 +459,8 @@ public:
     // --- Function calls ---
     void callHostFunction(void* address, const std::vector<DynParam>& params,
                           bool restoreCache = true, bool saveCache = true) override;
+    void withCpuRegisterState(U32 readRegs, U32 writtenRegs, const std::function<void()>& body) override;
+    void callNonFaultingCpuHelper(void (*helper)(CPU*, U32), U32 arg, U32 readRegs, U32 writtenRegs) override;
     void callHostFunctionWithResult(RegPtr result, void* address,
                                     const std::vector<DynParam>& params) override;
     void emulateSingleOp() override;
@@ -497,7 +500,7 @@ public:
     RegPtr getFpuCacheTagReg(U8 index) override;
     RegPtr getFpuCacheTopReg() override;
     void moveFpuReg(FPURegPtr dst, FPURegPtr src) override;
-    void loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
+    bool loadFpuValue(FPURegPtr dst, RegPtr index, RegPtr valid, bool nearest = true) override;
     void fpuMath(FpuMath op, FPURegPtr dst, FPURegPtr src) override;
     void fpuAtan2(FPURegPtr dst, FPURegPtr y, FPURegPtr x) override;
     RegPtr classifyFpu(FPURegPtr value) override;
@@ -539,6 +542,7 @@ public:
     void fpuDiv(FPURegPtr dst, FPURegPtr src) override;
     void fpuXor(FPURegPtr dst, FPURegPtr src) override;
     void fpuAnd(FPURegPtr dst, FPURegPtr src) override;
+    void fpuAbs(FPURegPtr dst) override;
     void fpuSqrt(FPURegPtr dst, FPURegPtr src) override;
     void doFCOM(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) override;
     void doFCOMI(FPURegPtr fpuReg1, FPURegPtr fpuReg2, RegPtr ordTags) override;
@@ -654,6 +658,9 @@ public:
     // String ops (movs/cmps/stos/lods/scas, all widths) now use the
     // base-class native codegen; the rep'd loops route through
     // LoopBegin/LoopEnd which emit a structural WASM `loop`/`end` pair.
+
+    void withRamPage(RegPtr address, bool store, const std::function<void(RegPtr)>& action,
+        const std::function<void()>& failed) override;
 
     // --- SSE hook surface ---
     SSERegPtr getTmpSSE() override;
@@ -940,8 +947,11 @@ public:
     // --- Compilation lifecycle ---
     void preCompile(DecodedOp* op, bool skippedOp = false) override;
     void compile(DecodedOp* op) override;
+    bool compileScalarSseRegion(DecodedOp* op);
+    void emitSseDivSlowPath() override;
     void postCompile(DecodedOp* op) override;
     bool shouldStopBlockBefore(U32 eip, DecodedOp* op) override;
+    bool supportsConditionalSideExit(U32, U32) const override { return true; }
 
     // Per-block exit metadata recorded while compiling, exported with the
     // saved module as boxedwine-jit-manifest.json so the offline cache
@@ -954,16 +964,34 @@ public:
     U32 m_manifestNext1Count = 0;
     U32 m_manifestNext2Count = 0;
     U32 m_manifestJumpCount = 0;
-    U32 m_directLoopTargetEip = 0;
-    U32 m_directLoopSourceEip = 0;
-    U32 m_directLoopOpCount = 0;
+    struct ForwardTarget {
+        U32 eip;
+        U32 token;
+    };
+    struct DirectLoop {
+        U32 targetEip = 0;
+        U32 sourceEip = 0;
+        U32 opCount = 0;
+        bool touchesFpu = false;
+        bool keepsFpu = false;
+        bool dynamicFpuValidity = false;
+        U8 fixedFpuSlots = 0;
+        bool fixedFpuLazyInputs = false;
+        bool keepsRegisters = true;
+        bool keepsCarry = false;
+        LoopRegisterUsage registers;
+        std::vector<ForwardTarget> forwardTargets;
+    };
+    // Labels surrounding the function's selected loops, for forward edges
+    // that stay outside them or leave/skip a loop.
+    std::vector<ForwardTarget> m_forwardTargets;
+    std::vector<DirectLoop> m_directLoops;
+    DirectLoop* m_directLoop = nullptr;
     U32 m_directLoopToken = 0;
-    bool m_hasDirectLoopCandidate = false;
     bool m_directLoopOpen = false;
-    bool m_directLoopTouchesFpu = false;
-    bool m_directLoopKeepsFpu = false;
-    bool m_directLoopDynamicFpuValidity = false;
     FpuStackCache m_directLoopFpuEntry;
+    LoopRegisterUsage m_forwardRegionRegisters;
+    bool m_keepsForwardRegisters = false;
     // Profile-guided split bookkeeping: set when shouldStopBlockBefore ends a
     // block early because a grouped-manifest split hint named an interior
     // target; cleared once the prefix block commits.
@@ -989,7 +1017,13 @@ protected:
 
     // Helpers used internally during code generation
     void movFromMemory(DecodedOp* op, JitWidth dstWidth, JitWidth srcWidth, bool signExtend = false);
-    RegPtr readMemoryValue(JitWidth width, RegPtr address, RegPtr result, bool signExtend = false);
+    RegPtr readMemoryValue(JitWidth width, RegPtr address, RegPtr result, bool signExtend = false, bool allowGroup = true);
+    void prepareReadGroupAddress(RegPtr address);
+    ReadGroup m_readGroup;
+    bool m_readGroupActive = false;
+    bool m_readGroupReady = false;
+    // Reserve one existing scratch local only while a group is being emitted.
+    static constexpr U32 READ_GROUP_LOCAL = WASM_TMP_LOCAL_BASE + WASM_TMP_LOCAL_COUNT - 1;
     void accessMemoryCustom(U32 widthBytes, RegPtr addressReg, bool store,
         const std::function<void(MemPtr)>& customOp, const std::function<void()>& failedOp);
     void scalarSseFromMemory(DecodedOp* op, JitWidth width, U8 instruction, bool unary = false);
@@ -1000,8 +1034,22 @@ protected:
     void dynamic_cmpxchgMem32(DecodedOp* op);
     void loadGPReg(U8 emulatedReg);   // emit: local.get cpu; i32.load; local.set localN
     void storeGPReg(U8 emulatedReg);  // emit: local.get cpu; local.get localN; i32.store
-    void findDirectLoopCandidate(DecodedOp* op);
+    bool keepsLoopRegisters() const {
+        return m_directLoopOpen && m_directLoop->keepsRegisters;
+    }
+    const LoopRegisterUsage* keptRegisterUsage() const {
+        if (m_keepsForwardRegisters) return &m_forwardRegionRegisters;
+        return keepsLoopRegisters() ? &m_directLoop->registers : nullptr;
+    }
+    bool keepsForwardMemoryRegisters() const {
+        return m_keepsForwardRegisters && m_forwardRegionRegisters.touchesMemory;
+    }
+    void syncForwardMemoryJoin();
+    void prepareForwardRegisterRegion();
+    void findDirectLoopCandidates();
+    void findForwardTargets();
     bool emitDirectLoopBackedge(U32 address);
+    bool emitForwardBranch(U32 address);
 
     // Emit cpu_ptr onto WASM stack (local.get 0)
     void pushCpuPtr();
@@ -1124,6 +1172,14 @@ protected:
     // Tracks which GP locals are loaded and which are dirty (need writeback)
     std::array<bool, WASM_GP_LOCAL_COUNT> m_gpLoaded{};
     std::array<bool, WASM_GP_LOCAL_COUNT> m_gpDirty{};
+    bool m_preserveCpuRegisterState = false;
+    DecodedOp* m_forwardedResultConsumer = nullptr;
+    U32 m_forwardedResultEndEip = 0;
+    U32 findFlagResultForwardEnd(DecodedOp* producer) const;
+    // Actual published CPU state, distinct from the current flag formula.
+    LazyFlagType m_publishedLazyFlagType = FLAGS_NULL;
+    bool canKeepPublishedFlagType(DecodedOp* op) const;
+    void pushLazyFlagResult();
     std::array<bool, 4> m_segLoaded{};
     std::array<bool, WASM_XMM_LOCAL_COUNT> m_xmmLoaded{};
     std::array<bool, WASM_XMM_LOCAL_COUNT> m_xmmDirty{};
@@ -1230,6 +1286,7 @@ bool wasmJitCompilationPaused();
 #endif
 
 #ifdef __TEST
+extern "C" U32 wasmJitTestEmissionCount();
 void wasmJitTestSetFailInvalidationPreparation(bool fail);
 #endif
 

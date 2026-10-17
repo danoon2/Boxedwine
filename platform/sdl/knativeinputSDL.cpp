@@ -588,7 +588,7 @@ U32 KNativeInputSDL::getInputModifiers() {
         modifiers |= NATIVE_CONTROL_MASK;
     }
     if (mods & KMOD_ALT) {
-        modifiers |= NATIVE_CONTROL_MASK;
+        modifiers |= NATIVE_ALT_MASK;
     }
     if (mods & KMOD_NUM) {
         modifiers |= NATIVE_NUM_MASK;

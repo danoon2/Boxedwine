@@ -57,6 +57,8 @@ public:
 	const bool isWindow;
 	const bool isPBuffer;
 	bool isOpenGL = false;
+	// Internal placeholder for EGL_NO_SURFACE; native backends may omit a drawable.
+	bool isEglSurfaceless = false;
 	// -1 leaves presentation policy to the backend for non-EGL drawables.
 	S32 eglSwapInterval = -1;
 

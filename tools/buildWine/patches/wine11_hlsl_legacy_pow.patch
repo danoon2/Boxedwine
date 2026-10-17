@@ -1,0 +1,143 @@
+Subject: [Wine 11.0] Fold legacy HLSL pow before lowering to logarithms.
+
+Local fix, not an upstream backport.
+
+3DMark06 HDR Canyon Flight computes 1 / pow(1 - 1.12, 2) and similar
+expressions. Lowering pow to exp2(exponent * log2(base)) at parse time
+turns their negative bases into invalid logarithms during constant folding.
+Microsoft D3DX28 and D3DX43 accept these finite power expressions but reject
+explicit negative log2 constants. Preserve that distinction by retaining a
+POW expression until folding, then lower remaining nonconstant expressions
+to the previous instruction sequence. Apply this only to shader models 1-3;
+the SM4+ path and logarithm validation are unchanged.
+
+Regression: tools/buildWine/probes/hlsl-legacy-pow.c verifies constant
+results as well as rejection of undefined expressions. Repeat both 3DMark06
+HDR/SM3.0 scenes when changing this patch.
+
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl.h
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl.h
+@@ -781,6 +781,7 @@
+     HLSL_OP2_MOD,
+     HLSL_OP2_MUL,
+     HLSL_OP2_NEQUAL,
++    HLSL_OP2_POW,
+     HLSL_OP2_RSHIFT,
+     /* SLT(a, b) retrieves 1.0 if (a < b), else 0.0. Only used for SM1-SM3 target vertex shaders. */
+     HLSL_OP2_SLT,
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl.c
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl.c
+@@ -3806,6 +3806,7 @@
+         [HLSL_OP2_MOD]         = "%",
+         [HLSL_OP2_MUL]         = "*",
+         [HLSL_OP2_NEQUAL]      = "!=",
++        [HLSL_OP2_POW]         = "pow",
+         [HLSL_OP2_RSHIFT]      = ">>",
+         [HLSL_OP2_SLT]         = "slt",
+ 
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl.y
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl.y
+@@ -4483,6 +4483,12 @@
+ 
+     if (!elementwise_intrinsic_float_convert_args(ctx, params, loc))
+         return false;
++
++    /* Preserve legacy pow until constant folding. Expanding it here would
++     * reject finite powers of negative constants through log2(negative). */
++    if (hlsl_version_lt(ctx, 4, 0))
++        return !!add_binary_arithmetic_expr(ctx, params->instrs,
++                HLSL_OP2_POW, params->args[0], params->args[1], loc);
+ 
+     if (!(log = add_unary_arithmetic_expr(ctx, params->instrs, HLSL_OP1_LOG2, params->args[0], loc)))
+         return NULL;
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl_codegen.c
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl_codegen.c
+@@ -4970,6 +4970,23 @@
+     return hlsl_block_add_cast(ctx, block, ret, instr->data_type, &instr->loc);
+ }
+ 
++/* Lower remaining nonconstant legacy POW expressions after folding. */
++static struct hlsl_ir_node *lower_pow(struct hlsl_ctx *ctx, struct hlsl_ir_node *instr, struct hlsl_block *block)
++{
++    struct hlsl_ir_node *log, *mul;
++    struct hlsl_ir_expr *expr;
++
++    if (instr->type != HLSL_IR_EXPR)
++        return NULL;
++    expr = hlsl_ir_expr(instr);
++    if (expr->op != HLSL_OP2_POW)
++        return NULL;
++
++    log = hlsl_block_add_unary_expr(ctx, block, HLSL_OP1_LOG2, expr->operands[0].node, &instr->loc);
++    mul = hlsl_block_add_binary_expr(ctx, block, HLSL_OP2_MUL, expr->operands[1].node, log);
++    return hlsl_block_add_unary_expr(ctx, block, HLSL_OP1_EXP2, mul, &instr->loc);
++}
++
+ /* Lower DIV to RCP + MUL. */
+ static struct hlsl_ir_node *lower_division(struct hlsl_ctx *ctx, struct hlsl_ir_node *instr, struct hlsl_block *block)
+ {
+@@ -15209,6 +15226,7 @@
+ 
+         replace_ir(ctx, lower_ternary, body);
+         replace_ir(ctx, lower_int_modulus_sm1, body);
++        replace_ir(ctx, lower_pow, body);
+         replace_ir(ctx, lower_division, body);
+         /* Constants casted to float must be folded, and new casts to bool also need to be lowered. */
+         replace_ir(ctx, hlsl_fold_constant_exprs, body);
+--- a/libs/vkd3d/libs/vkd3d-shader/hlsl_constant_ops.c
++++ b/libs/vkd3d/libs/vkd3d-shader/hlsl_constant_ops.c
+@@ -1403,6 +1403,43 @@
+     return true;
+ }
+ 
++static bool fold_pow(struct hlsl_ctx *ctx, struct hlsl_constant_value *dst,
++        const struct hlsl_type *dst_type, const struct hlsl_ir_constant *src1,
++        const struct hlsl_ir_constant *src2, const struct vkd3d_shader_location *loc)
++{
++    unsigned int k;
++
++    VKD3D_ASSERT(dst_type->e.numeric.type == src1->node.data_type->e.numeric.type);
++    VKD3D_ASSERT(dst_type->e.numeric.type == src2->node.data_type->e.numeric.type);
++
++    for (k = 0; k < dst_type->e.numeric.dimx; ++k)
++    {
++        switch (dst_type->e.numeric.type)
++        {
++            case HLSL_TYPE_FLOAT:
++            case HLSL_TYPE_HALF:
++                dst->u[k].f = powf(src1->value.u[k].f, src2->value.u[k].f);
++                if (!isfinite(dst->u[k].f))
++                    hlsl_error(ctx, loc, VKD3D_SHADER_ERROR_HLSL_NON_FINITE_RESULT,
++                            "Infinities and NaNs are not allowed by the shader model.");
++                break;
++
++            case HLSL_TYPE_DOUBLE:
++                dst->u[k].d = pow(src1->value.u[k].d, src2->value.u[k].d);
++                if (!isfinite(dst->u[k].d))
++                    hlsl_error(ctx, loc, VKD3D_SHADER_ERROR_HLSL_NON_FINITE_RESULT,
++                            "Infinities and NaNs are not allowed by the shader model.");
++                break;
++
++            default:
++                FIXME("Fold 'pow' for type %s.\n", debug_hlsl_type(ctx, dst_type));
++                return false;
++        }
++    }
++
++    return true;
++}
++
+ static bool fold_rshift(struct hlsl_ctx *ctx, struct hlsl_constant_value *dst, const struct hlsl_type *dst_type,
+         const struct hlsl_ir_constant *src1, const struct hlsl_ir_constant *src2)
+ {
+@@ -1613,6 +1650,10 @@
+ 
+         case HLSL_OP2_NEQUAL:
+             success = fold_nequal(ctx, &res, instr->data_type, arg1, arg2);
++            break;
++
++        case HLSL_OP2_POW:
++            success = fold_pow(ctx, &res, instr->data_type, arg1, arg2, &instr->loc);
+             break;
+ 
+         case HLSL_OP2_RSHIFT:

@@ -21,6 +21,7 @@
 
 void internal_log(BString msg, FILE* f);
 void internal_kpanic(BString msg);
+void flushLogFileIfDue();
 
 void kpanic(const char* msg);
 

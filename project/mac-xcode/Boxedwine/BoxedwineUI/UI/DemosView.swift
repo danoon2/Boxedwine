@@ -14,6 +14,7 @@ struct DemosView: View {
 
     private var visible: [Demo] {
         store.demos.filter { store.query.isEmpty || $0.name.localizedCaseInsensitiveContains(store.query) || $0.summary.localizedCaseInsensitiveContains(store.query) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
     private var selected: Demo? { visible.first { $0.id == store.selectedDemoID } }
 

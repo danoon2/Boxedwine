@@ -525,12 +525,8 @@ S32 translateNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, in
     return result;
 }
 
-S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool write) {
-#ifdef WIN32
-    S32 result = translateNativeSocketError(s, WSAGetLastError());
-#else
-    S32 result = translateNativeSocketError(s, errno);
-#endif
+static S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool write, int nativeError) {
+    S32 result = translateNativeSocketError(s, nativeError);
     s->error = -result;
 #ifndef BOXEDWINE_MULTI_THREADED
     if (result == -K_EWOULDBLOCK) {
@@ -549,6 +545,14 @@ S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool 
     }    
 #endif
     return result;
+}
+
+S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool write) {
+#ifdef WIN32
+    return handleNativeSocketError(s, write, WSAGetLastError());
+#else
+    return handleNativeSocketError(s, write, errno);
+#endif
 }
 
 #ifndef __EMSCRIPTEN__
@@ -916,22 +920,52 @@ bool KNativeSocketObject::supportsLocks() {
 }
 
 bool KNativeSocketObject::isOpen() {
-    /*
-    fd_set          sready = {};
-    struct timeval  nowait = { 0 };
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
+    return this->nativeSocket >= 0 && (this->type == K_SOCK_DGRAM || this->listening || this->connected || this->connectPending || this->connectInProgress);
+}
 
-    FD_ZERO(&sready);
-    FD_SET(this->nativeSocket, &sready);
-
-    ::select(this->nativeSocket + 1, nullptr, nullptr, &sready, &nowait);
-    bool result = FD_ISSET(this->nativeSocket, &sready) != 0;
-    if (result) {
-        std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
-        this->error = handleNativeSocketError(t, false);
-        return false;
+// Called with connectMutex held. Reading native SO_ERROR can consume it, so retain
+// the result until the guest reads SO_ERROR (or resumes a blocking ST connect).
+void KNativeSocketObject::updateConnectStatus() {
+    if (!this->connectPending || this->connectInProgress) {
+        return;
     }
-    */
-    return this->nativeSocket >= 0 && (this->type == K_SOCK_DGRAM || this->listening || this->connected);
+    fd_set writes = {}, errors = {};
+    timeval nowait = {};
+    FD_SET(this->nativeSocket, &writes);
+    FD_SET(this->nativeSocket, &errors);
+    if (::select(this->nativeSocket + 1, nullptr, &writes, &errors, &nowait) <= 0) {
+        return;
+    }
+    int nativeError = 0;
+    socklen_t len = sizeof(nativeError);
+    if (::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&nativeError, &len) != 0) {
+        return;
+    }
+    auto socket = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+    this->connectError = nativeError ? -translateNativeSocketError(socket, nativeError) : 0;
+    this->connectPending = false;
+    this->connectFailed = this->connectError != 0;
+    this->connected = !this->connectFailed;
+    this->error = 0;
+    if (this->connected) {
+        recordEth0Rx(64);
+    }
+}
+
+U32 KNativeSocketObject::getPollEvents(U32 events) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
+    if (this->connectInProgress) {
+        return 0;
+    }
+    updateConnectStatus();
+    if (this->connectFailed) {
+        // Winsock puts a failed nonblocking connect in exceptfds, not writefds.
+        // Linux reports POLLERR/POLLHUP and requested read/write readiness. Wine
+        // needs this to finish PhysX's refused connection in Vantage CPU test 2.
+        return (this->connectError ? K_POLLERR : 0) | K_POLLHUP | (events & (K_POLLIN | K_POLLOUT));
+    }
+    return KObject::getPollEvents(events);
 }
 
 bool KNativeSocketObject::isPriorityReadReady() {
@@ -1111,27 +1145,14 @@ U32 KNativeSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, 
     std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
 #ifndef BOXEDWINE_MULTI_THREADED    
     if (this->connecting) {
-        if (this->isWriteReady()) {
-            this->error = 0;
-            this->connecting = 0;
-            this->connected = true;
-            recordEth0Rx(64);
+        updateConnectStatus();
+        if (!this->connectPending) {
+            result = -this->connectError;
+            this->connectError = 0;
+            this->connecting = false;
             removeWaitingSocket(this->nativeSocket);
-            return 0;
+            return result;
         }
-        else {
-            int error = 0;
-            socklen_t errLen = 4;
-            if (::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, &errLen) < 0) {
-                return -K_EIO;
-            }
-            if (error) {
-                result = translateNativeSocketError(t, error);
-                if (result != (U32)(-K_EWOULDBLOCK)) {
-                    return result;
-                }
-            }
-        }        
         addWaitingNativeSocket(t);
         BOXEDWINE_CONDITION_LOCK(this->writingCond);
         BOXEDWINE_CONDITION_WAIT(this->writingCond);
@@ -1162,34 +1183,58 @@ U32 KNativeSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, 
         addr = (struct sockaddr*)buffer;
     }
 
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
+        if (this->connectInProgress) {
+            return -K_EALREADY;
+        }
+        this->connectInProgress = true;
+        this->connectError = 0;
+        this->connectFailed = false;
+    }
+    // A blocking host connect must not hold up poll (including timeout=0) or
+    // SO_ERROR. Keep those callers from consuming completion until it returns.
+#ifdef __TEST
+    if (testBeforeNativeConnect) {
+        testBeforeNativeConnect();
+    }
+#endif
     int r = ::connect(this->nativeSocket, addr, addrLen);
+#ifdef WIN32
+    int nativeError = r < 0 ? WSAGetLastError() : 0;
+#else
+    int nativeError = r < 0 ? errno : 0;
+#endif
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
+    this->connectInProgress = false;
     LOG_SOCK("native socket: %x connect %s result=%x", nativeSocket, socketAddressName(thread->memory, address, len).c_str(), r);
     if (r == 0) {
-        int error = 0;
-        socklen_t optLen = 4;
-        ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, &optLen);
-
-        if (error == 0) {
-            this->connected = true;
-            recordEth0Tx(64);
-            recordEth0Rx(64);
-            return 0;
-        }
+        this->error = 0;
+        this->connectPending = false;
         this->connecting = false;
-        return -K_ECONNREFUSED;
+        this->connected = true;
+        recordEth0Tx(64);
+        recordEth0Rx(64);
+        return 0;
     }
-    result = handleNativeSocketError(t, true);
+    result = handleNativeSocketError(t, true, nativeError);
     if ((S32)result == -K_EWOULDBLOCK) {
         result = -K_EINPROGRESS;
         t->error = K_EINPROGRESS;
     }
-    if ((S32)result == -K_EINPROGRESS) {
+    if ((S32)result == -K_EINPROGRESS || (S32)result == -K_WAIT) {
         recordEth0Tx(64);
-        this->connected = true;
+        this->connectPending = true;
     }
 #ifndef BOXEDWINE_MULTI_THREADED
-    if (result == (U32)(-K_WAIT)) {            
+    if (this->connectPending && this->blocking) {
         this->connecting = true;
+        if (result != (U32)-K_WAIT) {
+            addWaitingNativeSocket(t);
+            BOXEDWINE_CONDITION_LOCK(this->writingCond);
+            BOXEDWINE_CONDITION_WAIT(this->writingCond);
+            BOXEDWINE_CONDITION_UNLOCK(this->writingCond);
+        }
     }
 #endif
     return result;
@@ -1585,8 +1630,24 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, const KFileDescriptorPtr& f
         } else if (name == K_SO_ERROR) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_ERROR expecting len of 4");
-            memory->writed(value, this->error);
-            retrievedValue = this->error;            
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(connectMutex);
+            updateConnectStatus();
+            if (this->connectError) {
+                retrievedValue = this->connectError;
+                this->connectError = 0;
+            } else if (!this->connectPending && !this->connectFailed && !this->connectInProgress) {
+                // Winsock retains a failed connect's SO_ERROR even after it was
+                // read; Linux clears it. Do not expose the consumed error again.
+                int nativeError = 0;
+                result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&nativeError, &len);
+                if (!result && nativeError) {
+                    auto socket = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+                    retrievedValue = -translateNativeSocketError(socket, nativeError);
+                }
+            }
+            if (!result) {
+                memory->writed(value, retrievedValue);
+            }
         } else if (name == K_SO_TYPE) { 
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt K_SO_TYPE expecting len of 4");

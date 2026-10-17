@@ -395,6 +395,9 @@ public:
 #ifdef BOXEDWINE_JIT
     OpCallback startJITOp = nullptr;
     void* emulateSingleOp = nullptr;
+#if (defined(__TEST) || defined(BOXEDWINE_JIT_MEMORY_EXPERIMENT) || defined(__linux__)) && defined(BOXEDWINE_JIT_X64)
+    void* indirectTraceExit = nullptr;
+#endif
     void* emulateOpenGL = nullptr;
 #ifdef BOXEDWINE_POSIX
     void* signalHandler = nullptr;

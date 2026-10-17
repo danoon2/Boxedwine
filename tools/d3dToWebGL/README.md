@@ -1,21 +1,102 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current source series is pinned by
-[`webgl-test-divergences-v42.json`](../wineTests/webgl-test-divergences-v42.json).
-It contains 55 production patches and one separate, complete Wine graphics-test
-adaptation. The [v42 inventory](../wineTests/webgl-patch-inventory-v42.json)
+[`webgl-test-divergences-v47.json`](../wineTests/webgl-test-divergences-v47.json).
+It contains 68 production patches and one separate, complete Wine graphics-test
+adaptation. The [v47 inventory](../wineTests/webgl-patch-inventory-v47.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 41 retain earlier build and test selections for reproducing historical
+Versions 2 through 46 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
+
+Filesystem 20 selects v47. Patch 68 adds partial stream-output varyings alongside
+rasterizer outputs, matching the main WineD3D tarp fix. It changes the separately
+built `wined3d.dll`; the other seven DLLs retain their previous identities.
+WebGL geometry-shader and stream-output capability limits remain unchanged.
+The candidate DLLs and archives are pinned by
+[`webgl_filesystems_v20.json`](../buildWine/webgl_filesystems_v20.json).
+
+Filesystems 18 and 19 select v46. Patches 66 and 67 add the shared WineD3D stream-output
+overflow query and DXGI fullscreen activation fixes used by 3DMark Vantage.
+Overflow queries remain conditional on host OpenGL support; WebGL does not gain
+that capability. Wine test policy is unchanged. Those historical DLLs and archives
+are pinned by [`webgl_filesystems_v19.json`](../buildWine/webgl_filesystems_v19.json).
+Revision 19 changes the shared Wine shader compiler used by the PE D3DX DLLs;
+the separate PE DLLs retain their v18 hashes.
 
 The published v11 filesystem is pinned to v41. Its September 19 download
 matches the candidate used for the focused regression checks; see
 [the validation and upload record](../wineTests/graphics-review-fixes-20260919.json).
-The current version 14 filesystem selects v42, which adds the persistent-GDI-buffer
-lifetime fix to its separately built PE32 `C:/webgl/wined3d.dll`. The DLL hash
-is pinned by [`webgl_filesystems_v14.json`](../buildWine/webgl_filesystems_v14.json).
+The version 15 full and web filesystems select v43, adding RGB565 SSE2 upload
+conversion, fog/projection constant caches and immediate map/unmap dispatch.
+Their separately built PE32 `C:/webgl/wined3d.dll` is pinned by
+[`webgl_filesystems_v16.json`](../buildWine/webgl_filesystems_v16.json).
+Regular Wine carries the fog/projection and immediate-map counterparts through
+`wine_builds.json`; RGB565 expansion is specific to the WebGL upload path.
+
+Filesystem 17 selects v45. Production patches 60 through 65 fix 3DMark06's
+static HLSL helpers, constant disassembly/reassembly, folding passes, loop
+unrolling, legacy constant `pow`, and `texCUBElod`, respectively. The same
+patches rebuild regular Wine and the separate PE D3DX DLLs, which use Wine's
+shared builtin compiler modules. The assembler
+lexer change belongs to the production series; its Wine unit-test additions
+are retained separately in `wine11_shader_disassembly_constants_tests.patch`.
+The DLL and archive identities are pinned by
+[`webgl_filesystems_v17.json`](../buildWine/webgl_filesystems_v17.json).
+These compiler fixes apply independently of the rendering backend; they do not
+enable Vulkan. See [the regression notes](../../docs/3dmark06-shaders.md).
+
+The RGB565 upload optimization is
+[`webgl-rgb565-upload-scaling-against-wine-11.0.patch`](webgl-rgb565-upload-scaling-against-wine-11.0.patch).
+It is patch 56 in the v43 production series. It expands eight RGB565 pixels at a time
+with SSE2, preserves exact rounded channel values, and uses scalar conversion
+for remaining pixels and builds without SSE2. The compiled PE32 row function
+passed all 65,536 input colours plus alignment, tail and row-guard checks in
+Boxedwine's single-threaded Wasm JIT. Alternating local benchmarks measured
+about 2.0–5.2 times the original conversion throughput for 32–4096-pixel rows;
+these are CPU conversion timings, not MW3 frame-rate measurements.
+
+The fog-uniform optimization is
+[`webgl-fog-uniform-cache-against-wine-11.0.patch`](webgl-fog-uniform-cache-against-wine-11.0.patch).
+It is patch 57 in the v43 production series. In WebGL
+mode it remembers all seven fog floats per linked program and skips uploads
+only when their bits match. New programs start with an invalid cache. Focused
+helper checks cover every component, program switching and recreation, signed
+zero, NaN payloads and native-mode behavior. MW3 rendered correctly in the
+browser capture and the measured Uniform1f/Uniform4fv calls fell from about
+five per draw to one. The observed frame rate rose from 7.59 to 9.56 swaps/s,
+but draw counts per frame differed, so this is not a controlled speedup result.
+
+The projection-constant optimization is
+[`webgl-projection-constant-cache-against-wine-11.0.patch`](webgl-projection-constant-cache-against-wine-11.0.patch).
+It is patch 58 in the v43 production series.
+DirectDraw surface synchronization repeatedly invalidates the projection used
+for pretransformed vertices. In WebGL mode this patch compares the complete
+matrix before queuing a constant-buffer copy and shader invalidation. Both
+normal and pretransformed projection updates share the cache; reset and full
+state invalidation clear it, including DirectDraw device switches. Focused
+helper checks cover first uploads, allocation retry, every component, exact
+float bits, matrix changes, invalidation and native-mode behavior. MW3 rendered
+correctly during stationary and active browser captures. With fog caching
+already enabled, measured Uniform1f/Uniform4fv calls per draw fell by 96.6%
+and 92.0%, respectively. Stationary presentation rose from 9.66 to 10.89
+swaps/s in one pair of runs; diagnostic overhead and differences in workload
+prevent treating this as a controlled whole-game speedup. The separate
+constant dirty-range rounding issue is not changed by this patch.
+
+The map/unmap dispatch optimization is
+[`webgl-direct-map-dispatch-against-wine-11.0.patch`](webgl-direct-map-dispatch-against-wine-11.0.patch).
+It is patch 59 in the v43 production series. Immediate WebGL contexts call the resource map/unmap callbacks
+directly after the existing upload-buffer and synchronization handling.
+Other contexts retain command dispatch. The compiled PE32 code passed 77
+focused checks per run under the single-threaded Wasm JIT, including nested
+commands, failure returns, pitches, upload addresses and idle-wait ordering.
+Six alternating benchmark processes measured about 0.45 microseconds less
+dispatch overhead per NOOVERWRITE map/unmap pair (1.03 to 0.59 microseconds).
+Resource callbacks were test substitutes, so this does not establish full
+mapping cost or a game frame-rate gain. The user reported correct MW3 rendering
+during the Chrome gameplay check.
 
 Production patch replay and test-policy validation establish reproducibility,
 not graphics conformance. The standalone probes in `tools/wineTests/tests/`
@@ -186,7 +267,7 @@ Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
 python3 tools/wineTests/webglTestDivergences.py \
-  --manifest tools/wineTests/webgl-test-divergences-v42.json
+  --manifest tools/wineTests/webgl-test-divergences-v47.json
 ```
 
 The validator checks patch hashes, forbids production changes to Wine test
@@ -208,7 +289,7 @@ import sys
 
 repo = Path.cwd()
 source = Path(sys.argv[1]).resolve()
-manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v42.json").read_text())
+manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v47.json").read_text())
 head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
 if head != manifest["wine_source_commit"]:
     raise SystemExit("Wine checkout is not at the pinned source commit")

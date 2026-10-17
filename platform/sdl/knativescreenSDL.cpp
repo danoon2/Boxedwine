@@ -45,6 +45,11 @@
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_OPENGL_SDL)
 #include <emscripten/emscripten.h>
 
+#ifdef __EMSCRIPTEN_PTHREADS__
+// bwCallHandlerCmd comes from boxedwine-multithreaded-helper.js.
+EM_JS_DEPS(boxedwine_present_software_frame_deps, "$bwCallHandlerCmd");
+#endif
+
 EM_JS(void, boxedwinePresentSoftwareFrame, (const U32* pixels, int width, int height), {
     var presentState = null;
     if (typeof SharedArrayBuffer !== 'undefined' && typeof Atomics !== 'undefined') {
@@ -72,7 +77,7 @@ EM_JS(void, boxedwinePresentSoftwareFrame, (const U32* pixels, int width, int he
         Module.boxedwinePresentSoftwareFrame(width, height, rgba.buffer, presentState);
     } else {
         postMessage({
-            cmd: 'callHandler',
+            cmd: bwCallHandlerCmd,
             handler: 'boxedwinePresentSoftwareFrame',
             args: [width, height, rgba.buffer, presentState]
         }, [rgba.buffer]);
