@@ -24,6 +24,7 @@
 #include "knativeinputSDL.h"
 #include "knativesystem.h"
 #include "kdspaudio.h"
+#include "devcdrom.h"
 
 #ifdef __APPLE__
 #include "../mac/macCursor.h"
@@ -1107,6 +1108,15 @@ void KNativeInputSDL::processCustomEvents(std::function<bool(bool isKeyDown, int
     }
 }
 
+// Ctrl+Shift+F12 puts the next disc in the CD-ROM drive (see -cdrom). DOSBox's Ctrl+F4
+// would close the document in Windows apps. The browser has no hotkey: the page's
+// Eject button and disc list change discs.
+static bool cdromHotkeyDown;
+
+[[maybe_unused]] static bool isCDRomHotkey(SDL_Event* e) {
+    return e->key.keysym.sym == SDLK_F12 && (e->key.keysym.mod & KMOD_CTRL) && (e->key.keysym.mod & KMOD_SHIFT);
+}
+
 bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
     if (e->type == sdlMouseConfinementEvent) {
         updateMouseConfinement(SDL_GetKeyboardFocus());
@@ -1160,13 +1170,20 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         if (!BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(e->key.keysym.scancode, e->key.keysym.sym == SDLK_F11)) {
             if (e->key.keysym.sym == SDLK_SCROLLOCK) {
                 KSystem::printStacks();
+#ifndef __EMSCRIPTEN__
+            } else if (isCDRomHotkey(e)) {
+                cdromHotkeyDown = true;
+                cdromNextDisc();
+#endif
             } else if (!key(e->key.keysym.scancode, e->key.keysym.sym, 1)) {
                 onKeyDown(translate(e->key.keysym.sym));
             }
         }
     } else if (e->type == SDL_KEYUP) {
         if (!BOXEDWINE_RECORDER_HANDLE_KEY_UP(e->key.keysym.scancode, e->key.keysym.sym == SDLK_F11)) {
-            if (!key(e->key.keysym.scancode, e->key.keysym.sym, 0)) {
+            if (cdromHotkeyDown && e->key.keysym.sym == SDLK_F12) {
+                cdromHotkeyDown = false;
+            } else if (!key(e->key.keysym.scancode, e->key.keysym.sym, 0)) {
                 onKeyUp(translate(e->key.keysym.sym));
             }
         }

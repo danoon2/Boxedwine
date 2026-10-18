@@ -139,8 +139,8 @@
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
-            let cdrom = getCDRom("cdrom"); //MANUAL:{file: "game.iso", drive: "e"}
-            Config.cdromISOFile = cdrom.file;
+            let cdrom = getCDRom("cdrom"); //MANUAL:{files: ["disc1.iso", "disc2.iso"], drive: "e"}
+            Config.cdromISOFiles = cdrom.files;
             Config.cdromDrive = cdrom.drive;
             Config.appPayload = getPayload("app-payload"); 
             Config.extraPayload = getPayload("overlay-payload"); 
@@ -612,23 +612,37 @@
             }
             return result;
         }
-        // cdrom=e:game.iso mounts game.iso as drive e:, cdrom=game.iso uses DEFAULT_CDROM_DRIVE
+        // cdrom=e:game.iso mounts game.iso as drive e:, cdrom=game.iso uses DEFAULT_CDROM_DRIVE.
+        // cdrom=e:disc1.iso;disc2.iso lists the discs of a multi-disc game, which are
+        // swapped in the one drive.
         function getCDRom(param) {
-            var filename =  getParameter(param);
-            var drive = DEFAULT_CDROM_DRIVE;
-            if(!allowParameterOverride() || filename===""){
-                filename = "";
+            var value =  getParameter(param);
+            var drive = "";
+            var files = [];
+            if(!allowParameterOverride() || value===""){
                 console.log("not setting " + param + " ISO file");
             }else{
-                filename = decodeUrlValue(filename);
-                let letter = filename.match(/^([a-z]):(.+)$/i);
-                if (letter) {
-                    drive = letter[1].toLowerCase();
-                    filename = letter[2];
+                decodeUrlValue(value).split(";").forEach(function(item) {
+                    item = item.trim();
+                    let letter = item.match(/^([a-z]):(.+)$/i);
+                    if (letter) {
+                        if (drive !== "" && drive !== letter[1].toLowerCase()) {
+                            console.log("ignoring drive " + letter[1] + ": for " + letter[2] + ", every disc goes in drive " + drive + ":");
+                        } else {
+                            drive = letter[1].toLowerCase();
+                        }
+                        item = letter[2];
+                    }
+                    if (item.length > 0) {
+                        files.push(item);
+                    }
+                });
+                if (drive === "") {
+                    drive = DEFAULT_CDROM_DRIVE;
                 }
-                console.log("setting " + param + " ISO file to: "+filename+" on drive "+drive+":");
+                console.log("setting " + param + " ISO file(s) to: "+files.join(", ")+" in drive "+drive+":");
             }
-            return { file: filename, drive: drive };
+            return { files: files, drive: drive || DEFAULT_CDROM_DRIVE };
         }
         function getAppZipFile(param) {
 
@@ -763,14 +777,125 @@
                 callback();
             }
         }
+        // Only disc 1 is loaded before starting. Disc images are large, so each of the
+        // others is fetched when it is inserted and the one it replaces is deleted.
         function buildCDRomFileSystems(callback) {
-			if(Config.cdromISOFile.length > 0){
-				loadFile(Config.locateCDRomBaseUrl, Config.cdromISOFile, (uint8Array) => {
-					createFile("/", Config.cdromISOFile, uint8Array);
+			if(Config.cdromISOFiles.length > 0){
+				loadFile(Config.locateCDRomBaseUrl, Config.cdromISOFiles[0], (uint8Array) => {
+					createFile("/", Config.cdromISOFiles[0], uint8Array);
 					callback();
 				});
             }else{
                 callback();
+            }
+        }
+        var cdromCurrent = 0;    // disc in the drive, -1 while it is empty
+        var cdromLoading = -1;   // disc being downloaded or inserted
+        var cdromReady = false;  // Boxedwine has reported the drive's state
+        function cdromDiscIsLoaded(file) {
+            try {
+                FS.stat("/" + file);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        function setupCDRomControls() {
+            if (Config.cdromISOFiles.length == 0) {
+                return;
+            }
+            let select = document.getElementById("cdromdisc");
+            if (select) {
+                select.innerHTML = "";
+                let empty = document.createElement("option");
+                empty.value = "-1";
+                empty.textContent = "No disc in " + Config.cdromDrive.toUpperCase() + ":";
+                select.appendChild(empty);
+                Config.cdromISOFiles.forEach(function(file, index) {
+                    let option = document.createElement("option");
+                    option.value = "" + index;
+                    option.textContent = "Disc " + (index + 1) + ": " + file;
+                    select.appendChild(option);
+                });
+                select.style.display = "";
+            }
+            let eject = document.getElementById("cdromejectbtn");
+            if (eject) {
+                eject.style.display = "";
+            }
+            updateCDRomControls();
+        }
+        // Like a real drive, the disc can only be changed after Eject: the list is
+        // locked while a disc is in the drive and while one is loading.
+        function updateCDRomControls() {
+            let busy = !cdromReady || cdromLoading >= 0;
+            let select = document.getElementById("cdromdisc");
+            if (select) {
+                select.value = "" + (cdromLoading >= 0 ? cdromLoading : cdromCurrent);
+                select.disabled = busy || cdromCurrent >= 0;
+            }
+            let eject = document.getElementById("cdromejectbtn");
+            if (eject) {
+                eject.disabled = busy || cdromCurrent < 0;
+            }
+        }
+        // Called by Boxedwine after any insert or eject, including ones the program asks for
+        function boxedwineCDRomChanged(index) {
+            cdromCurrent = index;
+            cdromReady = true;
+            updateCDRomControls();
+        }
+        function insertCDRomDisc(index) {
+            if (index < 0 || cdromLoading >= 0 || index >= Config.cdromISOFiles.length || typeof Module.ccall !== "function") {
+                updateCDRomControls(); // undo a list change that was not acted on
+                return;
+            }
+            let file = Config.cdromISOFiles[index];
+            let finish = function() {
+                if (Module.ccall("boxedwineCDRomInsert", "number", ["number"], [index])) {
+                    cdromCurrent = index;
+                    // free the memory of the discs that are not in the drive
+                    Config.cdromISOFiles.forEach(function(other) {
+                        if (other !== file && cdromDiscIsLoaded(other)) {
+                            try {
+                                FS.unlink("/" + other);
+                            } catch (e) {
+                                console.log("Unable to delete " + other + ": " + e);
+                            }
+                        }
+                    });
+                } else {
+                    console.log("Unable to insert disc " + (index + 1) + ": " + file);
+                }
+                cdromLoading = -1;
+                updateCDRomControls();
+            };
+            cdromLoading = index;
+            updateCDRomControls();
+            if (cdromDiscIsLoaded(file)) {
+                finish();
+                return;
+            }
+            console.log("Loading disc " + (index + 1) + ": " + file);
+            fetch(Config.locateCDRomBaseUrl + file, { method: 'GET' }).then(function(response) {
+                if (response.status !== 200) {
+                    throw new Error("status " + response.status);
+                }
+                return response.arrayBuffer();
+            }).then(function(buffer) {
+                createFile("/", file, new Uint8Array(buffer));
+                finish();
+            }).catch(function(error) {
+                console.log("Unable to load disc " + (index + 1) + ": " + file + " error: " + error);
+                cdromLoading = -1;
+                updateCDRomControls();
+            });
+        }
+        function ejectCDRomDisc() {
+            if (cdromReady && cdromLoading < 0 && typeof Module.ccall === "function") {
+                Module.ccall("boxedwineCDRomEject", null, [], []);
+                cdromCurrent = -1;
+                updateCDRomControls();
             }
         }
         function buildExtraFileSystems(callback) {
@@ -885,6 +1010,7 @@
             }
 
             document.getElementById('startbtn').textContent = "Running...";
+            setupCDRomControls();
             awaitingStart = false;
             Module["removeRunDependency"]("setupBoxedWine");
         }
@@ -1636,9 +1762,9 @@
             }
             params.push("-zip");
             params.push(Config.rootZipFile);
-            if(Config.cdromISOFile.length > 0){
+            for (let i = 0; i < Config.cdromISOFiles.length; i++) {
 				params.push("-cdrom");
-				params.push(Config.cdromISOFile);
+				params.push(Config.cdromISOFiles[i]);
 				params.push(Config.cdromDrive);
 			}
             
