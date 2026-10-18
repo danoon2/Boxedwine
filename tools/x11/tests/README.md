@@ -51,6 +51,23 @@ several related implementation gaps, not 12 independent root causes. The probe
 passes all 12 after the focus fixes. The extended run passes all 27 on both
 the corrected Boxedwine engine and Xvfb.
 
+## GDI cursor presentation on macOS
+
+Run the Age of Empires demo with Wine's GDI renderer, start a game, and open its
+in-game menu to pause animation. Move the mouse continuously over the menu;
+also check moving and clicking in active gameplay. The cursor should continue
+updating smoothly in both cases. Use physical mouse or trackpad motion for this
+check; automation that only sends endpoints does not reproduce it.
+
+`XFlush` must respect the normal display presentation interval. Previously it
+bypassed that interval and synchronously presented a frame for nearly every
+flush while Wine processed mouse motion. On a Mac, the paused-menu trace showed
+about 187 presentations but only 9 image uploads per second, with most of the
+guest's time spent waiting for those presentations. Keeping the existing frame
+interval reduced presentations to about 57 per second, and image uploads kept
+pace with roughly 97 mouse events per second. No mouse events are dropped or
+coalesced by this fix.
+
 ## Pointer hit testing
 
 `pointer.c` checks owned popup hit testing using `XTranslateCoordinates`, which

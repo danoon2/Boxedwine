@@ -1627,7 +1627,9 @@ static void x11_PutImage(CPU* cpu) {
 // int XFlush(Display* display)
 static void x11_Flush(CPU* cpu) {
     XServer* server = XServer::getServer();
-    server->draw(true);
+    // Keep the normal presentation cadence. Frequent XFlush calls (for example,
+    // while Wine handles mouse motion) must not block on redundant host frames.
+    server->draw();
     EAX = Success;
 }
 
