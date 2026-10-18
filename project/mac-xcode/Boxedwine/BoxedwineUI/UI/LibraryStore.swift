@@ -65,6 +65,13 @@ final class LibraryStore: ObservableObject {
     @Published var preparedSource: PreparedAppSource?
     @Published var addAppError: String?
     @Published var collectionNames: [String] = []
+    var sidebarCollectionNames: [String] {
+        #if BOXEDWINE_APP_STORE
+        (canResetDemos ? ["Demos"] : []) + collectionNames
+        #else
+        ["Demos"] + collectionNames
+        #endif
+    }
     @Published private(set) var canResetDemos = false
     @Published private(set) var refreshableCollections: Set<String> = []
     @Published var collectionName = "Demos"
@@ -668,7 +675,6 @@ final class LibraryStore: ObservableObject {
     }
 
     private func loadCollectionIcons() {
-        #if !BOXEDWINE_APP_STORE
         guard let repository else { return }
         let urls = iconDemos.map(\.icon).filter { CollectionIconCache.remoteURL($0) != nil && requestedIcons.insert($0).inserted }
         guard !urls.isEmpty else { return }
@@ -683,7 +689,6 @@ final class LibraryStore: ObservableObject {
             }.value
             collectionIconRevision += 1
         }
-        #endif
     }
 
     func showCollection(_ name: String) {
@@ -704,7 +709,6 @@ final class LibraryStore: ObservableObject {
     }
 
     func refreshCollection(_ name: String) {
-        #if !BOXEDWINE_APP_STORE
         guard canEdit, !importing, refreshableCollections.contains(name), let collectionStore else { return }
         let control = beginImport(name: "Refreshing " + name)
         Task {
@@ -732,7 +736,6 @@ final class LibraryStore: ObservableObject {
             do { let folder = try collectionStore.applyRefresh(review); showCollection(folder) }
             catch { errorMessage = error.localizedDescription }
         }
-        #endif
     }
 
     func removeCollection(_ name: String) {
@@ -741,9 +744,15 @@ final class LibraryStore: ObservableObject {
         let alert = NSAlert()
         alert.messageText = name == "Demos" ? "Reset Demos?" : "Delete collection “\(name)”?"
         alert.informativeText = name == "Demos" ? "Restore the default demo listings. Installed apps and saves are kept." : "Remove this collection and its listings. Installed apps and saves are kept."
+        #if BOXEDWINE_APP_STORE
+        if name == "Demos" { alert.informativeText = "Remove the imported demo listings. Installed apps and saves are kept." }
+        #endif
         alert.addButton(withTitle: name == "Demos" ? "Reset Demos" : "Delete Collection"); alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn, canEdit, !importing else { return }
-        do { try collectionStore.remove(name); showCollection("Demos") }
+        do {
+            try collectionStore.remove(name); refreshCollections()
+            if sidebarCollectionNames.contains("Demos") { showCollection("Demos") } else { showLibrary() }
+        }
         catch { errorMessage = error.localizedDescription }
     }
 
@@ -752,11 +761,7 @@ final class LibraryStore: ObservableObject {
         panel.title = collectionOnly ? "Choose Collection" : folder ? "Choose Folder" : "Choose File"
         panel.canChooseDirectories = folder; panel.canChooseFiles = !folder; panel.allowsMultipleSelection = false
         if !folder {
-            #if BOXEDWINE_APP_STORE
-            let extensions = ["zip", "exe", "msi"]
-            #else
             let extensions = collectionOnly ? ["json"] : ["zip", "exe", "msi", "json"]
-            #endif
             panel.allowedContentTypes = extensions.map { UTType(filenameExtension: $0) ?? .data }
         }
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -1023,7 +1028,6 @@ final class LibraryStore: ObservableObject {
         if appIDToReveal == id { appIDToReveal = nil }
     }
 
-#if !BOXEDWINE_APP_STORE
     func showDemos() { showCollection("Demos") }
 
     func installedDemo(_ demo: Demo) -> LibraryApp? { apps.first { $0.demo?.id == demo.id } }
@@ -1073,8 +1077,6 @@ final class LibraryStore: ObservableObject {
             }
         }
     }
-
-#endif
 
     func requestRemoval(_ app: LibraryApp) {
         guard canModify(app), apps.contains(where: { $0.id == app.id }) else { return }

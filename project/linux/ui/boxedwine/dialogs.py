@@ -288,7 +288,9 @@ def add_app(owner, source=None):
         if purpose == 'backup':
             owner.restore_backup(); return
         sources = Adw.PreferencesDialog(title='Add Collection' if purpose == 'collection' else 'Add App or Installer', content_width=560, content_height=420)
-        section = group(page(sources, 'Source', 'document-open-symbolic'), 'Choose a source')
+        section = group(page(sources, 'Source', 'document-open-symbolic'), 'Choose a source',
+                        'A collection is a list of apps you can browse; apps are downloaded only when you choose to install them. '
+                        'To add the extended Boxedwine demo collection, enter https://boxedwine.org/demos.json below.' if purpose == 'collection' else None)
         error = Gtk.Label(wrap=True, xalign=0, selectable=True, visible=False)
         error.add_css_class('error')
         def show_error(message=''):

@@ -98,7 +98,9 @@ internal static class Dialogs
     public sealed record SourceRequest(PreparedAppSource? Prepared, bool Remote, bool Back = false);
     public static SourceRequest? AddSource(Window owner, bool collection)
     {
-        var form = new FormWindow(owner, collection ? "Add Collection" : "Add App or Installer", "Choose where your files are."); SourceRequest? result = null;
+        var form = new FormWindow(owner, collection ? "Add Collection" : "Add App or Installer", collection
+            ? "A collection is a list of apps you can browse; apps are downloaded only when you choose to install them. To add the extended Boxedwine demo collection, enter https://boxedwine.org/demos.json below."
+            : "Choose where your files are."); SourceRequest? result = null;
         CancellationTokenSource? cancellation = null;
         bool closed = false, closeAfterCancellation = false;
         var error = new TextBlock { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.SemiBold, Visibility = Visibility.Collapsed };

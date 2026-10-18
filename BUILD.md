@@ -143,13 +143,17 @@ arguments still work and, if combined with `-shard`, select the range to split.
 
 `project/mac-xcode/buildAppStore.sh [--skip-dependencies] /absolute/path/TinyCore15Wine11.0.zip TEAMID`
 archives the native UI with `BOXEDWINE_BUILD_VARIANT=BOXEDWINE_APP_STORE`.
-This becomes a Swift compilation condition: the launcher has no demo installer,
-URLSession downloader, demo browser, or Wine download/version-switching UI.
-Wine 11 and Wine's Minesweeper are included; adding apps requires no download.
+This becomes a Swift compilation condition: Wine 11 and Wine's Minesweeper are
+included, and Wine download/version-switching UI is disabled. Local apps require
+no download. Users can import collection JSON from a local file or URL, browse
+its listings, and choose apps to download and install using the included Wine.
+Collections support remote icons and manual refresh. Direct app/installer URL
+imports remain unavailable in this edition.
 The supplied Wine ZIP must match the exact branch pin in `Resources/WindowsSupport`.
 The bundle phase skips fetching the demo catalog and strips any catalog left by
-an earlier build. It includes only Wine 11's pin and a privacy manifest with no
-collected-data declarations. Windows programs still have network access.
+an earlier build. Collection folders appear after import. It includes only
+Wine 11's pin and retains the shared privacy manifest's hosting-log disclosures
+for optional downloads. Windows programs still have network access.
 
 To test this edition locally with ad-hoc signing, run:
 

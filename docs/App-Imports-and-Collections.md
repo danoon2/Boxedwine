@@ -6,7 +6,7 @@ The native Mac, Windows, and Linux launchers use **Add to Library**:
 2. Choose a file, folder, or direct download URL. Collections accept local or downloaded JSON. Restore uses an existing `.boxedwinebackup` package/folder.
 3. Review the destination and action. A ZIP is extracted into temporary storage before review. Choose the app program or installer; supporting files are copied together. Compatibility settings are optional. Nothing runs during inspection.
 
-App downloads support direct ZIP, EXE, and MSI links, up to 1 GiB. Collection JSON is limited to 1 MiB. Redirects cannot switch from HTTPS to HTTP. Downloads and extraction can be cancelled; failed or cancelled preparation removes temporary files. The Mac App Store build retains its existing restrictions on downloads and demo installation.
+App downloads support direct ZIP, EXE, and MSI links, up to 1 GiB. Collection JSON is limited to 1 MiB. Redirects cannot switch from HTTPS to HTTP. Downloads and extraction can be cancelled; failed or cancelled preparation removes temporary files. The Mac App Store build supports collection imports from files and URLs, remote icons, refresh, and installing apps from imported listings using its included Wine. It does not bundle a demo catalog or download additional Wine packages; direct app/installer URL imports remain unavailable there.
 
 Invalid links, failed downloads, and invalid source files show an error inside the source form. The entered URL stays available to edit and retry; editing the URL or starting another attempt clears the previous error. Cancelling a download also returns to the source form without discarding the URL.
 

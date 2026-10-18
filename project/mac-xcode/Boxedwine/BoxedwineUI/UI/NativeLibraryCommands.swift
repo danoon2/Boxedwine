@@ -184,9 +184,7 @@ struct NativeLibraryCommands: Commands {
         CommandGroup(before: .sidebar) {
             action("All Apps", .allApps).keyboardShortcut("1")
             action("Recently Opened", .recent).keyboardShortcut("2")
-#if !BOXEDWINE_APP_STORE
-            action("Demos", .demos).keyboardShortcut("3")
-#endif
+            if store.sidebarCollectionNames.contains("Demos") { action("Demos", .demos).keyboardShortcut("3") }
             if store.showsRemovedApps {
                 action("Removed Apps", .removed).keyboardShortcut("4")
             }
@@ -246,12 +244,10 @@ struct NativeHelpView: View {
                     explanation("Run Installer", "For an .exe or .msi setup program. Choose a folder or ZIP when setup needs nearby data files.")
                     Text("Boxedwine copies those files into your library. After an installer closes, choose the program you want to open and save it to the library. If setup did not finish, open Troubleshooting and use Run Installer Again.")
                 }
-                #if !BOXEDWINE_APP_STORE
                 topic("Add or update a collection", symbol: "folder.badge.plus") {
                     Text("Choose Add to Library → Collection, then a JSON file or URL. Review the destination folder and the new, updated, and unchanged counts. Reimporting into the same folder matches stable app IDs, so it updates listings without duplicates. URL imports remember their sources: use Refresh to check for changes, then Apply Changes. Local files can be reimported.")
-                    Text("Collections stay available after relaunch. Delete a custom collection or use Reset Demos to restore the default listings. These actions keep installed apps and saves.")
+                    Text("Collections stay available after relaunch. Delete a custom collection or use Reset Demos to remove imported demo listings and restore any bundled listings. These actions keep installed apps and saves.")
                 }
-                #endif
                 topic("Keep your files and saves", symbol: "archivebox") {
                     Text("Back Up App in App Settings saves an app’s Windows files, settings and Wine package together. Close the app first. If you’ve edited its settings, Save and Back Up includes those changes. Restore App Backup creates a separate library entry.")
                     Text("By default, Remove from Library keeps files in Removed Apps so you can restore them. Enable Delete apps immediately in Settings to go straight to a permanent-deletion confirmation. This erases the app’s files and saves. Existing Removed Apps are kept, and the Manage section hides when it has nothing to show.")

@@ -45,12 +45,12 @@ class DistributionResourcesTests(unittest.TestCase):
     def prepare(self, variant, wine=None):
         editions.prepare(self.output, variant, wine, self.source)
 
-    def test_store_has_one_wine_no_catalog_and_no_collection(self):
+    def test_store_has_one_wine_no_bundled_catalog_and_download_privacy_disclosures(self):
         self.prepare(editions.STORE, self.wine)
         self.assertFalse((self.output / "Demos").exists())
         self.assertEqual((self.output / "WindowsSupport/wine.zip").read_bytes(), self.wine.read_bytes())
         self.assertEqual([e.findtext("WineVersion") for e in ET.parse(self.output / "WindowsSupport/filesV2.xml").findall("Wine")], ["11.0"])
-        self.assertEqual(plistlib.loads((self.output / "PrivacyInfo.xcprivacy").read_bytes())["NSPrivacyCollectedDataTypes"], [])
+        self.assertEqual(plistlib.loads((self.output / "PrivacyInfo.xcprivacy").read_bytes())["NSPrivacyCollectedDataTypes"], [{"test": "download logs"}])
 
     def test_store_requires_pinned_package_even_if_old_bundle_has_wine(self):
         self.prepare(editions.STORE, self.wine)

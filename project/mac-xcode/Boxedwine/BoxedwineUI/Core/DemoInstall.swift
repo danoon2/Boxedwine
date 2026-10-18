@@ -6,7 +6,6 @@ import CryptoKit
 import CBoxedwineZIP
 import Darwin
 
-#if !BOXEDWINE_APP_STORE
 extension LibraryRepository {
     /// The caller commits or discards the returned app. Downloading, extraction,
     /// and the Wine snapshot all belong to one ordinary app-import journal.
@@ -94,8 +93,6 @@ extension LibraryRepository {
         }
     }
 }
-
-#endif
 
 enum DemoArchive {
     static func verify(_ url: URL, bytes: Int64, sha256: String, control: ImportControl) throws {

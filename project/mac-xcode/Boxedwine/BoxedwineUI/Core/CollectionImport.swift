@@ -30,7 +30,6 @@ struct CollectionIconCache: Sendable {
               let data = try? Data(contentsOf: file), Self.validPNG(data) else { return nil }
         return file
     }
-    #if !BOXEDWINE_APP_STORE
     func fetch(_ value: String, configuration: URLSessionConfiguration = .ephemeral) async {
         guard let url = Self.remoteURL(value), cachedURL(value) == nil else { return }
         var temporary: URL?
@@ -45,7 +44,6 @@ struct CollectionIconCache: Sendable {
         } catch { /* Optional artwork must never prevent using the collection. */ }
         if let temporary { try? FileManager.default.removeItem(at: temporary) }
     }
-    #endif
 }
 
 struct CollectionSnapshot: Codable, Equatable, Sendable {
@@ -220,7 +218,6 @@ struct CollectionStore: Sendable {
     @discardableResult func applyRefresh(_ review: CollectionRefresh) throws -> String {
         try merge(review.snapshot, destination: review.before.name, expected: review.before)
     }
-    #if !BOXEDWINE_APP_STORE
     func refresh(_ name: String, control: ImportControl) async throws -> CollectionRefresh {
         guard let before = try load().folders.first(where: { $0.name.lowercased() == name.lowercased() }), !before.sources.isEmpty else {
             throw DemoError.catalog("This collection has no saved source URLs. Import it from a URL first.")
@@ -235,7 +232,6 @@ struct CollectionStore: Sendable {
         try control.checkCancellation()
         return try reviewRefresh(before: before, snapshots: snapshots)
     }
-    #endif
     func remove(_ name: String) throws {
         var document = try load()
         document.folders.removeAll { $0.name.lowercased() == name.lowercased() }
@@ -277,7 +273,8 @@ final class PreparedAppSource: @unchecked Sendable {
     static func validURL(_ url: URL) -> Bool {
         ["http", "https"].contains(url.scheme?.lowercased() ?? "") && !(url.host ?? "").isEmpty && url.user == nil && url.password == nil && url.fragment == nil && url.port != 0
     }
-    static func prepare(_ url: URL, collectionOnly: Bool = false, control: ImportControl) async throws -> PreparedAppSource {
+    static func prepare(_ url: URL, collectionOnly: Bool = false, control: ImportControl,
+                        configuration: URLSessionConfiguration = .ephemeral) async throws -> PreparedAppSource {
         try control.checkCancellation()
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("BoxedwineImport-" + UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
@@ -286,23 +283,18 @@ final class PreparedAppSource: @unchecked Sendable {
             var source = url
             if !url.isFileURL {
                 #if BOXEDWINE_APP_STORE
-                throw WineCatalogError.downloadsUnavailable
-                #else
+                guard collectionOnly, url.pathExtension.lowercased() == "json" else { throw DemoError.download("Choose a collection JSON link, or select local app files.") }
+                #endif
                 guard validURL(url), ["zip", "exe", "msi", "json"].contains(url.pathExtension.lowercased()) else { throw DemoError.download("Use a direct HTTP or HTTPS link to a ZIP, EXE, MSI, or collection JSON file.") }
                 source = temporary.appendingPathComponent("Download." + url.pathExtension.lowercased())
-                try await PackageDownloader().fetch(url, bytes: 0, to: source, control: control, allowExternal: true, maximumBytes: collectionOnly ? 1024 * 1024 : 1024 * 1024 * 1024)
-                #endif
+                try await PackageDownloader(configuration: configuration).fetch(url, bytes: 0, to: source, control: control, allowExternal: true, maximumBytes: collectionOnly ? 1024 * 1024 : 1024 * 1024 * 1024)
             }
             let name = url.deletingPathExtension().lastPathComponent
             var collection: CollectionSnapshot?
             let sourceIsDirectory = try source.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true
             if !sourceIsDirectory && source.pathExtension.lowercased() == "json" {
-                #if BOXEDWINE_APP_STORE
-                throw WineCatalogError.downloadsUnavailable
-                #else
                 guard (try source.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) <= 1024 * 1024 else { throw DemoError.catalog("A collection JSON file must be at most 1 MB.") }
                 collection = try CollectionSnapshot.load(Data(contentsOf: source))
-                #endif
             }
             guard !collectionOnly || collection != nil else { throw DemoError.catalog("Choose a Boxedwine collection JSON file.") }
             if !sourceIsDirectory && source.pathExtension.lowercased() == "zip" {

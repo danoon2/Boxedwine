@@ -45,11 +45,9 @@ def verify_store_wine(wine, source=SOURCE):
 
 
 def privacy(variant, source=SOURCE):
-    result = plistlib.loads((source / "PrivacyInfo.xcprivacy").read_bytes())
-    if variant == STORE:
-        # The Store launcher has no downloader, analytics, accounts, or telemetry.
-        result["NSPrivacyCollectedDataTypes"] = []
-    return result
+    # Either edition can contact boxedwine.org through an imported collection.
+    # Keep the existing hosting-log disclosures for those optional downloads.
+    return plistlib.loads((source / "PrivacyInfo.xcprivacy").read_bytes())
 
 
 def prepare(output, variant, wine=None, source=SOURCE):

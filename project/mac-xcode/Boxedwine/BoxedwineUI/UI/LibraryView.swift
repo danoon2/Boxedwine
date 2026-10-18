@@ -18,9 +18,7 @@ struct LibraryView: View {
             .find: { searchFocused = true },
             .allApps: { store.showLibrary() }, .recent: { store.showLibrary(recent: true) }
         ]
-        #if !BOXEDWINE_APP_STORE
-        context.actions[.demos] = { store.showDemos() }
-        #endif
+        if store.sidebarCollectionNames.contains("Demos") { context.actions[.demos] = { store.showDemos() } }
         context.removeTitle = store.removalActionTitle
         if store.showsRemovedApps { context.actions[.removed] = { store.showRemoved() } }
         if store.hasUnfinishedWork { context.actions[.recovery] = { store.showRecovery() } }
@@ -63,9 +61,7 @@ struct LibraryView: View {
                 .disabled(!store.canEdit || store.importing)
             if store.apps.isEmpty && store.query.isEmpty {
                 Button("Play Minesweeper") { store.addBuiltIn(.minesweeper) }.disabled(!store.canTryBuiltIn(.minesweeper))
-                #if !BOXEDWINE_APP_STORE
-                Button("Try a Demo") { store.showDemos() }
-                #endif
+                if store.sidebarCollectionNames.contains("Demos") { Button("Try a Demo") { store.showDemos() } }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -99,8 +95,7 @@ struct LibraryView: View {
                     }
                 }
                 Section("Get Started") {
-                    #if !BOXEDWINE_APP_STORE
-                    ForEach(["Demos"] + store.collectionNames, id: \.self) { name in
+                    ForEach(store.sidebarCollectionNames, id: \.self) { name in
                         Button { store.showCollection(name) } label: { Label(name, systemImage: "folder") }
                             .listRowBackground(store.showingDemos && store.collectionName == name ? Color.accentColor.opacity(0.16) : Color.clear)
                             .contextMenu {
@@ -112,7 +107,6 @@ struct LibraryView: View {
                                 }
                             }
                     }
-                    #endif
                     Button { store.addBuiltIn(.minesweeper) } label: { Label("Play Minesweeper", systemImage: "gamecontroller") }
                         .disabled(!store.canTryBuiltIn(.minesweeper))
                     Button { store.addBuiltIn(.notepad) } label: { Label("Try Notepad", systemImage: "note.text") }
@@ -122,9 +116,7 @@ struct LibraryView: View {
             .buttonStyle(.plain)
             .navigationSplitViewColumnWidth(min: 155, ideal: 175, max: 220)
         } detail: {
-            #if !BOXEDWINE_APP_STORE
             if store.showingDemos { DemosView(store: store) }
-            #endif
             if !store.showingDemos {
                 if store.showingRecovery { OperationRecoveryView(store: store) }
                 else if store.showingRemoved { RemovedAppsView(store: store) } else {
@@ -503,6 +495,13 @@ struct AddAppView: View {
     @Environment(\.dismiss) private var dismiss
     private var collection: CollectionSnapshot? { store.preparedSource?.collection }
     private var choices: [String] { (store.preparedSource?.programs ?? []).filter { action != "app" || $0.lowercased().hasSuffix(".exe") } }
+    private var canDownloadSource: Bool {
+        #if BOXEDWINE_APP_STORE
+        purpose == "collection"
+        #else
+        true
+        #endif
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -549,23 +548,22 @@ struct AddAppView: View {
             } else if purpose.isEmpty {
                 Text("What would you like to add?").foregroundStyle(.secondary)
                 choice("App or installer", "Install an app or add one that is ready to run.", "app.badge") { purpose = "app" }
-                #if !BOXEDWINE_APP_STORE
                 choice("Collection", "Add a folder of games and apps to browse and install later.", "folder.badge.plus") { purpose = "collection" }
-                #endif
                 choice("Restore a backup", "Restore an app with its files, settings, and Wine version.", "arrow.counterclockwise") { store.chooseBackup() }
             } else {
-                Text(purpose == "collection" ? "Choose a collection JSON file or download link." : "Choose where your app or installer files are.").foregroundStyle(.secondary)
+                Text(purpose == "collection" ? "A collection is a list of apps you can browse; apps are downloaded only when you choose to install them. To add the extended Boxedwine demo collection, enter https://boxedwine.org/demos.json below." : "Choose where your app or installer files are.")
+                    .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 choice("Choose file…", purpose == "collection" ? "Collection JSON" : "ZIP, EXE, or MSI", "doc") { store.chooseAddSource(folder: false, collectionOnly: purpose == "collection") }
                 if purpose == "app" {
                     choice("Choose folder…", "An app or setup with supporting files.", "folder") { store.chooseAddSource(folder: true, collectionOnly: false) }
                 }
-                #if !BOXEDWINE_APP_STORE
-                TextField("File download URL", text: $link)
-                Button("Download & Continue") {
-                    guard let url = URL(string: link.trimmingCharacters(in: .whitespacesAndNewlines)), PreparedAppSource.validURL(url) else { store.reportAddAppError("Enter a complete HTTP or HTTPS file link."); return }
-                    store.prepareAddSource(url, collectionOnly: purpose == "collection")
-                }.disabled(link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                #endif
+                if canDownloadSource {
+                    TextField("File download URL", text: $link)
+                    Button("Download & Continue") {
+                        guard let url = URL(string: link.trimmingCharacters(in: .whitespacesAndNewlines)), PreparedAppSource.validURL(url) else { store.reportAddAppError("Enter a complete HTTP or HTTPS file link."); return }
+                        store.prepareAddSource(url, collectionOnly: purpose == "collection")
+                    }.disabled(link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
             }
             if let error = store.addAppError, !store.importing {
                 Label(error, systemImage: "exclamationmark.triangle.fill")

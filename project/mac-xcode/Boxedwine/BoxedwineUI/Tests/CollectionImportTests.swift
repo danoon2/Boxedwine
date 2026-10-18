@@ -203,8 +203,46 @@ struct CollectionImportTests {
     }
 }
 
-#if !BOXEDWINE_APP_STORE
 extension CollectionImportTests {
+    @Test func collectionSourcePreparationAcceptsLocalAndRemoteJSONAndKeepsStableEntries() async throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let local = directory.appendingPathComponent("collection.json"), snapshot = try snapshot()
+        try JSONEncoder().encode(snapshot).write(to: local)
+        let localSource = try await PreparedAppSource.prepare(local, collectionOnly: true, control: ImportControl())
+        #expect(localSource.collection == snapshot)
+        let configuration = URLSessionConfiguration.ephemeral; configuration.protocolClasses = [CollectionSourceHTTPFixture.self]
+        let source = URL(string: "https://collections.example/catalog.json")!
+        let remote = try await PreparedAppSource.prepare(source, collectionOnly: true, control: ImportControl(), configuration: configuration)
+        let incoming = try #require(remote.collection)
+        #expect(incoming.folder == "Demos")
+        #expect(incoming.apps.count == 1)
+        let store = CollectionStore(directory: directory)
+        try store.merge(incoming, destination: "Demos", source: source.absoluteString)
+        try store.merge(incoming, destination: "Demos", source: source.absoluteString)
+        let reopened = CollectionStore(directory: directory)
+        #expect(try reopened.load().folders[0].apps.count == 1)
+        #expect(try reopened.load().folders[0].sources == [source.absoluteString])
+        #expect(try reopened.recipes(in: "Demos", defaults: [])[0].customSource)
+        let saved = try Data(contentsOf: directory.appendingPathComponent("collections.json"))
+        for filename in ["invalid.json", "missing.json", "oversized.json"] {
+            let url = source.deletingLastPathComponent().appendingPathComponent(filename)
+            await #expect(throws: (any Error).self) { try await PreparedAppSource.prepare(url, collectionOnly: true, control: ImportControl(), configuration: configuration) }
+        }
+        #expect(try Data(contentsOf: directory.appendingPathComponent("collections.json")) == saved)
+    }
+
+    #if BOXEDWINE_APP_STORE
+    @Test func appStoreRemoteSourceRequiresCollectionPurposeAndJSON() async throws {
+        let configuration = URLSessionConfiguration.ephemeral; configuration.protocolClasses = [CollectionSourceHTTPFixture.self]
+        for (path, collectionOnly) in [("catalog.json", false), ("game.zip", true), ("setup.exe", false)] {
+            do {
+                _ = try await PreparedAppSource.prepare(URL(string: "https://collections.example/" + path)!, collectionOnly: collectionOnly, control: ImportControl(), configuration: configuration)
+                Issue.record("Store source selection must require a collection JSON link")
+            } catch DemoError.download(let message) { #expect(message.contains("collection JSON")) }
+        }
+    }
+    #endif
+
     @Test func cancelledRefreshDoesNotDownloadOrChangeSavedCollections() async throws {
         let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
         let store = CollectionStore(directory: directory); let value = try snapshot()
@@ -251,6 +289,22 @@ extension CollectionImportTests {
         #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("large.zip").path))
     }
 }
+private final class CollectionSourceHTTPFixture: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let name = request.url!.lastPathComponent
+        let json = """
+        {"schemaVersion":1,"folder":"Demos","apps":[{"ID":"sample","Name":"Sample","FileURL":"https://example.com/game.zip","FileSizeBytes":"4","FileSHA256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","InstallType":"Zip","ShortcutExe":"game.exe"}]}
+        """
+        let data = name == "oversized.json" ? Data(repeating: 0, count: 1024 * 1024 + 1) : Data((name == "invalid.json" ? "not JSON" : json).utf8)
+        let response = HTTPURLResponse(url: request.url!, statusCode: name == "missing.json" ? 404 : 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Length": String(data.count)])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() { }
+}
 private final class CollectionIconHTTPFixture: URLProtocol, @unchecked Sendable {
     static let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")!
     override class func canInit(with request: URLRequest) -> Bool { true }
@@ -279,4 +333,3 @@ private final class CollectionHTTPFixture: URLProtocol, @unchecked Sendable {
     }
     override func stopLoading() { }
 }
-#endif

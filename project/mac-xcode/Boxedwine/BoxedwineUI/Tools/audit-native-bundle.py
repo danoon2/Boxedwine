@@ -315,7 +315,7 @@ def audit(app, configuration="Release", signatures=True, distribution=False, req
         errors.extend("App Store bundle contains com.apple.quarantine: " + path
                       for path in report["quarantinedPaths"])
     if app_store and not store:
-        errors.append("Expected an App Store build with downloads compiled out")
+        errors.append("Expected an App Store build with bundled Wine")
     try:
         privacy = plistlib.loads((resources / "PrivacyInfo.xcprivacy").read_bytes())
         if privacy != editions.privacy(variant):
@@ -333,11 +333,6 @@ def audit(app, configuration="Release", signatures=True, distribution=False, req
             xml, pins = editions.store_catalog()
             if (resources / "WindowsSupport/filesV2.xml").read_bytes() != xml or json.loads((resources / "WindowsSupport/packages.json").read_text()) != pins:
                 errors.append("App Store Wine list must contain only the pinned bundled package")
-            # Check the executable as well as the resource marker. Foundation's
-            # downloader imports must not survive the Store compilation.
-            symbols = run("/usr/bin/nm", "-u", str(roots[0]))
-            if b"NSURLSession" in symbols:
-                errors.append("App Store launcher still imports URLSession download APIs")
         except (OSError, ValueError, KeyError) as error:
             errors.append("App Store resources: " + str(error))
     report["demoCatalog"] = None
@@ -419,7 +414,7 @@ def main():
     parser.add_argument("--configuration", choices=("Debug", "Sandbox", "Release"), default="Release")
     parser.add_argument("--skip-signatures", action="store_true", help="inspect an unsigned development fixture")
     parser.add_argument("--distribution", action="store_true", help="require Developer ID, matching signing teams, and secure timestamps for every embedded image")
-    parser.add_argument("--app-store", action="store_true", help="require bundled Wine, no launcher downloads/demo catalog, and no quarantine attributes")
+    parser.add_argument("--app-store", action="store_true", help="require bundled Wine, no bundled demo catalog, and no quarantine attributes")
     parser.add_argument("--require-demo-catalog", action="store_true", help="require the exact project catalog in this build")
     parser.add_argument("--json", type=Path, help="write the complete inventory to this file outside the app")
     args = parser.parse_args()
