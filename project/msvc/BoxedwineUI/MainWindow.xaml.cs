@@ -29,6 +29,13 @@ public partial class MainWindow : Window
     private readonly string resources = Path.Combine(AppContext.BaseDirectory, "Resources");
     private readonly List<CatalogWine> wines;
     private List<DemoRecipe> demos = [];
+    private List<DemoRecipe> defaultDemos = [];
+    private List<DemoRecipe> iconDemos = [];
+    private readonly HashSet<string> requestedIcons = [];
+    private List<string> collectionNames = [];
+    private bool IsCollection => section == "Demos" || collectionNames.Contains(section);
+    private bool canResetDemos;
+    private HashSet<string> refreshableCollections = [];
     private string? catalogError;
     private string catalogDirectory = "";
     private readonly Dictionary<Guid, RuntimeSession> sessions = [];
@@ -56,7 +63,7 @@ public partial class MainWindow : Window
         App.ApplyTheme(preferences.Theme);
         wines = Packages.Catalog(resources);
         LoadCatalog();
-        InitializeComponent(); ready = true; Refresh();
+        InitializeComponent(); ready = true; RefreshCollections(); Refresh();
         Activated += (_, _) => DrainProgramChoices();
         Cards.PreviewMouseRightButtonDown += (_, e) =>
         {
@@ -74,11 +81,53 @@ public partial class MainWindow : Window
             catalogDirectory = folder;
             string? catalog = Directory.Exists(folder) ? Directory.EnumerateFiles(folder, "*.xml", SearchOption.AllDirectories).FirstOrDefault() : null;
             if (catalog == null) { catalogError = "The demo catalog is not installed. Use Download Catalog below, or run build.ps1 to include it."; return; }
-            demos = Demos.Load(catalog); catalogError = null;
+            defaultDemos = Demos.Load(catalog); demos = defaultDemos; catalogError = null;
         }
         catch (Exception error) { catalogError = error.Message; }
     }
+    private void RefreshCollections()
+    {
+        var document = Collections.Load();
+        var folders = document.Folders;
+        var names = folders.Select(f => f.Name).Where(n => n != "Demos").ToList();
+        canResetDemos = folders.Any(f => f.Name == "Demos" && f.Apps.Count > 0);
+        refreshableCollections = folders.Where(f => f.Sources.Count > 0).Select(f => f.Name).ToHashSet();
+        iconDemos = new[] { "Demos" }.Concat(names).SelectMany(name => Collections.Recipes(name, defaultDemos, document)).ToList();
+        LoadCollectionIcons();
+        refreshing = true;
+        try
+        {
+            foreach (var item in Navigation.Items.Cast<ListBoxItem>().Where(i => collectionNames.Contains((string)i.Tag)).ToList()) Navigation.Items.Remove(item);
+            foreach (string name in names) Navigation.Items.Add(new ListBoxItem { Content = name, Tag = name, Padding = new Thickness(12, 11, 12, 11) });
+            collectionNames = names;
+            foreach (var item in Navigation.Items.Cast<ListBoxItem>().Where(i => (string)i.Tag == "Demos" || names.Contains((string)i.Tag)))
+            {
+                string name = (string)item.Tag;
+                var menu = new ContextMenu();
+                if (refreshableCollections.Contains(name))
+                {
+                    var refresh = new MenuItem { Header = "Refresh Collection" };
+                    refresh.Click += (_, _) => Safe(() => RefreshCollection(name)); menu.Items.Add(refresh);
+                }
+                if (name != "Demos" || canResetDemos)
+                {
+                    var remove = new MenuItem { Header = name == "Demos" ? "Reset Demos…" : "Delete Collection…" };
+                    remove.Click += (_, _) => Safe(() => DeleteCollection(name)); menu.Items.Add(remove);
+                }
+                item.ContextMenu = menu.Items.Count == 0 ? null : menu;
+            }
+        }
+        finally { refreshing = false; }
+    }
     private string Emulator() => EngineLocation.Resolve(AppContext.BaseDirectory, emulatorOverride);
+    private async void LoadCollectionIcons()
+    {
+        var urls = iconDemos.Select(d => d.Icon).Where(url => CollectionIcons.IsRemote(url) && requestedIcons.Add(url)).ToList();
+        if (urls.Count == 0) return;
+        var cache = new CollectionIcons(repository.DirectoryPath);
+        await Task.Run(() => Parallel.ForEachAsync(urls, new ParallelOptions { MaxDegreeOfParallelism = 4 }, async (url, _) => await cache.Fetch(url)));
+        if (!shuttingDown) Refresh();
+    }
     private System.Runtime.InteropServices.Architecture OpenGLArchitecture()
     {
         try { return OpenGLDrivers.EngineArchitecture(Emulator()); }
@@ -109,11 +158,12 @@ public partial class MainWindow : Window
         }
         finally { refreshing = false; }
         var rows = new List<LibraryRow>();
-        LibraryRow Row(LibraryApp app, RemovedApp? removed = null) => new() { App = app, Removed = removed, Name = app.Name, Description = removed != null ? removed.DeletionStartedAt != null ? "Deletion needs finishing" : "Files kept · ready to restore" : AppStatus(app), Icon = Icons.ForApp(repository, app, resources, demos, catalogDirectory), Glyph = app.BuiltIn == "minesweeper" ? "\uE7FC" : "\uE8A5" };
+        LibraryRow Row(LibraryApp app, RemovedApp? removed = null) => new() { App = app, Removed = removed, Name = app.Name, Description = removed != null ? removed.DeletionStartedAt != null ? "Deletion needs finishing" : "Files kept · ready to restore" : AppStatus(app), Icon = Icons.ForApp(repository, app, resources, iconDemos, catalogDirectory), Glyph = app.BuiltIn == "minesweeper" ? "\uE7FC" : "\uE8A5" };
         switch (section)
         {
-            case "Demos":
-                rows.AddRange(demos.OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).Select(d => new LibraryRow { Demo = d, Name = d.Name, Description = document.Apps.Any(a => a.Demo?.Id == d.Origin.Id) ? "In your library" : document.RemovedApps.Any(a => a.App.Demo?.Id == d.Origin.Id) ? "In Removed Apps" : $"{Math.Max(1, d.Bytes / 1048576.0):0.#} MB · Wine {d.WineVersion}", Icon = Icons.FromFile(Path.Combine(catalogDirectory, d.Icon)), Glyph = "\uE7FC" })); break;
+            case var _ when IsCollection:
+                demos = Collections.Recipes(section, defaultDemos);
+                rows.AddRange(demos.OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).Select(d => new LibraryRow { Demo = d, Name = d.Name, Description = document.Apps.Any(a => a.Demo?.Id == d.Origin.Id) ? "In your library" : document.RemovedApps.Any(a => a.App.Demo?.Id == d.Origin.Id) ? "In Removed Apps" : $"{Math.Max(1, d.Bytes / 1048576.0):0.#} MB · {d.WineDescription(wines)}", Icon = Icons.ForDemo(repository, d, catalogDirectory), Glyph = "\uE7FC" })); break;
             case "Removed Apps": rows.AddRange(document.RemovedApps.OrderByDescending(a => a.RemovedAt).Select(a => Row(a.App, a))); break;
             case "Unfinished Work": rows.AddRange(pending.Select(o => new LibraryRow { Operation = o, Name = o.Name, Description = o.Ready ? "Ready to finish" : "Interrupted copy", Glyph = "\uE823" })); break;
             case "Recently Opened": rows.AddRange(document.Apps.Where(a => a.LastOpened != null).OrderByDescending(a => a.LastOpened).Select(a => Row(a))); break;
@@ -129,6 +179,8 @@ public partial class MainWindow : Window
         EmptyDescription.Text = Search.Text.Length > 0 ? "Try another name or clear the search." : section switch { "Demos" => catalogError ?? "The catalog is empty.", "Recently Opened" => "Open an app from All Apps to get started.", "Removed Apps" => "Removing an app from the library keeps its files here.", "Unfinished Work" => "There are no interrupted copies to review.", _ => "Add an app folder or installer, browse a demo, or try Wine's Minesweeper to get started." };
         EmptyButton.Content = section == "Demos" ? "Download Catalog" : Search.Text.Length > 0 ? "Clear search" : section == "All Apps" ? "Add your first app" : "Go to All Apps";
         AddButton.IsEnabled = !busy; EmptyButton.IsEnabled = !busy;
+        RefreshCollectionButton.Visibility = IsCollection && refreshableCollections.Contains(section) ? Visibility.Visible : Visibility.Collapsed;
+        RefreshCollectionButton.IsEnabled = !busy;
         LaunchingApps.ItemsSource = launching.Values.ToArray();
         RenderDetails();
     }
@@ -140,6 +192,7 @@ public partial class MainWindow : Window
     private void RenderDetails()
     {
         Details.Children.Clear();
+        if (IsCollection && (section != "Demos" || canResetDemos)) DetailAction(section == "Demos" ? "Reset Demos…" : "Delete Collection…", () => DeleteCollection(section), !busy);
         var row = Selected;
         if (row == null)
         {
@@ -178,8 +231,9 @@ public partial class MainWindow : Window
             Details.Children.Add(FormWindow.Paragraph(demo.Summary));
             var document = displayedLibrary; var installed = document.Apps.FirstOrDefault(a => a.Demo?.Id == demo.Origin.Id); var removed = document.RemovedApps.FirstOrDefault(a => a.App.Demo?.Id == demo.Origin.Id);
             DetailAction(installed != null ? "Show in Library" : removed != null ? "Show in Removed Apps" : "Download and Install", () => ActivateDemo(demo), !busy);
-            Details.Children.Add(FormWindow.Paragraph($"{Math.Max(1, demo.Bytes / 1048576.0):0.#} MB download\nRequires Wine {demo.WineVersion}"));
-            if (!string.IsNullOrWhiteSpace(demo.Help)) { Details.Children.Add(FormWindow.Heading("About this demo")); Details.Children.Add(FormWindow.Paragraph(demo.Help)); }
+            Details.Children.Add(FormWindow.Paragraph($"{Math.Max(1, demo.Bytes / 1048576.0):0.#} MB download\n{demo.WineDescription(wines)}"));
+            Details.Children.Add(FormWindow.Paragraph("App download: " + new Uri(demo.Url).Host));
+            if (!string.IsNullOrWhiteSpace(demo.Help)) { Details.Children.Add(FormWindow.Heading("About this app")); Details.Children.Add(FormWindow.Paragraph(demo.Help)); }
             return;
         }
         var app = row.App!;

@@ -14,17 +14,17 @@ struct DemoDownloader: DemoDownloading, @unchecked Sendable {
     // ephemeral session: no cookies, shared cache, credentials, or catalog fetch.
     var configuration: URLSessionConfiguration = .ephemeral
     func fetch(_ demo: Demo, to destination: URL, control: ImportControl) async throws {
-        try await PackageDownloader(configuration: configuration).fetch(demo.url, bytes: demo.bytes, to: destination, control: control)
+        try await PackageDownloader(configuration: configuration).fetch(demo.url, bytes: demo.bytes, to: destination, control: control, allowExternal: demo.customSource)
     }
 }
 
 struct PackageDownloader: @unchecked Sendable {
     var configuration: URLSessionConfiguration = .ephemeral
-    func fetch(_ url: URL, bytes: Int64, to destination: URL, control: ImportControl) async throws {
+    func fetch(_ url: URL, bytes: Int64, to destination: URL, control: ImportControl, allowExternal: Bool = false, maximumBytes: Int64 = 1024 * 1024 * 1024, timeout: TimeInterval = 15 * 60) async throws {
         try control.checkCancellation()
-        guard DemoCatalog.validDownloadURL(url) else { throw DemoError.download("Unsupported download URL.") }
-        let operation = PackageDownloadOperation(url: url, bytes: bytes, destination: destination, control: control)
-        try await operation.start(configuration: configuration)
+        guard (allowExternal ? PreparedAppSource.validURL(url) : DemoCatalog.validDownloadURL(url)), bytes > 0 || allowExternal else { throw DemoError.download("Unsupported download URL.") }
+        let operation = PackageDownloadOperation(url: url, bytes: bytes, destination: destination, control: control, allowExternal: allowExternal, maximumBytes: bytes > 0 ? bytes : maximumBytes)
+        try await operation.start(configuration: configuration, timeout: timeout)
     }
 }
 
@@ -35,20 +35,22 @@ private final class PackageDownloadOperation: NSObject, URLSessionDownloadDelega
     let bytes: Int64
     let destination: URL
     let control: ImportControl
+    let allowExternal: Bool
+    let maximumBytes: Int64
     private var continuation: CheckedContinuation<Void, any Error>?
     private var session: URLSession?
     private var timer: DispatchSourceTimer?
     private var result: Result<Void, any Error>?
     private var redirects = 0
 
-    init(url: URL, bytes: Int64, destination: URL, control: ImportControl) { self.url = url; self.bytes = bytes; self.destination = destination; self.control = control }
-    func start(configuration: URLSessionConfiguration) async throws {
+    init(url: URL, bytes: Int64, destination: URL, control: ImportControl, allowExternal: Bool, maximumBytes: Int64) { self.url = url; self.bytes = bytes; self.destination = destination; self.control = control; self.allowExternal = allowExternal; self.maximumBytes = maximumBytes }
+    func start(configuration: URLSessionConfiguration, timeout: TimeInterval) async throws {
         try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
             let config = configuration.copy() as! URLSessionConfiguration
             config.urlCache = nil; config.httpCookieStorage = nil; config.urlCredentialStorage = nil
             config.requestCachePolicy = .reloadIgnoringLocalCacheData
-            config.timeoutIntervalForRequest = 30; config.timeoutIntervalForResource = 15 * 60
+            config.timeoutIntervalForRequest = min(30, timeout); config.timeoutIntervalForResource = timeout
             let queue = OperationQueue(); queue.maxConcurrentOperationCount = 1
             let session = URLSession(configuration: config, delegate: self, delegateQueue: queue)
             self.session = session
@@ -67,7 +69,7 @@ private final class PackageDownloadOperation: NSObject, URLSessionDownloadDelega
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         redirects += 1
-        guard redirects <= 3, let url = request.url, DemoCatalog.validDownloadURL(url) else {
+        guard redirects <= 3, let url = request.url, (allowExternal ? PreparedAppSource.validURL(url) : DemoCatalog.validDownloadURL(url)), self.url.scheme != "https" || url.scheme == "https" else {
             result = .failure(DemoError.download("The server redirected to an unsupported location."))
             completionHandler(nil); task.cancel(); return
         }
@@ -75,10 +77,10 @@ private final class PackageDownloadOperation: NSObject, URLSessionDownloadDelega
     }
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
                     totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        if totalBytesWritten > bytes || (totalBytesExpectedToWrite > 0 && totalBytesExpectedToWrite != bytes) {
+        if totalBytesWritten > maximumBytes || totalBytesExpectedToWrite > maximumBytes || (bytes > 0 && totalBytesExpectedToWrite > 0 && totalBytesExpectedToWrite != bytes) {
             result = .failure(DemoError.checksum); downloadTask.cancel(); return
         }
-        control.update(phase: .downloading, copied: totalBytesWritten, total: bytes, file: url.lastPathComponent)
+        control.update(phase: .downloading, copied: totalBytesWritten, total: bytes > 0 ? bytes : max(0, totalBytesExpectedToWrite), file: url.lastPathComponent)
         if control.progress.cancelled { downloadTask.cancel() }
     }
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
@@ -88,7 +90,8 @@ private final class PackageDownloadOperation: NSObject, URLSessionDownloadDelega
             guard let response = downloadTask.response as? HTTPURLResponse, response.statusCode == 200 else {
                 throw DemoError.download("The server did not return the package (HTTP \((downloadTask.response as? HTTPURLResponse)?.statusCode ?? 0)).")
             }
-            guard try RuntimePackage.Stamp.read(location).size == UInt64(bytes) else { throw DemoError.checksum }
+            let size = try RuntimePackage.Stamp.read(location).size
+            guard size > 0, size <= UInt64(maximumBytes), bytes == 0 || size == UInt64(bytes) else { throw DemoError.checksum }
             // URLSession deletes its temporary file after this callback returns.
             // Move it into this import's private, journaled staging directory.
             try FileManager.default.moveItem(at: location, to: destination)

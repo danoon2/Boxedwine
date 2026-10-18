@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -78,34 +79,156 @@ internal static class Dialogs
         if (initial != null) picker.InitialDirectory = initial;
         return picker.ShowDialog(owner) == true ? picker.FileName : null;
     }
-    public sealed record AddRequest(string Kind, string Source, string? Installer, string Windows, CatalogWine Wine);
-    public static AddRequest? Add(Window owner, IReadOnlyList<CatalogWine> wines, WineReference? current, string? dropped = null)
+    private static void Choice(FormWindow form, string title, string description, Action selected)
     {
-        var form = new FormWindow(owner, "Add a Windows app", "Choose the kind of files you have. Boxedwine copies them into an independent Windows environment.", 580);
+        var panel = new StackPanel(); panel.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold });
+        panel.Children.Add(new TextBlock { Text = description, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) });
+        var button = new Button { Content = panel, HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(14), Margin = new Thickness(0, 0, 0, 10) };
+        button.Click += (_, _) => { try { selected(); } catch (Exception error) { Error(form, error.Message); } }; form.Body.Children.Add(button);
+    }
+    public static string? AddPurpose(Window owner)
+    {
+        var form = new FormWindow(owner, "Add to Library", "What would you like to add?"); string? result = null;
+        void Select(string purpose) { result = purpose; form.DialogResult = true; }
+        Choice(form, "App or installer", "Install an app or add one that is ready to run.", () => Select("app"));
+        Choice(form, "Collection", "Add a folder of games and apps to browse and install later.", () => Select("collection"));
+        Choice(form, "Restore a backup", "Restore saved app files and settings.", () => Select("backup"));
+        form.Cancel(); form.ShowDialog(); return result;
+    }
+    public sealed record SourceRequest(PreparedAppSource? Prepared, bool Remote, bool Back = false);
+    public static SourceRequest? AddSource(Window owner, bool collection)
+    {
+        var form = new FormWindow(owner, collection ? "Add Collection" : "Add App or Installer", "Choose where your files are."); SourceRequest? result = null;
+        CancellationTokenSource? cancellation = null;
+        bool closed = false, closeAfterCancellation = false;
+        var error = new TextBlock { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.SemiBold, Visibility = Visibility.Collapsed };
+        AutomationProperties.SetAutomationId(error, "add-source-error");
+        AutomationProperties.SetLiveSetting(error, AutomationLiveSetting.Assertive);
+        var status = FormWindow.Paragraph(""); status.Visibility = Visibility.Collapsed;
+        var progress = new ProgressBar { Height = 5, Margin = new Thickness(0, 0, 0, 12), Visibility = Visibility.Collapsed };
+        Control[] inputs = [];
+        Button? download = null, back = null, cancel = null;
+        void ShowError(string message)
+        {
+            error.Text = message.Length == 0 ? "" : "Could not use this source: " + message;
+            error.Visibility = message.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+            if (message.Length > 0)
+            {
+                error.BringIntoView();
+                UIElementAutomationPeer.FromElement(error)?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+            }
+        }
+        void CancelDownload()
+        {
+            cancellation?.Cancel(); cancel!.IsEnabled = false; status.Text = "Cancelling and cleaning up…";
+        }
+        async Task Prepare(string source, bool remote)
+        {
+            if (cancellation != null || closed) return;
+            ShowError("");
+            using var attempt = new CancellationTokenSource(); cancellation = attempt;
+            foreach (var input in inputs) input.IsEnabled = false;
+            download!.IsEnabled = back!.IsEnabled = false; cancel!.Content = remote ? "Cancel Download" : "Cancel";
+            status.Text = "Checking source…"; status.Visibility = progress.Visibility = Visibility.Visible; progress.IsIndeterminate = true;
+            PreparedAppSource? prepared = null;
+            try
+            {
+                var updates = new Progress<OperationProgress>(value =>
+                {
+                    if (closed || cancellation != attempt || attempt.IsCancellationRequested) return;
+                    status.Text = value.Message; progress.IsIndeterminate = value.Total <= 0; progress.Value = value.Percent;
+                });
+                prepared = await Task.Run(() => PreparedAppSource.Prepare(source, remote, collection, attempt.Token, updates));
+                attempt.Token.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException) when (attempt.IsCancellationRequested) { prepared?.Dispose(); prepared = null; }
+            catch (Exception failure)
+            {
+                prepared?.Dispose(); prepared = null;
+                if (!closed && !closeAfterCancellation) ShowError(failure is OperationCanceledException ? "The download timed out. Check the link and try again." : failure.Message);
+            }
+            finally
+            {
+                cancellation = null;
+                if (!closed)
+                {
+                    foreach (var input in inputs) input.IsEnabled = true;
+                    download.IsEnabled = back.IsEnabled = cancel.IsEnabled = true; cancel.Content = "Cancel";
+                    status.Visibility = progress.Visibility = Visibility.Collapsed;
+                }
+            }
+            if (closed || closeAfterCancellation) { prepared?.Dispose(); if (!closed) form.Close(); }
+            else if (prepared != null) { result = new(prepared, remote); form.DialogResult = true; }
+        }
+        void Pick(bool folder)
+        {
+            string? source = folder ? Folder(form, "Choose Folder") : File(form, "Choose File", collection ? "Boxedwine collection|*.json" : "App files|*.zip;*.exe;*.msi;*.json");
+            if (source != null) _ = Prepare(source, false);
+        }
+        Choice(form, "Choose file…", collection ? "Collection JSON" : "ZIP, EXE, or MSI", () => Pick(false));
+        if (!collection) Choice(form, "Choose folder…", "An app or setup with supporting files.", () => Pick(true));
+        var link = FormWindow.Text(""); form.Field("File download URL", link);
+        inputs = form.Body.Children.OfType<Control>().ToArray();
+        form.Body.Children.Add(error); form.Body.Children.Add(status); form.Body.Children.Add(progress);
+        link.TextChanged += (_, _) => ShowError("");
+        download = form.Button("Download & Continue", () =>
+        {
+            if (!Uri.TryCreate(link.Text.Trim(), UriKind.Absolute, out var uri) || !PreparedAppSource.ValidUrl(uri)) { ShowError("Enter a complete HTTP or HTTPS file link."); link.Focus(); return; }
+            _ = Prepare(uri.AbsoluteUri, true);
+        }, true);
+        back = form.Button("Back", () => { result = new(null, false, true); form.DialogResult = true; });
+        cancel = form.Button("Cancel", () => { if (cancellation != null) CancelDownload(); else form.DialogResult = false; });
+        form.Closing += (_, e) =>
+        {
+            if (cancellation == null) return;
+            e.Cancel = true; closeAfterCancellation = true; CancelDownload();
+        };
+        form.Closed += (_, _) => { closed = true; cancellation?.Cancel(); };
+        form.ShowDialog(); return result;
+    }
+    public sealed record AddRequest(string Kind, string Program, string Name, string Windows, CatalogWine Wine);
+    public static AddRequest? ReviewApp(Window owner, PreparedAppSource source, IReadOnlyList<CatalogWine> wines, WineReference? current)
+    {
+        var form = new FormWindow(owner, "Review App", source.Original, 620);
+        var name = FormWindow.Text(source.Name); form.Field("App name", name);
+        var action = FormWindow.Choices(new() { [""] = "Choose how to add these files", ["app"] = "Ready-to-run app", ["installer"] = "Run an installer" }, source.SuggestedAction); form.Field("Add as", action);
+        var programs = new ComboBox { MinHeight = 34 }; form.Field("Program", programs);
+        if (!source.IsDirectory) form.Body.Children.Add(FormWindow.Paragraph("For a ready-to-run app, choose its containing folder so supporting files are included."));
+        else form.Body.Children.Add(FormWindow.Paragraph("Boxedwine copies these files into your library. Your original files stay in place."));
+        var options = new StackPanel(); form.Body.Children.Add(new Expander { Header = "Compatibility options", Content = options });
         var wine = new ComboBox { ItemsSource = wines, SelectedItem = wines.FirstOrDefault(w => w.Sha256 == current?.Sha256) ?? wines.FirstOrDefault(), MinHeight = 34 };
-        if (wines.Count > 1) form.Field("Wine version", wine, "The selected package is downloaded if needed and stays with this app.");
-        else form.Body.Children.Add(FormWindow.Paragraph(wines.Count == 1 ? $"{wines[0].Name} is downloaded if needed and stays with this app." : "The release Wine list is unavailable."));
-        var windows = FormWindow.Choices(LaunchArguments.WindowsVersions, "wineDefault"); form.Field("Windows version", windows);
-        AddRequest? request = null;
-        void Choose(string kind)
+        if (wines.Count > 1) { options.Children.Add(new Label { Content = "Wine version", Target = wine }); options.Children.Add(wine); }
+        var windows = FormWindow.Choices(LaunchArguments.WindowsVersions, "wineDefault"); options.Children.Add(new Label { Content = "Windows version", Target = windows }); options.Children.Add(windows);
+        AddRequest? result = null;
+        form.Cancel(); var add = form.Button("Add App", () =>
         {
-            string? source = dropped;
-            if (source != null && (kind == "installer") == Directory.Exists(source)) { Error(form, "Choose a file type matching the dropped item."); return; }
-            source ??= kind == "installer" ? File(form, "Choose a Windows installer", "Windows installers|*.exe;*.msi") : Folder(form, kind == "folder" ? "Choose the app folder" : "Choose the complete installer folder");
-            if (source == null) return;
-            string? installer = kind == "installerFolder" ? File(form, "Choose the setup program inside this folder", "Windows installers|*.exe;*.msi", source) : null;
-            if (kind == "installerFolder" && installer == null) return;
+            if (action.SelectedValue is not string kind || kind.Length == 0 || programs.SelectedItem is not string program || name.Text.Trim().Length == 0) throw new InvalidOperationException("Choose an action and program, and enter an app name.");
+            if (kind == "app" && !source.IsDirectory) throw new InvalidOperationException("Go back and choose the app’s containing folder.");
             if (wine.SelectedItem is not CatalogWine selected) throw new InvalidOperationException("The release Wine list is unavailable.");
-            request = new(kind, source, installer, (string)windows.SelectedValue, selected); form.DialogResult = true;
-        }
-        foreach (var option in new[] { ("installer", "Windows installer", "A single .exe or .msi setup file."), ("installerFolder", "Installer folder", "A setup program with nearby data files."), ("folder", "App folder", "An app and its files, ready to run without setup.") })
+            result = new(kind == "app" ? "folder" : source.IsDirectory ? "installerFolder" : "installer", program, name.Text.Trim(), (string)windows.SelectedValue, selected); form.DialogResult = true;
+        }, true);
+        form.Button("Back", () => { result = new("back", "", "", "", wines.FirstOrDefault()!); form.DialogResult = true; });
+        void Changed()
         {
-            var panel = new StackPanel(); panel.Children.Add(new TextBlock { Text = option.Item2, FontWeight = FontWeights.SemiBold }); panel.Children.Add(new TextBlock { Text = option.Item3, FontSize = 12, Margin = new Thickness(0, 5, 0, 0), TextWrapping = TextWrapping.Wrap });
-            var button = new Button { Content = panel, HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(14), Margin = new Thickness(0, 0, 0, 10) };
-            button.Click += (_, _) => { try { Choose(option.Item1); } catch (Exception e) { Error(form, e.Message); } }; form.Body.Children.Add(button);
+            string kind = (string)action.SelectedValue;
+            var candidates = source.Programs.Where(p => kind != "app" || p.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)).ToList(); programs.ItemsSource = candidates;
+            var preferred = candidates.Where(p => kind == "app" ? !new ProgramCandidate(p).IsMaintenance : p.EndsWith(".msi", StringComparison.OrdinalIgnoreCase) || System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(p), "^(setup|install)", System.Text.RegularExpressions.RegexOptions.IgnoreCase)).ToList();
+            programs.SelectedItem = preferred.Count == 1 ? preferred[0] : candidates.Count == 1 ? candidates[0] : null;
+            add.Content = kind == "installer" ? "Run Installer" : "Add App";
         }
-        if (dropped != null) form.Body.Children.Add(FormWindow.Paragraph("Selected: " + dropped));
-        form.Cancel(); form.ShowDialog(); return request;
+        action.SelectionChanged += (_, _) => Changed(); Changed(); form.ShowDialog(); return result;
+    }
+    public static string? ReviewCollection(Window owner, CollectionSnapshot snapshot, CollectionStore store)
+    {
+        var form = new FormWindow(owner, "Review Collection", "Apps download when you choose to install them. Installed copies and saves are kept.", 620);
+        var destination = new ComboBox { IsEditable = true, Text = snapshot.Folder, ItemsSource = new[] { "Demos" }.Concat(store.Load().Folders.Select(f => f.Name)).Distinct().ToList(), MinHeight = 34 };
+        form.Field("Folder name", destination);
+        var summary = FormWindow.Paragraph(""); form.Body.Children.Add(summary);
+        void Changed() { try { summary.Text = store.Preview(snapshot, destination.Text).ToString() + ". Listings absent from this import are kept."; } catch (Exception error) { summary.Text = error.Message; } }
+        destination.AddHandler(TextBox.TextChangedEvent, new TextChangedEventHandler((_, _) => Changed())); Changed();
+        form.Body.Children.Add(FormWindow.Paragraph(string.Join(", ", snapshot.Apps.Take(8).Select(a => a["Name"]))));
+        string? result = null; form.Cancel(); form.Button("Add Collection", () => { result = CollectionSnapshot.FolderName(destination.Text); form.DialogResult = true; }, true);
+        form.Button("Back", () => { result = ""; form.DialogResult = true; }); form.ShowDialog(); return result;
     }
     public static CatalogWine? Wine(Window owner, string title, IReadOnlyList<CatalogWine> wines, WineReference? current = null)
     {

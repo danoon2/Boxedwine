@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import threading
 import time
+import urllib.parse
 
 try:
     import gi
@@ -20,6 +21,7 @@ except (ImportError, ValueError) as error:
                      'Debian/Ubuntu/Mint: sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1\n' + str(error))
 
 from . import demos, dialogs, desktop
+from .imports import CollectionStore, CollectionIcons, valid_url
 from .files import Work, Cancelled, beneath, no_links, walk
 from .library import Library, DRIVE_C, built_in, now
 from .packages import Resources, WineChecks, catalog_files, ensure_wine, import_wine
@@ -44,6 +46,13 @@ class Window(Adw.ApplicationWindow):
         self.configuration_queue, self.syncing = [], set()
         self.catalog, self.catalog_data, self.catalog_error = [], {}, None
         self.catalog_loaded = False
+        self.collections = CollectionStore(library)
+        self.collection_icons = CollectionIcons(library.directory)
+        self.requested_icons = set()
+        self.icon_catalog = []
+        self.collection_names = []
+        self.can_reset_demos = False
+        self.refreshable_collections = set()
         try:
             cached = catalog_files(resources, library, Work(), allow_download=False)
             if cached:
@@ -52,6 +61,7 @@ class Window(Adw.ApplicationWindow):
                 self.catalog_loaded = True
         except Exception as error:
             self.catalog_error = str(error)
+        self.default_catalog = self.catalog
         self.wine_checks = WineChecks()
         self.card_icons = {}
         self.cards = {}
@@ -59,8 +69,89 @@ class Window(Adw.ApplicationWindow):
         self.closing = False
         self.apply_theme()
         self.build()
+        self.refresh_collections()
         self.refresh()
         self.connect('close-request', self.close_requested)
+
+    @property
+    def is_collection(self):
+        return self.view == 'Demos' or self.view in self.collection_names
+
+    def refresh_collections(self):
+        self.collections.default_ids = {d['origin']['id'] for d in self.default_catalog}
+        document = self.collections.load()
+        folders = document['folders']
+        names = [f['name'] for f in folders if f['name'] != 'Demos']
+        self.can_reset_demos = any(f['name'] == 'Demos' and f['apps'] for f in folders)
+        self.refreshable_collections = {f['name'] for f in folders if f['sources']}
+        for name in self.collection_names:
+            if name not in names:
+                self.sections.remove(self.section_rows.pop(name))
+        for name in names:
+            if name not in self.section_rows:
+                item = Gtk.ListBoxRow(); item.title = name
+                item.set_child(Gtk.Label(label=name, xalign=0, margin_start=12, margin_end=12, margin_top=11, margin_bottom=11))
+                self.sections.append(item); self.section_rows[name] = item
+        self.collection_names = names
+        self.catalog = self.collections.recipes(self.view, self.default_catalog, document) if self.is_collection else self.default_catalog
+        self.icon_catalog = [recipe for name in ['Demos'] + names for recipe in self.collections.recipes(name, self.default_catalog, document)]
+        self.load_collection_icons()
+        self.card_icons.clear()
+
+    def load_collection_icons(self):
+        urls = {recipe['icon'] for recipe in self.icon_catalog if valid_url(recipe['icon'])} - self.requested_icons
+        if not urls:
+            return
+        self.requested_icons.update(urls)
+        urls = list(urls)
+        remaining = min(4, len(urls))
+        def completed():
+            nonlocal remaining
+            remaining -= 1
+            if remaining == 0 and not self.closing:
+                self.refresh()
+        def download(batch):
+            for url in batch:
+                if self.closing:
+                    break
+                self.collection_icons.fetch(url)
+            idle(completed)
+        for worker in range(remaining):
+            threading.Thread(target=download, args=(urls[worker::4],), daemon=True).start()
+
+    def refresh_collection(self):
+        name = self.view
+        if name not in self.refreshable_collections or not self.can_modify():
+            return
+        def review(result):
+            added, updated, unchanged = result['changes']
+            if not added and not updated:
+                self.toast('Collection is up to date.')
+                return
+            def apply():
+                if not self.can_modify():
+                    return
+                folder = self.collections.apply_refresh(result)
+                self.refresh_collections(); self.navigate(folder)
+                self.toast('Collection refreshed.')
+            dialogs.confirm(self, 'Refresh ' + name + '?',
+                            f"{added} new {'app' if added == 1 else 'apps'} · {updated} updated {'listing' if updated == 1 else 'listings'} · {unchanged} unchanged.\n\n"
+                            f"Checked {len(result['before']['sources'])} saved {'source URL' if len(result['before']['sources']) == 1 else 'source URLs'}. Listings missing from the sources are kept. Installed apps and saves are unchanged.",
+                            'Apply Changes', apply)
+        self.perform('Refreshing ' + name, lambda work: self.collections.refresh(name, work), review)
+
+    def remove_collection(self):
+        name = self.view
+        if name == 'Demos' and not self.can_reset_demos:
+            return
+        def remove():
+            self.collections.remove(name)
+            self.refresh_collections()
+            self.navigate('Demos' if name == 'Demos' else 'All Apps')
+        dialogs.confirm(self, 'Reset Demos?' if name == 'Demos' else 'Delete ' + name + '?',
+                        'Restore the default demo listings. Installed apps and saves are kept.' if name == 'Demos' else
+                        'Remove this collection and its listings. Installed apps and saves are kept.',
+                        'Reset' if name == 'Demos' else 'Delete Collection', remove)
 
     def apply_theme(self):
         scheme = {'System': Adw.ColorScheme.DEFAULT, 'Light': Adw.ColorScheme.FORCE_LIGHT, 'Dark': Adw.ColorScheme.FORCE_DARK}
@@ -89,13 +180,14 @@ class Window(Adw.ApplicationWindow):
         # Focus relocation when an adaptive sidebar collapses can change the
         # selected row. Only activation is a request to navigate.
         self.sections.connect('row-activated', dialogs.guarded(self, self.section_selected))
-        side_content.append(self.sections)
+        section_scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True, propagate_natural_height=True)
+        section_scroll.set_child(self.sections)
+        side_content.append(section_scroll)
         side_content.append(Gtk.Separator(margin_top=4, margin_bottom=4))
         label = Gtk.Label(label='GET STARTED', xalign=0, margin_start=10); label.add_css_class('caption'); label.add_css_class('dim-label'); side_content.append(label)
         for title, program, icon in [('Try Notepad', 'notepad', 'accessories-text-editor-symbolic'), ('Play Minesweeper', 'minesweeper', 'applications-games-symbolic')]:
             action = dialogs.button(self, title, lambda p=program: self.add_builtin(p), 'flat', icon)
             side_content.append(action)
-        side_content.append(Gtk.Box(vexpand=True))
         side_content.append(dialogs.button(self, 'Settings', lambda: dialogs.settings(self), 'flat', 'preferences-system-symbolic'))
         side_content.append(dialogs.button(self, 'Help', self.show_help, 'flat', 'help-browser-symbolic'))
         sidebar.set_content(side_content); self.navigation.set_sidebar(sidebar)
@@ -105,7 +197,7 @@ class Window(Adw.ApplicationWindow):
         self.sidebar_toggle.set_tooltip_text('Show Sidebar'); self.sidebar_toggle.set_visible(False); header.pack_start(self.sidebar_toggle)
         self.window_title = Adw.WindowTitle(title='All Apps')
         header.set_title_widget(self.window_title)
-        header.pack_end(dialogs.button(self, 'Add App', lambda: dialogs.add_app(self), icon='list-add-symbolic'))
+        header.pack_end(dialogs.button(self, 'Add to Library', lambda: dialogs.add_app(self), icon='list-add-symbolic'))
         menu = Gio.Menu()
         for label, action in [('Restore Backup…', 'restore-backup'), ('Settings', 'settings'), ('Keyboard Shortcuts', 'shortcuts'), ('About Boxedwine', 'about')]:
             menu.append(label, 'win.' + action)
@@ -173,7 +265,7 @@ class Window(Adw.ApplicationWindow):
             return False
         return True
 
-    def perform(self, title, operation, completion=None, cancellable=True):
+    def perform(self, title, operation, completion=None, cancellable=True, failed=None):
         if self.busy:
             self.toast('Wait for the current operation to finish')
             return
@@ -230,7 +322,9 @@ class Window(Adw.ApplicationWindow):
                 try:
                     self.refresh()
                     if error:
-                        if isinstance(error, Cancelled):
+                        if failed:
+                            failed(error)
+                        elif isinstance(error, Cancelled):
                             self.toast('Operation cancelled')
                         else:
                             self.error(error)
@@ -264,12 +358,13 @@ class Window(Adw.ApplicationWindow):
         if item is None:
             return
         self.view = item.title
+        self.catalog = self.collections.recipes(self.view, self.default_catalog) if self.is_collection else self.default_catalog
         self.selected = None
         self.query = ''
         if self.view == 'Recovery' or self.details_split.get_collapsed():
             self.details_split.set_show_sidebar(False)
         self.search.set_text('')
-        self.search.set_placeholder_text('Search demos' if self.view == 'Demos' else 'Search apps')
+        self.search.set_placeholder_text('Search demos' if self.is_collection else 'Search apps')
         if self.navigation.get_collapsed():
             self.navigation.set_show_sidebar(False)
         self.refresh()
@@ -304,7 +399,7 @@ class Window(Adw.ApplicationWindow):
         self.refresh_content()
         self.refresh_running()
         if self.selected:
-            if self.view == 'Demos':
+            if self.is_collection:
                 recipe = next((d for d in self.catalog if d['origin']['id'] == self.selected), None)
                 if recipe:
                     self.show_demo(recipe, reveal=False)
@@ -369,7 +464,7 @@ class Window(Adw.ApplicationWindow):
         self.cards = {}
         if self.view == 'Recovery':
             self.recovery_content(); return
-        if self.view == 'Demos':
+        if self.is_collection:
             if not self.catalog:
                 if self.selected is None:
                     self.details_split.set_show_sidebar(False)
@@ -402,18 +497,28 @@ class Window(Adw.ApplicationWindow):
         if self.selected is None:
             # Select before laying out the grid so the details pane already has
             # its space. On narrow windows keep the overlay closed for browsing.
-            show = self.show_demo if self.view == 'Demos' else self.show_app
+            show = self.show_demo if self.is_collection else self.show_app
             show(items[0], reveal=not self.details_split.get_collapsed())
         container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, margin_start=24, margin_end=24, margin_bottom=24)
         heading = Gtk.Label(label={'All Apps': 'Your Windows Apps', 'Demos': 'Try Something Familiar'}.get(self.view, self.view), xalign=0)
-        heading.add_css_class('title-1'); container.append(heading)
+        heading.add_css_class('title-1'); heading.set_hexpand(True)
+        header = Gtk.Box(spacing=12); header.append(heading); container.append(header)
+        if self.is_collection and self.view in self.refreshable_collections:
+            refresh = dialogs.button(self, 'Refresh', self.refresh_collection)
+            refresh.set_tooltip_text('Refresh Collection'); refresh.set_sensitive(not self.busy)
+            refresh.update_property([Gtk.AccessibleProperty.LABEL], ['Refresh Collection'])
+            header.append(refresh)
+        if self.is_collection and (self.view != 'Demos' or self.can_reset_demos):
+            label = 'Reset Demos…' if self.view == 'Demos' else 'Delete Collection…'
+            manage = dialogs.button(self, label, self.remove_collection)
+            manage.set_halign(Gtk.Align.START); manage.set_sensitive(not self.busy); container.append(manage)
         if self.view == 'Removed Apps':
             delete_all = dialogs.button(self, 'Delete All Permanently…', self.delete_all, 'destructive-action')
             delete_all.set_halign(Gtk.Align.START); container.append(delete_all)
         grid = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, max_children_per_line=6, min_children_per_line=1,
                            row_spacing=12, column_spacing=12, valign=Gtk.Align.START)
         for item in items:
-            demo = self.view == 'Demos'
+            demo = self.is_collection
             card = Gtk.Button(); card.add_css_class('card'); card.add_css_class('app-card')
             identifier = item['origin']['id'] if demo else item['id']
             if identifier == self.selected:
@@ -428,7 +533,7 @@ class Window(Adw.ApplicationWindow):
             card.set_child(box)
             self.cards[identifier] = card
             card.connect('clicked', dialogs.guarded(self, lambda _, a=item, d=demo: self.select_card(a, d)))
-            if self.view in ('All Apps', 'Recently Opened', 'Demos'):
+            if (self.view in ('All Apps', 'Recently Opened') or self.is_collection):
                 gesture = Gtk.GestureClick.new()
                 gesture.set_button(Gdk.BUTTON_PRIMARY)
                 gesture.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
@@ -456,7 +561,7 @@ class Window(Adw.ApplicationWindow):
             self.show_demo(item, reveal=False)
         else:
             self.show_app(item, reveal=False)
-        if self.view in ('All Apps', 'Recently Opened', 'Demos') and (self.details_split.get_collapsed() or not self.details_split.get_show_sidebar()):
+        if (self.view in ('All Apps', 'Recently Opened') or self.is_collection) and (self.details_split.get_collapsed() or not self.details_split.get_show_sidebar()):
             # Revealing details can move a card or cover it with an overlay.
             # Wait out the native double-click interval before changing layout.
             def reveal():
@@ -473,7 +578,7 @@ class Window(Adw.ApplicationWindow):
             return
         gesture.set_state(Gtk.EventSequenceState.CLAIMED)
         self.cancel_card_reveal()
-        if self.view == 'Demos':
+        if self.is_collection:
             recipe = next((d for d in self.catalog if d['origin']['id'] == identifier), None)
             if recipe:
                 self.show_demo(recipe, reveal=False)
@@ -496,12 +601,12 @@ class Window(Adw.ApplicationWindow):
         image = Gtk.Image(pixel_size=size)
         try:
             if demo:
-                data = self.catalog_data.get(app['icon'])
+                data = self.collection_icons.read(app['icon']) if valid_url(app['icon']) else self.catalog_data.get(app['icon'])
             elif app.get('customIconPNG'):
                 data = base64.b64decode(app['customIconPNG'])
             elif app.get('demo'):
-                recipe = next((d for d in self.catalog if d['origin']['id'] == app['demo']['id']), None)
-                data = self.catalog_data.get(recipe['icon']) if recipe else None
+                recipe = next((d for d in self.icon_catalog if d['origin']['id'] == app['demo']['id']), None)
+                data = (self.collection_icons.read(recipe['icon']) if valid_url(recipe['icon']) else self.catalog_data.get(recipe['icon'])) if recipe else None
             elif built_in(app):
                 name = 'notepad' if built_in(app) == 'notepad' else 'winemine'
                 data = self.resources.path('AppIcons/' + name + '.png').read_bytes()
@@ -600,13 +705,19 @@ class Window(Adw.ApplicationWindow):
         if existing:
             box.append(dialogs.button(self, 'Show in Library' if self.find_app(existing['id']) else 'Show in Removed Apps', lambda: self.reveal_app(existing), 'suggested-action'))
         else:
-            box.append(dialogs.button(self, 'Install Demo', lambda: self.install_demo(recipe), 'suggested-action', 'folder-download-symbolic'))
+            box.append(dialogs.button(self, 'Download & Install', lambda: self.install_demo(recipe), 'suggested-action', 'folder-download-symbolic'))
         details = Adw.PreferencesGroup()
         dialogs.row(details, 'Download', f"{recipe['bytes'] / 1024**2:.1f} MB · Verified package")
-        dialogs.row(details, 'Windows support', 'Wine ' + recipe['wineVersion'])
+        try:
+            selected_wine = demos.select_wine(recipe, self.resources.wines())['reference']['wineVersion']
+            wine_description = 'Wine ' + selected_wine + (' (latest available)' if recipe['wineVersion'] is None else '')
+        except (OSError, ValueError) as error:
+            wine_description = str(error)
+        dialogs.row(details, 'Windows support', wine_description)
+        dialogs.row(details, 'App download', urllib.parse.urlsplit(recipe['url']).hostname)
         box.append(details)
         if recipe['help']:
-            expander = Gtk.Expander(label='About this demo')
+            expander = Gtk.Expander(label='About this app')
             text = Gtk.Label(label=recipe['help'], wrap=True, xalign=0, selectable=True, margin_top=12)
             expander.set_child(text); box.append(expander)
 
@@ -816,11 +927,26 @@ class Window(Adw.ApplicationWindow):
             data = catalog_files(self.resources, self.library, work)
             return data, demos.load_catalog(data['catalog.xml'])
         def loaded(result):
-            self.catalog_data, self.catalog = result; self.catalog_loaded = True; self.catalog_error = None; self.refresh()
+            self.catalog_data, self.default_catalog = result; self.catalog_loaded = True; self.catalog_error = None; self.refresh_collections(); self.refresh()
         self.perform('Loading demo catalog', load, loaded)
 
     def install_demo(self, recipe):
-        self.with_wine(lambda wine: self.perform('Installing ' + recipe['name'], lambda work: demos.install(self.library, recipe, wine, work), self.app_added))
+        if not self.can_modify():
+            return
+        release = demos.select_wine(recipe, self.resources.wines())
+        ref = release['reference']
+        def install(work):
+            wine = ensure_wine(self.library, release, work)
+            if self.library.default_wine() is None:
+                self.library.set_default_wine(wine)
+            return demos.install(self.library, recipe, wine, work)
+        def begin():
+            if self.can_modify():
+                self.perform('Installing ' + recipe['name'], install, self.app_added)
+        message = f"Download {recipe['bytes'] / 1024**2:.1f} MB for this app and use Wine {ref['wineVersion']}."
+        if not self.library.package_path(ref).is_file():
+            message += f" Wine requires another {ref['bytes'] / 1024**2:.0f} MB download."
+        dialogs.confirm(self, 'Install ' + recipe['name'] + '?', message, 'Download and Install', begin)
 
     def remove_app(self, app):
         if not self.can_modify(app):
@@ -950,7 +1076,8 @@ class Window(Adw.ApplicationWindow):
 
     def show_help(self):
         dialogs.text_dialog(self, 'Boxedwine Help',
-            'Add a Windows app\n\nChoose an .exe or .msi installer, a folder containing an installer and its data files, or a portable app folder. Boxedwine copies the source into your library. When setup finishes, choose the program you want to open. You can also drop a source onto this window.\n\n'
+            'Add a Windows app\n\nChoose Add to Library → App or installer, then a file, folder, or direct download URL. ZIP files are unpacked for review. Choose Add App for a ready-to-run program, or Run Installer for setup. Supporting files are copied together. Compatibility options are available during review. Nothing runs until you confirm. You can also drop a source onto this window.\n\n'
+            'Add or update a collection\n\nChoose Add to Library → Collection, then a JSON file or URL. Review the destination and new, updated, and unchanged counts. Reimporting into the same folder matches stable app IDs without duplicates. Collections remain available after relaunch. URL imports remember their sources: use Refresh to check for changes, then Apply Changes. Local files can be reimported. Delete a custom collection or Reset Demos to restore the defaults; installed apps and saves are kept.\n\n'
             'Each app has its own Windows environment\n\nSaved files stay with that app. Use Run Another Program to launch a configuration utility in the same environment. An external program gets access to its containing host folder after confirmation.\n\n'
             'Demos and Windows support\n\nThe demo catalog and downloads are checked against release checksums. Wine is shared on disk, while each app keeps a specific package. Offline Windows support can be imported from the matching ZIP in Settings.\n\n'
             'Backups and removal\n\nExport Backup creates a .boxedwinebackup folder containing the app, its Wine package, and a verified manifest. Restore Backup creates a separate app. Keep the entire backup folder together. Removed Apps retains files until permanent deletion unless immediate deletion is enabled. Interrupted file operations appear in Recovery.\n\n'
@@ -958,7 +1085,7 @@ class Window(Adw.ApplicationWindow):
             'Linux library location\n\n' + str(self.library.directory))
 
     def show_shortcuts(self):
-        dialogs.text_dialog(self, 'Keyboard Shortcuts', 'Ctrl+N    Add App\nCtrl+F    Search\nCtrl+O    Open Selected App\nAlt+Return    App Settings\nDelete    Remove Selected App\nCtrl+,    Settings\nF1    Help\nCtrl+Q    Quit')
+        dialogs.text_dialog(self, 'Keyboard Shortcuts', 'Ctrl+N    Add to Library\nCtrl+F    Search\nCtrl+O    Open Selected App\nAlt+Return    App Settings\nDelete    Remove Selected App\nCtrl+,    Settings\nF1    Help\nCtrl+Q    Quit')
 
     def about(self):
         dialog = Adw.AboutDialog(application_name='Boxedwine', application_icon='org.boxedwine.Boxedwine', version='Linux native UI',
@@ -984,6 +1111,7 @@ class Window(Adw.ApplicationWindow):
                         self.stop(app)
             dialogs.confirm(self, 'Quit Boxedwine?', 'Running Windows apps will be stopped. Save your work before quitting.', 'Stop Apps and Quit', stop_all, True)
             return True
+        self.closing = True
         return False
 
 

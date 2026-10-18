@@ -1866,7 +1866,9 @@
 		F8F8B03D258B4DE28F522B01 = { isa = PBXFileReference; path = "Core/WindowsCompatibility.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		F8F8B03D258B4DE28F522B02 = { isa = PBXBuildFile; fileRef = F8F8B03D258B4DE28F522B01; };
 		3A45E3663FD06F16C527FCBB = { isa = PBXFileReference; path = "Core/DemoCatalog.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		C011EC710000000000000001 = { isa = PBXFileReference; path = "Core/CollectionImport.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		BA63040F14BFBDA9F713D402 = { isa = PBXBuildFile; fileRef = 3A45E3663FD06F16C527FCBB; };
+		C011EC710000000000000002 = { isa = PBXBuildFile; fileRef = C011EC710000000000000001; };
 		D73844CF228208DB3DBB44B6 = { isa = PBXFileReference; path = "Core/DemoDownload.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		68A46DBE4C3A6111AF3456CE = { isa = PBXBuildFile; fileRef = D73844CF228208DB3DBB44B6; };
 		A273EC1AB138E2C67FBCAFE1 = { isa = PBXFileReference; path = "Core/DemoInstall.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
@@ -2867,6 +2869,7 @@
 				B70915130000000000000005,
 				"B10826AECCAA0D8805FF8E66",
 				"3A45E3663FD06F16C527FCBB",
+                "C011EC710000000000000001",
 				"D73844CF228208DB3DBB44B6",
 				"A273EC1AB138E2C67FBCAFE1",
 				"F8F8B03D258B4DE28F522B01",
@@ -2912,6 +2915,7 @@
 				B70915130000000000000002,
 				B70915130000000000000004,
 				"BA63040F14BFBDA9F713D402",
+                "C011EC710000000000000002",
 				"68A46DBE4C3A6111AF3456CE",
 				"3F5D11DB9BC9AAD3CE2E3ED4",
 				"F8F8B03D258B4DE28F522B02",

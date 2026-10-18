@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "folder": "Private",
+  "apps": [
+    {
+      "ID": "quake2-timedemo",
+      "Name": "Quake II — Timed Demo",
+      "Summary": "Runs Quake II's demo1.dm2 timed benchmark. Ready to open after downloading.",
+      "Help": "Launches quake2.exe with +timedemo 1 +map demo1.dm2. You can edit these arguments in App Settings.",
+      "Icon": "http://192.168.48.93/demos/q2.png",
+      "FileURL": "http://192.168.48.93/demos/q2.zip",
+      "FileSizeBytes": "745628015",
+      "FileSHA256": "e6eac1910d8958d58be5ff692bbbd459e754fe22c8cdc2bb6ce4828277067fe4",
+      "InstallType": "Zip",
+      "ShortcutExe": "quake2.exe",
+      "AppArguments": "+timedemo\n1\n+map\ndemo1.dm2"
+    }
+  ]
+}

@@ -20,7 +20,7 @@ internal static class Icons
             catch (Exception error) when (error is NotSupportedException or IOException or ArgumentException) { /* Fall back to the automatic icon if image decoding fails. */ }
         }
         if (app.BuiltIn != null) return FromFile(Path.Combine(resources, "AppIcons", app.BuiltIn == "notepad" ? "notepad.png" : "winemine.png"));
-        if (app.Demo != null && demos.FirstOrDefault(d => d.Origin.Id == app.Demo.Id) is { } demo && demo.Icon.Length > 0) return FromFile(Path.Combine(catalogDirectory, demo.Icon));
+        if (app.Demo != null && demos.FirstOrDefault(d => d.Origin.Id == app.Demo.Id) is { } demo && ForDemo(repository, demo, catalogDirectory) is { } demoIcon) return demoIcon;
         if (app.Executable != null)
         {
             string path = SafeFiles.Beneath(repository.Root(app), app.Executable);
@@ -37,6 +37,11 @@ internal static class Icons
             Cache[path] = null;
         }
         return null;
+    }
+    public static BitmapImage? ForDemo(LibraryRepository repository, DemoRecipe demo, string catalogDirectory)
+    {
+        string? path = CollectionIcons.IsRemote(demo.Icon) ? new CollectionIcons(repository.DirectoryPath).CachedPath(demo.Icon) : Path.Combine(catalogDirectory, demo.Icon);
+        return path == null ? null : FromFile(path);
     }
     public static BitmapImage? FromFile(string path)
     {

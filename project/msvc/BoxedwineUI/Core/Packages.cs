@@ -54,10 +54,12 @@ public static class Packages
             .OrderByDescending(w => Version.Parse(w.WineVersion)).ToList();
     }
     public static bool TrustedUrl(Uri url) => url.Scheme == "https" && url.Port == 443 && url.UserInfo.Length == 0 && url.Fragment.Length == 0 && (url.Host == "boxedwine.org" || url.Host == "www.boxedwine.org");
-    public static async Task Download(string url, long bytes, string hash, string destination, CancellationToken cancellation, IProgress<OperationProgress>? progress)
+    public static async Task Download(string url, long bytes, string hash, string destination, CancellationToken cancellation, IProgress<OperationProgress>? progress, bool allowExternal = false)
     {
         Uri address = new(url);
-        if (!TrustedUrl(address) || bytes <= 0 || bytes > 4L * 1024 * 1024 * 1024 || !Regex.IsMatch(hash, "^[a-f0-9]{64}$")) throw new InvalidDataException("The download is not from a supported, checksum-pinned source.");
+        string scheme = address.Scheme;
+        bool Allowed(Uri value) => allowExternal ? PreparedAppSource.ValidUrl(value) : TrustedUrl(value);
+        if (!Allowed(address) || bytes <= 0 || bytes > 4L * 1024 * 1024 * 1024 || !Regex.IsMatch(hash, "^[a-f0-9]{64}$")) throw new InvalidDataException("The download is not from a supported, checksum-pinned source.");
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         SafeFiles.NoLinks(destination);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
@@ -76,7 +78,7 @@ public static class Packages
                     response.Dispose();
                     if (location == null || ++redirects > 5) throw new IOException("The download redirected too many times.");
                     address = location.IsAbsoluteUri ? location : new Uri(address, location);
-                    if (!TrustedUrl(address)) throw new IOException("The download redirected outside boxedwine.org.");
+                    if (!Allowed(address) || scheme == "https" && address.Scheme != "https") throw new IOException("The download redirected outside boxedwine.org.");
                     continue;
                 }
                 break;

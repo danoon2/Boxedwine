@@ -5,12 +5,13 @@ from pathlib import Path
 import urllib.parse
 import xml.etree.ElementTree as ET
 import zipfile
-from .files import beneath, delete_tree, extract_zip
+from .files import beneath, delete_tree, extract_zip, validate_relative
 from .library import DRIVE_C, new_app, preference, resolution, check_installer
 from .packages import download, trusted_url
 
 
-def load_catalog(data):
+def load_catalog(data, allow_external=False):
+    from .imports import valid_url
     if len(data) > 1024**2 or b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
         raise ValueError('Invalid demo catalog XML.')
     root = ET.fromstring(data)
@@ -32,15 +33,19 @@ def load_catalog(data):
         shortcut = field('ShortcutExe')
         url, size, checksum = field('FileURL'), int(field('FileSizeBytes')), field('FileSHA256')
         if (not re.fullmatch('[a-z0-9][a-z0-9-]{0,63}', identifier) or identifier in ids or not 0 < len(field('Name')) <= 256 or
-                not trusted_url(url) or not 0 < size <= 1024**3 or not re.fullmatch('[a-f0-9]{64}', checksum) or
+                not (valid_url(url) if allow_external else trusted_url(url)) or not 0 < size <= 1024**3 or not re.fullmatch('[a-f0-9]{64}', checksum) or
                 not shortcut.lower().endswith('.exe') or '/' in shortcut or field('InstallType') not in ('Zip', 'Installer')):
             raise ValueError('Invalid demo identity or package.')
-        beneath('/tmp/boxedwine-catalog-validation', shortcut)
-        if field('Icon'):
-            beneath('/tmp/boxedwine-catalog-validation', field('Icon'))
+        validate_relative(shortcut)
+        if field('Icon') and not (allow_external and valid_url(field('Icon'))):
+            validate_relative(field('Icon'))
         ids.add(identifier)
         if any(field(key) for key in ('Options', 'InstallOptions', 'Options_Mac', 'InstallOptions_Mac')):
             raise ValueError('Unsupported legacy options in demo ' + field('Name'))
+        wine_version = values.get('WineVersion')
+        if (wine_version is None and not allow_external or
+                wine_version is not None and (not wine_version or len(wine_version.encode()) > 128)):
+            raise ValueError('Invalid Wine version in demo ' + field('Name'))
         dll_overrides = values.get('WineDllOverrides')
         if dll_overrides is not None:
             if (int(root.get('schemaVersion')) < 8 or not 0 < len(dll_overrides) <= 1024 or
@@ -69,18 +74,26 @@ def load_catalog(data):
         if field('InstallType') == 'Zip' and not zipped:
             raise ValueError('Portable demos require a ZIP.')
         if field('InstallType') == 'Installer' and zipped:
-            beneath('/tmp/boxedwine-catalog-validation', field('InstallExe'))
+            validate_relative(field('InstallExe'))
         if values.get('Glide') not in (None, 'psVoodoo') or values.get('CNCDDrawRenderer') not in (None, 'gdi', 'opengl', 'direct3d9'):
             raise ValueError('Unsupported demo graphics recipe.')
         if 'CNCDDrawFakeMode' in values and not re.fullmatch(r'[1-9][0-9]{0,3}x[1-9][0-9]{0,3}x(8|16|32)', values['CNCDDrawFakeMode']):
             raise ValueError('Invalid CNC DDraw mode.')
-        recipes.append(dict(origin=dict(id=identifier, catalogRelease=root.get('release'), packageSHA256=checksum, shortcutExe=shortcut),
+        recipes.append(dict(custom=allow_external, origin=dict(id=identifier, catalogRelease=root.get('release'), packageSHA256=checksum, shortcutExe=shortcut),
                             name=field('Name'), summary=field('Summary'), help=field('Help').replace('\\n', '\n').replace('\\t', '    '),
                             icon=field('Icon'), url=url, bytes=size, installType=field('InstallType'), installExe=field('InstallExe'),
-                            wineVersion=field('WineVersion'), settings=settings, glide=values.get('Glide'),
+                            wineVersion=wine_version, settings=settings, glide=values.get('Glide'),
                             cncRenderer=values.get('CNCDDrawRenderer'), cncUncapped=boolean('CNCDDrawUncapped') is True,
                             cncMode=values.get('CNCDDrawFakeMode'), wineDllOverrides=dll_overrides))
     return recipes
+
+
+def select_wine(recipe, releases):
+    choices = [r for r in releases if recipe['wineVersion'] is None or r['reference']['wineVersion'] == recipe['wineVersion']]
+    if not choices:
+        raise ValueError('No Wine version is available in this release catalog.' if recipe['wineVersion'] is None
+                         else 'Wine ' + recipe['wineVersion'] + ' is unavailable in this release catalog.')
+    return max(choices, key=lambda r: tuple(int(p) for p in r['reference']['wineVersion'].split('.')))
 
 
 def configure_cnc(ini, recipe):
@@ -112,11 +125,12 @@ def install(library, recipe, wine, work):
     document = library.load()
     if any((a.get('demo') or {}).get('id') == recipe['origin']['id'] for a in document['apps'] + [r['app'] for r in document['removedApps']]):
         raise ValueError('This demo is already in the library or Removed Apps. Open or restore that copy.')
-    if wine['wineVersion'] != recipe['wineVersion']:
+    if recipe['wineVersion'] is not None and wine['wineVersion'] != recipe['wineVersion']:
         raise ValueError('This demo requires Wine ' + recipe['wineVersion'])
     app = new_app(recipe['name'], wine)
     app.update(demo=recipe['origin'], demoSettings=recipe['settings'], resolution=recipe['settings'].get('resolution', '1024x768'))
     # Seed an editable per-app value only on first install.
+    app['arguments'] = list(recipe.get('appArguments', []))
     if recipe['origin']['id'] == 'alice':
         app['boxedwineArguments'] = ['-rel_mouse_sensitivity', '200']
     if recipe.get('wineDllOverrides') is not None:
@@ -129,7 +143,7 @@ def install(library, recipe, wine, work):
     try:
         filename = Path(urllib.parse.urlsplit(recipe['url']).path).name
         package = beneath(library.path(app), 'Download/' + filename)
-        download(recipe['url'], recipe['bytes'], recipe['origin']['packageSHA256'], package, work)
+        download(recipe['url'], recipe['bytes'], recipe['origin']['packageSHA256'], package, work, allow_external=recipe.get('custom', False))
         installer = recipe['installType'] == 'Installer'
         payload = beneath(library.path(app), 'Installer') if installer else beneath(library.root(app), DRIVE_C + '/App')
         if filename.lower().endswith('.zip'):

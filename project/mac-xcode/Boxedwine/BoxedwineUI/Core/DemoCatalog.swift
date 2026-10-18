@@ -8,7 +8,7 @@ enum DemoError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .catalog(let reason): "The included demo catalog cannot be used. \(reason)"
-        case .download(let reason): "The demo could not be downloaded. \(reason)"
+        case .download(let reason): "The file could not be downloaded. \(reason)"
         case .checksum: "The download does not match the package included in this release’s catalog. Nothing was installed. Please try again later."
         case .archive(let reason): "The demo ZIP cannot be installed. \(reason)"
         case .alreadyAdded: "This demo is already in your library or Removed Apps. Open or restore that copy instead."
@@ -49,7 +49,7 @@ struct Demo: Identifiable, Equatable, Sendable {
     enum Glide: String, Sendable {
         case psVoodoo
     }
-    let origin: DemoOrigin
+    var origin: DemoOrigin
     var id: String { origin.id }
     let name: String
     let summary: String
@@ -59,7 +59,7 @@ struct Demo: Identifiable, Equatable, Sendable {
     let bytes: Int64
     let type: InstallType
     let installExe: String?
-    let wineVersion: String
+    var wineVersion: String?
     var settings: DemoSettings? = nil
     var glide: Glide? = nil
     // Installation-only choice: the generated private INI travels with the app's files.
@@ -68,19 +68,32 @@ struct Demo: Identifiable, Equatable, Sendable {
     var cncDDrawMode: CNCDDrawMode? = nil
     // Seeded into editable per-app arguments on first install.
     var wineDllOverrides: String? = nil
+    var customSource = false
+    var appArguments: [String] = []
     var isZip: Bool { url.pathExtension.lowercased() == "zip" }
+
+    func catalogWine(in wines: [CatalogWine]) -> CatalogWine? {
+        wines.filter { wineVersion == nil || $0.wineVersion == wineVersion }
+            .sorted { $0.wineVersion.compare($1.wineVersion, options: .numeric) == .orderedDescending }.first
+    }
+
+    var unavailableWineMessage: String {
+        wineVersion.map { "Wine \($0) is unavailable in this release’s Wine list." }
+            ?? "No Wine version is available in this release’s Wine list."
+    }
 }
 
 struct DemoCatalog: Sendable {
     let release: String
     let demos: [Demo]
 
-    static func load(_ data: Data) throws -> DemoCatalog {
+    static func load(_ data: Data, allowExternal: Bool = false) throws -> DemoCatalog {
         guard data.count <= 1024 * 1024, let text = String(data: data, encoding: .utf8),
               !text.contains("<!DOCTYPE"), !text.contains("<!ENTITY") else {
             throw DemoError.catalog("Use a UTF-8 XML file without document types or entities, at most 1 MB.")
         }
         let delegate = CatalogParser()
+        delegate.allowExternal = allowExternal
         let parser = XMLParser(data: data)
         parser.shouldResolveExternalEntities = false
         parser.delegate = delegate
@@ -123,6 +136,7 @@ public extension PackageCheck {
 }
 
 private final class CatalogParser: NSObject, XMLParserDelegate {
+    var allowExternal = false
     var rootSeen = false
     var stack: [String] = []
     var release = ""
@@ -170,14 +184,15 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
     private func entry() throws -> Demo {
         func field(_ name: String) -> String { (fields[name] ?? "").trimmingCharacters(in: .whitespacesAndNewlines) }
         let id = field("ID"), name = field("Name"), hash = field("FileSHA256"), shortcut = field("ShortcutExe"), icon = field("Icon")
+        let wineVersion = fields["WineVersion"].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         guard DemoCatalog.validID(id), !demos.contains(where: { $0.id == id }), !name.isEmpty, name.utf8.count <= 256,
               DemoCatalog.validHash(hash), DemoCatalog.validRelativePath(shortcut), !shortcut.contains("/"),
               shortcut.lowercased().hasSuffix(".exe"),
-              (icon.isEmpty || (DemoCatalog.validRelativePath(icon) && !icon.contains("/") && icon.hasSuffix(".png"))),
-              let url = URL(string: field("FileURL")), DemoCatalog.validDownloadURL(url),
+              (icon.isEmpty || (allowExternal && CollectionIconCache.remoteURL(icon) != nil) || (DemoCatalog.validRelativePath(icon) && !icon.contains("/") && icon.hasSuffix(".png"))),
+              let url = URL(string: field("FileURL")), (allowExternal ? PreparedAppSource.validURL(url) : DemoCatalog.validDownloadURL(url)),
               let bytes = Int64(field("FileSizeBytes")), bytes > 0, bytes <= 1024 * 1024 * 1024,
               let type = Demo.InstallType(rawValue: field("InstallType")),
-              !field("WineVersion").isEmpty, field("WineVersion").utf8.count <= 128 else {
+              wineVersion.map({ !$0.isEmpty && $0.utf8.count <= 128 }) ?? allowExternal else {
             throw DemoError.catalog("Invalid ID, size, URL, checksum, icon, Wine version, or program in \(name).")
         }
         guard ["Options", "InstallOptions", "Options_Mac", "InstallOptions_Mac"].allSatisfy({ field($0).isEmpty }) else {
@@ -190,7 +205,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
               (type == .installer && zip) || installer.isEmpty else { throw DemoError.catalog("Unsupported installation recipe for \(name).") }
         var glide: Demo.Glide?
         if fields["Glide"] != nil {
-            guard let choice = Demo.Glide(rawValue: field("Glide")), field("WineVersion") == "11.0" else {
+            guard let choice = Demo.Glide(rawValue: field("Glide")), wineVersion == nil || wineVersion == "11.0" else {
                 throw DemoError.catalog("Glide demos require psVoodoo, an EXE program and Wine 11.0.")
             }
             glide = choice
@@ -227,8 +242,8 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
         }
         return Demo(origin: DemoOrigin(id: id, catalogRelease: release, packageSHA256: hash, shortcutExe: shortcut),
                     name: name, summary: field("Summary"), help: field("Help").replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\t", with: "    "),
-                    icon: icon, url: url, bytes: bytes, type: type, installExe: installer.isEmpty ? nil : installer, wineVersion: field("WineVersion"),
-                    settings: settings, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode, wineDllOverrides: dllOverrides)
+                    icon: icon, url: url, bytes: bytes, type: type, installExe: installer.isEmpty ? nil : installer, wineVersion: wineVersion,
+                    settings: settings, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode, wineDllOverrides: dllOverrides, customSource: allowExternal)
     }
 }
 

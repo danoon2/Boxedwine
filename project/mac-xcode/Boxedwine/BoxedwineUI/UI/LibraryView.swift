@@ -59,7 +59,7 @@ struct LibraryView: View {
             Text(store.query.isEmpty ? "Bring your favorite app along." : "No matching apps").font(.title3.weight(.medium))
             Text(store.query.isEmpty ? "Drop a Windows installer or app folder here." : "Try a different name.")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
-            Button("Add App…") { store.showAddApp = true }.buttonStyle(.borderedProminent)
+            Button("Add to Library…") { store.showAddApp = true }.buttonStyle(.borderedProminent)
                 .disabled(!store.canEdit || store.importing)
             if store.apps.isEmpty && store.query.isEmpty {
                 Button("Play Minesweeper") { store.addBuiltIn(.minesweeper) }.disabled(!store.canTryBuiltIn(.minesweeper))
@@ -100,9 +100,18 @@ struct LibraryView: View {
                 }
                 Section("Get Started") {
                     #if !BOXEDWINE_APP_STORE
-                    Button { store.showDemos() } label: { Label("Demos", systemImage: "gamecontroller") }
-                        .listRowBackground(store.showingDemos ? Color.accentColor.opacity(0.16) : Color.clear)
-                        .accessibilityAddTraits(store.showingDemos ? .isSelected : [])
+                    ForEach(["Demos"] + store.collectionNames, id: \.self) { name in
+                        Button { store.showCollection(name) } label: { Label(name, systemImage: "folder") }
+                            .listRowBackground(store.showingDemos && store.collectionName == name ? Color.accentColor.opacity(0.16) : Color.clear)
+                            .contextMenu {
+                                if store.refreshableCollections.contains(name) {
+                                    Button("Refresh Collection") { store.refreshCollection(name) }.disabled(store.importing || !store.canEdit)
+                                }
+                                if name != "Demos" || store.canResetDemos {
+                                    Button(name == "Demos" ? "Reset Demos…" : "Delete Collection…") { store.removeCollection(name) }.disabled(store.importing || !store.canEdit)
+                                }
+                            }
+                    }
                     #endif
                     Button { store.addBuiltIn(.minesweeper) } label: { Label("Play Minesweeper", systemImage: "gamecontroller") }
                         .disabled(!store.canTryBuiltIn(.minesweeper))
@@ -257,10 +266,10 @@ struct LibraryView: View {
             }
         }
         .frame(minWidth: 820, minHeight: 540)
-        .searchable(text: $store.query, prompt: store.showingDemos ? "Search demos" : "Search your apps")
+        .searchable(text: $store.query, prompt: store.showingDemos ? "Search collection" : "Search your apps")
         .searchFocused($searchFocused)
         .focusedSceneValue(\.nativeLibraryActions, menuActions)
-        .toolbar { ToolbarItem { Button { store.showAddApp = true } label: { Label("Add App", systemImage: "plus") }
+        .toolbar { ToolbarItem { Button { store.showAddApp = true } label: { Label("Add to Library", systemImage: "plus") }
             .disabled(!store.canEdit || store.importing) } }
         .sheet(isPresented: $store.showAddApp, onDismiss: store.addAppSheetDismissed) { AddAppView(store: store) }
         #if !BOXEDWINE_APP_STORE
@@ -483,105 +492,135 @@ struct CatalogWinePicker: View {
 
 struct AddAppView: View {
     @ObservedObject var store: LibraryStore
+    @State private var purpose = ""
+    @State private var link = ""
+    @State private var name = ""
+    @State private var action = ""
+    @State private var program = ""
+    @State private var destination = ""
     @State private var windowsVersion = WindowsVersion.wineDefault
     @State private var wineID: String?
-    @State private var droppedKind = LibraryStore.SourceKind.installerFile
     @Environment(\.dismiss) private var dismiss
-    private func choose(_ kind: LibraryStore.SourceKind) {
-        guard let wine = store.wineVersions.first(where: { $0.id == wineID }) else { return }
-        store.chooseSource(kind, windowsVersion: windowsVersion, wine: wine)
-    }
-    private var dropActionTitle: String {
-        switch droppedKind {
-        case .installerFile: return "Add and Run Installer"
-        case .installerFolder: return "Choose Installer…"
-        case .appFolder: return store.droppedAppSource?.isDirectory == true ? "Add App Folder" : "Choose App Folder…"
-        }
-    }
-    private var dropExplanation: String {
-        switch droppedKind {
-        case .installerFile: return "Copies this setup file and opens the installer. If it needs supporting files, drop the installer’s whole folder instead."
-        case .installerFolder: return "Copies this entire folder, including supporting files. Next, choose the installer inside it."
-        case .appFolder:
-            return store.droppedAppSource?.isDirectory == true
-                ? "Copies this folder and its supporting files. Next, choose the program to open."
-                : "Next, choose this app’s folder so its supporting files are copied too."
-        }
-    }
+    private var collection: CollectionSnapshot? { store.preparedSource?.collection }
+    private var choices: [String] { (store.preparedSource?.programs ?? []).filter { action != "app" || $0.lowercased().hasSuffix(".exe") } }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Add a Windows app").font(.title2.weight(.semibold))
-                Text(store.droppedAppSource == nil ? "Start with files you already have." : "Choose how to add your files.").foregroundStyle(.secondary)
-            }
-            if let source = store.droppedAppSource {
-                HStack(spacing: 12) {
-                    Image(nsImage: NSWorkspace.shared.icon(forFile: source.url.path))
-                        .resizable().frame(width: 32, height: 32)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(source.url.lastPathComponent).fontWeight(.medium).lineLimit(2)
-                        Text(source.url.deletingLastPathComponent().path)
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+            Text(store.preparedSource == nil ? "Add to Library" : collection == nil ? "Review App" : "Review Collection").font(.title2.weight(.semibold))
+            if store.importing {
+                ImportProgressView(store: store)
+            } else if let prepared = store.preparedSource {
+                Text(prepared.original.isFileURL ? prepared.original.lastPathComponent : prepared.original.absoluteString)
+                    .font(.callout).foregroundStyle(.secondary).textSelection(.enabled).lineLimit(3)
+                if let collection {
+                    TextField("Folder name", text: $destination)
+                    Menu("Use Existing Folder") {
+                        Button("Demos") { destination = "Demos" }
+                        ForEach(store.collectionNames, id: \.self) { name in Button(name) { destination = name } }
                     }
-                    Spacer(minLength: 0)
-                }.padding(12).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-                if source.allowedKinds.count > 1 {
-                    Picker("Add as", selection: $droppedKind) {
-                        ForEach(source.allowedKinds, id: \.self) { kind in
-                            Text(kind == .appFolder ? "Ready-to-run app" : "Windows installer").tag(kind)
+                    if let changes = try? store.collectionStore?.preview(collection, destination: destination) {
+                        Text(changes.description).font(.callout)
+                    }
+                    Text("Existing entries are updated by ID. Listings absent from this import are kept. Apps download when you choose to install them.").font(.callout).foregroundStyle(.secondary)
+                    Text(collection.apps.prefix(8).compactMap { $0["Name"] }.joined(separator: ", ")).font(.callout).lineLimit(4)
+                } else {
+                    TextField("App name", text: $name)
+                    Picker("Add as", selection: $action) {
+                        Text("Choose how to add these files").tag("")
+                        Text("Ready-to-run app").tag("app")
+                        Text("Run an installer").tag("installer")
+                    }
+                    if !action.isEmpty {
+                        Picker(action == "installer" ? "Installer" : "Program to open", selection: $program) {
+                            Text("Choose a program").tag("")
+                            ForEach(choices, id: \.self) { Text($0).tag($0) }
                         }
                     }
-                }
-            }
-            CatalogWinePicker(store: store, selectedID: $wineID)
-            VStack(alignment: .leading, spacing: 6) {
-                WindowsVersionPicker(selection: $windowsVersion)
-                Text("Choose a version if the app requires it. It will be prepared before the installer or app first opens.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-            if store.droppedAppSource != nil {
-                Text(dropExplanation).font(.callout).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    Button { choose(.installerFile) } label: {
-                        Label("Windows Installer…", systemImage: "doc.badge.plus").frame(maxWidth: .infinity, alignment: .leading).padding(9)
-                    }.disabled(!store.canSelectWine(wineID))
-                    Text("A self-contained .exe or .msi setup file.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    Button { choose(.installerFolder) } label: {
-                        Label("Installer Folder…", systemImage: "folder.badge.plus").frame(maxWidth: .infinity, alignment: .leading).padding(9)
-                    }.disabled(!store.canSelectWine(wineID))
-                    Text("Copies the installer’s whole folder, including its data files.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    Button { choose(.appFolder) } label: {
-                        Label("App Folder…", systemImage: "folder").frame(maxWidth: .infinity, alignment: .leading).padding(9)
-                    }.disabled(!store.canSelectWine(wineID))
-                    Text("An app that is ready to run without a setup step. Copies its folder and supporting files.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
-                Divider()
-                VStack(alignment: .leading, spacing: 6) {
-                    Button { store.chooseBackup() } label: {
-                        Label("Restore App Backup…", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity, alignment: .leading).padding(9)
+                    if action == "app" && !prepared.isDirectory {
+                        Text("Choose the app’s containing folder so its supporting files are included.").font(.callout).foregroundStyle(.secondary)
+                    } else {
+                        Text(action == "installer" ? "Copy the setup files into your library, then open the selected installer." : "Copy the app and supporting files into your library.").font(.callout).foregroundStyle(.secondary)
                     }
-                    Text("Adds a separate copy with the backup’s files, settings, and Wine version.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    DisclosureGroup("Compatibility options") {
+                        CatalogWinePicker(store: store, selectedID: $wineID)
+                        WindowsVersionPicker(selection: $windowsVersion)
+                    }
                 }
+            } else if purpose.isEmpty {
+                Text("What would you like to add?").foregroundStyle(.secondary)
+                choice("App or installer", "Install an app or add one that is ready to run.", "app.badge") { purpose = "app" }
+                #if !BOXEDWINE_APP_STORE
+                choice("Collection", "Add a folder of games and apps to browse and install later.", "folder.badge.plus") { purpose = "collection" }
+                #endif
+                choice("Restore a backup", "Restore an app with its files, settings, and Wine version.", "arrow.counterclockwise") { store.chooseBackup() }
+            } else {
+                Text(purpose == "collection" ? "Choose a collection JSON file or download link." : "Choose where your app or installer files are.").foregroundStyle(.secondary)
+                choice("Choose file…", purpose == "collection" ? "Collection JSON" : "ZIP, EXE, or MSI", "doc") { store.chooseAddSource(folder: false, collectionOnly: purpose == "collection") }
+                if purpose == "app" {
+                    choice("Choose folder…", "An app or setup with supporting files.", "folder") { store.chooseAddSource(folder: true, collectionOnly: false) }
+                }
+                #if !BOXEDWINE_APP_STORE
+                TextField("File download URL", text: $link)
+                Button("Download & Continue") {
+                    guard let url = URL(string: link.trimmingCharacters(in: .whitespacesAndNewlines)), PreparedAppSource.validURL(url) else { store.reportAddAppError("Enter a complete HTTP or HTTPS file link."); return }
+                    store.prepareAddSource(url, collectionOnly: purpose == "collection")
+                }.disabled(link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                #endif
             }
+            if let error = store.addAppError, !store.importing {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout).foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                    .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityIdentifier("add-app-error")
+            }
+            Divider()
             HStack {
+                if !purpose.isEmpty || store.preparedSource != nil {
+                    Button("Back") { store.addAppError = nil; if store.preparedSource != nil { store.preparedSource = nil; if purpose.isEmpty { purpose = "app" } } else { purpose = "" } }.disabled(store.importing)
+                }
                 Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                if store.droppedAppSource != nil {
-                    Button(dropActionTitle) {
-                        guard let wine = store.wineVersions.first(where: { $0.id == wineID }) else { return }
-                        store.addDroppedSource(as: droppedKind, windowsVersion: windowsVersion, wine: wine)
-                    }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
-                        .disabled(!store.canSelectWine(wineID) || !store.canEdit || store.importing)
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction).disabled(store.importing)
+                if let prepared = store.preparedSource, !store.importing {
+                    if let collection {
+                        Button("Add Collection") { store.addCollection(collection, destination: destination) }
+                            .buttonStyle(.borderedProminent).disabled((try? CollectionSnapshot.folderName(destination)) == nil)
+                    } else {
+                        Button(action == "installer" ? "Run Installer" : action == "app" && !prepared.isDirectory ? "Choose App Folder…" : "Add App") {
+                            guard let wine = store.wineVersions.first(where: { $0.id == wineID }) else { return }
+                            store.importPrepared(prepared, action: action, program: program, name: name, windows: windowsVersion, wine: wine)
+                        }.buttonStyle(.borderedProminent)
+                            .disabled(action.isEmpty || program.isEmpty || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !store.canSelectWine(wineID))
+                    }
                 }
             }
-        }.padding(28).frame(width: 480)
-            .onAppear { droppedKind = store.droppedAppSource?.allowedKinds.first ?? .installerFile }
+        }.padding(28).frame(width: 500)
+            .interactiveDismissDisabled(store.importing)
+            .onAppear {
+                wineID = store.defaultCatalogWine?.id
+                if let dropped = store.droppedAppSource { purpose = "app"; store.prepareAddSource(dropped.url) }
+            }
+            .onChange(of: store.preparedSource?.source) { _, _ in
+                guard let prepared = store.preparedSource else { return }
+                name = prepared.name; action = prepared.suggestedAction; destination = prepared.collection?.folder ?? ""
+                chooseProgram()
+            }
+            .onChange(of: action) { _, _ in chooseProgram() }
+            .onChange(of: link) { _, _ in store.addAppError = nil }
+    }
+    private func chooseProgram() {
+        let setups = choices.filter { ($0 as NSString).pathExtension.lowercased() == "msi" || ($0 as NSString).lastPathComponent.range(of: "^(setup|install)", options: [.regularExpression, .caseInsensitive]) != nil }
+        let apps = choices.filter { !ProgramCandidate(path: $0).isMaintenanceTool }
+        program = action == "installer" && setups.count == 1 ? setups[0] : action == "app" && apps.count == 1 ? apps[0] : choices.count == 1 ? choices[0] : ""
+    }
+    private func choice(_ title: String, _ detail: String, _ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 5) {
+                Label(title, systemImage: icon)
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
+        }
     }
 }
 

@@ -304,7 +304,7 @@ class Library:
                 delete_tree(self.path(operation['app']), self.directory / 'Applications')
         self.operation_path(operation).unlink(missing_ok=True)
 
-    def import_app(self, source, kind, wine, work, windows='wineDefault', installer=None, name=None):
+    def import_app(self, source, kind, wine, work, windows='wineDefault', installer=None, name=None, program=None):
         source = no_links(source)
         if source == self.directory or within(source, self.directory) or within(self.directory, source):
             raise ValueError('Choose a source outside the Boxedwine library.')
@@ -321,7 +321,13 @@ class Library:
                 if not programs:
                     raise ValueError('This folder has no Windows programs (.exe).')
                 primary = [p for p in programs if not maintenance(p)]
-                if len(primary) == 1:
+                if program is not None:
+                    selected = DRIVE_C + '/App/' + program
+                    beneath(source, program)
+                    if selected not in programs:
+                        raise ValueError('The selected program is no longer in the source folder.')
+                    app['executable'] = selected
+                elif len(primary) == 1:
                     app['executable'] = primary[0]
             elif kind == 'installerFolder':
                 installer = check_installer(installer)

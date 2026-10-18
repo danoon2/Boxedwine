@@ -274,45 +274,137 @@ def app_settings(owner, app):
 
 
 def add_app(owner, source=None):
-    if not owner.can_modify():
+    """Purpose → source → content review. Dropped files skip source selection."""
+    from .imports import PreparedSource
+    def prepare(value, remote=False, collection=False):
+        owner.perform('Checking source', lambda work: PreparedSource(value, work, remote, collection), lambda result: review_import(owner, result))
+    if source is not None:
+        prepare(source)
         return
-    dialog = Adw.PreferencesDialog(title='Add App', content_width=620, content_height=540)
-    general = page(dialog, 'Add App', 'list-add-symbolic')
-    source_group = group(general, 'Choose a Source', 'Boxedwine copies files into a separate Windows environment for this app.')
-    selected = {'source': source, 'kind': 'folder' if source and source.is_dir() else 'installer', 'installer': None}
-    types = {'installer': 'Windows installer (.exe or .msi)', 'installerFolder': 'Folder containing an installer', 'folder': 'Portable app folder'}
-    kind_row, kind = combo(source_group, 'Source type', types, selected['kind'])
-    def picked(path):
-        selected['source'] = path; selected['installer'] = None
-        source_row.set_subtitle(str(path)); installer_row.set_subtitle('Select setup.exe or an .msi inside the folder')
-        if not name.get_text():
-            name.set_text(path.name if path.is_dir() else path.stem)
-    source_row = action_row(owner, source_group, 'Source', str(source) if source else 'No source selected', 'Choose…',
-                            lambda: choose_file(owner, 'Choose ' + ('Folder' if kind() != 'installer' else 'Installer'), picked, folder=kind() != 'installer',
-                                                patterns=None if kind() != 'installer' else ['*.exe', '*.EXE', '*.msi', '*.MSI']))
-    def picked_installer(path):
-        selected['installer'] = path; installer_row.set_subtitle(str(path))
-    installer_row = action_row(owner, source_group, 'Installer', 'Select setup.exe or an .msi inside the folder', 'Choose…',
-                               lambda: choose_file(owner, 'Choose Installer', picked_installer, patterns=['*.exe', '*.EXE', '*.msi', '*.MSI']))
-    installer_row.set_visible(kind() == 'installerFolder')
-    def type_changed(*_):
-        selected.update(source=None, installer=None)
-        source_row.set_subtitle('No source selected'); installer_row.set_visible(kind() == 'installerFolder')
-    kind_row.connect('notify::selected', type_changed)
-    details = group(general, 'App Details')
-    name = Adw.EntryRow(title='Name', text=(source.name if source.is_dir() else source.stem) if source else ''); details.add(name)
-    _, windows = combo(details, 'Windows version', WINDOWS, 'wineDefault')
-    actions = group(general, '')
-    def start():
-        if not selected['source'] or not name.get_text().strip():
-            raise ValueError('Choose a source and enter an app name.')
-        if kind() == 'installerFolder' and not selected['installer']:
-            raise ValueError('Choose the installer inside the selected folder.')
-        source_path, source_kind, installer_path, title, version = selected['source'], kind(), selected['installer'], name.get_text().strip(), windows()
+    dialog = Adw.PreferencesDialog(title='Add to Library', content_width=560, content_height=420)
+    choices = group(page(dialog, 'Add to Library', 'list-add-symbolic'), 'What would you like to add?')
+    def select(purpose):
         dialog.close()
-        owner.with_wine(lambda wine: owner.perform('Adding ' + title,
-            lambda work: owner.library.import_app(source_path, source_kind, wine, work, version, installer_path, title), owner.app_added))
-    action_row(owner, actions, 'Add to your library', '', 'Add App', start, 'suggested-action')
+        if purpose == 'backup':
+            owner.restore_backup(); return
+        sources = Adw.PreferencesDialog(title='Add Collection' if purpose == 'collection' else 'Add App or Installer', content_width=560, content_height=420)
+        section = group(page(sources, 'Source', 'document-open-symbolic'), 'Choose a source')
+        error = Gtk.Label(wrap=True, xalign=0, selectable=True, visible=False)
+        error.add_css_class('error')
+        def show_error(message=''):
+            error.set_text('Could not use this source: ' + message if message else '')
+            error.set_visible(bool(message))
+        def ready():
+            section.set_sensitive(True); sources.set_can_close(True)
+        def failed(failure):
+            from .files import Cancelled
+            ready()
+            if not isinstance(failure, Cancelled):
+                show_error(str(failure))
+        def prepared(result):
+            ready()
+            # Finish dismissing the source sheet before presenting its review.
+            sources.connect('closed', lambda *_: review_import(owner, result))
+            sources.close()
+        def picked(path, remote=False):
+            if owner.busy:
+                return
+            show_error(); section.set_sensitive(False); sources.set_can_close(False)
+            owner.perform('Checking source', lambda work: PreparedSource(path, work, remote, purpose == 'collection'), prepared, failed=failed)
+        action_row(owner, section, 'Choose file', 'Collection JSON' if purpose == 'collection' else 'ZIP, EXE, or MSI', 'Choose…',
+                   lambda: choose_file(owner, 'Choose File', picked, patterns=['*.json'] if purpose == 'collection' else ['*.zip', '*.exe', '*.msi', '*.json', '*.ZIP', '*.EXE', '*.MSI']))
+        if purpose != 'collection':
+            action_row(owner, section, 'Choose folder', 'An app or setup with supporting files', 'Choose…', lambda: choose_file(owner, 'Choose Folder', picked, folder=True))
+        link = Adw.EntryRow(title='File download URL'); section.add(link)
+        link.connect('notify::text', lambda *_: show_error())
+        section.add(error)
+        def remote():
+            from .imports import valid_url
+            value = link.get_text().strip()
+            if not valid_url(value):
+                show_error('Enter a complete HTTP or HTTPS file link.'); link.grab_focus(); return
+            picked(value, remote=True)
+        action_row(owner, section, 'Download from link', 'The file is checked before anything is added or run.', 'Download & Continue', remote)
+        action_row(owner, section, 'Choose another purpose', '', 'Back', lambda: (sources.close(), add_app(owner)))
+        sources.present(owner)
+    action_row(owner, choices, 'App or installer', 'Install an app or add one that is ready to run.', 'Choose…', lambda: select('app'))
+    action_row(owner, choices, 'Collection', 'Add a folder of games and apps to browse and install later.', 'Choose…', lambda: select('collection'))
+    action_row(owner, choices, 'Restore a backup', 'Restore saved app files and settings.', 'Choose…', lambda: select('backup'))
+    dialog.present(owner)
+    return dialog
+
+
+def review_import(owner, prepared):
+    dialog = Adw.PreferencesDialog(title='Review Collection' if prepared.collection else 'Review App', content_width=610, content_height=600)
+    section = group(page(dialog, 'Review', 'document-open-symbolic'), 'Review before adding', prepared.original)
+    retained = {'value': False}
+    dialog.connect('closed', lambda *_: None if retained['value'] else prepared.close())
+    if prepared.collection:
+        incoming = prepared.collection
+        destination = Adw.EntryRow(title='Folder name', text=incoming['folder']); section.add(destination)
+        names = ['Demos'] + [f['name'] for f in owner.collections.load()['folders'] if f['name'] != 'Demos']
+        choices, selected = combo(section, 'Destination', {'': 'Use folder name above', **{n: n for n in names}}, '')
+        def folder():
+            return destination.get_text().strip() if selected() == '' else selected()
+        summary = row(section, 'Import changes')
+        def changed(*_):
+            try:
+                added, updated, unchanged = owner.collections.preview(incoming, folder())
+                summary.set_subtitle(f'{added} new · {updated} updated · {unchanged} unchanged. Existing listings not included in this import are kept.')
+            except ValueError as error:
+                summary.set_subtitle(str(error))
+        destination.connect('notify::text', changed); choices.connect('notify::selected', changed); changed()
+        row(section, 'Apps download when you install them', ', '.join(a['Name'] for a in incoming['apps'][:8]))
+        def add():
+            from .imports import valid_url
+            name = owner.collections.add(incoming, folder(), source=prepared.original if valid_url(prepared.original) else None)
+            dialog.close(); owner.refresh_collections(); owner.navigate(name)
+            owner.toast('Collection saved. Available next time you open Boxedwine.')
+        action_row(owner, section, 'Save to your library', '', 'Add Collection', add, 'suggested-action')
+    else:
+        name = Adw.EntryRow(title='App name', text=prepared.name); section.add(name)
+        action_row_widget, action = combo(section, 'Add as', {'': 'Choose how to add these files', 'app': 'Ready-to-run app', 'installer': 'Run an installer'}, prepared.suggested_action)
+        program_row = Adw.ComboRow(title='Program', use_markup=False); section.add(program_row)
+        candidates = []
+        def update(*_):
+            candidates[:] = [p for p in prepared.programs if action() != 'app' or p.lower().endswith('.exe')]
+            program_row.set_model(Gtk.StringList.new(candidates)); program_row.set_selected(0 if len(candidates) == 1 else Gtk.INVALID_LIST_POSITION)
+            if action() == 'installer':
+                setup = [i for i, p in enumerate(candidates) if Path(p).suffix.lower() == '.msi' or re.match(r'^(setup|install)', Path(p).stem, re.I)]
+                if len(setup) == 1: program_row.set_selected(setup[0])
+            program_row.set_title('Installer' if action() == 'installer' else 'Program to open')
+        action_row_widget.connect('notify::selected', update); update()
+        if not prepared.source.is_dir():
+            action_row(owner, section, 'Ready-to-run apps may need nearby files', 'Choose the containing folder to include those files.', 'Choose Folder…',
+                       lambda: choose_file(owner, 'Choose App Folder', lambda path: (dialog.close(), add_app(owner, path)), folder=True))
+        options = Adw.ExpanderRow(title='Compatibility options'); section.add(options)
+        windows_row = Adw.ComboRow(title='Windows version', model=Gtk.StringList.new(list(WINDOWS.values()))); options.add_row(windows_row)
+        def start():
+            index = program_row.get_selected()
+            if not action() or not name.get_text().strip() or index >= len(candidates):
+                raise ValueError('Choose an action and program, and enter an app name.')
+            if action() == 'app' and not prepared.source.is_dir():
+                raise ValueError('Choose the app’s containing folder to include its supporting files.')
+            selected_program = candidates[index]
+            kind = 'folder' if action() == 'app' else 'installerFolder' if prepared.source.is_dir() else 'installer'
+            installer = beneath(prepared.source, selected_program) if kind == 'installerFolder' else None
+            windows = list(WINDOWS)[windows_row.get_selected()]
+            title = name.get_text().strip()
+            retained['value'] = True
+            dialog.close()
+            def imported(work, wine):
+                try:
+                    return owner.library.import_app(prepared.source, kind, wine, work, windows, installer, title,
+                                                    selected_program if kind == 'folder' else None)
+                finally:
+                    prepared.close()
+            owner.with_wine(lambda wine: owner.perform('Adding ' + title, lambda work: imported(work, wine), owner.app_added))
+        final = action_row(owner, section, 'Copy files into your library', 'Your original files stay in place.', 'Add App', start, 'suggested-action')
+        # The final button describes the action; no program runs while inspecting.
+        def action_changed(*_):
+            final.get_activatable_widget().set_label('Run Installer' if action() == 'installer' else 'Add App')
+        action_row_widget.connect('notify::selected', action_changed); action_changed()
+    action_row(owner, section, 'Choose another source', '', 'Back', lambda: (dialog.close(), add_app(owner)))
     dialog.present(owner)
     return dialog
 

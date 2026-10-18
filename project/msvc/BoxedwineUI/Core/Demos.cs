@@ -9,14 +9,26 @@ using System.Xml.Linq;
 namespace Boxedwine.Library;
 
 public sealed record DemoRecipe(DemoOrigin Origin, string Name, string Summary, string Help, string Icon, string Url, long Bytes, string InstallType,
-    string? InstallExe, string WineVersion, DemoSettings Settings, string? Glide, string? CncRenderer, bool CncUncapped, string? CncMode, string? WineDllOverrides = null);
+    string? InstallExe, string? WineVersion, DemoSettings Settings, string? Glide, string? CncRenderer, bool CncUncapped, string? CncMode, string? WineDllOverrides = null, bool CustomSource = false)
+{
+    public List<string> AppArguments { get; init; } = [];
+    public CatalogWine? SelectWine(IEnumerable<CatalogWine> wines) => wines.Where(w => WineVersion == null || w.WineVersion == WineVersion)
+        .OrderByDescending(w => Version.Parse(w.WineVersion)).FirstOrDefault();
+    public string WineDescription(IEnumerable<CatalogWine> wines) => SelectWine(wines) is CatalogWine selected
+        ? $"Wine {selected.WineVersion}" + (WineVersion == null ? " (latest available)" : "")
+        : WineVersion == null ? "Wine unavailable" : $"Wine {WineVersion} unavailable";
+}
 public static class Demos
 {
     public static List<DemoRecipe> Load(string path)
     {
         SafeFiles.NoLinks(path);
         using var reader = XmlReader.Create(path, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 1024 * 1024 });
-        var xml = XDocument.Load(reader); var root = xml.Root ?? throw new InvalidDataException("The demo catalog is empty.");
+        return Parse(XDocument.Load(reader), Path.GetDirectoryName(path)!);
+    }
+    internal static List<DemoRecipe> Parse(XDocument xml, string directory, bool allowExternal = false)
+    {
+        var root = xml.Root ?? throw new InvalidDataException("The demo catalog is empty.");
         if (root.Name != "XML" || !int.TryParse((string?)root.Attribute("schemaVersion"), out int schema) || schema is < 1 or > 8 || string.IsNullOrEmpty((string?)root.Attribute("release"))) throw new InvalidDataException("Unsupported demo catalog version.");
         string release = (string)root.Attribute("release")!;
         var recipes = new List<DemoRecipe>(); var ids = new HashSet<string>();
@@ -29,11 +41,14 @@ public static class Demos
             int? Number(string key) => Optional(key) is string value ? int.Parse(value) : null;
             string id = Field("ID"), name = Field("Name"), hash = Field("FileSHA256"), shortcut = Field("ShortcutExe"), url = Field("FileURL");
             if (!Regex.IsMatch(id, "^[a-z0-9][a-z0-9-]{0,63}$") || !ids.Add(id) || name.Length is 0 or > 256 || !Regex.IsMatch(hash, "^[a-f0-9]{64}$") ||
-                shortcut.Contains('/') || !shortcut.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !Uri.TryCreate(url, UriKind.Absolute, out var address) || !Packages.TrustedUrl(address) ||
+                shortcut.Contains('/') || !shortcut.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !Uri.TryCreate(url, UriKind.Absolute, out var address) || !(allowExternal ? PreparedAppSource.ValidUrl(address) : Packages.TrustedUrl(address)) ||
                 !long.TryParse(Field("FileSizeBytes"), out long bytes) || bytes is <= 0 or > 1073741824 || Field("InstallType") is not ("Zip" or "Installer")) throw new InvalidDataException("Invalid demo identity, package, or install recipe.");
-            _ = SafeFiles.Beneath(Path.GetDirectoryName(path)!, shortcut);
-            if (Field("Icon").Length > 0) _ = SafeFiles.Beneath(Path.GetDirectoryName(path)!, Field("Icon"));
+            _ = SafeFiles.Beneath(directory, shortcut);
+            if (Field("Icon").Length > 0 && !(allowExternal && CollectionIcons.IsRemote(Field("Icon")))) _ = SafeFiles.Beneath(directory, Field("Icon"));
             foreach (var unsupported in new[] { "Options", "InstallOptions", "Options_Mac", "InstallOptions_Mac" }) if (Field(unsupported).Length > 0) throw new InvalidDataException("Unsupported legacy options in demo " + name);
+            string? wineVersion = Optional("WineVersion");
+            if (wineVersion == null ? !allowExternal : wineVersion.Length == 0 || Encoding.UTF8.GetByteCount(wineVersion) > 128)
+                throw new InvalidDataException("Invalid Wine version in demo " + name);
             string? dllOverrides = Optional("WineDllOverrides");
             if (dllOverrides != null)
             {
@@ -45,12 +60,12 @@ public static class Demos
             if (settings.InstallResolution != null) LaunchArguments.ValidateResolution(settings.InstallResolution);
             if (settings.WindowsVersion is not (null or "win98" or "winxp") || settings.NativeOpenGL == false || settings.BitsPerPixel is int b && b is not (8 or 16 or 32) || settings.CpuCount is int c && c is < 1 or > 64) throw new InvalidDataException("Unsupported demo display, Windows, or CPU setting.");
             if (Field("InstallType") == "Zip" && !address.LocalPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("A portable demo requires a ZIP package.");
-            if (Field("InstallType") == "Installer" && address.LocalPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) _ = SafeFiles.Beneath(Path.GetDirectoryName(path)!, Field("InstallExe"));
+            if (Field("InstallType") == "Installer" && address.LocalPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) _ = SafeFiles.Beneath(directory, Field("InstallExe"));
             if (Optional("Glide") is string glide && glide != "psVoodoo") throw new InvalidDataException("Unsupported Glide provider.");
             if (Optional("CNCDDrawRenderer") is string renderer && renderer is not ("gdi" or "opengl" or "direct3d9")) throw new InvalidDataException("Unknown CNC DDraw renderer.");
             if (Optional("CNCDDrawFakeMode") is string mode && !Regex.IsMatch(mode, "^[1-9][0-9]{0,3}x[1-9][0-9]{0,3}x(8|16|32)$")) throw new InvalidDataException("Invalid CNC DDraw display mode.");
             recipes.Add(new(new(id, release, hash, shortcut), name, Field("Summary"), Field("Help").Replace("\\n", "\n").Replace("\\t", "    "), Field("Icon"), url, bytes,
-                Field("InstallType"), Optional("InstallExe"), Field("WineVersion"), settings, Optional("Glide"), Optional("CNCDDrawRenderer"), Boolean("CNCDDrawUncapped") == true, Optional("CNCDDrawFakeMode"), dllOverrides));
+                Field("InstallType"), Optional("InstallExe"), wineVersion, settings, Optional("Glide"), Optional("CNCDDrawRenderer"), Boolean("CNCDDrawUncapped") == true, Optional("CNCDDrawFakeMode"), dllOverrides, allowExternal));
         }
         return recipes;
     }
@@ -58,10 +73,11 @@ public static class Demos
     {
         var document = repository.Load();
         if (document.Apps.Concat(document.RemovedApps.Select(a => a.App)).Any(a => a.Demo?.Id == demo.Origin.Id)) throw new InvalidOperationException("This demo is already in the library or Removed Apps. Open or restore that copy.");
-        if (wine.WineVersion != demo.WineVersion) throw new InvalidOperationException("This demo requires Wine " + demo.WineVersion);
+        if (demo.WineVersion != null && wine.WineVersion != demo.WineVersion) throw new InvalidOperationException("This demo requires Wine " + demo.WineVersion);
         // New demos inherit the global OpenGL choice even when the catalog recommends Native.
         var app = new LibraryApp { Name = demo.Name, Demo = demo.Origin, DemoSettings = demo.Settings, WinePackage = wine, SavedWineVersion = wine.WineVersion, Resolution = demo.Settings.Resolution ?? "1024x768", WindowsOpenGL = "default" };
         // Seed an editable per-app value only on first install.
+        app.Arguments = [.. demo.AppArguments];
         if (demo.Origin.Id == "alice") app.BoxedwineArguments = LaunchArguments.WithMouseSensitivity([], 200);
         if (demo.WineDllOverrides != null) (app.BoxedwineArguments ??= []).AddRange(["-env", "WINEDLLOVERRIDES=" + demo.WineDllOverrides]);
         if (demo.Settings.WindowsVersion is string version) app.ChooseWindows(version);
@@ -74,7 +90,7 @@ public static class Demos
         {
             var uri = new Uri(demo.Url);
             string download = SafeFiles.Beneath(repository.AppDirectory(app), "Download/" + Path.GetFileName(uri.LocalPath));
-            await Packages.Download(demo.Url, demo.Bytes, demo.Origin.PackageSHA256, download, cancellation, progress);
+            await Packages.Download(demo.Url, demo.Bytes, demo.Origin.PackageSHA256, download, cancellation, progress, allowExternal: demo.CustomSource);
             string payload = demo.InstallType == "Installer" ? SafeFiles.Beneath(repository.AppDirectory(app), "Installer") : SafeFiles.Beneath(repository.Root(app), LibraryRepository.DriveC + "/App");
             if (uri.LocalPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {

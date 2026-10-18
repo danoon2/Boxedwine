@@ -161,7 +161,7 @@ struct NativeLibraryCommands: Commands {
 #endif
         }
         CommandGroup(replacing: .newItem) {
-            action("Add App…", .add).keyboardShortcut("n")
+            action("Add to Library…", .add).keyboardShortcut("n")
             action("Restore App Backup…", .restore)
             Divider()
             action(context?.openTitle ?? "Open App", .open).keyboardShortcut("o")
@@ -228,7 +228,10 @@ struct NativeHelpView: View {
                 }
                 #endif
                 topic("Add an app you already have", symbol: "plus.app") {
-                    Text("Choose File → Add App, then choose the kind of files you have:")
+                    Text("Choose File → Add to Library → App or installer. Select a file or folder, then review its contents. ZIP files are unpacked before review.")
+#if !BOXEDWINE_APP_STORE
+                    Text("You can also paste a direct download URL. Nothing runs until you confirm the action.")
+#endif
 #if BOXEDWINE_APP_STORE
                     Text("Wine is included with Boxedwine. Your app’s Wine package is saved when you add it; identical packages share storage.")
 #else
@@ -238,12 +241,17 @@ struct NativeHelpView: View {
                         Text("New apps use \(wine.wineName). Boxedwine downloads it if needed and saves it with this app before installation.")
                     }
 #endif
-                    Text("If the app requires a particular Windows version, choose it before selecting your files. Otherwise, keep Use Wine’s default. The choice takes effect before the installer or app first opens.")
-                    explanation("Windows Installer", "A single .exe or .msi setup file that contains everything it needs.")
-                    explanation("Installer Folder", "A setup program with nearby data files. Select the whole folder first, then the setup program inside it.")
-                    explanation("App Folder", "An app that runs without installation. Include its supporting files in the folder.")
+                    Text("Use Compatibility options during review if the app requires a particular Windows or Wine version. The choice takes effect before the installer or app first opens.")
+                    explanation("Add App", "For an app that runs without installation. Choose its program and include its supporting files in the folder or ZIP.")
+                    explanation("Run Installer", "For an .exe or .msi setup program. Choose a folder or ZIP when setup needs nearby data files.")
                     Text("Boxedwine copies those files into your library. After an installer closes, choose the program you want to open and save it to the library. If setup did not finish, open Troubleshooting and use Run Installer Again.")
                 }
+                #if !BOXEDWINE_APP_STORE
+                topic("Add or update a collection", symbol: "folder.badge.plus") {
+                    Text("Choose Add to Library → Collection, then a JSON file or URL. Review the destination folder and the new, updated, and unchanged counts. Reimporting into the same folder matches stable app IDs, so it updates listings without duplicates. URL imports remember their sources: use Refresh to check for changes, then Apply Changes. Local files can be reimported.")
+                    Text("Collections stay available after relaunch. Delete a custom collection or use Reset Demos to restore the default listings. These actions keep installed apps and saves.")
+                }
+                #endif
                 topic("Keep your files and saves", symbol: "archivebox") {
                     Text("Back Up App in App Settings saves an app’s Windows files, settings and Wine package together. Close the app first. If you’ve edited its settings, Save and Back Up includes those changes. Restore App Backup creates a separate library entry.")
                     Text("By default, Remove from Library keeps files in Removed Apps so you can restore them. Enable Delete apps immediately in Settings to go straight to a permanent-deletion confirmation. This erases the app’s files and saves. Existing Removed Apps are kept, and the Manage section hides when it has nothing to show.")
@@ -261,7 +269,7 @@ struct NativeHelpView: View {
                     Text("If Windows support needs attention, open Boxedwine → Settings. A complete Boxedwine Wine filesystem package is required. Unfinished Work appears in the sidebar and View menu when an interrupted file operation needs review.")
                 }
                 topic("Keyboard shortcuts", symbol: "keyboard") {
-                    shortcut("Add App", "⌘N")
+                    shortcut("Add to Library", "⌘N")
                     shortcut("Find in the current library section", "⌘F")
                     shortcut("Open the selected app", "⌘O")
                     shortcut("Stop the selected running app", "⌘.")
