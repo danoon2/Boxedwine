@@ -47,7 +47,7 @@ settings:
  	Accepts the same list forms as registry, ie wine-override=nomono.
  	nomono = mscoree,mshtml= (skip the Wine Mono and Gecko installs)
  	Add presets to WINE_OVERRIDE_PRESETS in boxedwine-shell.js.
- - mount a CD-ROM or DVD image (ISO file) via ?cdrom=e:game.iso. The drive letter is optional and defaults to e:. For a game on several discs list them all, i.e. cdrom=e:disc1.iso;disc2.iso. Disc 1 is downloaded at start and each other disc when it is inserted. To change discs press Eject, then pick the disc from the list next to it.
+ - mount a CD-ROM or DVD image via ?cdrom=e:game.iso, or a CUE sheet via ?cdrom=e:game.cue (its BIN or WAVE files are downloaded with it). The drive letter is optional and defaults to e:. For a game on several discs list them all, i.e. cdrom=e:disc1.iso;disc2.iso. Disc 1 is downloaded at start and each other disc when it is inserted. To change discs press Eject, then pick the disc from the list next to it.
  - in p and w, c:/ can be used as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/)
 Some simplifications are possible:
 boxedwine.html?p=notepad - run notepad in the root fs

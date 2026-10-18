@@ -136,6 +136,9 @@
     <ClCompile Include="..\..\..\..\..\source\io\fszip.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\io\discimage.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\io\fsiso.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
@@ -1609,6 +1612,9 @@
       <Filter>source\io</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\io\fszip.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\io\discimage.h">
       <Filter>source\io</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\io\fsiso.h">

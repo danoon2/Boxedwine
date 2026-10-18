@@ -23,21 +23,27 @@
 
 #define ISO_SECTOR_SIZE 2048
 
+class DiscImage;
+
+// The ISO 9660 filesystem on a disc image (an ISO, or a CUE sheet with its BIN files),
+// mounted as virtual nodes
 class FsIso : public std::enable_shared_from_this<FsIso> {
 public:
     FsIso() = default;
-    ~FsIso();
 
-    bool init(const BString& isoPath, const BString& mountPath);
+    bool init(const BString& imagePath, const BString& mountPath);
+    // reads the disc's data sectors, see DiscImage::readData
     U32 readData(U64 byteOffset, U8* buf, U32 len);
+    // reads whole raw sectors, such as CD audio, see DiscImage::readRaw
+    bool readRaw(U32 sector, U32 count, U8* buf);
     // true for the mount point itself and everything below it
     bool containsPath(const BString& path) const;
 
-    U64 totalSectors = 0;
+    U64 totalSectors = 0; // size of the ISO 9660 filesystem
     BOXEDWINE_MUTEX readMutex;
+    std::shared_ptr<DiscImage> image;
 
 private:
-    FILE* file = nullptr;
     bool joliet = false;
     BString mountPath;
 

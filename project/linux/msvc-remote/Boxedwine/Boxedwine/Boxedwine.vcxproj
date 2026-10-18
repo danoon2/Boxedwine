@@ -1286,6 +1286,7 @@
     <ClCompile Include="..\..\..\..\..\source\io\fsdynamiclinknode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsfilenode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsfileopennode.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\io\discimage.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsiso.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsisoopennode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fsmemnode.cpp" />
@@ -1999,6 +2000,7 @@
     <ClInclude Include="..\..\..\..\..\source\io\fsdynamiclinknode.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsfilenode.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsfileopennode.h" />
+    <ClInclude Include="..\..\..\..\..\source\io\discimage.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsiso.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsisoopennode.h" />
     <ClInclude Include="..\..\..\..\..\source\io\fsmemnode.h" />

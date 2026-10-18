@@ -17,7 +17,7 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 * options
 
--cdrom path letter : Path to a CD-ROM or DVD image (ISO file) to mount as a disc drive inside Wine, using the given drive letter (for example: -cdrom game.iso e).  The disc's ISO 9660 filesystem (with Joliet long names) is exposed at /mnt/cdrom; most DVDs have one alongside UDF, but UDF-only DVDs are not supported.  A /dev/cdrom device node is created so that Wine can query drive status and the table of contents.  For a game on several discs, repeat -cdrom with the same letter for each disc (for example: -cdrom disc1.iso e -cdrom disc2.iso e).  Disc 1 is in the drive at start and Ctrl+Shift+F12 swaps in the next disc.
+-cdrom path letter : Path to a CD-ROM or DVD image to mount as a disc drive inside Wine, using the given drive letter (for example: -cdrom game.iso e).  The image can be an ISO file, or a CUE sheet with the BIN (or WAVE) files it lists, which keeps a CD's audio tracks (for example: -cdrom game.cue e).  Programs that play CD audio through Windows MCI hear the tracks: Wine's CD player reads them from the drive and plays them through DirectSound.  The disc's ISO 9660 filesystem (with Joliet long names) is exposed at /mnt/cdrom; most DVDs have one alongside UDF, but UDF-only DVDs are not supported.  A /dev/cdrom device node is created so that Wine can query drive status and the table of contents.  For a game on several discs, repeat -cdrom with the same letter for each disc (for example: -cdrom disc1.iso e -cdrom disc2.iso e).  Disc 1 is in the drive at start and Ctrl+Shift+F12 swaps in the next disc.
 
 -bpp X : Value must be 16 or 32.  Most games are fine with 32-bit.
 

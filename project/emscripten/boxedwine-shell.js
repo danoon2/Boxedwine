@@ -781,13 +781,61 @@
         // others is fetched when it is inserted and the one it replaces is deleted.
         function buildCDRomFileSystems(callback) {
 			if(Config.cdromISOFiles.length > 0){
-				loadFile(Config.locateCDRomBaseUrl, Config.cdromISOFiles[0], (uint8Array) => {
-					createFile("/", Config.cdromISOFiles[0], uint8Array);
+				loadCDRomDisc(0).then(callback).catch(function(error) {
+					console.log("Unable to load disc 1: " + error);
 					callback();
 				});
             }else{
                 callback();
             }
+        }
+        // The files of each disc that has been loaded: an ISO image, or a CUE sheet and
+        // the BIN or WAVE files it lists
+        var cdromDiscFiles = [];
+        function cueSheetFiles(cue, text) {
+            let dir = cue.substring(0, cue.lastIndexOf("/") + 1);
+            let files = [];
+            text.split(/\r?\n/).forEach(function(line) {
+                let match = line.match(/^\s*FILE\s+(?:"([^"]*)"|(\S+))/i);
+                if (match) {
+                    // relative to the CUE sheet, as Boxedwine opens them
+                    files.push(dir + (match[1] !== undefined ? match[1] : match[2]).replace(/\\/g, "/"));
+                }
+            });
+            return files;
+        }
+        function fetchCDRomFile(file) {
+            if (cdromDiscIsLoaded(file)) {
+                return Promise.resolve();
+            }
+            let url = Config.locateCDRomBaseUrl + file.split("/").map(encodeURIComponent).join("/");
+            return fetch(url, { method: 'GET' }).then(function(response) {
+                if (response.status !== 200) {
+                    throw new Error(file + " status " + response.status);
+                }
+                return response.arrayBuffer();
+            }).then(function(buffer) {
+                let slash = file.lastIndexOf("/");
+                if (slash > 0) {
+                    FS.mkdirTree("/" + file.substring(0, slash));
+                }
+                createFile("/" + file.substring(0, slash + 1), file.substring(slash + 1), new Uint8Array(buffer));
+            });
+        }
+        function loadCDRomDisc(index) {
+            let disc = Config.cdromISOFiles[index];
+            if (!/\.cue$/i.test(disc)) {
+                cdromDiscFiles[index] = [disc];
+                return fetchCDRomFile(disc);
+            }
+            return fetchCDRomFile(disc).then(function() {
+                let files = cueSheetFiles(disc, new TextDecoder().decode(FS.readFile("/" + disc)));
+                cdromDiscFiles[index] = [disc].concat(files);
+                // one at a time, so only one download is buffered at once
+                return files.reduce(function(previous, file) {
+                    return previous.then(function() { return fetchCDRomFile(file); });
+                }, Promise.resolve());
+            });
         }
         var cdromCurrent = 0;    // disc in the drive, -1 while it is empty
         var cdromLoading = -1;   // disc being downloaded or inserted
@@ -850,43 +898,37 @@
                 updateCDRomControls(); // undo a list change that was not acted on
                 return;
             }
-            let file = Config.cdromISOFiles[index];
+            let disc = Config.cdromISOFiles[index];
             let finish = function() {
                 if (Module.ccall("boxedwineCDRomInsert", "number", ["number"], [index])) {
                     cdromCurrent = index;
                     // free the memory of the discs that are not in the drive
-                    Config.cdromISOFiles.forEach(function(other) {
-                        if (other !== file && cdromDiscIsLoaded(other)) {
-                            try {
-                                FS.unlink("/" + other);
-                            } catch (e) {
-                                console.log("Unable to delete " + other + ": " + e);
-                            }
+                    let keep = cdromDiscFiles[index] || [disc];
+                    cdromDiscFiles.forEach(function(files, other) {
+                        if (other === index || !files) {
+                            return;
                         }
+                        files.forEach(function(file) {
+                            if (keep.indexOf(file) < 0 && cdromDiscIsLoaded(file)) {
+                                try {
+                                    FS.unlink("/" + file);
+                                } catch (e) {
+                                    console.log("Unable to delete " + file + ": " + e);
+                                }
+                            }
+                        });
                     });
                 } else {
-                    console.log("Unable to insert disc " + (index + 1) + ": " + file);
+                    console.log("Unable to insert disc " + (index + 1) + ": " + disc);
                 }
                 cdromLoading = -1;
                 updateCDRomControls();
             };
             cdromLoading = index;
             updateCDRomControls();
-            if (cdromDiscIsLoaded(file)) {
-                finish();
-                return;
-            }
-            console.log("Loading disc " + (index + 1) + ": " + file);
-            fetch(Config.locateCDRomBaseUrl + file, { method: 'GET' }).then(function(response) {
-                if (response.status !== 200) {
-                    throw new Error("status " + response.status);
-                }
-                return response.arrayBuffer();
-            }).then(function(buffer) {
-                createFile("/", file, new Uint8Array(buffer));
-                finish();
-            }).catch(function(error) {
-                console.log("Unable to load disc " + (index + 1) + ": " + file + " error: " + error);
+            console.log("Loading disc " + (index + 1) + ": " + disc);
+            loadCDRomDisc(index).then(finish).catch(function(error) {
+                console.log("Unable to load disc " + (index + 1) + ": " + disc + " error: " + error);
                 cdromLoading = -1;
                 updateCDRomControls();
             });

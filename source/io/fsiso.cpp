@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 #include "fsiso.h"
+#include "discimage.h"
 #include "fsisoopennode.h"
 #include "fsfilenode.h"
 #include "fs.h"
@@ -82,23 +83,14 @@ static BString utf16BEtoUtf8(const U8* data, U8 byteLen) {
     return result;
 }
 
-FsIso::~FsIso() {
-    if (file) {
-        fclose(file);
-        file = nullptr;
-    }
-}
-
 U32 FsIso::readData(U64 byteOffset, U8* buf, U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(readMutex);
-#ifdef BOXEDWINE_MSVC
-    if (_fseeki64(file, (S64)byteOffset, SEEK_SET) != 0)
-        return 0;
-#else
-    if (fseeko(file, (off_t)byteOffset, SEEK_SET) != 0)
-        return 0;
-#endif
-    return (U32)fread(buf, 1, len, file);
+    return image->readData(byteOffset, buf, len);
+}
+
+bool FsIso::readRaw(U32 sector, U32 count, U8* buf) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(readMutex);
+    return image->readRaw(sector, count, buf);
 }
 
 bool FsIso::containsPath(const BString& path) const {
@@ -194,23 +186,39 @@ void FsIso::scanDirectory(const BString& localPath, const std::shared_ptr<FsNode
     }
 }
 
-bool FsIso::init(const BString& isoPath, const BString& mountPath) {
-    file = fopen(isoPath.c_str(), "rb");
-    if (!file) {
-        klog_fmt("FsIso: could not open ISO file: %s", isoPath.c_str());
+bool FsIso::init(const BString& imagePath, const BString& mountPath) {
+    image = DiscImage::open(imagePath);
+    if (!image) {
         return false;
     }
+    std::shared_ptr<FsNode> mountNode = Fs::getNodeFromLocalPath(B(""), mountPath, true);
+    if (!mountNode) {
+        klog_fmt("FsIso: mount point %s does not exist", mountPath.c_str());
+        return false;
+    }
+    this->mountPath = mountPath;
+
+    // An audio CD has no filesystem, but goes in the drive for its table of contents
+    const DiscTrack* dataTrack = image->firstDataTrack();
+    if (!dataTrack) {
+        totalSectors = image->leadOut;
+        klog_fmt("FsIso: mounting %s at %s (audio CD, %d tracks)", imagePath.c_str(), mountPath.c_str(), (U32)image->tracks.size());
+        return true;
+    }
+    // ISO 9660 sector numbers count from the start of the disc, the volume descriptors
+    // from the start of the data track
+    U64 base = dataTrack->start;
 
     U8 sector[ISO_SECTOR_SIZE];
 
     // Read Primary Volume Descriptor at sector 16
-    if (readData(16 * ISO_SECTOR_SIZE, sector, ISO_SECTOR_SIZE) != ISO_SECTOR_SIZE) {
-        klog_fmt("FsIso: could not read PVD from: %s", isoPath.c_str());
+    if (readData((base + 16) * ISO_SECTOR_SIZE, sector, ISO_SECTOR_SIZE) != ISO_SECTOR_SIZE) {
+        klog_fmt("FsIso: could not read PVD from: %s", imagePath.c_str());
         return false;
     }
 
     if (sector[0] != ISO_VD_PRIMARY || memcmp(sector + 1, "CD001", 5) != 0) {
-        klog_fmt("FsIso: not a valid ISO 9660 image: %s", isoPath.c_str());
+        klog_fmt("FsIso: not a valid ISO 9660 image: %s", imagePath.c_str());
         return false;
     }
 
@@ -224,9 +232,9 @@ bool FsIso::init(const BString& isoPath, const BString& mountPath) {
     U32 rootLength = pvdRootLength;
 
     // Check subsequent sectors for a Joliet Supplementary Volume Descriptor
-    for (U32 sectorNum = 17; sectorNum < 32; sectorNum++) {
+    for (U64 sectorNum = base + 17; sectorNum < base + 32; sectorNum++) {
         U8 svd[ISO_SECTOR_SIZE];
-        if (readData((U64)sectorNum * ISO_SECTOR_SIZE, svd, ISO_SECTOR_SIZE) != ISO_SECTOR_SIZE)
+        if (readData(sectorNum * ISO_SECTOR_SIZE, svd, ISO_SECTOR_SIZE) != ISO_SECTOR_SIZE)
             break;
         if (svd[0] == ISO_VD_TERMINATOR)
             break;
@@ -243,22 +251,13 @@ bool FsIso::init(const BString& isoPath, const BString& mountPath) {
             rootLba    = readU32LE(svd + 158);
             rootLength = readU32LE(svd + 166);
             joliet = true;
-            klog_fmt("FsIso: Joliet extensions found in %s", isoPath.c_str());
+            klog_fmt("FsIso: Joliet extensions found in %s", imagePath.c_str());
             break;
         }
     }
 
-    // Build the virtual filesystem under mountPath, which the caller creates
-    std::shared_ptr<FsNode> mountNode = Fs::getNodeFromLocalPath(B(""), mountPath, true);
-    if (!mountNode) {
-        klog_fmt("FsIso: mount point %s does not exist", mountPath.c_str());
-        return false;
-    }
-
-    this->mountPath = mountPath;
-
     klog_fmt("FsIso: mounting %s at %s (%s, %llu sectors)",
-             isoPath.c_str(), mountPath.c_str(),
+             imagePath.c_str(), mountPath.c_str(),
              joliet ? "Joliet" : "ISO 9660",
              (unsigned long long)totalSectors);
 

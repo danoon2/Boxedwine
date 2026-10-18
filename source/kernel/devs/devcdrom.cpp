@@ -19,6 +19,7 @@
 #include "boxedwine.h"
 #include "../../io/fsvirtualopennode.h"
 #include "../../io/fsiso.h"
+#include "../../io/discimage.h"
 #include "../../io/fs.h"
 #include "kerror.h"
 #include "kstat.h"
@@ -44,6 +45,7 @@
 #define CDC_DVD             0x8000
 
 // cdsc_audiostatus values for CDROMSUBCHNL
+#define CDROM_AUDIO_PLAY      0x11
 #define CDROM_AUDIO_NO_STATUS 0x15
 
 // Address format for CDROMREADTOCENTRY / CDROMSUBCHNL
@@ -66,7 +68,22 @@ static struct {
     S32 index = -1;             // which disc that is
     U32 lastInserted = 0;       // the disc in the tray, inserted again when it closes
     bool mediaChanged = false;  // for CDROM_MEDIA_CHANGED, cleared when read
+    U32 audioSector = 0;        // first frame of the last CDROMREADAUDIO
+    U64 audioReadTime = 0;      // when it was read, 0 if never on this disc
 } gDrive;
+
+// writes a struct cdrom_addr (union of struct cdrom_msf0 and int lba)
+static void writeCdromAddr(KMemory* memory, U32 address, U32 lba, U8 format, bool absolute) {
+    if (format == CDROM_MSF) { // absolute addresses start 2 seconds in
+        U32 frames = lba + (absolute ? 150 : 0);
+        memory->writeb(address, (U8)(frames / (CD_FRAMES_PER_SEC * CD_SECS_PER_MIN)));
+        memory->writeb(address + 1, (U8)((frames / CD_FRAMES_PER_SEC) % CD_SECS_PER_MIN));
+        memory->writeb(address + 2, (U8)(frames % CD_FRAMES_PER_SEC));
+        memory->writeb(address + 3, 0);
+    } else {
+        memory->writed(address, lba);
+    }
+}
 
 static std::shared_ptr<FsIso> getDisc() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gDrive.mutex);
@@ -101,7 +118,7 @@ public:
     U32  writeNative(U8* buffer, U32 len) override { return 0; }
     S64  length() override {
         std::shared_ptr<FsIso> iso = getDisc();
-        return iso ? (S64)(iso->totalSectors * ISO_SECTOR_SIZE) : 0;
+        return iso ? (S64)iso->image->leadOut * DISC_DATA_SECTOR_SIZE : 0;
     }
     S64  getFilePointer() override { return pos; }
     S64  seek(S64 p) override { pos = p; return pos; }
@@ -173,8 +190,8 @@ U32 DevCDROM::ioctl(KThread* thread, U32 request) {
         if (!iso)
             return (U32)-K_ENOMEDIUM;
         U32 p = IOCTL_ARG1;
-        memory->writeb(p,     1); // cdth_trk0: first track
-        memory->writeb(p + 1, 1); // cdth_trk1: last track
+        memory->writeb(p,     (U8)iso->image->tracks.front().number); // cdth_trk0: first track
+        memory->writeb(p + 1, (U8)iso->image->tracks.back().number);  // cdth_trk1: last track
         return 0;
     }
 
@@ -185,11 +202,16 @@ U32 DevCDROM::ioctl(KThread* thread, U32 request) {
         U8 track  = memory->readb(p);     // cdte_track (input)
         U8 format = memory->readb(p + 2); // cdte_format: CDROM_LBA or CDROM_MSF (input)
 
-        // cdte_adr:4 (low nibble) = 1 (Q sub-channel with current position)
-        // cdte_ctrl:4 (high nibble) = 4 (data track)
-        memory->writeb(p + 1, (0x4 << 4) | 0x1);
+        // the lead-out reports the last track's control bits and mode, as Linux does
+        const DiscImage* image = iso->image.get();
+        const DiscTrack* entry = (track == CDROM_LEADOUT) ? &image->tracks.back() : image->findTrack(track);
+        if (!entry)
+            return (U32)-K_EINVAL;
+        U32 lba = (track == CDROM_LEADOUT) ? image->leadOut : entry->start;
 
-        U32 lba = (track == CDROM_LEADOUT) ? (U32)iso->totalSectors : 0;
+        // cdte_adr:4 (low nibble) = 1 (Q sub-channel with current position)
+        // cdte_ctrl:4 (high nibble) = DISC_CONTROL_* bits, 4 for a data track
+        memory->writeb(p + 1, (U8)((entry->control << 4) | 0x1));
 
         if (format == CDROM_MSF) {
             // LBA to MSF: add 150-frame (2-second) pregap offset
@@ -202,7 +224,7 @@ U32 DevCDROM::ioctl(KThread* thread, U32 request) {
             memory->writed(p + 4, lba);
         }
 
-        memory->writeb(p + 8, 0x01); // cdte_datamode = Mode 1
+        memory->writeb(p + 8, (U8)entry->mode); // cdte_datamode
         return 0;
     }
 
@@ -210,14 +232,59 @@ U32 DevCDROM::ioctl(KThread* thread, U32 request) {
         if (!iso)
             return (U32)-K_ENOMEDIUM;
         U32 p = IOCTL_ARG1;
-        // cdsc_format is input at p+0 — no need to read it for a static response
-        memory->writeb(p + 1, CDROM_AUDIO_NO_STATUS); // cdsc_audiostatus
-        memory->writeb(p + 2, (0x4 << 4) | 0x1);     // cdsc_ctrl:4/cdsc_adr:4
-        memory->writeb(p + 3, 1);                      // cdsc_trk = 1
-        memory->writeb(p + 4, 0);                      // cdsc_ind = 0
-        // cdsc_absaddr and cdsc_reladdr (offsets 8 and 12) — both zero (not playing)
-        memory->writed(p + 8,  0);
-        memory->writed(p + 12, 0);
+        U8 format = memory->readb(p); // cdsc_format: CDROM_MSF or CDROM_LBA (input)
+        // Wine's MCI CD player reads the audio and plays it through DirectSound, but takes
+        // the play position from here. So while CD audio is being read, report the drive
+        // as playing at the last frame read, about half a second ahead of what is heard.
+        U32 sector;
+        bool playing;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gDrive.mutex);
+            sector = gDrive.audioSector;
+            playing = gDrive.audioReadTime && KSystem::getMicroCounter() - gDrive.audioReadTime < 1000000;
+        }
+        const DiscTrack* track = &iso->image->tracks.front();
+        for (const DiscTrack& t : iso->image->tracks) {
+            if (t.start <= sector)
+                track = &t;
+        }
+        memory->writeb(p + 1, playing ? CDROM_AUDIO_PLAY : CDROM_AUDIO_NO_STATUS); // cdsc_audiostatus
+        memory->writeb(p + 2, (U8)((track->control << 4) | 0x1)); // cdsc_ctrl:4/cdsc_adr:4
+        memory->writeb(p + 3, (U8)track->number);                  // cdsc_trk
+        memory->writeb(p + 4, 1);                                  // cdsc_ind
+        writeCdromAddr(memory, p + 8, sector, format, true);       // cdsc_absaddr
+        writeCdromAddr(memory, p + 12, sector >= track->start ? sector - track->start : 0, format, false); // cdsc_reladdr
+        return 0;
+    }
+
+    case 0x530e: { // CDROMREADAUDIO — reads struct cdrom_read_audio, fills its buffer with raw frames
+        // Wine's MCI CD player reads CD audio this way and plays it through DirectSound
+        if (!iso)
+            return (U32)-K_ENOMEDIUM;
+        U32 p = IOCTL_ARG1;
+        U8 addressFormat = memory->readb(p + 4);
+        S64 lba;
+        if (addressFormat == CDROM_MSF) {
+            lba = ((S64)memory->readb(p) * CD_SECS_PER_MIN + memory->readb(p + 1)) * CD_FRAMES_PER_SEC + memory->readb(p + 2) - 150;
+        } else if (addressFormat == CDROM_LBA) {
+            lba = (S32)memory->readd(p);
+        } else {
+            return (U32)-K_EINVAL;
+        }
+        S32 frames = (S32)memory->readd(p + 8);
+        U32 buffer = memory->readd(p + 12);
+        // bounded so a bad request cannot allocate without limit; Wine's player reads 39 at most
+        if (lba < 0 || frames <= 0 || frames > CD_FRAMES_PER_SEC * 4)
+            return (U32)-K_EINVAL;
+        std::vector<U8> data((size_t)frames * DISC_RAW_SECTOR_SIZE);
+        if (!iso->readRaw((U32)lba, (U32)frames, data.data()))
+            return (U32)-K_EINVAL;
+        memory->memcpy(buffer, data.data(), (U32)data.size());
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gDrive.mutex);
+            gDrive.audioSector = (U32)lba;
+            gDrive.audioReadTime = KSystem::getMicroCounter();
+        }
         return 0;
     }
 
@@ -279,6 +346,8 @@ static void ejectLocked() {
     }
     // files already open on the disc keep it alive and can still be read
     gDrive.iso = nullptr;
+    gDrive.audioSector = 0;
+    gDrive.audioReadTime = 0;
     gDrive.index = -1;
     gDrive.mediaChanged = true;
 }
