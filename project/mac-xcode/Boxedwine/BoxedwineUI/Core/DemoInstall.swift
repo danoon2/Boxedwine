@@ -15,7 +15,7 @@ extension LibraryRepository {
         let document = try loadDocument()
         guard !(document.apps + document.removedApps.map(\.app)).contains(where: { $0.demo?.id == demo.id }) else { throw DemoError.alreadyAdded }
         let package = try validateWine(runtime, control: control)
-        guard package.info.wineVersion == demo.wineVersion else { throw DemoError.wineVersion(demo.wineVersion) }
+        if let version = demo.wineVersion, package.info.wineVersion != version { throw DemoError.wineVersion(version) }
         if demo.glide != nil {
             guard package.info.wineVersion == "11.0", ["11", "12", "13", "14"].contains(package.info.filesystemVersion) else { throw DemoError.glideMissing }
             let path = Self.driveC + "/windows/system32/glide2x.dll"
@@ -25,12 +25,13 @@ extension LibraryRepository {
         }
         var app = LibraryApp(name: demo.name)
         app.demo = demo.origin
+        app.arguments = demo.appArguments
         // Seed an editable per-app value only on first install.
         if demo.id == "alice" { app.boxedwineArguments = ["-rel_mouse_sensitivity", "200"] }
         if let overrides = demo.wineDllOverrides {
             app.boxedwineArguments = (app.boxedwineArguments ?? []) + ["-env", "WINEDLLOVERRIDES=" + overrides]
         }
-        app.savedWineVersion = demo.wineVersion
+        app.savedWineVersion = package.info.wineVersion
         try demo.settings?.validate()
         guard (demo.cncDDrawRenderer == nil && !demo.cncDDrawUncapped && demo.cncDDrawMode == nil) || demo.settings?.cncDDraw == true else { throw DemoError.catalog("CNC DDraw configuration requires CNCDDraw.") }
         app.demoSettings = demo.settings
@@ -206,12 +207,12 @@ public extension PackageCheck {
             do {
                 try repository.save([])
                 let source = downloads.appendingPathComponent(demo.url.lastPathComponent)
-                guard let selectedWine = packages[demo.wineVersion] else { throw DemoError.wineVersion(demo.wineVersion) }
+                guard let version = demo.wineVersion, let selectedWine = packages[version] else { throw DemoError.catalog(demo.unavailableWineMessage) }
                 let app = try await repository.importDemo(demo, runtime: selectedWine, downloader: CachedDemoDownload(source: source))
                 try repository.save([app])
                 guard try repository.load() == [app] else { throw DemoError.archive("The imported entry did not persist.") }
                 let selected = app.executable ?? app.installer ?? ""
-                results.append("\(demo.id): verified download, imported \(selected), saved Wine \(demo.wineVersion)")
+                results.append("\(demo.id): verified download, imported \(selected), saved Wine \(version)")
                 try FileManager.default.removeItem(at: temporary)
             } catch {
                 try? FileManager.default.removeItem(at: temporary)

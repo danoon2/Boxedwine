@@ -42,6 +42,10 @@ def load_catalog(data, allow_external=False):
         ids.add(identifier)
         if any(field(key) for key in ('Options', 'InstallOptions', 'Options_Mac', 'InstallOptions_Mac')):
             raise ValueError('Unsupported legacy options in demo ' + field('Name'))
+        wine_version = values.get('WineVersion')
+        if (wine_version is None and not allow_external or
+                wine_version is not None and (not wine_version or len(wine_version.encode()) > 128)):
+            raise ValueError('Invalid Wine version in demo ' + field('Name'))
         dll_overrides = values.get('WineDllOverrides')
         if dll_overrides is not None:
             if (int(root.get('schemaVersion')) < 8 or not 0 < len(dll_overrides) <= 1024 or
@@ -78,10 +82,18 @@ def load_catalog(data, allow_external=False):
         recipes.append(dict(custom=allow_external, origin=dict(id=identifier, catalogRelease=root.get('release'), packageSHA256=checksum, shortcutExe=shortcut),
                             name=field('Name'), summary=field('Summary'), help=field('Help').replace('\\n', '\n').replace('\\t', '    '),
                             icon=field('Icon'), url=url, bytes=size, installType=field('InstallType'), installExe=field('InstallExe'),
-                            wineVersion=field('WineVersion'), settings=settings, glide=values.get('Glide'),
+                            wineVersion=wine_version, settings=settings, glide=values.get('Glide'),
                             cncRenderer=values.get('CNCDDrawRenderer'), cncUncapped=boolean('CNCDDrawUncapped') is True,
                             cncMode=values.get('CNCDDrawFakeMode'), wineDllOverrides=dll_overrides))
     return recipes
+
+
+def select_wine(recipe, releases):
+    choices = [r for r in releases if recipe['wineVersion'] is None or r['reference']['wineVersion'] == recipe['wineVersion']]
+    if not choices:
+        raise ValueError('No Wine version is available in this release catalog.' if recipe['wineVersion'] is None
+                         else 'Wine ' + recipe['wineVersion'] + ' is unavailable in this release catalog.')
+    return max(choices, key=lambda r: tuple(int(p) for p in r['reference']['wineVersion'].split('.')))
 
 
 def configure_cnc(ini, recipe):
@@ -113,11 +125,12 @@ def install(library, recipe, wine, work):
     document = library.load()
     if any((a.get('demo') or {}).get('id') == recipe['origin']['id'] for a in document['apps'] + [r['app'] for r in document['removedApps']]):
         raise ValueError('This demo is already in the library or Removed Apps. Open or restore that copy.')
-    if wine['wineVersion'] != recipe['wineVersion']:
+    if recipe['wineVersion'] is not None and wine['wineVersion'] != recipe['wineVersion']:
         raise ValueError('This demo requires Wine ' + recipe['wineVersion'])
     app = new_app(recipe['name'], wine)
     app.update(demo=recipe['origin'], demoSettings=recipe['settings'], resolution=recipe['settings'].get('resolution', '1024x768'))
     # Seed an editable per-app value only on first install.
+    app['arguments'] = list(recipe.get('appArguments', []))
     if recipe['origin']['id'] == 'alice':
         app['boxedwineArguments'] = ['-rel_mouse_sensitivity', '200']
     if recipe.get('wineDllOverrides') is not None:

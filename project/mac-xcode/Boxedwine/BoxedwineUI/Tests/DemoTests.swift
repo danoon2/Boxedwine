@@ -115,16 +115,22 @@ struct DemoTests {
         }
     }
 
-    @Test func portableDemoPinsWineAndSurvivesRecoveryBackupAndRemoval() async throws {
+    @Test(arguments: [false, true]) func portableDemoPinsWineAndSurvivesRecoveryBackupAndRemoval(automaticWine: Bool) async throws {
         let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
-        let data = payload, entry = demo(payload)
+        let data = payload
+        var entry = demo(payload)
+        if automaticWine { entry.wineVersion = nil }
+        entry.appArguments = ["+timedemo", "1", "+map", "demo1.dm2", "two words", ";literal"]
         let app = try await f.repository.importDemo(entry, runtime: f.runtime, downloader: Download(data: data))
+        #expect(app.arguments == entry.appArguments)
+        #expect(try LaunchRequest(app: app, repository: f.repository, wineZip: f.runtime).arguments().suffix(entry.appArguments.count) == entry.appArguments[...])
         #expect(app.demo == entry.origin && app.savedWineVersion == "11.0" && app.lastOpened == nil)
         #expect(app.executable == LibraryRepository.driveC + "/App/DEMO.EXE")
         #expect(!FileManager.default.fileExists(atPath: f.repository.appDirectory(app).appendingPathComponent("Download").path))
         #expect(try Data(contentsOf: f.repository.savedRuntimeURL(for: app)) == ZipFixture.package())
         #expect(try f.repository.recoveryItems().first?.canFinish == true)
         let recovered = try f.repository.recoverApp(app.id, control: ImportControl())
+        #expect(recovered.arguments == entry.appArguments)
         #expect(recovered.demo == entry.origin)
         #expect(try f.repository.load() == [recovered])
         let backup = f.base.appendingPathComponent("demo.boxedwinebackup")
@@ -196,7 +202,8 @@ struct DemoTests {
     @Test(arguments: [false, true]) func installerUsesPrivateMediaAndLiteralArguments(zipped: Bool) async throws {
         let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
         let data = zipped ? ZipFixture.archive([.init("Setup Files/setup.exe", "MZsetup"), .init("Shared/data.cab", "payload")]) : Data("MZsetup".utf8)
-        let entry = demo(data, type: .installer, filename: zipped ? "setup.zip" : "setup.exe", installer: zipped ? "Setup Files/setup.exe" : nil)
+        var entry = demo(data, type: .installer, filename: zipped ? "setup.zip" : "setup.exe", installer: zipped ? "Setup Files/setup.exe" : nil)
+        entry.appArguments = ["+timedemo", "1", "+map", "demo1.dm2"]
         let app = try await f.repository.importDemo(entry, runtime: f.runtime, downloader: Download(data: data))
         #expect(app.executable == nil && app.lastOpened == nil)
         #expect(app.installer == (zipped ? "Installer/Setup Files/setup.exe" : "Installer/setup.exe"))
@@ -204,6 +211,7 @@ struct DemoTests {
         let args = try LaunchRequest(app: app, repository: f.repository, wineZip: f.repository.savedRuntimeURL(for: app), installing: true).arguments()
         #expect(args.last == (zipped ? "/mnt/installer/Setup Files/setup.exe" : "/mnt/installer/setup.exe"))
         #expect(!args.contains("/bin/sh"))
+        #expect(app.arguments == entry.appArguments && !args.contains("+timedemo"))
     }
 
     @Test(arguments: ["motordemo_3dfx.exe", "Game Setup.EXE", "Game Setup.msi"])

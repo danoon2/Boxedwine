@@ -68,6 +68,11 @@ struct DemosView: View {
                     }
                 }
                 Spacer(minLength: 0)
+                if store.refreshableCollections.contains(store.collectionName) {
+                    Button { store.refreshCollection(store.collectionName) } label: { Label("Refresh", systemImage: "arrow.clockwise") }
+                        .help("Refresh Collection").accessibilityLabel("Refresh Collection")
+                        .disabled(store.importing || !store.canEdit)
+                }
                 if !compact {
                     Button { showsDetails.toggle() } label: {
                         Image(systemName: "sidebar.right")
@@ -260,11 +265,11 @@ struct DemosView: View {
         return ByteCountFormatter.string(fromByteCount: total, countStyle: .file) + " download"
     }
 
-    private func wine(for demo: Demo) -> CatalogWine? { store.wineVersions.first { $0.wineVersion == demo.wineVersion } }
+    private func wine(for demo: Demo) -> CatalogWine? { demo.catalogWine(in: store.wineVersions) }
     private func downloadDescription(_ demo: Demo) -> String {
         if store.installedDemo(demo) != nil { return "Already in your library" }
         if store.removedDemo(demo) != nil { return "Already in Removed Apps" }
-        guard let wine = wine(for: demo) else { return "Wine \(demo.wineVersion) is unavailable in this release’s Wine list." }
+        guard let wine = wine(for: demo) else { return demo.unavailableWineMessage }
         let status = store.wineDownloadStatus(wine)
         guard let total = status.downloadBytes(wine: wine, appBytes: demo.bytes) else { return "Checking total download size…" }
         let size = ByteCountFormatter.string(fromByteCount: total, countStyle: .file)

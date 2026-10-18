@@ -282,6 +282,7 @@ host directory. Downloads are restricted to checksum-pinned boxedwine.org URLs.
 make test-ui
 python3 ui/tests/gui_smoke.py --output /tmp/boxedwine-ui-smoke
 python3 ui/tests/launch_ui_smoke.py  # Progress lifecycle, icons, and desktop activation
+python3 ui/tests/source_import_ui_smoke.py  # Inline URL errors, cancellation, and retry
 python3 ui/tests/pointer_smoke.py  # X11 + libXtst; uses actual pointer clicks
 python3 ui/tests/runtime_smoke.py --wine /path/to/TinyCore15Wine11.0.zip
 python3 ui/tests/wine_tools_smoke.py --wine /path/to/TinyCore15Wine11.0.zip

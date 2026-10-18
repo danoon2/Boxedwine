@@ -62,36 +62,57 @@ public partial class MainWindow
     private void ChooseImportSource(bool collection, string? dropped = null)
     {
         if (busy) return;
-        var request = dropped == null ? Dialogs.AddSource(this, collection) : new Dialogs.SourceRequest(dropped, false);
+        if (dropped != null)
+        {
+            RunOperation("Checking source…", (token, progress) => PreparedAppSource.Prepare(dropped, false, collection, token, progress), prepared => ReviewImportSource(prepared, collection, false));
+            return;
+        }
+        var request = Dialogs.AddSource(this, collection);
         if (request == null) return;
         if (request.Back) { Add(); return; }
-        RunOperation("Checking source…", (token, progress) => PreparedAppSource.Prepare(request.Source, request.Remote, collection, token, progress), prepared =>
+        if (request.Prepared != null) ReviewImportSource(request.Prepared, collection, request.Remote);
+    }
+    private void ReviewImportSource(PreparedAppSource prepared, bool collection, bool remote)
+    {
+        bool retained = false;
+        try
         {
-            bool retained = false;
-            try
+            if (prepared.Collection is CollectionSnapshot snapshot)
             {
-                if (prepared.Collection is CollectionSnapshot snapshot)
-                {
-                    string? destination = Dialogs.ReviewCollection(this, snapshot, Collections);
-                    if (destination == "") { ChooseImportSource(collection); return; }
-                    if (destination != null) { string name = Collections.Merge(snapshot, destination); RefreshCollections(); Navigate(name); }
-                    return;
-                }
-                var review = Dialogs.ReviewApp(this, prepared, AvailableWines(), repository.DefaultWine);
-                if (review == null) return;
-                if (review.Kind == "back") { ChooseImportSource(collection); return; }
-                retained = true;
-                RunOperation("Adding app…", async (token, progress) =>
-                {
-                    using (prepared)
-                    {
-                        var wine = await EnsureWine(review.Wine, token, progress);
-                        return await repository.Import(prepared.Source, review.Kind, review.Windows, wine, token, progress,
-                            review.Kind == "installerFolder" ? SafeFiles.Beneath(prepared.Source, review.Program) : null, review.Name, review.Kind == "folder" ? review.Program : null);
-                    }
-                }, app => { Navigate("All Apps", app.Id.ToString()); if (app.Installer != null) Open(app, installing: true); else if (app.Executable == null) ChooseMain(app); });
+                string? destination = Dialogs.ReviewCollection(this, snapshot, Collections);
+                if (destination == "") { ChooseImportSource(collection); return; }
+                if (destination != null) { string name = Collections.Merge(snapshot, destination, remote ? prepared.Original : null); RefreshCollections(); Navigate(name); }
+                return;
             }
-            finally { if (!retained) prepared.Dispose(); }
+            var review = Dialogs.ReviewApp(this, prepared, AvailableWines(), repository.DefaultWine);
+            if (review == null) return;
+            if (review.Kind == "back") { ChooseImportSource(collection); return; }
+            retained = true;
+            RunOperation("Adding app…", async (token, progress) =>
+            {
+                using (prepared)
+                {
+                    var wine = await EnsureWine(review.Wine, token, progress);
+                    return await repository.Import(prepared.Source, review.Kind, review.Windows, wine, token, progress,
+                        review.Kind == "installerFolder" ? SafeFiles.Beneath(prepared.Source, review.Program) : null, review.Name, review.Kind == "folder" ? review.Program : null);
+                }
+            }, app => { Navigate("All Apps", app.Id.ToString()); if (app.Installer != null) Open(app, installing: true); else if (app.Executable == null) ChooseMain(app); });
+        }
+        finally { if (!retained) prepared.Dispose(); }
+    }
+    private void RefreshCollectionClick(object sender, RoutedEventArgs e) => Safe(() => RefreshCollection(section));
+    private void RefreshCollection(string name)
+    {
+        if (busy || !refreshableCollections.Contains(name)) return;
+        RunOperation("Refreshing " + name + "…", (token, progress) => Collections.Refresh(name, token, progress), review =>
+        {
+            if (review.Changes.Added == 0 && review.Changes.Updated == 0)
+            {
+                Dialogs.Info(this, "Collection is up to date.", $"{name} · {review.Changes.Unchanged} unchanged {(review.Changes.Unchanged == 1 ? "listing" : "listings")}."); return;
+            }
+            if (!Dialogs.Confirm(this, "Refresh " + name + "?", review.Changes.RefreshDescription +
+                $"\n\nChecked {review.Before.Sources.Count} saved {(review.Before.Sources.Count == 1 ? "source URL" : "source URLs")}. Listings missing from the sources are kept. Installed apps and saves are unchanged.", "Apply Changes")) return;
+            string folder = Collections.ApplyRefresh(review); RefreshCollections(); Navigate(folder);
         });
     }
     private void DeleteCollection(string name)
@@ -133,7 +154,7 @@ public partial class MainWindow
     }
     private void InstallDemo(DemoRecipe demo)
     {
-        var wine = wines.FirstOrDefault(w => w.WineVersion == demo.WineVersion) ?? throw new InvalidOperationException("The required Wine version is not in this release catalog.");
+        var wine = demo.SelectWine(wines) ?? throw new InvalidOperationException(demo.WineVersion == null ? "No Wine version is available in this release catalog." : "The required Wine version is not in this release catalog.");
         bool winePresent = File.Exists(repository.PackagePath(wine.Reference));
         if (!Dialogs.Confirm(this, "Install " + demo.Name + "?", $"Download {Math.Max(1, demo.Bytes / 1048576.0):0.#} MB for this demo" + (winePresent ? "." : $" and {wine.Bytes / 1048576.0:0} MB for Wine {wine.WineVersion}.") + "\n\nThe downloaded files are verified before installation.", "Download and Install")) return;
         RunOperation("Installing demo…", async (token, progress) => { var reference = await EnsureWine(wine, token, progress); return await Demos.Install(repository, demo, reference, token, progress); },

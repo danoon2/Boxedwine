@@ -8,6 +8,92 @@ sealed partial class TestSuite
     private async Task CollectionImports()
     {
         var original = CollectionSnapshot.Load(Path.Combine(AppContext.BaseDirectory, "collection-example.json"));
+        await Test("Missing Wine version selects highest current catalog version without persisting a pin", async () =>
+        {
+            using var repository = Repository("collection-automatic-wine"); var store = new CollectionStore(repository.DirectoryPath);
+            var value = DataFormat.Clone(original); value.Apps[0].Remove("WineVersion");
+            store.Merge(value, value.Folder); var recipe = store.Recipes(value.Folder, [])[0];
+            CatalogWine Wine(string version) => new("Wine " + version, version, $"https://boxedwine.org/Wine{version}.zip", 1, new string('a', 64), "20");
+            var wines = new[] { "9.0", "11.9", "11.10", "10.0" }.Select(Wine).ToList();
+            Check(recipe.WineVersion == null && recipe.SelectWine(wines)?.WineVersion == "11.10");
+            Check(recipe.SelectWine(wines.Append(Wine("12.0")))?.WineVersion == "12.0");
+            Check(recipe.SelectWine([]) == null && !store.Load().Folders[0].Apps[0].ContainsKey("WineVersion"));
+            Check(store.Preview(value, value.Folder).Unchanged == 1);
+            value.Apps[0]["WineVersion"] = "9.0"; var pinned = value.Recipes()[0];
+            Check(pinned.SelectWine(wines)?.WineVersion == "9.0" && pinned.SelectWine([Wine("12.0")]) == null);
+            foreach (string bad in new[] { "", " \n ", new string('a', 129) })
+            {
+                value.Apps[0]["WineVersion"] = bad;
+                await Throws(() => Task.Run(() => value.Recipes()), "invalid explicit Wine version");
+            }
+        });
+        await Test("Collection app arguments round trip literally and invalid updates preserve saved data", async () =>
+        {
+            using var repository = Repository("collection-app-arguments"); var store = new CollectionStore(repository.DirectoryPath);
+            var value = DataFormat.Clone(original);
+            Check(value.Recipes()[0].AppArguments.Count == 0);
+            string[] arguments = ["+timedemo", "1", "+map", "demo1.dm2", " two words ", "", "$(literal);&<>"];
+            value.Apps[0]["AppArguments"] = string.Join("\r\n", arguments);
+            store.Merge(value, value.Folder);
+            Check(store.Recipes(value.Folder, [])[0].AppArguments.SequenceEqual(arguments));
+            Check(store.Preview(value, value.Folder).Unchanged == 1);
+            string path = Path.Combine(repository.DirectoryPath, "collections.json"), saved = File.ReadAllText(path);
+            foreach (string bad in new[] { "a\0b", "a\rb", string.Concat(Enumerable.Repeat("a\n", 256)), new string('é', 4097), string.Join('\n', Enumerable.Repeat(new string('a', 8192), 9)) })
+            {
+                value.Apps[0]["AppArguments"] = bad;
+                await Throws(() => Task.Run(() => store.Merge(value, value.Folder)), "invalid app arguments");
+                Check(File.ReadAllText(path) == saved);
+            }
+            value.Apps[0]["AppArguments"] = "";
+            Check(value.Recipes()[0].AppArguments.Count == 0);
+        });
+        await Test("Saved collection sources migrate, persist, and deduplicate", async () =>
+        {
+            using var repository = Repository("collection-refresh-sources"); var store = new CollectionStore(repository.DirectoryPath);
+            string path = Path.Combine(repository.DirectoryPath, "collections.json");
+            File.WriteAllText(path, JsonSerializer.Serialize(new { version = 1, folders = new[] { new { name = original.Folder, apps = original.Apps } } }));
+            Check(store.Load().Folders[0].Sources.Count == 0);
+            string source = "https://example.com/collection.json";
+            store.Merge(original, original.Folder, source); store.Merge(original, "classic games", source); store.Merge(original, original.Folder);
+            Check(store.Load().Folders[0].Sources.SequenceEqual(new[] { source }));
+            string saved = File.ReadAllText(path);
+            foreach (string bad in new[] { "file:///tmp/catalog.json", "https://user:pass@example/catalog.json", "https://example/catalog.json#fragment" })
+            {
+                await Throws(() => Task.Run(() => store.Merge(original, original.Folder, bad)), "invalid source URL");
+                Check(File.ReadAllText(path) == saved);
+            }
+        });
+        await Test("Refresh reviews all sources atomically and rejects stale reviews", async () =>
+        {
+            using var repository = Repository("collection-refresh-review"); var store = new CollectionStore(repository.DirectoryPath);
+            foreach (string source in new[] { "https://example.com/a.json", "https://example.com/b.json" }) store.Merge(original, original.Folder, source);
+            var retained = DataFormat.Clone(original); retained.Apps[0]["ID"] = "retained"; store.Merge(retained, original.Folder);
+            var before = store.Load().Folders[0];
+            var first = DataFormat.Clone(original); first.Folder = "Server renamed folder"; first.Apps[0]["Name"] = "First source";
+            var last = DataFormat.Clone(first); last.Apps[0]["Name"] = "Last source wins"; last.Apps.Add(new(last.Apps[0]) { ["ID"] = "new-app" });
+            string path = Path.Combine(repository.DirectoryPath, "collections.json"), saved = File.ReadAllText(path);
+            var review = store.ReviewRefresh(before, [first, last]);
+            Check(review.Changes == new CollectionChanges(1, 1, 0) && File.ReadAllText(path) == saved);
+            await Throws(() => Task.Run(() => store.ReviewRefresh(before, [first])), "missing source");
+            var invalid = DataFormat.Clone(last); invalid.Apps.Add(invalid.Apps[0]);
+            await Throws(() => Task.Run(() => store.ReviewRefresh(before, [first, invalid])), "invalid source");
+            Check(File.ReadAllText(path) == saved);
+            store.ApplyRefresh(review); var folder = store.Load().Folders[0];
+            Check(folder.Name == original.Folder && folder.Apps.Count == 3 && folder.Apps[0]["Name"] == "Last source wins" && folder.Sources.SequenceEqual(before.Sources));
+            var again = store.ReviewRefresh(folder, [first, last]); Check(again.Changes == new CollectionChanges(0, 0, 2));
+            await Throws(() => Task.Run(() => store.ApplyRefresh(review)), "stale review");
+            store.Remove(original.Folder);
+            await Throws(() => Task.Run(() => store.ApplyRefresh(again)), "deleted folder");
+        });
+        await Test("Cancelled refresh makes no request and keeps saved collections", async () =>
+        {
+            using var repository = Repository("collection-refresh-cancel"); var store = new CollectionStore(repository.DirectoryPath);
+            store.Merge(original, original.Folder, "https://example.invalid/collection.json");
+            string path = Path.Combine(repository.DirectoryPath, "collections.json"), saved = File.ReadAllText(path);
+            using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+            await Throws(() => store.Refresh(original.Folder, cancellation.Token, null), "cancelled refresh");
+            Check(File.ReadAllText(path) == saved);
+        });
         await Test("Collection icon URLs update by stable ID and reject unsafe sources", async () =>
         {
             using var repository = Repository("collection-icons-update");

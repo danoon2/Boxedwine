@@ -331,6 +331,8 @@ class CoreTests(unittest.TestCase):
                f'<FileSizeBytes>{len(data)}</FileSizeBytes><InstallType>Zip</InstallType><WineVersion>11.0</WineVersion>' +
                f'<WineDllOverrides>{overrides}</WineDllOverrides></Demo></XML>')
         recipe = load_catalog(xml.encode())[0]
+        recipe['appArguments'] = ['+timedemo', '1', '+map', 'demo1.dm2', 'two words', ';literal']
+        recipe['wineVersion'] = None  # An automatic collection still pins the actual installed package.
         def fetch(url, size, checksum, target, work, allow_external=False):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
@@ -339,7 +341,11 @@ class CoreTests(unittest.TestCase):
         saved = self.library.load()['apps'][0]
         self.assertEqual(saved['id'], installed['id'])
         self.assertEqual(saved['boxedwineArguments'], ['-env', 'WINEDLLOVERRIDES=' + overrides])
+        self.assertEqual(saved['arguments'], recipe['appArguments'])
+        self.assertEqual(saved['savedWineVersion'], self.wine['wineVersion'])
+        self.assertEqual(saved['winePackage'], self.wine)
         args = build_arguments(self.library, saved, self.library.wine_path(saved))
+        self.assertEqual(args[-len(recipe['appArguments']):], recipe['appArguments'])
         self.assertIn('WINEDLLOVERRIDES=' + overrides, args)
         self.assertEqual(args[args.index('WINEDLLOVERRIDES=' + overrides) - 1], '-env')
         saved['boxedwineArguments'] = []

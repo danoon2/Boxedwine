@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -94,24 +95,96 @@ internal static class Dialogs
         Choice(form, "Restore a backup", "Restore saved app files and settings.", () => Select("backup"));
         form.Cancel(); form.ShowDialog(); return result;
     }
-    public sealed record SourceRequest(string Source, bool Remote, bool Back = false);
+    public sealed record SourceRequest(PreparedAppSource? Prepared, bool Remote, bool Back = false);
     public static SourceRequest? AddSource(Window owner, bool collection)
     {
         var form = new FormWindow(owner, collection ? "Add Collection" : "Add App or Installer", "Choose where your files are."); SourceRequest? result = null;
+        CancellationTokenSource? cancellation = null;
+        bool closed = false, closeAfterCancellation = false;
+        var error = new TextBlock { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.SemiBold, Visibility = Visibility.Collapsed };
+        AutomationProperties.SetAutomationId(error, "add-source-error");
+        AutomationProperties.SetLiveSetting(error, AutomationLiveSetting.Assertive);
+        var status = FormWindow.Paragraph(""); status.Visibility = Visibility.Collapsed;
+        var progress = new ProgressBar { Height = 5, Margin = new Thickness(0, 0, 0, 12), Visibility = Visibility.Collapsed };
+        Control[] inputs = [];
+        Button? download = null, back = null, cancel = null;
+        void ShowError(string message)
+        {
+            error.Text = message.Length == 0 ? "" : "Could not use this source: " + message;
+            error.Visibility = message.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+            if (message.Length > 0)
+            {
+                error.BringIntoView();
+                UIElementAutomationPeer.FromElement(error)?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+            }
+        }
+        void CancelDownload()
+        {
+            cancellation?.Cancel(); cancel!.IsEnabled = false; status.Text = "Cancelling and cleaning up…";
+        }
+        async Task Prepare(string source, bool remote)
+        {
+            if (cancellation != null || closed) return;
+            ShowError("");
+            using var attempt = new CancellationTokenSource(); cancellation = attempt;
+            foreach (var input in inputs) input.IsEnabled = false;
+            download!.IsEnabled = back!.IsEnabled = false; cancel!.Content = remote ? "Cancel Download" : "Cancel";
+            status.Text = "Checking source…"; status.Visibility = progress.Visibility = Visibility.Visible; progress.IsIndeterminate = true;
+            PreparedAppSource? prepared = null;
+            try
+            {
+                var updates = new Progress<OperationProgress>(value =>
+                {
+                    if (closed || cancellation != attempt || attempt.IsCancellationRequested) return;
+                    status.Text = value.Message; progress.IsIndeterminate = value.Total <= 0; progress.Value = value.Percent;
+                });
+                prepared = await Task.Run(() => PreparedAppSource.Prepare(source, remote, collection, attempt.Token, updates));
+                attempt.Token.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException) when (attempt.IsCancellationRequested) { prepared?.Dispose(); prepared = null; }
+            catch (Exception failure)
+            {
+                prepared?.Dispose(); prepared = null;
+                if (!closed && !closeAfterCancellation) ShowError(failure is OperationCanceledException ? "The download timed out. Check the link and try again." : failure.Message);
+            }
+            finally
+            {
+                cancellation = null;
+                if (!closed)
+                {
+                    foreach (var input in inputs) input.IsEnabled = true;
+                    download.IsEnabled = back.IsEnabled = cancel.IsEnabled = true; cancel.Content = "Cancel";
+                    status.Visibility = progress.Visibility = Visibility.Collapsed;
+                }
+            }
+            if (closed || closeAfterCancellation) { prepared?.Dispose(); if (!closed) form.Close(); }
+            else if (prepared != null) { result = new(prepared, remote); form.DialogResult = true; }
+        }
         void Pick(bool folder)
         {
             string? source = folder ? Folder(form, "Choose Folder") : File(form, "Choose File", collection ? "Boxedwine collection|*.json" : "App files|*.zip;*.exe;*.msi;*.json");
-            if (source != null) { result = new(source, false); form.DialogResult = true; }
+            if (source != null) _ = Prepare(source, false);
         }
         Choice(form, "Choose file…", collection ? "Collection JSON" : "ZIP, EXE, or MSI", () => Pick(false));
         if (!collection) Choice(form, "Choose folder…", "An app or setup with supporting files.", () => Pick(true));
         var link = FormWindow.Text(""); form.Field("File download URL", link);
-        form.Button("Download & Continue", () =>
+        inputs = form.Body.Children.OfType<Control>().ToArray();
+        form.Body.Children.Add(error); form.Body.Children.Add(status); form.Body.Children.Add(progress);
+        link.TextChanged += (_, _) => ShowError("");
+        download = form.Button("Download & Continue", () =>
         {
-            if (!Uri.TryCreate(link.Text.Trim(), UriKind.Absolute, out var uri) || !PreparedAppSource.ValidUrl(uri)) throw new InvalidDataException("Enter a complete HTTP or HTTPS file link.");
-            result = new(uri.AbsoluteUri, true); form.DialogResult = true;
+            if (!Uri.TryCreate(link.Text.Trim(), UriKind.Absolute, out var uri) || !PreparedAppSource.ValidUrl(uri)) { ShowError("Enter a complete HTTP or HTTPS file link."); link.Focus(); return; }
+            _ = Prepare(uri.AbsoluteUri, true);
         }, true);
-        form.Button("Back", () => { result = new("", false, true); form.DialogResult = true; }); form.Cancel(); form.ShowDialog(); return result;
+        back = form.Button("Back", () => { result = new(null, false, true); form.DialogResult = true; });
+        cancel = form.Button("Cancel", () => { if (cancellation != null) CancelDownload(); else form.DialogResult = false; });
+        form.Closing += (_, e) =>
+        {
+            if (cancellation == null) return;
+            e.Cancel = true; closeAfterCancellation = true; CancelDownload();
+        };
+        form.Closed += (_, _) => { closed = true; cancellation?.Cancel(); };
+        form.ShowDialog(); return result;
     }
     public sealed record AddRequest(string Kind, string Program, string Name, string Windows, CatalogWine Wine);
     public static AddRequest? ReviewApp(Window owner, PreparedAppSource source, IReadOnlyList<CatalogWine> wines, WineReference? current)

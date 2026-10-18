@@ -30,7 +30,10 @@
       <Grid Grid.Column="1" Margin="16,22,20,16"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <StackPanel Margin="0,0,12,0"><TextBlock x:Name="PageTitle" Text="Your Windows apps" FontSize="28" FontWeight="SemiBold"/><TextBlock x:Name="PageSubtitle" Text="A home for old favorites." Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0" TextWrapping="Wrap"/></StackPanel>
-          <Button Grid.Column="1" x:Name="AddButton" Content="＋  Add to Library" Padding="15,8" VerticalAlignment="Top" Click="AddAppClick" ToolTip="Add a Windows app (Ctrl+N)"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+            <Button x:Name="RefreshCollectionButton" Content="Refresh" Padding="12,8" Margin="0,0,8,0" Visibility="Collapsed" Click="RefreshCollectionClick" ToolTip="Refresh Collection" AutomationProperties.Name="Refresh Collection"/>
+            <Button x:Name="AddButton" Content="＋  Add to Library" Padding="15,8" Click="AddAppClick" ToolTip="Add a Windows app (Ctrl+N)"/>
+          </StackPanel>
         </Grid>
         <TextBox x:Name="Search" Grid.Row="1" Margin="0,23,0,20" Padding="12,8" TextChanged="SearchChanged" AutomationProperties.Name="Search apps" ToolTip="Search the current section (Ctrl+F)"/>
         <TextBlock Grid.Row="1" Text="Search apps" Margin="13,31,12,28" IsHitTestVisible="False" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=Search}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>

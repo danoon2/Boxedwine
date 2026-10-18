@@ -52,6 +52,7 @@ class Window(Adw.ApplicationWindow):
         self.icon_catalog = []
         self.collection_names = []
         self.can_reset_demos = False
+        self.refreshable_collections = set()
         try:
             cached = catalog_files(resources, library, Work(), allow_download=False)
             if cached:
@@ -82,6 +83,7 @@ class Window(Adw.ApplicationWindow):
         folders = document['folders']
         names = [f['name'] for f in folders if f['name'] != 'Demos']
         self.can_reset_demos = any(f['name'] == 'Demos' and f['apps'] for f in folders)
+        self.refreshable_collections = {f['name'] for f in folders if f['sources']}
         for name in self.collection_names:
             if name not in names:
                 self.sections.remove(self.section_rows.pop(name))
@@ -116,6 +118,27 @@ class Window(Adw.ApplicationWindow):
             idle(completed)
         for worker in range(remaining):
             threading.Thread(target=download, args=(urls[worker::4],), daemon=True).start()
+
+    def refresh_collection(self):
+        name = self.view
+        if name not in self.refreshable_collections or not self.can_modify():
+            return
+        def review(result):
+            added, updated, unchanged = result['changes']
+            if not added and not updated:
+                self.toast('Collection is up to date.')
+                return
+            def apply():
+                if not self.can_modify():
+                    return
+                folder = self.collections.apply_refresh(result)
+                self.refresh_collections(); self.navigate(folder)
+                self.toast('Collection refreshed.')
+            dialogs.confirm(self, 'Refresh ' + name + '?',
+                            f"{added} new {'app' if added == 1 else 'apps'} · {updated} updated {'listing' if updated == 1 else 'listings'} · {unchanged} unchanged.\n\n"
+                            f"Checked {len(result['before']['sources'])} saved {'source URL' if len(result['before']['sources']) == 1 else 'source URLs'}. Listings missing from the sources are kept. Installed apps and saves are unchanged.",
+                            'Apply Changes', apply)
+        self.perform('Refreshing ' + name, lambda work: self.collections.refresh(name, work), review)
 
     def remove_collection(self):
         name = self.view
@@ -242,7 +265,7 @@ class Window(Adw.ApplicationWindow):
             return False
         return True
 
-    def perform(self, title, operation, completion=None, cancellable=True):
+    def perform(self, title, operation, completion=None, cancellable=True, failed=None):
         if self.busy:
             self.toast('Wait for the current operation to finish')
             return
@@ -299,7 +322,9 @@ class Window(Adw.ApplicationWindow):
                 try:
                     self.refresh()
                     if error:
-                        if isinstance(error, Cancelled):
+                        if failed:
+                            failed(error)
+                        elif isinstance(error, Cancelled):
                             self.toast('Operation cancelled')
                         else:
                             self.error(error)
@@ -476,7 +501,13 @@ class Window(Adw.ApplicationWindow):
             show(items[0], reveal=not self.details_split.get_collapsed())
         container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, margin_start=24, margin_end=24, margin_bottom=24)
         heading = Gtk.Label(label={'All Apps': 'Your Windows Apps', 'Demos': 'Try Something Familiar'}.get(self.view, self.view), xalign=0)
-        heading.add_css_class('title-1'); container.append(heading)
+        heading.add_css_class('title-1'); heading.set_hexpand(True)
+        header = Gtk.Box(spacing=12); header.append(heading); container.append(header)
+        if self.is_collection and self.view in self.refreshable_collections:
+            refresh = dialogs.button(self, 'Refresh', self.refresh_collection)
+            refresh.set_tooltip_text('Refresh Collection'); refresh.set_sensitive(not self.busy)
+            refresh.update_property([Gtk.AccessibleProperty.LABEL], ['Refresh Collection'])
+            header.append(refresh)
         if self.is_collection and (self.view != 'Demos' or self.can_reset_demos):
             label = 'Reset Demos…' if self.view == 'Demos' else 'Delete Collection…'
             manage = dialogs.button(self, label, self.remove_collection)
@@ -677,7 +708,12 @@ class Window(Adw.ApplicationWindow):
             box.append(dialogs.button(self, 'Download & Install', lambda: self.install_demo(recipe), 'suggested-action', 'folder-download-symbolic'))
         details = Adw.PreferencesGroup()
         dialogs.row(details, 'Download', f"{recipe['bytes'] / 1024**2:.1f} MB · Verified package")
-        dialogs.row(details, 'Windows support', 'Wine ' + recipe['wineVersion'])
+        try:
+            selected_wine = demos.select_wine(recipe, self.resources.wines())['reference']['wineVersion']
+            wine_description = 'Wine ' + selected_wine + (' (latest available)' if recipe['wineVersion'] is None else '')
+        except (OSError, ValueError) as error:
+            wine_description = str(error)
+        dialogs.row(details, 'Windows support', wine_description)
         dialogs.row(details, 'App download', urllib.parse.urlsplit(recipe['url']).hostname)
         box.append(details)
         if recipe['help']:
@@ -895,7 +931,22 @@ class Window(Adw.ApplicationWindow):
         self.perform('Loading demo catalog', load, loaded)
 
     def install_demo(self, recipe):
-        self.with_wine(lambda wine: self.perform('Installing ' + recipe['name'], lambda work: demos.install(self.library, recipe, wine, work), self.app_added))
+        if not self.can_modify():
+            return
+        release = demos.select_wine(recipe, self.resources.wines())
+        ref = release['reference']
+        def install(work):
+            wine = ensure_wine(self.library, release, work)
+            if self.library.default_wine() is None:
+                self.library.set_default_wine(wine)
+            return demos.install(self.library, recipe, wine, work)
+        def begin():
+            if self.can_modify():
+                self.perform('Installing ' + recipe['name'], install, self.app_added)
+        message = f"Download {recipe['bytes'] / 1024**2:.1f} MB for this app and use Wine {ref['wineVersion']}."
+        if not self.library.package_path(ref).is_file():
+            message += f" Wine requires another {ref['bytes'] / 1024**2:.0f} MB download."
+        dialogs.confirm(self, 'Install ' + recipe['name'] + '?', message, 'Download and Install', begin)
 
     def remove_app(self, app):
         if not self.can_modify(app):
@@ -1026,7 +1077,7 @@ class Window(Adw.ApplicationWindow):
     def show_help(self):
         dialogs.text_dialog(self, 'Boxedwine Help',
             'Add a Windows app\n\nChoose Add to Library → App or installer, then a file, folder, or direct download URL. ZIP files are unpacked for review. Choose Add App for a ready-to-run program, or Run Installer for setup. Supporting files are copied together. Compatibility options are available during review. Nothing runs until you confirm. You can also drop a source onto this window.\n\n'
-            'Add or update a collection\n\nChoose Add to Library → Collection, then a JSON file or URL. Review the destination and new, updated, and unchanged counts. Reimporting into the same folder matches stable app IDs without duplicates. Collections remain available after relaunch. Delete a custom collection or Reset Demos to restore the defaults; installed apps and saves are kept.\n\n'
+            'Add or update a collection\n\nChoose Add to Library → Collection, then a JSON file or URL. Review the destination and new, updated, and unchanged counts. Reimporting into the same folder matches stable app IDs without duplicates. Collections remain available after relaunch. URL imports remember their sources: use Refresh to check for changes, then Apply Changes. Local files can be reimported. Delete a custom collection or Reset Demos to restore the defaults; installed apps and saves are kept.\n\n'
             'Each app has its own Windows environment\n\nSaved files stay with that app. Use Run Another Program to launch a configuration utility in the same environment. An external program gets access to its containing host folder after confirmation.\n\n'
             'Demos and Windows support\n\nThe demo catalog and downloads are checked against release checksums. Wine is shared on disk, while each app keeps a specific package. Offline Windows support can be imported from the matching ZIP in Settings.\n\n'
             'Backups and removal\n\nExport Backup creates a .boxedwinebackup folder containing the app, its Wine package, and a verified manifest. Restore Backup creates a separate app. Keep the entire backup folder together. Removed Apps retains files until permanent deletion unless immediate deletion is enabled. Interrupted file operations appear in Recovery.\n\n'

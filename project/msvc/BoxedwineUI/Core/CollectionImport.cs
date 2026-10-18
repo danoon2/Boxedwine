@@ -53,6 +53,16 @@ public sealed class CollectionSnapshot
     public int SchemaVersion { get; set; }
     public string Folder { get; set; } = "";
     public List<Dictionary<string, string>> Apps { get; set; } = [];
+    // One literal argument per line, matching App Settings; no shell parsing.
+    public static List<string> ParseAppArguments(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return [];
+        var arguments = value.Replace("\r\n", "\n").Split('\n').ToList();
+        if (arguments.Count > 256 || arguments.Sum(a => Encoding.UTF8.GetByteCount(a)) > 65536 ||
+            arguments.Any(a => Encoding.UTF8.GetByteCount(a) > 8192 || a.IndexOfAny(['\0', '\r']) >= 0))
+            throw new InvalidDataException("AppArguments needs at most 256 arguments, one per line, with at most 8192 bytes each and 65536 bytes total, without NUL or bare carriage returns.");
+        return arguments;
+    }
     public static string FolderName(string value)
     {
         string name = value.Trim();
@@ -74,7 +84,7 @@ public sealed class CollectionSnapshot
     public List<DemoRecipe> Recipes()
     {
         if (SchemaVersion != 1 || Apps.Count is < 1 or > 256) throw new InvalidDataException("A version 1 collection needs 1–256 apps.");
-        string[] allowed = ("ID Name Summary Help Icon FileURL FileSizeBytes FileSHA256 InstallType InstallExe ShortcutExe WineVersion WindowsVersion GDIRenderer Resolution InstallResolution BitsPerPixel CPUCount NativeOpenGL UseEGL CNCDDraw DisableHideCursor ForceRelativeMouse Glide CNCDDrawRenderer CNCDDrawUncapped CNCDDrawFakeMode WineDllOverrides").Split(' ');
+        string[] allowed = ("ID Name Summary Help Icon FileURL FileSizeBytes FileSHA256 InstallType InstallExe ShortcutExe WineVersion WindowsVersion GDIRenderer Resolution InstallResolution BitsPerPixel CPUCount NativeOpenGL UseEGL CNCDDraw DisableHideCursor ForceRelativeMouse Glide CNCDDrawRenderer CNCDDrawUncapped CNCDDrawFakeMode WineDllOverrides AppArguments").Split(' ');
         if (Apps.Any(a => a == null || !a.TryGetValue("ID", out string? id) || !Regex.IsMatch(id, "^[a-z0-9][a-z0-9-]{0,63}$") || a.Any(p => !allowed.Contains(p.Key) || p.Value == null))) throw new InvalidDataException("Unsupported collection app fields.");
         foreach (var app in Apps)
         {
@@ -83,20 +93,22 @@ public sealed class CollectionSnapshot
             if (!Uri.TryCreate(Field("FileURL"), UriKind.Absolute, out var address)) throw new InvalidDataException("Invalid collection download URL.");
             string extension = Path.GetExtension(address.LocalPath).ToLowerInvariant();
             bool needsSetup = Field("InstallType") == "Installer" && extension == ".zip";
-            if (Field("WineVersion").Length == 0 || Encoding.UTF8.GetByteCount(Field("WineVersion")) > 128 || !new[] { ".zip", ".exe", ".msi" }.Contains(extension) ||
+            if (app.ContainsKey("WineVersion") && (Field("WineVersion").Length == 0 || Encoding.UTF8.GetByteCount(Field("WineVersion")) > 128) || !new[] { ".zip", ".exe", ".msi" }.Contains(extension) ||
                 icon.Length > 0 && !CollectionIcons.IsRemote(icon) && (icon.Contains('/') || icon.Contains('\\') || !icon.EndsWith(".png", StringComparison.Ordinal)) ||
                 needsSetup && !new[] { ".exe", ".msi" }.Contains(Path.GetExtension(installer).ToLowerInvariant()) || !needsSetup && installer.Length > 0)
                 throw new InvalidDataException("Invalid collection Wine version, icon, or installation recipe.");
         }
         var root = new XElement("XML", new XAttribute("schemaVersion", "8"), new XAttribute("release", "custom-collection"),
-            Apps.Select(app => new XElement("Demo", app.Select(p => new XElement(p.Key, p.Value)))));
-        return Demos.Parse(new XDocument(root), Path.GetTempPath(), true);
+            Apps.Select(app => new XElement("Demo", app.Where(p => p.Key != "AppArguments").Select(p => new XElement(p.Key, p.Value)))));
+        return Demos.Parse(new XDocument(root), Path.GetTempPath(), true)
+            .Select((recipe, index) => recipe with { AppArguments = ParseAppArguments(Apps[index].GetValueOrDefault("AppArguments")) }).ToList();
     }
 }
 public sealed class CollectionFolder
 {
     public string Name { get; set; } = "";
     public List<Dictionary<string, string>> Apps { get; set; } = [];
+    public List<string> Sources { get; set; } = [];
 }
 public sealed class CollectionDocument
 {
@@ -106,7 +118,9 @@ public sealed class CollectionDocument
 public sealed record CollectionChanges(int Added, int Updated, int Unchanged)
 {
     public override string ToString() => $"{Added} new · {Updated} updated · {Unchanged} unchanged";
+    public string RefreshDescription => $"{Added} new {(Added == 1 ? "app" : "apps")} · {Updated} updated {(Updated == 1 ? "listing" : "listings")} · {Unchanged} unchanged";
 }
+public sealed record CollectionRefresh(CollectionFolder Before, CollectionSnapshot Snapshot, CollectionChanges Changes);
 public sealed class CollectionStore(string directory, IEnumerable<string>? defaultIDs = null)
 {
     private string Pathname => Path.Combine(directory, "collections.json");
@@ -119,13 +133,25 @@ public sealed class CollectionStore(string directory, IEnumerable<string>? defau
         {
             if (CollectionSnapshot.FolderName(folder.Name) != folder.Name || !names.Add(folder.Name)) throw new InvalidDataException("Duplicate or invalid collection folder.");
             _ = new CollectionSnapshot { SchemaVersion = 1, Folder = folder.Name, Apps = folder.Apps }.Recipes();
+            ValidateSources(folder.Sources);
         }
         return document;
+    }
+    public static void ValidateSources(List<string> sources)
+    {
+        if (sources == null || sources.Count > 32 || sources.Distinct(StringComparer.Ordinal).Count() != sources.Count ||
+            sources.Any(url => url == null || url.Length > 8192 || !CollectionIcons.IsRemote(url)))
+            throw new InvalidDataException("A collection can remember up to 32 unique HTTP or HTTPS source URLs.");
     }
     public CollectionChanges Preview(CollectionSnapshot snapshot, string destination)
     {
         string name = CollectionSnapshot.FolderName(destination);
-        var old = Load().Folders.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.Apps.ToDictionary(a => a["ID"]) ?? [];
+        var previous = Load().Folders.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.Apps ?? [];
+        return Changes(snapshot, name, previous);
+    }
+    private CollectionChanges Changes(CollectionSnapshot snapshot, string name, List<Dictionary<string, string>> previousApps)
+    {
+        var old = previousApps.ToDictionary(a => a["ID"]);
         int added = 0, updated = 0, unchanged = 0;
         foreach (var app in snapshot.Apps)
         {
@@ -135,16 +161,20 @@ public sealed class CollectionStore(string directory, IEnumerable<string>? defau
         }
         return new(added, updated, unchanged);
     }
-    public string Merge(CollectionSnapshot snapshot, string destination)
+    public string Merge(CollectionSnapshot snapshot, string destination, string? source = null, CollectionFolder? expected = null)
     {
         _ = snapshot.Recipes(); string name = CollectionSnapshot.FolderName(destination);
         var document = Load();
         var folder = document.Folders.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (expected != null && JsonSerializer.Serialize(folder, DataFormat.Json) != JsonSerializer.Serialize(expected, DataFormat.Json))
+            throw new InvalidDataException("This collection changed while refreshing. Refresh again to review the latest changes.");
         if (folder == null)
         {
             if (document.Folders.Count >= 64) throw new InvalidDataException("A library can have up to 64 collection folders.");
             folder = new() { Name = name }; document.Folders.Add(folder);
         }
+        if (source != null && !folder.Sources.Contains(source)) folder.Sources.Add(source);
+        ValidateSources(folder.Sources);
         foreach (var app in snapshot.Apps)
         {
             int index = folder.Apps.FindIndex(a => a["ID"] == app["ID"]);
@@ -153,6 +183,35 @@ public sealed class CollectionStore(string directory, IEnumerable<string>? defau
         if (folder.Apps.Count > 256) throw new InvalidDataException("A folder can contain up to 256 custom listings.");
         SafeFiles.AtomicJson(Pathname, document);
         return folder.Name;
+    }
+    public CollectionRefresh ReviewRefresh(CollectionFolder before, List<CollectionSnapshot> snapshots)
+    {
+        if (before.Sources.Count == 0 || snapshots.Count != before.Sources.Count) throw new InvalidDataException("Every saved collection source must be downloaded before applying changes.");
+        var apps = new Dictionary<string, Dictionary<string, string>>();
+        foreach (var snapshot in snapshots)
+        {
+            _ = snapshot.Recipes();
+            foreach (var app in snapshot.Apps) apps[app["ID"]] = app;
+        }
+        var incoming = new CollectionSnapshot { SchemaVersion = 1, Folder = before.Name, Apps = apps.Values.ToList() };
+        _ = incoming.Recipes();
+        if (before.Apps.Select(a => a["ID"]).Union(apps.Keys).Count() > 256) throw new InvalidDataException("A folder can contain up to 256 custom listings.");
+        return new(before, incoming, Changes(incoming, before.Name, before.Apps));
+    }
+    public string ApplyRefresh(CollectionRefresh review) => Merge(review.Snapshot, review.Before.Name, expected: review.Before);
+    public async Task<CollectionRefresh> Refresh(string name, CancellationToken cancellation, IProgress<OperationProgress>? progress)
+    {
+        var before = Load().Folders.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (before == null || before.Sources.Count == 0) throw new InvalidDataException("This collection has no saved source URLs. Import it from a URL first.");
+        var snapshots = new List<CollectionSnapshot>();
+        foreach (string source in before.Sources)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            using var prepared = await PreparedAppSource.Prepare(source, true, true, cancellation, progress);
+            snapshots.Add(prepared.Collection ?? throw new InvalidDataException("The source did not contain a collection."));
+        }
+        cancellation.ThrowIfCancellationRequested();
+        return ReviewRefresh(before, snapshots);
     }
     public void Remove(string name)
     {

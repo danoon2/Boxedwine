@@ -248,7 +248,7 @@ struct NativeHelpView: View {
                 }
                 #if !BOXEDWINE_APP_STORE
                 topic("Add or update a collection", symbol: "folder.badge.plus") {
-                    Text("Choose Add to Library → Collection, then a JSON file or URL. Review the destination folder and the new, updated, and unchanged counts. Reimporting into the same folder matches stable app IDs, so it updates listings without duplicates.")
+                    Text("Choose Add to Library → Collection, then a JSON file or URL. Review the destination folder and the new, updated, and unchanged counts. Reimporting into the same folder matches stable app IDs, so it updates listings without duplicates. URL imports remember their sources: use Refresh to check for changes, then Apply Changes. Local files can be reimported.")
                     Text("Collections stay available after relaunch. Delete a custom collection or use Reset Demos to restore the default listings. These actions keep installed apps and saves.")
                 }
                 #endif

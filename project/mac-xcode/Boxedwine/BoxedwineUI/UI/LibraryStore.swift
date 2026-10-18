@@ -63,8 +63,10 @@ final class LibraryStore: ObservableObject {
     @Published var showingDemos = false
     @Published var selectedDemoID: String?
     @Published var preparedSource: PreparedAppSource?
+    @Published var addAppError: String?
     @Published var collectionNames: [String] = []
     @Published private(set) var canResetDemos = false
+    @Published private(set) var refreshableCollections: Set<String> = []
     @Published var collectionName = "Demos"
     private var defaultDemos: [Demo] = []
     private var iconDemos: [Demo] = []
@@ -658,6 +660,7 @@ final class LibraryStore: ObservableObject {
             let folders = document.folders
             collectionNames = folders.map(\.name).filter { $0 != "Demos" }
             canResetDemos = folders.contains { $0.name == "Demos" && !$0.apps.isEmpty }
+            refreshableCollections = Set(folders.filter { !$0.sources.isEmpty }.map(\.name))
             iconDemos = try (["Demos"] + collectionNames).flatMap { try collectionStore.recipes(in: $0, defaults: defaultDemos, document: document) }
             demos = try collectionStore.recipes(in: collectionName, defaults: defaultDemos, document: document)
             loadCollectionIcons()
@@ -691,11 +694,45 @@ final class LibraryStore: ObservableObject {
 
     func addCollection(_ snapshot: CollectionSnapshot, destination: String) {
         guard canEdit, !importing, let collectionStore else { return }
+        addAppError = nil
         do {
-            let name = try collectionStore.merge(snapshot, destination: destination)
+            let source = preparedSource?.original
+            let name = try collectionStore.merge(snapshot, destination: destination, source: source?.isFileURL == false ? source?.absoluteString : nil)
             showAddApp = false; preparedSource = nil
             showCollection(name)
-        } catch { errorMessage = error.localizedDescription }
+        } catch { reportAddAppError(error.localizedDescription) }
+    }
+
+    func refreshCollection(_ name: String) {
+        #if !BOXEDWINE_APP_STORE
+        guard canEdit, !importing, refreshableCollections.contains(name), let collectionStore else { return }
+        let control = beginImport(name: "Refreshing " + name)
+        Task {
+            let review: CollectionRefresh
+            do {
+                review = try await Task.detached { try await collectionStore.refresh(name, control: control) }.value
+                try control.checkCancellation()
+            } catch {
+                finishImport()
+                if !(error is CancellationError) { errorMessage = "The collection was not changed.\n\n" + error.localizedDescription }
+                return
+            }
+            finishImport()
+            guard canEdit, !importing else { return }
+            let alert = NSAlert()
+            if review.changes.added == 0 && review.changes.updated == 0 {
+                alert.messageText = "Collection is up to date."
+                alert.informativeText = "\(name) · \(review.changes.unchanged) unchanged \(review.changes.unchanged == 1 ? "listing" : "listings")."
+                alert.addButton(withTitle: "OK"); alert.runModal(); return
+            }
+            alert.messageText = "Refresh “\(name)”?"
+            alert.informativeText = review.changes.refreshDescription + "\n\nChecked \(review.before.sources.count) saved \(review.before.sources.count == 1 ? "source URL" : "source URLs"). Listings missing from the sources are kept. Installed apps and saves are unchanged."
+            alert.addButton(withTitle: "Apply Changes"); alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn, canEdit, !importing else { return }
+            do { let folder = try collectionStore.applyRefresh(review); showCollection(folder) }
+            catch { errorMessage = error.localizedDescription }
+        }
+        #endif
     }
 
     func removeCollection(_ name: String) {
@@ -728,6 +765,7 @@ final class LibraryStore: ObservableObject {
 
     func prepareAddSource(_ url: URL, collectionOnly: Bool = false) {
         guard canEdit, !importing else { return }
+        addAppError = nil
         preparedSource = nil
         let control = beginImport(name: "Checking source")
         let grant = droppedAppSource
@@ -735,8 +773,15 @@ final class LibraryStore: ObservableObject {
             defer { finishImport(); withExtendedLifetime(grant) {} }
             do {
                 preparedSource = try await Task.detached { try await PreparedAppSource.prepare(url, collectionOnly: collectionOnly, control: control) }.value
-            } catch { if !(error is CancellationError) { errorMessage = error.localizedDescription } }
+            } catch { if !(error is CancellationError) { reportAddAppError(error.localizedDescription) } }
         }
+    }
+
+    func reportAddAppError(_ message: String) {
+        // A main-window alert cannot be presented while Add to Library is open.
+        // Keep these errors in the sheet instead of queuing a stale alert behind it.
+        if showAddApp { addAppError = message }
+        else { errorMessage = message }
     }
 
     func importPrepared(_ prepared: PreparedAppSource, action: String, program: String, name: String, windows: WindowsVersion, wine: CatalogWine) {
@@ -769,6 +814,7 @@ final class LibraryStore: ObservableObject {
     }
 
     func addAppSheetDismissed() {
+        addAppError = nil
         preparedSource = nil
         droppedAppSource = nil
         presentNextProgramChoice()
@@ -835,7 +881,7 @@ final class LibraryStore: ObservableObject {
             do { _ = try repository.installerPath(chosen, in: source) }
             catch {
                 if scoped { source.stopAccessingSecurityScopedResource() }
-                errorMessage = error.localizedDescription
+                reportAddAppError(error.localizedDescription)
                 return
             }
             installer = chosen
@@ -991,8 +1037,8 @@ final class LibraryStore: ObservableObject {
     func installDemo(_ demo: Demo) {
         guard canEdit, !importing, !runtimeChecking, let repository, demos.contains(demo) else { return }
         if installedDemo(demo) != nil || removedDemo(demo) != nil { showInstalledDemo(demo); return }
-        guard let wine = wineVersions.first(where: { $0.wineVersion == demo.wineVersion }) else {
-            errorMessage = wineCatalogProblem ?? "Wine \(demo.wineVersion) is missing from this release’s Wine list."
+        guard let wine = demo.catalogWine(in: wineVersions) else {
+            errorMessage = wineCatalogProblem ?? demo.unavailableWineMessage
             return
         }
         guard canSelectWine(wine.id) else { return }

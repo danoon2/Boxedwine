@@ -21,7 +21,18 @@ from .packages import NoRedirect
 MAX_DOWNLOAD = 1024**3
 FIELDS = set(('ID Name Summary Help Icon FileURL FileSizeBytes FileSHA256 InstallType InstallExe ShortcutExe WineVersion '
               'WindowsVersion GDIRenderer Resolution InstallResolution BitsPerPixel CPUCount NativeOpenGL UseEGL CNCDDraw '
-              'DisableHideCursor ForceRelativeMouse Glide CNCDDrawRenderer CNCDDrawUncapped CNCDDrawFakeMode WineDllOverrides').split())
+              'DisableHideCursor ForceRelativeMouse Glide CNCDDrawRenderer CNCDDrawUncapped CNCDDrawFakeMode WineDllOverrides AppArguments').split())
+
+
+def app_arguments(value):
+    """One literal argument per line, matching App Settings; no shell parsing."""
+    if value is None or value == '':
+        return []
+    arguments = value.replace('\r\n', '\n').split('\n')
+    if (len(arguments) > 256 or sum(len(a.encode()) for a in arguments) > 65536 or
+            any(len(a.encode()) > 8192 or '\0' in a or '\r' in a for a in arguments)):
+        raise ValueError('AppArguments needs at most 256 arguments, one per line, with at most 8192 bytes each and 65536 bytes total, without NUL or bare carriage returns.')
+    return arguments
 
 
 def valid_url(value):
@@ -208,14 +219,16 @@ def load_collection(document):
         extension = Path(urllib.parse.urlsplit(entry.get('FileURL', '')).path).suffix.lower()
         installer = entry.get('InstallExe', '').strip()
         needs_setup = entry.get('InstallType', '').strip() == 'Installer' and extension == '.zip'
-        if (not wine or len(wine.encode()) > 128 or extension not in ('.zip', '.exe', '.msi') or
+        if ('WineVersion' in entry and (not wine or len(wine.encode()) > 128) or extension not in ('.zip', '.exe', '.msi') or
                 icon and not valid_url(icon) and ('/' in icon or '\\' in icon or not icon.endswith('.png')) or
                 needs_setup and Path(installer).suffix.lower() not in ('.exe', '.msi') or
                 not needs_setup and installer):
             raise ValueError('Invalid collection Wine version, icon, or installation recipe.')
         node = ET.SubElement(root, 'Demo')
+        app_arguments(entry.get('AppArguments'))
         for key, value in entry.items():
-            ET.SubElement(node, key).text = value
+            if key != 'AppArguments':
+                ET.SubElement(node, key).text = value
     load_catalog(ET.tostring(root), allow_external=True)
     return result
 
@@ -232,31 +245,48 @@ class CollectionStore:
         seen = set()
         for folder in doc['folders']:
             load_collection(dict(schemaVersion=1, folder=folder['name'], apps=folder['apps']))
+            sources = folder.setdefault('sources', [])
+            self.validate_sources(sources)
             key = folder['name'].lower()
             if key in seen:
                 raise ValueError('Duplicate collection folder.')
             seen.add(key)
         return doc
 
+    @staticmethod
+    def validate_sources(sources):
+        if (not isinstance(sources, list) or len(sources) > 32 or
+                any(not isinstance(url, str) or len(url) > 8192 or not valid_url(url) for url in sources) or
+                len(set(sources)) != len(sources)):
+            raise ValueError('A collection can remember up to 32 unique HTTP or HTTPS source URLs.')
+
     def preview(self, incoming, destination):
         destination = folder_name(destination)
         doc = self.load()
         folder = next((f for f in doc['folders'] if f['name'].lower() == destination.lower()), None)
-        old = {a['ID']: a for a in folder['apps']} if folder else {}
+        return self.changes(incoming, destination, folder['apps'] if folder else [])
+
+    def changes(self, incoming, destination, previous):
+        old = {a['ID']: a for a in previous}
         defaults = self.default_ids if destination == 'Demos' else set()
         added = sum(a['ID'] not in old and a['ID'] not in defaults for a in incoming['apps'])
         updated = sum((a['ID'] in old and old[a['ID']] != a) or (a['ID'] not in old and a['ID'] in defaults) for a in incoming['apps'])
         return added, updated, len(incoming['apps']) - added - updated
 
-    def add(self, incoming, destination):
+    def add(self, incoming, destination, source=None, expected=None):
         incoming = load_collection(incoming)
         destination = folder_name(destination)
         doc = self.load()
         folder = next((f for f in doc['folders'] if f['name'].lower() == destination.lower()), None)
+        if expected is not None and folder != expected:
+            raise ValueError('This collection changed while refreshing. Refresh again to review the latest changes.')
         if folder is None:
             if len(doc['folders']) >= 64:
                 raise ValueError('The library already has 64 collection folders.')
-            folder = {'name': destination, 'apps': []}; doc['folders'].append(folder)
+            folder = {'name': destination, 'apps': [], 'sources': []}; doc['folders'].append(folder)
+        if source is not None and source not in folder['sources']:
+            folder['sources'].append(source)
+        self.validate_sources(folder['sources'])
         merged = {a['ID']: a for a in folder['apps']}
         merged.update({a['ID']: a for a in incoming['apps']})
         if len(merged) > 256:
@@ -267,6 +297,36 @@ class CollectionStore:
             raise ValueError('The collections file is too large. Existing data was kept.')
         atomic_json(self.path, doc)
         return folder['name']
+
+    def review_refresh(self, before, snapshots):
+        if not before['sources'] or len(snapshots) != len(before['sources']):
+            raise ValueError('Every saved collection source must be downloaded before applying changes.')
+        merged = {}
+        for snapshot in snapshots:
+            merged.update({a['ID']: a for a in load_collection(snapshot)['apps']})
+        incoming = load_collection(dict(schemaVersion=1, folder=before['name'], apps=list(merged.values())))
+        if len(set(merged) | {a['ID'] for a in before['apps']}) > 256:
+            raise ValueError('A collection folder can contain up to 256 custom listings.')
+        return dict(before=copy.deepcopy(before), incoming=incoming,
+                    changes=self.changes(incoming, before['name'], before['apps']))
+
+    def refresh(self, name, work):
+        before = next((f for f in self.load()['folders'] if f['name'].lower() == name.lower()), None)
+        if before is None or not before['sources']:
+            raise ValueError('This collection has no saved source URLs. Import it from a URL first.')
+        snapshots = []
+        for source in before['sources']:
+            work.check()
+            prepared = PreparedSource(source, work, remote=True, collection=True)
+            try:
+                snapshots.append(prepared.collection)
+            finally:
+                prepared.close()
+        work.check()
+        return self.review_refresh(before, snapshots)
+
+    def apply_refresh(self, review):
+        return self.add(review['incoming'], review['before']['name'], expected=review['before'])
 
     def remove(self, name):
         doc = self.load()
@@ -282,8 +342,10 @@ class CollectionStore:
             for entry in folder['apps']:
                 node = ET.SubElement(root, 'Demo')
                 for key, value in entry.items():
-                    ET.SubElement(node, key).text = value
-            for recipe in load_catalog(ET.tostring(root), allow_external=True):
+                    if key != 'AppArguments':
+                        ET.SubElement(node, key).text = value
+            for recipe, entry in zip(load_catalog(ET.tostring(root), allow_external=True), folder['apps']):
+                recipe['appArguments'] = app_arguments(entry.get('AppArguments'))
                 if name != 'Demos':
                     recipe['origin']['id'] = 'collection-' + hashlib.sha256((folder['name'].lower() + '\0' + recipe['origin']['id']).encode()).hexdigest()[:48]
                 result[recipe['origin']['id']] = recipe

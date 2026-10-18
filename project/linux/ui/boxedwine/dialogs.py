@@ -289,19 +289,41 @@ def add_app(owner, source=None):
             owner.restore_backup(); return
         sources = Adw.PreferencesDialog(title='Add Collection' if purpose == 'collection' else 'Add App or Installer', content_width=560, content_height=420)
         section = group(page(sources, 'Source', 'document-open-symbolic'), 'Choose a source')
-        def picked(path):
-            sources.close(); prepare(path, collection=purpose == 'collection')
+        error = Gtk.Label(wrap=True, xalign=0, selectable=True, visible=False)
+        error.add_css_class('error')
+        def show_error(message=''):
+            error.set_text('Could not use this source: ' + message if message else '')
+            error.set_visible(bool(message))
+        def ready():
+            section.set_sensitive(True); sources.set_can_close(True)
+        def failed(failure):
+            from .files import Cancelled
+            ready()
+            if not isinstance(failure, Cancelled):
+                show_error(str(failure))
+        def prepared(result):
+            ready()
+            # Finish dismissing the source sheet before presenting its review.
+            sources.connect('closed', lambda *_: review_import(owner, result))
+            sources.close()
+        def picked(path, remote=False):
+            if owner.busy:
+                return
+            show_error(); section.set_sensitive(False); sources.set_can_close(False)
+            owner.perform('Checking source', lambda work: PreparedSource(path, work, remote, purpose == 'collection'), prepared, failed=failed)
         action_row(owner, section, 'Choose file', 'Collection JSON' if purpose == 'collection' else 'ZIP, EXE, or MSI', 'Choose…',
                    lambda: choose_file(owner, 'Choose File', picked, patterns=['*.json'] if purpose == 'collection' else ['*.zip', '*.exe', '*.msi', '*.json', '*.ZIP', '*.EXE', '*.MSI']))
         if purpose != 'collection':
             action_row(owner, section, 'Choose folder', 'An app or setup with supporting files', 'Choose…', lambda: choose_file(owner, 'Choose Folder', picked, folder=True))
         link = Adw.EntryRow(title='File download URL'); section.add(link)
+        link.connect('notify::text', lambda *_: show_error())
+        section.add(error)
         def remote():
             from .imports import valid_url
             value = link.get_text().strip()
             if not valid_url(value):
-                raise ValueError('Enter a complete HTTP or HTTPS file link.')
-            sources.close(); prepare(value, remote=True, collection=purpose == 'collection')
+                show_error('Enter a complete HTTP or HTTPS file link.'); link.grab_focus(); return
+            picked(value, remote=True)
         action_row(owner, section, 'Download from link', 'The file is checked before anything is added or run.', 'Download & Continue', remote)
         action_row(owner, section, 'Choose another purpose', '', 'Back', lambda: (sources.close(), add_app(owner)))
         sources.present(owner)
@@ -334,7 +356,8 @@ def review_import(owner, prepared):
         destination.connect('notify::text', changed); choices.connect('notify::selected', changed); changed()
         row(section, 'Apps download when you install them', ', '.join(a['Name'] for a in incoming['apps'][:8]))
         def add():
-            name = owner.collections.add(incoming, folder())
+            from .imports import valid_url
+            name = owner.collections.add(incoming, folder(), source=prepared.original if valid_url(prepared.original) else None)
             dialog.close(); owner.refresh_collections(); owner.navigate(name)
             owner.toast('Collection saved. Available next time you open Boxedwine.')
         action_row(owner, section, 'Save to your library', '', 'Add Collection', add, 'suggested-action')

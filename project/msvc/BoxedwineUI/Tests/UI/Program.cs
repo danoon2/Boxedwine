@@ -24,6 +24,7 @@ internal static partial class Program
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(app.Dispatcher));
             app.ThemeMode = ThemeMode.System;
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/{typeof(MainWindow).Assembly.GetName().Name};component/Styles.xaml", UriKind.Relative) });
+            if (args.Contains("--source-errors")) { CheckSourceImports(destination); return 0; }
             CheckRuntimeIcons(destination, args);
             var catalog = Packages.Catalog(Path.Combine(AppContext.BaseDirectory, "Resources"));
             if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "20") throw new Exception("This release must offer only Wine 11 V20.");

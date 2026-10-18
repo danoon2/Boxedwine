@@ -53,6 +53,17 @@ struct CollectionSnapshot: Codable, Equatable, Sendable {
     var folder: String
     var apps: [[String: String]]
 
+    /// The same one-argument-per-line format as App Settings; never a shell command.
+    static func appArguments(_ value: String?) throws -> [String] {
+        guard let value, !value.isEmpty else { return [] }
+        let arguments = value.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
+        guard arguments.count <= 256, arguments.reduce(0, { $0 + $1.utf8.count }) <= 65536,
+              arguments.allSatisfy({ $0.utf8.count <= 8192 && !$0.contains("\0") && !$0.contains("\r") }) else {
+            throw DemoError.catalog("AppArguments needs at most 256 arguments, one per line, with at most 8192 bytes each and 65536 bytes total, without NUL or bare carriage returns.")
+        }
+        return arguments
+    }
+
     static func folderName(_ value: String) throws -> String {
         let name = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, name.count <= 80, !name.contains("/"), !name.contains("\\"),
@@ -77,35 +88,56 @@ struct CollectionSnapshot: Codable, Equatable, Sendable {
         guard schemaVersion == 1, (1...256).contains(apps.count) else { throw DemoError.catalog("A version 1 collection needs 1–256 apps.") }
         func escaped(_ text: String) -> String { text.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;") }
         var xml = "<XML schemaVersion=\"8\" release=\"custom-collection\">"
-        let allowed: Set<String> = DemoSettings.catalogFields.union(["ID", "Name", "Summary", "Help", "Icon", "FileURL", "FileSizeBytes", "FileSHA256", "InstallType", "InstallExe", "ShortcutExe", "WineVersion", "Glide", "CNCDDrawRenderer", "CNCDDrawUncapped", "CNCDDrawFakeMode", "WineDllOverrides"])
+        let allowed: Set<String> = DemoSettings.catalogFields.union(["ID", "Name", "Summary", "Help", "Icon", "FileURL", "FileSizeBytes", "FileSHA256", "InstallType", "InstallExe", "ShortcutExe", "WineVersion", "Glide", "CNCDDrawRenderer", "CNCDDrawUncapped", "CNCDDrawFakeMode", "WineDllOverrides", "AppArguments"])
         for app in apps {
             guard Set(app.keys).isSubset(of: allowed) else { throw DemoError.catalog("Unsupported collection app field.") }
             guard let id = app["ID"], DemoCatalog.validID(id) else { throw DemoError.catalog("App IDs must be stable lowercase letters, numbers, and hyphens.") }
             xml += "<Demo>"
-            for key in app.keys.sorted() {
+            for key in app.keys.sorted() where key != "AppArguments" {
                 guard key.range(of: "^[A-Za-z][A-Za-z0-9_]*$", options: .regularExpression) != nil else { throw DemoError.catalog("Invalid collection field.") }
                 xml += "<\(key)>\(escaped(app[key]!))</\(key)>"
             }
             xml += "</Demo>"
         }
         xml += "</XML>"
-        return try DemoCatalog.load(Data(xml.utf8), allowExternal: true).demos
+        return try DemoCatalog.load(Data(xml.utf8), allowExternal: true).demos.enumerated().map { index, demo in
+            var recipe = demo
+            recipe.appArguments = try Self.appArguments(apps[index]["AppArguments"])
+            return recipe
+        }
     }
 }
 
 struct CollectionFolder: Codable, Equatable, Sendable {
     var name: String
     var apps: [[String: String]]
+    var sources: [String]
+    init(name: String, apps: [[String: String]], sources: [String] = []) {
+        self.name = name; self.apps = apps; self.sources = sources
+    }
+    private enum CodingKeys: String, CodingKey { case name, apps, sources }
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        name = try values.decode(String.self, forKey: .name)
+        apps = try values.decode([[String: String]].self, forKey: .apps)
+        sources = values.contains(.sources) ? try values.decode([String].self, forKey: .sources) : []
+    }
 }
 struct CollectionDocument: Codable, Sendable {
     var version = 1
     var folders: [CollectionFolder] = []
 }
-struct CollectionChanges: Equatable {
+struct CollectionChanges: Equatable, Sendable {
     var added = 0
     var updated = 0
     var unchanged = 0
     var description: String { "\(added) new · \(updated) updated · \(unchanged) unchanged" }
+    var refreshDescription: String { "\(added) new \(added == 1 ? "app" : "apps") · \(updated) updated \(updated == 1 ? "listing" : "listings") · \(unchanged) unchanged" }
+}
+struct CollectionRefresh: Sendable {
+    let before: CollectionFolder
+    let snapshot: CollectionSnapshot
+    let changes: CollectionChanges
 }
 struct CollectionStore: Sendable {
     let directory: URL
@@ -121,12 +153,22 @@ struct CollectionStore: Sendable {
         for folder in document.folders {
             guard try CollectionSnapshot.folderName(folder.name) == folder.name, names.insert(folder.name.lowercased()).inserted else { throw DemoError.catalog("Duplicate or invalid collection folder.") }
             _ = try CollectionSnapshot(schemaVersion: 1, folder: folder.name, apps: folder.apps).recipes()
+            try Self.validateSources(folder.sources)
         }
         return document
+    }
+    static func validateSources(_ sources: [String]) throws {
+        guard sources.count <= 32, Set(sources).count == sources.count,
+              sources.allSatisfy({ $0.count <= 8192 && CollectionIconCache.remoteURL($0) != nil }) else {
+            throw DemoError.catalog("A collection can remember up to 32 unique HTTP or HTTPS source URLs.")
+        }
     }
     func preview(_ snapshot: CollectionSnapshot, destination: String) throws -> CollectionChanges {
         let name = try CollectionSnapshot.folderName(destination)
         let old = try load().folders.first { $0.name.lowercased() == name.lowercased() }?.apps ?? []
+        return changes(snapshot, destination: name, previous: old)
+    }
+    private func changes(_ snapshot: CollectionSnapshot, destination name: String, previous old: [[String: String]]) -> CollectionChanges {
         let byID = Dictionary(uniqueKeysWithValues: old.map { ($0["ID"]!, $0) })
         var changes = CollectionChanges()
         for app in snapshot.apps {
@@ -137,16 +179,21 @@ struct CollectionStore: Sendable {
         }
         return changes
     }
-    @discardableResult func merge(_ snapshot: CollectionSnapshot, destination: String) throws -> String {
+    @discardableResult func merge(_ snapshot: CollectionSnapshot, destination: String, source: String? = nil, expected: CollectionFolder? = nil) throws -> String {
         _ = try snapshot.recipes()
         let name = try CollectionSnapshot.folderName(destination)
         var document = try load()
+        if let expected, document.folders.first(where: { $0.name.lowercased() == name.lowercased() }) != expected {
+            throw DemoError.catalog("This collection changed while refreshing. Refresh again to review the latest changes.")
+        }
         let index: Int
         if let existing = document.folders.firstIndex(where: { $0.name.lowercased() == name.lowercased() }) { index = existing }
         else {
             guard document.folders.count < 64 else { throw DemoError.catalog("A library can have up to 64 collection folders.") }
             index = document.folders.count; document.folders.append(CollectionFolder(name: name, apps: []))
         }
+        if let source, !document.folders[index].sources.contains(source) { document.folders[index].sources.append(source) }
+        try Self.validateSources(document.folders[index].sources)
         for app in snapshot.apps {
             if let existing = document.folders[index].apps.firstIndex(where: { $0["ID"] == app["ID"] }) { document.folders[index].apps[existing] = app }
             else { document.folders[index].apps.append(app) }
@@ -156,6 +203,39 @@ struct CollectionStore: Sendable {
         try save(document)
         return document.folders[index].name
     }
+    func reviewRefresh(before: CollectionFolder, snapshots: [CollectionSnapshot]) throws -> CollectionRefresh {
+        guard !before.sources.isEmpty, snapshots.count == before.sources.count else { throw DemoError.catalog("Every saved collection source must be downloaded before applying changes.") }
+        var apps: [[String: String]] = []
+        for snapshot in snapshots {
+            _ = try snapshot.recipes()
+            for app in snapshot.apps {
+                if let index = apps.firstIndex(where: { $0["ID"] == app["ID"] }) { apps[index] = app } else { apps.append(app) }
+            }
+        }
+        let snapshot = CollectionSnapshot(schemaVersion: 1, folder: before.name, apps: apps)
+        _ = try snapshot.recipes()
+        guard Set((before.apps + apps).compactMap { $0["ID"] }).count <= 256 else { throw DemoError.catalog("A folder can contain up to 256 custom listings.") }
+        return CollectionRefresh(before: before, snapshot: snapshot, changes: changes(snapshot, destination: before.name, previous: before.apps))
+    }
+    @discardableResult func applyRefresh(_ review: CollectionRefresh) throws -> String {
+        try merge(review.snapshot, destination: review.before.name, expected: review.before)
+    }
+    #if !BOXEDWINE_APP_STORE
+    func refresh(_ name: String, control: ImportControl) async throws -> CollectionRefresh {
+        guard let before = try load().folders.first(where: { $0.name.lowercased() == name.lowercased() }), !before.sources.isEmpty else {
+            throw DemoError.catalog("This collection has no saved source URLs. Import it from a URL first.")
+        }
+        var snapshots: [CollectionSnapshot] = []
+        for source in before.sources {
+            try control.checkCancellation()
+            let prepared = try await PreparedAppSource.prepare(URL(string: source)!, collectionOnly: true, control: control)
+            guard let snapshot = prepared.collection else { throw DemoError.catalog("The source did not contain a collection.") }
+            snapshots.append(snapshot)
+        }
+        try control.checkCancellation()
+        return try reviewRefresh(before: before, snapshots: snapshots)
+    }
+    #endif
     func remove(_ name: String) throws {
         var document = try load()
         document.folders.removeAll { $0.name.lowercased() == name.lowercased() }

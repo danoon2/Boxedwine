@@ -11,7 +11,7 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from boxedwine.imports import CollectionIcons, CollectionStore, PreparedSource, load_collection, valid_url
 from boxedwine.files import Work, Cancelled
-from boxedwine.demos import load_catalog
+from boxedwine.demos import load_catalog, select_wine
 
 
 class ImportTests(unittest.TestCase):
@@ -23,6 +23,118 @@ class ImportTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def test_missing_wine_selects_highest_current_version_without_saving_a_pin(self):
+        del self.snapshot['apps'][0]['WineVersion']
+        self.store.add(self.snapshot, 'Classic Games')
+        recipe = self.store.recipes('Classic Games')[0]
+        self.assertIsNone(recipe['wineVersion'])
+        def wine(version):
+            return {'reference': {'wineVersion': version}}
+        wines = [wine(v) for v in ['9.0', '11.9', '11.10', '10.0']]
+        self.assertEqual(select_wine(recipe, wines), wine('11.10'))
+        self.assertEqual(select_wine(recipe, wines + [wine('12.0')]), wine('12.0'))
+        with self.assertRaises(ValueError): select_wine(recipe, [])
+        self.assertNotIn('WineVersion', self.store.load()['folders'][0]['apps'][0])
+        self.assertEqual(self.store.preview(self.snapshot, 'Classic Games'), (0, 0, 1))
+        self.snapshot['apps'][0]['WineVersion'] = '9.0'
+        self.store.add(self.snapshot, 'Classic Games'); pinned = self.store.recipes('Classic Games')[0]
+        self.assertEqual(select_wine(pinned, wines), wine('9.0'))
+        with self.assertRaises(ValueError): select_wine(pinned, [wine('12.0')])
+        for bad in ['', ' \n ', 'a' * 129, None]:
+            self.snapshot['apps'][0]['WineVersion'] = bad
+            with self.assertRaises(ValueError): load_collection(self.snapshot)
+
+    def test_app_arguments_round_trip_literally_and_invalid_updates_keep_saved_data(self):
+        self.store.add(self.snapshot, 'Classic Games')
+        self.assertEqual(self.store.recipes('Classic Games')[0]['appArguments'], [])
+        arguments = ['+timedemo', '1', '+map', 'demo1.dm2', ' two words ', '', '$(literal);&<>']
+        self.snapshot['apps'][0]['AppArguments'] = '\r\n'.join(arguments)
+        self.store.add(self.snapshot, 'Classic Games')
+        self.assertEqual(self.store.recipes('Classic Games')[0]['appArguments'], arguments)
+        self.assertEqual(self.store.preview(self.snapshot, 'Classic Games'), (0, 0, 1))
+        saved = self.store.path.read_bytes()
+        for bad in ['a\0b', 'a\rb', 'a\n' * 256, 'é' * 4097, '\n'.join(['a' * 8192] * 9)]:
+            self.snapshot['apps'][0]['AppArguments'] = bad
+            with self.assertRaises(ValueError): self.store.add(self.snapshot, 'Classic Games')
+            self.assertEqual(self.store.path.read_bytes(), saved)
+        self.snapshot['apps'][0]['AppArguments'] = ''
+        self.store.add(self.snapshot, 'Classic Games')
+        self.assertEqual(self.store.recipes('Classic Games')[0]['appArguments'], [])
+
+    def test_source_urls_migrate_persist_and_deduplicate(self):
+        self.store.path.write_text(json.dumps({'version': 1, 'folders': [{'name': 'Classic Games', 'apps': self.snapshot['apps']}]}))
+        self.assertEqual(self.store.load()['folders'][0]['sources'], [])
+        source = 'https://example.com/collection.json'
+        self.store.add(self.snapshot, 'Classic Games', source=source)
+        self.store.add(self.snapshot, 'classic games', source=source)
+        self.store.add(self.snapshot, 'Classic Games')
+        self.assertEqual(self.store.load()['folders'][0]['sources'], [source])
+        saved = self.store.path.read_bytes()
+        for value in ('file:///tmp/catalog.json', 'https://user:pass@example.com/catalog.json', 'https://example.com/catalog.json#fragment'):
+            with self.assertRaises(ValueError):
+                self.store.add(self.snapshot, 'Classic Games', source=value)
+            self.assertEqual(self.store.path.read_bytes(), saved)
+
+    def test_refresh_reviews_all_sources_and_applies_atomically_to_original_folder(self):
+        for source in ('https://example.com/a.json', 'https://example.com/b.json'):
+            self.store.add(self.snapshot, 'Classic Games', source=source)
+        retained = copy.deepcopy(self.snapshot); retained['apps'][0]['ID'] = 'retained'
+        self.store.add(retained, 'Classic Games')
+        before = self.store.load()['folders'][0]
+        first = copy.deepcopy(self.snapshot); first['folder'] = 'Server renamed folder'
+        first['apps'][0]['Name'] = 'First source'
+        second = copy.deepcopy(first); second['apps'][0]['Name'] = 'Last source wins'
+        second['apps'].append(dict(second['apps'][0], ID='new-app'))
+        saved = self.store.path.read_bytes()
+        review = self.store.review_refresh(before, [first, second])
+        self.assertEqual(review['changes'], (1, 1, 0))
+        self.assertEqual(self.store.path.read_bytes(), saved)  # Cancelling the review saves nothing.
+        self.store.apply_refresh(review)
+        folder = self.store.load()['folders'][0]
+        self.assertEqual(folder['name'], 'Classic Games')
+        self.assertEqual(folder['sources'], before['sources'])
+        self.assertEqual(len(folder['apps']), 3)
+        self.assertEqual(folder['apps'][0]['Name'], 'Last source wins')
+        again = self.store.review_refresh(folder, [first, second])
+        self.assertEqual(again['changes'], (0, 0, 2))
+        with self.assertRaises(ValueError): self.store.apply_refresh(review)  # Stale review.
+        self.store.remove('Classic Games')
+        with self.assertRaises(ValueError): self.store.apply_refresh(again)  # Do not recreate a deleted folder.
+
+    def test_http_refresh_failure_and_cancellation_preserve_saved_collection(self):
+        import threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        incoming = copy.deepcopy(self.snapshot); incoming['apps'][0]['Name'] = 'Downloaded update'
+        payload = json.dumps(incoming).encode()
+        requests = []
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *args): pass
+            def do_GET(self):
+                requests.append(self.path)
+                self.send_response(404 if self.path == '/missing.json' else 200)
+                self.send_header('Content-Length', str(len(payload))); self.end_headers(); self.wfile.write(payload)
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+        base = 'http://127.0.0.1:' + str(server.server_port)
+        try:
+            self.store.add(self.snapshot, 'Classic Games', source=base + '/one.json')
+            saved = self.store.path.read_bytes()
+            review = self.store.refresh('Classic Games', Work())
+            self.assertEqual(review['changes'], (0, 1, 0))
+            self.assertEqual(self.store.path.read_bytes(), saved)
+            self.store.apply_refresh(review)
+            self.assertEqual(self.store.refresh('Classic Games', Work())['changes'], (0, 0, 1))
+            self.store.add(self.snapshot, 'Classic Games', source=base + '/missing.json')
+            saved = self.store.path.read_bytes()
+            with self.assertRaises(Exception): self.store.refresh('Classic Games', Work())
+            self.assertEqual(self.store.path.read_bytes(), saved)
+            calls = len(requests); work = Work(); work.cancel.set()
+            with self.assertRaises(Cancelled): self.store.refresh('Classic Games', work)
+            self.assertEqual(len(requests), calls)
+            self.assertEqual(self.store.path.read_bytes(), saved)
+        finally:
+            server.shutdown(); server.server_close(); thread.join()
 
     def test_icon_urls_merge_without_duplicates_and_reject_unsafe_sources(self):
         self.snapshot['apps'][0]['Icon'] = 'https://images.example/game.png?v=1'

@@ -104,6 +104,9 @@ struct LibraryView: View {
                         Button { store.showCollection(name) } label: { Label(name, systemImage: "folder") }
                             .listRowBackground(store.showingDemos && store.collectionName == name ? Color.accentColor.opacity(0.16) : Color.clear)
                             .contextMenu {
+                                if store.refreshableCollections.contains(name) {
+                                    Button("Refresh Collection") { store.refreshCollection(name) }.disabled(store.importing || !store.canEdit)
+                                }
                                 if name != "Demos" || store.canResetDemos {
                                     Button(name == "Demos" ? "Reset Demos…" : "Delete Collection…") { store.removeCollection(name) }.disabled(store.importing || !store.canEdit)
                                 }
@@ -559,15 +562,23 @@ struct AddAppView: View {
                 #if !BOXEDWINE_APP_STORE
                 TextField("File download URL", text: $link)
                 Button("Download & Continue") {
-                    guard let url = URL(string: link.trimmingCharacters(in: .whitespacesAndNewlines)), PreparedAppSource.validURL(url) else { store.errorMessage = "Enter a complete HTTP or HTTPS file link."; return }
+                    guard let url = URL(string: link.trimmingCharacters(in: .whitespacesAndNewlines)), PreparedAppSource.validURL(url) else { store.reportAddAppError("Enter a complete HTTP or HTTPS file link."); return }
                     store.prepareAddSource(url, collectionOnly: purpose == "collection")
                 }.disabled(link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 #endif
             }
+            if let error = store.addAppError, !store.importing {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout).foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                    .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityIdentifier("add-app-error")
+            }
             Divider()
             HStack {
                 if !purpose.isEmpty || store.preparedSource != nil {
-                    Button("Back") { if store.preparedSource != nil { store.preparedSource = nil; if purpose.isEmpty { purpose = "app" } } else { purpose = "" } }.disabled(store.importing)
+                    Button("Back") { store.addAppError = nil; if store.preparedSource != nil { store.preparedSource = nil; if purpose.isEmpty { purpose = "app" } } else { purpose = "" } }.disabled(store.importing)
                 }
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction).disabled(store.importing)
@@ -596,6 +607,7 @@ struct AddAppView: View {
                 chooseProgram()
             }
             .onChange(of: action) { _, _ in chooseProgram() }
+            .onChange(of: link) { _, _ in store.addAppError = nil }
     }
     private func chooseProgram() {
         let setups = choices.filter { ($0 as NSString).pathExtension.lowercased() == "msi" || ($0 as NSString).lastPathComponent.range(of: "^(setup|install)", options: [.regularExpression, .caseInsensitive]) != nil }

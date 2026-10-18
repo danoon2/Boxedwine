@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private List<string> collectionNames = [];
     private bool IsCollection => section == "Demos" || collectionNames.Contains(section);
     private bool canResetDemos;
+    private HashSet<string> refreshableCollections = [];
     private string? catalogError;
     private string catalogDirectory = "";
     private readonly Dictionary<Guid, RuntimeSession> sessions = [];
@@ -90,6 +91,7 @@ public partial class MainWindow : Window
         var folders = document.Folders;
         var names = folders.Select(f => f.Name).Where(n => n != "Demos").ToList();
         canResetDemos = folders.Any(f => f.Name == "Demos" && f.Apps.Count > 0);
+        refreshableCollections = folders.Where(f => f.Sources.Count > 0).Select(f => f.Name).ToHashSet();
         iconDemos = new[] { "Demos" }.Concat(names).SelectMany(name => Collections.Recipes(name, defaultDemos, document)).ToList();
         LoadCollectionIcons();
         refreshing = true;
@@ -101,9 +103,18 @@ public partial class MainWindow : Window
             foreach (var item in Navigation.Items.Cast<ListBoxItem>().Where(i => (string)i.Tag == "Demos" || names.Contains((string)i.Tag)))
             {
                 string name = (string)item.Tag;
-                if (name == "Demos" && !canResetDemos) { item.ContextMenu = null; continue; }
-                var menu = new ContextMenu(); var remove = new MenuItem { Header = name == "Demos" ? "Reset Demos…" : "Delete Collection…" };
-                remove.Click += (_, _) => Safe(() => DeleteCollection(name)); menu.Items.Add(remove); item.ContextMenu = menu;
+                var menu = new ContextMenu();
+                if (refreshableCollections.Contains(name))
+                {
+                    var refresh = new MenuItem { Header = "Refresh Collection" };
+                    refresh.Click += (_, _) => Safe(() => RefreshCollection(name)); menu.Items.Add(refresh);
+                }
+                if (name != "Demos" || canResetDemos)
+                {
+                    var remove = new MenuItem { Header = name == "Demos" ? "Reset Demos…" : "Delete Collection…" };
+                    remove.Click += (_, _) => Safe(() => DeleteCollection(name)); menu.Items.Add(remove);
+                }
+                item.ContextMenu = menu.Items.Count == 0 ? null : menu;
             }
         }
         finally { refreshing = false; }
@@ -152,7 +163,7 @@ public partial class MainWindow : Window
         {
             case var _ when IsCollection:
                 demos = Collections.Recipes(section, defaultDemos);
-                rows.AddRange(demos.OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).Select(d => new LibraryRow { Demo = d, Name = d.Name, Description = document.Apps.Any(a => a.Demo?.Id == d.Origin.Id) ? "In your library" : document.RemovedApps.Any(a => a.App.Demo?.Id == d.Origin.Id) ? "In Removed Apps" : $"{Math.Max(1, d.Bytes / 1048576.0):0.#} MB · Wine {d.WineVersion}", Icon = Icons.ForDemo(repository, d, catalogDirectory), Glyph = "\uE7FC" })); break;
+                rows.AddRange(demos.OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).Select(d => new LibraryRow { Demo = d, Name = d.Name, Description = document.Apps.Any(a => a.Demo?.Id == d.Origin.Id) ? "In your library" : document.RemovedApps.Any(a => a.App.Demo?.Id == d.Origin.Id) ? "In Removed Apps" : $"{Math.Max(1, d.Bytes / 1048576.0):0.#} MB · {d.WineDescription(wines)}", Icon = Icons.ForDemo(repository, d, catalogDirectory), Glyph = "\uE7FC" })); break;
             case "Removed Apps": rows.AddRange(document.RemovedApps.OrderByDescending(a => a.RemovedAt).Select(a => Row(a.App, a))); break;
             case "Unfinished Work": rows.AddRange(pending.Select(o => new LibraryRow { Operation = o, Name = o.Name, Description = o.Ready ? "Ready to finish" : "Interrupted copy", Glyph = "\uE823" })); break;
             case "Recently Opened": rows.AddRange(document.Apps.Where(a => a.LastOpened != null).OrderByDescending(a => a.LastOpened).Select(a => Row(a))); break;
@@ -168,6 +179,8 @@ public partial class MainWindow : Window
         EmptyDescription.Text = Search.Text.Length > 0 ? "Try another name or clear the search." : section switch { "Demos" => catalogError ?? "The catalog is empty.", "Recently Opened" => "Open an app from All Apps to get started.", "Removed Apps" => "Removing an app from the library keeps its files here.", "Unfinished Work" => "There are no interrupted copies to review.", _ => "Add an app folder or installer, browse a demo, or try Wine's Minesweeper to get started." };
         EmptyButton.Content = section == "Demos" ? "Download Catalog" : Search.Text.Length > 0 ? "Clear search" : section == "All Apps" ? "Add your first app" : "Go to All Apps";
         AddButton.IsEnabled = !busy; EmptyButton.IsEnabled = !busy;
+        RefreshCollectionButton.Visibility = IsCollection && refreshableCollections.Contains(section) ? Visibility.Visible : Visibility.Collapsed;
+        RefreshCollectionButton.IsEnabled = !busy;
         LaunchingApps.ItemsSource = launching.Values.ToArray();
         RenderDetails();
     }
@@ -218,7 +231,7 @@ public partial class MainWindow : Window
             Details.Children.Add(FormWindow.Paragraph(demo.Summary));
             var document = displayedLibrary; var installed = document.Apps.FirstOrDefault(a => a.Demo?.Id == demo.Origin.Id); var removed = document.RemovedApps.FirstOrDefault(a => a.App.Demo?.Id == demo.Origin.Id);
             DetailAction(installed != null ? "Show in Library" : removed != null ? "Show in Removed Apps" : "Download and Install", () => ActivateDemo(demo), !busy);
-            Details.Children.Add(FormWindow.Paragraph($"{Math.Max(1, demo.Bytes / 1048576.0):0.#} MB download\nRequires Wine {demo.WineVersion}"));
+            Details.Children.Add(FormWindow.Paragraph($"{Math.Max(1, demo.Bytes / 1048576.0):0.#} MB download\n{demo.WineDescription(wines)}"));
             Details.Children.Add(FormWindow.Paragraph("App download: " + new Uri(demo.Url).Host));
             if (!string.IsNullOrWhiteSpace(demo.Help)) { Details.Children.Add(FormWindow.Heading("About this app")); Details.Children.Add(FormWindow.Paragraph(demo.Help)); }
             return;

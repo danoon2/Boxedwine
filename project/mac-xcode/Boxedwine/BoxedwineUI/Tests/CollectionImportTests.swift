@@ -3,6 +3,51 @@ import Testing
 @testable import BoxedwineLibrary
 
 struct CollectionImportTests {
+    @Test func omittedWineUsesHighestCurrentCatalogVersionWithoutSavingAPin() throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CollectionStore(directory: directory)
+        var value = try snapshot(); value.apps[0].removeValue(forKey: "WineVersion")
+        try store.merge(value, destination: value.folder)
+        let recipe = try #require(store.recipes(in: value.folder, defaults: []).first)
+        #expect(recipe.wineVersion == nil)
+        func wine(_ version: String) -> CatalogWine {
+            CatalogWine(name: "Wine " + version, wineVersion: version, fileVersion: "1", filesystemVersion: "20",
+                        url: URL(string: "https://boxedwine.org/Wine\(version).zip")!, bytes: 1, sha256: String(repeating: "a", count: 64))
+        }
+        let wines = ["9.0", "11.9", "11.10", "10.0"].map(wine)
+        #expect(recipe.catalogWine(in: wines)?.wineVersion == "11.10")
+        #expect(recipe.catalogWine(in: wines + [wine("12.0")])?.wineVersion == "12.0")
+        #expect(recipe.catalogWine(in: []) == nil)
+        #expect(try store.load().folders[0].apps[0]["WineVersion"] == nil)
+        #expect(try store.preview(value, destination: value.folder).unchanged == 1)
+        value.apps[0]["WineVersion"] = "9.0"
+        let pinned = try #require(value.recipes().first)
+        #expect(pinned.catalogWine(in: wines)?.wineVersion == "9.0")
+        #expect(pinned.catalogWine(in: [wine("12.0")]) == nil)
+        for bad in ["", " \n ", String(repeating: "a", count: 129)] {
+            value.apps[0]["WineVersion"] = bad
+            #expect(throws: (any Error).self) { try value.recipes() }
+        }
+    }
+    @Test func appArgumentsRoundTripLiterallyAndInvalidUpdatesKeepSavedData() throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CollectionStore(directory: directory)
+        var value = try snapshot()
+        #expect(try value.recipes()[0].appArguments.isEmpty)
+        let arguments = ["+timedemo", "1", "+map", "demo1.dm2", " two words ", "", "$(literal);&<>"]
+        value.apps[0]["AppArguments"] = arguments.joined(separator: "\r\n")
+        try store.merge(value, destination: value.folder)
+        #expect(try store.recipes(in: value.folder, defaults: [])[0].appArguments == arguments)
+        #expect(try store.preview(value, destination: value.folder).unchanged == 1)
+        let saved = try Data(contentsOf: directory.appendingPathComponent("collections.json"))
+        for bad in ["a\0b", "a\rb", String(repeating: "a\n", count: 256), String(repeating: "é", count: 4097), Array(repeating: String(repeating: "a", count: 8192), count: 9).joined(separator: "\n")] {
+            value.apps[0]["AppArguments"] = bad
+            #expect(throws: (any Error).self) { try store.merge(value, destination: value.folder) }
+            #expect(try Data(contentsOf: directory.appendingPathComponent("collections.json")) == saved)
+        }
+        value.apps[0]["AppArguments"] = ""
+        #expect(try value.recipes()[0].appArguments.isEmpty)
+    }
     private func snapshot() throws -> CollectionSnapshot {
         var root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         for _ in 0..<5 { root.deleteLastPathComponent() }
@@ -12,6 +57,52 @@ struct CollectionImportTests {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("BoxedwineCollectionTest-" + UUID().uuidString).resolvingSymlinksInPath()
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+    @Test func sourceURLsMigratePersistAndDeduplicate() throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CollectionStore(directory: directory); let value = try snapshot()
+        let path = directory.appendingPathComponent("collections.json")
+        let legacy: [String: Any] = ["version": 1, "folders": [["name": value.folder, "apps": value.apps]]]
+        try JSONSerialization.data(withJSONObject: legacy).write(to: path)
+        #expect(try store.load().folders[0].sources.isEmpty)
+        let source = "https://example.com/collection.json"
+        try store.merge(value, destination: value.folder, source: source)
+        try store.merge(value, destination: "classic games", source: source)
+        try store.merge(value, destination: value.folder)
+        #expect(try store.load().folders[0].sources == [source])
+        let saved = try Data(contentsOf: path)
+        for bad in ["file:///tmp/catalog.json", "https://user:password@example/catalog.json", "https://example/catalog.json#fragment"] {
+            #expect(throws: (any Error).self) { try store.merge(value, destination: value.folder, source: bad) }
+            #expect(try Data(contentsOf: path) == saved)
+        }
+    }
+    @Test func refreshReviewsEverySourceAndAppliesOnlyToUnchangedDestination() throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CollectionStore(directory: directory); let value = try snapshot()
+        for source in ["https://example.com/a.json", "https://example.com/b.json"] { try store.merge(value, destination: value.folder, source: source) }
+        var retained = value; retained.apps[0]["ID"] = "retained"
+        try store.merge(retained, destination: value.folder)
+        let before = try store.load().folders[0]
+        var first = value; first.folder = "Server renamed folder"; first.apps[0]["Name"] = "First source"
+        var last = first; last.apps[0]["Name"] = "Last source wins"
+        var added = last.apps[0]; added["ID"] = "new-app"; last.apps.append(added)
+        let path = directory.appendingPathComponent("collections.json"), saved = try Data(contentsOf: directory.appendingPathComponent("collections.json"))
+        let review = try store.reviewRefresh(before: before, snapshots: [first, last])
+        #expect(review.changes == CollectionChanges(added: 1, updated: 1, unchanged: 0))
+        #expect(try Data(contentsOf: path) == saved)
+        #expect(throws: (any Error).self) { try store.reviewRefresh(before: before, snapshots: [first]) }
+        var invalid = last; invalid.apps.append(last.apps[0])
+        #expect(throws: (any Error).self) { try store.reviewRefresh(before: before, snapshots: [first, invalid]) }
+        #expect(try Data(contentsOf: path) == saved)
+        try store.applyRefresh(review)
+        let folder = try store.load().folders[0]
+        #expect(folder.name == value.folder && folder.apps.count == 3 && folder.sources == before.sources)
+        #expect(folder.apps[0]["Name"] == "Last source wins")
+        let again = try store.reviewRefresh(before: folder, snapshots: [first, last])
+        #expect(again.changes == CollectionChanges(added: 0, updated: 0, unchanged: 2))
+        #expect(throws: (any Error).self) { try store.applyRefresh(review) }
+        try store.remove(value.folder)
+        #expect(throws: (any Error).self) { try store.applyRefresh(again) }
     }
     @Test func repeatedImportsUpdateByStableIDWithoutDuplicates() throws {
         let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
@@ -114,6 +205,15 @@ struct CollectionImportTests {
 
 #if !BOXEDWINE_APP_STORE
 extension CollectionImportTests {
+    @Test func cancelledRefreshDoesNotDownloadOrChangeSavedCollections() async throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CollectionStore(directory: directory); let value = try snapshot()
+        try store.merge(value, destination: value.folder, source: "https://example.invalid/collection.json")
+        let path = directory.appendingPathComponent("collections.json"), saved = try Data(contentsOf: directory.appendingPathComponent("collections.json"))
+        let control = ImportControl(); control.cancel()
+        await #expect(throws: CancellationError.self) { try await store.refresh(value.folder, control: control) }
+        #expect(try Data(contentsOf: path) == saved)
+    }
     @Test func remoteIconsCacheValidPNGsAndRejectInvalidOrOversizedDownloads() async throws {
         let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
         let cache = CollectionIconCache(directory: directory)
