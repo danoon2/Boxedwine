@@ -248,11 +248,10 @@ bool FsIso::init(const BString& isoPath, const BString& mountPath) {
         }
     }
 
-    // Build the virtual filesystem under mountPath
-    Fs::makeLocalDirs(mountPath);
+    // Build the virtual filesystem under mountPath, which the caller creates
     std::shared_ptr<FsNode> mountNode = Fs::getNodeFromLocalPath(B(""), mountPath, true);
     if (!mountNode) {
-        klog_fmt("FsIso: could not create mount point %s", mountPath.c_str());
+        klog_fmt("FsIso: mount point %s does not exist", mountPath.c_str());
         return false;
     }
 

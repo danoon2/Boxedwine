@@ -114,8 +114,8 @@ public:
     BString runAutomation;
 
     BString ddrawOverridePath;
-    BString cdromPath;
-    BString cdromDrive; // wine drive letter for cdromPath, without the colon
+    std::vector<BString> cdromPaths; // disc images for the CD-ROM drive, swapped while running
+    BString cdromDrive; // wine drive letter for the CD-ROM drive, without the colon
     bool enableDXVK = false;
     bool disableHideCursor = false;
     bool forceRelativeMouse = false;

@@ -250,6 +250,11 @@
       "reason": "Normalize GetDIBits output headers and palette placement like Windows, preventing 3DMark Vantage font-atlas heap corruption"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_mountmgr_cdrom_media_change.patch",
+      "reason": "Re-read a CD-ROM drive's label and serial when its disc is ejected or swapped, report no media while it is empty and broadcast WM_DEVICECHANGE, for Boxedwine's multi-disc -cdrom swapping"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

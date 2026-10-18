@@ -1,0 +1,263 @@
+diff --git a/dlls/mountmgr.sys/device.c b/dlls/mountmgr.sys/device.c
+index 733d48a..bbdf6d9 100644
+--- a/dlls/mountmgr.sys/device.c
++++ b/dlls/mountmgr.sys/device.c
+@@ -85,6 +85,8 @@ struct volume
+     WCHAR                 label[256];  /* volume label */
+     DWORD                 serial;      /* volume serial number */
+     enum fs_type          fs_type;     /* file system type */
++    BOOL                  no_media;    /* removable drive with no disc in it */
++    unsigned int          media_count; /* number of disc changes seen */
+ };
+ 
+ struct dos_drive
+@@ -93,6 +95,8 @@ struct dos_drive
+     struct volume        *volume;      /* volume for this drive */
+     int                   drive;       /* drive letter (0 = A: etc.) */
+     struct mount_point   *mount;       /* DosDevices mount point */
++    unsigned int          media_count; /* volume media_count last notified */
++    BOOL                  media_present; /* whether that notification had a disc */
+ };
+ 
+ static struct list drives_list = LIST_INIT(drives_list);
+@@ -880,6 +884,10 @@ static BOOL get_volume_device_info( struct volume *volume )
+         WARN("Failed to open %s, err %lu\n", debugstr_a(unix_device), GetLastError());
+         return FALSE;
+     }
++    /* the TOC cached for the drive may be from a disc that has since been swapped */
++    if (volume->device->type == DEVICE_CDROM || volume->device->type == DEVICE_DVD)
++        DeviceIoControl( handle, IOCTL_STORAGE_CHECK_VERIFY, NULL, 0, NULL, 0, &size, 0 );
++    volume->no_media = FALSE;
+     if (DeviceIoControl( handle, IOCTL_CDROM_READ_TOC, NULL, 0, &toc, sizeof(toc), &size, 0 ))
+     {
+         if (!(toc.TrackData[0].Control & 0x04))  /* audio track */
+@@ -899,6 +907,7 @@ static BOOL get_volume_device_info( struct volume *volume )
+         {
+             TRACE( "%s: removable drive with no inserted media\n", debugstr_a(unix_device) );
+             volume->fs_type = FS_UNKNOWN;
++            volume->no_media = TRUE;
+             CloseHandle( handle );
+             return TRUE;
+         }
+@@ -944,6 +953,99 @@ static void set_dos_devices_disk_serial( struct disk_device *device )
+     }
+ }
+ 
++/* CD-ROM drives that are not handled by udisks or DiskArbitration, whose disc changes
++ * have to be found by asking the drive */
++static BOOL is_polled_cdrom( struct volume *volume )
++{
++    return volume && !volume->udi && volume->device->unix_device &&
++           (volume->device->type == DEVICE_CDROM || volume->device->type == DEVICE_DVD);
++}
++
++/* re-read a CD-ROM drive's label, serial and file system after its disc was ejected
++ * or swapped; called with device_section held */
++static void refresh_cdrom_volume( struct volume *volume )
++{
++    BOOL present = FALSE, changed = FALSE;
++    struct check_cdrom_media_params params = { volume->device->unix_device, &present, &changed };
++
++    if (!is_polled_cdrom( volume )) return;
++    if (MOUNTMGR_CALL( check_cdrom_media, &params )) return;
++    if (!changed && present == !volume->no_media) return;
++
++    volume->label[0] = 0;
++    volume->serial = 0;
++    volume->fs_type = FS_UNKNOWN;
++    volume->no_media = !present;
++    if (present && !get_volume_device_info( volume ))
++        volume->fs_type = (volume->device->type == DEVICE_DVD) ? FS_UDF : FS_ISO9660;
++    if (!volume->no_media && !volume->serial)
++        memcpy( &volume->serial, &volume->guid.Data4[4], sizeof(DWORD) );
++    volume->media_count++;
++    TRACE( "%s: %s, label %s, serial %08lx\n", debugstr_a(volume->device->unix_device),
++           volume->no_media ? "no media" : "media changed", debugstr_w(volume->label), volume->serial );
++}
++
++/* tell applications about discs ejected from or inserted into polled CD-ROM drives */
++static DWORD CALLBACK cdrom_media_thread( void *arg )
++{
++    struct { int drive; int code; } notify[2 * MAX_DOS_DRIVES];
++    struct dos_drive *drive;
++    unsigned int i, count;
++
++    for (;;)
++    {
++        Sleep( 1000 );
++        count = 0;
++        EnterCriticalSection( &device_section );
++        LIST_FOR_EACH_ENTRY( drive, &drives_list, struct dos_drive, entry )
++        {
++            if (!is_polled_cdrom( drive->volume )) continue;
++            refresh_cdrom_volume( drive->volume );
++            if (drive->media_count == drive->volume->media_count) continue;
++            drive->media_count = drive->volume->media_count;
++            if (drive->media_present)
++            {
++                notify[count].drive = drive->drive;
++                notify[count++].code = DBT_DEVICEREMOVECOMPLETE;
++            }
++            drive->media_present = !drive->volume->no_media;
++            if (drive->media_present)
++            {
++                notify[count].drive = drive->drive;
++                notify[count++].code = DBT_DEVICEARRIVAL;
++            }
++        }
++        LeaveCriticalSection( &device_section );
++        /* outside the lock: a window procedure may query the volume */
++        for (i = 0; i < count; i++) send_notify( notify[i].drive, notify[i].code );
++    }
++    return 0;
++}
++
++static void start_cdrom_media_thread(void)
++{
++    struct dos_drive *drive;
++    BOOL found = FALSE;
++    HANDLE thread;
++
++    EnterCriticalSection( &device_section );
++    LIST_FOR_EACH_ENTRY( drive, &drives_list, struct dos_drive, entry )
++    {
++        BOOL present, changed;
++        struct check_cdrom_media_params params = { NULL, &present, &changed };
++
++        if (!is_polled_cdrom( drive->volume )) continue;
++        /* the disc was just read, so drop any change the drive still reports from before */
++        params.device = drive->volume->device->unix_device;
++        MOUNTMGR_CALL( check_cdrom_media, &params );
++        drive->media_count = drive->volume->media_count;
++        drive->media_present = !drive->volume->no_media;
++        found = TRUE;
++    }
++    LeaveCriticalSection( &device_section );
++    if (found && (thread = CreateThread( NULL, 0, cdrom_media_thread, NULL, 0, NULL ))) CloseHandle( thread );
++}
++
+ /* change the information for an existing volume */
+ static NTSTATUS set_volume_info( struct volume *volume, struct dos_drive *drive, const char *device,
+                                  const char *mount_point, enum device_type type, const GUID *guid,
+@@ -1452,6 +1554,7 @@ NTSTATUS query_unix_drive( void *buff, SIZE_T insize, SIZE_T outsize, IO_STATUS_
+         volume = find_volume_by_unixdev( input->unix_dev );
+     if (volume)
+     {
++        refresh_cdrom_volume( volume );
+         device_type = volume->device->type;
+         fs_type = get_mountmgr_fs_type( volume->fs_type );
+         serial = volume->serial;
+@@ -1647,6 +1750,12 @@ static NTSTATUS WINAPI harddisk_query_volume( DEVICE_OBJECT *device, IRP *irp )
+         status = STATUS_BAD_DEVICE_TYPE;
+         goto done;
+     }
++    refresh_cdrom_volume( volume );
++    if (is_polled_cdrom( volume ) && volume->no_media)
++    {
++        status = STATUS_NO_MEDIA_IN_DEVICE;
++        goto done;
++    }
+ 
+     switch(info_class)
+     {
+@@ -1844,6 +1953,17 @@ static NTSTATUS WINAPI harddisk_ioctl( DEVICE_OBJECT *device, IRP *irp )
+     case IOCTL_CDROM_READ_TOC:
+         status = STATUS_INVALID_DEVICE_REQUEST;
+         break;
++    case IOCTL_STORAGE_CHECK_VERIFY:
++    case IOCTL_STORAGE_CHECK_VERIFY2:
++        if (!is_polled_cdrom( dev->volume ))
++        {
++            FIXME( "Unsupported check verify\n" );
++            status = STATUS_NOT_SUPPORTED;
++            break;
++        }
++        refresh_cdrom_volume( dev->volume );
++        status = dev->volume->no_media ? STATUS_NO_MEDIA_IN_DEVICE : STATUS_SUCCESS;
++        break;
+     case IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS:
+     {
+         struct size_info size_info = { 0, 0, 0, 0, 0 };
+@@ -1905,6 +2025,7 @@ NTSTATUS WINAPI harddisk_driver_entry( DRIVER_OBJECT *driver, UNICODE_STRING *pa
+     create_disk_device( DEVICE_HARDDISK, &device, NULL );
+ 
+     create_drive_devices();
++    start_cdrom_media_thread();
+ 
+     return STATUS_SUCCESS;
+ }
+diff --git a/dlls/mountmgr.sys/unixlib.c b/dlls/mountmgr.sys/unixlib.c
+index bcc3638..90c89c2 100644
+--- a/dlls/mountmgr.sys/unixlib.c
++++ b/dlls/mountmgr.sys/unixlib.c
+@@ -30,6 +30,10 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <sys/stat.h>
++#include <sys/ioctl.h>
++#ifdef HAVE_LINUX_CDROM_H
++#include <linux/cdrom.h>
++#endif
+ #ifdef HAVE_SYS_STATFS_H
+ #include <sys/statfs.h>
+ #endif
+@@ -452,6 +456,25 @@ static NTSTATUS check_device_access( void *args )
+     return STATUS_SUCCESS;
+ }
+ 
++/* whether a CD-ROM drive has a disc, and whether it changed since the last call */
++static NTSTATUS check_cdrom_media( void *args )
++{
++#if defined(linux) && defined(HAVE_LINUX_CDROM_H)
++    const struct check_cdrom_media_params *params = args;
++    int fd, status;
++
++    if ((fd = open( params->device, O_RDONLY | O_NONBLOCK )) == -1) return STATUS_NO_SUCH_FILE;
++    status = ioctl( fd, CDROM_DRIVE_STATUS, CDSL_CURRENT );
++    *params->changed = ioctl( fd, CDROM_MEDIA_CHANGED, CDSL_CURRENT ) > 0;
++    close( fd );
++    if (status == -1 || status == CDS_NO_INFO) return STATUS_NOT_SUPPORTED;
++    *params->present = (status == CDS_DISC_OK);
++    return STATUS_SUCCESS;
++#else
++    return STATUS_NOT_SUPPORTED;
++#endif
++}
++
+ static NTSTATUS detect_serial_ports( void *args )
+ {
+     const struct detect_ports_params *params = args;
+@@ -579,6 +602,7 @@ const unixlib_entry_t __wine_unix_call_funcs[] =
+     read_volume_file,
+     match_unixdev,
+     check_device_access,
++    check_cdrom_media,
+     detect_serial_ports,
+     detect_parallel_ports,
+     set_shell_folder,
+diff --git a/dlls/mountmgr.sys/unixlib.h b/dlls/mountmgr.sys/unixlib.h
+index c17e5f7..7b41eb1 100644
+--- a/dlls/mountmgr.sys/unixlib.h
++++ b/dlls/mountmgr.sys/unixlib.h
+@@ -113,6 +113,13 @@ struct match_unixdev_params
+     ULONGLONG unix_dev;
+ };
+ 
++struct check_cdrom_media_params
++{
++    const char *device;
++    BOOL *present;
++    BOOL *changed;
++};
++
+ struct detect_ports_params
+ {
+     char *names;
+@@ -163,6 +170,7 @@ enum mountmgr_funcs
+     unix_read_volume_file,
+     unix_match_unixdev,
+     unix_check_device_access,
++    unix_check_cdrom_media,
+     unix_detect_serial_ports,
+     unix_detect_parallel_ports,
+     unix_set_shell_folder,

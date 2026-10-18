@@ -268,9 +268,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
         args.push_back(B("-title"));
         args.push_back(title);
     }
-    if (cdromPath.length()) {
+    for (auto& path : cdromPaths) {
         args.push_back(B("-cdrom"));
-        args.push_back(cdromPath);
+        args.push_back(path);
         args.push_back(cdromDrive);
     }
     if (userId != UID) {
@@ -756,22 +756,24 @@ bool StartUpArgs::apply() {
     }
 #endif
 
-    if (!this->cdromPath.isEmpty()) {
-        std::shared_ptr<FsIso> fsIso = std::make_shared<FsIso>();
-        if (fsIso->init(this->cdromPath, B("/mnt/cdrom"))) {
-            setCdromIso(fsIso);
-            // Wire up the requested Wine drive letter to the ISO mount point
-            BString drive = this->cdromDrive + ":";
-            BString link = "/home/username/.wine/dosdevices/" + drive;
-            std::shared_ptr<FsNode> dosdevParent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
-            if (Fs::getNodeFromLocalPath(B(""), link, false)) {
-                klog_fmt("-cdrom: drive %s is already in use, so %s has no drive letter", drive.c_str(), this->cdromPath.c_str());
-            } else if (dosdevParent) {
-                Fs::addFileNode(link, B("/mnt/cdrom"), B(""), false, dosdevParent);
-                Fs::addFileNode(link + ":", B("/dev/sr0"), B(""), false, dosdevParent);
-                setWineDriveType(drive.c_str(), "cdrom");
-            }
+    if (!this->cdromPaths.empty()) {
+        // The drive letter links to the disc while one is in the drive (see cdromInit).
+        // Disc 1 goes in now: Wine's mountmgr only sets up drives whose link exists
+        // when it starts.
+        BString drive = this->cdromDrive + ":";
+        BString link = "/home/username/.wine/dosdevices/" + drive;
+        std::shared_ptr<FsNode> dosdevParent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
+        if (Fs::getNodeFromLocalPath(B(""), link, false)) {
+            klog_fmt("-cdrom: drive %s is already in use, so the CD-ROM drive has no drive letter", drive.c_str());
+            link = BString::empty;
+        } else if (dosdevParent) {
+            Fs::addFileNode(link + ":", B("/dev/sr0"), B(""), false, dosdevParent);
+            setWineDriveType(drive.c_str(), "cdrom");
+        } else {
+            link = BString::empty;
         }
+        cdromInit(this->cdromPaths, B("/mnt/cdrom"), link);
+        cdromInsert(0);
     }
 
     if (this->args.size()==0) {
@@ -960,8 +962,13 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 klog("  example: -cdrom \"c:\\my games\\game.iso\" e");
                 return false;
             }
-            this->cdromPath = BString::copy(argv[i+1]);
-            this->cdromDrive = BString::copy(argv[i+2]).toLowerCase();
+            BString drive = BString::copy(argv[i+2]).toLowerCase();
+            if (!this->cdromDrive.isEmpty() && this->cdromDrive != drive) {
+                klog("-cdrom: every disc must use the same drive letter, they are swapped in one CD-ROM drive");
+                return false;
+            }
+            this->cdromPaths.push_back(BString::copy(argv[i+1]));
+            this->cdromDrive = drive;
             i+=2;
         } else if (!strcmp(argv[i], "-zip") && i+1<argc) {
 #ifdef BOXEDWINE_ZLIB
