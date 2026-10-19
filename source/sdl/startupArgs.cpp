@@ -284,9 +284,6 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (ttyPrepend) {
         args.push_back(B("-ttyPrepend"));
     }
-    if (noErrorDialog) {
-        args.push_back(B("-noErrorDialog"));
-    }
     if (recordAutomation.length()) {
         args.push_back(B("-record"));
         args.push_back(recordAutomation);
@@ -361,7 +358,7 @@ std::vector<BString> StartUpArgs::buildArgs() {
 bool StartUpArgs::apply() {
     // Set before anything below can kpanic. An automation script can't dismiss a dialog, and its
     // timeout can't fire while one blocks the main thread.
-    KSystem::noErrorDialog = this->noErrorDialog || this->runAutomation.length();
+    KSystem::noErrorDialog = this->runAutomation.length() != 0;
 #if defined(BOXEDWINE_WASM_JIT) && defined(BOXEDWINE_MULTI_THREADED)
     wasmJitInitMemoryOrdering(this->safeMemory);
 #endif
@@ -972,10 +969,6 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         }
         else if (!strcmp(argv[i], "-ttyPrepend")) { // used to send tty back to WaitDlg for winetricks when BOXEDWINE_UI_LAUNCH_IN_PROCESS is not defined
             this->ttyPrepend = true;
-        } else if (!strcmp(argv[i], "-noErrorDialog")) {
-            this->noErrorDialog = true;
-            // also cover a kpanic during startup, before apply() runs
-            KSystem::noErrorDialog = true;
         } else if (!strcmp(argv[i], "-cpuAffinity")) {
 #ifdef BOXEDWINE_MULTI_THREADED
             this->cpuAffinity = atoi(argv[i+1]);
@@ -1007,9 +1000,12 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 return false;
             }
             this->runAutomation = BString::copy(argv[i + 1]);
+            // also cover a kpanic during startup, before apply() runs
+            KSystem::noErrorDialog = true;
             i++;
         }  else if (!strcmp(argv[i], "-play")) {
             this->runAutomation = BString::copy(argv[i + 1]);
+            KSystem::noErrorDialog = true;
             i++;
         }
 #endif
