@@ -186,7 +186,8 @@ public:
 			// One main-thread round trip returns queued frames or a failure.
 			S32 queued = bw_audio_status(this->webDevice);
 			this->webFailed = queued < 0;
-			return (queued < 0 ? 0 : (U32)queued) * this->want.channels * bytesPerSampleWant();
+			U32 frames = KDspAudioMath::getGuestVisibleQueuedFrames(queued < 0 ? 0 : (U32)queued, this->want.freq);
+			return frames * this->want.channels * bytesPerSampleWant();
 		}
 		return this->getEstimatedRealQueuedWant();
 	}

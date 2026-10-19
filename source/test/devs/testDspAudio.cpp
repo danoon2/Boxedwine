@@ -60,6 +60,13 @@ void testDspAudioWriteMath() {
 		}
 	}
 
+	expectEqual(KDspAudioMath::getGuestVisibleQueuedFrames(500, 11025), 170,
+		"the guest does not see 30 ms of queued worklet frames");
+	expectEqual(KDspAudioMath::getGuestVisibleQueuedFrames(330, 11025), 0,
+		"a queue within the reserve looks empty to the guest");
+	expectEqual(KDspAudioMath::getGuestVisibleQueuedFrames(0, 22050), 0,
+		"an empty queue stays empty");
+
 	expectEqual(
 		KDspAudioMath::getWriteCapacity(11025, 4096, DSP_TEST_BUFFER_SIZE),
 		4096,
