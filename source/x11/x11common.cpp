@@ -19,6 +19,7 @@
 #include "boxedwine.h"
 #include "../../tools/x11/X11_def.h"
 #include "x11.h"
+#include "x11flush.h"
 #include "knativesystem.h"
 
 Int99Callback int9BCallback[X11_COUNT];
@@ -1624,12 +1625,14 @@ static void x11_PutImage(CPU* cpu) {
     EAX = d->putImage(thread, gc, &image, src_x, src_y, dest_x, dest_y, width, height);
 }
 
+static X11FlushState x11FlushState;
+
 // int XFlush(Display* display)
 static void x11_Flush(CPU* cpu) {
     XServer* server = XServer::getServer();
-    // Keep the normal presentation cadence. Frequent XFlush calls (for example,
-    // while Wine handles mouse motion) must not block on redundant host frames.
-    server->draw();
+    // Keep drawing flushes immediate, but let input-only polling use the
+    // normal redraw cadence instead of synchronously presenting stale pixels.
+    server->draw(x11FlushState.takePendingRequests());
     EAX = Success;
 }
 
@@ -3254,6 +3257,7 @@ void callX11(CPU* cpu, U32 index) {
     if (index < int9BCallbackSize) {
         if (int9BCallback[index]) {
             int9BCallback[index](cpu);
+            x11FlushState.recordRequest(index);
         } else {
             kpanic_fmt("x11 tried to call missing function: %d", index);
         }

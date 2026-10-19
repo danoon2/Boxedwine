@@ -51,22 +51,43 @@ several related implementation gaps, not 12 independent root causes. The probe
 passes all 12 after the focus fixes. The extended run passes all 27 on both
 the corrected Boxedwine engine and Xvfb.
 
-## GDI cursor presentation on macOS
+## GDI cursor and animation timing
 
 Run the Age of Empires demo with Wine's GDI renderer, start a game, and open its
 in-game menu to pause animation. Move the mouse continuously over the menu;
 also check moving and clicking in active gameplay. The cursor should continue
 updating smoothly in both cases. Use physical mouse or trackpad motion for this
-check; automation that only sends endpoints does not reproduce it.
+check; automation that only sends endpoints does not reproduce it. Also open
+the new-player dialog and type a name: its GDI edit box must remain opaque and
+readable. OpenGL does not provide equivalent behavior for this dialog.
 
-`XFlush` must respect the normal display presentation interval. Previously it
-bypassed that interval and synchronously presented a frame for nearly every
-flush while Wine processed mouse motion. On a Mac, the paused-menu trace showed
-about 187 presentations but only 9 image uploads per second, with most of the
-guest's time spent waiting for those presentations. Keeping the existing frame
-interval reduced presentations to about 57 per second, and image uploads kept
-pace with roughly 97 mouse events per second. No mouse events are dropped or
-coalesced by this fix.
+Also fire shots in Bang! Bang! and verify that the projectile remains visible
+throughout its flight and moves at the original speed. Test on both Mac and
+Windows. Deferring `XFlush` presentations to the normal 16 ms interval improved
+Age of Empires' cursor, but made Bang! Bang!'s shots run too quickly to see.
+Presenting only dirty images immediately also failed this check: Bang! Bang!
+repeatedly flushes GC setup requests before Wine uploads the projectile pixels.
+
+The current policy preserves immediate presentation after all requests except
+a small set of input-polling calls. Input-only and empty flushes use the normal
+presentation interval. This avoids forcing redundant frames while Wine polls
+its two X displays, without limiting drawing-related flushes or dropping input.
+The flag is shared across displays and threads because presentation covers the
+whole desktop. The periodic redraw fallback remains in place for apps such as
+BassTour that otherwise miss popup updates.
+
+`flush-state.cpp` replays request sequences observed in both games against the
+production policy. Build and run it natively from the repository root:
+
+```sh
+clang++ -std=c++17 -Wall -Wextra -Werror tools/x11/tests/flush-state.cpp -o /tmp/x11-flush-state
+/tmp/x11-flush-state
+```
+
+The expected result is `RESULT checks=415 failures=0`. It checks repeated
+input-only flushes, GC-only animation steps, drawing followed by input polling,
+window changes, and a final update before idle. These checks guard the request
+classification; the game checks above are still needed to verify visual timing.
 
 ## Pointer hit testing
 
