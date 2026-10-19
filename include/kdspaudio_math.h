@@ -29,9 +29,10 @@ namespace KDspAudioMath {
 	// Wine's OSS driver keeps only one or two 10 ms periods queued, but the browser can
 	// stop the main thread, and Wine with it, for 20-30 ms, for example to collect
 	// garbage. Frames up to this reserve are hidden from the guest, so it writes that
-	// much further ahead and the worklet keeps playing through such a pause.
+	// much further ahead and the worklet keeps playing through such a pause. Each ms
+	// of reserve is also a ms of audio latency; 10 ms was not enough.
 	inline U32 getGuestVisibleQueuedFrames(U32 queuedFrames, U32 rate) {
-		U32 reserveFrames = (U32)((U64)rate * 30 / 1000);
+		U32 reserveFrames = (U32)((U64)rate * 20 / 1000);
 		return queuedFrames > reserveFrames ? queuedFrames - reserveFrames : 0;
 	}
 
