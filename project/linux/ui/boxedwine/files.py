@@ -92,11 +92,38 @@ def digest(path, work=None):
             result.update(chunk)
     return result.hexdigest()
 
-def walk(root):
+def walk(root, onerror=None):
     root = no_links(root)
-    for current, directories, files in os.walk(root, followlinks=False):
+    for current, directories, files in os.walk(root, followlinks=False, onerror=onerror):
         for name in sorted(directories + files):
             yield no_links(Path(current) / name)
+
+def storage_size(root, work):
+    """Return allocated/file bytes for this app, counting hard links only once."""
+    work.check()
+    root = no_links(root)
+    if not root.exists():
+        return None
+    allocated, file_bytes = 0, 0
+    seen = set()
+    def count(path):
+        nonlocal allocated, file_bytes
+        work.check()
+        info = path.lstat()
+        if not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
+            raise ValueError('App storage contains a link or unsupported file.')
+        identity = info.st_dev, info.st_ino
+        if identity not in seen:
+            seen.add(identity)
+            allocated += info.st_blocks * 512
+            if stat.S_ISREG(info.st_mode):
+                file_bytes += info.st_size
+    def failed(error):
+        raise error
+    count(root)
+    for path in walk(root, onerror=failed):
+        count(path)
+    return allocated, file_bytes
 
 def copy_file(source, target, work):
     source, target = no_links(source), no_links(target)

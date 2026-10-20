@@ -22,7 +22,7 @@ except (ImportError, ValueError) as error:
 
 from . import demos, dialogs, desktop
 from .imports import CollectionStore, CollectionIcons, valid_url
-from .files import Work, Cancelled, beneath, no_links, walk
+from .files import Work, Cancelled, beneath, no_links, storage_size
 from .library import Library, DRIVE_C, built_in, now
 from .packages import Resources, WineChecks, catalog_files, ensure_wine, import_wine
 from .runtime import Session, WINE_TOOLS, apply_configuration, build_arguments, default_emulator, refresh_configuration
@@ -42,6 +42,7 @@ class Window(Adw.ApplicationWindow):
         self.library, self.resources, self.emulator = library, resources, Path(emulator)
         self.view, self.selected, self.query = 'All Apps', None, ''
         self.busy, self.work, self.progress_dialog = False, None, None
+        self.storage_work = None
         self.sessions, self.stopping, self.program_queue = {}, set(), []
         self.configuration_queue, self.syncing = [], set()
         self.catalog, self.catalog_data, self.catalog_error = [], {}, None
@@ -357,6 +358,7 @@ class Window(Adw.ApplicationWindow):
     def section_selected(self, _, item):
         if item is None:
             return
+        self.cancel_storage()
         self.view = item.title
         self.catalog = self.collections.recipes(self.view, self.default_catalog) if self.is_collection else self.default_catalog
         self.selected = None
@@ -639,6 +641,7 @@ class Window(Adw.ApplicationWindow):
         return image
 
     def details_content(self, app, demo=False):
+        self.cancel_storage()
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, margin_start=18, margin_end=18, margin_top=20, margin_bottom=24)
         box.append(self.icon(app, 72, demo))
         title = Gtk.Label(label=app['name'], wrap=True, justify=Gtk.Justification.CENTER); title.add_css_class('title-2'); box.append(title)
@@ -657,6 +660,7 @@ class Window(Adw.ApplicationWindow):
         if removed:
             if removed.get('deletionStartedAt') is None:
                 box.append(dialogs.button(self, 'Restore App', lambda: self.restore_app(app), 'suggested-action', 'edit-undo-symbolic'))
+            box.append(self.storage_summary(app))
             box.append(dialogs.button(self, 'Finish Deleting' if removed.get('deletionStartedAt') else 'Delete Permanently…', lambda: self.delete_app(app), 'destructive-action'))
             explanation = Gtk.Label(label='Removing an app keeps its files and saved games here. Permanent deletion cannot be undone.', wrap=True, xalign=0)
             explanation.add_css_class('dim-label'); box.append(explanation)
@@ -678,10 +682,9 @@ class Window(Adw.ApplicationWindow):
         actions.append(dialogs.button(self, 'App Settings', lambda: dialogs.app_settings(self, app)))
         actions.append(dialogs.button(self, 'Troubleshooting', lambda: dialogs.troubleshoot(self, app)))
         actions.set_sensitive(session is None and not self.busy); box.append(actions)
-        box.append(Gtk.Separator())
         box.append(dialogs.button(self, 'Export Backup…', lambda: self.export_backup(app)))
-        box.append(dialogs.button(self, 'Open App Folder', lambda: self.open_path(self.library.path(app))))
-        box.append(dialogs.button(self, 'Storage Details', lambda: self.storage_details(app)))
+        box.append(Gtk.Separator())
+        box.append(self.storage_summary(app))
         box.append(dialogs.button(self, 'Remove from Library…', lambda: self.remove_app(app)))
 
     def demo_state(self, recipe):
@@ -1028,16 +1031,47 @@ class Window(Adw.ApplicationWindow):
             dialogs.confirm(self, 'Discard Incomplete Copy?', 'The incomplete copied files will be deleted. Original source files are kept.', 'Discard',
                             lambda: self.perform('Discarding incomplete copy', lambda _: self.library.discard(operation), cancellable=False), True)
 
-    def storage_details(self, app):
-        def measure(work):
-            size, files = 0, 0
-            for path in walk(self.library.path(app)):
-                work.check()
-                if path.is_file():
-                    size += path.stat().st_size; files += 1
-            return size, files
-        self.perform('Measuring app storage', measure, lambda result: dialogs.text_dialog(self, 'Storage for ' + app['name'],
-            f'{result[0] / 1024**2:.1f} MB in {result[1]:,} files\n\n' + str(self.library.path(app)) + '\n\nShared Wine packages are stored separately and are included when you export a backup.'))
+    def cancel_storage(self):
+        if self.storage_work:
+            self.storage_work.cancel.set()
+            self.storage_work = None
+
+    def storage_summary(self, app):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        title = Gtk.Label(label='Storage', xalign=0); title.add_css_class('heading'); box.append(title)
+        running = app['id'] in self.sessions
+        value = Gtk.Label(label='Available after app closes' if running else 'Calculating…', xalign=0, wrap=True)
+        value.add_css_class('dim-label'); box.append(value)
+        files = Gtk.Label(xalign=0, wrap=True, visible=False)
+        files.add_css_class('dim-label'); files.add_css_class('caption'); box.append(files)
+        box.set_tooltip_text('An estimate for this app’s Windows files, installer, and logs. Shared Wine packages and exported backups are stored separately.')
+        if not running:
+            work = Work()
+            self.storage_work = work
+            def complete(result, error):
+                if self.storage_work is not work or work.cancel.is_set() or self.closing:
+                    return
+                self.storage_work = None
+                if error:
+                    value.set_text('Couldn’t calculate')
+                    box.set_tooltip_text(str(error))
+                elif result is None:
+                    value.set_text('Files not found')
+                else:
+                    value.set_text(GLib.format_size(result[0]) + ' on disk')
+                    files.set_text(GLib.format_size(result[1]) + ' in files')
+                    files.set_visible(True)
+            def measure():
+                try:
+                    result = storage_size(self.library.path(app), work)
+                except Cancelled:
+                    return
+                except (OSError, ValueError) as error:
+                    idle(complete, None, error)
+                else:
+                    idle(complete, result, None)
+            threading.Thread(target=measure, name='boxedwine-storage', daemon=True).start()
+        return box
 
     def show_logs(self, app):
         dialogs.logs(self, app)
@@ -1112,6 +1146,7 @@ class Window(Adw.ApplicationWindow):
             dialogs.confirm(self, 'Quit Boxedwine?', 'Running Windows apps will be stopped. Save your work before quitting.', 'Stop Apps and Quit', stop_all, True)
             return True
         self.closing = True
+        self.cancel_storage()
         return False
 
 
