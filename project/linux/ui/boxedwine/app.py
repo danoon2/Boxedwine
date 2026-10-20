@@ -58,6 +58,8 @@ class AppCard(Gtk.Button):
         self.close_menu()
         menu = Gtk.PopoverMenu.new_from_model(model)
         menu.set_has_arrow(False)
+        # Align the menu's leading edge with the pointer.
+        menu.set_halign(Gtk.Align.START)
         menu.insert_action_group('card', actions)
         menu.set_parent(self)
         if x is not None:
