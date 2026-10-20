@@ -50,6 +50,7 @@ public:
 
     virtual bool getMousePos(int* x, int* y, bool allowWarp = true) = 0;
     virtual void setMousePos(int x, int y) = 0;
+    virtual void setMouseConfinement(bool confined) = 0;
     virtual U32 getInputModifiers() = 0;    
 
     virtual void runOnUiThread(std::function<void()> callback) = 0;

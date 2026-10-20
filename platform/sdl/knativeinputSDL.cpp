@@ -278,10 +278,12 @@ static void boxedwineInstallEmscriptenInputHandlers() {
 #endif
 
 U32 sdlCustomEvent;
+static U32 sdlMouseConfinementEvent;
 
 KNativeInputSDL::KNativeInputSDL(U32 cx, U32 cy, int scaleX, int scaleY) {
     if (!sdlCustomEvent) {
-        sdlCustomEvent = SDL_RegisterEvents(1);
+        sdlCustomEvent = SDL_RegisterEvents(2);
+        sdlMouseConfinementEvent = sdlCustomEvent + 1;
     }
     
     this->width = cx;
@@ -299,6 +301,34 @@ void KNativeInputSDL::runOnUiThread(std::function<void()> callback) {
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         callback();
     DISPATCH_MAIN_THREAD_BLOCK_END
+}
+
+void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
+    // Store an ID rather than a pointer: rendering can destroy/recreate windows.
+    SDL_Window* previous = SDL_GetWindowFromID(confinedWindowId);
+    SDL_Window* target = mouseConfinementRequested ? window : nullptr;
+    if (previous && previous != target) {
+        SDL_SetWindowGrab(previous, SDL_FALSE);
+    }
+    confinedWindowId = target ? SDL_GetWindowID(target) : 0;
+    if (target) {
+        // Preserve absolute motion and the game's existing cursor warps.
+        SDL_SetWindowGrab(target, SDL_TRUE);
+    }
+}
+
+void KNativeInputSDL::setMouseConfinement(bool confined) {
+    mouseConfinementRequested = confined;
+    if (isMainthread()) {
+        updateMouseConfinement(SDL_GetKeyboardFocus());
+    } else {
+        // Do not wait for SDL while the guest may hold X server locks.
+        SDL_Event event = {};
+        event.type = sdlMouseConfinementEvent;
+        if (SDL_PushEvent(&event) < 0) {
+            klog_fmt("Failed to queue mouse confinement: %s", SDL_GetError());
+        }
+    }
 }
 
 
@@ -935,6 +965,10 @@ void KNativeInputSDL::processCustomEvents(std::function<bool(bool isKeyDown, int
 }
 
 bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
+    if (e->type == sdlMouseConfinementEvent) {
+        updateMouseConfinement(SDL_GetKeyboardFocus());
+        return true;
+    }
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
         if (e->type == SDL_QUIT) {
@@ -998,11 +1032,18 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         } else if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
             if (XServer* server = XServer::getServer(true)) server->setMouseFocused(true);
             KNativeSystem::focusVulkanWindow(e->window.windowID);
+            SDL_Window* window = SDL_GetWindowFromID(e->window.windowID);
+            if (window && window == SDL_GetKeyboardFocus()) {
+                updateMouseConfinement(window);
+            }
             for (auto& callback : onFocusGained) {
                 callback();
             }
         } else if (e->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
             if (XServer* server = XServer::getServer(true)) server->setMouseFocused(false);
+            if (e->window.windowID == confinedWindowId) {
+                updateMouseConfinement(nullptr);
+            }
             for (auto& callback : onFocusLost) {
                 callback();
             }

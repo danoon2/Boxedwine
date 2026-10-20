@@ -44,6 +44,7 @@ public:
 
     bool getMousePos(int* x, int* y, bool allowWarp = true) override;
     void setMousePos(int x, int y) override;
+    void setMouseConfinement(bool confined) override;
     U32 getInputModifiers() override;
 
     int xToScreen(int x);
@@ -81,6 +82,9 @@ private:
     std::atomic<U32> emscriptenMouseButtons{0};
     std::atomic<U64> emscriptenMousePosition{~(U64)0};
 #endif
+    void updateMouseConfinement(SDL_Window* window);
+    std::atomic<bool> mouseConfinementRequested{false};
+    U32 confinedWindowId = 0; // Accessed only on the SDL thread.
 };
 
 typedef std::shared_ptr<KNativeInputSDL> KNativeInputSDLPtr;

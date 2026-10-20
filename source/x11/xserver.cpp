@@ -1377,6 +1377,7 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 		// don't call this with grabbedMutex locked
 		KNativeSystem::getScreen()->setCursor(pointerWindow->getCursor());
 	}
+	KNativeSystem::getCurrentInput()->setMouseConfinement(confined != nullptr);
 	return GrabSuccess;
 }
 
@@ -1394,6 +1395,7 @@ U32 XServer::ungrabPointer(U32 time) {
 		this->isGrabbed = false;
         capturedMouse.reset();
 	}
+	KNativeSystem::getCurrentInput()->setMouseConfinement(false);
 	S32 x = 0;
 	S32 y = 0;
 	KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
