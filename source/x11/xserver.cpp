@@ -1182,6 +1182,12 @@ bool XServer::wantsRelativeMouse() {
 	return display && root && (display->getInput2Mask(root->id) & XI_RawMotionMask);
 }
 
+bool XServer::wantsMouseConfinement() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+    // Warp-based mouse look can grab a hidden cursor without confine_to.
+    return isGrabbed && (grabbedConfinedId || !mouseCursorVisible);
+}
+
 void XServer::configureCapturedMouse() {
     capturedMouse.configure(isGrabbed && !KSystem::forceRelativeMouse,
         mouseCursorVisible, mouseFocused, KSystem::relativeMouseSensitivity);

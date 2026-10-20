@@ -306,12 +306,15 @@ void KNativeInputSDL::runOnUiThread(std::function<void()> callback) {
 void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
     // Store an ID rather than a pointer: rendering can destroy/recreate windows.
     SDL_Window* previous = SDL_GetWindowFromID(confinedWindowId);
-    SDL_Window* target = mouseConfinementRequested ? window : nullptr;
+    XServer* server = XServer::getServer(true);
+    bool wanted = mouseConfinementRequested || ownsRelativeMouseMode ||
+        (server && server->wantsMouseConfinement());
+    SDL_Window* target = wanted ? window : nullptr;
     if (previous && previous != target) {
         SDL_SetWindowGrab(previous, SDL_FALSE);
     }
     confinedWindowId = target ? SDL_GetWindowID(target) : 0;
-    if (target) {
+    if (target && SDL_GetWindowGrab(target) != SDL_TRUE) {
         // Preserve absolute motion and the game's existing cursor warps.
         SDL_SetWindowGrab(target, SDL_TRUE);
     }
@@ -655,6 +658,9 @@ void KNativeInputSDL::updateRelativeMouseMode() {
         SDL_SetRelativeMouseMode(SDL_FALSE);
         ownsRelativeMouseMode = false;
     }
+    // SDL relative mode and hidden-cursor mouse look both require a host grab,
+    // even when the guest did not specify an X11 confinement window.
+    updateMouseConfinement(SDL_GetKeyboardFocus());
 #if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
     // Refresh after native fullscreen/resolution transitions. Keep the last
     // mapping while unfocused so guest cursor warps still use guest coordinates.

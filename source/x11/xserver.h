@@ -36,6 +36,7 @@ public:
 	
 	void mouseMove(S32 x, S32 y, bool relative);
 	bool wantsRelativeMouse();
+    bool wantsMouseConfinement();
 	void clampPointerToGrab(S32& x, S32& y);
     void mapCapturedMouse(S32& x, S32& y);
     void warpCapturedMouse(S32 x, S32 y);
