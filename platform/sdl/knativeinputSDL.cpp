@@ -279,6 +279,7 @@ static void boxedwineInstallEmscriptenInputHandlers() {
 
 U32 sdlCustomEvent;
 static U32 sdlMouseConfinementEvent;
+static int getMouseButtonFromEvent(SDL_Event* e);
 
 KNativeInputSDL::KNativeInputSDL(U32 cx, U32 cy, int scaleX, int scaleY) {
     if (!sdlCustomEvent) {
@@ -308,8 +309,8 @@ void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
     SDL_Window* previous = SDL_GetWindowFromID(confinedWindowId);
     XServer* server = XServer::getServer(true);
     bool wanted = mouseConfinementRequested || ownsRelativeMouseMode ||
-        (server && server->wantsMouseConfinement());
-    SDL_Window* target = wanted ? window : nullptr;
+        (server && (server->wantsMouseConfinement() || server->wantsRelativeMouse()));
+    SDL_Window* target = wanted && !mouseCaptureReleased ? window : nullptr;
     if (previous && previous != target) {
         SDL_SetWindowGrab(previous, SDL_FALSE);
     }
@@ -318,6 +319,116 @@ void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
         // Preserve absolute motion and the game's existing cursor warps.
         SDL_SetWindowGrab(target, SDL_TRUE);
     }
+    updateMouseCaptureTitle(window && (target || mouseCaptureReleased) ? window : nullptr);
+}
+
+void KNativeInputSDL::updateMouseCaptureTitle(SDL_Window* window) {
+    SDL_Window* previous = SDL_GetWindowFromID(mouseHintWindowId);
+    if (previous != window) {
+        if (previous && mouseHintTitle == SDL_GetWindowTitle(previous)) {
+            SDL_SetWindowTitle(previous, mouseHintBaseTitle.c_str());
+        }
+        mouseHintWindowId = window ? SDL_GetWindowID(window) : 0;
+        mouseHintBaseTitle = window ? BString::copy(SDL_GetWindowTitle(window)) : BString::empty;
+        mouseHintTitle = BString::empty;
+    }
+    if (window) {
+        // The normal title (including FPS) can change while the mouse is captured.
+        BString current = BString::copy(SDL_GetWindowTitle(window));
+        if (current != mouseHintTitle) mouseHintBaseTitle = current;
+        mouseHintTitle = mouseHintBaseTitle + (mouseCaptureReleased ?
+            B(" - Click to capture mouse") : B(" - Ctrl+F10 releases mouse"));
+        if (current != mouseHintTitle) SDL_SetWindowTitle(window, mouseHintTitle.c_str());
+    }
+}
+
+void KNativeInputSDL::setCursor(SDL_Cursor* cursor) {
+    guestCursor = cursor;
+    guestCursorVisible = cursor != nullptr;
+    SDL_SetCursor(mouseCaptureReleased ? SDL_GetDefaultCursor() : cursor);
+    SDL_ShowCursor(mouseCaptureReleased || guestCursorVisible ? SDL_ENABLE : SDL_DISABLE);
+}
+
+void KNativeInputSDL::setMouseCaptureReleased(bool released) {
+    if (released == mouseCaptureReleased) return;
+    if (released) {
+        int x, y;
+        getMousePos(&x, &y, false);
+        releasedMousePosition = ((U64)(U32)x << 32) | (U32)y;
+        focusClickthroughBeforeRelease = SDL_GetHintBoolean(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, SDL_FALSE);
+        // Receive the click that focuses the window, so one click can recapture.
+        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+        // Balance button presses already delivered to the guest, then swallow
+        // their eventual physical releases as well as the recapture click.
+        for (U32 button = 1; button <= SDL_BUTTON_X2; ++button) {
+            if (pressedMouseButtons & SDL_BUTTON(button)) {
+                SDL_Event event = {};
+                event.type = SDL_MOUSEBUTTONUP;
+                event.button.button = button;
+                U32 guestButton = getMouseButtonFromEvent(&event);
+                BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(guestButton, xToScreen(x), yToScreen(y));
+                mouseButton(0, guestButton, xToScreen(x), yToScreen(y));
+            }
+        }
+        swallowedMouseButtons.fetch_or(pressedMouseButtons);
+        pressedMouseButtons = 0;
+        mouseCaptureReleased = true;
+        if (ownsRelativeMouseMode) {
+            SDL_SetRelativeMouseMode(SDL_FALSE);
+            ownsRelativeMouseMode = false;
+        }
+        SDL_SetCursor(SDL_GetDefaultCursor());
+        SDL_ShowCursor(SDL_ENABLE);
+    } else {
+        mouseCaptureReleased = false;
+        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, focusClickthroughBeforeRelease ? "1" : "0");
+        SDL_SetCursor(guestCursor);
+        SDL_ShowCursor(guestCursorVisible ? SDL_ENABLE : SDL_DISABLE);
+        // Return to the guest's virtual position before delivering new motion.
+        U64 position = releasedMousePosition;
+        setMousePos((S32)(position >> 32), (S32)position);
+        SDL_FlushEvent(SDL_MOUSEMOTION);
+    }
+    updateRelativeMouseMode();
+}
+
+bool KNativeInputSDL::handleMouseCaptureEvent(SDL_Event* event) {
+#ifndef __EMSCRIPTEN__
+    if (event->type == SDL_KEYDOWN && event->key.keysym.sym == SDLK_F10 &&
+            ((event->key.keysym.mod & KMOD_CTRL) || captureShortcutDown) &&
+            (confinedWindowId || ownsRelativeMouseMode || mouseCaptureReleased || captureShortcutDown)) {
+        if (!event->key.repeat && !captureShortcutDown) {
+            captureShortcutDown = true;
+            setMouseCaptureReleased(!mouseCaptureReleased);
+        }
+        return true;
+    }
+    if (event->type == SDL_KEYUP && event->key.keysym.sym == SDLK_F10 && captureShortcutDown) {
+        captureShortcutDown = false;
+        return true;
+    }
+    if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP) {
+        U32 mask = SDL_BUTTON(event->button.button);
+        if (mouseCaptureReleased) {
+            if (event->type == SDL_MOUSEBUTTONDOWN) {
+                swallowedMouseButtons.fetch_or(mask);
+                SDL_Window* window = SDL_GetWindowFromID(event->button.windowID);
+                if (window && window == SDL_GetKeyboardFocus()) setMouseCaptureReleased(false);
+            } else {
+                swallowedMouseButtons.fetch_and(~mask);
+            }
+            return true;
+        }
+        if (swallowedMouseButtons & mask) {
+            if (event->type == SDL_MOUSEBUTTONUP) swallowedMouseButtons.fetch_and(~mask);
+            return true;
+        }
+        if (event->type == SDL_MOUSEBUTTONDOWN) pressedMouseButtons |= mask;
+        else pressedMouseButtons &= ~mask;
+    }
+    if (mouseCaptureReleased && (event->type == SDL_MOUSEMOTION || event->type == SDL_MOUSEWHEEL)) return true;
+#endif
+    return false;
 }
 
 void KNativeInputSDL::setMouseConfinement(bool confined) {
@@ -455,6 +566,12 @@ void KNativeInputSDL::clearEmscriptenMousePosition() {
 #endif
 
 bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
+    if (mouseCaptureReleased) {
+        U64 position = releasedMousePosition;
+        *x = (S32)(position >> 32);
+        *y = (S32)position;
+        return true;
+    }
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
         *x = lastX;
@@ -495,6 +612,10 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
 }
 
 void KNativeInputSDL::setMousePos(int x, int y) {
+    if (mouseCaptureReleased) {
+        releasedMousePosition = ((U64)(U32)x << 32) | (U32)y;
+        return;
+    }
     const int guestX = x, guestY = y;
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
@@ -514,7 +635,11 @@ void KNativeInputSDL::setMousePos(int x, int y) {
 
     // Update the anchor on the SDL thread together with the physical warp, so
     // earlier queued movement is processed against the previous anchor.
-    runOnUiThread([x, y, guestX, guestY]() {
+    runOnUiThread([this, x, y, guestX, guestY]() {
+        if (mouseCaptureReleased) {
+            releasedMousePosition = ((U64)(U32)guestX << 32) | (U32)guestY;
+            return;
+        }
         if (XServer* server = XServer::getServer(true)) server->warpCapturedMouse(guestX, guestY);
         KNativeSystem::warpMouse(x, y);
     });
@@ -594,6 +719,7 @@ U32 KNativeInputSDL::getInputModifiers() {
     int x, y;
     unsigned int result = SDL_GetMouseState(&x, &y);
 #endif
+    result = mouseCaptureReleased ? 0 : result & ~swallowedMouseButtons.load();
     U32 modifiers = 0;
     if (result & SDL_BUTTON_LMASK) {
         modifiers |= NATIVE_LEFT_BUTTON_MASK;
@@ -648,7 +774,7 @@ void KNativeInputSDL::updateRelativeMouseMode() {
 #ifndef __EMSCRIPTEN__
     // Browser pointer lock is controlled by a user gesture, not X11 grabs.
     XServer* server = XServer::getServer(true);
-    bool wanted = server && server->wantsRelativeMouse() && SDL_GetKeyboardFocus();
+    bool wanted = !mouseCaptureReleased && server && server->wantsRelativeMouse() && SDL_GetKeyboardFocus();
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) wanted = false;
 #endif
@@ -983,6 +1109,7 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         return true;
     }
 #endif    
+    if (handleMouseCaptureEvent(e)) return true;
     if (e->type == SDL_QUIT) {
         KThread::setCurrentThread(nullptr);
         KProcessPtr p = KSystem::getProcess(10);
@@ -1046,8 +1173,9 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
                 callback();
             }
         } else if (e->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+            captureShortcutDown = false; // Its key-up may go to another application.
             if (XServer* server = XServer::getServer(true)) server->setMouseFocused(false);
-            if (e->window.windowID == confinedWindowId) {
+            if (e->window.windowID == confinedWindowId || e->window.windowID == mouseHintWindowId) {
                 updateMouseConfinement(nullptr);
             }
             for (auto& callback : onFocusLost) {

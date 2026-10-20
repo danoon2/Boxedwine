@@ -134,6 +134,7 @@ void KNativeSystem::showScreen(bool show) {
 }
 
 void KNativeSystem::warpMouse(S32 x, S32 y) {
+    if (screen && screen->input->isMouseCaptureReleased()) return;
 #ifdef __EMSCRIPTEN__
     if (screen) {
         std::static_pointer_cast<KNativeInputSDL>(screen->getInput())->setEmscriptenMousePosition(x, y);

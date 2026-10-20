@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test native-runtime native-ui test-ui deb
+.PHONY: default all clean release test native-runtime native-ui test-ui test-native-input deb
 
 default all: release
 
@@ -27,13 +27,16 @@ test:   export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -D__TEST
 
 # Separate emulator for the libadwaita launcher. Keep the legacy targets intact.
-native-runtime: export BUILD_DIR := Build/Native
-native-runtime: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_NATIVE_RUNTIME
+native-runtime test-native-input: export BUILD_DIR := Build/Native
+native-runtime test-native-input: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_NATIVE_RUNTIME
 native-runtime:
 	@$(MAKE) -j$(or $(JOBS),8) TARGET_EXEC=boxedwine-engine
 
 native-ui: native-runtime
 	python3 ui/build.py
+
+test-native-input: native-runtime
+	@$(MAKE) -f makefile -f ../../tools/input/mouse_capture_test.mk native-input-test
 
 # Build on a Debian/Ubuntu-family host of the desired architecture.
 # DEB_ARGS may set --version or --revision and --output.

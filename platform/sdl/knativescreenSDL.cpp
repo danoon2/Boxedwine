@@ -590,7 +590,7 @@ bool KNativeScreenSDL::canBltToScreen() {
 
 void KNativeScreenSDL::warpMouse(int x, int y) {
     DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
-        if (window) {
+        if (window && !input->isMouseCaptureReleased()) {
             SDL_WarpMouseInWindow(window, x, y);
         }
     DISPATCH_MAIN_THREAD_BLOCK_END
@@ -937,13 +937,8 @@ void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
         cursors.set(cursor->id, sdlCursor);
     }
     if (XServer* server = XServer::getServer(true)) server->setMouseCursorVisible(sdlCursor != nullptr);
-    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-        if (sdlCursor) {
-            SDL_ShowCursor(1);
-            SDL_SetCursor(sdlCursor);
-        } else {
-            SDL_ShowCursor(0);
-        }
+    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+        input->setCursor(sdlCursor);
 #ifdef __APPLE__
         macCursorUpdate();
 #endif
