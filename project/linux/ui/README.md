@@ -236,6 +236,9 @@ frames before closing, and finishes closing before the launch callback runs.
   their entry in Removed Apps. Right-click a card for its actions, or press
   Shift+F10 / the Menu key while the card has keyboard focus. Running apps offer
   Stop, and removed apps offer Restore or permanent deletion.
+- While a game captures the mouse, Ctrl+Alt+G releases it. Click inside the game
+  or press Ctrl+Alt+G again to recapture it. The game window title shows the hint;
+  switching away also releases the mouse.
 - Installer file, installer folder, portable folder, and file-drop import.
 - Choose an installed program after setup; run another program in the same
   Windows environment, including an external EXE/MSI after folder-access consent.

@@ -137,19 +137,31 @@ int main() {
     assert(!grabbed);
     auto& screen = *std::static_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
     screen.window = window(3);
-    // Ctrl+F10 releases both relative mode and the grab, with a discoverable title.
+    // Ctrl+Alt+G releases both relative mode and the grab, with a discoverable title.
     server->isGrabbed = true;
     server->grabbedConfinedId = 0;
     server->setMouseCursorVisible(false);
     input.setCursor(nullptr);
     input.updateMouseConfinement(focused);
-    assert(titles[3] == "Alice Gameplay - Ctrl+F10 releases mouse");
+    assert(titles[3] == "Alice Gameplay - Ctrl+Alt+G releases mouse");
     input.ownsRelativeMouseMode = true;
     relativeMode = SDL_TRUE;
     SDL_Event shortcut = {};
     shortcut.type = SDL_KEYDOWN;
+    shortcut.key.keysym.sym = SDLK_g;
+    // Ordinary game keys and other shortcuts must still reach the guest.
+    const int otherModifiers[] = {KMOD_NONE, KMOD_LCTRL, KMOD_LALT,
+        KMOD_LCTRL | KMOD_LALT | KMOD_LSHIFT, KMOD_LCTRL | KMOD_LALT | KMOD_LGUI};
+    for (int modifiers : otherModifiers) {
+        shortcut.key.keysym.mod = modifiers;
+        assert(!input.handleMouseCaptureEvent(&shortcut));
+        assert(!input.isMouseCaptureReleased() && grabbed == window(3));
+    }
     shortcut.key.keysym.sym = SDLK_F10;
     shortcut.key.keysym.mod = KMOD_LCTRL;
+    assert(!input.handleMouseCaptureEvent(&shortcut));
+    shortcut.key.keysym.sym = SDLK_g;
+    shortcut.key.keysym.mod = KMOD_LCTRL | KMOD_LALT;
     // Queue a guest warp before releasing; it must be suppressed even if its
     // SDL callback runs after the shortcut. The caller waits for completion.
     std::thread pendingWarp([&] { input.setMousePos(100, 200); });
@@ -165,6 +177,7 @@ int main() {
     assert(cursorShown == SDL_ENABLE);
     assert(titles[3] == "Alice Gameplay - Click to capture mouse");
     shortcut.key.repeat = 1;
+    shortcut.key.keysym.mod = KMOD_NONE; // Modifiers may be released before G.
     assert(input.handleMouseCaptureEvent(&shortcut));
     assert(input.isMouseCaptureReleased());
     shortcut.type = SDL_KEYUP;
@@ -214,11 +227,11 @@ int main() {
     titles[3] = "Alice - 60 FPS";
     input.processEvents();
     input.processEvents();
-    assert(titles[3] == "Alice - 60 FPS - Ctrl+F10 releases mouse");
-    // Shortcut works in both directions and does not leak its F10 key-up.
+    assert(titles[3] == "Alice - 60 FPS - Ctrl+Alt+G releases mouse");
+    // Shortcut works with either side's modifiers and does not leak its G key-up.
     shortcut.type = SDL_KEYDOWN;
     shortcut.key.repeat = 0;
-    shortcut.key.keysym.mod = KMOD_RCTRL;
+    shortcut.key.keysym.mod = KMOD_RCTRL | KMOD_RALT | KMOD_CAPS | KMOD_NUM;
     assert(input.handleMouseCaptureEvent(&shortcut));
     shortcut.type = SDL_KEYUP;
     assert(input.handleMouseCaptureEvent(&shortcut));
@@ -231,6 +244,8 @@ int main() {
     input.setMouseConfinement(false);
     input.processEvents();
     assert(!grabbed && titles[3] == "Alice - 60 FPS");
+    shortcut.type = SDL_KEYDOWN;
+    assert(!input.handleMouseCaptureEvent(&shortcut)); // No capture to toggle.
     screen.window = nullptr; // Do not destroy the fake host window.
     SDL_Quit();
     puts("Mouse confinement lifecycle checks passed");

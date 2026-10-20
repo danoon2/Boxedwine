@@ -336,8 +336,13 @@ void KNativeInputSDL::updateMouseCaptureTitle(SDL_Window* window) {
         // The normal title (including FPS) can change while the mouse is captured.
         BString current = BString::copy(SDL_GetWindowTitle(window));
         if (current != mouseHintTitle) mouseHintBaseTitle = current;
+#ifdef __APPLE__
+        const BString captureHint = B(" - Control+Option+G releases mouse");
+#else
+        const BString captureHint = B(" - Ctrl+Alt+G releases mouse");
+#endif
         mouseHintTitle = mouseHintBaseTitle + (mouseCaptureReleased ?
-            B(" - Click to capture mouse") : B(" - Ctrl+F10 releases mouse"));
+            B(" - Click to capture mouse") : captureHint);
         if (current != mouseHintTitle) SDL_SetWindowTitle(window, mouseHintTitle.c_str());
     }
 }
@@ -394,8 +399,9 @@ void KNativeInputSDL::setMouseCaptureReleased(bool released) {
 
 bool KNativeInputSDL::handleMouseCaptureEvent(SDL_Event* event) {
 #ifndef __EMSCRIPTEN__
-    if (event->type == SDL_KEYDOWN && event->key.keysym.sym == SDLK_F10 &&
-            ((event->key.keysym.mod & KMOD_CTRL) || captureShortcutDown) &&
+    if (event->type == SDL_KEYDOWN && event->key.keysym.sym == SDLK_g &&
+            (captureShortcutDown || ((event->key.keysym.mod & KMOD_CTRL) &&
+                (event->key.keysym.mod & KMOD_ALT) && !(event->key.keysym.mod & (KMOD_SHIFT | KMOD_GUI)))) &&
             (confinedWindowId || ownsRelativeMouseMode || mouseCaptureReleased || captureShortcutDown)) {
         if (!event->key.repeat && !captureShortcutDown) {
             captureShortcutDown = true;
@@ -403,7 +409,7 @@ bool KNativeInputSDL::handleMouseCaptureEvent(SDL_Event* event) {
         }
         return true;
     }
-    if (event->type == SDL_KEYUP && event->key.keysym.sym == SDLK_F10 && captureShortcutDown) {
+    if (event->type == SDL_KEYUP && event->key.keysym.sym == SDLK_g && captureShortcutDown) {
         captureShortcutDown = false;
         return true;
     }
