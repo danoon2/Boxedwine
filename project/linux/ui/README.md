@@ -233,7 +233,9 @@ frames before closing, and finishes closing before the launch callback runs.
 - Library, recent apps, search, demo catalog, built-in Notepad and Minesweeper.
   Single-click a card for details; double-click an app to open it or a demo to
   install it. Installed demos open their existing copy; removed demos reveal
-  their entry in Removed Apps.
+  their entry in Removed Apps. Right-click a card for its actions, or press
+  Shift+F10 / the Menu key while the card has keyboard focus. Running apps offer
+  Stop, and removed apps offer Restore or permanent deletion.
 - Installer file, installer folder, portable folder, and file-drop import.
 - Choose an installed program after setup; run another program in the same
   Windows environment, including an external EXE/MSI after folder-access consent.
@@ -251,7 +253,7 @@ frames before closing, and finishes closing before the launch callback runs.
   creates a new app identity. Use backups to transfer apps across hosts; do not
   share a live library with a different platform's frontend.
 - Removed Apps, restore, permanent deletion, optional immediate deletion,
-  journaled file-copy recovery, storage details, and unused-package cleanup.
+  journaled file-copy recovery, inline storage size, and unused-package cleanup.
 - Troubleshooting, installer rerun, bounded/rotated logs and export, help,
   keyboard shortcuts, and license information.
 
@@ -284,6 +286,7 @@ python3 ui/tests/gui_smoke.py --output /tmp/boxedwine-ui-smoke
 python3 ui/tests/launch_ui_smoke.py  # Progress lifecycle, icons, and desktop activation
 python3 ui/tests/source_import_ui_smoke.py  # Inline URL errors, cancellation, and retry
 python3 ui/tests/pointer_smoke.py  # X11 + libXtst; uses actual pointer clicks
+python3 ui/tests/context_menu_smoke.py  # Right-click/keyboard menus, guards, and storage
 python3 ui/tests/runtime_smoke.py --wine /path/to/TinyCore15Wine11.0.zip
 python3 ui/tests/wine_tools_smoke.py --wine /path/to/TinyCore15Wine11.0.zip
 python3 ui/tests/wine_tools_ui_smoke.py

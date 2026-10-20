@@ -99,15 +99,15 @@ def walk(root, onerror=None):
             yield no_links(Path(current) / name)
 
 def storage_size(root, work):
-    """Return allocated/file bytes for this app, counting hard links only once."""
+    """Return allocated bytes for this app, counting hard links only once."""
     work.check()
     root = no_links(root)
     if not root.exists():
         return None
-    allocated, file_bytes = 0, 0
+    allocated = 0
     seen = set()
     def count(path):
-        nonlocal allocated, file_bytes
+        nonlocal allocated
         work.check()
         info = path.lstat()
         if not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
@@ -116,14 +116,12 @@ def storage_size(root, work):
         if identity not in seen:
             seen.add(identity)
             allocated += info.st_blocks * 512
-            if stat.S_ISREG(info.st_mode):
-                file_bytes += info.st_size
     def failed(error):
         raise error
     count(root)
     for path in walk(root, onerror=failed):
         count(path)
-    return allocated, file_bytes
+    return allocated
 
 def copy_file(source, target, work):
     source, target = no_links(source), no_links(target)

@@ -35,6 +35,46 @@ def idle(callback, *args):
     GLib.idle_add(call)
 
 
+class AppCard(Gtk.Button):
+    """Keep a context popover positioned and owned by its card."""
+    def __init__(self):
+        self.menu = None
+        super().__init__()
+
+    def do_size_allocate(self, width, height, baseline):
+        Gtk.Button.do_size_allocate(self, width, height, baseline)
+        if self.menu:
+            self.menu.present()
+
+    def do_unroot(self):
+        self.close_menu()
+        Gtk.Button.do_unroot(self)
+
+    def close_menu(self):
+        if self.menu:
+            self.menu.popdown()
+
+    def popup_menu(self, model, actions, x=None, y=None):
+        self.close_menu()
+        menu = Gtk.PopoverMenu.new_from_model(model)
+        menu.set_has_arrow(False)
+        menu.insert_action_group('card', actions)
+        menu.set_parent(self)
+        if x is not None:
+            point = Gdk.Rectangle()
+            point.x, point.y, point.width, point.height = int(x), int(y), 1, 1
+            menu.set_pointing_to(point)
+        def closed(popover):
+            if self.menu is popover:
+                self.menu = None
+            # GTK closes the menu before activating its item. Keep the action
+            # group rooted until that activation has finished.
+            idle(popover.unparent)
+        menu.connect('closed', closed)
+        self.menu = menu
+        menu.popup()
+
+
 class Window(Adw.ApplicationWindow):
     def __init__(self, application, library, resources, emulator):
         super().__init__(application=application, title='Boxedwine', default_width=1180, default_height=780, width_request=360, height_request=420)
@@ -521,7 +561,7 @@ class Window(Adw.ApplicationWindow):
                            row_spacing=12, column_spacing=12, valign=Gtk.Align.START)
         for item in items:
             demo = self.is_collection
-            card = Gtk.Button(); card.add_css_class('card'); card.add_css_class('app-card')
+            card = AppCard(); card.add_css_class('card'); card.add_css_class('app-card')
             identifier = item['origin']['id'] if demo else item['id']
             if identifier == self.selected:
                 card.add_css_class('selected-app')
@@ -535,6 +575,14 @@ class Window(Adw.ApplicationWindow):
             card.set_child(box)
             self.cards[identifier] = card
             card.connect('clicked', dialogs.guarded(self, lambda _, a=item, d=demo: self.select_card(a, d)))
+            context = Gtk.GestureClick.new()
+            context.set_button(Gdk.BUTTON_SECONDARY)
+            context.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+            context.connect('pressed', dialogs.guarded(self, lambda g, count, x, y, a=item, d=demo: self.card_menu_pressed(g, x, y, a, d)))
+            card.add_controller(context)
+            keys = Gtk.EventControllerKey.new()
+            keys.connect('key-pressed', dialogs.guarded(self, lambda k, key, code, modifiers, a=item, d=demo: self.card_menu_key(k, key, modifiers, a, d)))
+            card.add_controller(keys)
             if (self.view in ('All Apps', 'Recently Opened') or self.is_collection):
                 gesture = Gtk.GestureClick.new()
                 gesture.set_button(Gdk.BUTTON_PRIMARY)
@@ -543,6 +591,63 @@ class Window(Adw.ApplicationWindow):
                 card.add_controller(gesture)
             grid.append(card)
         container.append(grid); self.scroll.set_child(container)
+
+    def card_menu_pressed(self, gesture, x, y, item, demo):
+        gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+        self.show_card_menu(gesture.get_widget(), item, demo, x, y)
+
+    def card_menu_key(self, controller, key, modifiers, item, demo):
+        if key == Gdk.KEY_Menu or (key == Gdk.KEY_F10 and modifiers & Gdk.ModifierType.SHIFT_MASK):
+            self.show_card_menu(controller.get_widget(), item, demo)
+            return True
+        return False
+
+    def show_card_menu(self, card, item, demo=False, x=None, y=None):
+        self.cancel_card_reveal()
+        # Select the target without moving the grid or covering a narrow window.
+        (self.show_demo if demo else self.show_app)(item, reveal=False)
+        card.grab_focus()
+        menu, actions = Gio.Menu(), Gio.SimpleActionGroup()
+        section = Gio.Menu()
+        menu.append_section(None, section)
+        def add(name, label, callback, enabled=True):
+            action = Gio.SimpleAction.new(name, None)
+            action.set_enabled(enabled)
+            def activate(*_):
+                card.close_menu()
+                callback()
+            action.connect('activate', dialogs.guarded(self, activate))
+            actions.add_action(action)
+            section.append(label, 'card.' + name)
+        if demo:
+            existing = next((a for a in self.document['apps'] + [r['app'] for r in self.document['removedApps']]
+                             if (a.get('demo') or {}).get('id') == item['origin']['id']), None)
+            if existing:
+                add('reveal', 'Show in Library' if self.find_app(existing['id']) else 'Show in Removed Apps', lambda: self.reveal_app(existing))
+            else:
+                add('install', 'Download & Install', lambda: self.install_demo(item), not self.busy)
+        else:
+            identifier = item['id']
+            running = identifier in self.sessions
+            editable = not self.busy and not running and identifier not in self.syncing
+            removed = next((r for r in self.document['removedApps'] if r['app']['id'] == identifier), None)
+            if removed:
+                if removed.get('deletionStartedAt') is None:
+                    add('restore', 'Restore App', lambda: self.restore_app(item), editable)
+                add('delete', 'Finish Deleting' if removed.get('deletionStartedAt') else 'Delete Permanently…', lambda: self.delete_app(item), editable)
+            else:
+                label = 'Open App' if item.get('executable') or built_in(item) else 'Run Installer' if item.get('installer') else 'Choose Program…'
+                add('open', label, lambda: self.open_app(item), editable)
+                if running:
+                    add('stop', 'Stopping…' if identifier in self.stopping else 'Stop App', lambda: self.stop(item), identifier not in self.stopping)
+                add('another', 'Run Another Program…', lambda: self.run_another(item), editable)
+                add('settings', 'App Settings…', lambda: dialogs.app_settings(self, item), editable)
+                add('troubleshoot', 'Troubleshooting…', lambda: dialogs.troubleshoot(self, item), not self.busy and not running)
+                add('logs', 'View Launch Logs…', lambda: self.show_logs(item))
+                add('backup', 'Export Backup…', lambda: self.export_backup(item), editable)
+                section = Gio.Menu(); menu.append_section(None, section)
+                add('remove', 'Remove from Library…', lambda: self.remove_app(item), editable)
+        card.popup_menu(menu, actions, x, y)
 
     def cancel_card_reveal(self):
         if self.card_reveal is not None:
@@ -1042,8 +1147,6 @@ class Window(Adw.ApplicationWindow):
         running = app['id'] in self.sessions
         value = Gtk.Label(label='Available after app closes' if running else 'Calculating…', xalign=0, wrap=True)
         value.add_css_class('dim-label'); box.append(value)
-        files = Gtk.Label(xalign=0, wrap=True, visible=False)
-        files.add_css_class('dim-label'); files.add_css_class('caption'); box.append(files)
         box.set_tooltip_text('An estimate for this app’s Windows files, installer, and logs. Shared Wine packages and exported backups are stored separately.')
         if not running:
             work = Work()
@@ -1058,9 +1161,7 @@ class Window(Adw.ApplicationWindow):
                 elif result is None:
                     value.set_text('Files not found')
                 else:
-                    value.set_text(GLib.format_size(result[0]) + ' on disk')
-                    files.set_text(GLib.format_size(result[1]) + ' in files')
-                    files.set_visible(True)
+                    value.set_text(GLib.format_size(result))
             def measure():
                 try:
                     result = storage_size(self.library.path(app), work)
@@ -1119,7 +1220,7 @@ class Window(Adw.ApplicationWindow):
             'Linux library location\n\n' + str(self.library.directory))
 
     def show_shortcuts(self):
-        dialogs.text_dialog(self, 'Keyboard Shortcuts', 'Ctrl+N    Add to Library\nCtrl+F    Search\nCtrl+O    Open Selected App\nAlt+Return    App Settings\nDelete    Remove Selected App\nCtrl+,    Settings\nF1    Help\nCtrl+Q    Quit')
+        dialogs.text_dialog(self, 'Keyboard Shortcuts', 'Ctrl+N    Add to Library\nCtrl+F    Search\nCtrl+O    Open Selected App\nAlt+Return    App Settings\nShift+F10 / Menu    App Context Menu (focused card)\nDelete    Remove Selected App\nCtrl+,    Settings\nF1    Help\nCtrl+Q    Quit')
 
     def about(self):
         dialog = Adw.AboutDialog(application_name='Boxedwine', application_icon='org.boxedwine.Boxedwine', version='Linux native UI',

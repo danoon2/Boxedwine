@@ -11,7 +11,7 @@ from boxedwine.files import Cancelled, Work, storage_size
 
 
 class StorageTests(unittest.TestCase):
-    def test_allocated_and_file_sizes_with_sparse_files_and_hard_links(self):
+    def test_disk_usage_with_sparse_files_and_hard_links(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             folder = root / 'saved games'; folder.mkdir()
@@ -20,9 +20,8 @@ class StorageTests(unittest.TestCase):
             with sparse.open('wb') as stream:
                 stream.truncate(8 * 1024**2)
             os.link(save, root / 'another-name.dat')
-            allocated, files = storage_size(root, Work())
+            allocated = storage_size(root, Work())
             self.assertEqual(allocated, sum(p.stat().st_blocks * 512 for p in (root, folder, save, sparse)))
-            self.assertEqual(files, save.stat().st_size + sparse.stat().st_size)
 
     def test_missing_folder_and_cancelled_scan(self):
         with tempfile.TemporaryDirectory() as directory:

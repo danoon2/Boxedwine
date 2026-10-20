@@ -25,6 +25,7 @@ class Pointer:
         gi.require_version('GdkX11', '4.0')
         from gi.repository import GdkX11
         self.window = window
+        self.surface_xid = GdkX11.X11Surface.get_xid
         self.xid = GdkX11.X11Surface.get_xid(window.get_surface())
         self.x = C.CDLL('libX11.so.6'); self.test = C.CDLL('libXtst.so.6')
         self.x.XOpenDisplay.argtypes = [C.c_char_p]; self.x.XOpenDisplay.restype = C.c_void_p
@@ -35,24 +36,40 @@ class Pointer:
         self.root = self.x.XDefaultRootWindow(self.display)
         self.x.XTranslateCoordinates.argtypes = [C.c_void_p, C.c_ulong, C.c_ulong, C.c_int, C.c_int, C.POINTER(C.c_int), C.POINTER(C.c_int), C.POINTER(C.c_ulong)]
         self.x.XRaiseWindow.argtypes = [C.c_void_p, C.c_ulong]
+        self.x.XSetInputFocus.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_ulong]
         self.x.XFlush.argtypes = [C.c_void_p]
         self.x.XCloseDisplay.argtypes = [C.c_void_p]
+        self.x.XStringToKeysym.argtypes = [C.c_char_p]; self.x.XStringToKeysym.restype = C.c_ulong
+        self.x.XKeysymToKeycode.argtypes = [C.c_void_p, C.c_ulong]; self.x.XKeysymToKeycode.restype = C.c_uint
         self.test.XTestFakeMotionEvent.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_int, C.c_ulong]
         self.test.XTestFakeButtonEvent.argtypes = [C.c_void_p, C.c_uint, C.c_int, C.c_ulong]
+        self.test.XTestFakeKeyEvent.argtypes = [C.c_void_p, C.c_uint, C.c_int, C.c_ulong]
         self.x.XRaiseWindow(self.display, self.xid)
+        self.x.XSetInputFocus(self.display, self.xid, 1, 0)
 
     def point_at(self, card):
-        success, bounds = card.compute_bounds(self.window)
+        native = card.get_native()
+        success, bounds = card.compute_bounds(native)
         assert success
         x, y, child = C.c_int(), C.c_int(), C.c_ulong()
-        self.x.XTranslateCoordinates(self.display, self.xid, self.root, 0, 0, C.byref(x), C.byref(y), C.byref(child))
-        self.test.XTestFakeMotionEvent(self.display, -1, x.value + int(bounds.get_x() + bounds.get_width() / 2),
-                                       y.value + int(bounds.get_y() + bounds.get_height() / 2), 0)
+        self.x.XTranslateCoordinates(self.display, self.surface_xid(native.get_surface()), self.root, 0, 0, C.byref(x), C.byref(y), C.byref(child))
+        offset_x, offset_y = native.get_surface_transform()
+        scale = native.get_surface().get_scale_factor()
+        self.test.XTestFakeMotionEvent(self.display, -1, x.value + int((offset_x + bounds.get_x() + bounds.get_width() / 2) * scale),
+                                       y.value + int((offset_y + bounds.get_y() + bounds.get_height() / 2) * scale), 0)
         self.x.XFlush(self.display)
 
-    def click(self):
-        self.test.XTestFakeButtonEvent(self.display, 1, 1, 0)
-        self.test.XTestFakeButtonEvent(self.display, 1, 0, 0)
+    def click(self, button=1):
+        self.test.XTestFakeButtonEvent(self.display, button, 1, 0)
+        self.test.XTestFakeButtonEvent(self.display, button, 0, 0)
+        self.x.XFlush(self.display)
+
+    def key(self, name, modifiers=()):
+        codes = [self.x.XKeysymToKeycode(self.display, self.x.XStringToKeysym(key.encode())) for key in (*modifiers, name)]
+        for code in codes:
+            self.test.XTestFakeKeyEvent(self.display, code, 1, 0)
+        for code in reversed(codes):
+            self.test.XTestFakeKeyEvent(self.display, code, 0, 0)
         self.x.XFlush(self.display)
 
 
@@ -104,9 +121,9 @@ def main():
         pointer.click(); yield 150
         assert calls == [('app', target)], calls
         calls.clear()
-        recipe = dict(origin=dict(id='pointer-demo'), name='Pointer Demo', summary='Test recipe', icon='', bytes=1024,
+        recipe = dict(origin=dict(id='pointer-demo'), name='Pointer Demo', summary='Test recipe', icon='', bytes=1024, url='https://example.org/demo.zip',
                       wineVersion='11.0', help='')
-        window.catalog = [recipe]; window.catalog_loaded = True
+        window.default_catalog = window.catalog = [recipe]; window.catalog_loaded = True
         window.navigate('Demos'); yield 500
         assert window.selected == 'pointer-demo' and window.details_split.get_show_sidebar()
         assert not calls, 'Automatic selection must not install a demo'
@@ -121,9 +138,9 @@ def main():
         window.search.set_text('no matching apps'); window.filter('no matching apps')
         window.navigate('All Apps')
         assert window.selected == apps[0]['id'] and len(window.cards) == len(apps), 'Navigation must clear the previous search immediately'
-        window.catalog = []; window.navigate('Demos')
+        window.default_catalog = window.catalog = []; window.navigate('Demos')
         assert window.selected is None and not window.details_split.get_show_sidebar()
-        window.catalog = [recipe]; window.refresh()
+        window.default_catalog = window.catalog = [recipe]; window.refresh()
         assert window.selected == 'pointer-demo', 'Select the first demo when the catalog finishes loading'
         window.set_default_size(680, 780); yield 500
         window.navigate('All Apps'); yield 500
