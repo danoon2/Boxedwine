@@ -620,6 +620,31 @@ bool XServer::requestCloseWindow(const XWindowPtr& wnd) {
     return false;
 }
 
+void XServer::requestFocusWindow(const XWindowPtr& wnd) {
+    if (!wnd || !wnd->isThisAndAncestorsMapped()) return;
+    U32 protocols = internAtom(B("WM_PROTOCOLS"), true);
+    U32 takeFocus = internAtom(B("WM_TAKE_FOCUS"), true);
+    if (!protocols || !takeFocus) return;
+    auto property = wnd->getProperty(protocols);
+    if (!property || property->type != XA_ATOM || property->format != 32 || !property->contains32(takeFocus)) return;
+    for (auto focus = getInputFocusWindow(); focus; focus = focus->getParent()) {
+        if (focus == wnd) return;
+    }
+    auto display = getDisplayDataById(wnd->displayId);
+    if (!display) return;
+    XEvent event = {};
+    event.xclient.type = ClientMessage;
+    event.xclient.serial = display->getNextEventSerial();
+    event.xclient.send_event = True;
+    event.xclient.display = display->displayAddress;
+    event.xclient.window = wnd->id;
+    event.xclient.message_type = protocols;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = takeFocus;
+    event.xclient.data.l[1] = getEventTime();
+    display->putEvent(event);
+}
+
 int XServer::destroyWindow(U32 window) {
 	XWindowPtr w;
 	{

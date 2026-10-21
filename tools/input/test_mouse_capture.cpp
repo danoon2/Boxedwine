@@ -48,6 +48,75 @@ static void focus(KNativeInputSDL& input, U32 id, bool gained) {
     e.window.event = gained ? SDL_WINDOWEVENT_FOCUS_GAINED : SDL_WINDOWEVENT_FOCUS_LOST;
     assert(input.handlSdlEvent(&e));
 }
+
+static void testMappedWindowFocus() {
+    XServer* server = XServer::getServer();
+    auto root = server->getRoot();
+    auto makeWindow = [&](const XWindowPtr& parent) {
+        auto wnd = server->createNewWindow(42, parent, 640, 480, 32, 0, 0, InputOutput, 0, server->visual);
+        return wnd;
+    };
+    auto splash = makeWindow(root);
+    auto game = makeWindow(root);
+    auto edit = makeWindow(game);
+    splash->isMapped = true;
+    U32 serial = 0;
+    auto display = std::make_shared<DisplayData>();
+    display->displayId = 42;
+    display->displayAddress = 123;
+    display->pCurrentRequest = &serial;
+    server->displays.set(42, display);
+    U32 protocols = server->internAtom(B("WM_PROTOCOLS"), false);
+    U32 takeFocus = server->internAtom(B("WM_TAKE_FOCUS"), false);
+    game->setProperty(protocols, XA_ATOM, 32, sizeof(takeFocus), (U8*)&takeFocus, false);
+    display->setEventMask(game->id, PropertyChangeMask | StructureNotifyMask);
+
+    // Alice's splash refreshes focus after the timestamp of the game's request.
+    // Keep rejecting that stale request, just as a real X server does.
+    U32 oldTime = server->getEventTime();
+    SDL_Delay(2);
+    assert(server->setInputFocus(nullptr, splash->id, RevertToParent, 0) == Success);
+    SDL_Delay(2);
+    game->mapWindow();
+    assert(display->eventQueue.size() == 3);
+    assert(display->eventQueue[0].type == PropertyNotify);
+    assert(display->eventQueue[0].xproperty.atom == WM_STATE);
+    assert(display->eventQueue[1].type == MapNotify);
+    assert(server->getInputFocusWindow() == splash);
+    assert(server->setInputFocus(nullptr, game->id, RevertToParent, oldTime) == Success);
+    assert(server->getInputFocusWindow() == splash);
+    splash->isMapped = false;
+    server->revertInputFocus(splash);
+    assert(server->getInputFocusWindow() == root);
+
+    auto event = display->eventQueue.back();
+    display->eventQueue.clear();
+    display->setEventMask(game->id, 0);
+    assert(event.type == ClientMessage && event.xclient.window == game->id);
+    assert(event.xclient.message_type == protocols && event.xclient.format == 32);
+    assert(event.xclient.data.l[0] == (S32)takeFocus && event.xclient.send_event);
+    assert((S32)((U32)event.xclient.data.l[1] - oldTime) > 0);
+    // WM_TAKE_FOCUS lets the client choose focus; the server must not force it.
+    assert(server->getInputFocusWindow() == root);
+    assert(server->setInputFocus(nullptr, game->id, RevertToParent, event.xclient.data.l[1]) == Success);
+    assert(server->getInputFocusWindow() == game);
+
+    // Repeated activation must preserve an already-focused guest child.
+    edit->mapWindow();
+    assert(display->eventQueue.empty()); // Mapping a drawable/control is not activation.
+    assert(server->setInputFocus(nullptr, edit->id, RevertToParent, 0) == Success);
+    server->requestFocusWindow(game);
+    assert(server->getInputFocusWindow() == edit && display->eventQueue.empty());
+    server->setInputFocus(nullptr, root->id, RevertToNone, 0);
+    game->isMapped = false;
+    server->requestFocusWindow(game);
+    assert(server->getInputFocusWindow() == root && display->eventQueue.empty());
+    game->deleteProperty(protocols);
+    game->mapWindow(); // Clients must explicitly offer the protocol.
+    assert(server->getInputFocusWindow() == root && display->eventQueue.empty());
+    server->displays.remove(42);
+}
+
 int main() {
     assert(SDL_Init(SDL_INIT_EVENTS) == 0);
     KSystem::videoOption = VIDEO_NO_WINDOW;
@@ -246,6 +315,7 @@ int main() {
     assert(!grabbed && titles[3] == "Alice - 60 FPS");
     shortcut.type = SDL_KEYDOWN;
     assert(!input.handleMouseCaptureEvent(&shortcut)); // No capture to toggle.
+    testMappedWindowFocus();
     screen.window = nullptr; // Do not destroy the fake host window.
     SDL_Quit();
     puts("Mouse confinement lifecycle checks passed");

@@ -729,6 +729,12 @@ int XWindow::mapWindow() {
 	if (isThisAndAncestorsMapped()) {
 		KNativeSystem::showWindow(shared_from_this(), isThisAndAncestorsMapped());
 	}
+	if (parent == XServer::getServer()->getRoot()) {
+		// Complete the window-manager activation handshake after MapNotify and
+		// WM_STATE. Wine may have an older timestamp for its own focus request;
+		// let it accept fresh focus before initializing fullscreen cursor capture.
+		XServer::getServer()->requestFocusWindow(shared_from_this());
+	}
 	return Success;
 }
 
