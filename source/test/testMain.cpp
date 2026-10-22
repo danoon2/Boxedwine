@@ -187,6 +187,15 @@ void testStartupArgsDefaultUtf8LocaleEnvironment();
 void testStartupArgsLinearMemoryOption();
 void testStartupArgsMouseSensitivity();
 void testStartupArgsSafeMemoryOption();
+#if !defined(__EMSCRIPTEN__)
+void testServerEncodings();
+void testServerPngRoundTrip();
+void testServerRequestParsing();
+void testScreenCaptureComposite();
+void testAudioCaptureMix();
+void testLocalServerEndToEnd();
+void testStartupArgsLocalServerOption();
+#endif
 void testTerminatingThreadDoesNotEnterFutexWait();
 void testSharedFutexUnmappedAddressReturnsEFAULT();
 void testUnixSocketPollOutClearsPeerCondition();
@@ -1206,6 +1215,15 @@ const TestEntry TEST_ENTRIES[] = {
     {testStartupArgsLinearMemoryOption, "Test startup args linear-memory option", TEST_ENTRY_SERIAL},
     {testStartupArgsMouseSensitivity, "Test startup args mouse sensitivity", TEST_ENTRY_SERIAL},
     {testStartupArgsSafeMemoryOption, "Test startup args safe-memory option", TEST_ENTRY_SERIAL},
+#if !defined(__EMSCRIPTEN__)
+    {testServerEncodings, "Test local server SHA-1, base64 and WebSocket accept"},
+    {testServerPngRoundTrip, "Test local server PNG round trip"},
+    {testServerRequestParsing, "Test local server request parsing"},
+    {testScreenCaptureComposite, "Test screen capture compositing", TEST_ENTRY_SERIAL},
+    {testAudioCaptureMix, "Test audio capture mixing", TEST_ENTRY_SERIAL},
+    {testLocalServerEndToEnd, "Test local server end to end", TEST_ENTRY_SERIAL},
+    {testStartupArgsLocalServerOption, "Test startup args local server option", TEST_ENTRY_SERIAL},
+#endif
     {testCapturedMouseSensitivity, "Test captured mouse sensitivity and recentering"},
     {testSharedFutexUnmappedAddressReturnsEFAULT, "Test unmapped shared futex returns EFAULT"},
 #ifdef BOXEDWINE_MULTI_THREADED

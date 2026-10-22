@@ -39,6 +39,7 @@
 #include "devfb.h"
 #include "mainloop.h"
 #include "../io/fsfilenode.h"
+#include "../server/localserver.h"
 #include "../io/fszip.h"
 #include "loader.h"
 #include "kstat.h"
@@ -348,6 +349,10 @@ std::vector<BString> StartUpArgs::buildArgs() {
     }
     if (this->disableLinearMemory) {
         args.push_back(B("-disableLinearMemory"));
+    }
+    if (localServerPort >= 0) {
+        args.push_back(B("-localServer"));
+        args.push_back(BString::valueOf((U32)localServerPort));
     }
     for (auto& a : this->args) {
         args.push_back(a);
@@ -713,6 +718,19 @@ bool StartUpArgs::apply() {
         KSystem::enableSoundAfterMouseClick = true;
     }
 #endif
+#ifdef BOXEDWINE_LOCAL_SERVER
+    // Before the window and audio exist, so a failure leaves nothing to tear down.
+    if (this->localServerPort >= 0) {
+        startMediaCapture();
+        std::string error;
+        if (!LocalServer::start((U32)this->localServerPort, error)) {
+            kwarn_fmt("Local server could not start: %s", error.c_str());
+            stopMediaCapture();
+            return false;
+        }
+        klog_fmt("Local server listening on http://127.0.0.1:%u/", LocalServer::port());
+    }
+#endif
     KNativeSystem::initWindow(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     KNativeAudio::init();
 #ifdef BOXEDWINE_OPENGL
@@ -745,6 +763,10 @@ bool StartUpArgs::apply() {
         }
         if (result) {
             if (!doMainLoop()) {
+#ifdef BOXEDWINE_LOCAL_SERVER
+                LocalServer::stop();
+                stopMediaCapture();
+#endif
                 return false; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
             }
         }
@@ -753,6 +775,12 @@ bool StartUpArgs::apply() {
     if (gensrc)
         writeSource();
 #endif    
+#ifdef BOXEDWINE_LOCAL_SERVER
+    if (LocalServer::isRunning()) {
+        LocalServer::stop();
+        stopMediaCapture();
+    }
+#endif
 	KSystem::destroy();
     KNativeSystem::shutdown();
     KNativeAudio::shutdown();
@@ -1024,6 +1052,15 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->safeMemory = true;
         }  else if (!strcmp(argv[i], "-disableLinearMemory")) {
             this->disableLinearMemory = true;
+        } else if (!strcmp(argv[i], "-localServer") && i + 1 < argc) {
+            char* end = nullptr;
+            long port = strtol(argv[i + 1], &end, 10);
+            if (!*argv[i + 1] || *end || port < 0 || port > 65535) {
+                klog_fmt("-localServer needs a port from 0 to 65535, got %s", argv[i + 1]);
+                return false;
+            }
+            this->localServerPort = (int)port;
+            i++;
         }
         else if (!strcmp(argv[i], "-dxvk")) {
             BString dxvk;
