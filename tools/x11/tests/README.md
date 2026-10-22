@@ -51,6 +51,30 @@ several related implementation gaps, not 12 independent root causes. The probe
 passes all 12 after the focus fixes. The extended run passes all 27 on both
 the corrected Boxedwine engine and Xvfb.
 
+## Closing a display while it owns mouse capture
+
+`capture-close.c` exercises the shutdown path used by the 3DMark2001 SE
+installer. Build a 32-bit client as above:
+
+```sh
+gcc -m32 -O2 -Wall -Wextra capture-close.c -lX11 -o capture-close
+```
+
+Mount its directory and run `/mnt/probes/capture-close` inside a **display-enabled**
+Boxedwine engine. Keep the engine's stdin open and impose a 15-second timeout;
+`-novideo` skips the native cursor update that exposes the deadlock. Use a
+disposable root, since the test repeatedly grabs the pointer. Success is
+`RESULT checks=20 failures=0` followed by natural engine shutdown.
+
+The Windows Jenkins build 101 hung at `CLOSE iteration=0`. `closeDisplay` held
+`grabbedMutex` while `ungrabPointer` waited for a cursor update on the SDL
+thread; that thread was waiting for the same mutex to refresh confinement.
+Removing the outer lock lets `ungrabPointer` manage its own lock scope. The
+rebuilt Windows engine passes all 20 cycles and exits normally.
+The full 3DMark2001 SE installer also completed texture conversion, released
+capture, and exited naturally with code 0 after Finish using the rebuilt engine
+and a fresh Wine root.
+
 ## GDI cursor and animation timing
 
 Run the Age of Empires demo with Wine's GDI renderer, start a game, and open its

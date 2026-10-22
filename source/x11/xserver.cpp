@@ -874,7 +874,8 @@ U32 XServer::createScreen(KThread* thread, U32 displayAddress) {
 
 int XServer::closeDisplay(KThread* thread, const DisplayDataPtr& data) {
 	if (grabbedDisplayId == data->displayId) {
-		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->grabbedMutex);
+		// ungrabPointer locks the grab state itself, then waits for native cursor
+		// updates. The UI thread must be able to read that state while it runs.
 		ungrabPointer(0);
 	}
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
