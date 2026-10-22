@@ -305,6 +305,8 @@ void KNativeInputSDL::runOnUiThread(std::function<void()> callback) {
 }
 
 void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
+#ifndef __EMSCRIPTEN__
+    // Browser pointer lock and its UI are controlled by the web page.
     // Store an ID rather than a pointer: rendering can destroy/recreate windows.
     SDL_Window* previous = SDL_GetWindowFromID(confinedWindowId);
     XServer* server = XServer::getServer(true);
@@ -320,6 +322,7 @@ void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
         SDL_SetWindowGrab(target, SDL_TRUE);
     }
     updateMouseCaptureTitle(window && (target || mouseCaptureReleased) ? window : nullptr);
+#endif
 }
 
 void KNativeInputSDL::updateMouseCaptureTitle(SDL_Window* window) {
@@ -438,6 +441,7 @@ bool KNativeInputSDL::handleMouseCaptureEvent(SDL_Event* event) {
 }
 
 void KNativeInputSDL::setMouseConfinement(bool confined) {
+#ifndef __EMSCRIPTEN__
     mouseConfinementRequested = confined;
     if (isMainthread()) {
         updateMouseConfinement(SDL_GetKeyboardFocus());
@@ -449,6 +453,7 @@ void KNativeInputSDL::setMouseConfinement(bool confined) {
             klog_fmt("Failed to queue mouse confinement: %s", SDL_GetError());
         }
     }
+#endif
 }
 
 
