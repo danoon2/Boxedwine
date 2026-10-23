@@ -490,6 +490,21 @@ test('createZip adds Zip64 end records past 65535 entries', async () => {
     assert.equal(zip.readUInt32LE(Number(zip.readBigUInt64LE(record + 48))), 0x02014b50); // central directory
 });
 
+test('createZip records the exact time beside the MS-DOS local time', async () => {
+    const { context } = dialogShell({});
+    const date = new Date(Date.UTC(2026, 9, 13, 22, 19, 48));
+    const zip = Buffer.from(await (await context.createZip([{ name: 'a.txt', data: new Uint8Array([1, 2, 3]), date }])).arrayBuffer());
+    const extended = Buffer.from([0x55, 0x54, 5, 0, 1, 0x84, 0xae, 0xce, 0x6a]); // 1791929988 s
+    assert.equal(zip.readUInt16LE(28), extended.length); // local header
+    assert.deepEqual(zip.subarray(35, 44), extended);
+    assert.deepEqual(zip.subarray(44, 47), Buffer.from([1, 2, 3])); // stored data follows it
+    const central = zip.readUInt32LE(zip.length - 22 + 16);
+    assert.equal(zip.readUInt32LE(central), 0x02014b50);
+    assert.equal(zip.readUInt32LE(central + 12), context.dosDateTime(date)); // still local for other tools
+    assert.equal(zip.readUInt16LE(central + 30), extended.length);
+    assert.deepEqual(zip.subarray(central + 51, central + 60), extended);
+});
+
 test('closing a dialog removes #close from the address bar', () => {
     const { context } = dialogShell({});
     const page = { pathname: '/boxedwine.html', search: '?app=game&auto=false' };

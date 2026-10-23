@@ -27,7 +27,6 @@ extern "C"
 #include "fsfilenode.h"
 #include "fszip.h"
 #include "fszipnode.h"
-#include <time.h> 
 
 void FsZip::resetZipRead() {
     auto first = checkpoints.lower_bound(std::make_pair(lastZipOffset, (U64)0));
@@ -141,6 +140,64 @@ S32 FsZip::readZip(U64 zipOffset, U64 zipFileOffset, U8* buffer, U32 len) {
     return (S32)total;
 }
 
+static U32 readZipU16(const U8* p) {
+    return (U32)p[0] | ((U32)p[1] << 8);
+}
+
+static U32 readZipU32(const U8* p) {
+    return readZipU16(p) | (readZipU16(p + 2) << 16);
+}
+
+// Seconds since 1970 UTC, month 1 to 12
+static U64 utcSeconds(U32 year, U32 month, U32 day, U32 hour, U32 minute, U32 second) {
+    // count years from March, so a leap day is the last day of its year
+    U32 y = month <= 2 ? year - 1 : year;
+    U32 m = month <= 2 ? month + 9 : month - 3;
+    U64 days = (U64)y * 365 + y / 4 - y / 100 + y / 400 + (153 * m + 2) / 5 + day - 1 - 719468;
+    return days * 86400 + hour * 3600 + minute * 60 + second;
+}
+
+// An entry's last modified time in ms since 1970 UTC. The MS-DOS time every entry has is local
+// time wherever the zip was made, which the zip does not record, so it is read as UTC. Read as
+// local time it depended on the viewer's timezone, and Wine, seeing wine.inf's time change,
+// updated the prefix on every start. An exact time from an extended timestamp or NTFS extra
+// field, as Info-ZIP, 7-Zip and the browser shell write, is used when there is one.
+static U64 zipEntryTime(const unz_file_info64& info, const U8* extra, U32 extraLength) {
+    for (U32 pos = 0; pos + 4 <= extraLength;) {
+        U32 id = readZipU16(extra + pos);
+        U32 size = readZipU16(extra + pos + 2);
+        const U8* data = extra + pos + 4;
+        pos += 4 + size;
+        if (pos > extraLength) {
+            break;
+        }
+        if (id == 0x5455 && size >= 5 && (data[0] & 1)) { // extended timestamp: flags, then the mtime
+            S32 seconds = (S32)readZipU32(data + 1);
+            if (seconds >= 0) {
+                return (U64)seconds * 1000;
+            }
+        } else if (id == 0x000a) { // NTFS: 4 reserved bytes, then tagged attributes
+            for (U32 at = 4; at + 4 <= size;) {
+                U32 tag = readZipU16(data + at);
+                U32 tagSize = readZipU16(data + at + 2);
+                if (tag == 1 && tagSize >= 8 && at + 12 <= size) {
+                    // the mtime comes first, in 100 ns units since 1601
+                    U64 fileTime = readZipU32(data + at + 4) | ((U64)readZipU32(data + at + 8) << 32);
+                    if (fileTime >= 116444736000000000ull) {
+                        return fileTime / 10000 - 11644473600000ull;
+                    }
+                }
+                at += 4 + tagSize;
+            }
+        }
+    }
+    const tm_unz& date = info.tmu_date;
+    if (date.tm_mon > 11 || date.tm_mday < 1) {
+        return utcSeconds(1980, 1, 1, 0, 0, 0) * 1000; // the earliest MS-DOS time, also used for invalid ones
+    }
+    return utcSeconds(date.tm_year, date.tm_mon + 1, date.tm_mday, date.tm_hour, date.tm_min, date.tm_sec) * 1000;
+}
+
 bool FsZip::init(BString zipPath, BString mount) {
 #ifdef BOXEDWINE_ZLIB
     BString strippedMount;
@@ -171,11 +228,11 @@ bool FsZip::init(BString zipPath, BString mount) {
         fsZipInfo* zipInfo = new fsZipInfo[global_info.number_entry];
         for (U64 i = 0; i < global_info.number_entry; ++i) {
             unz_file_info64 file_info = {};
-            struct tm tm={0};
+            U8 extra[1024];
             char tmp[MAX_FILEPATH_LEN];
 
             tmp[0] = '/';
-            if ( unzGetCurrentFileInfo64(this->zipfile, &file_info, tmp + 1, MAX_FILEPATH_LEN - 1, nullptr, 0, nullptr, 0 ) != UNZ_OK || file_info.size_filename >= MAX_FILEPATH_LEN - 1 ) {
+            if ( unzGetCurrentFileInfo64(this->zipfile, &file_info, tmp + 1, MAX_FILEPATH_LEN - 1, extra, sizeof(extra), nullptr, 0 ) != UNZ_OK || file_info.size_filename >= MAX_FILEPATH_LEN - 1 ) {
                 klog_fmt("Could not read file info from zip file: %s", zipPath.c_str());
                 delete[] zipInfo;
                 unzClose( zipfile );
@@ -194,16 +251,7 @@ bool FsZip::init(BString zipPath, BString mount) {
             } else {
                 zipInfo[i].length = file_info.uncompressed_size;
             }               
-            tm.tm_sec = file_info.tmu_date.tm_sec;
-            tm.tm_min = file_info.tmu_date.tm_min;
-            tm.tm_hour = file_info.tmu_date.tm_hour;
-            tm.tm_mday = file_info.tmu_date.tm_mday;
-            tm.tm_mon = file_info.tmu_date.tm_mon;
-            tm.tm_year = file_info.tmu_date.tm_year;
-            if (tm.tm_year>1900)
-                tm.tm_year-=1900;
-
-            zipInfo[i].lastModified = ((U64)mktime(&tm))*1000l;
+            zipInfo[i].lastModified = zipEntryTime(file_info, extra, (U32)std::min<U64>(file_info.size_file_extra, sizeof(extra)));
 
             if (!zipInfo[i].isDirectory && zipInfo[i].compressionMethod == 0) {
                 if (unzOpenCurrentFile(this->zipfile) == UNZ_OK) {
