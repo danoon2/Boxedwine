@@ -76,7 +76,23 @@ def main():
             yield 200
             valid, bounds = window.cards[window.selected].compute_bounds(window.scroll)
             assert valid and bounds.get_y() >= -1, 'Reveal must also scroll upward'
-            print('PASS: refresh, rapid refresh, running banner, exit, search, navigation, and selected-card reveal.', flush=True)
+            window.busy = True  # Keep this isolated fixture from loading a catalog.
+            window.navigate('Demos')
+            window.search.set_text('Winroids')
+            yield 250
+            source = root / 'Winroids'
+            source.mkdir()
+            (source / 'winroids.exe').write_bytes(b'MZ portable game')
+            added = window.library.import_app(source, 'folder', wine, Work())
+            window.busy = False
+            window.refresh()  # perform() refreshes before its completion callback.
+            window.app_added(added)
+            yield 800
+            assert window.view == 'All Apps' and window.selected == added['id']
+            card = window.cards[added['id']]
+            valid, bounds = card.compute_bounds(window.scroll)
+            assert valid and bounds.get_y() >= -1 and bounds.get_y() + bounds.get_height() <= window.scroll.get_height() + 1, f'New portable app must be visible: y={bounds.get_y()}, height={bounds.get_height()}, viewport={window.scroll.get_height()}, pos={adjustment.get_value()}'
+            print('PASS: refresh, rapid refresh, running banner, exit, search, navigation, selected-card reveal, and newly added portable app.', flush=True)
 
         iterator = steps()
         def advance():

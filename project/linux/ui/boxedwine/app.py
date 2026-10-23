@@ -523,31 +523,52 @@ class Window(Adw.ApplicationWindow):
         # Replacing the viewport child resets its adjustment. Restore only after
         # GTK has allocated the new grid, retaining the target across rapid
         # launch/status refreshes that arrive before the next frame.
-        state = {'position': position, 'target': target, 'frames': 0}
+        state = {'position': position, 'target': target, 'frames': 0, 'stable': 0, 'applied': False}
         def apply():
             if self.scroll_restore is not state:
                 return GLib.SOURCE_REMOVE
             adjustment = self.scroll.get_vadjustment()
-            adjustment.set_value(position)
+            if not state['applied']:
+                adjustment.set_value(position)
+                state['applied'] = True
+                # Let the viewport update its transform before measuring a card.
+                if target:
+                    return GLib.SOURCE_REMOVE
             card = self.cards.get(target) if target and self.selected == target else None
             if card:
                 valid, bounds = card.compute_bounds(self.scroll)
                 if valid:
                     top = adjustment.get_value() + bounds.get_y()
                     adjustment.clamp_page(top, top + bounds.get_height())
+                    # Opening the details pane changes grid columns over several
+                    # frames. Keep revealing through that layout transition.
+                    geometry = (self.scroll.get_width(), self.scroll.get_height(),
+                                adjustment.get_upper(), adjustment.get_page_size(),
+                                adjustment.get_value(), bounds.get_x(), bounds.get_y(),
+                                bounds.get_width(), bounds.get_height())
+                    state['stable'] = state['stable'] + 1 if geometry == state.get('geometry') else 0
+                    state['geometry'] = geometry
+                    if state['stable'] < 3:
+                        return GLib.SOURCE_REMOVE
+                else:
+                    return GLib.SOURCE_REMOVE
             viewport = self.scroll.get_child()
             if isinstance(viewport, Gtk.Viewport):
                 viewport.set_scroll_to_focus(True)
             self.scroll_restore = None
             return GLib.SOURCE_REMOVE
         def restore(scroll, clock):
+            if self.scroll_restore is not state:
+                return GLib.SOURCE_REMOVE
             state['frames'] += 1
             if state['frames'] < 2:
                 return GLib.SOURCE_CONTINUE
             # Tick callbacks precede allocation. Apply in idle after this frame's
             # layout so bounds and the adjustment describe the rebuilt grid.
-            state['tick'] = None
             GLib.idle_add(apply)
+            if target:
+                return GLib.SOURCE_CONTINUE
+            state['tick'] = None
             return GLib.SOURCE_REMOVE
         state['tick'] = self.scroll.add_tick_callback(restore)
         self.scroll_restore = state
