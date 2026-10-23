@@ -1049,6 +1049,17 @@
                 callback();
             }
         }
+        // A disc image can take a while to download, so with auto run off the Start button
+        // shows what is loading until buildBrowserFileSystem enables it
+        function showLoadingStartButton(text) {
+            if (Config.isAutoRunSet || Config.cdromISOFiles.length == 0) {
+                return;
+            }
+            var startBtn = document.getElementById('startbtn');
+            startBtn.textContent = text;
+            startBtn.disabled = true;
+            startBtn.style.display = "";
+        }
         function buildBrowserFileSystem() {
             // The Save JIT Cache button is handled by updateSaveJitButton(),
             // called from initWasmJitCache once the persistence mode is known.
@@ -1198,7 +1209,9 @@
                     spinnerElement.style.display = '';
                     spinnerElement.hidden = false;
 
+                    showLoadingStartButton(Config.cdromISOFiles.length > 1 ? "Downloading disc 1..." : "Downloading disc...");
                     buildCDRomFileSystems(() => {
+                        showLoadingStartButton("Loading...");
                         buildExtraFileSystems(() => {
                             buildAppFileSystem(() => {
                                 loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
@@ -1376,7 +1389,8 @@
         }
         function updateHostFolderControls() {
             var startBtn = document.getElementById('startbtn');
-            if (startBtn && !isRunning) {
+            // before the downloads are done the button stays as showLoadingStartButton set it
+            if (startBtn && !isRunning && awaitingStart) {
                 startBtn.textContent = getHostFolderStartButtonText();
                 startBtn.disabled = hostFolderBusy;
             }

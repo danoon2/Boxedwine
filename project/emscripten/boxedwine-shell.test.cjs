@@ -513,6 +513,28 @@ test('auto=false shows Start and Get File(s), auto run shows neither', () => {
     }
 });
 
+test('auto=false with a CD-ROM shows Start disabled until the disc and the rest have downloaded', () => {
+    const { context } = dialogShell({}, 'http://localhost/?app=game&auto=false&cdrom=e:disc1.iso;disc2.iso');
+    context.setConfiguration();
+    const start = context.document.getElementById('startbtn');
+    const state = () => ({ shown: start.style.display === '', disabled: start.disabled, text: start.textContent });
+    context.showLoadingStartButton('Downloading disc 1...');
+    assert.deepEqual(state(), { shown: true, disabled: true, text: 'Downloading disc 1...' });
+    context.updateHostFolderControls(); // as a remembered D: folder does while the disc downloads
+    assert.deepEqual(state(), { shown: true, disabled: true, text: 'Downloading disc 1...' });
+    context.showLoadingStartButton('Loading...');
+    assert.deepEqual(state(), { shown: true, disabled: true, text: 'Loading...' });
+    context.buildBrowserFileSystem();
+    assert.deepEqual(state(), { shown: true, disabled: false, text: 'Start' });
+
+    for (const query of ['auto=false', 'auto=true&cdrom=e:disc1.iso']) {
+        const { context } = dialogShell({}, 'http://localhost/?app=game&' + query);
+        context.setConfiguration();
+        context.showLoadingStartButton('Downloading disc...');
+        assert.equal(context.document.getElementById('startbtn').style.display === '', false, query);
+    }
+});
+
 test('games mount separate persistent Wine roots and D drives', () => {
     const mech = launcher('http://localhost/demos/st/?app=mw3&p=mech3demo.exe');
     const pinball = launcher('http://localhost/demos/st/?app=pinball&p=DEMO.EXE');
