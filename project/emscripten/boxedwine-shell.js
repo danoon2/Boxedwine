@@ -2954,6 +2954,20 @@ function dosDateTime(date) {
   return ((date.getFullYear() - 1980) << 25 | (date.getMonth() + 1) << 21 | date.getDate() << 16
     | date.getHours() << 11 | date.getMinutes() << 5 | date.getSeconds() >> 1) >>> 0;
 }
+// The MS-DOS time does not say which timezone it is in, so each entry also gets an
+// extended timestamp extra field with the exact time, which Boxedwine reads in its place
+function extendedTimestamp(date) {
+  var seconds = Math.floor(date.getTime() / 1000);
+  if (!(seconds >= 0 && seconds <= 0x7FFFFFFF)) {
+    return new Uint8Array(0);
+  }
+  var field = new DataView(new ArrayBuffer(9));
+  field.setUint16(0, 0x5455, true);
+  field.setUint16(2, 5, true);
+  field.setUint8(4, 1);               // only the modification time follows
+  field.setUint32(5, seconds, true);
+  return new Uint8Array(field.buffer);
+}
 // Builds a zip Blob from [{name, data, date}] for folder downloads and the JIT
 // cache export. Folder names end in "/" and have no data; no date means now.
 // Entries are deflated in parallel, each kept only if that makes it smaller.
@@ -2972,11 +2986,13 @@ async function createZip(items) {
     var data = item.data || new Uint8Array(0);
     var body = bodies[i].data;
     var method = bodies[i].method;
-    if (offset + 30 + name.length + body.length > 0xFFFFFFFF) {
+    var date = item.date || new Date();
+    var extra = extendedTimestamp(date);
+    if (offset + 30 + name.length + extra.length + body.length > 0xFFFFFFFF) {
       throw new Error("too big for a zip (over 4 GB)");
     }
     var crc = crc32(data);
-    var time = dosDateTime(item.date || new Date());
+    var time = dosDateTime(date);
     var local = new DataView(new ArrayBuffer(30));
     local.setUint32(0, 0x04034b50, true);
     local.setUint16(4, 20, true);       // version needed: 2.0 for deflate and folders
@@ -2987,6 +3003,7 @@ async function createZip(items) {
     local.setUint32(18, body.length, true);
     local.setUint32(22, data.length, true);
     local.setUint16(26, name.length, true);
+    local.setUint16(28, extra.length, true);
     var entry = new DataView(new ArrayBuffer(46));
     entry.setUint32(0, 0x02014b50, true);
     entry.setUint16(4, 20, true);       // made by MS-DOS, so attributes below are DOS ones
@@ -2998,11 +3015,12 @@ async function createZip(items) {
     entry.setUint32(20, body.length, true);
     entry.setUint32(24, data.length, true);
     entry.setUint16(28, name.length, true);
+    entry.setUint16(30, extra.length, true);
     entry.setUint32(38, item.name.endsWith("/") ? 0x10 : 0, true); // DOS directory attribute
     entry.setUint32(42, offset, true);
-    parts.push(new Uint8Array(local.buffer), name, body);
-    directory.push(new Uint8Array(entry.buffer), name);
-    offset += 30 + name.length + body.length;
+    parts.push(new Uint8Array(local.buffer), name, extra, body);
+    directory.push(new Uint8Array(entry.buffer), name, extra);
+    offset += 30 + name.length + extra.length + body.length;
   });
   var directorySize = directory.reduce(function(size, part) { return size + part.length; }, 0);
   if (offset + directorySize > 0xFFFFFFFF) {

@@ -698,6 +698,76 @@ void testZipRandomAccess() {
 #endif
 }
 
+void testZipEntryTimes() {
+#ifdef BOXEDWINE_ZLIB
+    const BString root = B("tmp/test-zip-entry-times-root");
+    cleanupRoot(root);
+    initTestFileSystem(root);
+    const BString archivePath = root.stringByApppendingPath(B("fixture.zip"));
+    // extended timestamp mtime 1791929988, 2026-10-13 22:19:48 UTC
+    U8 extendedTimestamp[9] = {0x55, 0x54, 5, 0, 1};
+    for (int i = 0; i < 4; i++) {
+        extendedTimestamp[5 + i] = (U8)(1791929988u >> (i * 8));
+    }
+    // NTFS mtime 500 ms later, in 100 ns units since 1601
+    U64 fileTime = (1791929988500ull + 11644473600000ull) * 10000;
+    U8 ntfs[36] = {0x0a, 0, 32, 0, 0, 0, 0, 0, 1, 0, 24, 0};
+    for (int i = 0; i < 8; i++) {
+        ntfs[12 + i] = (U8)(fileTime >> (i * 8));
+    }
+    struct Entry {
+        const char* name;
+        const U8* extra;
+        U16 extraLength;
+        U32 mday;
+        U64 expected;
+    } entries[] = {
+        // the MS-DOS time 2026-10-13 14:19:48 read as UTC, whatever the timezone
+        {"dos", nullptr, 0, 13, 1791901188000ull},
+        {"extended", extendedTimestamp, sizeof(extendedTimestamp), 13, 1791929988000ull},
+        {"ntfs", ntfs, sizeof(ntfs), 13, 1791929988500ull},
+        // day 0 is not a date, so the earliest MS-DOS time, 1980-01-01
+        {"invalid", nullptr, 0, 0, 315532800000ull},
+    };
+    zipFile archive = zipOpen64(archivePath.c_str(), APPEND_STATUS_CREATE);
+    if (!archive) {
+        testFail("could not create ZIP time fixture");
+        cleanupRoot(root);
+        return;
+    }
+    for (const Entry& entry : entries) {
+        zip_fileinfo info = {};
+        info.tmz_date.tm_year = 2026;
+        info.tmz_date.tm_mon = 9;
+        info.tmz_date.tm_mday = entry.mday;
+        info.tmz_date.tm_hour = 14;
+        info.tmz_date.tm_min = 19;
+        info.tmz_date.tm_sec = 48;
+        expectZero("open ZIP time member", zipOpenNewFileInZip64(archive,
+            entry.name, &info, nullptr, 0, entry.extra, entry.extraLength, nullptr, 0, 0, 0));
+        expectZero("write ZIP time member", zipWriteInFileInZip(archive, "x", 1));
+        expectZero("close ZIP time member", zipCloseFileInZip(archive));
+    }
+    expectZero("close ZIP time fixture", zipClose(archive, nullptr));
+    {
+        auto zip = std::make_shared<FsZip>();
+        if (!zip->init(archivePath, B(""))) {
+            testFail("could not mount ZIP time fixture");
+        } else {
+            for (const Entry& entry : entries) {
+                auto node = Fs::getNodeFromLocalPath(B("/"), BString::copy(entry.name), false);
+                if (!node) {
+                    testFail("ZIP time member not found: %s", entry.name);
+                    continue;
+                }
+                expectU64(entry.name, node->lastModified(), entry.expected);
+            }
+        }
+    }
+    cleanupRoot(root);
+#endif
+}
+
 void testFileCacheIdentitySurvivesRenameAndHardLink() {
     TestContext& context = testContext();
     const BString root = B("tmp/test-file-cache-identity-root");
