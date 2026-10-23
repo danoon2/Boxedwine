@@ -24,12 +24,12 @@ public static class Demos
     {
         SafeFiles.NoLinks(path);
         using var reader = XmlReader.Create(path, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 1024 * 1024 });
-        return Parse(XDocument.Load(reader), Path.GetDirectoryName(path)!);
+        return Parse(XDocument.Load(reader, LoadOptions.PreserveWhitespace), Path.GetDirectoryName(path)!);
     }
     internal static List<DemoRecipe> Parse(XDocument xml, string directory, bool allowExternal = false)
     {
         var root = xml.Root ?? throw new InvalidDataException("The demo catalog is empty.");
-        if (root.Name != "XML" || !int.TryParse((string?)root.Attribute("schemaVersion"), out int schema) || schema is < 1 or > 8 || string.IsNullOrEmpty((string?)root.Attribute("release"))) throw new InvalidDataException("Unsupported demo catalog version.");
+        if (root.Name != "XML" || !int.TryParse((string?)root.Attribute("schemaVersion"), out int schema) || schema is < 1 or > 9 || string.IsNullOrEmpty((string?)root.Attribute("release"))) throw new InvalidDataException("Unsupported demo catalog version.");
         string release = (string)root.Attribute("release")!;
         var recipes = new List<DemoRecipe>(); var ids = new HashSet<string>();
         foreach (var item in root.Elements())
@@ -50,6 +50,9 @@ public static class Demos
             if (wineVersion == null ? !allowExternal : wineVersion.Length == 0 || Encoding.UTF8.GetByteCount(wineVersion) > 128)
                 throw new InvalidDataException("Invalid Wine version in demo " + name);
             string? dllOverrides = Optional("WineDllOverrides");
+            if (item.Element("AppArguments") != null && schema < 9) throw new InvalidDataException("AppArguments requires schema 9.");
+            // Arguments are literal: preserve whitespace and do not apply Help's escape expansion.
+            var appArguments = CollectionSnapshot.ParseAppArguments((string?)item.Element("AppArguments"));
             if (dllOverrides != null)
             {
                 if (schema < 8 || dllOverrides.Length is 0 or > 1024 || dllOverrides.Any(char.IsControl)) throw new InvalidDataException("WineDllOverrides requires schema 8 and a nonempty single-line value of at most 1024 characters.");
@@ -65,7 +68,10 @@ public static class Demos
             if (Optional("CNCDDrawRenderer") is string renderer && renderer is not ("gdi" or "opengl" or "direct3d9")) throw new InvalidDataException("Unknown CNC DDraw renderer.");
             if (Optional("CNCDDrawFakeMode") is string mode && !Regex.IsMatch(mode, "^[1-9][0-9]{0,3}x[1-9][0-9]{0,3}x(8|16|32)$")) throw new InvalidDataException("Invalid CNC DDraw display mode.");
             recipes.Add(new(new(id, release, hash, shortcut), name, Field("Summary"), Field("Help").Replace("\\n", "\n").Replace("\\t", "    "), Field("Icon"), url, bytes,
-                Field("InstallType"), Optional("InstallExe"), wineVersion, settings, Optional("Glide"), Optional("CNCDDrawRenderer"), Boolean("CNCDDrawUncapped") == true, Optional("CNCDDrawFakeMode"), dllOverrides, allowExternal));
+                Field("InstallType"), Optional("InstallExe"), wineVersion, settings, Optional("Glide"), Optional("CNCDDrawRenderer"), Boolean("CNCDDrawUncapped") == true, Optional("CNCDDrawFakeMode"), dllOverrides, allowExternal)
+            {
+                AppArguments = appArguments
+            });
         }
         return recipes;
     }

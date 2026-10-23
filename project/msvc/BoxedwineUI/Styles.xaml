@@ -6,5 +6,19 @@
     <SolidColorBrush x:Key="LineBrush" Color="#DFDFDF"/>
     <Style TargetType="Window"><Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI"/><Setter Property="FontSize" Value="14"/><Setter Property="Background" Value="{DynamicResource PageBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/></Style>
     <Style x:Key="Body" TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="Margin" Value="0,0,0,14"/><Setter Property="LineHeight" Value="21"/></Style>
+    <Style x:Key="SelectableBody" TargetType="TextBox">
+      <Setter Property="IsReadOnly" Value="True"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Margin" Value="0,0,0,14"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="TextBlock.LineHeight" Value="21"/>
+      <!-- Keep paragraph styling, including when focused, with native text selection and copying. -->
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox">
+        <ScrollViewer x:Name="PART_ContentHost" Background="{TemplateBinding Background}" Focusable="False" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"/>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
     <Style x:Key="DetailButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="Margin" Value="0,0,0,8"/><Setter Property="Padding" Value="12,8"/></Style>
   </ResourceDictionary>

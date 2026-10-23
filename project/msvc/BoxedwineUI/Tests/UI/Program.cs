@@ -25,6 +25,7 @@ internal static partial class Program
             app.ThemeMode = ThemeMode.System;
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/{typeof(MainWindow).Assembly.GetName().Name};component/Styles.xaml", UriKind.Relative) });
             if (args.Contains("--source-errors")) { CheckSourceImports(destination); return 0; }
+            if (args.Contains("--storage")) { CheckStorage(destination); return 0; }
             CheckRuntimeIcons(destination, args);
             var catalog = Packages.Catalog(Path.Combine(AppContext.BaseDirectory, "Resources"));
             if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "20") throw new Exception("This release must offer only Wine 11 V20.");
@@ -71,41 +72,57 @@ internal static partial class Program
                 });
                 var repositoryField = typeof(MainWindow).GetField("repository", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 var activeRepository = (LibraryRepository)repositoryField.GetValue(window)!;
-                CheckWineChoices(window, activeRepository, destination, theme);
-                CheckLaunching(window, activeRepository.Load().Apps[0], destination, theme);
-                CheckInstallerCompletion(window, activeRepository, destination, theme);
+                if (!args.Contains("--app-settings"))
+                {
+                    CheckWineChoices(window, activeRepository, destination, theme);
+                    CheckLaunching(window, activeRepository.Load().Apps[0], destination, theme);
+                    CheckInstallerCompletion(window, activeRepository, destination, theme);
+                }
                 CheckMouseSensitivity(window, activeRepository, destination, theme);
                 CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-app-settings.png"));
                 CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-advanced.png"), dialog =>
                 {
-                    var advanced = Descendants<Expander>(dialog).Single(); advanced.IsExpanded = true;
-                    dialog.UpdateLayout();
+                    SelectSettingsTab(dialog, "Advanced");
                     var openGL = Descendants<ComboBox>(dialog).Single(c => AutomationProperties.GetName(c) == "OpenGL implementation");
                     if ((string)openGL.SelectedValue != "default" || !openGL.Items.Cast<KeyValuePair<string, string>>().Single(c => c.Key == "default").Value.Contains("Direct3D 12")) throw new Exception("App OpenGL selection must show the inherited global setting.");
                     openGL.SelectedValue = "llvmpipe";
-                    dialog.UpdateLayout(); Descendants<ScrollViewer>(dialog).First().ScrollToVerticalOffset(490);
+                    Render(dialog, Path.Combine(destination, theme.ToLowerInvariant() + "-advanced-top.png"), (int)dialog.ActualWidth - 16, (int)dialog.ActualHeight - 40);
+                    dialog.Height = 520;
+                    dialog.UpdateLayout();
+                    var viewport = (ScrollViewer)((TabItem)Descendants<TabControl>(dialog).Single().SelectedItem).Content;
+                    viewport.ScrollToEnd(); dialog.UpdateLayout();
+                    var arguments = Descendants<TextBox>(dialog).Single(t => AutomationProperties.GetName(t) == "App arguments — one argument per line");
+                    var position = arguments.TransformToAncestor(viewport).Transform(new Point());
+                    if (position.Y < 0 || position.Y + arguments.ActualHeight > viewport.ViewportHeight) throw new Exception("Advanced arguments must be reachable in a short settings window.");
+                    var save = Descendants<Button>(dialog).Single(b => b.Content as string == "Save");
+                    if (save.TransformToAncestor(dialog).Transform(new Point()).Y < viewport.TransformToAncestor(dialog).Transform(new Point(0, viewport.ActualHeight)).Y) throw new Exception("Save must remain below the scrolling page.");
                 }, "Save");
                 if (activeRepository.Load().Apps[0].WindowsOpenGL != "llvmpipe") throw new Exception("App OpenGL selection was not saved.");
                 CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-advanced-cancel.png"), dialog =>
                 {
-                    Descendants<Expander>(dialog).Single().IsExpanded = true;
-                    dialog.UpdateLayout();
+                    SelectSettingsTab(dialog, "Advanced");
                     Descendants<ComboBox>(dialog).Single(c => AutomationProperties.GetName(c) == "OpenGL implementation").SelectedValue = "native";
                 });
                 if (activeRepository.Load().Apps[0].WindowsOpenGL != "llvmpipe") throw new Exception("Cancel changed the saved OpenGL selection.");
                 CheckDialog(window, "Troubleshoot", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-troubleshooting.png"));
                 window.Close();
             }
-            Console.WriteLine("Rendered both themes and verified launch readiness, early exit, stop during startup and installer program selection."); return 0;
+            Console.WriteLine(args.Contains("--app-settings")
+                ? "Rendered both themes and verified app settings tabs, scrolling, save/cancel and mouse sensitivity synchronization."
+                : "Rendered both themes and verified launch readiness, early exit, stop during startup and installer program selection."); return 0;
         }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }
     }
     private static void CheckMouseSensitivity(MainWindow window, LibraryRepository repository, string destination, string theme)
     {
-        Slider Slider(Window dialog) => Descendants<Slider>(dialog).Single(s => AutomationProperties.GetName(s) == "Mouse sensitivity");
+        Slider Slider(Window dialog)
+        {
+            SelectSettingsTab(dialog, "General");
+            return Descendants<Slider>(dialog).Single(s => AutomationProperties.GetName(s) == "Mouse sensitivity");
+        }
         TextBox Arguments(Window dialog)
         {
-            Descendants<Expander>(dialog).Single().IsExpanded = true; dialog.UpdateLayout();
+            SelectSettingsTab(dialog, "Advanced");
             return Descendants<TextBox>(dialog).Single(t => AutomationProperties.GetName(t) == "Boxedwine arguments — one option or value per line");
         }
         int Saved() => LaunchArguments.MouseSensitivity(repository.Load().Apps[0].BoxedwineArguments ?? []);
@@ -122,8 +139,8 @@ internal static partial class Program
         if (Saved() != 50) throw new Exception("Cancel changed mouse sensitivity.");
         Check("advanced", dialog =>
         {
-            Descendants<Expander>(dialog).Single().IsExpanded = true; dialog.UpdateLayout();
             var text = Arguments(dialog); var slider = Slider(dialog);
+            SelectSettingsTab(dialog, "Advanced");
             text.Text = "-nosound\n-rel_mouse_sensitivity\n750";
             if (slider.Value != 750 || slider.Maximum < 750) throw new Exception("Advanced sensitivity was clamped or not reflected in the slider.");
             text.Text += "\n-env";
@@ -141,6 +158,12 @@ internal static partial class Program
         }, "Save");
         if (Saved() != 100) throw new Exception("Mouse sensitivity reset was not saved.");
         Console.WriteLine($"PASS {theme} mouse sensitivity: save, cancel, advanced synchronization and reset");
+    }
+    private static void SelectSettingsTab(Window dialog, string title)
+    {
+        var tabs = Descendants<TabControl>(dialog).Single();
+        tabs.SelectedItem = tabs.Items.Cast<TabItem>().Single(t => t.Header as string == title);
+        dialog.UpdateLayout();
     }
     private static void CheckWineChoices(MainWindow window, LibraryRepository repository, string destination, string theme)
     {
