@@ -409,6 +409,9 @@
     <ClCompile Include="..\..\..\..\source\test\fs\testHardLinks.cpp">
       <Filter>source\test\fs</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\fs\testCdrom.cpp">
+      <Filter>source\test\fs</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\test\kernel\testFutex.cpp">
       <Filter>source\test</Filter>
     </ClCompile>

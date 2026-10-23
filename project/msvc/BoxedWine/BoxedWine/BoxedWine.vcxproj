@@ -3874,6 +3874,7 @@
     <ClCompile Include="..\..\..\..\source\test\cpu\testXor.cpp" />
     <ClCompile Include="..\..\..\..\source\test\devs\testDspAudio.cpp" />
     <ClCompile Include="..\..\..\..\source\test\fs\testHardLinks.cpp" />
+    <ClCompile Include="..\..\..\..\source\test\fs\testCdrom.cpp" />
     <ClCompile Include="..\..\..\..\source\test\kernel\testFutex.cpp" />
     <ClCompile Include="..\..\..\..\source\test\kernel\testLoader.cpp" />
     <ClCompile Include="..\..\..\..\source\test\kernel\testMemory.cpp" />

@@ -190,10 +190,11 @@ diff --git a/dlls/mountmgr.sys/unixlib.c b/dlls/mountmgr.sys/unixlib.c
 index bcc3638..90c89c2 100644
 --- a/dlls/mountmgr.sys/unixlib.c
 +++ b/dlls/mountmgr.sys/unixlib.c
-@@ -30,6 +30,10 @@
+@@ -30,6 +30,11 @@
  #include <stdio.h>
  #include <stdlib.h>
  #include <sys/stat.h>
++#include <limits.h>
 +#include <sys/ioctl.h>
 +#ifdef HAVE_LINUX_CDROM_H
 +#include <linux/cdrom.h>
@@ -261,3 +262,33 @@ index c17e5f7..7b41eb1 100644
      unix_detect_serial_ports,
      unix_detect_parallel_ports,
      unix_set_shell_folder,
+diff --git a/dlls/ntdll/unix/file.c b/dlls/ntdll/unix/file.c
+--- a/dlls/ntdll/unix/file.c
++++ b/dlls/ntdll/unix/file.c
+@@ -7419,7 +7419,14 @@ NTSTATUS WINAPI NtQueryVolumeInformationFile( HANDLE handle, IO_STATUS_BLOCK *io,
+-        if (!get_mountmgr_fs_info( handle, fd, &drive, sizeof(drive) )) fs_type = drive.fs_type;
++        if (!get_mountmgr_fs_info( handle, fd, &drive, sizeof(drive) ))
++        {
++            /* Unix-backed CD handles bypass mountmgr's volume-query IRP. */
++            if (drive.type == DRIVE_CDROM &&
++                (status = sync_ioctl( handle, IOCTL_STORAGE_CHECK_VERIFY, NULL, 0, NULL, 0 )) == STATUS_NO_MEDIA_IN_DEVICE)
++                break;
++            fs_type = drive.fs_type;
++        }
+         else
+         {
+             struct statfs stfs;
+ 
+             if (!fstatfs( fd, &stfs ))
+             {
+@@ -7510,6 +7517,10 @@ NTSTATUS WINAPI NtQueryVolumeInformationFile( HANDLE handle, IO_STATUS_BLOCK *io,
+ 
++        if (drive->type == DRIVE_CDROM &&
++            (status = sync_ioctl( handle, IOCTL_STORAGE_CHECK_VERIFY, NULL, 0, NULL, 0 )) == STATUS_NO_MEDIA_IN_DEVICE)
++            break;
++
+         label = (WCHAR *)((char *)drive + drive->label_offset);
+         info->VolumeCreationTime.QuadPart = 0; /* FIXME */
+         info->VolumeSerialNumber = drive->serial;
+         info->VolumeLabelLength = min( wcslen( label ) * sizeof(WCHAR),
+                                        length - offsetof( FILE_FS_VOLUME_INFORMATION, VolumeLabel ) );

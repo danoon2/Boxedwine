@@ -35,9 +35,7 @@ S64 FsIsoOpenNode::getFilePointer() {
 
 S64 FsIsoOpenNode::seek(S64 newPos) {
     if (newPos < 0)
-        newPos = 0;
-    if (newPos > (S64)fileLength)
-        newPos = (S64)fileLength;
+        return -K_EINVAL;
     pos = (U64)newPos;
     return (S64)pos;
 }

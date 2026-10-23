@@ -42,10 +42,7 @@ U32 FsVirtualNode::getMode() {
 
 FsOpenNode* FsVirtualNode::open(U32 flags) {
     if (this->isDirectory()) {
-        std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->path, true);
-        if (!node)
-            return nullptr;
-        return new FsDirOpenNode(node, flags);
+        return new FsDirOpenNode(shared_from_this(), flags);
     }
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
         if (!this->canRead())
@@ -71,18 +68,19 @@ FsOpenNode* FsVirtualNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         kdebug("What about appending a virtual file");
     }
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->path, true);
-    return this->openFunc(node, flags, this->openData);
+    // The path may have been removed or replaced since the caller resolved it
+    // (for example, by a CD-ROM eject). Open that resolved node, not its replacement.
+    return this->openFunc(shared_from_this(), flags, this->openData);
 }
 
 U32 FsVirtualNode::getType(bool checkForLink) {
     if (this->isDirectory()) {
         return 4; // DT_DIR
     }
-    if (this->mode & K__S_IFCHR) {
+    if ((this->mode & K_S_IFMT) == K__S_IFCHR) {
         return 2; // DT_CHR
     }
-    if (this->mode & K_S_IFSOCK) {
+    if ((this->mode & K_S_IFMT) == K_S_IFSOCK) {
         return 12; // DT_SOCK
     }
     return 8; // DT_REG

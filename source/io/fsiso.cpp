@@ -114,14 +114,16 @@ BString FsIso::decodeFilename(const U8* nameData, U8 nameLen) {
     return name;
 }
 
-void FsIso::scanDirectory(const BString& localPath, const std::shared_ptr<FsNode>& parentNode, U64 lba, U64 dataLength) {
-    if (dataLength == 0 || dataLength > 16 * 1024 * 1024)
-        return;
+bool FsIso::scanDirectory(const BString& localPath, const std::shared_ptr<FsNode>& parentNode, U64 lba, U64 dataLength, std::vector<U64> ancestors) {
+    if (dataLength == 0 || dataLength > 16 * 1024 * 1024 ||
+            ancestors.size() >= 64 || std::find(ancestors.begin(), ancestors.end(), lba) != ancestors.end())
+        return false;
+    ancestors.push_back(lba);
 
     U32 bufSize = (U32)(((dataLength + ISO_SECTOR_SIZE - 1) / ISO_SECTOR_SIZE) * ISO_SECTOR_SIZE);
     std::vector<U8> buf(bufSize);
-    if (readData(lba * ISO_SECTOR_SIZE, buf.data(), bufSize) == 0)
-        return;
+    if (readData(lba * ISO_SECTOR_SIZE, buf.data(), bufSize) < dataLength)
+        return false;
 
     U64 offset = 0;
     while (offset < dataLength) {
@@ -134,13 +136,19 @@ void FsIso::scanDirectory(const BString& localPath, const std::shared_ptr<FsNode
             offset = nextSector;
             continue;
         }
-        if (offset + recLen > dataLength)
-            break;
+        // A record contains 33 fixed bytes and at least one filename byte, and
+        // must fit within both the directory extent and its logical sector.
+        if (recLen < 34 || offset + recLen > dataLength ||
+                recLen > ISO_SECTOR_SIZE - offset % ISO_SECTOR_SIZE)
+            return false;
+
+        U8 nameLen = buf[offset + 32];
+        if (!nameLen || nameLen > recLen - 33)
+            return false;
 
         U32 entryLba    = readU32LE(buf.data() + offset + 2);
         U32 entryLength = readU32LE(buf.data() + offset + 10);
         U8  flags       = buf[offset + 25];
-        U8  nameLen     = buf[offset + 32];
         bool isDir      = (flags & ISO_FLAG_DIRECTORY) != 0;
         U64 lastModified = readDirectoryTime(buf.data() + offset);
 
@@ -151,6 +159,8 @@ void FsIso::scanDirectory(const BString& localPath, const std::shared_ptr<FsNode
         }
 
         BString name = decodeFilename(buf.data() + offset + 33, nameLen);
+        if (name == B(".") || name == B("..") || name.indexOf('/') >= 0)
+            return false;
         if (name.length() == 0) {
             offset += recLen;
             continue;
@@ -166,8 +176,8 @@ void FsIso::scanDirectory(const BString& localPath, const std::shared_ptr<FsNode
                     parentNode, lastModified);
                 existing = Fs::getNodeFromLocalPath(B(""), childPath, false);
             }
-            if (existing)
-                scanDirectory(childPath, existing, entryLba, entryLength);
+            if (!existing || !scanDirectory(childPath, existing, entryLba, entryLength, ancestors))
+                return false;
         } else {
             if (!Fs::getNodeFromLocalPath(B(""), childPath, false)) {
                 U64 dataOffset = (U64)entryLba * ISO_SECTOR_SIZE;
@@ -184,6 +194,7 @@ void FsIso::scanDirectory(const BString& localPath, const std::shared_ptr<FsNode
 
         offset += recLen;
     }
+    return true;
 }
 
 bool FsIso::init(const BString& imagePath, const BString& mountPath) {
@@ -261,6 +272,14 @@ bool FsIso::init(const BString& imagePath, const BString& mountPath) {
              joliet ? "Joliet" : "ISO 9660",
              (unsigned long long)totalSectors);
 
-    scanDirectory(mountPath, mountNode, rootLba, rootLength);
+    if (!scanDirectory(mountPath, mountNode, rootLba, rootLength, {})) {
+        // A failed insert must not leave a partial disc visible at the mount point.
+        std::vector<std::shared_ptr<FsNode>> children;
+        mountNode->getAllChildren(children);
+        for (const auto& child : children)
+            child->removeNodeFromParent();
+        klog_fmt("FsIso: invalid directory in %s", imagePath.c_str());
+        return false;
+    }
     return true;
 }

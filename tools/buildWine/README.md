@@ -64,6 +64,15 @@ Revision 20 archives are published under `/v2/20/`; both were verified against
 the release sizes and SHA-256 hashes. The `/v2/latest/` copies still contain
 revision 19, and the hosted legacy UI catalog at `/v2/26R2/filesV2.xml` still
 selects revision 11. Update and verify those locations to complete publication.
+[`probes/cdrom-media-change.c`](probes/cdrom-media-change.c) checks
+volume queries and removal/arrival notifications with an ISO labelled
+`BOXEDWINE_CD`, mounted with `-cdrom <image.iso> d`. Compile it with
+`i686-w64-mingw32-gcc -O2 -o cdrom-media-change.exe tools/buildWine/probes/cdrom-media-change.c -luser32`.
+Run it from a fresh root against each packaged filesystem; it must print
+`CDROM_MEDIA_PASS`. The probe accepts an optional drive letter, for example
+`cdrom-media-change.exe e` with the browser's default CD-ROM drive E: (D: is
+reserved for browser file storage).
+
 Revision 20 fixes partial stream output in both regular WineD3D and the separate
 WebGL PE DLL. The existing WebGL capability limits remain unchanged.
 See the D3D10 regression probe below. Revision 19 remains available for rollback.
