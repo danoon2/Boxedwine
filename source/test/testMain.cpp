@@ -95,6 +95,7 @@ void testHardLinksShareIdentityDataAndXattrs();
 void testStatxEmptyPathUsesOpenFile();
 void testReadOnlyCreatePreservesZipFile();
 void testZipRandomAccess();
+void testDiscImageLayouts();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testHostFolderSyncUpdatesLoadedChildren();
 void testSharedFileMappingGrowthKeepsPagesShared();
@@ -1242,6 +1243,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testGuestWritePreservesPartialProgress, "Test guest write preserves partial progress"},
     {testReadOnlyCreatePreservesZipFile, "Test read-only create preserves ZIP file contents", TEST_ENTRY_SERIAL},
     {testZipRandomAccess, "Test ZIP random access and handle lifetime", TEST_ENTRY_SERIAL},
+    {testDiscImageLayouts, "Test disc image layouts and CUE sheets beside BINs", TEST_ENTRY_SERIAL},
     {testStatxEmptyPathUsesOpenFile, "Test statx empty path uses open file identity", TEST_ENTRY_SERIAL},
     {testXInputValuatorLayout, "Test XInput valuator guest ABI layout"},
 };

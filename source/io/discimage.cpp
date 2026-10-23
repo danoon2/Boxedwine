@@ -32,9 +32,36 @@ DiscImage::~DiscImage() {
     }
 }
 
+// A BIN's CUE sheet usually has the same name. It says where any audio tracks are,
+// which the BIN itself does not.
+static BString cueBeside(const BString& path) {
+    if (!path.endsWith(".bin", true)) {
+        return BString::empty;
+    }
+    BString base = path.substr(0, path.length() - 4);
+    for (const char* extension : { ".cue", ".CUE" }) {
+        BString cue = base + extension;
+        FILE* file = fopen(cue.c_str(), "rb");
+        if (file) {
+            fclose(file);
+            return cue;
+        }
+    }
+    return BString::empty;
+}
+
 std::shared_ptr<DiscImage> DiscImage::open(const BString& path) {
     std::shared_ptr<DiscImage> image = std::make_shared<DiscImage>();
-    bool opened = path.endsWith(".cue", true) ? image->openCue(path) : image->openIso(path);
+    BString cue = path.endsWith(".cue", true) ? path : cueBeside(path);
+    bool opened;
+    if (cue.length()) {
+        if (cue != path) {
+            klog_fmt("DiscImage: reading %s through %s", path.c_str(), cue.c_str());
+        }
+        opened = image->openCue(cue);
+    } else {
+        opened = image->openDataTrack(path);
+    }
     if (!opened || image->tracks.empty()) {
         return nullptr;
     }
@@ -77,18 +104,54 @@ static U64 getFileSize(FILE* file) {
 #endif
 }
 
-bool DiscImage::openIso(const BString& path) {
+namespace {
+
+// how an image of one data track can store its sectors
+struct DataLayout {
+    U32 sectorSize;
+    U32 dataOffset; // of the 2048 bytes of user data
+    U32 mode;
+};
+
+const DataLayout dataLayouts[] = {
+    { DISC_DATA_SECTOR_SIZE, 0, 1 }, // an ISO image
+    { DISC_RAW_SECTOR_SIZE, 16, 1 }, // MODE1/2352: after the sync pattern and header
+    { DISC_RAW_SECTOR_SIZE, 24, 2 }, // MODE2/2352: after the sync pattern, header and form 1 subheader
+    { 2336, 8, 2 },                  // MODE2/2336: after the form 1 subheader
+};
+
+}
+
+bool DiscImage::openDataTrack(const BString& path) {
     FILE* file = fopen(path.c_str(), "rb");
     if (!file) {
         klog_fmt("DiscImage: could not open %s", path.c_str());
         return false;
     }
     files.push_back(file);
-    U32 sectors = (U32)(getFileSize(file) / DISC_DATA_SECTOR_SIZE);
-    extents.push_back({ 0, sectors, 0, 0, DISC_DATA_SECTOR_SIZE, 0, false, false });
+
+    // The layout is the one that finds ISO 9660's primary volume descriptor in sector 16.
+    // If none does, FsIso reports that the image is not ISO 9660.
+    static const U8 primaryVolumeDescriptor[6] = { 1, 'C', 'D', '0', '0', '1' };
+    DataLayout layout = dataLayouts[0];
+    for (const DataLayout& candidate : dataLayouts) {
+        U8 descriptor[sizeof(primaryVolumeDescriptor)];
+        if (seekFile(file, 16ull * candidate.sectorSize + candidate.dataOffset)
+                && fread(descriptor, 1, sizeof(descriptor), file) == sizeof(descriptor)
+                && !memcmp(descriptor, primaryVolumeDescriptor, sizeof(descriptor))) {
+            layout = candidate;
+            break;
+        }
+    }
+    if (layout.sectorSize != DISC_DATA_SECTOR_SIZE) {
+        klog_fmt("DiscImage: %s is a raw image of %d byte mode %d sectors", path.c_str(), layout.sectorSize, layout.mode);
+    }
+    U32 sectors = (U32)(getFileSize(file) / layout.sectorSize);
+    extents.push_back({ 0, sectors, 0, 0, layout.sectorSize, layout.dataOffset, false, false });
 
     DiscTrack track;
     track.number = 1;
+    track.mode = layout.mode;
     track.control = DISC_CONTROL_DATA;
     tracks.push_back(track);
     leadOut = sectors;

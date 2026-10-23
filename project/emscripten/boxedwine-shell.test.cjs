@@ -561,9 +561,14 @@ test('memory and regression launches do not mount persistent storage', () => {
     }
 });
 
+const gdiCommands = [
+    'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
+    'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'renderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
+];
+
 test('registry presets launch the same command as hand-written reg add args', () => {
     const preset = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=PERF_W95.EXE&bpp=8&resolution=640x480&registry=[gdi]');
-    const manual = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=cmd&bpp=8&resolution=640x480&args=/c%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20DirectDrawRenderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20%22PERF_W95.EXE%22');
+    const manual = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=cmd&bpp=8&resolution=640x480&args=/c%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20DirectDrawRenderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20renderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20%22PERF_W95.EXE%22');
     assert.deepEqual(preset.params, manual.params);
 });
 
@@ -574,20 +579,54 @@ test('registry presets stack in order and skip unknown names', () => {
     };
     const expected = [
         'cmd', '/c',
-        'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
-        'reg', 'add', 'HKLM\\Software\\Wine\\Drives', '/v', 'd:', '/d', 'cdrom', '/f', '&&',
+        ...gdiCommands,
+        'reg', 'add', 'HKCU\\Software\\Wine', '/v', 'Version', '/t', 'REG_SZ', '/d', 'win98', '/f', '&&',
         'GAME.EXE', '-x',
     ];
-    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&args=-x&registry=[gdi,cdrom]'), expected);
-    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&args=-x&registry=gdi;cdrom'), expected);
-    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&args=-x&registry=%5Bgdi%3B%20bogus%3BCDROM%5D'), expected);
+    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&args=-x&registry=[gdi,win98]'), expected);
+    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&args=-x&registry=gdi;win98'), expected);
+    assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&args=-x&registry=%5Bgdi%3B%20bogus%3BWIN98%5D'), expected);
     assert.deepEqual(wine('http://localhost/?app=game&p=GAME.EXE&registry=[bogus]'), ['GAME.EXE']);
+});
+
+test('registry version presets set the Windows version Wine reports', () => {
+    for (const version of ['win95', 'win98', 'winme', 'win2k', 'winxp', 'win7', 'win10']) {
+        const { params } = launcher('http://localhost/?app=game&p=GAME.EXE&registry=' + version);
+        assert.deepEqual(params.slice(params.indexOf('/bin/wine') + 1), [
+            'cmd', '/c', 'reg', 'add', 'HKCU\\Software\\Wine', '/v', 'Version', '/t', 'REG_SZ', '/d', version, '/f', '&&', 'GAME.EXE',
+        ]);
+    }
+    const { params } = launcher('http://localhost/?app=game&p=GAME.EXE&registry=cdrom');
+    assert.deepEqual(params.slice(params.indexOf('/bin/wine') + 1), ['GAME.EXE'], 'drive types come from cdrom= now');
+});
+
+test('registry renderer and mouse warp presets match the native UI settings', () => {
+    const wine = (query) => {
+        const { params } = launcher('http://localhost/?app=game&p=GAME.EXE&' + query);
+        return params.slice(params.indexOf('/bin/wine') + 1);
+    };
+    assert.deepEqual(wine('registry=gl'), [
+        'cmd', '/c',
+        'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'opengl', '/f', '&&',
+        'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'renderer', '/t', 'REG_SZ', '/d', 'gl', '/f', '&&',
+        'GAME.EXE',
+    ]);
+    for (const mode of ['enable', 'disable', 'force']) {
+        assert.deepEqual(wine('registry=mousewarp-' + mode), [
+            'cmd', '/c', 'reg', 'add', 'HKCU\\Software\\Wine\\DirectInput', '/v', 'MouseWarpOverride', '/t', 'REG_SZ', '/d', mode, '/f', '&&',
+            'GAME.EXE',
+        ]);
+    }
+    assert.deepEqual(wine('registry=[MouseWarp-Disable;gdi]'), [
+        'cmd', '/c', 'reg', 'add', 'HKCU\\Software\\Wine\\DirectInput', '/v', 'MouseWarpOverride', '/t', 'REG_SZ', '/d', 'disable', '/f', '&&',
+        ...gdiCommands, 'GAME.EXE',
+    ]);
 });
 
 test('registry presets run before a hand-written cmd /c chain', () => {
     const { params } = launcher('http://localhost/?app=game&p=cmd&args=/c%20reg%20add%20X%20%26%26%20GAME.EXE&registry=[gdi]');
     assert.deepEqual(params.slice(params.indexOf('/bin/wine') + 1), [
-        'cmd', '/c', 'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
+        'cmd', '/c', ...gdiCommands,
         'cmd', '/c', 'reg', 'add', 'X', '&&', 'GAME.EXE',
     ]);
 });
@@ -635,4 +674,62 @@ test('desktop launches without archives retain the existing storage', () => {
     const desktop = launcher('http://localhost/?root=TinyCore15Wine11.0');
     assert.equal(desktop.root, '/root');
     assert.equal(desktop.drive, '/d_drive');
+});
+
+// Loads disc 1 of ?cdrom= from a server holding `served` (name -> text), and reports
+// the files it wrote, the names it asked for and the files kept for the disc.
+async function loadDisc(url, served) {
+    const files = new Map();
+    const requests = [];
+    const context = vm.createContext({
+        window: { location: { href: url }, addEventListener() {} },
+        document: { addEventListener() {}, getElementById() { return { style: {}, value: '', addEventListener() {}, getContext() {}, contains() { return false; } }; } },
+        console: { log() {}, error() {}, warn() {} },
+        TextDecoder,
+        FS: {
+            stat(file) { if (!files.has(file)) { throw new Error('ENOENT'); } return {}; },
+            mkdirTree() {},
+            readFile(file) { return files.get(file); },
+            createDataFile(dir, name, bytes) { files.set(dir + name, Buffer.from(bytes)); },
+        },
+        fetch(name) {
+            requests.push(name);
+            const body = served[name];
+            return Promise.resolve({
+                status: body === undefined ? 404 : 200,
+                arrayBuffer: async () => new TextEncoder().encode(body).buffer,
+            });
+        },
+    });
+    vm.runInContext(source, context);
+    context.setConfiguration();
+    const discFiles = JSON.parse(await vm.runInContext('loadCDRomDisc(0).then(() => JSON.stringify(cdromDiscFiles[0]))', context));
+    return { written: [...files.keys()].sort(), requests, discFiles };
+}
+
+const gameCue = 'FILE "game.bin" BINARY\n  TRACK 01 MODE1/2352\n    INDEX 01 00:00:00\n';
+
+test('a BIN is downloaded with the CUE sheet beside it', async () => {
+    const disc = await loadDisc('http://localhost/?cdrom=e:game.bin', { 'game.bin': 'data', 'game.cue': gameCue });
+    assert.deepEqual(disc.written, ['/game.bin', '/game.cue']);
+    assert.deepEqual(disc.discFiles, ['game.bin', 'game.cue']);
+});
+
+test('a BIN without a CUE sheet is downloaded alone', async () => {
+    const disc = await loadDisc('http://localhost/?cdrom=e:game.bin', { 'game.bin': 'data' });
+    assert.deepEqual(disc.written, ['/game.bin']);
+    assert.deepEqual(disc.requests, ['game.cue', 'game.bin']);
+    assert.deepEqual(disc.discFiles, ['game.bin']);
+});
+
+test('a page served for a missing CUE sheet is not taken for one', async () => {
+    const disc = await loadDisc('http://localhost/?cdrom=e:game.bin', { 'game.bin': 'data', 'game.cue': '<html>Not found</html>' });
+    assert.deepEqual(disc.written, ['/game.bin']);
+});
+
+test('an upper case BIN looks for an upper case CUE sheet, other images for none', async () => {
+    const upper = await loadDisc('http://localhost/?cdrom=e:GAME.BIN', { 'GAME.BIN': 'data' });
+    assert.deepEqual(upper.requests, ['GAME.CUE', 'GAME.BIN']);
+    const iso = await loadDisc('http://localhost/?cdrom=e:game.iso', { 'game.iso': 'data' });
+    assert.deepEqual(iso.requests, ['game.iso']);
 });

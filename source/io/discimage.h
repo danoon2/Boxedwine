@@ -45,7 +45,9 @@ class DiscImage {
 public:
     ~DiscImage();
 
-    // .cue files are read as CUE sheets, anything else as an ISO image
+    // .cue files are read as CUE sheets. A .bin with a CUE sheet of the same name beside
+    // it is read through that sheet. Anything else is one data track: an ISO image, or a
+    // raw image of 2352 or 2336 byte sectors, as a BIN without its CUE sheet is.
     static std::shared_ptr<DiscImage> open(const BString& path);
 
     // Reads the user data of data sectors, as a CD-ROM drive does: byteOffset counts
@@ -79,7 +81,7 @@ private:
     std::vector<FILE*> files;
     std::vector<Extent> extents;
 
-    bool openIso(const BString& path);
+    bool openDataTrack(const BString& path);
     bool openCue(const BString& path);
     const Extent* findExtent(U64 sector) const;
     U32 readFile(S32 file, U64 offset, U8* buffer, U32 len);

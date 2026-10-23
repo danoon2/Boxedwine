@@ -16,6 +16,7 @@
 #include "../../io/fsmemnode.h"
 #include "../../io/fsmemopennode.h"
 #include "../../io/fsvirtualopennode.h"
+#include "../../io/discimage.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
 #include "../../emulation/softmmu/soft_ram.h"
 #include "../../util/bnativeheap.h"
@@ -7430,6 +7431,90 @@ void testGuestWritePreservesPartialProgress() {
             testFail("successful cross-page write must return the complete byte count");
         }
     }
+}
+
+
+namespace {
+
+// a disc image of `sectors` data sectors stored as `sectorSize` byte sectors with the user
+// data at `dataOffset`: sector 16 holds the primary volume descriptor, every sector starts
+// its user data with its own number
+std::vector<U8> dataTrackImage(U32 sectors, U32 sectorSize, U32 dataOffset) {
+    std::vector<U8> image((size_t)sectors * sectorSize, 0);
+    for (U32 sector = 0; sector < sectors; sector++) {
+        U8* data = image.data() + (size_t)sector * sectorSize + dataOffset;
+        if (sectorSize == DISC_RAW_SECTOR_SIZE) {
+            U8* raw = image.data() + (size_t)sector * sectorSize;
+            memset(raw + 1, 0xFF, 10); // sync pattern
+        }
+        if (sector == 16) {
+            memcpy(data, "\001CD001", 6);
+        } else {
+            data[0] = (U8)sector;
+        }
+    }
+    return image;
+}
+
+void writeTestFile(const std::filesystem::path& path, const void* data, size_t size) {
+    FILE* file = fopen(path.string().c_str(), "wb");
+    if (file) {
+        fwrite(data, 1, size, file);
+        fclose(file);
+    }
+}
+
+}
+
+void testDiscImageLayouts() {
+    std::error_code error;
+    std::filesystem::path dir = std::filesystem::temp_directory_path(error) / "boxedwine-discimage-test";
+    std::filesystem::remove_all(dir, error);
+    std::filesystem::create_directories(dir, error);
+
+    struct Layout { const char* name; U32 sectorSize; U32 dataOffset; U32 mode; };
+    const Layout layouts[] = {
+        { "iso.iso", 2048, 0, 1 },
+        { "mode1.bin", 2352, 16, 1 },
+        { "mode2.bin", 2352, 24, 2 },
+        { "mode2336.bin", 2336, 8, 2 },
+    };
+    for (const Layout& layout : layouts) {
+        std::vector<U8> image = dataTrackImage(20, layout.sectorSize, layout.dataOffset);
+        writeTestFile(dir / layout.name, image.data(), image.size());
+        std::shared_ptr<DiscImage> disc = DiscImage::open(BString::copy((dir / layout.name).string().c_str()));
+        if (!disc || disc->tracks.size() != 1 || disc->leadOut != 20) {
+            testFail("%s did not open as one data track of 20 sectors", layout.name);
+            continue;
+        }
+        if (disc->tracks[0].audio || disc->tracks[0].mode != layout.mode) {
+            testFail("%s data track has mode %u, expected %u", layout.name, disc->tracks[0].mode, layout.mode);
+        }
+        U8 descriptor[6] = {};
+        U8 sector3 = 0;
+        if (disc->readData(16 * 2048, descriptor, 6) != 6 || memcmp(descriptor, "\001CD001", 6)
+                || disc->readData(3 * 2048, &sector3, 1) != 1 || sector3 != 3) {
+            testFail("%s does not read user data from where its layout keeps it", layout.name);
+        }
+    }
+
+    // A BIN is read through the CUE sheet of the same name, which adds its audio track
+    std::vector<U8> bin = dataTrackImage(20, 2352, 16);
+    bin.resize(bin.size() + 10 * 2352, 0);
+    const char* cue = "FILE \"%s\" BINARY\n  TRACK 01 MODE1/2352\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 01 00:00:20\n";
+    for (const char* name : { "game", "GAME" }) {
+        BString binName = BString::copy(name) + (name[0] == 'g' ? ".bin" : ".BIN");
+        BString cueName = BString::copy(name) + (name[0] == 'g' ? ".cue" : ".CUE");
+        writeTestFile(dir / binName.c_str(), bin.data(), bin.size());
+        char text[256];
+        snprintf(text, sizeof(text), cue, binName.c_str());
+        writeTestFile(dir / cueName.c_str(), text, strlen(text));
+        std::shared_ptr<DiscImage> disc = DiscImage::open(BString::copy((dir / binName.c_str()).string().c_str()));
+        if (!disc || disc->tracks.size() != 2 || !disc->tracks[1].audio || disc->tracks[1].start != 20 || disc->leadOut != 30) {
+            testFail("%s was not read through %s", binName.c_str(), cueName.c_str());
+        }
+    }
+    std::filesystem::remove_all(dir, error);
 }
 
 #endif

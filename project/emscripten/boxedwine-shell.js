@@ -27,11 +27,34 @@
         let DEFAULT_FRAME_SKIP = "0";
         let DEFAULT_AUDIO_FREQ = 11025;
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
-        // registry=[name,...] runs these commands, in order, before the program
+        // registry=[name,...] runs these commands, in order, before the program. A preset
+        // that is a list runs each of its commands.
         let REGISTRY_PRESETS = {
-            gdi: 'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f',
-            cdrom: 'reg add "HKLM\\Software\\Wine\\Drives" /v d: /d cdrom /f'
+            // The renderer, as the native UI sets it: renderer is what newer Wine reads and
+            // DirectDrawRenderer what older Wine read. gdi turns Direct3D off, so DirectDraw
+            // draws through GDI, which helps a few games such as Diablo and StarCraft.
+            // gl, OpenGL, is Wine's default.
+            gdi: [
+                'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f',
+                'reg add "HKCU\\Software\\Wine\\Direct3D" /v renderer /t REG_SZ /d gdi /f'
+            ],
+            gl: [
+                'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d opengl /f',
+                'reg add "HKCU\\Software\\Wine\\Direct3D" /v renderer /t REG_SZ /d gl /f'
+            ]
         };
+        // registry=mousewarp-disable and so on set whether DirectInput moves the pointer back
+        // into the window: enable (Wine's default) while a program holds the mouse
+        // exclusively, disable never, force always
+        ["enable", "disable", "force"].forEach(function(mode) {
+            REGISTRY_PRESETS["mousewarp-" + mode] = 'reg add "HKCU\\Software\\Wine\\DirectInput" /v MouseWarpOverride /t REG_SZ /d ' + mode + ' /f';
+        });
+        // registry=win98 and so on set the Windows version Wine reports. Wine reads the
+        // Version value in HKCU\Software\Wine ahead of the version details winecfg writes
+        // to HKLM. win10 is Wine's default.
+        ["win95", "win98", "winme", "win2k", "winxp", "win7", "win10"].forEach(function(version) {
+            REGISTRY_PRESETS[version] = 'reg add "HKCU\\Software\\Wine" /v Version /t REG_SZ /d ' + version + ' /f';
+        });
         // wine-override=[name,...] adds these to WINEDLLOVERRIDES
         let WINE_OVERRIDE_PRESETS = {
             nomono: "mscoree,mshtml=" // skip the Wine Mono and Gecko installs
@@ -570,9 +593,13 @@
             return values;
         }
         function getRegistryCommands() {
-            return getPresets("registry", REGISTRY_PRESETS).map(function(command) {
-                return splitCommandLine(command);
+            let commands = [];
+            getPresets("registry", REGISTRY_PRESETS).forEach(function(preset) {
+                [].concat(preset).forEach(function(command) {
+                    commands.push(splitCommandLine(command));
+                });
             });
+            return commands;
         }
         function getWorkingDir() {
             var workingDir = getParameter("w");
@@ -804,33 +831,67 @@
             });
             return files;
         }
+        function cdromFileUrl(file) {
+            return Config.locateCDRomBaseUrl + file.split("/").map(encodeURIComponent).join("/");
+        }
+        function writeCDRomFile(file, bytes) {
+            let slash = file.lastIndexOf("/");
+            if (slash > 0) {
+                FS.mkdirTree("/" + file.substring(0, slash));
+            }
+            createFile("/" + file.substring(0, slash + 1), file.substring(slash + 1), bytes);
+        }
         function fetchCDRomFile(file) {
             if (cdromDiscIsLoaded(file)) {
                 return Promise.resolve();
             }
-            let url = Config.locateCDRomBaseUrl + file.split("/").map(encodeURIComponent).join("/");
-            return fetch(url, { method: 'GET' }).then(function(response) {
+            return fetch(cdromFileUrl(file), { method: 'GET' }).then(function(response) {
                 if (response.status !== 200) {
                     throw new Error(file + " status " + response.status);
                 }
                 return response.arrayBuffer();
             }).then(function(buffer) {
-                let slash = file.lastIndexOf("/");
-                if (slash > 0) {
-                    FS.mkdirTree("/" + file.substring(0, slash));
+                writeCDRomFile(file, new Uint8Array(buffer));
+            });
+        }
+        // A BIN's CUE sheet usually has the same name, and Boxedwine reads the BIN through
+        // it when it is there: only the sheet says where any audio tracks are. Resolves to
+        // the sheet, or to null when there is none. Some servers answer with a page for a
+        // file they do not have, so only a sheet that lists files counts.
+        function fetchCueSheetBesideBin(disc) {
+            let bin = disc.match(/^(.*)\.(bin)$/i);
+            if (!bin) {
+                return Promise.resolve(null);
+            }
+            let cue = bin[1] + (bin[2] === "BIN" ? ".CUE" : ".cue");
+            if (cdromDiscIsLoaded(cue)) {
+                return Promise.resolve(cue);
+            }
+            return fetch(cdromFileUrl(cue), { method: 'GET' }).then(function(response) {
+                return response.status === 200 ? response.arrayBuffer() : null;
+            }).then(function(buffer) {
+                if (!buffer || cueSheetFiles(cue, new TextDecoder().decode(buffer)).length == 0) {
+                    return null;
                 }
-                createFile("/" + file.substring(0, slash + 1), file.substring(slash + 1), new Uint8Array(buffer));
+                writeCDRomFile(cue, new Uint8Array(buffer));
+                return cue;
+            }).catch(function() {
+                return null;
             });
         }
         function loadCDRomDisc(index) {
             let disc = Config.cdromISOFiles[index];
-            if (!/\.cue$/i.test(disc)) {
-                cdromDiscFiles[index] = [disc];
-                return fetchCDRomFile(disc);
-            }
-            return fetchCDRomFile(disc).then(function() {
-                let files = cueSheetFiles(disc, new TextDecoder().decode(FS.readFile("/" + disc)));
-                cdromDiscFiles[index] = [disc].concat(files);
+            let sheet = /\.cue$/i.test(disc) ? fetchCDRomFile(disc).then(function() { return disc; }) : fetchCueSheetBesideBin(disc);
+            return sheet.then(function(cue) {
+                if (!cue) {
+                    cdromDiscFiles[index] = [disc];
+                    return fetchCDRomFile(disc);
+                }
+                let files = cueSheetFiles(cue, new TextDecoder().decode(FS.readFile("/" + cue)));
+                // a BIN read through its CUE sheet is normally one of the files it lists
+                cdromDiscFiles[index] = [disc, cue].concat(files).filter(function(file, i, all) {
+                    return all.indexOf(file) === i;
+                });
                 // one at a time, so only one download is buffered at once
                 return files.reduce(function(previous, file) {
                     return previous.then(function() { return fetchCDRomFile(file); });

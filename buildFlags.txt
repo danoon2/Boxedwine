@@ -36,18 +36,23 @@ settings:
  - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system.
  	An overlay's files replace the same files in the root zip.
  - set the initial emulated screen size via ?resolution=WxH. Ie resolution=640x480.
- - run registry presets before the program via ?registry=[gdi,cdrom]. Ie app=PERF_W95.EXE&p=PERF_W95.EXE&bpp=8&registry=[gdi]
- 	The brackets are optional and names can be separated by , or ; so registry=gdi;cdrom also works. Unknown names are skipped.
+ - run registry presets before the program via ?registry=[gdi,win98]. Ie app=PERF_W95.EXE&p=PERF_W95.EXE&bpp=8&registry=[gdi]
+ 	The brackets are optional and names can be separated by , or ; so registry=gdi;win98 also works. Unknown names are skipped.
  	The presets run in order as cmd /c reg add ... && <program>. They also work with a hand-written p=cmd&args=/c ... chain.
- 	gdi   = reg add "HKCU\Software\Wine\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f
- 	cdrom = reg add "HKLM\Software\Wine\Drives" /v d: /d cdrom /f
+ 	gdi   = reg add "HKCU\Software\Wine\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f && reg add "HKCU\Software\Wine\Direct3D" /v renderer /t REG_SZ /d gdi /f
+ 		turns Direct3D off so DirectDraw draws through GDI, which helps a few games such as Diablo and StarCraft.
+ 	gl    = the same with opengl and gl: OpenGL, Wine's default renderer.
+ 	mousewarp-enable, mousewarp-disable, mousewarp-force = reg add "HKCU\Software\Wine\DirectInput" /v MouseWarpOverride /t REG_SZ /d <enable|disable|force> /f
+ 		sets whether DirectInput moves the pointer back into the window: enable (Wine's default) while a program holds the mouse exclusively, disable never, force always.
+ 	win95, win98, winme, win2k, winxp, win7, win10 = reg add "HKCU\Software\Wine" /v Version /t REG_SZ /d <name> /f
+ 		sets the Windows version Wine reports to programs. win10 is Wine's default.
  	Add presets to REGISTRY_PRESETS in boxedwine-shell.js. Registry changes persist in the game's IndexedDB storage.
  - add Wine dll override presets via ?wine-override=[nomono]. They are added after Boxedwine's built-in WebGL WINEDLLOVERRIDES
  	(Wine uses the last entry for a dll) and merged with any WINEDLLOVERRIDES passed via ?env=.
  	Accepts the same list forms as registry, ie wine-override=nomono.
  	nomono = mscoree,mshtml= (skip the Wine Mono and Gecko installs)
  	Add presets to WINE_OVERRIDE_PRESETS in boxedwine-shell.js.
- - mount a CD-ROM or DVD image via ?cdrom=e:game.iso, or a CUE sheet via ?cdrom=e:game.cue (its BIN or WAVE files are downloaded with it). The drive letter is optional and defaults to e:. For a game on several discs list them all, i.e. cdrom=e:disc1.iso;disc2.iso. Disc 1 is downloaded at start and each other disc when it is inserted. To change discs press Eject, then pick the disc from the list next to it.
+ - mount a CD-ROM or DVD image via ?cdrom=e:game.iso, or a CUE sheet via ?cdrom=e:game.cue (its BIN or WAVE files are downloaded with it). ?cdrom=e:game.bin also works: game.cue is downloaded with it when the server has one, and a BIN without one is read as a single data track, without audio. The drive letter is optional and defaults to e:. For a game on several discs list them all, i.e. cdrom=e:disc1.iso;disc2.iso. Disc 1 is downloaded at start and each other disc when it is inserted. To change discs press Eject, then pick the disc from the list next to it.
  - in p and w, c:/ can be used as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/)
 Some simplifications are possible:
 boxedwine.html?p=notepad - run notepad in the root fs
