@@ -20,7 +20,7 @@
 #define __KNATIVEWINDOW_SDL_H__
 
 #include "knativeinput.h"
-#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC) || (defined(__linux__) && !defined(__EMSCRIPTEN__))
 #include "openGLViewport.h"
 #endif
 
@@ -74,7 +74,7 @@ public:
 
 private:
 
-#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC) || (defined(__linux__) && !defined(__EMSCRIPTEN__))
     OpenGLViewport openGLViewport;
     BOXEDWINE_MUTEX openGLViewportMutex;
 #endif

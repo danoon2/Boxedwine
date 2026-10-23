@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test native-runtime native-ui test-ui test-native-input deb
+.PHONY: default all clean release test native-runtime native-ui test-ui test-native-input test-native-gl deb
 
 default all: release
 
@@ -37,6 +37,11 @@ native-ui: native-runtime
 
 test-native-input: native-runtime
 	@$(MAKE) -f makefile -f ../../tools/input/mouse_capture_test.mk native-input-test
+
+# Uses a real SDL/OpenGL driver; run in a desktop session.
+test-native-gl: native-runtime
+	$(CXX) -std=c++20 -Wall ../../tools/input/test_linux_gl_fullscreen.cpp ../../platform/linux/linuxOpenGL.cpp $$(sdl2-config --cflags --libs) -lGL -o Build/Native/test-linux-gl-fullscreen
+	Build/Native/test-linux-gl-fullscreen
 
 # Build on a Debian/Ubuntu-family host of the desired architecture.
 # DEB_ARGS may set --version or --revision and --output.
