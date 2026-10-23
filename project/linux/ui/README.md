@@ -239,6 +239,12 @@ frames before closing, and finishes closing before the launch callback runs.
 - While a game captures the mouse, Ctrl+Alt+G releases it. Click inside the game
   or press Ctrl+Alt+G again to recapture it. The game window title shows the hint;
   switching away also releases the mouse.
+- Need for Speed: Hot Pursuit 2 demo defaults to one CPU, including existing
+  demo installations, while preserving explicit CPU settings. Its movie loader
+  publishes a packet's byte count before its pointer, so another guest thread
+  can read the initial `0xbeefbeef` pointer and crash. The intro remains enabled;
+  Linux now applies CPU affinity to the correct native thread. Installers,
+  alternate executables, and Wine tools do not receive this default.
 - Installer file, installer folder, portable folder, and file-drop import.
 - Choose an installed program after setup; run another program in the same
   Windows environment, including an external EXE/MSI after folder-access consent.

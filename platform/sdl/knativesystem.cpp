@@ -99,6 +99,12 @@ bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
         klog_fmt("SDL_Init Error: %s", SDL_GetError());
         return false;
     }
+#if defined(__linux__) && defined(BOXEDWINE_NATIVE_RUNTIME)
+    // SDL enables host text input by default. The guest receives physical key
+    // events instead; leaving an IME active lets Plasma's hold-for-accents
+    // picker intercept game controls. The native launcher is a separate process.
+    SDL_StopTextInput();
+#endif
 #if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME)
     MacPlatformSetRuntimeDockIcon();
 #endif

@@ -24,7 +24,7 @@ from . import demos, dialogs, desktop
 from .imports import CollectionStore, CollectionIcons, valid_url
 from .files import Work, Cancelled, beneath, no_links, storage_size
 from .library import Library, DRIVE_C, built_in, now
-from .packages import Resources, WineChecks, catalog_files, ensure_wine, import_wine
+from .packages import Resources, WineChecks, catalog_files, ensure_wine, ensure_current_wine, import_wine
 from .runtime import Session, WINE_TOOLS, apply_configuration, build_arguments, default_emulator, refresh_configuration
 
 
@@ -400,6 +400,7 @@ class Window(Adw.ApplicationWindow):
     def section_selected(self, _, item):
         if item is None:
             return
+        self.scroll_context = None
         self.cancel_storage()
         self.view = item.title
         self.catalog = self.collections.recipes(self.view, self.default_catalog) if self.is_collection else self.default_catalog
@@ -504,6 +505,61 @@ class Window(Adw.ApplicationWindow):
     def refresh_content(self):
         if not hasattr(self, 'document'):
             return
+        context = (self.view, self.query)
+        pending = getattr(self, 'scroll_restore', None)
+        if pending and pending['tick']:
+            self.scroll.remove_tick_callback(pending['tick'])
+        same_context = context == getattr(self, 'scroll_context', None)
+        position = (pending['position'] if pending else self.scroll.get_vadjustment().get_value()) if same_context else 0
+        target = pending.get('target') if pending and same_context else None
+        self.scroll_context = context
+        self.rebuild_content()
+        viewport = self.scroll.get_child()
+        if isinstance(viewport, Gtk.Viewport):
+            viewport.set_scroll_to_focus(False)
+        self.queue_scroll(position, target)
+
+    def queue_scroll(self, position, target=None):
+        # Replacing the viewport child resets its adjustment. Restore only after
+        # GTK has allocated the new grid, retaining the target across rapid
+        # launch/status refreshes that arrive before the next frame.
+        state = {'position': position, 'target': target, 'frames': 0}
+        def apply():
+            if self.scroll_restore is not state:
+                return GLib.SOURCE_REMOVE
+            adjustment = self.scroll.get_vadjustment()
+            adjustment.set_value(position)
+            card = self.cards.get(target) if target and self.selected == target else None
+            if card:
+                valid, bounds = card.compute_bounds(self.scroll)
+                if valid:
+                    top = adjustment.get_value() + bounds.get_y()
+                    adjustment.clamp_page(top, top + bounds.get_height())
+            viewport = self.scroll.get_child()
+            if isinstance(viewport, Gtk.Viewport):
+                viewport.set_scroll_to_focus(True)
+            self.scroll_restore = None
+            return GLib.SOURCE_REMOVE
+        def restore(scroll, clock):
+            state['frames'] += 1
+            if state['frames'] < 2:
+                return GLib.SOURCE_CONTINUE
+            # Tick callbacks precede allocation. Apply in idle after this frame's
+            # layout so bounds and the adjustment describe the rebuilt grid.
+            state['tick'] = None
+            GLib.idle_add(apply)
+            return GLib.SOURCE_REMOVE
+        state['tick'] = self.scroll.add_tick_callback(restore)
+        self.scroll_restore = state
+
+    def scroll_to_card(self, identifier):
+        pending = getattr(self, 'scroll_restore', None)
+        position = pending['position'] if pending else self.scroll.get_vadjustment().get_value()
+        if pending and pending['tick']:
+            self.scroll.remove_tick_callback(pending['tick'])
+        self.queue_scroll(position, identifier)
+
+    def rebuild_content(self):
         self.cancel_card_reveal()
         self.cards = {}
         if self.view == 'Recovery':
@@ -762,6 +818,7 @@ class Window(Adw.ApplicationWindow):
         if reveal:
             self.cancel_card_reveal()
             self.details_split.set_show_sidebar(True)
+            self.scroll_to_card(app['id'])
         box = self.details_content(app)
         removed = next((r for r in self.document['removedApps'] if r['app']['id'] == app['id']), None)
         if removed:
@@ -827,9 +884,11 @@ class Window(Adw.ApplicationWindow):
         dialogs.row(details, 'App download', urllib.parse.urlsplit(recipe['url']).hostname)
         box.append(details)
         if recipe['help']:
-            expander = Gtk.Expander(label='About this app')
-            text = Gtk.Label(label=recipe['help'], wrap=True, xalign=0, selectable=True, margin_top=12)
-            expander.set_child(text); box.append(expander)
+            about = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+            heading = Gtk.Label(label='About this app', xalign=0)
+            heading.add_css_class('heading'); about.append(heading)
+            about.append(Gtk.Label(label=recipe['help'], wrap=True, xalign=0, selectable=True))
+            box.append(about)
 
     def reveal_app(self, app):
         active = self.find_app(app['id'])
@@ -983,12 +1042,11 @@ class Window(Adw.ApplicationWindow):
     def with_wine(self, callback):
         if not self.can_modify():
             return
-        wine = self.library.default_wine()
-        if wine and self.library.package_path(wine).is_file():
-            self.perform('Checking Windows support', lambda work: self.wine_checks.verify(self.library.package_path(wine), wine, work), callback)
-            return
         release = self.resources.wines()[0]
         ref = release['reference']
+        if self.library.package_path(ref).is_file():
+            self.perform('Checking Windows support', lambda work: ensure_current_wine(self.library, self.resources, work), callback)
+            return
         dialogs.confirm(self, 'Set Up Windows Support', f"Download Wine {ref['wineVersion']} ({ref['bytes'] / 1024**2:.0f} MB) from boxedwine.org? It will be shared by your apps.",
                         'Download', lambda: self.setup_wine(release, callback))
 

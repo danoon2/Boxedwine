@@ -428,13 +428,15 @@ def settings(owner):
     immediate.connect('notify::active', guarded(owner, save_delete))
     action_row(owner, storage, 'Unused Wine packages', 'Reclaim packages no app, recovery operation, or default setting needs.', 'Clean Up',
                lambda: owner.clean_packages())
-    support = group(general, 'Windows Support', 'Wine packages are shared between apps. Each app keeps its selected package when the default changes.')
-    current = owner.library.default_wine()
-    row(support, 'Default Wine version', 'Wine ' + current['wineVersion'] + ' · Filesystem ' + current['filesystemVersion'] if current else 'Not installed')
-    for release in owner.resources.wines():
+    support = group(general, 'Windows Support', 'New apps use the current release. Existing apps keep their selected Wine package.')
+    releases = owner.resources.wines()
+    current = releases[0]['reference']
+    installed = owner.library.package_path(current).is_file()
+    row(support, 'Current release for new apps', f"Wine {current['wineVersion']} · Filesystem {current['filesystemVersion']} · " + ('Installed' if installed else 'Not installed'))
+    for release in releases:
         ref = release['reference']
         action_row(owner, support, 'Wine ' + ref['wineVersion'], f"Filesystem {ref['filesystemVersion']} · {ref['bytes'] / 1024**2:.0f} MB · SHA-256 verified",
-                   'Check Again' if current == ref else 'Set Up', lambda r=release: (dialog.close(), owner.setup_wine(r)))
+                   'Check Again' if owner.library.package_path(ref).is_file() else 'Set Up', lambda r=release: (dialog.close(), owner.setup_wine(r)))
     action_row(owner, support, 'Use a downloaded package', 'Import the matching release ZIP for offline setup.', 'Choose ZIP…',
                lambda: choose_file(owner, 'Choose Wine Package', lambda p: (dialog.close(), owner.import_wine(p)), patterns=['*.zip']))
     dialog.present(owner)

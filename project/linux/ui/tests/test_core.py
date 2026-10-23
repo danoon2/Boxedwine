@@ -18,10 +18,10 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from boxedwine.files import Work, Cancelled, atomic_json, beneath, copy_tree, digest, extract_zip, inventory
 from boxedwine.library import Library, DRIVE_C, new_app
-from boxedwine.packages import Resources, WineChecks, import_wine, validate_wine, download, trusted_url
+from boxedwine.packages import Resources, WineChecks, import_wine, validate_wine, download, trusted_url, ensure_current_wine
 from boxedwine.runtime import (Session, WindowMarker, build_arguments, configuration_script, read_configuration,
                               run_configuration, validate_overrides, apply_configuration, WINE_TOOLS, refresh_configuration, read_graphics_settings)
-from boxedwine.demos import load_catalog, configure_cnc, install as install_demo
+from boxedwine.demos import load_catalog, configure_cnc, install as install_demo, installer_path
 from boxedwine.icons import Reader
 
 
@@ -54,6 +54,45 @@ class CoreTests(unittest.TestCase):
         (source / 'uninstall.exe').write_bytes(b'MZ uninstaller')
         (source / 'save.dat').write_bytes(b'saved progress')
         return self.library.import_app(source, 'folder', self.wine, Work())
+
+    def current_release(self):
+        source = self.directory / 'current.zip'
+        with zipfile.ZipFile(self.wine_source) as old, zipfile.ZipFile(source, 'w') as new:
+            for entry in old.infolist():
+                new.writestr(entry, b'20' if entry.filename == 'version.txt' else old.read(entry))
+        wine = validate_wine(source)
+        resources = unittest.mock.Mock()
+        resources.wines.return_value = [dict(url='https://boxedwine.org/v2/20/TinyCore15Wine11.0.zip', reference=wine)]
+        return source, wine, resources
+
+    def test_new_builtins_use_installed_current_release_and_keep_existing_apps(self):
+        existing = self.library.add_builtin('notepad', self.wine, Work())
+        source, current, resources = self.current_release()
+        import_wine(self.library, source, Work())
+        with patch('boxedwine.packages.download') as fetch:
+            selected = ensure_current_wine(self.library, resources, Work())
+        fetch.assert_not_called()
+        added = self.library.add_builtin('minesweeper', selected, Work())
+        self.assertEqual(added['winePackage'], current)
+        self.assertEqual(self.library.default_wine(), current)
+        saved = next(a for a in self.library.load()['apps'] if a['id'] == existing['id'])
+        self.assertEqual(saved['winePackage'], self.wine)
+
+    def test_missing_current_release_downloads_instead_of_using_old_default(self):
+        source, current, resources = self.current_release()
+        def fetch(url, size, sha256, destination, work):
+            destination.write_bytes(source.read_bytes())
+        with patch('boxedwine.packages.download', side_effect=fetch) as download_current:
+            self.assertEqual(ensure_current_wine(self.library, resources, Work()), current)
+        download_current.assert_called_once()
+        self.assertEqual(self.library.default_wine(), current)
+
+    def test_failed_current_release_setup_preserves_old_default(self):
+        _, _, resources = self.current_release()
+        with patch('boxedwine.packages.download', side_effect=OSError('offline')):
+            with self.assertRaisesRegex(OSError, 'offline'):
+                ensure_current_wine(self.library, resources, Work())
+        self.assertEqual(self.library.default_wine(), self.wine)
 
     def test_saved_engine_path_is_ignored_and_removed_when_settings_are_saved(self):
         path = self.library.directory / 'linux-settings.json'
@@ -319,6 +358,73 @@ class CoreTests(unittest.TestCase):
         self.library.prune_wine()
         self.assertFalse(unused.exists()); self.assertTrue(self.library.package_path(self.wine).exists())
 
+
+    def test_nfs_demo_plays_intro_on_one_cpu_without_changing_saved_arguments(self):
+        app = self.portable()
+        original = beneath(self.library.root(app), app['executable'])
+        game = original.with_name('NFSHP2Demo.exe'); original.rename(game)
+        app['executable'] = game.relative_to(self.library.root(app)).as_posix()
+        app['demo'] = dict(id='need-for-speed-hot-pursuit-2')
+        app['arguments'] = ['+nomusic', 'two words']
+        self.library.update(app)
+        wine = self.library.wine_path(app)
+        arguments = build_arguments(self.library, app, wine)
+        self.assertEqual(arguments[-3:], ['/' + app['executable'], '+nomusic', 'two words'])
+        self.assertEqual(arguments[arguments.index('-cpuAffinity') + 1], '1')
+        self.assertNotIn('+nomovie', arguments)
+        self.assertEqual(self.library.load()['apps'][0]['arguments'], ['+nomusic', 'two words'])
+        app['demoSettings'] = {'cpuCount': 2}
+        arguments = build_arguments(self.library, app, wine)
+        self.assertEqual(arguments.count('-cpuAffinity'), 1)
+        self.assertEqual(arguments[arguments.index('-cpuAffinity') + 1], '2')
+        app['boxedwineArguments'] = ['-cpuAffinity', '3']
+        arguments = build_arguments(self.library, app, wine)
+        self.assertEqual(arguments[max(i for i, a in enumerate(arguments) if a == '-cpuAffinity') + 1], '3')
+
+    def test_nfs_cpu_default_is_limited_to_the_demo_game_launch(self):
+        app = self.portable()
+        original = beneath(self.library.root(app), app['executable'])
+        game = original.with_name('NFSHP2Demo.exe'); original.rename(game)
+        app['executable'] = game.relative_to(self.library.root(app)).as_posix()
+        wine = self.library.wine_path(app)
+        # A manually imported or unrelated game must keep its startup behavior.
+        self.assertNotIn('-cpuAffinity', build_arguments(self.library, app, wine))
+        app['demo'] = dict(id='need-for-speed-hot-pursuit-2')
+        installer = self.library.path(app) / 'Installer/setup.exe'
+        installer.parent.mkdir(); installer.write_bytes(b'MZ setup')
+        app['installer'] = 'Installer/setup.exe'
+        external = self.directory / 'external.exe'; external.write_bytes(b'MZ external')
+        for mode in (dict(installing=True), dict(alternate=app['executable']), dict(external=external), dict(tool='winecfg')):
+            self.assertNotIn('-cpuAffinity', build_arguments(self.library, app, wine, **mode))
+        app['executable'] = next(p for p in self.library.programs(app) if p.endswith('uninstall.exe'))
+        self.assertNotIn('-cpuAffinity', build_arguments(self.library, app, wine))
+
+    def test_demo_installer_path_rejects_ambiguous_missing_and_unsafe_paths(self):
+        payload = self.directory / 'payload'; payload.mkdir()
+        (payload / 'setup.exe').write_bytes(b'MZ')
+        (payload / 'SETUP.EXE').write_bytes(b'MZ')
+        for relative in ('SETUP.EXE', 'missing.exe', '../setup.exe'):
+            with self.assertRaises(ValueError):
+                installer_path(payload, relative)
+
+    def test_demo_installer_uses_archive_case_for_catalog_path(self):
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, 'w') as archive:
+            archive.writestr('Disk1/setup.exe', b'MZ installer')
+        data = payload.getvalue()
+        xml = ('<XML schemaVersion="8" release="test"><Demo><ID>f16</ID><Name>F-16</Name><FileSHA256>' +
+               'a' * 64 + '</FileSHA256><ShortcutExe>F16.exe</ShortcutExe><FileURL>https://boxedwine.org/F16.zip</FileURL>' +
+               f'<FileSizeBytes>{len(data)}</FileSizeBytes><InstallType>Installer</InstallType>' +
+               '<InstallExe>DISK1/SETUP.EXE</InstallExe><WineVersion>11.0</WineVersion></Demo></XML>')
+        recipe = load_catalog(xml.encode())[0]
+        def fetch(url, size, checksum, target, work, allow_external=False):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        with patch('boxedwine.demos.download', side_effect=fetch):
+            app = install_demo(self.library, recipe, self.wine, Work())
+        self.assertEqual(app['installer'], 'Installer/Disk1/setup.exe')
+        self.assertTrue((self.library.path(app) / app['installer']).is_file())
+        self.assertEqual(self.library.load()['apps'][0]['installer'], app['installer'])
 
     def test_demo_dll_overrides_survive_install_and_launch(self):
         overrides = 'cpuz136_x32.sys,cpuz136_x64.sys,GPUZ.sys='

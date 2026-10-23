@@ -130,6 +130,13 @@ def build_arguments(library, app, wine, installing=False, alternate=None, extern
             raise ValueError('The selected Windows program is missing. Choose a program in App Settings.')
         guest = '/' + executable
         cwd = guest.rsplit('/', 1)[0]
+        # The HP2 demo publishes a movie packet's byte count before its pointer.
+        # Keep its guest threads on one CPU; the intro remains enabled. Explicit
+        # recipe/user CPU settings still win, and saved app settings stay intact.
+        if (alternate is None and (app.get('demo') or {}).get('id') == 'need-for-speed-hot-pursuit-2'
+                and Path(guest).name.casefold() == 'nfshp2demo.exe'
+                and (app.get('demoSettings') or {}).get('cpuCount') is None):
+            result += ['-cpuAffinity', '1']
         result += demo_arguments(app, cwd) + extra
     result += ['-w', cwd, '/bin/wine']
     if guest.lower().endswith('.msi'):
