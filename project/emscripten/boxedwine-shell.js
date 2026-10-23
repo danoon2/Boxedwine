@@ -27,20 +27,45 @@
         let DEFAULT_FRAME_SKIP = "0";
         let DEFAULT_AUDIO_FREQ = 11025;
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
-        // registry=[name,...] runs these commands, in order, before the program
+        // registry=[name,...] runs these commands, in order, before the program. A preset
+        // that is a list runs each of its commands.
         let REGISTRY_PRESETS = {
-            gdi: 'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f',
-            cdrom: 'reg add "HKLM\\Software\\Wine\\Drives" /v d: /d cdrom /f'
+            // The renderer, as the native UI sets it: renderer is what newer Wine reads and
+            // DirectDrawRenderer what older Wine read. gdi turns Direct3D off, so DirectDraw
+            // draws through GDI, which helps a few games such as Diablo and StarCraft.
+            // gl, OpenGL, is Wine's default.
+            gdi: [
+                'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f',
+                'reg add "HKCU\\Software\\Wine\\Direct3D" /v renderer /t REG_SZ /d gdi /f'
+            ],
+            gl: [
+                'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d opengl /f',
+                'reg add "HKCU\\Software\\Wine\\Direct3D" /v renderer /t REG_SZ /d gl /f'
+            ]
         };
+        // registry=mousewarp-disable and so on set whether DirectInput moves the pointer back
+        // into the window: enable (Wine's default) while a program holds the mouse
+        // exclusively, disable never, force always
+        ["enable", "disable", "force"].forEach(function(mode) {
+            REGISTRY_PRESETS["mousewarp-" + mode] = 'reg add "HKCU\\Software\\Wine\\DirectInput" /v MouseWarpOverride /t REG_SZ /d ' + mode + ' /f';
+        });
+        // registry=win98 and so on set the Windows version Wine reports. Wine reads the
+        // Version value in HKCU\Software\Wine ahead of the version details winecfg writes
+        // to HKLM. win10 is Wine's default.
+        ["win95", "win98", "winme", "win2k", "winxp", "win7", "win10"].forEach(function(version) {
+            REGISTRY_PRESETS[version] = 'reg add "HKCU\\Software\\Wine" /v Version /t REG_SZ /d ' + version + ' /f';
+        });
         // wine-override=[name,...] adds these to WINEDLLOVERRIDES
         let WINE_OVERRIDE_PRESETS = {
             nomono: "mscoree,mshtml=" // skip the Wine Mono and Gecko installs
         };
+        let DEFAULT_CDROM_DRIVE = "e";
         //params
         let Config = {};
         Config.locateRootBaseUrl = ""; // ie "assets/"
         Config.locateAppBaseUrl = "";
         Config.locateOverlayBaseUrl = "";
+        Config.locateCDRomBaseUrl = "";
         Config.urlParams = "";
         Config.storageMode = STORAGE_INDEXED_DB;
         Config.rootStorageMode = "";
@@ -137,6 +162,9 @@
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
+            let cdrom = getCDRom("cdrom"); //MANUAL:{files: ["disc1.iso", "disc2.iso"], drive: "e"}
+            Config.cdromISOFiles = cdrom.files;
+            Config.cdromDrive = cdrom.drive;
             Config.appPayload = getPayload("app-payload"); 
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
@@ -565,9 +593,13 @@
             return values;
         }
         function getRegistryCommands() {
-            return getPresets("registry", REGISTRY_PRESETS).map(function(command) {
-                return splitCommandLine(command);
+            let commands = [];
+            getPresets("registry", REGISTRY_PRESETS).forEach(function(preset) {
+                [].concat(preset).forEach(function(command) {
+                    commands.push(splitCommandLine(command));
+                });
             });
+            return commands;
         }
         function getWorkingDir() {
             var workingDir = getParameter("w");
@@ -606,6 +638,38 @@
                 console.log("running program directly as Linux executable");
             }
             return result;
+        }
+        // cdrom=e:game.iso mounts game.iso as drive e:, cdrom=game.iso uses DEFAULT_CDROM_DRIVE.
+        // cdrom=e:disc1.iso;disc2.iso lists the discs of a multi-disc game, which are
+        // swapped in the one drive.
+        function getCDRom(param) {
+            var value =  getParameter(param);
+            var drive = "";
+            var files = [];
+            if(!allowParameterOverride() || value===""){
+                console.log("not setting " + param + " ISO file");
+            }else{
+                decodeUrlValue(value).split(";").forEach(function(item) {
+                    item = item.trim();
+                    let letter = item.match(/^([a-z]):(.+)$/i);
+                    if (letter) {
+                        if (drive !== "" && drive !== letter[1].toLowerCase()) {
+                            console.log("ignoring drive " + letter[1] + ": for " + letter[2] + ", every disc goes in drive " + drive + ":");
+                        } else {
+                            drive = letter[1].toLowerCase();
+                        }
+                        item = letter[2];
+                    }
+                    if (item.length > 0) {
+                        files.push(item);
+                    }
+                });
+                if (drive === "") {
+                    drive = DEFAULT_CDROM_DRIVE;
+                }
+                console.log("setting " + param + " ISO file(s) to: "+files.join(", ")+" in drive "+drive+":");
+            }
+            return { files: files, drive: drive || DEFAULT_CDROM_DRIVE };
         }
         function getAppZipFile(param) {
 
@@ -740,6 +804,203 @@
                 callback();
             }
         }
+        // Only disc 1 is loaded before starting. Disc images are large, so each of the
+        // others is fetched when it is inserted and the one it replaces is deleted.
+        function buildCDRomFileSystems(callback) {
+			if(Config.cdromISOFiles.length > 0){
+				loadCDRomDisc(0).then(callback).catch(function(error) {
+					console.log("Unable to load disc 1: " + error);
+					callback();
+				});
+            }else{
+                callback();
+            }
+        }
+        // The files of each disc that has been loaded: an ISO image, or a CUE sheet and
+        // the BIN or WAVE files it lists
+        var cdromDiscFiles = [];
+        function cueSheetFiles(cue, text) {
+            let dir = cue.substring(0, cue.lastIndexOf("/") + 1);
+            let files = [];
+            text.split(/\r?\n/).forEach(function(line) {
+                let match = line.match(/^\s*FILE\s+(?:"([^"]*)"|(\S+))/i);
+                if (match) {
+                    // relative to the CUE sheet, as Boxedwine opens them
+                    files.push(dir + (match[1] !== undefined ? match[1] : match[2]).replace(/\\/g, "/"));
+                }
+            });
+            return files;
+        }
+        function cdromFileUrl(file) {
+            return Config.locateCDRomBaseUrl + file.split("/").map(encodeURIComponent).join("/");
+        }
+        function writeCDRomFile(file, bytes) {
+            let slash = file.lastIndexOf("/");
+            if (slash > 0) {
+                FS.mkdirTree("/" + file.substring(0, slash));
+            }
+            createFile("/" + file.substring(0, slash + 1), file.substring(slash + 1), bytes);
+        }
+        function fetchCDRomFile(file) {
+            if (cdromDiscIsLoaded(file)) {
+                return Promise.resolve();
+            }
+            return fetch(cdromFileUrl(file), { method: 'GET' }).then(function(response) {
+                if (response.status !== 200) {
+                    throw new Error(file + " status " + response.status);
+                }
+                return response.arrayBuffer();
+            }).then(function(buffer) {
+                writeCDRomFile(file, new Uint8Array(buffer));
+            });
+        }
+        // A BIN's CUE sheet usually has the same name, and Boxedwine reads the BIN through
+        // it when it is there: only the sheet says where any audio tracks are. Resolves to
+        // the sheet, or to null when there is none. Some servers answer with a page for a
+        // file they do not have, so only a sheet that lists files counts.
+        function fetchCueSheetBesideBin(disc) {
+            let bin = disc.match(/^(.*)\.(bin)$/i);
+            if (!bin) {
+                return Promise.resolve(null);
+            }
+            let cue = bin[1] + (bin[2] === "BIN" ? ".CUE" : ".cue");
+            if (cdromDiscIsLoaded(cue)) {
+                return Promise.resolve(cue);
+            }
+            return fetch(cdromFileUrl(cue), { method: 'GET' }).then(function(response) {
+                return response.status === 200 ? response.arrayBuffer() : null;
+            }).then(function(buffer) {
+                if (!buffer || cueSheetFiles(cue, new TextDecoder().decode(buffer)).length == 0) {
+                    return null;
+                }
+                writeCDRomFile(cue, new Uint8Array(buffer));
+                return cue;
+            }).catch(function() {
+                return null;
+            });
+        }
+        function loadCDRomDisc(index) {
+            let disc = Config.cdromISOFiles[index];
+            let sheet = /\.cue$/i.test(disc) ? fetchCDRomFile(disc).then(function() { return disc; }) : fetchCueSheetBesideBin(disc);
+            return sheet.then(function(cue) {
+                if (!cue) {
+                    cdromDiscFiles[index] = [disc];
+                    return fetchCDRomFile(disc);
+                }
+                let files = cueSheetFiles(cue, new TextDecoder().decode(FS.readFile("/" + cue)));
+                // a BIN read through its CUE sheet is normally one of the files it lists
+                cdromDiscFiles[index] = [disc, cue].concat(files).filter(function(file, i, all) {
+                    return all.indexOf(file) === i;
+                });
+                // one at a time, so only one download is buffered at once
+                return files.reduce(function(previous, file) {
+                    return previous.then(function() { return fetchCDRomFile(file); });
+                }, Promise.resolve());
+            });
+        }
+        var cdromCurrent = 0;    // disc in the drive, -1 while it is empty
+        var cdromLoading = -1;   // disc being downloaded or inserted
+        var cdromReady = false;  // Boxedwine has reported the drive's state
+        function cdromDiscIsLoaded(file) {
+            try {
+                FS.stat("/" + file);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        function setupCDRomControls() {
+            if (Config.cdromISOFiles.length == 0) {
+                return;
+            }
+            let select = document.getElementById("cdromdisc");
+            if (select) {
+                select.innerHTML = "";
+                let empty = document.createElement("option");
+                empty.value = "-1";
+                empty.textContent = "No disc in " + Config.cdromDrive.toUpperCase() + ":";
+                select.appendChild(empty);
+                Config.cdromISOFiles.forEach(function(file, index) {
+                    let option = document.createElement("option");
+                    option.value = "" + index;
+                    option.textContent = "Disc " + (index + 1) + ": " + file;
+                    select.appendChild(option);
+                });
+                select.style.display = "";
+            }
+            let eject = document.getElementById("cdromejectbtn");
+            if (eject) {
+                eject.style.display = "";
+            }
+            updateCDRomControls();
+        }
+        // Like a real drive, the disc can only be changed after Eject: the list is
+        // locked while a disc is in the drive and while one is loading.
+        function updateCDRomControls() {
+            let busy = !cdromReady || cdromLoading >= 0;
+            let select = document.getElementById("cdromdisc");
+            if (select) {
+                select.value = "" + (cdromLoading >= 0 ? cdromLoading : cdromCurrent);
+                select.disabled = busy || cdromCurrent >= 0;
+            }
+            let eject = document.getElementById("cdromejectbtn");
+            if (eject) {
+                eject.disabled = busy || cdromCurrent < 0;
+            }
+        }
+        // Called by Boxedwine after any insert or eject, including ones the program asks for
+        function boxedwineCDRomChanged(index) {
+            cdromCurrent = index;
+            cdromReady = true;
+            updateCDRomControls();
+        }
+        function insertCDRomDisc(index) {
+            if (index < 0 || cdromLoading >= 0 || index >= Config.cdromISOFiles.length || typeof Module.ccall !== "function") {
+                updateCDRomControls(); // undo a list change that was not acted on
+                return;
+            }
+            let disc = Config.cdromISOFiles[index];
+            let finish = function() {
+                if (Module.ccall("boxedwineCDRomInsert", "number", ["number"], [index])) {
+                    cdromCurrent = index;
+                    // free the memory of the discs that are not in the drive
+                    let keep = cdromDiscFiles[index] || [disc];
+                    cdromDiscFiles.forEach(function(files, other) {
+                        if (other === index || !files) {
+                            return;
+                        }
+                        files.forEach(function(file) {
+                            if (keep.indexOf(file) < 0 && cdromDiscIsLoaded(file)) {
+                                try {
+                                    FS.unlink("/" + file);
+                                } catch (e) {
+                                    console.log("Unable to delete " + file + ": " + e);
+                                }
+                            }
+                        });
+                    });
+                } else {
+                    console.log("Unable to insert disc " + (index + 1) + ": " + disc);
+                }
+                cdromLoading = -1;
+                updateCDRomControls();
+            };
+            cdromLoading = index;
+            updateCDRomControls();
+            console.log("Loading disc " + (index + 1) + ": " + disc);
+            loadCDRomDisc(index).then(finish).catch(function(error) {
+                console.log("Unable to load disc " + (index + 1) + ": " + disc + " error: " + error);
+                cdromLoading = -1;
+                updateCDRomControls();
+            });
+        }
+        function ejectCDRomDisc() {
+            if (cdromReady && cdromLoading < 0 && typeof Module.ccall === "function") {
+                Module.ccall("boxedwineCDRomEject", null, [], []);
+                cdromCurrent = -1;
+                updateCDRomControls();
+            }
+        }
         function buildExtraFileSystems(callback) {
 	        let extraFSs = [];
             if(Config.extraPayload.length > 0){
@@ -787,6 +1048,17 @@
             } else {
                 callback();
             }
+        }
+        // A disc image can take a while to download, so with auto run off the Start button
+        // shows what is loading until buildBrowserFileSystem enables it
+        function showLoadingStartButton(text) {
+            if (Config.isAutoRunSet || Config.cdromISOFiles.length == 0) {
+                return;
+            }
+            var startBtn = document.getElementById('startbtn');
+            startBtn.textContent = text;
+            startBtn.disabled = true;
+            startBtn.style.display = "";
         }
         function buildBrowserFileSystem() {
             // The Save JIT Cache button is handled by updateSaveJitButton(),
@@ -852,6 +1124,7 @@
             }
 
             document.getElementById('startbtn').textContent = "Running...";
+            setupCDRomControls();
             awaitingStart = false;
             Module["removeRunDependency"]("setupBoxedWine");
         }
@@ -936,11 +1209,15 @@
                     spinnerElement.style.display = '';
                     spinnerElement.hidden = false;
 
-                    buildExtraFileSystems(() => {
-                        buildAppFileSystem(() => {
-                            loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
-                                createFile("/", Config.rootZipFile, rootZipfileBytes);
-                                buildBrowserFileSystem();
+                    showLoadingStartButton(Config.cdromISOFiles.length > 1 ? "Downloading disc 1..." : "Downloading disc...");
+                    buildCDRomFileSystems(() => {
+                        showLoadingStartButton("Loading...");
+                        buildExtraFileSystems(() => {
+                            buildAppFileSystem(() => {
+                                loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
+                                    createFile("/", Config.rootZipFile, rootZipfileBytes);
+                                    buildBrowserFileSystem();
+                                });
                             });
                         });
                     });
@@ -1112,7 +1389,8 @@
         }
         function updateHostFolderControls() {
             var startBtn = document.getElementById('startbtn');
-            if (startBtn && !isRunning) {
+            // before the downloads are done the button stays as showLoadingStartButton set it
+            if (startBtn && !isRunning && awaitingStart) {
                 startBtn.textContent = getHostFolderStartButtonText();
                 startBtn.disabled = hostFolderBusy;
             }
@@ -1601,6 +1879,11 @@
             }
             params.push("-zip");
             params.push(Config.rootZipFile);
+            for (let i = 0; i < Config.cdromISOFiles.length; i++) {
+				params.push("-cdrom");
+				params.push(Config.cdromISOFiles[i]);
+				params.push(Config.cdromDrive);
+			}
             
             if (Config.appZipFile.length > 0) { // -mount $appZipFile "/home/username/files/"
     			params.push("-mount");

@@ -143,6 +143,10 @@ struct utimbuf;
 
 #ifdef BOXEDWINE_MULTI_THREADED
 #define NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT 20
+#elif defined(__EMSCRIPTEN__)
+// A spin would busy wait on the browser's main thread and stop every other
+// emulated thread with it, so even a 1 ms sleep waits on a timer
+#define NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT 0
 #else 
 #define NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT 2
 #endif
