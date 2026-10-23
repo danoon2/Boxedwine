@@ -3303,7 +3303,7 @@ struct statx {
 void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 atimeSeconds, U32 atimeNano, U32 mtimeSeconds, U32 mtimeNano, U32 ctimeSeconds, U32 ctimeNano) {
     // 0x00
     memory->writed(buf, 0xfff); buf += 4; // stx_mask
-    memory->writed(buf, 512); buf += 4; // stx_blksize
+    memory->writed(buf, FS_BLOCK_SIZE); buf += 4; // stx_blksize, same as stat. glibc sizes stdio buffers by it
     memory->writeq(buf, 0); buf += 8; // stx_attributes
     // 0x10
     memory->writed(buf, hardLinkCount); buf += 4; // stx_nlink
