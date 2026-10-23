@@ -65,6 +65,7 @@ public partial class MainWindow : Window
         LoadCatalog();
         InitializeComponent(); ready = true; RefreshCollections(); Refresh();
         Activated += (_, _) => DrainProgramChoices();
+        Closed += (_, _) => CancelStorage();
         Cards.PreviewMouseRightButtonDown += (_, e) =>
         {
             if (e.OriginalSource is DependencyObject source && ItemsControl.ContainerFromElement(Cards, source) is ListBoxItem item) item.IsSelected = true;
@@ -191,6 +192,7 @@ public partial class MainWindow : Window
     }
     private void RenderDetails()
     {
+        CancelStorage();
         Details.Children.Clear();
         if (IsCollection && (section != "Demos" || canResetDemos)) DetailAction(section == "Demos" ? "Reset Demos…" : "Delete Collection…", () => DeleteCollection(section), !busy);
         var row = Selected;
@@ -228,12 +230,12 @@ public partial class MainWindow : Window
         }
         if (row.Demo is { } demo)
         {
-            Details.Children.Add(FormWindow.Paragraph(demo.Summary));
+            Details.Children.Add(FormWindow.SelectableParagraph(demo.Summary));
             var document = displayedLibrary; var installed = document.Apps.FirstOrDefault(a => a.Demo?.Id == demo.Origin.Id); var removed = document.RemovedApps.FirstOrDefault(a => a.App.Demo?.Id == demo.Origin.Id);
             DetailAction(installed != null ? "Show in Library" : removed != null ? "Show in Removed Apps" : "Download and Install", () => ActivateDemo(demo), !busy);
             Details.Children.Add(FormWindow.Paragraph($"{Math.Max(1, demo.Bytes / 1048576.0):0.#} MB download\n{demo.WineDescription(wines)}"));
             Details.Children.Add(FormWindow.Paragraph("App download: " + new Uri(demo.Url).Host));
-            if (!string.IsNullOrWhiteSpace(demo.Help)) { Details.Children.Add(FormWindow.Heading("About this app")); Details.Children.Add(FormWindow.Paragraph(demo.Help)); }
+            if (!string.IsNullOrWhiteSpace(demo.Help)) { Details.Children.Add(FormWindow.Heading("About this app")); Details.Children.Add(FormWindow.SelectableParagraph(demo.Help)); }
             return;
         }
         var app = row.App!;
@@ -242,6 +244,7 @@ public partial class MainWindow : Window
             Details.Children.Add(FormWindow.Paragraph(row.Removed.DeletionStartedAt != null ? "Deletion was interrupted. Finish deleting this app to reclaim its remaining files." : "This app's Windows files, settings and saves are still on this PC."));
             DetailAction("Restore to Library", () => { repository.Restore(app.Id); Navigate("All Apps", app.Id.ToString()); }, row.Removed.DeletionStartedAt == null && !busy);
             DetailAction("Back Up App…", () => Backup(app), row.Removed.DeletionStartedAt == null && !busy);
+            ShowStorageSummary(app);
             DetailAction("Delete Permanently…", () => Delete(app), !busy); DetailAction("Show Files", () => Reveal(repository.AppDirectory(app))); return;
         }
         Details.Children.Add(FormWindow.Paragraph(AppStatus(app)));
@@ -253,7 +256,7 @@ public partial class MainWindow : Window
         DetailAction("Troubleshooting…", () => Troubleshoot(app), !busy);
         DetailAction("Back Up App…", () => Backup(app), CanChange(app));
         Details.Children.Add(new Separator { Margin = new Thickness(0, 12, 0, 8) });
-        DetailAction("Storage and Files…", () => Storage(app), !busy);
+        ShowStorageSummary(app);
         DetailAction("Remove from Library…", () => Remove(app), CanChange(app));
         Details.Children.Add(FormWindow.Paragraph("Compatibility varies between Windows apps. Opening an app does not mean all of its features will work."));
     }
@@ -325,7 +328,9 @@ public partial class MainWindow : Window
     private static void Reveal(string path)
     {
         if (!Directory.Exists(path) && !File.Exists(path)) throw new IOException("These files are no longer present.");
-        Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true, Arguments = '"' + Path.GetFullPath(path) + '"' });
+        var explorer = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+        explorer.ArgumentList.Add(WindowsFiles.PathForShell(path));
+        Process.Start(explorer);
     }
     private async void WindowClosing(object? sender, CancelEventArgs e)
     {

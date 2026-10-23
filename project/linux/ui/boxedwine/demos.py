@@ -11,11 +11,11 @@ from .packages import download, trusted_url
 
 
 def load_catalog(data, allow_external=False):
-    from .imports import valid_url
+    from .imports import app_arguments, valid_url
     if len(data) > 1024**2 or b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
         raise ValueError('Invalid demo catalog XML.')
     root = ET.fromstring(data)
-    if root.tag != 'XML' or not 1 <= int(root.get('schemaVersion', '0')) <= 8 or not root.get('release'):
+    if root.tag != 'XML' or not 1 <= int(root.get('schemaVersion', '0')) <= 9 or not root.get('release'):
         raise ValueError('Unsupported demo catalog.')
     recipes, ids = [], set()
     for element in root:
@@ -47,6 +47,10 @@ def load_catalog(data, allow_external=False):
                 wine_version is not None and (not wine_version or len(wine_version.encode()) > 128)):
             raise ValueError('Invalid Wine version in demo ' + field('Name'))
         dll_overrides = values.get('WineDllOverrides')
+        if 'AppArguments' in values and int(root.get('schemaVersion')) < 9:
+            raise ValueError('AppArguments requires schema 9.')
+        # Arguments are literal: preserve whitespace and do not apply Help's escape expansion.
+        arguments = app_arguments(element.findtext('AppArguments'))
         if dll_overrides is not None:
             if (int(root.get('schemaVersion')) < 8 or not 0 < len(dll_overrides) <= 1024 or
                     any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in dll_overrides)):
@@ -84,7 +88,8 @@ def load_catalog(data, allow_external=False):
                             icon=field('Icon'), url=url, bytes=size, installType=field('InstallType'), installExe=field('InstallExe'),
                             wineVersion=wine_version, settings=settings, glide=values.get('Glide'),
                             cncRenderer=values.get('CNCDDrawRenderer'), cncUncapped=boolean('CNCDDrawUncapped') is True,
-                            cncMode=values.get('CNCDDrawFakeMode'), wineDllOverrides=dll_overrides))
+                            cncMode=values.get('CNCDDrawFakeMode'), wineDllOverrides=dll_overrides,
+                            appArguments=arguments))
     return recipes
 
 

@@ -271,7 +271,7 @@ public partial class MainWindow
     private void Edit(LibraryApp app)
     {
         var result = Dialogs.Edit(this, repository, app, OpenGLArchitecture()); if (result == null) return;
-        repository.Update(result.App); Refresh(app.Id.ToString()); if (result.Backup) Backup(result.App);
+        repository.Update(result); Refresh(app.Id.ToString());
     }
     private void Backup(LibraryApp app)
     {

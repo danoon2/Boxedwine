@@ -142,7 +142,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
     var release = ""
     var demos: [Demo] = []
     var problem: String?
-    private var schema = "1"
+    private var schema = 1
     private var fields: [String: String] = [:]
     private let allowed: Set<String> = ["ID", "Name", "Summary", "Help", "Icon", "FileURL", "FileSizeBytes", "FileSHA256", "InstallType", "InstallExe", "ShortcutExe", "WineVersion", "Options", "InstallOptions", "Options_Mac", "InstallOptions_Mac"]
 
@@ -150,16 +150,16 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes: [String: String]) {
         switch stack.count {
         case 0:
-            guard name == "XML", !rootSeen, ["1", "2", "3", "4", "5", "6", "7", "8"].contains(attributes["schemaVersion"] ?? ""),
+            guard name == "XML", !rootSeen, ["1", "2", "3", "4", "5", "6", "7", "8", "9"].contains(attributes["schemaVersion"] ?? ""),
                   Set(attributes.keys) == ["schemaVersion", "release"], let version = attributes["release"],
                   !version.isEmpty, version.utf8.count <= 128 else { fail(parser, "Unsupported catalog version."); return }
             rootSeen = true; release = version
-            schema = attributes["schemaVersion"]!
+            schema = Int(attributes["schemaVersion"]!)!
         case 1:
             guard name == "Demo", attributes.isEmpty, demos.count < 256 else { fail(parser, "Expected a Demo entry."); return }
             fields = [:]
         case 2:
-            guard (allowed.contains(name) || ["2", "3", "4", "5", "6", "7", "8"].contains(schema) && DemoSettings.catalogFields.contains(name) || ["4", "5", "6", "7", "8"].contains(schema) && name == "Glide" || ["5", "6", "7", "8"].contains(schema) && name == "CNCDDrawRenderer" || ["6", "7", "8"].contains(schema) && name == "CNCDDrawUncapped" || ["7", "8"].contains(schema) && name == "CNCDDrawFakeMode" || schema == "8" && name == "WineDllOverrides"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
+            guard (allowed.contains(name) || schema >= 2 && DemoSettings.catalogFields.contains(name) || schema >= 4 && name == "Glide" || schema >= 5 && name == "CNCDDrawRenderer" || schema >= 6 && name == "CNCDDrawUncapped" || schema >= 7 && name == "CNCDDrawFakeMode" || schema >= 8 && name == "WineDllOverrides" || schema >= 9 && name == "AppArguments"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
             fields[name] = ""
         default: fail(parser, "Nested recipe fields are unsupported."); return
         }
@@ -240,10 +240,13 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
             try BoxedwineArguments.validate(["-env", "WINEDLLOVERRIDES=" + value])
             dllOverrides = value
         }
-        return Demo(origin: DemoOrigin(id: id, catalogRelease: release, packageSHA256: hash, shortcutExe: shortcut),
+        var demo = Demo(origin: DemoOrigin(id: id, catalogRelease: release, packageSHA256: hash, shortcutExe: shortcut),
                     name: name, summary: field("Summary"), help: field("Help").replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\t", with: "    "),
                     icon: icon, url: url, bytes: bytes, type: type, installExe: installer.isEmpty ? nil : installer, wineVersion: wineVersion,
                     settings: settings, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode, wineDllOverrides: dllOverrides, customSource: allowExternal)
+        // Arguments are literal: preserve whitespace and do not apply Help's escape expansion.
+        demo.appArguments = try CollectionSnapshot.appArguments(fields["AppArguments"])
+        return demo
     }
 }
 

@@ -13,6 +13,8 @@ namespace Boxedwine.UI;
 
 internal sealed class FormWindow : Window
 {
+    private readonly DockPanel dock = new() { Margin = new Thickness(24) };
+    private readonly ScrollViewer scroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     public StackPanel Body { get; } = new() { Margin = new Thickness(0, 0, 12, 0) };
     public StackPanel Buttons { get; } = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
     public FormWindow(Window owner, string title, string? explanation = null, double width = 560, double height = 0)
@@ -24,17 +26,31 @@ internal sealed class FormWindow : Window
         Owner = owner; Title = title; Width = width; MinWidth = width; MaxHeight = Math.Max(480, SystemParameters.WorkArea.Height - 70);
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false;
         if (height > 0) Height = Math.Min(height, MaxHeight); else SizeToContent = SizeToContent.Height;
-        var dock = new DockPanel { Margin = new Thickness(24) };
         dock.SetResourceReference(Panel.BackgroundProperty, "PageBrush");
         var heading = new TextBlock { Text = title, FontSize = 25, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 18), TextWrapping = TextWrapping.Wrap };
         DockPanel.SetDock(heading, Dock.Top); dock.Children.Add(heading);
         Buttons.Margin = new Thickness(0, 22, 0, 0); DockPanel.SetDock(Buttons, Dock.Bottom); dock.Children.Add(Buttons);
-        var scroll = new ScrollViewer { Content = Body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        scroll.Content = Body;
         dock.Children.Add(scroll); Content = dock;
         if (explanation != null) Body.Children.Add(Paragraph(explanation));
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { DialogResult = false; e.Handled = true; } };
     }
+    public void UseTabs(params (string Title, StackPanel Content)[] pages)
+    {
+        scroll.Content = null;
+        dock.Children.Remove(scroll);
+        var tabs = new TabControl { BorderThickness = new Thickness(0), Padding = new Thickness(0, 16, 0, 0) };
+        tabs.SetResourceReference(BackgroundProperty, "PageBrush");
+        tabs.SetResourceReference(ForegroundProperty, "TextBrush");
+        foreach (var page in pages)
+        {
+            var viewport = new ScrollViewer { Content = page.Content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+            tabs.Items.Add(new TabItem { Header = page.Title, Content = viewport, Padding = new Thickness(14, 8, 14, 8) });
+        }
+        dock.Children.Add(tabs);
+    }
     public static TextBlock Paragraph(string text) => new() { Text = text, Style = (Style)Application.Current.FindResource("Body") };
+    public static TextBox SelectableParagraph(string text) => new() { Text = text, Style = (Style)Application.Current.FindResource("SelectableBody") };
     public static TextBlock Heading(string text) => new() { Text = text, FontSize = 17, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 16, 0, 10), TextWrapping = TextWrapping.Wrap };
     public Button Button(string title, Action action, bool primary = false)
     {
@@ -260,8 +276,7 @@ internal static class Dialogs
         list.MouseDoubleClick += (_, _) => { if (list.SelectedItem is ProgramCandidate selected) { result = new(selected.Path, null); form.DialogResult = true; } };
         form.ShowDialog(); return result;
     }
-    public sealed record EditResult(LibraryApp App, bool Backup);
-    public static EditResult? Edit(Window owner, LibraryRepository repository, LibraryApp original, System.Runtime.InteropServices.Architecture architecture)
+    public static LibraryApp? Edit(Window owner, LibraryRepository repository, LibraryApp original, System.Runtime.InteropServices.Architecture architecture)
     {
         var app = DataFormat.Clone(original); var form = new FormWindow(owner, "App settings", null, 620, 740);
         var name = FormWindow.Text(app.Name); form.Field("Name", name);
@@ -284,7 +299,8 @@ internal static class Dialogs
         form.Field("Mouse sensitivity", mouseRow, "100% is normal. Adjusts mouse movement while a game captures the cursor. Applies the next time you launch the app.");
         form.Body.Children.Add(FormWindow.Paragraph("Wine " + (app.SavedWineVersion ?? repository.DefaultWine?.WineVersion ?? "not configured") + " · " + (app.SavedWineVersion != null ? "saved for this app" : "library default")));
         var windows = FormWindow.Choices(LaunchArguments.WindowsVersions, app.PreferredWindows); form.Field("Windows version", windows, "Changes apply and are checked before the next app or installer launch.");
-        var advanced = new StackPanel(); var expander = new Expander { Header = "Advanced", Content = advanced, Margin = new Thickness(0, 0, 0, 8) }; form.Body.Children.Add(expander);
+        var advanced = new StackPanel { Margin = new Thickness(0, 0, 12, 0) };
+        form.UseTabs(("General", form.Body), ("Advanced", advanced));
         void Field(string label, FrameworkElement control) { advanced.Children.Add(new Label { Content = label, Target = control, Padding = new Thickness(0, 12, 0, 6) }); advanced.Children.Add(control); AutomationProperties.SetName(control, label); }
         var iconButtons = new StackPanel { Orientation = Orientation.Horizontal };
         var image = new Button { Content = "Choose Image…", Padding = new Thickness(10, 6, 10, 6) }; var automatic = new Button { Content = "Use Automatic", Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(10, 6, 10, 6) };
@@ -327,8 +343,8 @@ internal static class Dialogs
         var supported = new Button { Content = "Supported Options", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 6) }; supported.Click += (_, _) => Info(form, "Supported Boxedwine options", LaunchArguments.Help); advanced.Children.Add(supported);
         var args = FormWindow.Text(string.Join("\n", app.Arguments), true); Field("App arguments — one argument per line", args);
         advanced.Children.Add(FormWindow.Paragraph("Spaces inside each line are preserved. Do not add surrounding quotes."));
-        EditResult? result = null;
-        void Save(bool backup)
+        LibraryApp? result = null;
+        void Save()
         {
             app.Name = name.Text.Trim(); app.Resolution = resolution.Text.Trim(); app.FullScreen = full.IsChecked == true;
             app.ChooseWindows((string)windows.SelectedValue); app.ChooseRenderer((string)renderer.SelectedValue); app.ChooseBackend((string)backend.SelectedValue);
@@ -336,8 +352,8 @@ internal static class Dialogs
             app.Arguments = LaunchArguments.Lines(args.Text);
             var overrides = LaunchArguments.Overrides(LaunchArguments.Lines(bw.Text));
             app.BoxedwineArguments = LaunchArguments.WithMouseSensitivity(overrides, LaunchArguments.MouseSensitivity(overrides));
-            repository.ValidateApp(app); result = new(app, backup); form.DialogResult = true;
+            repository.ValidateApp(app); result = app; form.DialogResult = true;
         }
-        form.Button("Save and Back Up…", () => Save(true)); form.Cancel(); form.Button("Save", () => Save(false), true); form.ShowDialog(); return result;
+        form.Cancel(); form.Button("Save", Save, true); form.ShowDialog(); return result;
     }
 }

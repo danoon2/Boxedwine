@@ -235,6 +235,8 @@ cd project/msvc/BoxedwineUI
 dotnet restore BoxedwineUI.sln --configfile NuGet.Config
 dotnet run --project Tests/Boxedwine.Tests.csproj -c Release --no-restore -- C:\Boxedwine\tmp\native-ui-tests
 dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\native-ui-previews
+dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\app-settings-checks --app-settings
+dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\storage-checks --storage
 dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\source-import-checks --source-errors
 ```
 
