@@ -90,6 +90,7 @@ void testLastThreadDeletionRetainsMemoryWrapper();
 void testExitGroupPublishesStatusAfterCleanup();
 void testTerminationPinsThreadDuringLookup();
 void testThreadStartPublishesHandleBeforeEntry();
+void testNativeThreadAffinity();
 void testHardLinksShareIdentityDataAndXattrs();
 void testStatxEmptyPathUsesOpenFile();
 void testReadOnlyCreatePreservesZipFile();
@@ -1097,6 +1098,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testLastThreadDeletionRetainsMemoryWrapper, "Test last thread deletion retains memory wrapper", TEST_ENTRY_SERIAL},
     {testExitGroupPublishesStatusAfterCleanup, "Test exit_group publishes status after cleanup", TEST_ENTRY_SERIAL},
     {testTerminationPinsThreadDuringLookup, "Test termination pins thread during lookup", TEST_ENTRY_SERIAL},
+    {testNativeThreadAffinity, "Test native thread CPU affinity", TEST_ENTRY_SERIAL},
     {testThreadStartPublishesHandleBeforeEntry, "Test thread start publishes handle before entry", TEST_ENTRY_SERIAL},
     {testHardLinksShareIdentityDataAndXattrs, "Test hard links share identity, data, and xattrs", TEST_ENTRY_SERIAL},
     {testFileCacheIdentitySurvivesRenameAndHardLink, "Test mapped-file cache identity survives rename and hard link", TEST_ENTRY_SERIAL},

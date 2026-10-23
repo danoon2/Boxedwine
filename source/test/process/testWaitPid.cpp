@@ -19,6 +19,11 @@
 #include <chrono>
 #include <thread>
 #include <future>
+#if defined(__linux__) && !defined(__EMSCRIPTEN__)
+#include <pthread.h>
+#include <sched.h>
+#include <unistd.h>
+#endif
 
 namespace {
 
@@ -657,6 +662,64 @@ void testWaitPidPublicationLockOrder() {
     }
     if (heldProcessTableWhileWaiting) {
         testFail("waitpid held the process-table lock while waiting for process publication");
+    }
+#endif
+}
+
+void testNativeThreadAffinity() {
+#if defined(BOXEDWINE_MULTI_THREADED) && defined(__linux__) && !defined(__EMSCRIPTEN__)
+    cpu_set_t available;
+    if (sched_getaffinity(getpid(), sizeof(available), &available)) {
+        testFail("could not read the test process CPU mask");
+    }
+    U32 previousCount = KSystem::cpuAffinityCountForApp;
+    KSystem::cpuAffinityCountForApp = 1;
+    KProcessPtr process = KProcess::create();
+    process->memory = KMemory::create(process.get());
+    KThread* child = process->createThread();
+    std::promise<void> release;
+    auto ready = release.get_future().share();
+    threadStartTestEntry = [&](CPU*) { ready.wait(); };
+    S32 result = platformStartThread(child, [](void* arg) -> void* {
+        threadStartTestEntry(static_cast<CPU*>(arg));
+        return nullptr;
+    });
+    bool passed = result == 0;
+    if (!result) {
+        auto handle = ((std::thread*)child->cpu->nativeHandle)->native_handle();
+        auto checkMask = [&](U32 count) {
+            cpu_set_t actual, expected = available;
+            if (count) {
+                CPU_ZERO(&expected);
+                U32 selected = 0;
+                for (U32 i = 0; i < CPU_SETSIZE && selected < count; ++i) {
+                    if (CPU_ISSET(i, &available)) {
+                        CPU_SET(i, &expected);
+                        ++selected;
+                    }
+                }
+            }
+            return pthread_getaffinity_np(handle, sizeof(actual), &actual) == 0 &&
+                CPU_EQUAL(&expected, &actual);
+        };
+        // Must already be pinned before entering guest code. Run this test
+        // under taskset as well, to catch assumptions that CPU 0 is available.
+        passed &= checkMask(1);
+        Platform::setCpuAffinityForThread(child, 0);
+        passed &= checkMask(0); // Reset restores a nonempty, complete host mask.
+        Platform::setCpuAffinityForThread(child, 2);
+        passed &= checkMask(2);
+        Platform::setCpuAffinityForThread(child, CPU_SETSIZE);
+        passed &= checkMask(0); // Oversized requests clamp to allowed CPUs.
+        release.set_value();
+        platformJoinThread(child);
+    }
+    threadStartTestEntry = {};
+    KSystem::cpuAffinityCountForApp = previousCount;
+    process->deleteThread(child);
+    KSystem::eraseProcess(process->id);
+    if (!passed) {
+        testFail("native thread affinity did not match the requested allowed CPUs");
     }
 #endif
 }

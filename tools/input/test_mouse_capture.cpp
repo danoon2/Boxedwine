@@ -119,6 +119,13 @@ static void testMappedWindowFocus() {
 
 int main() {
     assert(SDL_Init(SDL_INIT_EVENTS) == 0);
+#if defined(__linux__) && defined(BOXEDWINE_NATIVE_RUNTIME)
+    // SDL's default text-input state must not activate host IMEs for guest keys.
+    SDL_StartTextInput();
+    assert(SDL_IsTextInputActive() == SDL_TRUE);
+    assert(KNativeSystem::init(VIDEO_NO_WINDOW, false));
+    assert(SDL_IsTextInputActive() == SDL_FALSE);
+#endif
     KSystem::videoOption = VIDEO_NO_WINDOW;
     KNativeSystem::initWindow(800, 600, 32, 100, 100, B("nearest"), 0, 0);
     auto& input = *std::static_pointer_cast<KNativeInputSDL>(KNativeSystem::getCurrentInput());

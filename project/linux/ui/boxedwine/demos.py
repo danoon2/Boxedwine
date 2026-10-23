@@ -96,6 +96,18 @@ def select_wine(recipe, releases):
     return max(choices, key=lambda r: tuple(int(p) for p in r['reference']['wineVersion'].split('.')))
 
 
+def installer_path(payload, relative):
+    """Resolve Windows catalog paths against case-sensitive host filesystems."""
+    validate_relative(relative)
+    current = payload
+    for part in relative.split('/'):
+        matches = [p for p in current.iterdir() if p.name.casefold() == part.casefold()] if current.is_dir() else []
+        if len(matches) != 1:
+            raise ValueError('The demo’s installer is missing or ambiguous: ' + relative)
+        current = beneath(payload, matches[0].relative_to(payload).as_posix())
+    return check_installer(current)
+
+
 def configure_cnc(ini, recipe):
     rows = ini.replace('\r\n', '\n').split('\n')
     def set_value(section, key, value):
@@ -149,8 +161,8 @@ def install(library, recipe, wine, work):
         if filename.lower().endswith('.zip'):
             extract_zip(package, payload, work)
             if installer:
-                check_installer(beneath(payload, recipe['installExe']))
-                app['installer'] = 'Installer/' + recipe['installExe']
+                selected = installer_path(payload, recipe['installExe'])
+                app['installer'] = 'Installer/' + selected.relative_to(payload).as_posix()
         else:
             payload.mkdir(parents=True, exist_ok=True)
             app['installer'] = 'Installer/' + filename

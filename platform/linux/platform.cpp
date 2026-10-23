@@ -29,6 +29,7 @@
 #include "pixelformat.h"
 #include UNISTD
 #include <utime.h>
+#include <thread>
 #ifdef __EMSCRIPTEN__
 #include <emscripten/threading.h>
 #endif
@@ -368,25 +369,39 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
 }
 #elif !defined (__EMSCRIPTEN__)
 void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
-    if (KSystem::cpuAffinityCountForApp) {
-        U32 cores = Platform::getCpuCount();
-        if (cores <= 1) {
-            return;
-        }
-        if (count > CPU_SETSIZE) {
-            count = CPU_SETSIZE;
-        }
-        if (count > cores) {
-            count = cores;
-        }
-        cpu_set_t mask;
+    if (!KSystem::cpuAffinityCountForApp) {
+        return;
+    }
+    // The SDL/main thread retains the host's allowed CPU set. A guest worker
+    // may already be pinned (or inherit its parent's pin), so its current mask
+    // cannot be used to expand/reset affinity. Also respect taskset/cpuset limits
+    // instead of assuming that CPUs 0..count-1 are available.
+    cpu_set_t available;
+    if (sched_getaffinity(getpid(), sizeof(available), &available) != 0) {
+        kwarn_fmt("Could not read host CPU affinity: %s", strerror(errno));
+        return;
+    }
+    cpu_set_t mask = available;
+    if (count) {
         CPU_ZERO(&mask);
-        for (U32 i = 0; i < count; i++) {
-            CPU_SET(i, &mask);
+        U32 selected = 0;
+        for (U32 i = 0; i < CPU_SETSIZE && selected < count; ++i) {
+            if (CPU_ISSET(i, &available)) {
+                CPU_SET(i, &mask);
+                ++selected;
+            }
         }
-        klog_fmt("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, count);
-
-        sched_setaffinity((pid_t)thread->cpu->nativeHandle, sizeof(cpu_set_t), &mask);
+    }
+#ifdef __TEST
+    // Test threads stay joinable and store the owning std::thread pointer.
+    pthread_t handle = ((std::thread*)thread->cpu->nativeHandle)->native_handle();
+#else
+    pthread_t handle = (pthread_t)thread->cpu->nativeHandle;
+#endif
+    // std::thread::native_handle() is pthread_t, not a Linux kernel TID.
+    int error = pthread_setaffinity_np(handle, sizeof(mask), &mask);
+    if (error) {
+        kwarn_fmt("Could not set thread %u CPU affinity: %s", thread->id, strerror(error));
     }
 }
 #else

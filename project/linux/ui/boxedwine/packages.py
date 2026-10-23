@@ -47,6 +47,13 @@ class Resources:
         return sorted(result, key=lambda w: tuple(int(p) for p in w['reference']['wineVersion'].split('.')), reverse=True)
 
 
+def ensure_current_wine(library, resources, work):
+    """Resolve new apps from the release catalog, never an older saved default."""
+    wine = ensure_wine(library, resources.wines()[0], work)
+    library.set_default_wine(wine)
+    return wine
+
+
 def trusted_url(url):
     parsed = urllib.parse.urlsplit(url)
     return (parsed.scheme == 'https' and parsed.hostname in ('boxedwine.org', 'www.boxedwine.org') and
