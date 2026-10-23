@@ -1,3 +1,5 @@
+v21 Oct 23, 2026 Refresh CD-ROM labels, serial numbers and cached media information after ejecting or swapping discs, and notify applications of media changes. The separate WebGL DLLs retain their v20 identities.
+
 v20 Oct 16, 2026 Fix partial stream-output fields in WineD3D so the boat tarp in 3DMark Vantage drapes and animates. Rebuild the separate WebGL WineD3D DLL with the same source fix; host graphics capability limits are unchanged.
 
 v19 Oct 15, 2026 Preserve shader color declaration indices in the shared Wine compiler used by regular Wine and the WebGL D3DX overrides. The separate WebGL PE DLLs are unchanged from v18.
