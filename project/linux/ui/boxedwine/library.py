@@ -126,6 +126,7 @@ class Library:
 
     def validate_app(self, app):
         from .runtime import validate_overrides
+        from .cdrom import validate_images
         identity(app['id'])
         if not isinstance(app['name'], str) or not app['name'].strip() or len(app['name']) > 1024:
             raise ValueError('Enter an app name of at most 1024 characters.')
@@ -133,6 +134,7 @@ class Library:
             raise ValueError('Invalid creation date.')
         resolution(app.get('resolution', '1024x768'))
         validate_overrides(app.get('boxedwineArguments') or [])
+        validate_images(app.get('cdromImages') if app.get('cdromImages') is not None else [])
         args = app.get('arguments', [])
         if not isinstance(args, list) or len(args) > 256 or any(not isinstance(a, str) or len(a) > 8192 or '\0' in a for a in args):
             raise ValueError('Invalid app arguments.')

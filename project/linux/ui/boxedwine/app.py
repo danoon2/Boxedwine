@@ -1276,7 +1276,7 @@ class Window(Adw.ApplicationWindow):
             'Each app has its own Windows environment\n\nSaved files stay with that app. Use Run Another Program to launch a configuration utility in the same environment. An external program gets access to its containing host folder after confirmation.\n\n'
             'Demos and Windows support\n\nThe demo catalog and downloads are checked against release checksums. Wine is shared on disk, while each app keeps a specific package. Offline Windows support can be imported from the matching ZIP in Settings.\n\n'
             'Backups and removal\n\nExport Backup creates a .boxedwinebackup folder containing the app, its Wine package, and a verified manifest. Restore Backup creates a separate app. Keep the entire backup folder together. Removed Apps retains files until permanent deletion unless immediate deletion is enabled. Interrupted file operations appear in Recovery.\n\n'
-            'Compatibility\n\nUse App Settings for Windows version, window size, full screen, Wine graphics, icons, and arguments. Troubleshooting offers installer repair, logs, and compatibility advice. Not every Windows program works in Boxedwine.\n\n'
+            'Compatibility\n\nUse App Settings for Windows version, window size, full screen, mouse sensitivity, CD-ROM images, Wine graphics, icons, and arguments. Switch discs with Ctrl+Shift+F12, or choose a new image from the runtime status bar. Troubleshooting offers installer repair, logs, and compatibility advice. Not every Windows program works in Boxedwine.\n\n'
             'Linux library location\n\n' + str(self.library.directory))
 
     def show_shortcuts(self):

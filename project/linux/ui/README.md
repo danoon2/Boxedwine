@@ -252,9 +252,26 @@ frames before closing, and finishes closing before the launch callback runs.
   Prompt, File Manager, Add/Remove Programs, Wine Internet Explorer (blank page),
   and Notepad. These tools use the selected app’s root and pinned Wine package;
   they never replace its saved executable or inherit its program arguments.
-- Native app settings for name, program, display size, full screen, Windows
-  version, icon, Wine renderer, Wine GLX/EGL interface, and arguments. There is
-  no Windows OpenGL implementation selector (Mesa/LLVMpipe/Zink/D3D12).
+- App Settings uses the same ordering and wording as the Windows launcher.
+  General contains name, program, window size and full screen, mouse sensitivity,
+  Windows version, and CD-ROM images. Advanced starts with the saved Wine version,
+  then the icon preview, Wine renderer, Wine OpenGL interface, Boxedwine arguments,
+  and app arguments. Linux uses the host OpenGL driver; there is no Windows
+  implementation selector (Mesa/LLVMpipe/Zink/D3D12).
+- Add multiple ISO/CUE images in General. Drag to reorder, use the arrow buttons
+  or Alt+Up/Down, and remove images without deleting their files. The first disc
+  is inserted at launch; Ctrl+Shift+F12 cycles discs, and the runtime status bar
+  can choose a new image. Missing images remain editable and produce an actionable
+  launch error. Backups preserve the ordered host paths; choose local replacements
+  when moving an app to another machine. All discs use one free drive from E: to Z:.
+- Mouse sensitivity controls captured mouse movement, with 100% as normal and a
+  Reset button. Existing and pasted `-rel_mouse_sensitivity` values move into the
+  General slider. Typed values transfer when leaving the field or saving; invalid
+  input remains editable. Legacy 0 means 100%; values from 1 to 1000 are preserved.
+  The option is hidden from Advanced and stored once in the shared argument metadata.
+- The settings sheet chooses its height when opened, within the parent window.
+  Adding discs then scrolls without resizing it. Save and Cancel stay visible,
+  and scrollbars appear only when the content needs them.
 - Verified Wine downloads, offline import of the pinned release, and shared
   content-addressed package storage. App packages are pinned independently.
 - Mac/Windows version-13 library metadata and version-8 `.boxedwinebackup`
@@ -292,6 +309,7 @@ host directory. Downloads are restricted to checksum-pinned boxedwine.org URLs.
 ```sh
 make test-ui
 python3 ui/tests/gui_smoke.py --output /tmp/boxedwine-ui-smoke
+python3 ui/tests/app_settings_ui_smoke.py  # General/Advanced, CD-ROMs, mouse transfer, both themes
 python3 ui/tests/launch_ui_smoke.py  # Progress lifecycle, icons, and desktop activation
 python3 ui/tests/source_import_ui_smoke.py  # Inline URL errors, cancellation, and retry
 python3 ui/tests/pointer_smoke.py  # X11 + libXtst; uses actual pointer clicks
