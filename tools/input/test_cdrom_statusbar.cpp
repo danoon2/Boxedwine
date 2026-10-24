@@ -10,7 +10,77 @@
 #include <cassert>
 #include <cstdio>
 
-int main() {
+#ifdef SDL_VIDEO_DRIVER_X11
+static void* nativeXtest;
+// Real X11 pointer events cover WM/input routing that the synthetic SDL tests
+// below cannot exercise. Run with --native-pointer, preferably under xvfb-run.
+static void testNativePopupInput(SDL_Window* guest, SDL_Window* host, SDL_Window* popup) {
+    SDL_SysWMinfo info = {}, parent = {};
+    SDL_VERSION(&info.version); SDL_VERSION(&parent.version);
+    assert(SDL_GetWindowWMInfo(popup, &info) && info.subsystem == SDL_SYSWM_X11);
+    assert(SDL_GetWindowWMInfo(host, &parent));
+    void* xlib = SDL_LoadObject("libX11.so.6");
+    if (!nativeXtest) nativeXtest = SDL_LoadObject("libXtst.so.6");
+    auto attributes = (Status (*)(Display*, Window, XWindowAttributes*))SDL_LoadFunction(xlib, "XGetWindowAttributes");
+    auto transient = (Status (*)(Display*, Window, Window*))SDL_LoadFunction(xlib, "XGetTransientForHint");
+    auto translate = (Bool (*)(Display*, Window, Window, int, int, int*, int*, Window*))SDL_LoadFunction(xlib, "XTranslateCoordinates");
+    auto sync = (int (*)(Display*, Bool))SDL_LoadFunction(xlib, "XSync");
+    auto motion = (int (*)(Display*, int, int, int, unsigned long))SDL_LoadFunction(nativeXtest, "XTestFakeMotionEvent");
+    auto button = (int (*)(Display*, unsigned int, Bool, unsigned long))SDL_LoadFunction(nativeXtest, "XTestFakeButtonEvent");
+    assert(attributes && transient && translate && sync && motion && button);
+    Display* display = info.info.x11.display;
+    bool sawPopupMotion = false;
+    auto pump = [&]() {
+        U32 until = SDL_GetTicks() + 100;
+        do {
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_MOUSEMOTION && event.motion.windowID == SDL_GetWindowID(popup)) sawPopupMotion = true;
+                sdlStatusBarEvent(event);
+            }
+            sdlStatusBarTick();
+            SDL_Delay(5);
+        } while ((S32)(SDL_GetTicks() - until) < 0);
+    };
+    auto visible = [&]() { return (SDL_GetWindowFlags(popup) & SDL_WINDOW_SHOWN) != 0; };
+    auto click = [&](SDL_Window* target, int x, int y) {
+        SDL_SysWMinfo targetInfo = {}; SDL_VERSION(&targetInfo.version);
+        assert(SDL_GetWindowWMInfo(target, &targetInfo));
+        int screenX, screenY; Window child;
+        assert(translate(display, targetInfo.info.x11.window, DefaultRootWindow(display), x, y, &screenX, &screenY, &child));
+        motion(display, -1, screenX, screenY, 0); sync(display, False); pump();
+        button(display, SDL_BUTTON_LEFT, True, 0); sync(display, False); pump();
+        button(display, SDL_BUTTON_LEFT, False, 0); sync(display, False); pump();
+    };
+    pump();
+    assert(visible());
+    XWindowAttributes actual = {}; Window actualParent;
+    assert(attributes(display, info.info.x11.window, &actual) && actual.override_redirect);
+    assert(transient(display, info.info.x11.window, &actualParent) && actualParent == parent.info.x11.window);
+    int expectedX, expectedY, actualX, actualY; Window child;
+    SDL_GetWindowPosition(popup, &expectedX, &expectedY);
+    assert(translate(display, info.info.x11.window, DefaultRootWindow(display), 0, 0, &actualX, &actualY, &child));
+    assert(actualX == expectedX && actualY == expectedY);
+    assert(SDL_GetKeyboardFocus() == popup);
+    // Manage / Done requires two complete pointer clicks in the actual menu.
+    click(popup, 100, 84); assert(visible() && sawPopupMotion);
+    click(popup, 100, 84); assert(!visible());
+    click(host, 100, 495); assert(visible());
+    click(guest, 200, 150); assert(!visible());
+    assert(SDL_GetKeyboardFocus() == guest);
+    click(host, 100, 495); assert(visible());
+    SDL_Event escape = {}; escape.type = SDL_KEYDOWN;
+    escape.key.windowID = SDL_GetWindowID(popup); escape.key.keysym.sym = SDLK_ESCAPE;
+    assert(sdlStatusBarEvent(escape)); pump(); assert(!visible());
+    click(host, 100, 495); assert(visible()); // Leave the original test's initial state.
+    // XTest registers Xlib display-close hooks. Keep it loaded until SDL_Quit.
+    SDL_UnloadObject(xlib);
+    puts("Native X11 popup pointer, ownership, focus, and dismissal checks passed");
+}
+#endif
+
+int main(int argc, char** argv) {
+    setvbuf(stdout, nullptr, _IONBF, 0);
     assert(SDL_Init(SDL_INIT_VIDEO) == 0);
     const BString root = B("../../tmp/statusbar-native-test-root");
     std::filesystem::create_directories(root.c_str());
@@ -91,6 +161,15 @@ int main() {
             if (candidate && !strcmp(SDL_GetWindowTitle(candidate), "Boxedwine CD-ROM menu")) popup = candidate;
         }
         assert(popup);
+#ifdef SDL_VIDEO_DRIVER_X11
+        if (argc > 1 && !strcmp(argv[1], "--native-pointer")) {
+            // The synthetic lifecycle checks queue focus events without an
+            // event loop. Begin the real-input checks from the current state.
+            SDL_PumpEvents();
+            SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+            testNativePopupInput(guest, host, popup);
+        }
+#endif
         auto popupVisible = [&]() { return (SDL_GetWindowFlags(popup) & SDL_WINDOW_SHOWN) != 0; };
         auto mouseButton = [&](SDL_Window* window, U32 type, int x, int y) {
             SDL_Event event = {};
@@ -164,5 +243,8 @@ int main() {
     sdlStatusBarConfigure(false);
     Fs::shutDown();
     SDL_Quit();
+#ifdef SDL_VIDEO_DRIVER_X11
+    if (nativeXtest) SDL_UnloadObject(nativeXtest);
+#endif
     puts("CD-ROM popup dismissal, click routing, host hierarchy, drawable size, and GL state checks passed");
 }

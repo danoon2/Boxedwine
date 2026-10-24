@@ -60,6 +60,8 @@ struct X11Embedding {
         (decltype(reparent))SDL_LoadFunction(library, "XReparentWindow") : nullptr;
     int (*focus)(Display*, Window, int, Time) = library ?
         (decltype(focus))SDL_LoadFunction(library, "XSetInputFocus") : nullptr;
+    int (*transient)(Display*, Window, Window) = library ?
+        (decltype(transient))SDL_LoadFunction(library, "XSetTransientForHint") : nullptr;
     int (*flush)(Display*) = library ? (decltype(flush))SDL_LoadFunction(library, "XFlush") : nullptr;
 };
 X11Embedding& x11() { static X11Embedding api; return api; }
@@ -69,7 +71,7 @@ bool fullscreen(SDL_Window* window) {
 }
 
 // Owned windows stay with the game in the Windows task switcher and minimize
-// with it. Other platforms use SDL utility windows and the same lifecycle.
+// with it. X11 popups also need an explicit transient parent.
 void setOwner(SDL_Window* child, SDL_Window* parent, bool passive) {
 #ifdef BOXEDWINE_MSVC
     SDL_SysWMinfo c = {}, p = {};
@@ -81,6 +83,14 @@ void setOwner(SDL_Window* child, SDL_Window* parent, bool passive) {
         style = (style | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW;
         if (passive) style |= WS_EX_NOACTIVATE;
         SetWindowLongPtr(c.info.win.window, GWL_EXSTYLE, style);
+    }
+#elif defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
+    SDL_SysWMinfo c = {}, p = {};
+    SDL_VERSION(&c.version); SDL_VERSION(&p.version);
+    if (SDL_GetWindowWMInfo(child, &c) && SDL_GetWindowWMInfo(parent, &p) &&
+            c.subsystem == SDL_SYSWM_X11 && p.subsystem == SDL_SYSWM_X11 && x11().transient && x11().flush) {
+        x11().transient(c.info.x11.display, c.info.x11.window, p.info.x11.window);
+        x11().flush(c.info.x11.display);
     }
 #endif
 }
@@ -141,8 +151,20 @@ bool embedGuest(SDL_Window* child, SDL_Window* parent, bool attach) {
 
 bool createSurface(Surface& surface, const char* title, int width, int height, bool passive) {
     if (surface.window) return true;
-    surface.window = SDL_CreateWindow(title, 0, 0, width, height,
-        SDL_WINDOW_HIDDEN | (passive ? 0 : SDL_WINDOW_BORDERLESS | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_UTILITY));
+    U32 flags = SDL_WINDOW_HIDDEN;
+    if (!passive) {
+        flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_SKIP_TASKBAR;
+#if defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
+        // A managed utility window can be positioned independently by the WM
+        // (notably WSLg), leaving its visible popup and input region apart.
+        // SDL's popup flag creates an override-redirect X11 menu instead.
+        const char* driver = SDL_GetCurrentVideoDriver();
+        flags |= driver && !strcmp(driver, "x11") ? SDL_WINDOW_POPUP_MENU : SDL_WINDOW_UTILITY;
+#else
+        flags |= SDL_WINDOW_UTILITY;
+#endif
+    }
+    surface.window = SDL_CreateWindow(title, 0, 0, width, height, flags);
     if (!surface.window) return false;
 #ifdef BOXEDWINE_MSVC
     windowsAppSetWindowIcon(surface.window);
@@ -465,6 +487,13 @@ void sdlStatusBarOpen() {
     positionSurfaces();
     SDL_ShowWindow(menu.window);
     SDL_RaiseWindow(menu.window);
+#if defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
+    // Override-redirect menus do not get keyboard focus from the WM.
+    SDL_SysWMinfo info = {};
+    SDL_VERSION(&info.version);
+    if (SDL_GetWindowWMInfo(menu.window, &info) && info.subsystem == SDL_SYSWM_X11)
+        SDL_SetWindowInputFocus(menu.window);
+#endif
     dirty = true;
     draw();
 }
