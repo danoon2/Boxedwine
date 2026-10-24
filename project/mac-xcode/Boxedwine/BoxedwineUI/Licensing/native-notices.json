@@ -335,6 +335,19 @@
           "sha256": "e237fa56668030e928551ddd60f05df5fe957f75eab874bbd017e085ed722e7c"
         }
       ]
+    },
+    {
+      "id": "imgui",
+      "name": "Dear ImGui",
+      "license": "MIT",
+      "sourceURL": "https://github.com/ocornut/imgui",
+      "sourceDescription": "Font atlas and text rendering for the runtime CD-ROM controls.",
+      "notices": [
+        {
+          "path": "lib/imgui/LICENSE.txt",
+          "sha256": "71aafd5e1c50cefd44f6975decfe8bbfa620cfded743b3cbb8c80088bdb46ccd"
+        }
+      ]
     }
   ],
   "externalNotices": [

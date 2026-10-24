@@ -190,7 +190,7 @@ void* KVulkdanSDLImpl::createVulkanSurface(const XWindowPtr& wnd, void* instance
         surfaces[(void*)result] = window;
         screen->showWindow(false);
         if (KSystem::videoOption == VIDEO_NORMAL) {
-            SDL_ShowWindow(window->window);
+            sdlStatusBarShowWindow(window->window, true);
             focusWindow(SDL_GetWindowID(window->window));
         }
     });

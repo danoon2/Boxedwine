@@ -9,6 +9,10 @@
 #include "devcdrom.h"
 #include <cassert>
 #include <cstdio>
+#ifdef __APPLE__
+void testCocoaStatusBar(SDL_Window* guest, SDL_Window* host, SDL_Window* popup);
+void testCocoaVulkanStatusBar();
+#endif
 
 #ifdef SDL_VIDEO_DRIVER_X11
 static void* nativeXtest;
@@ -62,9 +66,8 @@ static void testNativePopupInput(SDL_Window* guest, SDL_Window* host, SDL_Window
     assert(translate(display, info.info.x11.window, DefaultRootWindow(display), 0, 0, &actualX, &actualY, &child));
     assert(actualX == expectedX && actualY == expectedY);
     assert(SDL_GetKeyboardFocus() == popup);
-    // Manage / Done requires two complete pointer clicks in the actual menu.
-    click(popup, 100, 84); assert(visible() && sawPopupMotion);
-    click(popup, 100, 84); assert(!visible());
+    // Eject exercises a complete click in the actual menu without a picker.
+    click(popup, 100, 52); assert(!visible() && sawPopupMotion);
     click(host, 100, 495); assert(visible());
     click(guest, 200, 150); assert(!visible());
     assert(SDL_GetKeyboardFocus() == guest);
@@ -89,11 +92,16 @@ int main(int argc, char** argv) {
     cdromInit({}, B("/mnt/cdrom"), B(""));
     sdlStatusBarConfigure(true);
     for (bool useGl : {false, true}) {
-        SDL_Window* guest = SDL_CreateWindow("Status bar harness", 20, 20, 640, 480,
-            SDL_WINDOW_HIDDEN | (useGl ? SDL_WINDOW_OPENGL : 0));
+        U32 flags = SDL_WINDOW_HIDDEN | (useGl ? SDL_WINDOW_OPENGL : 0);
+#ifdef __APPLE__
+        flags |= SDL_WINDOW_ALLOW_HIGHDPI;
+#endif
+        SDL_Window* guest = SDL_CreateWindow("Status bar harness", 20, 20, 640, 480, flags);
         assert(guest);
         SDL_GLContext context = useGl ? SDL_GL_CreateContext(guest) : nullptr;
         if (useGl) assert(context);
+        int drawableWidth = 0, drawableHeight = 0;
+        if (useGl) SDL_GL_GetDrawableSize(guest, &drawableWidth, &drawableHeight);
         sdlStatusBarShowWindow(guest, true);
         sdlStatusBarTick();
         SDL_Window* host = nullptr;
@@ -142,7 +150,7 @@ int main(int argc, char** argv) {
         if (useGl) {
             assert(SDL_GL_GetCurrentContext() == context);
             SDL_GL_GetDrawableSize(guest, &w, &h);
-            assert(w == 640 && h == 480);
+            assert(w == drawableWidth && h == drawableHeight);
             glClearColor(.25f, .5f, .75f, 1);
             glClear(GL_COLOR_BUFFER_BIT);
         }
@@ -161,6 +169,11 @@ int main(int argc, char** argv) {
             if (candidate && !strcmp(SDL_GetWindowTitle(candidate), "Boxedwine CD-ROM menu")) popup = candidate;
         }
         assert(popup);
+#ifdef __APPLE__
+        // Exercise AppKit event dispatch, ownership, and movement as well as
+        // the platform-independent synthetic routing assertions below.
+        testCocoaStatusBar(guest, host, popup);
+#endif
 #ifdef SDL_VIDEO_DRIVER_X11
         if (argc > 1 && !strcmp(argv[1], "--native-pointer")) {
             // The synthetic lifecycle checks queue focus events without an
@@ -219,14 +232,36 @@ int main(int argc, char** argv) {
         assert(mouseButton(host, SDL_MOUSEBUTTONUP, 500, 495));
         assert(!popupVisible());
         openFromBar();
-        // Popup actions also need a complete click in the same row. Manage /
-        // Done exercises a real action without invoking a native file picker.
-        assert(mouseButton(popup, SDL_MOUSEBUTTONUP, 100, 84));
-        assert(mouseButton(popup, SDL_MOUSEBUTTONDOWN, 100, 84));
-        assert(mouseButton(popup, SDL_MOUSEBUTTONUP, 100, 84));
-        assert(popupVisible());
-        assert(mouseButton(popup, SDL_MOUSEBUTTONDOWN, 100, 84));
-        assert(mouseButton(popup, SDL_MOUSEBUTTONUP, 100, 84));
+        // Removal is available immediately, keeps the menu open, and requires
+        // pressing and releasing the same control, not just the same row.
+        const BString unused = root + "/unused.iso";
+        FILE* image = fopen(unused.c_str(), "wb");
+        assert(image); fclose(image);
+        cdromInit({unused, root + "/missing.iso"}, B("/mnt/cdrom"), B(""));
+        SDL_Delay(110); sdlStatusBarTick();
+        SDL_GetWindowSize(popup, &w, &h);
+        assert(h == 4 * 32 + 8); // Choose, two discs, Eject; no Manage row.
+        assert(mouseButton(popup, SDL_MOUSEBUTTONUP, 420, 52));
+        assert(mouseButton(popup, SDL_MOUSEBUTTONDOWN, 100, 52));
+        assert(mouseButton(popup, SDL_MOUSEBUTTONUP, 420, 52));
+        assert(mouseButton(popup, SDL_MOUSEBUTTONDOWN, 420, 52));
+        assert(mouseButton(popup, SDL_MOUSEBUTTONUP, 100, 52));
+        assert(cdromGetState().discs.size() == 2 && popupVisible());
+        assert(mouseButton(popup, SDL_MOUSEBUTTONDOWN, 420, 52));
+        assert(mouseButton(popup, SDL_MOUSEBUTTONUP, 420, 52));
+        assert(cdromGetState().discs.size() == 1 && popupVisible());
+        assert(std::filesystem::exists(unused.c_str())); // Reference only.
+        SDL_Event hoverDisc = {}; hoverDisc.type = SDL_MOUSEMOTION;
+        hoverDisc.motion.windowID = SDL_GetWindowID(popup); hoverDisc.motion.y = 52;
+        assert(sdlStatusBarEvent(hoverDisc));
+        SDL_Event remove = {}; remove.type = SDL_KEYDOWN;
+        remove.key.windowID = SDL_GetWindowID(popup); remove.key.keysym.sym = SDLK_DELETE;
+        assert(sdlStatusBarEvent(remove));
+        assert(cdromGetState().discs.empty() && popupVisible());
+        SDL_GetWindowSize(popup, &w, &h);
+        assert(h == 2 * 32 + 8);
+        assert(mouseButton(popup, SDL_MOUSEBUTTONDOWN, 100, 52));
+        assert(mouseButton(popup, SDL_MOUSEBUTTONUP, 100, 52));
         assert(!popupVisible());
         SDL_FlushEvent(SDL_QUIT);
         SDL_Event close = {};
@@ -240,6 +275,35 @@ int main(int argc, char** argv) {
         if (context) SDL_GL_DeleteContext(context);
         SDL_DestroyWindow(guest);
     }
+#ifdef __APPLE__
+    testCocoaVulkanStatusBar();
+    // Fullscreen uses the original guest window; the menu must still be
+    // available without exposing the windowed status-bar host.
+    SDL_Window* full = SDL_CreateWindow("Fullscreen status bar harness", 0, 0, 640, 480,
+        SDL_WINDOW_HIDDEN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+    assert(full);
+    sdlStatusBarShowWindow(full, true);
+    sdlStatusBarTick();
+    assert(sdlStatusBarInputWindow(full) == full);
+    for (U32 id = 1; id < 32; ++id) {
+        SDL_Window* candidate = SDL_GetWindowFromID(id);
+        if (sdlStatusBarOwns(candidate)) assert(!(SDL_GetWindowFlags(candidate) & SDL_WINDOW_SHOWN));
+    }
+    sdlStatusBarOpen();
+    SDL_Window* fullscreenMenu = nullptr;
+    for (U32 id = 1; id < 32; ++id) {
+        SDL_Window* candidate = SDL_GetWindowFromID(id);
+        if (candidate && !strcmp(SDL_GetWindowTitle(candidate), "Boxedwine CD-ROM menu")) fullscreenMenu = candidate;
+    }
+    assert(fullscreenMenu && (SDL_GetWindowFlags(fullscreenMenu) & SDL_WINDOW_SHOWN));
+    SDL_Event escape = {}; escape.type = SDL_KEYDOWN;
+    escape.key.windowID = SDL_GetWindowID(fullscreenMenu); escape.key.keysym.sym = SDLK_ESCAPE;
+    assert(sdlStatusBarEvent(escape));
+    assert(!(SDL_GetWindowFlags(fullscreenMenu) & SDL_WINDOW_SHOWN));
+    sdlStatusBarWindowDestroyed(full);
+    SDL_DestroyWindow(full);
+    puts("Cocoa fullscreen menu lifecycle checks passed");
+#endif
     sdlStatusBarConfigure(false);
     Fs::shutDown();
     SDL_Quit();

@@ -257,8 +257,11 @@
 		71B497FE2D4AA31600A8AB32 /* mztools.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B495CD2D4AA31600A8AB32 /* mztools.c */; };
 		B0C0D0010000000000000003 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
 		B0C0D0020000000000000003 /* macCursor.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0020000000000000001 /* macCursor.mm */; };
+		CCD020260000000000000203 /* macStatusBar.mm in Sources */ = {isa = PBXBuildFile; fileRef = CCD020260000000000000201 /* macStatusBar.mm */; };
 		B0C0D0020000000000000005 /* macCursor.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0020000000000000001 /* macCursor.mm */; };
+		CCD020260000000000000205 /* macStatusBar.mm in Sources */ = {isa = PBXBuildFile; fileRef = CCD020260000000000000201 /* macStatusBar.mm */; };
 		B0C0D0020000000000000007 /* macCursor.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0020000000000000001 /* macCursor.mm */; };
+		CCD020260000000000000207 /* macStatusBar.mm in Sources */ = {isa = PBXBuildFile; fileRef = CCD020260000000000000201 /* macStatusBar.mm */; };
 		B0C0D0010000000000000005 /* macOpenGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = B0C0D0010000000000000001 /* macOpenGL.mm */; };
 		E33AE60414B5982E105E80B9 = { isa = PBXBuildFile; fileRef = B10826AECCAA0D8805FF8E66; };
 		B70915130000000000000002 = { isa = PBXBuildFile; fileRef = B70915130000000000000001; };
@@ -516,7 +519,9 @@
 		B0C0D0010000000000000002 /* macOpenGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = macOpenGL.h; path = ../../../platform/mac/macOpenGL.h; sourceTree = "<group>"; };
 		B0C0D0010000000000000006 /* macOpenGLViewport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = macOpenGLViewport.h; path = ../../../platform/mac/macOpenGLViewport.h; sourceTree = "<group>"; };
 		B0C0D0020000000000000001 /* macCursor.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = macCursor.mm; path = ../../../platform/mac/macCursor.mm; sourceTree = "<group>"; };
+		CCD020260000000000000201 /* macStatusBar.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = macStatusBar.mm; path = ../../../platform/mac/macStatusBar.mm; sourceTree = "<group>"; };
 		B0C0D0020000000000000002 /* macCursor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = macCursor.h; path = ../../../platform/mac/macCursor.h; sourceTree = "<group>"; };
+		CCD020260000000000000202 /* macStatusBar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = macStatusBar.h; path = ../../../platform/mac/macStatusBar.h; sourceTree = "<group>"; };
 		B10826AECCAA0D8805FF8E66 = { isa = PBXFileReference; path = "UI/NativeLibraryCommands.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		B70915130000000000000001 = { isa = PBXFileReference; path = "Core/TipStore.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		B70915130000000000000003 = { isa = PBXFileReference; path = "UI/SupportView.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
@@ -541,6 +546,7 @@
 				1A80F2CE276EBF170032A70A /* ForceFeedback.framework in Frameworks */,
 				1A80F2CF276EBF170032A70A /* AudioToolbox.framework in Frameworks */,
 				1A80F2D0276EBF170032A70A /* CoreAudio.framework in Frameworks */,
+				CCD020260000000000000302,
 				1A80F2D1276EBF170032A70A /* SDL2.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -558,6 +564,7 @@
 			files = (
 				7135DC97264EBCD0005D6AA6 /* CoreMIDI.framework in Frameworks */,
 				7135DC98264EBCD0005D6AA6 /* CoreAudio.framework in Frameworks */,
+				CCD020260000000000000303,
 				7135DC99264EBCD0005D6AA6 /* AudioToolbox.framework in Frameworks */,
 				7135DC9A264EBCD0005D6AA6 /* ForceFeedback.framework in Frameworks */,
 				7108C93C2E64EC8800F6CF63 /* libcurl.4.tbd in Frameworks */,
@@ -650,7 +657,9 @@
 				B0C0D0010000000000000002 /* macOpenGL.h */,
 				B0C0D0010000000000000006 /* macOpenGLViewport.h */,
 				B0C0D0020000000000000002 /* macCursor.h */,
+				CCD020260000000000000202 /* macStatusBar.h */,
 				B0C0D0020000000000000001 /* macCursor.mm */,
+				CCD020260000000000000201 /* macStatusBar.mm */,
 				B0C0D0010000000000000001 /* macOpenGL.mm */,
 				1AFC48092663FFC000EE5FCC /* pixelformat.cpp */,
 				1AFC479C2648471000EE5FCC /* audiounit.cpp */,
@@ -723,6 +732,7 @@
 				712227832433EDE700CDBABD /* ForceFeedback.framework */,
 				712227812433EDCE00CDBABD /* AudioToolbox.framework */,
 				7122277F2433EDBC00CDBABD /* CoreAudioKit.framework */,
+				CCD020260000000000000301,
 				7122277D2433ED7C00CDBABD /* CoreAudio.framework */,
 				712227782433E8E100CDBABD /* Minizip.framework */,
 				712227762433E8C400CDBABD /* SDL2.framework */,
@@ -1210,6 +1220,7 @@
 				1A80F1A2276EBF170032A70A /* pixelformat.cpp in Sources */,
 				B0C0D0010000000000000003 /* macOpenGL.mm in Sources */,
 				B0C0D0020000000000000003 /* macCursor.mm in Sources */,
+				CCD020260000000000000203 /* macStatusBar.mm in Sources */,
 				1A55D6562A08428F002B7021 /* gzclose.c in Sources */,
 				1A80F1AC276EBF170032A70A /* imgui_impl_opengl3.cpp in Sources */,
 				1A55D6302A0841E2002B7021 /* inflate.c in Sources */,
@@ -1346,6 +1357,7 @@
 				1AFC480D2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				B0C0D0010000000000000005 /* macOpenGL.mm in Sources */,
 				B0C0D0020000000000000005 /* macCursor.mm in Sources */,
+				CCD020260000000000000205 /* macStatusBar.mm in Sources */,
 				1A0F95742C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				7135DC65264EBCD0005D6AA6 /* knativesystem.cpp in Sources */,
 				1A0F955D2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
@@ -1859,6 +1871,19 @@
 		};
 /* End XCConfigurationList section */
 /* Native macOS launcher and runtime */
+		CCD020260000000000000301 = { isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
+		CCD020260000000000000302 = { isa = PBXBuildFile; fileRef = CCD020260000000000000301; };
+		CCD020260000000000000303 = { isa = PBXBuildFile; fileRef = CCD020260000000000000301; };
+		CCD020260000000000000304 = { isa = PBXBuildFile; fileRef = CCD020260000000000000301; };
+
+		CCD020260000000000000008 = { isa = PBXBuildFile; fileRef = 712227A42433EE5300CDBABD; };
+		CCD020260000000000000007 = { isa = PBXBuildFile; fileRef = 712228662433EE5300CDBABD; };
+		CCD020260000000000000006 = { isa = PBXBuildFile; fileRef = 712227AC2433EE5300CDBABD; };
+		CCD020260000000000000005 = { isa = PBXBuildFile; fileRef = CCD020260000000000000001; };
+		CCD020260000000000000103 = { isa = PBXFileReference; path = "UI/CdromImagesEditor.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		CCD020260000000000000104 = { isa = PBXBuildFile; fileRef = CCD020260000000000000103; };
+		CCD020260000000000000101 = { isa = PBXFileReference; path = "Core/CdromImages.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
+		CCD020260000000000000102 = { isa = PBXBuildFile; fileRef = CCD020260000000000000101; };
 		E4CB65BF801940A59261A901 = { isa = PBXFileReference; path = "Core/LibraryOperationGate.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		E4CB65BF801940A59261A902 = { isa = PBXBuildFile; fileRef = E4CB65BF801940A59261A901; };
 		F8F8B03D258B4DE28F522B0F = { isa = PBXFileReference; path = "Core/WinePackageValidator.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
@@ -2426,6 +2451,11 @@
 				"005F73CFC2EB2CB673E97C66",
 				"D1ABE85958F641BEF990FAB0",
 				"B0C0D0020000000000000007",
+				"CCD020260000000000000207",
+				"CCD020260000000000000005",
+				"CCD020260000000000000008",
+				"CCD020260000000000000007",
+				"CCD020260000000000000006",
 				"CB604C85DA61F216D74F671C",
 				"1C1A93D494B5154F7EA1619C",
 				"124BDAE20AF72C1ECCF385F0",
@@ -2568,6 +2598,7 @@
 				"3216483D3D8DA83A1027B254",
 				"3F658C17B3308FC4EE10F4D8",
 				"F3AB56931DC82BFBA95EC93B",
+				CCD020260000000000000304,
 				"7C1D9ECFA58B48047D548CF7",
 			);
 			"runOnlyForDeploymentPostprocessing" = "0";
@@ -2887,6 +2918,8 @@
 				"F8F8B03D258B4DE28F522B0F",
 				"E4CB65BF801940A59261A901",
 				"F8F8B03D258B4DE28F522B0D",
+				"CCD020260000000000000103",
+				"CCD020260000000000000101",
 				"BF449A2EA947D286FEB7BDD9",
 				"02CBE464F34120CE26F79833",
 				"395953AD925BBAE7D185F0DF",
@@ -2933,6 +2966,8 @@
 				"F8F8B03D258B4DE28F522B10",
 				E4CB65BF801940A59261A902,
 				"F8F8B03D258B4DE28F522B0E",
+				"CCD020260000000000000104",
+				"CCD020260000000000000102",
 				"9F3F5FB170351DE4B2F6C664",
 				67093D2C3388DFD31745C70B,
 				F3CABEDACBBE41C99ABE2002,

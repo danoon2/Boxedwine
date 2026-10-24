@@ -29,7 +29,7 @@ enum BoxedwineArguments {
     private static let managed: Set<String> = [
         "-root", "-zip", "-nozip", "-mount", "-mount_drive", "-w", "-title", "-log",
         "-resolution", "-fullscreen", "-fullscreenAspect", "-ui", "-hideWindow", "-novideo",
-        "-record", "-automation", "-play", "-ddrawOverride", "-ttyPrepend"
+        "-record", "-automation", "-play", "-ddrawOverride", "-ttyPrepend", "-cdrom"
     ]
     static let help = """
     Enter each option and each value on its own line. For example:
@@ -115,4 +115,57 @@ enum BoxedwineArguments {
 
 extension LibraryApp {
     var hasBoxedwineArguments: Bool { !(boxedwineArguments ?? []).isEmpty }
+}
+
+enum MouseSensitivity {
+    static let option = "-rel_mouse_sensitivity"
+    struct Transfer {
+        var text: String
+        var value: Int?
+        /// UTF-16 ranges, suitable for NSTextView selection adjustment.
+        var removed: [NSRange]
+        func selection(afterRemovingFrom selection: NSRange) -> NSRange {
+            func adjusted(_ position: Int) -> Int {
+                position - removed.reduce(0) { $0 + max(0, min($1.length, position - $1.location)) }
+            }
+            let start = adjusted(selection.location)
+            return NSRange(location: start, length: adjusted(NSMaxRange(selection)) - start)
+        }
+    }
+
+    /// Remove only complete, valid pairs. All other text stays editable,
+    /// including whitespace, unfinished options and unrelated invalid input.
+    static func transfer(_ text: String) -> Transfer {
+        let source = text as NSString
+        var lines: [(String, NSRange)] = []
+        var offset = 0
+        for line in text.components(separatedBy: "\n") {
+            let length = (line as NSString).length
+            let range = NSRange(location: offset, length: length + (offset + length < source.length ? 1 : 0))
+            let token = line.hasSuffix("\r") ? String(line.dropLast()) : line
+            if !token.trimmingCharacters(in: .whitespaces).isEmpty { lines.append((token, range)) }
+            offset += length + 1
+        }
+        var value: Int?
+        var removed: [NSRange] = []
+        for index in lines.indices where lines[index].0 == option && index + 1 < lines.count {
+            let next = lines[index + 1]
+            if let number = Int(next.0), String(number) == next.0, (0...1000).contains(number) {
+                value = number == 0 ? 100 : number
+                removed += [lines[index].1, next.1]
+            }
+        }
+        let result = NSMutableString(string: text)
+        for range in removed.reversed() { result.deleteCharacters(in: range) }
+        return Transfer(text: result as String, value: value, removed: removed)
+    }
+
+    static func arguments(text: String, value: Int) throws -> [String] {
+        let transfer = transfer(text)
+        let effective = transfer.value ?? value
+        guard (1...1000).contains(effective) else { throw BoxedwineArgumentError.invalid("Mouse sensitivity must be from 1% to 1000%.") }
+        var arguments = try BoxedwineArguments.parse(transfer.text)
+        if effective != 100 { arguments += [option, String(effective)] }
+        return arguments
+    }
 }

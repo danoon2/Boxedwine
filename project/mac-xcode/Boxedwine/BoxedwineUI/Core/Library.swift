@@ -22,6 +22,9 @@ struct LibraryApp: Codable, Identifiable, Equatable, Sendable {
     var fullScreen = false
     var arguments: [String] = []
     var boxedwineArguments: [String]?
+    var cdromImages: [String]?
+    /// Mac-only access grants. Other hosts retain the portable image paths.
+    var cdromBookmarks: [String: Data]?
     var isNotepad = false
     var builtInProgram: WineBuiltInProgram?
     var wineProgram: WineBuiltInProgram? { builtInProgram ?? (isNotepad ? .notepad : nil) }
@@ -186,6 +189,8 @@ struct LibraryRepository: Sendable {
             guard app.builtInProgram == nil || (document.version >= 13 && !app.isNotepad) else { throw LibraryError.invalidPath }
             try app.demoSettings?.validate()
             try BoxedwineArguments.validate(app.boxedwineArguments ?? [])
+            try CdromImages.validate(app.cdromImages ?? [])
+            try CdromImages.validateBookmarks(app.cdromBookmarks ?? [:])
             guard !app.hasBoxedwineArguments || document.version >= 9 else { throw BoxedwineArgumentError.invalid("These settings require library format 9.") }
             if let executable = app.executable { _ = try confinedURL(executable, beneath: root(for: app)) }
             if let installer = app.installer { _ = try confinedURL(installer, beneath: appDirectory(app)) }
@@ -584,6 +589,7 @@ struct LaunchRequest: Sendable {
         var result = ["-root", repository.root(for: app).path, "-zip", wineZip.path,
                       "-title", app.name, "-resolution", resolution]
         if app.fullScreen { result.append("-fullscreenAspect") }
+        result += try CdromImages.launchArguments(app.cdromImages ?? [], root: repository.root(for: app))
         if let program = app.wineProgram, !installing && alternateExecutable == nil && externalProgram == nil { return result + overrides + ["/bin/wine", program.command] + app.arguments }
         if let externalProgram {
             // Boxedwine gives the emulated user write permission under /home;

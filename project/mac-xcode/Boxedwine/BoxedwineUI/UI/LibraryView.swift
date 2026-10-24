@@ -628,11 +628,15 @@ struct AppSettingsView: View {
     @State private var showProgramChooser = false
     @State private var argumentText = ""
     @State private var boxedwineArgumentText = ""
-    @State private var advancedExpanded = false
+    @State private var selectedTab = 0
+    @State private var sensitivity = 100
+    @State private var sensitivityMinimum = 25
+    @State private var sensitivityMaximum = 400
+    @State private var sensitivityNotice = false
+    @State private var openingHeight: CGFloat = 650
     @State private var showBoxedwineHelp = false
     @State private var importingIcon = false
     @State private var iconProblem: String?
-    @FocusState private var nameFocused: Bool
     @Environment(\.dismiss) private var dismiss
     private var demoArguments: [String] {
         guard !app.isBuiltIn, let settings = app.demoSettings else { return [] }
@@ -640,11 +644,11 @@ struct AppSettingsView: View {
         return settings.launchArguments(workingDirectory: directory)
     }
     private var boxedwineProblem: String? {
-        do { _ = try BoxedwineArguments.parse(boxedwineArgumentText); return nil }
+        do { _ = try MouseSensitivity.arguments(text: boxedwineArgumentText, value: sensitivity); return nil }
         catch { return error.localizedDescription }
     }
     private var settingsToSave: LibraryApp? {
-        guard let parsed = try? BoxedwineArguments.parse(boxedwineArgumentText) else { return nil }
+        guard let parsed = try? MouseSensitivity.arguments(text: boxedwineArgumentText, value: sensitivity) else { return nil }
         var updated = app
         updated.boxedwineArguments = parsed.isEmpty ? nil : parsed
         updated.arguments = argumentText.isEmpty ? [] : argumentText.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
@@ -654,6 +658,19 @@ struct AppSettingsView: View {
         !importingIcon && store.canModify(app) && !app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && boxedwineProblem == nil
     }
     private var hasSettingsChanges: Bool { settingsToSave != store.apps.first { $0.id == app.id } }
+    private func setSensitivity(_ value: Int) {
+        sensitivity = value
+        sensitivityMinimum = min(sensitivityMinimum, value)
+        sensitivityMaximum = max(sensitivityMaximum, value)
+    }
+    private func transferSensitivity() {
+        let transfer = MouseSensitivity.transfer(boxedwineArgumentText)
+        if let value = transfer.value {
+            setSensitivity(value)
+            boxedwineArgumentText = transfer.text
+            sensitivityNotice = true
+        }
+    }
     private func chooseIcon() {
         let panel = NSOpenPanel()
         panel.title = "Choose App Icon"
@@ -671,114 +688,142 @@ struct AppSettingsView: View {
             importingIcon = false
         }
     }
-    var body: some View {
+
+    private var general: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("App settings").font(.title2.weight(.semibold))
-            ScrollView {
-            Form {
-                LabeledContent("Name") {
-                    TextField("Name", text: $app.name)
-                        .labelsHidden()
-                        .textFieldStyle(.plain)
-                        .focused($nameFocused)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 4)
-                        .modifier(SettingsTextInputAppearance(isFocused: nameFocused))
-                        .contentShape(RoundedRectangle(cornerRadius: 5))
-                        .simultaneousGesture(TapGesture().onEnded { nameFocused = true })
-                }
-                if !app.isBuiltIn {
-                    LabeledContent("Program") {
-                        HStack {
-                            if let path = app.executable {
-                                Text(ProgramCandidate(path: path).windowsPath)
-                                    .lineLimit(2).truncationMode(.middle)
-                                    .help(ProgramCandidate(path: path).windowsPath)
-                            } else {
-                                Text("No program selected").foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 8)
-                            Button("Choose Program…") { showProgramChooser = true }.fixedSize()
-                        }
-                    }
-                }
-                Picker("Window size", selection: $app.resolution) {
-                    ForEach(["640x480", "800x600", "1024x768", "1280x720", "1920x1080"], id: \.self) { Text($0).tag($0) }
-                }
-                Toggle("Open in full screen", isOn: $app.fullScreen)
-                LabeledContent("Windows support", value: store.wineDescription(for: app))
-                WindowsVersionPicker(selection: Binding(get: { app.preferredWindowsVersion }, set: { app.chooseWindowsVersion($0) }))
-                Text("Changes apply before the next app or installer launch. Choosing Wine’s default uses the default Windows version from this app’s Wine package.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                DisclosureGroup("Advanced", isExpanded: $advancedExpanded) {
-                    VStack(alignment: .leading) {
-                        HStack(spacing: 12) {
-                            AppIcon(app: app, repository: store.repository, demoImage: store.defaultIconURL(for: app))
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("App icon").font(.caption)
-                                HStack {
-                                    Button("Choose Image…") { chooseIcon() }.disabled(importingIcon)
-                                    if app.customIconPNG != nil {
-                                        Button("Use Automatic") { app.customIconPNG = nil; iconProblem = nil }.disabled(importingIcon)
-                                    }
-                                    if importingIcon { ProgressView().controlSize(.small) }
-                                }
-                            }
-                        }
-                        Text(app.customIconPNG == nil ? "Uses the program’s icon, or demo artwork when available." : "Your image is saved with this app.")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        if let iconProblem {
-                            Text(iconProblem).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
-                        }
-                        Divider().padding(.vertical, 4)
-                        Picker("Wine renderer", selection: Binding(get: { app.preferredWineRenderer }, set: { app.chooseWineRenderer($0) })) {
-                            ForEach(WineRenderer.allCases) { Text($0.title).tag($0) }
-                        }
-                        Text("Controls Wine’s DirectDraw and Direct3D rendering. GDI can help older 2D games and menus, but disables Direct3D acceleration. Games with their own OpenGL renderer can still use it. Changes apply before the next app or installer launch.")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        Divider().padding(.vertical, 4)
-                        Picker("OpenGL backend", selection: Binding(get: { app.preferredOpenGLBackend }, set: { app.chooseOpenGLBackend($0) })) {
-                            ForEach(WineOpenGLBackend.allCases) { Text($0.title).tag($0) }
-                        }
-                        Text("Applies before the next app or installer launch. Wine’s default removes the override. Try GLX or EGL if graphics fail to start or render incorrectly.")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        Divider().padding(.vertical, 4)
-                        if !demoArguments.isEmpty {
-                            Text("Demo launch arguments").font(.caption)
-                            Text(demoArguments.joined(separator: "\n"))
-                                .font(.system(.body, design: .monospaced))
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(8)
-                                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 5))
-                            Text("Supplied by the demo for app launches. Boxedwine arguments below can override matching values.")
-                                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                            Divider().padding(.vertical, 4)
-                        }
-                        HStack {
-                            Text("Boxedwine arguments — one argument per line").font(.caption)
-                            Spacer()
-                            Button("Supported Options") { showBoxedwineHelp = true }.font(.caption)
-                                .popover(isPresented: $showBoxedwineHelp) {
-                                    ScrollView { Text(BoxedwineArguments.help).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding() }
-                                        .frame(width: 410, height: 400)
-                                }
-                        }
-                        ArgumentTextEditor(text: $boxedwineArgumentText, label: "Boxedwine arguments", height: 75)
-                        Text("Before /bin/wine, for this app and its installer. Put option values on separate lines, for example -cpuAffinity then 1. Overrides matching demo options.")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        if let problem = boxedwineProblem {
-                            Text(problem).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
-                        }
-                        Divider().padding(.vertical, 4)
-                        Text("App arguments — one argument per line").font(.caption)
-                        ArgumentTextEditor(text: $argumentText, label: "App arguments", height: 75)
-                        Text("Passed after the program name. These are for the app. Put each argument on its own line; spaces within a line are kept, so do not add surrounding quotes.")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            LabeledContent("Name") { TextField("Name", text: $app.name).labelsHidden().textFieldStyle(.roundedBorder) }
+            if !app.isBuiltIn {
+                LabeledContent("Program") {
+                    HStack {
+                        if let path = app.executable {
+                            Text(ProgramCandidate(path: path).windowsPath).lineLimit(2).truncationMode(.middle)
+                                .help(ProgramCandidate(path: path).windowsPath)
+                        } else { Text("No program selected").foregroundStyle(.secondary) }
+                        Spacer(minLength: 8)
+                        Button("Choose Program…") { showProgramChooser = true }.fixedSize()
                     }
                 }
             }
-            }.frame(height: advancedExpanded ? 550 : 255)
+            HStack {
+                Text("Window size")
+                TextField("1024x768", text: $app.resolution).frame(width: 105).textFieldStyle(.roundedBorder)
+                    .accessibilityLabel("Window size")
+                Menu {
+                    ForEach(["640x480", "800x600", "1024x768", "1280x720", "1920x1080"], id: \.self) { size in
+                        Button(size) { app.resolution = size }
+                    }
+                } label: { Image(systemName: "chevron.down") }
+                    .menuStyle(.borderlessButton).frame(width: 20).help("Window size presets")
+                Spacer(minLength: 8)
+                Toggle("Open in full screen", isOn: $app.fullScreen).toggleStyle(.checkbox)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Mouse sensitivity")
+                    Text("100% is normal · Captured mouse only").font(.caption).foregroundStyle(.secondary)
+                }
+                HStack {
+                    Slider(value: Binding(get: { Double(sensitivity) }, set: { sensitivity = Int($0.rounded()) }),
+                           in: Double(sensitivityMinimum)...Double(sensitivityMaximum))
+                        .accessibilityLabel("Mouse sensitivity").accessibilityValue("\(sensitivity)%")
+                    Text("\(sensitivity)%").monospacedDigit().frame(width: 48, alignment: .trailing)
+                    Button("Reset") { sensitivity = 100 }
+                }
+            }
+            VStack(alignment: .leading, spacing: 5) {
+                WindowsVersionPicker(selection: Binding(get: { app.preferredWindowsVersion }, set: { app.chooseWindowsVersion($0) }))
+                Text("Applies on the next launch.").font(.caption).foregroundStyle(.secondary)
+            }
+            CdromImagesEditor(app: $app)
+        }
+    }
+
+    private var advanced: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(store.wineDescription(for: app)).font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    AppIcon(app: app, repository: store.repository, demoImage: store.defaultIconURL(for: app))
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("App icon")
+                        HStack {
+                            Button("Choose Image…") { chooseIcon() }.disabled(importingIcon)
+                            Button("Use Automatic") { app.customIconPNG = nil; iconProblem = nil }
+                                .disabled(importingIcon || app.customIconPNG == nil)
+                            if importingIcon { ProgressView().controlSize(.small) }
+                        }
+                    }
+                }
+                Text(app.customIconPNG == nil ? "Automatic program icon or demo artwork." : "Custom image saved with this app.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let iconProblem { Text(iconProblem).font(.caption).foregroundStyle(.red) }
+            }
+            VStack(alignment: .leading, spacing: 5) {
+                Picker("Wine renderer", selection: Binding(get: { app.preferredWineRenderer }, set: { app.chooseWineRenderer($0) })) {
+                    ForEach(WineRenderer.allCases) { Text($0.title).tag($0) }
+                }
+                Text("GDI supports older 2D apps; disables Direct3D acceleration.").font(.caption).foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 5) {
+                Picker("Wine OpenGL interface", selection: Binding(get: { app.preferredOpenGLBackend }, set: { app.chooseOpenGLBackend($0) })) {
+                    ForEach(WineOpenGLBackend.allCases) { Text($0.title).tag($0) }
+                }
+                Text("Try GLX or EGL if graphics fail to start or render correctly.").font(.caption).foregroundStyle(.secondary)
+            }
+            if !demoArguments.isEmpty {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Demo launch arguments").font(.caption)
+                    Text(demoArguments.joined(separator: "\n")).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                    Text("Boxedwine arguments below can override matching demo options.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Boxedwine arguments")
+                    Text("One option or value per line").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Supported Options") { showBoxedwineHelp = true }.font(.caption)
+                        .popover(isPresented: $showBoxedwineHelp) {
+                            ScrollView { Text(BoxedwineArguments.help).font(.system(.caption, design: .monospaced)).textSelection(.enabled).padding() }
+                                .frame(width: 410, height: 400)
+                        }
+                }
+                SensitivityArgumentEditor(text: $boxedwineArgumentText) { value in
+                    setSensitivity(value)
+                    sensitivityNotice = true
+                }.frame(height: 82)
+                if sensitivityNotice {
+                    Text("Mouse sensitivity moved to General.").font(.caption).foregroundStyle(.secondary)
+                }
+                if let problem = boxedwineProblem {
+                    Text(problem).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("App arguments")
+                    Text("One argument per line").font(.caption).foregroundStyle(.secondary)
+                }
+                ArgumentTextEditor(text: $argumentText, label: "App arguments", height: 75)
+                Text("Spaces are preserved; omit surrounding quotes.").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("App settings").font(.title2.weight(.semibold))
+            Picker("Settings tab", selection: $selectedTab) {
+                Text("General").tag(0)
+                Text("Advanced").tag(1)
+            }.pickerStyle(.segmented).labelsHidden().frame(width: 240).frame(maxWidth: .infinity)
+            ScrollView {
+                Group {
+                    if selectedTab == 0 { general } else { advanced }
+                }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            }.background {
+                RoundedRectangle(cornerRadius: 6).strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+            }
             HStack {
                 Button(hasSettingsChanges ? "Save and Back Up…" : "Back Up App…") {
                     if let updated = settingsToSave { store.saveAndBackUp(updated) }
@@ -791,11 +836,16 @@ struct AppSettingsView: View {
                     if let updated = settingsToSave { store.save(updated) }
                 }.keyboardShortcut(.defaultAction).disabled(!canSave)
             }
-        }.padding(28).frame(width: 540)
+        }.padding(24).frame(width: 660, height: openingHeight)
         .onAppear {
             argumentText = app.arguments.joined(separator: "\n")
-            boxedwineArgumentText = (app.boxedwineArguments ?? []).joined(separator: "\n")
+            let transfer = MouseSensitivity.transfer((app.boxedwineArguments ?? []).joined(separator: "\n"))
+            boxedwineArgumentText = transfer.text
+            setSensitivity(transfer.value ?? 100)
+            let available = (NSApp.keyWindow?.screen ?? NSScreen.main)?.visibleFrame.height ?? 900
+            openingHeight = min(available * 0.9, CGFloat(650 + min(3, (app.cdromImages ?? []).count) * 30))
         }
+        .onChange(of: selectedTab) { transferSensitivity() }
         .sheet(isPresented: $showProgramChooser) {
             if let repository = store.repository {
                 ProgramChooserView(repository: repository, app: app, saveTitle: "Use This Program") { chosen in
@@ -859,7 +909,7 @@ struct AppTroubleshootingView: View {
                             }
                             Divider()
                             topic("OpenGL errors or missing 3D graphics") {
-                                Text("In App Settings → Advanced → OpenGL backend, try GLX. If GLX is already selected, try EGL. Save and reopen the game after each change.")
+                                Text("In App Settings → Advanced → Wine OpenGL interface, try GLX. If GLX is already selected, try EGL. Save and reopen the game after each change.")
                                 Text("This changes how Wine connects to OpenGL. It is separate from Wine renderer. For Direct3D games, set Wine renderer to Use Wine’s default or OpenGL; GDI disables Direct3D acceleration.")
                                 if !app.isBuiltIn {
                                     Text("If the game has a graphics setup program, open it with Run Another Program. Try the game’s Direct3D or OpenGL option if its 3dfx/Glide mode does not work.")

@@ -11,6 +11,9 @@
 #include <SDL_syswm.h>
 #include <algorithm>
 #include <cmath>
+#ifdef __APPLE__
+#include "../mac/macStatusBar.h"
+#endif
 #ifdef BOXEDWINE_MSVC
 #include <commdlg.h>
 #include "../windows/windowsAppIdentity.h"
@@ -39,9 +42,10 @@ std::unique_ptr<ImFontAtlas> atlas;
 ImFont* font = nullptr;
 int atlasWidth = 0, atlasHeight = 0;
 U32 ownerId = 0, nextRefresh = 0;
-bool opened = false, managing = false, dirty = true;
+bool opened = false, dirty = true;
 bool barPressed = false;
 int pressedMenuRow = -1;
+bool pressedMenuRemove = false;
 U32 dismissedButtons = 0;
 bool enabled = false;
 int hover = -1, firstDisc = 0;
@@ -73,7 +77,9 @@ bool fullscreen(SDL_Window* window) {
 // Owned windows stay with the game in the Windows task switcher and minimize
 // with it. X11 popups also need an explicit transient parent.
 void setOwner(SDL_Window* child, SDL_Window* parent, bool passive) {
-#ifdef BOXEDWINE_MSVC
+#ifdef __APPLE__
+    macStatusBarSetOwner(child, parent);
+#elif defined(BOXEDWINE_MSVC)
     SDL_SysWMinfo c = {}, p = {};
     SDL_VERSION(&c.version);
     SDL_VERSION(&p.version);
@@ -96,7 +102,9 @@ void setOwner(SDL_Window* child, SDL_Window* parent, bool passive) {
 }
 
 void focusGuest() {
-#ifdef BOXEDWINE_MSVC
+#ifdef __APPLE__
+    macStatusBarFocus(owner());
+#elif defined(BOXEDWINE_MSVC)
     SDL_SysWMinfo info = {};
     SDL_VERSION(&info.version);
     if (owner() && SDL_GetWindowWMInfo(owner(), &info)) SetFocus(info.info.win.window);
@@ -111,7 +119,9 @@ void focusGuest() {
 }
 
 bool embedGuest(SDL_Window* child, SDL_Window* parent, bool attach) {
-#ifdef BOXEDWINE_MSVC
+#ifdef __APPLE__
+    return macStatusBarEmbedGuest(child, parent, attach);
+#elif defined(BOXEDWINE_MSVC)
     SDL_SysWMinfo c = {}, p = {};
     SDL_VERSION(&c.version); SDL_VERSION(&p.version);
     if (!SDL_GetWindowWMInfo(child, &c) || !SDL_GetWindowWMInfo(parent, &p)) return false;
@@ -238,7 +248,10 @@ void text(Surface& surface, const BString& value, int x, int y, int maxWidth, U8
 }
 
 int visibleDiscs() { return std::min(maxDiscs, std::max(0, (int)state.discs.size() - firstDisc)); }
-int rows() { return visibleDiscs() + 3; }
+int rows() { return visibleDiscs() + 2; }
+bool removeControl(int row, int x) {
+    return row > 0 && row <= visibleDiscs() && firstDisc + row - 1 != state.index && x >= menuWidth - 80;
+}
 BString discName(int index) {
     return B("Disc ") + BString::valueOf(index + 1) + " - " + Fs::getFileNameFromNativePath(state.discs[index]);
 }
@@ -247,9 +260,15 @@ void closeMenu(bool restoreFocus) {
     opened = false;
     barPressed = false;
     pressedMenuRow = -1;
-    managing = false;
     hover = -1;
-    if (menu.window) SDL_HideWindow(menu.window);
+    if (menu.window) {
+        SDL_HideWindow(menu.window);
+#ifdef __APPLE__
+        // AppKit restores child windows when showing their parent. A closed
+        // popup must stay detached across owner recreation and fullscreen.
+        macStatusBarSetOwner(menu.window, nullptr);
+#endif
+    }
     if (restoreFocus && owner()) { SDL_RaiseWindow(embedded ? bar.window : owner()); focusGuest(); }
     dirty = true;
 }
@@ -271,6 +290,9 @@ void positionSurfaces() {
         // Native child coordinates are independent of the outer window's move.
         const char* title = SDL_GetWindowTitle(parent);
         if (strcmp(SDL_GetWindowTitle(bar.window), title)) SDL_SetWindowTitle(bar.window, title);
+#ifdef __APPLE__
+        macStatusBarPositionGuest(parent, bar.window);
+#endif
     }
     if (opened && menu.window) {
         int height = rows() * rowHeight + 8;
@@ -328,7 +350,7 @@ void draw() {
             int y = 4 + row * rowHeight;
             if (row == hover) fill(menu, 4, y, width - 8, rowHeight, 222, 237, 253);
             BString label;
-            if (!row) label = managing ? B("Add / insert disc image...") : B("Choose disc image...");
+            if (!row) label = B("Choose disc image...");
             else if (row <= visibleDiscs()) {
                 int index = firstDisc + row - 1;
                 label = discName(index);
@@ -337,10 +359,9 @@ void draw() {
                     SDL_RenderDrawLine(menu.renderer, 12, y + 16, 16, y + 20);
                     SDL_RenderDrawLine(menu.renderer, 16, y + 20, 23, y + 12);
                 }
-                if (managing && index != state.index) text(menu, B("Remove"), width - 68, y + 7, 60, 110);
-            } else if (row == visibleDiscs() + 1) label = B("Eject disc");
-            else label = managing ? B("Done") : B("Manage discs...");
-            text(menu, label, 34, y + 7, width - (managing && row > 0 && row <= visibleDiscs() ? 110 : 46),
+                if (index != state.index) text(menu, B("Remove"), width - 68, y + 7, 60, 110);
+            } else label = B("Eject disc");
+            text(menu, label, 34, y + 7, width - (removeControl(row, width) ? 110 : 46),
                 row == visibleDiscs() + 1 && state.index < 0 ? 160 : 40);
             if (row == 0 || row == visibleDiscs()) fill(menu, 8, y + rowHeight - 1, width - 16, 1, 224, 226, 230);
         }
@@ -353,7 +374,10 @@ void draw() {
 }
 
 BString chooseImage() {
-#ifdef BOXEDWINE_MSVC
+#ifdef __APPLE__
+    const char* selected = macStatusBarChooseImage();
+    return selected ? BString::copy(selected) : BString::empty;
+#elif defined(BOXEDWINE_MSVC)
     // Use the Unicode common dialog; the older bundled tinyfiledialogs uses
     // ANSI paths on Windows. SDL/filesystem paths are UTF-8.
     wchar_t path[32768] = {};
@@ -386,11 +410,10 @@ void activate(int row, int x) {
         closeMenu(false);
         BString path = chooseImage();
         if (!path.isEmpty()) success = cdromInsertPath(path);
+        if (owner()) { SDL_RaiseWindow(embedded ? bar.window : owner()); focusGuest(); }
     } else if (row <= visibleDiscs()) {
         int index = firstDisc + row - 1;
-        int width, height;
-        SDL_GetWindowSize(menu.window, &width, &height);
-        if (managing && x >= width - 80) {
+        if (removeControl(row, x)) {
             cdromRemoveDisc(index);
         } else {
             success = cdromInsert(index);
@@ -399,9 +422,6 @@ void activate(int row, int x) {
     } else if (row == visibleDiscs() + 1) {
         cdromEject();
         closeMenu(true);
-    } else {
-        if (managing) closeMenu(true);
-        else managing = true;
     }
     if (!success) SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Could not insert disc",
         "The image could not be opened as an ISO or CUE disc.\nThe current disc has been kept in the drive.", owner());
@@ -455,7 +475,9 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
             SDL_SetWindowPosition(bar.window, x, y);
             embedded = embedGuest(window, bar.window, true);
         }
+#ifndef __APPLE__
         if (menu.window) setOwner(menu.window, embedded ? bar.window : window, false);
+#endif
     }
     if (embedded) {
         positionSurfaces();
@@ -480,13 +502,18 @@ void sdlStatusBarOpen() {
     if (!owner() || !state.configured) return;
     if (opened) { closeMenu(true); return; }
     if (!createSurface(menu, "Boxedwine CD-ROM menu", menuWidth, 200, false)) return;
+#ifdef __APPLE__
+    macStatusBarSetOwner(menu.window, embedded ? bar.window : owner());
+#endif
     firstDisc = std::max(0, state.index - maxDiscs + 1);
     opened = true;
-    managing = false;
     hover = 0;
     positionSurfaces();
     SDL_ShowWindow(menu.window);
     SDL_RaiseWindow(menu.window);
+#ifdef __APPLE__
+    macStatusBarFocus(menu.window);
+#endif
 #if defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
     // Override-redirect menus do not get keyboard focus from the WM.
     SDL_SysWMinfo info = {};
@@ -515,6 +542,7 @@ bool sdlStatusBarEvent(SDL_Event& event) {
     SDL_Window* target = SDL_GetWindowFromID(id);
     const bool wasBarPressed = barPressed;
     const int wasMenuRow = pressedMenuRow;
+    const bool wasMenuRemove = pressedMenuRemove;
     if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
         U32 button = SDL_BUTTON(event.button.button);
         if (event.button.button == SDL_BUTTON_LEFT) {
@@ -589,9 +617,12 @@ bool sdlStatusBarEvent(SDL_Event& event) {
         } else {
             int row = event.button.x >= 4 && event.button.x < width - 4 &&
                 event.button.y >= 4 && event.button.y < height - 4 ? (event.button.y - 4) / rowHeight : -1;
-            if (event.type == SDL_MOUSEBUTTONDOWN) pressedMenuRow = row;
+            if (event.type == SDL_MOUSEBUTTONDOWN) {
+                pressedMenuRow = row;
+                pressedMenuRemove = removeControl(row, event.button.x);
+            }
             else {
-                if (row >= 0 && row == wasMenuRow) activate(row, event.button.x);
+                if (row >= 0 && row == wasMenuRow && wasMenuRemove == removeControl(row, event.button.x)) activate(row, event.button.x);
             }
         }
     } else if (event.type == SDL_MOUSEMOTION && target == menu.window) {
@@ -609,7 +640,7 @@ bool sdlStatusBarEvent(SDL_Event& event) {
             if (hover == 1 && firstDisc) --firstDisc;
             else hover = (hover + rows() - 1) % rows();
         } else if (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_SPACE) activate(hover, 0);
-        else if (event.key.keysym.sym == SDLK_DELETE && managing && hover > 0 && hover <= visibleDiscs()) activate(hover, menuWidth);
+        else if ((event.key.keysym.sym == SDLK_DELETE || event.key.keysym.sym == SDLK_BACKSPACE) && removeControl(hover, menuWidth)) activate(hover, menuWidth);
         dirty = true;
     } else if (event.type == SDL_DROPFILE || event.type == SDL_DROPTEXT) {
         SDL_free(event.drop.file);
@@ -632,6 +663,9 @@ void sdlStatusBarShutdown() {
     state = {};
     nextRefresh = 0;
     dirty = true;
+#ifdef __APPLE__
+    macStatusBarReleaseImages();
+#endif
 }
 
 void sdlStatusBarConfigure(bool value) {
