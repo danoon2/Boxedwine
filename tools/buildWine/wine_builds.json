@@ -255,6 +255,11 @@
       "reason": "Re-read a CD-ROM drive's label and serial when its disc is ejected or swapped, report no media while it is empty and broadcast WM_DEVICECHANGE, for Boxedwine's multi-disc -cdrom swapping"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_win16_cdrom_readonly_open.patch",
+      "reason": "Let legacy Win16 CD-ROM applications such as Robot City retry existing disc files read-only when they request read/write access, while keeping writes and ordinary disk access protected"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

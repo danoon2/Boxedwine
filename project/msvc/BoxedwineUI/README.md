@@ -30,6 +30,19 @@ sensitivity implementation; older engines parse the option but ignore it.
 
 ## Build and run
 
+Drop an ISO or CUE image onto the library to install from disc, or choose one
+through Add to Library. Several images dropped together become one app's ordered
+CD-ROM list. Review the name and disc order, then choose Install or Browse disc.
+Install mounts the first disc and runs its `autorun.inf` `open` (or `shellexecute`)
+entry. Missing, malformed, or unavailable autorun targets fall back to Wine
+Explorer at the CD-ROM drive. No installer-name guessing is performed.
+The same action is available later through Run Installer Again. Ordinary app
+launches and disc swaps do not run autorun. Images stay in their original
+locations, and CUE track files must remain available. The list and installation
+mode are saved in app settings and backups; external image contents are not
+copied into backups. The native engine exposes this explicit startup behavior
+as `-cdromInstall` with `-cdrom` images and no guest command.
+
 Install the .NET 10 SDK and Visual Studio's C++ desktop build tools. The complete
 x64 build was verified with Visual Studio 18 Community. The UI has no NuGet package
 dependencies. Running a framework-dependent build requires the .NET 10 **Desktop**

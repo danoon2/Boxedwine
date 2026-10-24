@@ -75,6 +75,7 @@ void testWasmJitFpuFaultState();
 void testWaitPid();
 void testX11ImageIncludeInferiors();
 void testX11ImageScanlinePadding();
+void testX11GetImageBounds();
 void testXInputValuatorLayout();
 void testCapturedMouseSensitivity();
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
@@ -1088,6 +1089,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testWaitPid, "Test waitpid child selection"},
     {testX11ImageIncludeInferiors, "Test X11 image IncludeInferiors and child coordinates"},
     {testX11ImageScanlinePadding, "Test X11 image scanline padding"},
+    {testX11GetImageBounds, "Test X11 image capture bounds and padding"},
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
     {testSDLGlWindowRemovalLockOrder, "Test SDL GL window removal lock order", TEST_ENTRY_SERIAL},
 #endif

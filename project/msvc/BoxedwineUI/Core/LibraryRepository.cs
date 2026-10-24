@@ -218,7 +218,7 @@ public sealed class LibraryRepository : IDisposable
         }
         return result.OrderBy(p => p.CreatedAt).ToList();
     }
-    public async Task<LibraryApp> Import(string source, string kind, string windows, WineReference wine, CancellationToken cancellation, IProgress<OperationProgress>? progress = null, string? installer = null, string? name = null, string? program = null)
+    public async Task<LibraryApp> Import(string source, string kind, string windows, WineReference wine, CancellationToken cancellation, IProgress<OperationProgress>? progress = null, string? installer = null, string? name = null, string? program = null, IReadOnlyList<string>? discImages = null)
     {
         source = Path.GetFullPath(source);
         if (SafeFiles.IsWithin(DirectoryPath, source) || SafeFiles.IsWithin(source, DirectoryPath) || source.Equals(DirectoryPath, StringComparison.OrdinalIgnoreCase)) throw new IOException("Choose a folder outside the Boxedwine library.");
@@ -227,7 +227,12 @@ public sealed class LibraryRepository : IDisposable
         var operation = Begin(app, kind);
         try
         {
-            if (kind == "folder")
+            if (kind == "disc")
+            {
+                app.CdromImages = CdromImages.PrepareImport(discImages ?? [source]);
+                app.InstallFromDisc = true;
+            }
+            else if (kind == "folder")
             {
                 await SafeFiles.CopyTree(source, SafeFiles.Beneath(Root(app), DriveC + "/App"), cancellation, progress);
                 var programs = Programs(app);

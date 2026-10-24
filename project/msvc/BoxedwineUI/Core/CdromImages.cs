@@ -4,6 +4,36 @@ namespace Boxedwine.Library;
 
 public static class CdromImages
 {
+    public static bool IsImage(string path) => new[] { ".iso", ".cue" }.Contains(Path.GetExtension(path).ToLowerInvariant());
+
+    public static List<string> PrepareImport(IEnumerable<string> paths)
+    {
+        var images = paths.Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        Validate(images);
+        if (images.Count == 0) throw new InvalidDataException("Choose an ISO or CUE disc image.");
+        foreach (string image in images)
+        {
+            SafeFiles.NoLinks(image);
+            if (!IsImage(image) || !File.Exists(image)) throw new IOException("Choose an available ISO or CUE disc image: " + image);
+            if (!image.EndsWith(".cue", StringComparison.OrdinalIgnoreCase)) continue;
+            if (new FileInfo(image).Length > 1024 * 1024) throw new InvalidDataException("The CUE sheet is too large.");
+            int files = 0;
+            foreach (string line in File.ReadLines(image))
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(line, @"^\s*FILE(?:\s|$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
+                var match = System.Text.RegularExpressions.Regex.Match(line, "^\\s*FILE\\s+(?:\"([^\"]+)\"|(\\S+))\\s+(BINARY|MOTOROLA|WAVE)\\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (!match.Success) throw new InvalidDataException("Invalid or unsupported FILE entry in CUE sheet: " + image);
+                string name = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+                string track = Path.GetFullPath(name, Path.GetDirectoryName(image)!);
+                SafeFiles.NoLinks(track);
+                if (!File.Exists(track)) throw new FileNotFoundException("The CUE sheet needs this track file. Keep its track files beside the CUE sheet:\n" + track, track);
+                files++;
+            }
+            if (files == 0) throw new InvalidDataException("The CUE sheet contains no track files: " + image);
+        }
+        return images;
+    }
+
     public static void Validate(IReadOnlyList<string> paths)
     {
         if (paths.Count > 256 || paths.Any(path => string.IsNullOrWhiteSpace(path) || path.Length > 8192 ||

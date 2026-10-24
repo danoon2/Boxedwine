@@ -45,16 +45,20 @@ FsOpenNode* FsVirtualNode::open(U32 flags) {
         return new FsDirOpenNode(shared_from_this(), flags);
     }
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
-        if (!this->canRead())
+        if (!this->canRead()) {
+            errno = EACCES;
             return nullptr;
+        }
     } else if ((flags & K_O_ACCMODE)==K_O_WRONLY) {
-        if (!this->canWrite())
+        if (!this->canWrite()) {
+            errno = EACCES;
             return nullptr;
+        }
     } else {
-        if (!this->canWrite())
+        if (!this->canWrite() || !this->canRead()) {
+            errno = EACCES;
             return nullptr;
-        if (!this->canRead())
-            return nullptr;
+        }
     }
     if (flags & K_O_CREAT) {
         //return 0;

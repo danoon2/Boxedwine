@@ -318,7 +318,12 @@ void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
     // Store an ID rather than a pointer: rendering can destroy/recreate windows.
     SDL_Window* previous = SDL_GetWindowFromID(confinedWindowId);
     bool wanted = wantsMouseCapture();
-    SDL_Window* target = wanted && !mouseCaptureReleased ? window : nullptr;
+    // Input is mapped to the embedded guest, but SDL's grab must belong to
+    // the actual keyboard-focus window (the outer status-bar host on Windows).
+    // Grabbing its unfocused child only sets a flag; it never clips the cursor.
+    SDL_Window* focused = SDL_GetKeyboardFocus();
+    SDL_Window* target = wanted && !mouseCaptureReleased && window &&
+        sdlStatusBarInputWindow(focused) == window ? focused : nullptr;
     if (previous && previous != target) {
         SDL_SetWindowGrab(previous, SDL_FALSE);
     }
@@ -327,7 +332,8 @@ void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
         // Preserve absolute motion and the game's existing cursor warps.
         SDL_SetWindowGrab(target, SDL_TRUE);
     }
-    updateMouseCaptureTitle(window && (target || (mouseCaptureReleased && !hostUiMouseReleased)) ? window : nullptr);
+    bool captured = target && SDL_GetWindowGrab(target) == SDL_TRUE;
+    updateMouseCaptureTitle(window && (captured || (mouseCaptureReleased && !hostUiMouseReleased)) ? window : nullptr);
 #endif
 }
 
@@ -1159,6 +1165,9 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         return true;
     }
 #endif    
+    // A captured game cannot enter host controls merely by moving down. SDL's
+    // outer-window grab includes the bar, so constrain those events first.
+    if (confinedWindowId && !mouseCaptureReleased) sdlStatusBarConstrainPointer(*e);
     // Host controls must be handled before capture/guest input. Their pixels
     // and mouse positions do not belong to the emulated desktop.
     if (sdlStatusBarEvent(*e)) {

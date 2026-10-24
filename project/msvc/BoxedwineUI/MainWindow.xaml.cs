@@ -174,7 +174,7 @@ public partial class MainWindow : Window
         refreshing = true; Cards.ItemsSource = rows; Cards.SelectedItem = rows.FirstOrDefault(r => r.Key == previous); refreshing = false;
         PageTitle.Text = section == "All Apps" ? "Your Windows apps" : section;
         PageSubtitle.Text = section switch { "Demos" => "Discover a classic. Every demo gets its own Windows environment.", "Removed Apps" => "Your files and saves stay here until you restore or delete them.", "Recently Opened" => "Pick up where you left off.", "Unfinished Work" => "Review interrupted file operations.", _ => "A home for old favorites." };
-        CountLabel.Text = $"{rows.Count} {(section == "Unfinished Work" ? "operations" : "apps")}" + (section == "All Apps" ? "   ·   Drop an app folder or installer here" : "");
+        CountLabel.Text = $"{rows.Count} {(section == "Unfinished Work" ? "operations" : "apps")}" + (section == "All Apps" ? "   ·   Drop an app folder, installer, or disc image here" : "");
         EmptyState.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyTitle.Text = Search.Text.Length > 0 ? "No matches" : section switch { "Demos" => "Explore Windows classics", "Recently Opened" => "Your recent apps appear here", "Removed Apps" => "No removed apps", "Unfinished Work" => "Everything is up to date", _ => "Make room for your favorites" };
         EmptyDescription.Text = Search.Text.Length > 0 ? "Try another name or clear the search." : section switch { "Demos" => catalogError ?? "The catalog is empty.", "Recently Opened" => "Open an app from All Apps to get started.", "Removed Apps" => "Removing an app from the library keeps its files here.", "Unfinished Work" => "There are no interrupted copies to review.", _ => "Add an app folder or installer, browse a demo, or try Wine's Minesweeper to get started." };
@@ -286,7 +286,13 @@ public partial class MainWindow : Window
     private void FilesDropped(object sender, DragEventArgs e)
     {
         if (busy || e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
-        if (paths.Length != 1) { Dialogs.Info(this, "Add one app at a time", "Drop a complete app folder, an installer folder, or a single installer file."); return; }
+        if (paths.Length > 0 && paths.All(CdromImages.IsImage))
+        {
+            e.Handled = true;
+            RunOperation("Checking disc images…", (token, _) => { token.ThrowIfCancellationRequested(); return Task.FromResult(PreparedAppSource.PrepareDiscs(paths)); }, prepared => ReviewImportSource(prepared, false, false));
+            return;
+        }
+        if (paths.Length != 1) { Dialogs.Info(this, "Add one app at a time", "Drop an app folder, an installer, or ISO/CUE images for one app."); return; }
         Safe(() => Add(paths[0]));
     }
     private void KeyboardShortcut(object sender, KeyEventArgs e)

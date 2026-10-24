@@ -7,6 +7,9 @@
 #include <SDL_syswm.h>
 #include "sdlStatusBar.h"
 #include "devcdrom.h"
+#define private public
+#include "knativeinputSDL.h"
+#undef private
 #include <cassert>
 #include <cstdio>
 #ifdef __APPLE__
@@ -82,8 +85,72 @@ static void testNativePopupInput(SDL_Window* guest, SDL_Window* host, SDL_Window
 }
 #endif
 
+static void testEmbeddedMouseCapture(SDL_Window* guest, SDL_Window* host) {
+    // Exercise the real SDL focus/grab backend. A mocked SetWindowGrab cannot
+    // catch the Windows child-view bug: SDL rejects grabs on unfocused windows.
+    SDL_PumpEvents();
+    SDL_Window* focused = SDL_GetKeyboardFocus();
+    assert(focused && sdlStatusBarInputWindow(focused) == guest);
+#ifdef BOXEDWINE_MSVC
+    assert(focused == host);
+#endif
+    KNativeInputSDL input(640, 480, 100, 100);
+    input.mouseConfinementRequested = true;
+    auto focus = [&](bool gained) {
+        SDL_Event event = {};
+        event.type = SDL_WINDOWEVENT;
+        event.window.windowID = SDL_GetWindowID(guest);
+        event.window.event = gained ? SDL_WINDOWEVENT_FOCUS_GAINED : SDL_WINDOWEVENT_FOCUS_LOST;
+        assert(input.handlSdlEvent(&event));
+    };
+    focus(true);
+    assert(SDL_GetWindowGrab(focused) == SDL_TRUE);
+    assert(input.confinedWindowId == SDL_GetWindowID(focused));
+    assert(input.mouseHintWindowId == SDL_GetWindowID(guest));
+#ifdef BOXEDWINE_MSVC
+    SDL_SysWMinfo info = {}; SDL_VERSION(&info.version);
+    assert(SDL_GetWindowWMInfo(host, &info));
+    RECT expected, actual;
+    assert(GetClientRect(info.info.win.window, &expected));
+    ClientToScreen(info.info.win.window, (POINT*)&expected.left);
+    ClientToScreen(info.info.win.window, (POINT*)&expected.right);
+    assert(GetClipCursor(&actual) && EqualRect(&expected, &actual));
+#endif
+    // Reproduce leaving downward: motion in the outer window's status strip
+    // used to call releaseMouseForHostUi(), allowing escape and pausing games.
+    SDL_Event motion = {};
+    motion.type = SDL_MOUSEMOTION;
+    motion.motion.windowID = SDL_GetWindowID(host);
+    motion.motion.x = 200;
+    motion.motion.y = 510;
+    assert(input.handlSdlEvent(&motion));
+    assert(!input.isMouseCaptureReleased() && SDL_GetWindowGrab(focused) == SDL_TRUE);
+    assert(motion.motion.windowID == SDL_GetWindowID(guest) && motion.motion.y == 479);
+#ifdef BOXEDWINE_MSVC
+    SDL_SysWMinfo child = {}; SDL_VERSION(&child.version);
+    assert(SDL_GetWindowWMInfo(guest, &child));
+    POINT cursor;
+    assert(GetCursorPos(&cursor) && ScreenToClient(child.info.win.window, &cursor));
+    assert(cursor.y >= 0 && cursor.y < 480);
+#endif
+    // Explicit release and focus loss must release the host while keeping
+    // titles and guest input associated with the embedded view.
+    input.mouseCaptureReleased = true;
+    focus(true);
+    assert(SDL_GetWindowGrab(focused) == SDL_FALSE);
+    assert(strstr(SDL_GetWindowTitle(guest), "Click to capture mouse"));
+    input.mouseCaptureReleased = false;
+    focus(true);
+    assert(SDL_GetWindowGrab(focused) == SDL_TRUE);
+    focus(false);
+    assert(SDL_GetWindowGrab(focused) == SDL_FALSE);
+    assert(!strcmp(SDL_GetWindowTitle(guest), "Status bar harness"));
+    puts("Embedded mouse confinement, release, recapture, and caption checks passed");
+}
+
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
+    SDL_SetMainReady();
     assert(SDL_Init(SDL_INIT_VIDEO) == 0);
     const BString root = B("../../tmp/statusbar-native-test-root");
     std::filesystem::create_directories(root.c_str());
@@ -119,6 +186,7 @@ int main(int argc, char** argv) {
         SDL_GetWindowSize(guest, &w, &h);
         assert(w == 640 && h == 480);
         assert(sdlStatusBarInputWindow(host) == guest);
+        testEmbeddedMouseCapture(guest, host);
         SDL_Event key = {};
         key.type = SDL_KEYDOWN;
         key.key.windowID = SDL_GetWindowID(host);

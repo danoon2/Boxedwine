@@ -8,6 +8,7 @@
 #if !defined(__EMSCRIPTEN__) && !defined(__TEST) && !defined(__ANDROID__)
 void sdlStatusBarTick();
 bool sdlStatusBarEvent(SDL_Event& event);
+void sdlStatusBarConstrainPointer(SDL_Event& event);
 SDL_Window* sdlStatusBarInputWindow(SDL_Window* window);
 bool sdlStatusBarOwns(SDL_Window* window);
 void sdlStatusBarOpen();
@@ -19,6 +20,7 @@ void sdlStatusBarRaiseWindow(SDL_Window* window);
 #else
 inline void sdlStatusBarTick() {}
 inline bool sdlStatusBarEvent(SDL_Event&) { return false; }
+inline void sdlStatusBarConstrainPointer(SDL_Event&) {}
 inline SDL_Window* sdlStatusBarInputWindow(SDL_Window* window) { return window; }
 inline bool sdlStatusBarOwns(SDL_Window*) { return false; }
 inline void sdlStatusBarOpen() {}

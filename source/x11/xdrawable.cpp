@@ -34,22 +34,49 @@ XDrawable::~XDrawable() {
 }
 
 U32 XDrawable::getImage(KThread* thread, S32 x, S32 y, U32 width, U32 height, U32 planeMask, U32 format, U32 redMask, U32 greenMask, U32 blueMask) {
-	U32 image = thread->process->alloc(thread, sizeof(XImage));
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+	if (!this->data || !width || !height) {
+		return 0;
+	}
 	if (planeMask != AllPlanes) {
 		kpanic_fmt("XDrawable::createXImage wasn't expecting planeMask = %x", planeMask);
 	}
 	if (format != ZPixmap) {
 		kpanic_fmt("XDrawable::createXImage wasn't expecting format = %x", format);
 	}
-	U32 bytesPerLine = calculateBytesPerLine(width, visual->bits_per_rgb);
+	U64 stride = (((U64)visual->bits_per_rgb * width + 31) / 32) * 4;
+	if (stride > 0xffffffff || stride * height > 0xffffffff) return 0;
+	U32 bytesPerLine = (U32)stride;
 	U32 len = bytesPerLine * height;
+	U32 image = thread->process->alloc(thread, sizeof(XImage));
 	U32 data = thread->process->alloc(thread, len);
 
+	// Wine's software-cursor save rectangle can cross any drawable edge.
+	// Preserve its requested size and clear unavailable pixels, as copying
+	// through a temporary pixmap would do. The filesystem's legacy X11 shim
+	// dereferences the returned image, so rejecting an edge rectangle with
+	// NULL faults while Wine holds its graphics error-handler mutex.
+	S64 left = std::max<S64>(0, x);
+	S64 right = std::min<S64>(w, (S64)x + width);
 	U32 dst = data;
-	U8* src = this->data + this->bytes_per_line * y + (visual->bits_per_rgb * x + 7) / 8;
-	for (U32 y = 0; y < height; y++) {
-		thread->memory->memcpy(dst, src, bytesPerLine);
-		src += this->bytes_per_line;
+	std::vector<U8> row(bytesPerLine, 0);
+	for (U32 line = 0; line < height; line++) {
+		std::fill(row.begin(), row.end(), 0);
+		S64 sourceY = (S64)y + line;
+		if (left < right && sourceY >= 0 && sourceY < h) {
+			const U8* src = this->data + this->bytes_per_line * (U64)sourceY;
+			if (visual->bits_per_rgb == 1) {
+				for (S64 pixel = left; pixel < right; ++pixel) {
+					U32 target = (U32)(pixel - x);
+					row[target / 8] |= ((src[pixel / 8] >> (pixel & 7)) & 1) << (target & 7);
+				}
+			} else {
+				U32 pixelBytes = visual->bits_per_rgb / 8;
+				// Padding belongs to the destination, not the source rectangle.
+				memcpy(row.data() + (left - x) * pixelBytes, src + left * pixelBytes, (right - left) * pixelBytes);
+			}
+		}
+		thread->memory->memcpy(dst, row.data(), bytesPerLine);
 		dst += bytesPerLine;
 	}
 
@@ -58,7 +85,7 @@ U32 XDrawable::getImage(KThread* thread, S32 x, S32 y, U32 width, U32 height, U3
 }
 
 U32 XDrawable::calculateBytesPerLine(U32 bitsPerPixel, U32 width) {
-	U32 result = width * bitsPerPixel / 8;
+	U32 result = (width * bitsPerPixel + 7) / 8;
 	result = (result + 3) / 4 * 4;
 	return result;
 }

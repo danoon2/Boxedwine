@@ -89,7 +89,7 @@ public partial class MainWindow
             Button("Try Another Wine Version…", "trial", CanChange(app));
         }
         form.Body.Children.Add(FormWindow.Heading("Installation and launch output"));
-        if (app.Installer != null) Button("Run Installer Again", "installer", CanChange(app));
+        if (app.HasInstaller) Button("Run Installer Again", "installer", CanChange(app));
         Button("View Launch Log…", "log");
         Button("Show App Files", "files");
         form.Body.Children.Add(FormWindow.Paragraph("Warnings and a successful exit do not guarantee every app feature works. Logs can include paths and personal app output; review them before sharing."));

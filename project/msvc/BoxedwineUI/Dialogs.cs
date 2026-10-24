@@ -181,10 +181,10 @@ internal static class Dialogs
         }
         void Pick(bool folder)
         {
-            string? source = folder ? Folder(form, "Choose Folder") : File(form, "Choose File", collection ? "Boxedwine collection|*.json" : "App files|*.zip;*.exe;*.msi;*.json");
+            string? source = folder ? Folder(form, "Choose Folder") : File(form, "Choose File", collection ? "Boxedwine collection|*.json" : "App files and disc images|*.zip;*.exe;*.msi;*.iso;*.cue;*.json");
             if (source != null) _ = Prepare(source, false);
         }
-        Choice(form, "Choose file…", collection ? "Collection JSON" : "ZIP, EXE, or MSI", () => Pick(false));
+        Choice(form, "Choose file…", collection ? "Collection JSON" : "ZIP, EXE, MSI, ISO, or CUE", () => Pick(false));
         if (!collection) Choice(form, "Choose folder…", "An app or setup with supporting files.", () => Pick(true));
         var link = FormWindow.Text(""); form.Field("File download URL", link);
         inputs = form.Body.Children.OfType<Control>().ToArray();
@@ -205,9 +205,34 @@ internal static class Dialogs
         form.Closed += (_, _) => { closed = true; cancellation?.Cancel(); };
         form.ShowDialog(); return result;
     }
-    public sealed record AddRequest(string Kind, string Program, string Name, string Windows, CatalogWine Wine);
+    public sealed record AddRequest(string Kind, string Program, string Name, string Windows, CatalogWine Wine, bool BrowseDisc = false);
+    private static AddRequest? ReviewDisc(Window owner, PreparedAppSource source, IReadOnlyList<CatalogWine> wines, WineReference? current)
+    {
+        var form = new FormWindow(owner, "Install from disc", "The first disc is mounted automatically. Install starts its autorun program, or opens the disc in Wine Explorer if none is available.", 620);
+        var name = FormWindow.Text(source.Name); form.Field("App name", name);
+        var discs = new CdromImagesEditor(form, source.DiscImages!);
+        form.Body.Children.Add(FormWindow.Heading("CD-ROM images")); form.Body.Children.Add(discs);
+        form.Body.Children.Add(FormWindow.Paragraph("Images stay in their current location. Keep CUE sheets and their track files together."));
+        var options = new StackPanel(); form.Body.Children.Add(new Expander { Header = "Compatibility options", Content = options });
+        var wine = new ComboBox { ItemsSource = wines, SelectedItem = wines.FirstOrDefault(w => w.Sha256 == current?.Sha256) ?? wines.FirstOrDefault(), MinHeight = 34 };
+        if (wines.Count > 1) { options.Children.Add(new Label { Content = "Wine version", Target = wine }); options.Children.Add(wine); }
+        var windows = FormWindow.Choices(LaunchArguments.WindowsVersions, "wineDefault"); options.Children.Add(new Label { Content = "Windows version", Target = windows }); options.Children.Add(windows);
+        AddRequest? result = null;
+        void Select(bool browse)
+        {
+            if (name.Text.Trim().Length == 0) throw new InvalidOperationException("Enter an app name.");
+            var images = CdromImages.PrepareImport(discs.Images);
+            if (wine.SelectedItem is not CatalogWine selected) throw new InvalidOperationException("The release Wine list is unavailable.");
+            source.DiscImages!.Clear(); source.DiscImages.AddRange(images);
+            result = new("disc", "", name.Text.Trim(), (string)windows.SelectedValue, selected, browse); form.DialogResult = true;
+        }
+        form.Cancel(); form.Button("Browse disc", () => Select(true)); form.Button("Install", () => Select(false), true);
+        WindowSizing.FitHeightOnOpen(form);
+        form.ShowDialog(); return result;
+    }
     public static AddRequest? ReviewApp(Window owner, PreparedAppSource source, IReadOnlyList<CatalogWine> wines, WineReference? current)
     {
+        if (source.DiscImages != null) return ReviewDisc(owner, source, wines, current);
         var form = new FormWindow(owner, "Review App", source.Original, 620);
         var name = FormWindow.Text(source.Name); form.Field("App name", name);
         var action = FormWindow.Choices(new() { [""] = "Choose how to add these files", ["app"] = "Ready-to-run app", ["installer"] = "Run an installer" }, source.SuggestedAction); form.Field("Add as", action);

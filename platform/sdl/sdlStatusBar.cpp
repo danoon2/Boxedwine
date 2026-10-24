@@ -530,6 +530,32 @@ SDL_Window* sdlStatusBarInputWindow(SDL_Window* window) {
     return embedded && window == bar.window ? owner() : window;
 }
 
+void sdlStatusBarConstrainPointer(SDL_Event& event) {
+    if (!embedded || opened || !owner() || guestHeight <= 0) return;
+    bool motion = event.type == SDL_MOUSEMOTION;
+    bool button = event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP;
+    if (!motion && !button && event.type != SDL_MOUSEWHEEL) return;
+    SDL_Window* target = SDL_GetWindowFromID(event.window.windowID);
+    if (target != bar.window && target != owner()) return;
+    // SDL confines the focused outer window, including its status bar. While
+    // a game captures the pointer, that strip must not activate host controls
+    // or release capture. Return it to the guest before routing the event.
+    if (motion || button) {
+        int& x = motion ? event.motion.x : event.button.x;
+        int& y = motion ? event.motion.y : event.button.y;
+        int width;
+        SDL_GetWindowSize(owner(), &width, nullptr);
+        if (width <= 0) return;
+        int clippedX = std::max(0, std::min(x, width - 1));
+        int clippedY = std::max(0, std::min(y, guestHeight - 1));
+        if (x != clippedX || y != clippedY) {
+            x = clippedX; y = clippedY;
+            SDL_WarpMouseInWindow(owner(), x, y);
+        }
+    }
+    event.window.windowID = ownerId;
+}
+
 bool sdlStatusBarEvent(SDL_Event& event) {
     // These SDL event types all place windowID after timestamp. Do not inspect
     // that union field for user events, controller events, or SDL_QUIT.

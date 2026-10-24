@@ -94,9 +94,9 @@ public partial class MainWindow
                 {
                     var wine = await EnsureWine(review.Wine, token, progress);
                     return await repository.Import(prepared.Source, review.Kind, review.Windows, wine, token, progress,
-                        review.Kind == "installerFolder" ? SafeFiles.Beneath(prepared.Source, review.Program) : null, review.Name, review.Kind == "folder" ? review.Program : null);
+                        review.Kind == "installerFolder" ? SafeFiles.Beneath(prepared.Source, review.Program) : null, review.Name, review.Kind == "folder" ? review.Program : null, prepared.DiscImages);
                 }
-            }, app => { Navigate("All Apps", app.Id.ToString()); if (app.Installer != null) Open(app, installing: true); else if (app.Executable == null) ChooseMain(app); });
+            }, app => { Navigate("All Apps", app.Id.ToString()); if (app.HasInstaller) Open(app, installing: true, browseDisc: review.BrowseDisc); else if (app.Executable == null) ChooseMain(app); });
         }
         finally { if (!retained) prepared.Dispose(); }
     }
@@ -160,7 +160,7 @@ public partial class MainWindow
         RunOperation("Installing demo…", async (token, progress) => { var reference = await EnsureWine(wine, token, progress); return await Demos.Install(repository, demo, reference, token, progress); },
             app => { Navigate("All Apps", app.Id.ToString()); if (app.Installer != null) Open(app, installing: true); });
     }
-    private void Open(LibraryApp app, bool installing = false, string? alternate = null, string? external = null)
+    private void Open(LibraryApp app, bool installing = false, string? alternate = null, string? external = null, bool browseDisc = false)
     {
         if (!CanChange(app)) return;
         if (!installing && alternate == null && external == null && app.BuiltIn == null && app.Executable == null) { ChooseMain(app); return; }
@@ -177,7 +177,7 @@ public partial class MainWindow
             if (File.Exists(latest)) File.Move(latest, SafeFiles.Beneath(repository.AppDirectory(app), "Logs/previous.log"), true);
             var configured = await new WineConfiguration(emulator, openGL).Apply(repository, app, wine, token, progress);
             token.ThrowIfCancellationRequested();
-            var arguments = LaunchArguments.Build(repository, configured, wine, installing, alternate, external);
+            var arguments = LaunchArguments.Build(repository, configured, wine, installing, alternate, external, browseDisc);
             return (App: configured, Wine: wine, Arguments: arguments, OpenGL: openGL);
         }, prepared =>
         {

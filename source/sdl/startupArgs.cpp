@@ -40,6 +40,7 @@
 #include "devfb.h"
 #include "devcdrom.h"
 #include "../io/fsiso.h"
+#include "../io/cdromautorun.h"
 #include "mainloop.h"
 #include "../io/fsfilenode.h"
 #include "../io/fszip.h"
@@ -274,6 +275,7 @@ std::vector<BString> StartUpArgs::buildArgs() {
         args.push_back(path);
         args.push_back(cdromDrive);
     }
+    if (cdromInstall) args.push_back(B("-cdromInstall"));
     if (userId != UID) {
         args.push_back(B("-uid"));
         args.push_back(BString::valueOf(userId));
@@ -392,10 +394,34 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->disableLinearMemory) {
         args.push_back(B("-disableLinearMemory"));
     }
-    for (auto& a : this->args) {
-        args.push_back(a);
-    }
+    if (!cdromInstall) for (auto& a : this->args) args.push_back(a);
     return args;
+}
+
+static std::vector<BString> cdromInstallerArgs(const BString& drive) {
+    BString windowsRoot = drive + ":\\";
+    std::vector<BString> fallback = {B("/bin/wine"), B("explorer"), windowsRoot};
+    auto root = Fs::getNodeFromLocalPath(B(""), B("/mnt/cdrom"), true);
+    auto ini = root ? root->getChildByNameIgnoreCase(B("autorun.inf")) : nullptr;
+    if (!ini || ini->isDirectory() || ini->length() > 65536) return fallback;
+    std::unique_ptr<FsOpenNode> file(ini->open(K_O_RDONLY));
+    if (!file) return fallback;
+    std::string contents((size_t)ini->length(), '\0');
+    if (file->readNative((U8*)contents.data(), (U32)contents.size()) != contents.size()) return fallback;
+    auto command = CdromAutorun::command(contents);
+    if (command.empty()) return fallback;
+    auto parts = CdromAutorun::path(command[0], drive.c_str()[0]);
+    if (parts.empty()) return fallback;
+    auto target = root;
+    for (const auto& part : parts) {
+        target = target && target->isDirectory() ? target->getChildByNameIgnoreCase(BString::copy(part.c_str())) : nullptr;
+    }
+    if (!target || target->isDirectory()) return fallback;
+    // /unix avoids start's special interpretation of quoted filenames as titles.
+    // /d preserves the disc-root working directory expected by old installers.
+    std::vector<BString> result = {B("/bin/wine"), B("start"), B("/wait"), B("/d"), windowsRoot, B("/unix"), target->path};
+    for (size_t i = 1; i < command.size(); ++i) result.push_back(BString::copy(command[i].c_str()));
+    return result;
 }
 
 // mountmgr reads each drive's type from HKLM\Software\Wine\Drives once, when Wine
@@ -795,7 +821,13 @@ bool StartUpArgs::apply() {
             link = BString::empty;
         }
         cdromInit(this->cdromPaths, B("/mnt/cdrom"), link);
-        if (!this->cdromPaths.empty()) cdromInsert(0);
+        if (!this->cdromPaths.empty()) {
+            bool inserted = cdromInsert(0);
+            if (cdromInstall && (!inserted || link.isEmpty())) {
+                klog("Could not mount the installation disc. Check the image and any CUE track files.");
+                return false;
+            }
+        }
         else if (!link.isEmpty()) {
             // mountmgr enumerates the letter from this empty mount at startup;
             // /dev/sr0 reports no medium until a disc is selected.
@@ -806,6 +838,11 @@ bool StartUpArgs::apply() {
     sdlStatusBarConfigure(configureCdrom && videoOption == VIDEO_NORMAL &&
         runAutomation.isEmpty() && recordAutomation.isEmpty());
 
+    if (cdromInstall) {
+        this->args = cdromInstallerArgs(cdromDrive);
+        workingDir = B("/mnt/cdrom");
+        klog(this->args[1] == "explorer" ? "No usable disc autorun entry; opening the CD-ROM in Wine Explorer." : "Starting the disc's autorun program.");
+    }
     if (this->args.size()==0) {
         args.push_back(B("/bin/wine"));
         args.push_back(B("explorer"));
@@ -986,6 +1023,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         if (!strcmp(argv[i], "-root") && i+1<argc) {
             this->setRoot(BString::copy(argv[i+1]));
             i++;
+        } else if (!strcmp(argv[i], "-cdromInstall")) {
+            this->cdromInstall = true;
         } else if (!strcmp(argv[i], "-cdrom")) {
             if (i+2>=argc || strlen(argv[i+2])!=1 || !isalpha((unsigned char)argv[i+2][0])) {
                 klog("-cdrom expects 2 parameters: <iso file to mount> <drive letter to use for wine>");
@@ -1272,6 +1311,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         
     for (i=0;i<argc;i++) {
         args.push_back(BString::copy(argv[i]));
+    }
+    if (cdromInstall && (cdromPaths.empty() || !args.empty())) {
+        klog("-cdromInstall requires -cdrom and replaces the guest command with disc autorun or Explorer.");
+        return false;
     }
     return true;
 }

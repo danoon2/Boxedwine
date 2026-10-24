@@ -241,9 +241,15 @@ public sealed class PreparedAppSource : IDisposable
     public string Source { get; private set; } = "";
     public string Name { get; private set; } = "";
     public bool IsDirectory => Directory.Exists(Source);
+    public List<string>? DiscImages { get; private set; }
     public List<string> Programs { get; } = [];
     public CollectionSnapshot? Collection { get; private set; }
     private readonly string temporary = Path.Combine(Path.GetTempPath(), "BoxedwineImport-" + Guid.NewGuid().ToString("N"));
+    public static PreparedAppSource PrepareDiscs(IEnumerable<string> paths)
+    {
+        var images = CdromImages.PrepareImport(paths);
+        return new PreparedAppSource { Original = images[0], Source = images[0], Name = Path.GetFileNameWithoutExtension(images[0]), DiscImages = images };
+    }
     public static bool ValidUrl(Uri url) => url.IsAbsoluteUri && url.Scheme is "http" or "https" && url.Host.Length > 0 && url.UserInfo.Length == 0 && url.Fragment.Length == 0 && url.Port != 0;
     public static async Task Download(string url, string destination, long limit, CancellationToken cancellation, IProgress<OperationProgress>? progress, TimeSpan? timeLimit = null)
     {
@@ -308,6 +314,11 @@ public sealed class PreparedAppSource : IDisposable
                 string contents = Path.Combine(result.temporary, "Contents");
                 await Packages.Extract(result.Source, contents, cancellation, progress); result.Source = contents;
             }
+            if (!remote && !collectionOnly && !result.IsDirectory && CdromImages.IsImage(result.Source))
+            {
+                result.DiscImages = CdromImages.PrepareImport([result.Source]);
+                return result;
+            }
             if (result.Collection == null)
             {
                 if (result.IsDirectory)
@@ -321,7 +332,7 @@ public sealed class PreparedAppSource : IDisposable
                     }
                 }
                 else if (new[] { ".exe", ".msi" }.Contains(Path.GetExtension(result.Source).ToLowerInvariant())) result.Programs.Add(Path.GetFileName(result.Source));
-                if (result.Programs.Count == 0) throw new IOException("No Windows program was found. Choose an app folder, ZIP, EXE, or MSI.");
+                if (result.Programs.Count == 0) throw new IOException("No Windows program was found. Choose an app folder, ZIP, EXE, MSI, ISO, or CUE.");
                 result.Programs.Sort(StringComparer.OrdinalIgnoreCase);
             }
             cancellation.ThrowIfCancellationRequested();

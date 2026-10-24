@@ -58,7 +58,7 @@ public:
     bool loadDefaultResource(const char* app);
     bool parseStartupArgs(int argc, const char **argv);
     bool apply();
-    bool shouldStartUI() {return this->args.size()==0;}
+    bool shouldStartUI() {return this->args.size()==0 && !this->cdromInstall;}
 
     void setWorkingDir(BString path) {this->workingDir = path; this->workingDirSet=true;}
     void setResolution(BString path);
@@ -116,6 +116,7 @@ public:
     BString ddrawOverridePath;
     std::vector<BString> cdromPaths; // disc images for the CD-ROM drive, swapped while running
     BString cdromDrive; // wine drive letter for the CD-ROM drive, without the colon
+    bool cdromInstall = false; // Explicit autorun-or-Explorer startup, not disc-change autoplay.
     bool enableDXVK = false;
     bool disableHideCursor = false;
     bool forceRelativeMouse = false;

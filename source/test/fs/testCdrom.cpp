@@ -110,6 +110,14 @@ void testIsoFilesAndDiscChanges() {
     }
     if (node->getType(true) != 8 || directory->getType(true) != 4)
         testFail("ISO getdents types must be DT_REG and DT_DIR");
+    // Wine must distinguish denied CD writes from a missing file so legacy
+    // callers can retry read-only instead of requesting another disc.
+    for (U32 flags : {K_O_WRONLY, K_O_RDWR}) {
+        errno = ENOENT;
+        std::unique_ptr<FsOpenNode> denied(node->open(flags));
+        if (denied || errno != EACCES)
+            testFail("write access to an ISO file must report access denied, not stale errno");
+    }
     std::unique_ptr<FsOpenNode> file(node->open(K_O_RDONLY));
     expectDiscContents(file.get(), node, "FIRST");
     if (!file) return;
