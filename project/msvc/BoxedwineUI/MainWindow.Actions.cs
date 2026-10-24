@@ -270,7 +270,7 @@ public partial class MainWindow
     }
     private void Edit(LibraryApp app)
     {
-        var result = Dialogs.Edit(this, repository, app, OpenGLArchitecture()); if (result == null) return;
+        var result = Dialogs.Edit(this, repository, app, OpenGLArchitecture(), edited => Icons.ForApp(repository, edited, resources, iconDemos, catalogDirectory)); if (result == null) return;
         repository.Update(result); Refresh(app.Id.ToString());
     }
     private void Backup(LibraryApp app)

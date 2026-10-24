@@ -77,6 +77,7 @@ public sealed class LibraryRepository : IDisposable
         LaunchArguments.ValidateResolution(app.Resolution);
         if (app.PreferredWindowsOpenGL != "default" && !OpenGLDrivers.IsKnown(app.PreferredWindowsOpenGL)) throw new InvalidDataException("Unknown Windows OpenGL implementation.");
         LaunchArguments.ValidateOverrides(app.BoxedwineArguments ?? []);
+        CdromImages.Validate(app.CdromImages ?? []);
         if (app.Arguments == null || app.Arguments.Count > 256 || app.Arguments.Any(a => a == null || a.Length > 8192 || a.Contains('\0'))) throw new InvalidDataException("Invalid app arguments.");
         if (app.Executable != null)
         {

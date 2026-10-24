@@ -62,6 +62,8 @@ sealed partial class TestSuite
         work = Path.Combine(Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith('-')) ?? "../../../../../../tmp/native-ui-tests"), Guid.NewGuid().ToString("N")); Directory.CreateDirectory(work);
         Console.WriteLine("Test workspace: " + work);
         fixture = WineFixture("wine.zip"); wine = await Packages.ValidateWine(fixture, default);
+        await CdromSettingsTests();
+        if (args.Contains("--cdrom-only")) return;
         await CollectionImports();
         if (args.Contains("--collections-only")) return;
         await Test("Engine location stays with each UI; overrides never fall back or enter preferences", async () =>

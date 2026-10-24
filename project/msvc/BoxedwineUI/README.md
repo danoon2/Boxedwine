@@ -6,15 +6,26 @@ file/folder pickers, keyboard navigation, drag and drop, and .NET's Fluent theme
 Settings supports the Windows appearance setting, Light, and Dark, with live
 changes across open windows. System high-contrast colors are respected.
 
+App Settings → General includes an ordered CD-ROM image list. Add one or several
+ISO/CUE images, drag rows to reorder them (or use Alt+Up/Down or the row's context
+menu), and remove references without deleting the files. The first image is
+inserted at launch; Ctrl+Shift+F12 cycles discs and the in-app status bar can also
+choose an image at runtime. Saved image paths apply to app, installer, and alternate
+program launches. Backups preserve the references; external image files stay in
+their original locations. Missing files are reported at launch and can still be
+removed in settings. The dialog fits its content once when opened, up to 90% of
+the current monitor's work area, and scrolls without resizing as images are added.
+
 App Settings includes a per-app mouse sensitivity slider (25%–400%, with 100%
 normal and a Reset button). It adjusts hidden, captured cursor movement after a
 game recenters the pointer, including games using cursor-position polling.
 Changes apply on the next launch. Ordinary visible pointer movement and
 programmatic cursor warps are unchanged; `-forceRelativeMouse` input is excluded.
 The setting is saved in the existing `boxedwineArguments` list as
-`-rel_mouse_sensitivity` plus a percentage, so backups retain it. Advanced values
-from 1%–1000% expand the slider's range; legacy 0 means 100%. The advanced argument
-editor and slider stay synchronized. This requires an engine built with the
+`-rel_mouse_sensitivity` plus a percentage, so backups retain it. Existing or pasted
+values from 1%–1000% expand the slider's range; legacy 0 means 100%. This option is
+hidden from Advanced. Complete pasted values transfer to the General slider;
+typed values transfer when leaving the field or saving. This requires an engine built with the
 sensitivity implementation; older engines parse the option but ignore it.
 
 ## Build and run

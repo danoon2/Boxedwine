@@ -24,6 +24,8 @@ internal static partial class Program
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(app.Dispatcher));
             app.ThemeMode = ThemeMode.System;
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/{typeof(MainWindow).Assembly.GetName().Name};component/Styles.xaml", UriKind.Relative) });
+            if (args.Contains("--cdrom-settings")) { CheckCdromSettings(destination); return 0; }
+            if (args.Contains("--advanced-settings")) { CheckAdvancedSettings(destination); return 0; }
             if (args.Contains("--source-errors")) { CheckSourceImports(destination); return 0; }
             if (args.Contains("--storage")) { CheckStorage(destination); return 0; }
             CheckRuntimeIcons(destination, args);
@@ -127,29 +129,89 @@ internal static partial class Program
         }
         int Saved() => LaunchArguments.MouseSensitivity(repository.Load().Apps[0].BoxedwineArguments ?? []);
         void Check(string suffix, Action<Window> action, string? accept = null) => CheckDialog(window, "Edit", [repository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-mouse-" + suffix + ".png"), action, accept);
+        void Paste(TextBox text, string value)
+        {
+            // Exercise WPF's before-insertion paste event without touching the user's clipboard.
+            var data = new DataObject(DataFormats.UnicodeText, value);
+            text.RaiseEvent(new DataObjectPastingEventArgs(data, false, DataFormats.UnicodeText));
+            text.SelectedText = value;
+            text.Dispatcher.Invoke(() => { }, DispatcherPriority.Background);
+        }
         Check("save", dialog =>
         {
             var slider = Slider(dialog);
             if (slider.Value != 100) throw new Exception("Mouse sensitivity must default to 100%.");
             slider.Value = 50;
-            if (LaunchArguments.MouseSensitivity(LaunchArguments.Lines(Arguments(dialog).Text)) != 50) throw new Exception("Slider did not update arguments.");
+            var text = Arguments(dialog);
+            if (text.Text.Contains(LaunchArguments.MouseSensitivityOption)) throw new Exception("Slider leaked sensitivity into Advanced.");
+            text.Text = "-env\nNAME=one two\n-nosound";
+            if (Slider(dialog).Value != 50) throw new Exception("Editing unrelated options reset the slider.");
         }, "Save");
         if (Saved() != 50) throw new Exception("Mouse sensitivity was not saved.");
-        Check("cancel", dialog => Slider(dialog).Value = 200);
-        if (Saved() != 50) throw new Exception("Cancel changed mouse sensitivity.");
-        Check("advanced", dialog =>
+        Check("cancel", dialog =>
         {
-            var text = Arguments(dialog); var slider = Slider(dialog);
-            SelectSettingsTab(dialog, "Advanced");
-            text.Text = "-nosound\n-rel_mouse_sensitivity\n750";
-            if (slider.Value != 750 || slider.Maximum < 750) throw new Exception("Advanced sensitivity was clamped or not reflected in the slider.");
-            text.Text += "\n-env";
-            if (slider.IsEnabled) throw new Exception("Incomplete advanced options must not be replaced by a slider edit.");
-            text.Text += "\nNAME=value";
-            if (!slider.IsEnabled || slider.Value != 750) throw new Exception("Slider did not recover after completing advanced options.");
-            dialog.UpdateLayout();
+            var slider = Slider(dialog);
+            if (slider.Value != 50 || Arguments(dialog).Text.Contains(LaunchArguments.MouseSensitivityOption)) throw new Exception("Saved sensitivity was not moved into General.");
+            slider.Value = 200;
+        });
+        if (Saved() != 50) throw new Exception("Cancel changed mouse sensitivity.");
+        Check("paste", dialog =>
+        {
+            var slider = Slider(dialog); var text = Arguments(dialog);
+            double height = dialog.ActualHeight;
+            text.Text = "-env\r\nNAME=one two\r\n\r\n-nosound\r\n";
+            string otherArguments = text.Text;
+            text.CaretIndex = 0;
+            Paste(text, "-rel_mouse_sensitivity\r\n750\r\n");
+            if (slider.Value != 750 || slider.Maximum < 750 || text.Text != otherArguments || text.CaretIndex != 0)
+                throw new Exception("Paste must move sensitivity to General and preserve other text and caret position.");
+            if (dialog.ActualHeight != height) throw new Exception("Transferring sensitivity resized the window.");
+            if (!Descendants<TextBlock>(dialog).Any(t => t.Text == "Mouse sensitivity set to 750% in General." && t.IsVisible)) throw new Exception("Paste transfer needs visible confirmation.");
         }, "Save");
-        if (Saved() != 750) throw new Exception("Advanced sensitivity was not saved.");
+        if (Saved() != 750) throw new Exception("Pasted mouse sensitivity was not saved.");
+        var pasted = repository.Load().Apps[0];
+        var launch = LaunchArguments.Build(repository, pasted, "fixture.zip");
+        if (launch.Count(a => a == LaunchArguments.MouseSensitivityOption) != 1 || launch[launch.IndexOf(LaunchArguments.MouseSensitivityOption) + 1] != "750")
+            throw new Exception("The launch must contain exactly one mouse sensitivity override.");
+        Check("typing", dialog =>
+        {
+            var slider = Slider(dialog); var text = Arguments(dialog);
+            text.Focus();
+            text.Text = "-nosound\n-rel_mouse_sensitivity\n1";
+            text.AppendText("2"); text.AppendText("3");
+            if (slider.Value != 750 || !text.Text.EndsWith("123")) throw new Exception("Typing a sensitivity was consumed before the value was complete.");
+            SelectSettingsTab(dialog, "General"); slider.Focus();
+            if (slider.Value != 123) throw new Exception("Leaving Advanced did not transfer the typed sensitivity.");
+            SelectSettingsTab(dialog, "Advanced");
+            if (text.Text.Contains(LaunchArguments.MouseSensitivityOption)) throw new Exception("Typed sensitivity stayed in Advanced after transfer.");
+        }, "Save");
+        if (Saved() != 123) throw new Exception("Typed mouse sensitivity was not saved.");
+        Check("invalid", dialog =>
+        {
+            var slider = Slider(dialog); var text = Arguments(dialog);
+            foreach (string invalid in new[] { "-rel_mouse_sensitivity", "-rel_mouse_sensitivity\n1001", "-rel_mouse_sensitivity\noops", "-rel_mouse_sensitivity\n250\n-env" })
+            {
+                text.SelectAll(); Paste(text, invalid);
+                if (text.Text != invalid || slider.Value != 123 || !slider.IsEnabled) throw new Exception("Invalid input must remain editable without altering sensitivity.");
+            }
+            slider.Value = 200;
+            if (!text.Text.EndsWith("-env")) throw new Exception("Slider changes overwrote incomplete Advanced input.");
+        });
+        if (Saved() != 123) throw new Exception("Cancel changed the saved value after invalid input.");
+        Check("duplicates", dialog =>
+        {
+            var slider = Slider(dialog); var text = Arguments(dialog);
+            foreach (var (value, expected) in new[] { ("0", 100), ("1", 1), ("1000", 1000) })
+            {
+                text.SelectAll(); Paste(text, "-env\nNAME=value\n-rel_mouse_sensitivity\n50\n-rel_mouse_sensitivity\n" + value);
+                if (slider.Value != expected || slider.Minimum > expected || slider.Maximum < expected || text.Text.Contains(LaunchArguments.MouseSensitivityOption))
+                    throw new Exception("Duplicate, legacy or extended-range sensitivity did not transfer correctly.");
+            }
+        }, "Save");
+        if (Saved() != 1000 || repository.Load().Apps[0].BoxedwineArguments!.Count(a => a == LaunchArguments.MouseSensitivityOption) != 1)
+            throw new Exception("Duplicate mouse options were persisted.");
+        Check("save-typed", dialog => Arguments(dialog).Text += "\n-rel_mouse_sensitivity\n250", "Save");
+        if (Saved() != 250) throw new Exception("Save did not transfer a complete value still in Advanced.");
         Check("reset", dialog =>
         {
             Descendants<Button>(dialog).Single(b => AutomationProperties.GetName(b) == "Reset mouse sensitivity").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -157,7 +219,7 @@ internal static partial class Program
             if (!Arguments(dialog).Text.Contains("NAME=value")) throw new Exception("Reset lost unrelated arguments.");
         }, "Save");
         if (Saved() != 100) throw new Exception("Mouse sensitivity reset was not saved.");
-        Console.WriteLine($"PASS {theme} mouse sensitivity: save, cancel, advanced synchronization and reset");
+        Console.WriteLine($"PASS {theme} mouse sensitivity: hidden arguments, saved/pasted/typed transfer, invalid input, duplicates, launch, cancel and reset");
     }
     private static void SelectSettingsTab(Window dialog, string title)
     {
