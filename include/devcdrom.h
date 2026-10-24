@@ -25,10 +25,19 @@ FsOpenNode* openDevCDROM(const std::shared_ptr<FsNode>& node, U32 flags, U32 dat
 
 // The emulated CD-ROM drive holds one disc from a list of ISO images, or none while
 // the tray is open. The disc in the drive is mounted at mountPath and Wine reaches it
-// through driveLink (its dosdevices drive letter, empty for none). The link only
-// exists while a disc is in the drive, so Wine sees an empty drive after an eject.
+// through driveLink (its dosdevices drive letter, empty for none). Eject removes
+// that link; startup may create an empty mount link so Wine discovers the drive.
 void cdromInit(const std::vector<BString>& discs, const BString& mountPath, const BString& driveLink);
-bool cdromInsert(U32 index); // ejects the current disc first
+bool cdromInsert(U32 index); // validates before replacing the current disc
+bool cdromInsertPath(const BString& path); // adds a valid image to the session's disc list
+bool cdromRemoveDisc(U32 index); // only unused images; never deletes the host file
+struct CdromState {
+    bool configured = false;
+    BString drive;
+    std::vector<BString> discs;
+    S32 index = -1;
+};
+CdromState cdromGetState(); // synchronized snapshot, including guest ejects
 void cdromEject();
 void cdromNextDisc(); // inserts the disc after the last one inserted, wrapping around
 // the mounted ISO if path is on it, so statfs can report it as iso9660

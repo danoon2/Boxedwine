@@ -316,6 +316,12 @@ FsOpenNode* openDevCDROM(const std::shared_ptr<FsNode>& node, U32 flags, U32 dat
 
 void cdromInit(const std::vector<BString>& discs, const BString& mountPath, const BString& driveLink) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gDrive.mutex);
+    gDrive.iso.reset();
+    gDrive.index = -1;
+    gDrive.lastInserted = 0;
+    gDrive.mediaChanged = false;
+    gDrive.audioSector = 0;
+    gDrive.audioReadTime = 0;
     gDrive.discs = discs;
     gDrive.mountPath = mountPath;
     gDrive.driveLink = driveLink;
@@ -364,41 +370,71 @@ void cdromEject() {
     notifyHost(-1);
 }
 
+// Called with the drive lock. Build the complete new filesystem before touching
+// the current mount, including malformed directory validation and CUE tracks.
+static bool insertLocked(U32 index, const BString& path) {
+    auto iso = std::make_shared<FsIso>();
+    std::shared_ptr<FsNode> root;
+    if (!iso->init(path, gDrive.mountPath, &root)) return false;
+    auto parent = root->getParent().lock();
+    if (!parent) return false;
+    ejectLocked();
+    parent->addChild(root);
+    gDrive.iso = iso;
+    gDrive.index = (S32)index;
+    gDrive.lastInserted = index;
+    gDrive.mediaChanged = true;
+    if (!gDrive.driveLink.isEmpty()) {
+        auto dosdevParent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(gDrive.driveLink), true);
+        if (dosdevParent) Fs::addFileNode(gDrive.driveLink, gDrive.mountPath, B(""), false, dosdevParent);
+    }
+    klog_fmt("CD-ROM: inserted disc %d: %s", index + 1, path.c_str());
+    return true;
+}
+
 bool cdromInsert(U32 index) {
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gDrive.mutex);
-        if (index >= gDrive.discs.size()) {
-            return false;
-        }
-        if (gDrive.iso && gDrive.index == (S32)index) {
-            return true;
-        }
-        ejectLocked();
-        gDrive.lastInserted = index;
-        std::shared_ptr<FsIso> iso = std::make_shared<FsIso>();
-        if (!iso->init(gDrive.discs[index], gDrive.mountPath)) {
-            klog_fmt("CD-ROM: could not insert disc %d: %s", index + 1, gDrive.discs[index].c_str());
-            iso = nullptr;
-        } else {
-            gDrive.iso = iso;
-            gDrive.index = (S32)index;
-            gDrive.mediaChanged = true;
-            if (!gDrive.driveLink.isEmpty()) {
-                std::shared_ptr<FsNode> dosdevParent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(gDrive.driveLink), true);
-                if (dosdevParent) {
-                    Fs::addFileNode(gDrive.driveLink, gDrive.mountPath, B(""), false, dosdevParent);
-                }
-            }
-            klog_fmt("CD-ROM: inserted disc %d of %d: %s", index + 1, (U32)gDrive.discs.size(), gDrive.discs[index].c_str());
-        }
+        if (index >= gDrive.discs.size()) return false;
+        if (gDrive.iso && gDrive.index == (S32)index) return true;
+        if (!insertLocked(index, gDrive.discs[index])) return false;
     }
-    S32 inserted;
+    notifyHost((S32)index);
+    return true;
+}
+
+bool cdromInsertPath(const BString& path) {
+    U32 index = 0;
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gDrive.mutex);
-        inserted = gDrive.index;
+        if (gDrive.mountPath.isEmpty()) return false;
+        while (index < gDrive.discs.size() && gDrive.discs[index] != path) ++index;
+        if (gDrive.iso && gDrive.index == (S32)index) return true;
+        if (!insertLocked(index, path)) return false;
+        if (index == gDrive.discs.size()) gDrive.discs.push_back(path);
     }
-    notifyHost(inserted);
-    return inserted == (S32)index;
+    notifyHost((S32)index);
+    return true;
+}
+
+CdromState cdromGetState() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gDrive.mutex);
+    CdromState state;
+    state.configured = !gDrive.mountPath.isEmpty();
+    state.discs = gDrive.discs;
+    state.index = gDrive.index;
+    state.drive = Fs::getFileNameFromPath(gDrive.driveLink).toUpperCase();
+    return state;
+}
+
+bool cdromRemoveDisc(U32 index) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gDrive.mutex);
+    if (index >= gDrive.discs.size() || (S32)index == gDrive.index) return false;
+    gDrive.discs.erase(gDrive.discs.begin() + index);
+    if (gDrive.index > (S32)index) --gDrive.index;
+    if (gDrive.lastInserted > index) --gDrive.lastInserted;
+    if (gDrive.lastInserted >= gDrive.discs.size()) gDrive.lastInserted = 0;
+    return true;
 }
 
 void cdromNextDisc() {

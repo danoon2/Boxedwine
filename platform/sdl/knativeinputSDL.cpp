@@ -25,6 +25,7 @@
 #include "knativesystem.h"
 #include "kdspaudio.h"
 #include "devcdrom.h"
+#include "sdlStatusBar.h"
 
 #ifdef __APPLE__
 #include "../mac/macCursor.h"
@@ -305,14 +306,18 @@ void KNativeInputSDL::runOnUiThread(std::function<void()> callback) {
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
+bool KNativeInputSDL::wantsMouseCapture() {
+    XServer* server = XServer::getServer(true);
+    return mouseConfinementRequested || ownsRelativeMouseMode ||
+        (server && (server->wantsMouseConfinement() || server->wantsRelativeMouse()));
+}
+
 void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
 #ifndef __EMSCRIPTEN__
     // Browser pointer lock and its UI are controlled by the web page.
     // Store an ID rather than a pointer: rendering can destroy/recreate windows.
     SDL_Window* previous = SDL_GetWindowFromID(confinedWindowId);
-    XServer* server = XServer::getServer(true);
-    bool wanted = mouseConfinementRequested || ownsRelativeMouseMode ||
-        (server && (server->wantsMouseConfinement() || server->wantsRelativeMouse()));
+    bool wanted = wantsMouseCapture();
     SDL_Window* target = wanted && !mouseCaptureReleased ? window : nullptr;
     if (previous && previous != target) {
         SDL_SetWindowGrab(previous, SDL_FALSE);
@@ -322,7 +327,7 @@ void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
         // Preserve absolute motion and the game's existing cursor warps.
         SDL_SetWindowGrab(target, SDL_TRUE);
     }
-    updateMouseCaptureTitle(window && (target || mouseCaptureReleased) ? window : nullptr);
+    updateMouseCaptureTitle(window && (target || (mouseCaptureReleased && !hostUiMouseReleased)) ? window : nullptr);
 #endif
 }
 
@@ -389,24 +394,45 @@ void KNativeInputSDL::setMouseCaptureReleased(bool released) {
         SDL_SetCursor(SDL_GetDefaultCursor());
         SDL_ShowCursor(SDL_ENABLE);
     } else {
+        const bool restorePosition = !hostUiMouseReleased;
+        hostUiMouseReleased = false;
         mouseCaptureReleased = false;
         SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, focusClickthroughBeforeRelease ? "1" : "0");
         SDL_SetCursor(guestCursor);
         SDL_ShowCursor(guestCursorVisible ? SDL_ENABLE : SDL_DISABLE);
-        // Return to the guest's virtual position before delivering new motion.
-        U64 position = releasedMousePosition;
-        setMousePos((S32)(position >> 32), (S32)position);
-        SDL_FlushEvent(SDL_MOUSEMOTION);
+        // A released game returns to its virtual position. An ordinary desktop
+        // app follows the pointer back from the host UI, without jumping it.
+        if (restorePosition) {
+            U64 position = releasedMousePosition;
+            setMousePos((S32)(position >> 32), (S32)position);
+            SDL_FlushEvent(SDL_MOUSEMOTION);
+        }
     }
     updateRelativeMouseMode();
 }
 
+void KNativeInputSDL::releaseMouseForHostUi() {
+    if (mouseCaptureReleased) return; // Preserve an explicit game capture release.
+    // Suspend guest cursor updates/warps over host controls, but don't require
+    // an app such as AbiWord to recapture a mouse it never locked.
+    hostUiMouseReleased = !wantsMouseCapture();
+    setMouseCaptureReleased(true);
+}
+
 bool KNativeInputSDL::handleMouseCaptureEvent(SDL_Event* event) {
 #ifndef __EMSCRIPTEN__
+    bool guestPointerInput = event->type == SDL_MOUSEMOTION || event->type == SDL_MOUSEBUTTONDOWN ||
+        event->type == SDL_MOUSEBUTTONUP || event->type == SDL_MOUSEWHEEL;
+    if (hostUiMouseReleased && guestPointerInput) {
+        SDL_Window* window = SDL_GetWindowFromID(event->window.windowID);
+        // Host UI events have already been consumed. A focused popup maps to
+        // nullptr, so moving over the guest behind it must not resume input.
+        if (window && window == sdlStatusBarInputWindow(SDL_GetKeyboardFocus())) setMouseCaptureReleased(false);
+    }
     if (event->type == SDL_KEYDOWN && event->key.keysym.sym == SDLK_g &&
             (captureShortcutDown || ((event->key.keysym.mod & KMOD_CTRL) &&
                 (event->key.keysym.mod & KMOD_ALT) && !(event->key.keysym.mod & (KMOD_SHIFT | KMOD_GUI)))) &&
-            (confinedWindowId || ownsRelativeMouseMode || mouseCaptureReleased || captureShortcutDown)) {
+            (confinedWindowId || ownsRelativeMouseMode || (mouseCaptureReleased && !hostUiMouseReleased) || captureShortcutDown)) {
         if (!event->key.repeat && !captureShortcutDown) {
             captureShortcutDown = true;
             setMouseCaptureReleased(!mouseCaptureReleased);
@@ -423,7 +449,7 @@ bool KNativeInputSDL::handleMouseCaptureEvent(SDL_Event* event) {
             if (event->type == SDL_MOUSEBUTTONDOWN) {
                 swallowedMouseButtons.fetch_or(mask);
                 SDL_Window* window = SDL_GetWindowFromID(event->button.windowID);
-                if (window && window == SDL_GetKeyboardFocus()) setMouseCaptureReleased(false);
+                if (window && window == sdlStatusBarInputWindow(SDL_GetKeyboardFocus())) setMouseCaptureReleased(false);
             } else {
                 swallowedMouseButtons.fetch_and(~mask);
             }
@@ -445,7 +471,7 @@ void KNativeInputSDL::setMouseConfinement(bool confined) {
 #ifndef __EMSCRIPTEN__
     mouseConfinementRequested = confined;
     if (isMainthread()) {
-        updateMouseConfinement(SDL_GetKeyboardFocus());
+        updateMouseConfinement(sdlStatusBarInputWindow(SDL_GetKeyboardFocus()));
     } else {
         // Do not wait for SDL while the guest may hold X server locks.
         SDL_Event event = {};
@@ -704,7 +730,7 @@ bool KNativeInputSDL::checkMousePos(int& x, int& y, bool allowWarp) {
         warp = true;
     }
     if (y >= (int)height) {
-        y = (int)height;
+        y = (int)height - 1;
         warp = true;
     }
     if (allowWarp && warp) {
@@ -786,7 +812,7 @@ void KNativeInputSDL::updateRelativeMouseMode() {
 #ifndef __EMSCRIPTEN__
     // Browser pointer lock is controlled by a user gesture, not X11 grabs.
     XServer* server = XServer::getServer(true);
-    bool wanted = !mouseCaptureReleased && server && server->wantsRelativeMouse() && SDL_GetKeyboardFocus();
+    bool wanted = !mouseCaptureReleased && server && server->wantsRelativeMouse() && sdlStatusBarInputWindow(SDL_GetKeyboardFocus());
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) wanted = false;
 #endif
@@ -798,11 +824,11 @@ void KNativeInputSDL::updateRelativeMouseMode() {
     }
     // SDL relative mode and hidden-cursor mouse look both require a host grab,
     // even when the guest did not specify an X11 confinement window.
-    updateMouseConfinement(SDL_GetKeyboardFocus());
+    updateMouseConfinement(sdlStatusBarInputWindow(SDL_GetKeyboardFocus()));
 #if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
     // Refresh after native fullscreen/resolution transitions. Keep the last
     // mapping while unfocused so guest cursor warps still use guest coordinates.
-    if (SDL_Window* window = SDL_GetKeyboardFocus()) {
+    if (SDL_Window* window = sdlStatusBarInputWindow(SDL_GetKeyboardFocus())) {
 #ifdef __APPLE__
         OpenGLViewport viewport = macOpenGLGetViewport(window);
 #else
@@ -819,6 +845,7 @@ void KNativeInputSDL::updateRelativeMouseMode() {
 }
 
 bool KNativeInputSDL::waitForEvent(U32 ms) {
+    sdlStatusBarTick();
     updateRelativeMouseMode();
     SDL_Event e = { 0 };
     if (SDL_WaitEventTimeout(&e, ms) == 1) {
@@ -836,6 +863,7 @@ bool KNativeInputSDL::waitForEvent(U32 ms) {
 }
 
 bool KNativeInputSDL::processEvents() {
+    sdlStatusBarTick();
     updateRelativeMouseMode();
     SDL_Event e = {};
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED)
@@ -1112,6 +1140,7 @@ void KNativeInputSDL::processCustomEvents(std::function<bool(bool isKeyDown, int
 // would close the document in Windows apps. The browser has no hotkey: the page's
 // Eject button and disc list change discs.
 static bool cdromHotkeyDown;
+static bool cdromMenuHotkeyDown;
 
 [[maybe_unused]] static bool isCDRomHotkey(SDL_Event* e) {
     return e->key.keysym.sym == SDLK_F12 && (e->key.keysym.mod & KMOD_CTRL) && (e->key.keysym.mod & KMOD_SHIFT);
@@ -1119,7 +1148,7 @@ static bool cdromHotkeyDown;
 
 bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
     if (e->type == sdlMouseConfinementEvent) {
-        updateMouseConfinement(SDL_GetKeyboardFocus());
+        updateMouseConfinement(sdlStatusBarInputWindow(SDL_GetKeyboardFocus()));
         return true;
     }
 #ifdef BOXEDWINE_RECORDER
@@ -1130,6 +1159,36 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         return true;
     }
 #endif    
+    // Host controls must be handled before capture/guest input. Their pixels
+    // and mouse positions do not belong to the emulated desktop.
+    if (sdlStatusBarEvent(*e)) {
+        if (e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEMOTION || e->type == SDL_KEYDOWN)
+            releaseMouseForHostUi();
+        // A menu may acquire focus while modifiers are still down in the guest.
+        if (e->type == SDL_KEYUP && (e->key.keysym.sym == SDLK_LCTRL || e->key.keysym.sym == SDLK_RCTRL ||
+                e->key.keysym.sym == SDLK_LSHIFT || e->key.keysym.sym == SDLK_RSHIFT ||
+                e->key.keysym.sym == SDLK_LALT || e->key.keysym.sym == SDLK_RALT ||
+                e->key.keysym.sym == SDLK_LGUI || e->key.keysym.sym == SDLK_RGUI)) {
+            key(e->key.keysym.scancode, e->key.keysym.sym, 0);
+        }
+        if (e->type == SDL_KEYUP && e->key.keysym.sym == SDLK_F11) cdromMenuHotkeyDown = false;
+        return true;
+    }
+#ifndef __EMSCRIPTEN__
+    if (e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_F11 &&
+            (e->key.keysym.mod & KMOD_CTRL) && (e->key.keysym.mod & KMOD_SHIFT)) {
+        if (!e->key.repeat) {
+            cdromMenuHotkeyDown = true;
+            releaseMouseForHostUi();
+            sdlStatusBarOpen();
+        }
+        return true;
+    }
+    if (e->type == SDL_KEYUP && e->key.keysym.sym == SDLK_F11 && cdromMenuHotkeyDown) {
+        cdromMenuHotkeyDown = false;
+        return true;
+    }
+#endif
     if (handleMouseCaptureEvent(e)) return true;
     if (e->type == SDL_QUIT) {
         KThread::setCurrentThread(nullptr);
@@ -1173,7 +1232,7 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
 #ifndef __EMSCRIPTEN__
             } else if (isCDRomHotkey(e)) {
                 cdromHotkeyDown = true;
-                cdromNextDisc();
+                if (!e->key.repeat) cdromNextDisc();
 #endif
             } else if (!key(e->key.keysym.scancode, e->key.keysym.sym, 1)) {
                 onKeyDown(translate(e->key.keysym.sym));
@@ -1194,7 +1253,7 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
             if (XServer* server = XServer::getServer(true)) server->setMouseFocused(true);
             KNativeSystem::focusVulkanWindow(e->window.windowID);
             SDL_Window* window = SDL_GetWindowFromID(e->window.windowID);
-            if (window && window == SDL_GetKeyboardFocus()) {
+            if (window && window == sdlStatusBarInputWindow(SDL_GetKeyboardFocus())) {
                 updateMouseConfinement(window);
             }
             for (auto& callback : onFocusGained) {

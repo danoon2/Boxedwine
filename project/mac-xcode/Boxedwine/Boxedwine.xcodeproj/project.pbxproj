@@ -11,7 +11,9 @@
 		1A0F955D2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
 		1A0F95612C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
 		1A0F95632C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
+		CCD020260000000000000002 /* sdlStatusBar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CCD020260000000000000001 /* sdlStatusBar.cpp */; };
 		1A0F95672C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
+		CCD020260000000000000003 /* sdlStatusBar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CCD020260000000000000001 /* sdlStatusBar.cpp */; };
 		1A0F95692C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
 		1A0F95722C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
 		1A0F95742C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
@@ -309,10 +311,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		CCD020260000000000000004 /* sdlStatusBar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sdlStatusBar.h; path = ../../../platform/sdl/sdlStatusBar.h; sourceTree = "<group>"; };
 		1A0F95532C912BD000E5A9BF /* knativeinputSDL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = knativeinputSDL.h; path = ../../../platform/sdl/knativeinputSDL.h; sourceTree = "<group>"; };
 		1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativescreenGL.cpp; path = ../../../platform/sdl/knativescreenGL.cpp; sourceTree = "<group>"; };
 		1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativescreenSDL.cpp; path = ../../../platform/sdl/knativescreenSDL.cpp; sourceTree = "<group>"; };
 		1A0F95562C912BD100E5A9BF /* knativescreenSDL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = knativescreenSDL.h; path = ../../../platform/sdl/knativescreenSDL.h; sourceTree = "<group>"; };
+		CCD020260000000000000001 /* sdlStatusBar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdlStatusBar.cpp; path = ../../../platform/sdl/sdlStatusBar.cpp; sourceTree = "<group>"; };
 		1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativeinputSDL.cpp; path = ../../../platform/sdl/knativeinputSDL.cpp; sourceTree = "<group>"; };
 		1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platformOpenGL.cpp; path = ../../../platform/linux/platformOpenGL.cpp; sourceTree = "<group>"; };
 		1A1551E82632656D006E0C8A /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../lib/mac/SDL2.framework; sourceTree = "<group>"; };
@@ -672,7 +676,9 @@
 			children = (
 				718F07612D31C1C600D41270 /* kvulkanSDL.h */,
 				718F07622D31C1C600D41270 /* kvulkanSDL.cpp */,
+				CCD020260000000000000001 /* sdlStatusBar.cpp */,
 				1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */,
+				CCD020260000000000000004 /* sdlStatusBar.h */,
 				1A0F95532C912BD000E5A9BF /* knativeinputSDL.h */,
 				1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */,
 				1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */,
@@ -1227,6 +1233,7 @@
 				71B496DE2D4AA31600A8AB32 /* mztools.c in Sources */,
 				1A0F95722C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				1A0F955B2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
+				CCD020260000000000000002 /* sdlStatusBar.cpp in Sources */,
 				1A0F95672C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
 				1A80F26A276EBF170032A70A /* imguitinyfiledialogs.cpp in Sources */,
 				1A80F28F276EBF170032A70A /* platformThreads-x64.cpp in Sources */,
@@ -1425,6 +1432,7 @@
 				7135DC7F264EBCD0005D6AA6 /* audiounit.cpp in Sources */,
 				7135DC80264EBCD0005D6AA6 /* knativecoreaudio.cpp in Sources */,
 				1A0F95632C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
+				CCD020260000000000000003 /* sdlStatusBar.cpp in Sources */,
 				1A0F95692C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

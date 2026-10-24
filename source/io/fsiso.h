@@ -31,7 +31,9 @@ class FsIso : public std::enable_shared_from_this<FsIso> {
 public:
     FsIso() = default;
 
-    bool init(const BString& imagePath, const BString& mountPath);
+    // With preparedRoot, validate/build a detached tree; the caller publishes it
+    // only after validation succeeds, so a bad replacement cannot eject a disc.
+    bool init(const BString& imagePath, const BString& mountPath, std::shared_ptr<FsNode>* preparedRoot = nullptr);
     // reads the disc's data sectors, see DiscImage::readData
     U32 readData(U64 byteOffset, U8* buf, U32 len);
     // reads whole raw sectors, such as CD audio, see DiscImage::readRaw

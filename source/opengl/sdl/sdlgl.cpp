@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include "../../../platform/sdl/sdlStatusBar.h"
 
 #ifdef BOXEDWINE_OPENGL_SDL
 #include "sdlgl.h"
@@ -400,6 +401,7 @@ void SDLGlWindow::destroy() {
 #ifdef BOXEDWINE_MSVC
                     windowsOpenGLDestroyWindow(window);
 #endif
+                    sdlStatusBarWindowDestroyed(window);
                     SDL_DestroyWindow(window);
                 }
                 window = nullptr;
@@ -617,7 +619,7 @@ void SDLGlWindow::showWindow(bool show) {
                 if (ownsWindow && KNativeSystem::getScreen()->isVisible()) {
                     KNativeSystem::showScreen(false);
                 }
-                SDL_RaiseWindow(window);
+                sdlStatusBarRaiseWindow(window);
                 });
         }
         return;
@@ -626,7 +628,7 @@ void SDLGlWindow::showWindow(bool show) {
         KNativeSystem::getCurrentInput()->runOnUiThread([this, show]() {
             if (!show) {
                 shownGlWindows--;
-                SDL_HideWindow(window);
+                sdlStatusBarShowWindow(window, false);
                 if (shownGlWindows == 0) {
                     KNativeSystem::showScreen(true);
                 }
@@ -651,8 +653,8 @@ void SDLGlWindow::showWindow(bool show) {
                     KNativeSystem::showScreen(false);
                 }
                 if (KSystem::videoOption == VIDEO_NORMAL) {
-                    SDL_ShowWindow(window);
-                    SDL_RaiseWindow(window);
+                    sdlStatusBarShowWindow(window, true);
+                    sdlStatusBarRaiseWindow(window);
                     forceForegroundUntil = KSystem::getMilliesSinceStart() + 2000;
                 }
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && defined(BOXEDWINE_UI_LAUNCH_IN_PROCESS)

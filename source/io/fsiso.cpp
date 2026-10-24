@@ -21,6 +21,7 @@
 #include "discimage.h"
 #include "fsisoopennode.h"
 #include "fsfilenode.h"
+#include "fsvirtualnode.h"
 #include "fs.h"
 #include "kstat.h"
 #include <stdio.h>
@@ -169,17 +170,16 @@ bool FsIso::scanDirectory(const BString& localPath, const std::shared_ptr<FsNode
         BString childPath = localPath + "/" + name;
 
         if (isDir) {
-            std::shared_ptr<FsNode> existing = Fs::getNodeFromLocalPath(B(""), childPath, false);
+            std::shared_ptr<FsNode> existing = parentNode->getChildByName(name);
             if (!existing) {
-                Fs::addVirtualDirectory(childPath,
+                existing = Fs::addVirtualDirectory(childPath,
                     K__S_IFDIR | K__S_IREAD | K__S_IEXEC | K__S_IRGRP | K__S_IXGRP | K__S_IROTH | K__S_IXOTH,
                     parentNode, lastModified);
-                existing = Fs::getNodeFromLocalPath(B(""), childPath, false);
             }
             if (!existing || !scanDirectory(childPath, existing, entryLba, entryLength, ancestors))
                 return false;
         } else {
-            if (!Fs::getNodeFromLocalPath(B(""), childPath, false)) {
+            if (!parentNode->getChildByName(name)) {
                 U64 dataOffset = (U64)entryLba * ISO_SECTOR_SIZE;
                 U64 fileLength = entryLength;
                 std::shared_ptr<FsIso> isoRef = shared_from_this();
@@ -197,23 +197,29 @@ bool FsIso::scanDirectory(const BString& localPath, const std::shared_ptr<FsNode
     return true;
 }
 
-bool FsIso::init(const BString& imagePath, const BString& mountPath) {
+bool FsIso::init(const BString& imagePath, const BString& mountPath, std::shared_ptr<FsNode>* preparedRoot) {
     image = DiscImage::open(imagePath);
     if (!image) {
         return false;
     }
-    std::shared_ptr<FsNode> mountNode = Fs::getNodeFromLocalPath(B(""), mountPath, true);
-    if (!mountNode) {
+    std::shared_ptr<FsNode> mounted = Fs::getNodeFromLocalPath(B(""), mountPath, true);
+    std::shared_ptr<FsNode> parent = mounted ? mounted->getParent().lock() : nullptr;
+    if (!parent) {
         klog_fmt("FsIso: mount point %s does not exist", mountPath.c_str());
         return false;
     }
     this->mountPath = mountPath;
+    // The mount point keeps its inode; only the mounted directory tree changes.
+    auto mountNode = std::make_shared<FsVirtualNode>(mounted->id, 0, mountPath, nullptr,
+        K__S_IFDIR | 0555, parent, 0, 4096, 0, true);
 
     // An audio CD has no filesystem, but goes in the drive for its table of contents
     const DiscTrack* dataTrack = image->firstDataTrack();
     if (!dataTrack) {
         totalSectors = image->leadOut;
         klog_fmt("FsIso: mounting %s at %s (audio CD, %d tracks)", imagePath.c_str(), mountPath.c_str(), (U32)image->tracks.size());
+        if (preparedRoot) *preparedRoot = mountNode;
+        else parent->addChild(mountNode);
         return true;
     }
     // ISO 9660 sector numbers count from the start of the disc, the volume descriptors
@@ -281,5 +287,7 @@ bool FsIso::init(const BString& imagePath, const BString& mountPath) {
         klog_fmt("FsIso: invalid directory in %s", imagePath.c_str());
         return false;
     }
+    if (preparedRoot) *preparedRoot = mountNode;
+    else parent->addChild(mountNode);
     return true;
 }

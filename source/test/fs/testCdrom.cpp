@@ -142,6 +142,35 @@ void testIsoFilesAndDiscChanges() {
     }
     std::unique_ptr<FsOpenNode> currentFile(current->open(K_O_RDONLY));
     expectDiscContents(currentFile.get(), current, "OTHER");
+
+    // Runtime selection validates the entire tree before ejecting. Exercise a
+    // failure after one valid file, not just a missing file or an invalid PVD.
+    auto malformed = isoImage();
+    isoRecord(malformed.data() + ROOT + 112, 20, SECTOR, "LOOP", 4, true);
+    BString invalid = fixture.write("invalid.iso", malformed);
+    if (cdromInsertPath(invalid) || cdromInsertPath(fixture.root + "/missing.iso"))
+        testFail("runtime picker accepted a malformed/missing image");
+    auto preserved = Fs::getNodeFromLocalPath(B(""), B("/mnt/cdrom/FILE.TXT"), true);
+    if (preserved != current || cdromGetState().index != 1 || cdromGetState().discs.size() != 2)
+        testFail("failed runtime insert changed the current disc or list");
+    if (preserved) {
+        std::unique_ptr<FsOpenNode> preservedFile(preserved->open(K_O_RDONLY));
+        expectDiscContents(preservedFile.get(), preserved, "OTHER");
+    }
+    if (cdromRemoveDisc(1) || !cdromRemoveDisc(0) || cdromGetState().index != 0)
+        testFail("disc list removal did not protect/reindex the current disc");
+    if (!cdromInsertPath(first) || cdromGetState().discs.size() != 2 || cdromGetState().index != 1)
+        testFail("runtime picker could not add a new image");
+    if (!cdromInsertPath(first) || cdromGetState().discs.size() != 2)
+        testFail("runtime picker duplicated an existing image");
+    cdromEject();
+    if (cdromGetState().index != -1) testFail("snapshot did not reflect eject");
+    cdromNextDisc();
+    if (cdromGetState().index != 0) testFail("next disc after eject did not wrap");
+
+    cdromInit({}, B("/mnt/cdrom"), B(""));
+    if (cdromGetState().index != -1 || !cdromInsertPath(second) || cdromGetState().index != 0)
+        testFail("could not insert the first image into a drive initialized empty");
 }
 
 void testMalformedIsoDirectories() {

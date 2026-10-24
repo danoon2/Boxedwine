@@ -41,7 +41,7 @@ static BString cueBeside(const BString& path) {
     BString base = path.substr(0, path.length() - 4);
     for (const char* extension : { ".cue", ".CUE" }) {
         BString cue = base + extension;
-        FILE* file = fopen(cue.c_str(), "rb");
+        FILE* file = Platform::fopen(cue.c_str(), "rb");
         if (file) {
             fclose(file);
             return cue;
@@ -123,7 +123,7 @@ const DataLayout dataLayouts[] = {
 }
 
 bool DiscImage::openDataTrack(const BString& path) {
-    FILE* file = fopen(path.c_str(), "rb");
+    FILE* file = Platform::fopen(path.c_str(), "rb");
     if (!file) {
         klog_fmt("DiscImage: could not open %s", path.c_str());
         return false;
@@ -293,7 +293,7 @@ bool findWaveData(FILE* file, U64& start, U64& size) {
 }
 
 bool DiscImage::openCue(const BString& path) {
-    FILE* cue = fopen(path.c_str(), "rb");
+    FILE* cue = Platform::fopen(path.c_str(), "rb");
     if (!cue) {
         klog_fmt("DiscImage: could not open %s", path.c_str());
         return false;
@@ -336,7 +336,7 @@ bool DiscImage::openCue(const BString& path) {
                 std::replace(name.begin(), name.end(), '\\', '/');
                 name = dir + name;
             }
-            FILE* file = fopen(name.c_str(), "rb");
+            FILE* file = Platform::fopen(name.c_str(), "rb");
             if (!file) {
                 klog_fmt("DiscImage: could not open %s, which %s lists", name.c_str(), path.c_str());
                 return false;

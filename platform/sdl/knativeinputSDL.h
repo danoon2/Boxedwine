@@ -85,12 +85,15 @@ private:
     std::atomic<U64> emscriptenMousePosition{~(U64)0};
 #endif
     void updateMouseConfinement(SDL_Window* window);
+    bool wantsMouseCapture();
     void updateMouseCaptureTitle(SDL_Window* window);
     void setMouseCaptureReleased(bool released);
+    void releaseMouseForHostUi();
     bool handleMouseCaptureEvent(SDL_Event* event);
     std::atomic<bool> mouseConfinementRequested{false};
     U32 confinedWindowId = 0; // Accessed only on the SDL thread.
     std::atomic<bool> mouseCaptureReleased{false};
+    bool hostUiMouseReleased = false; // Resume ordinary desktop input without a click or warp.
     std::atomic<U64> releasedMousePosition{0};
     std::atomic<U32> swallowedMouseButtons{0};
     U32 pressedMouseButtons = 0;

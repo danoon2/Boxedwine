@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include "sdlStatusBar.h"
 #ifdef BOXEDWINE_VULKAN
 #include "../../source/x11/x11.h"
 #include <SDL.h>
@@ -50,7 +51,7 @@ public:
     struct NativeWindow {
         SDL_Window* window;
         std::weak_ptr<XWindow> guest;
-        ~NativeWindow() { SDL_DestroyWindow(window); }
+        ~NativeWindow() { sdlStatusBarWindowDestroyed(window); SDL_DestroyWindow(window); }
     };
     // All window/map access runs on SDL's thread, including surface creation on
     // macOS. Several VkSurfaces for one drawable share its native window.
@@ -74,8 +75,8 @@ void KVulkdanSDLImpl::resizeWindow(const XWindowPtr& wnd) {
 void KVulkdanSDLImpl::showWindow(const XWindowPtr& wnd, bool show) {
     screen->input->runOnUiThread([this, wnd, show]() {
         for (const auto& entry : surfaces) if (entry.second->guest.lock() == wnd) {
-            if (show && KSystem::videoOption == VIDEO_NORMAL) SDL_ShowWindow(entry.second->window);
-            else SDL_HideWindow(entry.second->window);
+            if (show && KSystem::videoOption == VIDEO_NORMAL) sdlStatusBarShowWindow(entry.second->window, true);
+            else sdlStatusBarShowWindow(entry.second->window, false);
             break;
         }
     });

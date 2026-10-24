@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 #include "startupArgs.h"
+#include "../../platform/sdl/sdlStatusBar.h"
 #include "../emulation/cpu/wasm/wasmMemoryOrdering.h"
 
 #include "devtty.h"
@@ -759,7 +760,25 @@ bool StartUpArgs::apply() {
     }
 #endif
 
-    if (!this->cdromPaths.empty()) {
+    bool configureCdrom = !this->cdromPaths.empty();
+#if !defined(__EMSCRIPTEN__) && !defined(__TEST) && !defined(__ANDROID__)
+    // Reserve an empty drive before Wine's mountmgr starts, so a user can
+    // choose the first disc at runtime. D: is normally the writable host mount.
+    if (!configureCdrom) {
+        for (char letter = 'e'; letter <= 'z'; ++letter) {
+            BString candidate;
+            candidate.append(letter);
+            BString link = B("/home/username/.wine/dosdevices/") + candidate + ":";
+            if (!Fs::getNodeFromLocalPath(B(""), link, false) &&
+                    !Fs::getNodeFromLocalPath(B(""), link + ":", false)) {
+                this->cdromDrive = candidate;
+                configureCdrom = true;
+                break;
+            }
+        }
+    }
+#endif
+    if (configureCdrom) {
         // The drive letter links to the disc while one is in the drive (see cdromInit).
         // Disc 1 goes in now: Wine's mountmgr only sets up drives whose link exists
         // when it starts.
@@ -776,8 +795,16 @@ bool StartUpArgs::apply() {
             link = BString::empty;
         }
         cdromInit(this->cdromPaths, B("/mnt/cdrom"), link);
-        cdromInsert(0);
+        if (!this->cdromPaths.empty()) cdromInsert(0);
+        else if (!link.isEmpty()) {
+            // mountmgr enumerates the letter from this empty mount at startup;
+            // /dev/sr0 reports no medium until a disc is selected.
+            Fs::addFileNode(link, B("/mnt/cdrom"), B(""), false, dosdevParent);
+        }
     }
+
+    sdlStatusBarConfigure(configureCdrom && videoOption == VIDEO_NORMAL &&
+        runAutomation.isEmpty() && recordAutomation.isEmpty());
 
     if (this->args.size()==0) {
         args.push_back(B("/bin/wine"));

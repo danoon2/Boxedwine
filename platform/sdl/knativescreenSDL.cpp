@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include "sdlStatusBar.h"
 #include "../../source/ui/mainui.h"
 #include "../../source/sdl/startupArgs.h"
 
@@ -272,15 +273,15 @@ void KNativeScreenSDL::showWindow(bool show) {
         }, show);
 #endif
         if (!show) {
-            SDL_HideWindow(window);
+            sdlStatusBarShowWindow(window, false);
             visible = false;            
         } else {
 #if defined(__EMSCRIPTEN__)
             ensureEmscriptenCanvasSize(screenWidth(), screenHeight());
 #endif
             if (KSystem::videoOption == VIDEO_NORMAL) {
-                SDL_ShowWindow(window);
-                SDL_RaiseWindow(window);
+                sdlStatusBarShowWindow(window, true);
+                sdlStatusBarRaiseWindow(window);
             }
             visible = true;
             if (KSystem::videoOption != VIDEO_NORMAL) {
@@ -969,6 +970,7 @@ void KNativeScreenSDL::destroyMainWindow() {
         renderer = nullptr;
     }
     if (window) {
+        sdlStatusBarWindowDestroyed(window);
         SDL_DestroyWindow(window);
         window = nullptr;
     }

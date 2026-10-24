@@ -1057,6 +1057,7 @@
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\zip.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\knativescreenSDL.h" />
+    <ClInclude Include="..\..\..\..\platform\sdl\sdlStatusBar.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\knativeinputSDL.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\openGLViewport.h" />
     <ClInclude Include="..\..\..\..\platform\windows\windowsOpenGL.h" />
@@ -3706,6 +3707,7 @@
     <ClCompile Include="..\..\..\..\platform\sdl\kvulkanSDL.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativesystem.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativethread.cpp" />
+    <ClCompile Include="..\..\..\..\platform\sdl\sdlStatusBar.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativeinputSDL.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativescreenGL.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativescreenSDL.cpp" />
