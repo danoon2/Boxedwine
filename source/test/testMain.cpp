@@ -75,6 +75,7 @@ void testWasmJitFpuFaultState();
 #endif
 
 void testWaitPid();
+void testX11ConcurrentInitialization();
 void testX11ImageIncludeInferiors();
 void testX11ImageScanlinePadding();
 void testX11GetImageBounds();
@@ -242,6 +243,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testEmscriptenMtOpenGLProcAddressBootstrap,
         "Test Emscripten MT OpenGL proc bootstrap before context", TEST_ENTRY_SERIAL},
 #else
+    // Exercise the first initialization before another X11 test initializes it.
+    {testX11ConcurrentInitialization, "Test concurrent X11 initialization", TEST_ENTRY_SERIAL},
     {testDspAudioWriteMath, "Test DSP Audio Write Math"},
     {testFastModeSelectionHelpers, "Test fast mode selection helpers"},
 #ifndef BOXEDWINE_MULTI_THREADED

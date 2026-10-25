@@ -25,6 +25,56 @@ static void initPaletteTestServer() {
 
 extern void x11_init();
 
+void testX11ConcurrentInitialization() {
+    extern Int99Callback int9BCallback[];
+    extern U32 int9BCallbackSize;
+    std::atomic<bool> valid(true);
+    auto initializeAndCheck = [&]() {
+        for (U32 attempt = 0; attempt < 32; ++attempt) {
+            x11_init();
+            U32 keycode = XKeyboard::keysymToKeycode(XK_a);
+            const char* name = XKeyboard::getKeysymName(XK_Escape);
+            if (!keycode || XKeyboard::keycodeToKeysym(keycode, 0) != XK_a ||
+                XKeyboard::keycodeToKeysym(keycode, 1) != XK_A ||
+                !name || strcmp(name, "Escape") ||
+                int9BCallbackSize != X11_COUNT || !int9BCallback[X11_CREATE_IMAGE] ||
+                !int9BCallback[X11_GET_WM_HINTS]) {
+                valid = false;
+            }
+        }
+    };
+#if defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__)
+    // Release all callers together while the process-wide tables are still cold.
+    constexpr U32 workerCount = 16;
+    std::mutex mutex;
+    std::condition_variable condition;
+    U32 ready = 0;
+    bool start = false;
+    std::vector<std::thread> workers;
+    for (U32 i = 0; i < workerCount; ++i) {
+        workers.emplace_back([&]() {
+            {
+                std::unique_lock<std::mutex> lock(mutex);
+                ++ready;
+                condition.notify_all();
+                condition.wait(lock, [&]() { return start; });
+            }
+            initializeAndCheck();
+        });
+    }
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        condition.wait(lock, [&]() { return ready == workerCount; });
+        start = true;
+    }
+    condition.notify_all();
+    for (auto& worker : workers) worker.join();
+#else
+    initializeAndCheck();
+#endif
+    if (!valid) testFail("X11 initialization did not publish complete keyboard and callback tables");
+}
+
 void testCapturedMouseSensitivity() {
     CapturedMouse mouse;
     auto position = [&](int rawX, int rawY, int expectedX, int expectedY) {

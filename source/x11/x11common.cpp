@@ -3109,7 +3109,7 @@ void x11_CursorLibraryLoadCursor(CPU* cpu) {
     EAX = cursor->id;    
 }
 
-void x11_init() {
+static void initializeX11() {
     XKeyboard::init();
 
     int9BCallbackSize = X11_COUNT;   
@@ -3325,6 +3325,13 @@ void x11_init() {
     int9BCallback[X11_PUT_BACK_EVENT] = x11_PutBackEvent;
     int9BCallback[X11_GET_WM_NORMAL_HINTS] = x11_GetWMNormalHints;
     int9BCallback[X11_GET_WM_HINTS] = x11_GetWMHints;
+}
+
+void x11_init() {
+    // These process-wide tables survive XServer shutdown. Publish them together
+    // once so concurrent startup/test callers cannot rebuild tables in use.
+    static std::once_flag initialized;
+    std::call_once(initialized, initializeX11);
 }
 
 void callX11(CPU* cpu, U32 index) {
