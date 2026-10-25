@@ -3,6 +3,30 @@ import Testing
 @testable import BoxedwineLibrary
 
 struct CollectionImportTests {
+    @Test func discCollectionsValidateOrderedISOPathsAndPreserveSavedData() throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CollectionStore(directory: directory)
+        var value = try snapshot()
+        value.apps[0]["InstallType"] = "Disc"
+        value.apps[0]["InstallExe"] = nil
+        value.apps[0]["CDROMImages"] = "Disc 1.iso\r\nMedia/Disc 2.ISO"
+        #expect(try value.recipes()[0].discImages == ["Disc 1.iso", "Media/Disc 2.ISO"])
+        try store.merge(value, destination: value.folder)
+        let file = directory.appendingPathComponent("collections.json")
+        let saved = try Data(contentsOf: file)
+        for bad in ["", "../Disc.iso", "/Disc.iso", "C:/Disc.iso", "a\\Disc.iso", "Disc.cue", "Disc.iso\n", "Disc.iso\ndisc.ISO", "a/../Disc.iso"] {
+            value.apps[0]["CDROMImages"] = bad
+            #expect(throws: (any Error).self) { try store.merge(value, destination: value.folder) }
+            #expect(try Data(contentsOf: file) == saved)
+        }
+        value.apps[0]["CDROMImages"] = "Disc.iso"
+        value.apps[0]["InstallType"] = "Zip"
+        #expect(throws: (any Error).self) { try value.recipes() }
+        value.apps[0]["InstallType"] = "Disc"; value.apps[0]["InstallExe"] = "setup.exe"
+        #expect(throws: (any Error).self) { try value.recipes() }
+        value.apps[0]["InstallExe"] = nil; value.apps[0]["FileURL"] = "https://example.com/disc.iso"
+        #expect(throws: (any Error).self) { try value.recipes() }
+    }
     @Test func omittedWineUsesHighestCurrentCatalogVersionWithoutSavingAPin() throws {
         let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
         let store = CollectionStore(directory: directory)

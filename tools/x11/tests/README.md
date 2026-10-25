@@ -1,5 +1,42 @@
 # X11 protocol probes
 
+## Tiled and stippled rectangle fills
+
+`pattern-fill.c` checks the brush operations used when Robot City exits and Wine
+draws its debugger/error window. Build a 32-bit client and run the same binary
+against an isolated Xvfb server and the Boxedwine filesystem's Xlib bridge:
+
+```sh
+gcc -m32 -O2 -Wall -Wextra -Werror pattern-fill.c -lX11 -o pattern-fill
+xvfb-run -a -s '-screen 0 640x480x24' ./pattern-fill
+xvfb-run -a -s '-screen 0 640x480x8' ./pattern-fill
+```
+
+Inside Boxedwine, use a disposable root, mount the binary's directory, and run
+`/mnt/probes/pattern-fill` with `-bpp 8` and `-bpp 32`. `-novideo` is sufficient;
+keep the native UI engine's stdin open until it exits. Expect
+`RESULT checks=560 failures=0` in each run.
+
+The probe covers all four fill styles, a non-square pattern, positive and
+negative tile origins, negative rectangle coordinates, clip rectangles,
+`GXxor` and plane masks, and pattern lifetime after `XFreePixmap`. The original
+Windows engine panicked on the first tiled 8-bit fill and even on a solid
+32-bit fill with a previously configured tile. On October 25, 2026, the fixed
+engine and Xvfb passed all 560 checks at both tested depths. Native X11 tests
+also cover 1/8/16/32-bit storage, all 16 raster operations, row padding, empty
+clips, and offscreen rectangles.
+
+This is an engine fix; the Wine filesystem does not need rebuilding for it.
+
+The initiating Robot City exception is separate: its null-view cleanup calls
+`CopyRect16` with source `0000:0018`. The executable explicitly selects its
+NULL branch, then still adds 0x18 to that NULL argument. Wine 11's Win16
+implementation dereferences it without validating the pointer. This establishes
+the failing call. Native Windows 3.1 registers a `__GP` handler around that copy
+and safely returns when the pointer faults. The
+[Win16 comparison probe](../../buildWine/probes/copyrect16.md) documents the
+native results and Wine fix. Keep the game executable unmodified while testing.
+
 ## Focus
 
 `focus.c` exercises the Xlib interface directly, independently of Wine. Build a
@@ -143,6 +180,33 @@ it; the extended focus probe also continued to pass all 27 checks.
 The rebuilt engine also allowed lobby placement in the installed SimTower demo:
 funds decreased and the tutorial advanced to building offices. This change is
 in Boxedwine's X11 implementation and does not require another Wine patch.
+
+## Polygon fills
+
+`polygon-fill.c` compares complete pixel checksums for 640 cases: convex,
+concave, self-intersecting and repeated paths; both fill rules and coordinate
+modes; negative/extreme coordinates; solid/tile/stipple brushes; clipping; and
+XOR with a plane mask. This covers `XFillPolygon`, reached when Wine draws its
+Robot City crash dialog.
+
+```sh
+gcc -m32 -O2 -Wall -Wextra -Werror polygon-fill.c -lX11 -o polygon-fill
+xvfb-run -a -s '-screen 0 800x600x24' ./polygon-fill > reference.log
+```
+
+Run the same binary in Boxedwine with `-bpp 8` and `-bpp 32`, mounting its
+directory as described above. Compare all `CASE` lines, not just the final
+count. On October 25, 2026, every checksum matched Xvfb at both depths.
+
+## Dashed lines
+
+`dashed-line.c` exercises `XSetDashes` and horizontal/vertical line rendering,
+including odd and even patterns, nonzero offsets, reversed and clipped lines,
+both dashed styles, end caps, XOR, and plane masks. Compile it like the polygon
+probe and run on Xvfb and Boxedwine at 8 and 32 bits. The expected result is
+`RESULT checks=69312 failures=0`; all three runs passed on October 25, 2026.
+Native tests also check rejection of empty/zero-length patterns without changing
+the GC. This covers the next panic in Wine's debugger after polygon fills.
 
 ## Keyboard delivery
 

@@ -35,7 +35,7 @@ v47 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapsh
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 22. Its `changes.txt` comes from
+The filesystem revision is 23. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -51,20 +51,27 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v22.json`](webgl_filesystems_v22.json) and the
+[`webgl_filesystems_v23.json`](webgl_filesystems_v23.json) and the
 [v47 patch manifest](../wineTests/webgl-test-divergences-v47.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v22 WebGL configuration pins DLLs, source patches, and the filesystem
-ZIP in its `full-v22` and `web-v22` profiles for Jenkins demo validation. The complete filesystem
+The v23 WebGL configuration pins DLLs, source patches, and the filesystem
+ZIP in its `full-v23` and `web-v23` profiles for Jenkins demo validation. The complete filesystem
 is assembled by `filesystem_wine11.json`.
-The v22 prefix leaves the renderer registry values unset. The profile records
+The v23 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
-Revision 22 is staged locally for `/v2/22/`; it has not been published. Publish
+Revision 23 is staged locally for `/v2/23/`; it has not been published. Publish
 and verify both archives before deploying the new UI/Jenkins pins. The staged
 legacy catalog must be deployed separately to `/v2/26R2/filesV2.xml`, and the
 `/v2/latest/` aliases must be refreshed from the same final archives.
-Revision 22 adds Win16 CD-ROM read-only opens and fixes palette rendering and
+Revision 23 adds native-compatible Win16 `CopyRect` fault recovery for invalid
+source and destination rectangle pointers. This lets the original Robot City
+executable quit cleanly without a game patch or loose Wine DLL override.
+The [CopyRect comparison](probes/copyrect16.md) documents the Windows 3.1
+reference behavior and probe. Both Wine variants include the patch; the
+separate WebGL DLL hashes remain unchanged.
+
+Revision 22 added Win16 CD-ROM read-only opens and fixed palette rendering and
 software cursor save-under in 8-bit games such as Robot City. These fixes also
 require the current engine's indexed drawing and root-window readback changes.
 [`probes/paletted-window.c`](probes/paletted-window.c) and
@@ -268,7 +275,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
-Build and validate with `--config tools/buildWine/webgl_filesystems_v22.json`.
+Build and validate with `--config tools/buildWine/webgl_filesystems_v23.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises
@@ -411,7 +418,7 @@ python3 tools/buildWine/webgl_filesystem.py validate \
 
 The following v3/v10 commands and manifest remain available for historical
 filesystem reproduction and validation. Normal commands now default to
-`webgl_filesystems_v22.json`; pass the historical config explicitly below.
+`webgl_filesystems_v23.json`; pass the historical config explicitly below.
 The dedicated `validate-set` command retains its v3/v10 default.
 
 `webgl_filesystem.py` is the pinned build, packaging, and validation command

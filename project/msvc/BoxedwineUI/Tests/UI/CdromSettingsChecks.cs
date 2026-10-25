@@ -107,6 +107,14 @@ internal static partial class Program
                 viewport.ScrollToEnd(); dialog.UpdateLayout();
             }, "Save");
             if (repository.Load().Apps[0].CdromImages != null || !File.Exists(first) || !File.Exists(second)) throw new Exception("Removing images must clear references and keep files.");
+            var owned = repository.Load().Apps[0];
+            owned.CdromImages = ["Discs/Disc 1.iso", "Discs/Media/Disc 2.iso"]; repository.Update(owned);
+            Check("owned", dialog =>
+            {
+                var images = (List<string>)Editor(dialog).GetType().GetProperty("Images")!.GetValue(Editor(dialog))!;
+                if (!images.SequenceEqual(owned.CdromImages)) throw new Exception("Settings did not retain app-owned disc paths.");
+            }, "Save");
+            if (!repository.Load().Apps[0].CdromImages!.SequenceEqual(owned.CdromImages)) throw new Exception("Saving settings changed app-owned disc paths.");
             window.Close();
             Console.WriteLine($"PASS {theme} CD-ROM settings: add/reorder/remove, save/cancel, shortcut, fixed height and dynamic scrollbars");
         }

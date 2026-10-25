@@ -171,6 +171,13 @@ def main():
                 dialog = dialogs.app_settings(window, saved); yield from delay()
                 dialog.mouse_reset.emit('clicked'); dialog.save_button.emit('clicked'); yield from delay()
                 assert window.library.load()['apps'][0]['boxedwineArguments'] == ['-nosound']
+                owned = window.library.load()['apps'][0]
+                owned['cdromImages'] = ['Discs/Disc 1.iso', 'Discs/Media/Disc 2.iso']
+                window.library.update(owned)
+                dialog = dialogs.app_settings(window, owned); yield from delay()
+                assert dialog.discs.images == owned['cdromImages']
+                dialog.save_button.emit('clicked'); yield from delay()
+                assert window.library.load()['apps'][0]['cdromImages'] == owned['cdromImages']
                 assert not errors
                 print('PASS settings:', scheme.value_nick, flush=True)
             state['done'] = True

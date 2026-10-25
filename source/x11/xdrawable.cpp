@@ -206,7 +206,23 @@ int XDrawable::copy(KThread* thread, const std::shared_ptr<XGC>& gc, const std::
 	return Success;
 }
 
-void XDrawable::drawPixel8(const XGC& gc, S32 x, S32 y) {
+static U32 readPixel(const U8* row, U32 x, U32 bits) {
+	if (bits == 1) return (row[x / 8] >> (x & 7)) & 1;
+	U32 result = 0;
+	memcpy(&result, row + x * (bits / 8), bits / 8);
+	return result;
+}
+
+static void writePixel(U8* row, U32 x, U32 bits, U32 value) {
+	if (bits == 1) {
+		U8 mask = (U8)(1 << (x & 7));
+		row[x / 8] = (row[x / 8] & ~mask) | ((value & 1) << (x & 7));
+	} else {
+		memcpy(row + x * (bits / 8), &value, bits / 8);
+	}
+}
+
+void XDrawable::drawPixel(const XGC& gc, S32 x, S32 y, U32 src) {
 	if (x < 0 || y < 0 || (U32)x >= w || (U32)y >= h) return;
 	S64 cx = (S64)x - gc.values.clip_x_origin, cy = (S64)y - gc.values.clip_y_origin;
 	if (gc.hasClipRects) {
@@ -224,8 +240,8 @@ void XDrawable::drawPixel8(const XGC& gc, S32 x, S32 y) {
 		if (!mask || cx < 0 || cy < 0 || cx >= mask->width() || cy >= mask->height() ||
 			!(mask->getData()[cy * mask->getBytesPerLine() + cx / 8] & (1 << (cx & 7)))) return;
 	}
-	U8& dst = data[y * bytes_per_line + x];
-	U8 src = (U8)gc.values.foreground, result = src;
+	U8* row = data + y * bytes_per_line;
+	U32 dst = readPixel(row, x, visual->bits_per_rgb), result = src;
 	switch (gc.values.function) {
 	case GXclear: result = 0; break;
 	case GXand: result = src & dst; break;
@@ -242,13 +258,24 @@ void XDrawable::drawPixel8(const XGC& gc, S32 x, S32 y) {
 	case GXcopyInverted: result = ~src; break;
 	case GXorInverted: result = ~src | dst; break;
 	case GXnand: result = ~(src & dst); break;
-	case GXset: result = 0xff; break;
+	case GXset: result = 0xffffffff; break;
 	}
-	dst = (dst & ~gc.values.plane_mask) | (result & gc.values.plane_mask);
+	writePixel(row, x, visual->bits_per_rgb, (dst & ~gc.values.plane_mask) | (result & gc.values.plane_mask));
 }
 
 int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1, S32 y1, S32 x2, S32 y2) {
-	if (visual->bits_per_rgb == 8 && (x1 == x2 || y1 == y2)) {
+	U32 bits = visual->bits_per_rgb;
+	if (bits != 1 && bits != 8 && bits != 16 && bits != 32) return BadMatch;
+	if (x1 == x2 || y1 == y2) {
+		bool dashed = gc->values.line_style != LineSolid;
+		U64 cycle = 0;
+		if (dashed) {
+			for (U8 length : gc->dashList) {
+				if (!length) return BadValue;
+				cycle += length;
+			}
+			if (!cycle) return BadValue;
+		}
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
 		S32 left = std::max<S32>(0, std::min(x1, x2));
 		S32 top = std::max<S32>(0, std::min(y1, y2));
@@ -256,90 +283,131 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 		S32 bottom = std::min<S32>(h - 1, std::max(y1, y2));
 		for (S32 y = top; y <= bottom; y++) {
 			for (S32 x = left; x <= right; x++) {
-				if (gc->values.cap_style != CapNotLast || x != x2 || y != y2) drawPixel8(*gc, x, y);
+				if (gc->values.cap_style == CapNotLast && x == x2 && y == y2) continue;
+				U32 source = gc->values.foreground;
+				if (dashed) {
+					U64 distance = x1 == x2 ? (U64)std::abs((S64)y - y1) : (U64)std::abs((S64)x - x1);
+					U64 phase = (distance + (U32)gc->values.dash_offset) % cycle;
+					size_t dash = 0;
+					while (phase >= gc->dashList[dash]) phase -= gc->dashList[dash++];
+					if (dash & 1) {
+						if (gc->values.line_style == LineOnOffDash) continue;
+						source = gc->values.background;
+					}
+				}
+				drawPixel(*gc, x, y, source);
 			}
 		}
 		setDirty();
 		return Success;
 	}
-	if (x1 == x2) {
-		if (x1 >= (S32)w) {
-			return Success;
-		}
-		if (visual->bits_per_rgb == 32) {
-			U32* p = (U32*)data;
-			U32 color = gc->values.foreground;
-			p += bytes_per_line / 4 * y1;
-			p += x1;
-			for (S32 y = y1; y < y2 && y < (S32)h; y++) {
-				*p = color;
-				p += bytes_per_line / 4;
-			}
-		} else {
-			kpanic_fmt("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
-		}
-	} else if (y1 == y2) {
-		if (y1 >= (S32)h) {
-			return Success;
-		}
-		if (visual->bits_per_rgb == 32) {
-			U32* p = (U32*)data;
-			U32 color = 0xff00;
-			p += bytes_per_line / 4 * y1;
-			for (S32 x = x1; x < x2 && x < (S32)w; x++) {
-				*p = color;
-				p++;
-			}
-		} else {
-			kwarn_fmt("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
-		}
-	} else {
-		klog("XDrawable::drawLine diag line not supported");
-	}
+	klog("XDrawable::drawLine diag line not supported");
 	return Success;
 }
 
 int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height) {
-	if (visual->bits_per_rgb == 8 && gc->values.fill_style == FillSolid) {
-		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
-		S32 left = std::max<S32>(0, x), top = std::max<S32>(0, y);
-		S32 right = (S32)std::min<S64>(w, (S64)x + width);
-		S32 bottom = (S32)std::min<S64>(h, (S64)y + height);
-		for (S32 dstY = top; dstY < bottom; dstY++) {
-			for (S32 dstX = left; dstX < right; dstX++) {
-				drawPixel8(*gc, dstX, dstY);
-			}
+	U32 bits = visual->bits_per_rgb;
+	if (bits != 1 && bits != 8 && bits != 16 && bits != 32) return BadMatch;
+	S32 style = gc->values.fill_style;
+	if (style < FillSolid || style > FillOpaqueStippled) return BadValue;
+	bool stippled = style == FillStippled || style == FillOpaqueStippled;
+	XDrawablePtr pattern = style == FillTiled ? gc->tile : stippled ? gc->stipple : nullptr;
+	// The default tile is black; the default stipple is all ones. A configured
+	// tile must not affect FillSolid (Wine reuses GCs between brush styles).
+	if (!pattern && ((style == FillTiled && gc->values.tile) || (stippled && gc->values.stipple))) return BadPixmap;
+	U32 patternWidth = 0, patternHeight = 0, patternPitch = 0, patternBits = 0;
+	std::vector<U8> pixels;
+	if (pattern) {
+		// Snapshot before locking the destination, including when it is also
+		// the pattern. This avoids opposite-direction drawable lock ordering.
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pattern->mutex);
+		if ((stippled && (pattern->depth != 1 || pattern->visual->bits_per_rgb != 1)) || (!stippled && (pattern->depth != depth || pattern->visual->bits_per_rgb != bits))) return BadMatch;
+		if (!pattern->data || !pattern->w || !pattern->h) return BadPixmap;
+		patternWidth = pattern->w; patternHeight = pattern->h;
+		patternPitch = pattern->bytes_per_line; patternBits = pattern->visual->bits_per_rgb;
+		pixels.assign(pattern->data, pattern->data + pattern->size);
+	}
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+	S32 left = std::max<S32>(0, x), top = std::max<S32>(0, y);
+	S32 right = (S32)std::min<S64>(w, (S64)x + width);
+	S32 bottom = (S32)std::min<S64>(h, (S64)y + height);
+	if (!data || left >= right || top >= bottom) return Success;
+	bool simpleCopy = style == FillSolid && gc->values.function == GXcopy && gc->values.plane_mask == 0xffffffff && !gc->hasClipRects && !gc->values.clip_mask;
+	for (S32 dstY = top; dstY < bottom; dstY++) {
+		if (simpleCopy && bits == 32) {
+			U32* row = (U32*)(data + dstY * bytes_per_line);
+			std::fill(row + left, row + right, gc->values.foreground);
+			continue;
 		}
-		setDirty();
-		return Success;
-	}
-	if (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin) {
-		//klog("XDrawable::fillRectangle clipping not implemented");
-	}
-	if (gc->values.tile) {
-		kpanic("XDrawable::fillRectangle tile not supported");
-	}
-	if (width > w - x) {
-		width = w - x;
-	}
-	if (height > h - y) {
-		height = h - y;
-	}
-
-	if (visual->bits_per_rgb == 32) {
-		U32* p = (U32*)data;
-		U32 color = gc->values.foreground;
-		p += bytes_per_line / 4 * y;
-		for (U32 dstY = 0; dstY < height; dstY++) {
-			for (U32 dstX = 0; dstX < width; dstX++) {
-				p[x + dstX] = color;
-			}
-			p += bytes_per_line/4;
+		if (simpleCopy && bits == 8) {
+			memset(data + dstY * bytes_per_line + left, (U8)gc->values.foreground, right - left);
+			continue;
 		}
-	} else {
-        kwarn_fmt("XDrawable::fillRectangle only %d-bit not handled", visual->bits_per_rgb);
+		for (S32 dstX = left; dstX < right; dstX++) {
+			U32 source = style == FillTiled ? 0 : gc->values.foreground;
+			if (pattern) {
+				// X11 origins are relative to the drawable, not to this rectangle.
+				S64 px = ((S64)dstX - gc->values.ts_x_origin) % patternWidth;
+				S64 py = ((S64)dstY - gc->values.ts_y_origin) % patternHeight;
+				if (px < 0) px += patternWidth;
+				if (py < 0) py += patternHeight;
+				U32 pixel = readPixel(pixels.data() + py * patternPitch, (U32)px, patternBits);
+				if (stippled) {
+					if (!pixel && style == FillStippled) continue;
+					source = pixel ? gc->values.foreground : gc->values.background;
+				} else source = pixel;
+			}
+			drawPixel(*gc, dstX, dstY, source);
+		}
 	}
 	setDirty();
+	return Success;
+}
+
+int XDrawable::fillPolygon(KThread* thread, const std::shared_ptr<XGC>& gc, const std::vector<XPoint>& points) {
+	if (gc->values.fill_rule != EvenOddRule && gc->values.fill_rule != WindingRule) return BadValue;
+	if (points.size() < 3) return Success;
+	S32 top = points[0].y, bottom = top;
+	for (const auto& point : points) {
+		top = std::min<S32>(top, point.y);
+		bottom = std::max<S32>(bottom, point.y);
+	}
+	top = std::max<S32>(0, top);
+	bottom = std::min<S32>(h, bottom);
+	struct Crossing { S32 x, direction; };
+	std::vector<Crossing> crossings;
+	crossings.reserve(points.size());
+	for (S32 y = top; y < bottom; y++) {
+		crossings.clear();
+		for (size_t i = 0; i < points.size(); i++) {
+			XPoint a = points[i], b = points[(i + 1) % points.size()];
+			S32 direction = a.y < b.y ? 1 : -1;
+			if (a.y > b.y) std::swap(a, b);
+			// X11 includes the top/left boundary and excludes bottom/right.
+			// Evaluate at integer pixel centers, with each bottom endpoint excluded.
+			if (y < a.y || y >= b.y) continue;
+			S64 dy = b.y - a.y;
+			S64 numerator = (S64)a.x * dy + (S64)(y - a.y) * (b.x - a.x);
+			S32 x = (S32)(numerator >= 0 ? (numerator + dy - 1) / dy : numerator / dy);
+			crossings.push_back({x, direction});
+		}
+		std::sort(crossings.begin(), crossings.end(), [](const Crossing& a, const Crossing& b) { return a.x < b.x; });
+		S32 winding = 0, left = 0;
+		for (size_t i = 0; i < crossings.size();) {
+			S32 x = crossings[i].x;
+			bool wasInside = winding != 0;
+			do {
+				if (gc->values.fill_rule == EvenOddRule) winding ^= 1;
+				else winding += crossings[i].direction;
+				i++;
+			} while (i < crossings.size() && crossings[i].x == x);
+			if (!wasInside && winding) left = x;
+			else if (wasInside && !winding) {
+				int result = fillRectangle(thread, gc, left, y, x - left, 1);
+				if (result != Success) return result;
+			}
+		}
+	}
 	return Success;
 }
 

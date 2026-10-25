@@ -254,8 +254,8 @@ final class LibraryStore: ObservableObject {
                     apps = saved.apps
                     removedApps = saved.removedApps
                     revealApp(app.id)
-                    activity[app.id] = app.installer != nil && app.executable == nil ? "Installer ready — run it when you’re ready" : "Import recovered"
-                    if app.executable == nil && app.installer == nil && !app.isBuiltIn { chooseProgram(app) }
+                    activity[app.id] = app.hasInstaller && app.executable == nil ? "Installer ready — run it when you’re ready" : "Import recovered"
+                    if app.executable == nil && !app.hasInstaller && !app.isBuiltIn { chooseProgram(app) }
                 }
             } catch is CancellationError { }
             catch { errorMessage = "The unfinished work could not be completed. Its files have been kept.\n\n" + error.localizedDescription }
@@ -1059,10 +1059,10 @@ final class LibraryStore: ObservableObject {
                 try control.beginFinishing()
                 try commit(apps + [app])
                 imported = nil
-                activity[app.id] = app.installer == nil ? "Demo added — ready to open" : "Installer ready"
+                activity[app.id] = !app.hasInstaller ? "Demo added — ready to open" : "Installer ready"
                 revealApp(app.id)
                 finishImport()
-                if app.installer != nil { launch(app, installing: true) }
+                if app.hasInstaller { launch(app, installing: true) }
             } catch {
                 if let imported {
                     do { try await Task.detached { try repository.discardUncommittedImport(imported) }.value }
@@ -1299,7 +1299,7 @@ final class LibraryStore: ObservableObject {
     }
 
     func runInstallerFromTroubleshooting(_ app: LibraryApp) {
-        guard troubleshootingApp?.id == app.id, app.installer != nil, canLaunch(app) else { return }
+        guard troubleshootingApp?.id == app.id, app.hasInstaller, canLaunch(app) else { return }
         actionAfterTroubleshootingSheet = .runInstaller(app)
         troubleshootingApp = nil
     }
@@ -1430,7 +1430,7 @@ final class LibraryStore: ObservableObject {
     }
 
     func programChoiceNotice(for app: LibraryApp) -> String? {
-        guard app.installer != nil else { return nil }
+        guard app.hasInstaller else { return nil }
         switch activity[app.id] {
         case "Stopped": return "The installer was stopped. Some files may be incomplete; use Troubleshooting → Run Installer Again to finish setup."
         case "Closed unexpectedly — see log": return "The installer ended unexpectedly. Some files may be incomplete; check the launch log if the app does not open."
@@ -1572,7 +1572,7 @@ final class LibraryStore: ObservableObject {
     private func startRuntimeSession(_ app: LibraryApp, zip: URL, installing: Bool, dockIcon: Data?, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil) {
         guard !importing, canLaunch(app), apps.contains(app), let repository else { return }
         do {
-            let cdromAccess = try CdromImageAccess(app: app)
+            let cdromAccess = try CdromImageAccess(app: app, appDirectory: repository.appDirectory(app))
             let request = LaunchRequest(app: app, repository: repository, wineZip: zip, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram)
             let arguments = try request.arguments()
             let executable = try RuntimeSession.executable()

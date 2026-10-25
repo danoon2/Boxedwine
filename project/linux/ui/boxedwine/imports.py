@@ -21,7 +21,7 @@ from .packages import NoRedirect
 MAX_DOWNLOAD = 1024**3
 FIELDS = set(('ID Name Summary Help Icon FileURL FileSizeBytes FileSHA256 InstallType InstallExe ShortcutExe WineVersion '
               'WindowsVersion GDIRenderer Resolution InstallResolution BitsPerPixel CPUCount NativeOpenGL UseEGL CNCDDraw '
-              'DisableHideCursor ForceRelativeMouse Glide CNCDDrawRenderer CNCDDrawUncapped CNCDDrawFakeMode WineDllOverrides AppArguments').split())
+              'DisableHideCursor ForceRelativeMouse Glide CNCDDrawRenderer CNCDDrawUncapped CNCDDrawFakeMode WineDllOverrides AppArguments CDROMImages').split())
 
 
 def app_arguments(value):

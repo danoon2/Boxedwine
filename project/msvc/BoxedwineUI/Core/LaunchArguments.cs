@@ -103,7 +103,7 @@ public static class LaunchArguments
         if (installing && app.InstallFromDisc == true)
         {
             if (app.CdromImages is not { Count: > 0 }) throw new InvalidOperationException("Add an installation disc in App Settings → General.");
-            CdromImages.PrepareImport(app.CdromImages);
+            CdromImages.PrepareImport(CdromImages.Resolve(app.CdromImages, repository.AppDirectory(app)));
             result.AddRange(overrides);
             if (browseDisc) result.AddRange(["/bin/wine", "explorer", result[result.IndexOf("-cdrom") + 2] + ":\\"]);
             else result.Add("-cdromInstall");

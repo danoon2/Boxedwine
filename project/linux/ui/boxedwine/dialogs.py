@@ -7,6 +7,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 from .files import beneath, no_links
 from .library import DRIVE_C, WINDOWS, resolution
 from .runtime import WINE_TOOLS, lines
+from .cdrom import has_installer
 
 
 def guarded(owner, callback):
@@ -391,7 +392,7 @@ def troubleshoot(owner, app):
         expander.add_row(Adw.ActionRow(title=text, title_lines=0, use_markup=False)); tips.add(expander)
     install_group = group(main, 'Installation')
     action_row(owner, install_group, 'Selected program', 'Choose the main program after an installer finishes.', 'Choose…', lambda: (dialog.close(), owner.choose_program(app)))
-    if app.get('installer'):
+    if has_installer(app):
         action_row(owner, install_group, 'Saved installer', 'Runs in this app’s existing Windows environment.', 'Run Again', lambda: (dialog.close(), owner.launch(app, installing=True)))
     logs = group(main, 'Launch Logs', 'Logs may contain file paths and app output. Review them before sharing.')
     action_row(owner, logs, 'Launch history', 'Latest, previous, and most recent failed launches', 'View Logs', lambda: owner.show_logs(app))

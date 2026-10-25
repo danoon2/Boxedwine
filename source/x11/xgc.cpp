@@ -78,9 +78,11 @@ void XGC::updateValues(U32 mask, XGCValues* newValues) {
 	}
 	if (mask & GCTile) {
 		values.tile = newValues->tile;
+		tile = XServer::getServer()->getPixmap(values.tile);
 	}
 	if (mask & GCStipple) {
 		values.stipple = newValues->stipple;
+		stipple = XServer::getServer()->getPixmap(values.stipple);
 	}
 	if (mask & GCTileStipXOrigin) {
 		values.ts_x_origin = newValues->ts_x_origin;
@@ -113,6 +115,7 @@ void XGC::updateValues(U32 mask, XGCValues* newValues) {
 	}
 	if (mask & GCDashList) {
 		values.dashes = newValues->dashes;
+		dashList = {(U8)values.dashes, (U8)values.dashes};
 	}
 	if (mask & GCArcMode) {
 		values.arc_mode = newValues->arc_mode;

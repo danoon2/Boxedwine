@@ -135,6 +135,8 @@ class Library:
         resolution(app.get('resolution', '1024x768'))
         validate_overrides(app.get('boxedwineArguments') or [])
         validate_images(app.get('cdromImages') if app.get('cdromImages') is not None else [])
+        if app.get('installFromDisc') is not None and not isinstance(app['installFromDisc'], bool):
+            raise ValueError('Invalid disc installer setting.')
         args = app.get('arguments', [])
         if not isinstance(args, list) or len(args) > 256 or any(not isinstance(a, str) or len(a) > 8192 or '\0' in a for a in args):
             raise ValueError('Invalid app arguments.')

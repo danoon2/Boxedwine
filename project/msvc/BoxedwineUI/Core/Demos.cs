@@ -12,6 +12,7 @@ public sealed record DemoRecipe(DemoOrigin Origin, string Name, string Summary, 
     string? InstallExe, string? WineVersion, DemoSettings Settings, string? Glide, string? CncRenderer, bool CncUncapped, string? CncMode, string? WineDllOverrides = null, bool CustomSource = false)
 {
     public List<string> AppArguments { get; init; } = [];
+    public List<string> DiscImages { get; init; } = [];
     public CatalogWine? SelectWine(IEnumerable<CatalogWine> wines) => wines.Where(w => WineVersion == null || w.WineVersion == WineVersion)
         .OrderByDescending(w => Version.Parse(w.WineVersion)).FirstOrDefault();
     public string WineDescription(IEnumerable<CatalogWine> wines) => SelectWine(wines) is CatalogWine selected
@@ -42,7 +43,7 @@ public static class Demos
             string id = Field("ID"), name = Field("Name"), hash = Field("FileSHA256"), shortcut = Field("ShortcutExe"), url = Field("FileURL");
             if (!Regex.IsMatch(id, "^[a-z0-9][a-z0-9-]{0,63}$") || !ids.Add(id) || name.Length is 0 or > 256 || !Regex.IsMatch(hash, "^[a-f0-9]{64}$") ||
                 shortcut.Contains('/') || !shortcut.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !Uri.TryCreate(url, UriKind.Absolute, out var address) || !(allowExternal ? PreparedAppSource.ValidUrl(address) : Packages.TrustedUrl(address)) ||
-                !long.TryParse(Field("FileSizeBytes"), out long bytes) || bytes is <= 0 or > 1073741824 || Field("InstallType") is not ("Zip" or "Installer")) throw new InvalidDataException("Invalid demo identity, package, or install recipe.");
+                !long.TryParse(Field("FileSizeBytes"), out long bytes) || bytes is <= 0 or > 1073741824 || !(Field("InstallType") is "Zip" or "Installer" || allowExternal && Field("InstallType") == "Disc")) throw new InvalidDataException("Invalid demo identity, package, or install recipe.");
             _ = SafeFiles.Beneath(directory, shortcut);
             if (Field("Icon").Length > 0 && !(allowExternal && CollectionIcons.IsRemote(Field("Icon")))) _ = SafeFiles.Beneath(directory, Field("Icon"));
             foreach (var unsupported in new[] { "Options", "InstallOptions", "Options_Mac", "InstallOptions_Mac" }) if (Field(unsupported).Length > 0) throw new InvalidDataException("Unsupported legacy options in demo " + name);
@@ -53,6 +54,11 @@ public static class Demos
             if (item.Element("AppArguments") != null && schema < 9) throw new InvalidDataException("AppArguments requires schema 9.");
             // Arguments are literal: preserve whitespace and do not apply Help's escape expansion.
             var appArguments = CollectionSnapshot.ParseAppArguments((string?)item.Element("AppArguments"));
+            bool disc = Field("InstallType") == "Disc";
+            if (disc ? !allowExternal || !address.LocalPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || Field("InstallExe").Length > 0
+                     : item.Element("CDROMImages") != null)
+                throw new InvalidDataException("CDROMImages requires a Disc collection ZIP without InstallExe.");
+            var images = disc ? CdromImages.ArchivePaths((string?)item.Element("CDROMImages")) : [];
             if (dllOverrides != null)
             {
                 if (schema < 8 || dllOverrides.Length is 0 or > 1024 || dllOverrides.Any(char.IsControl)) throw new InvalidDataException("WineDllOverrides requires schema 8 and a nonempty single-line value of at most 1024 characters.");
@@ -70,7 +76,7 @@ public static class Demos
             recipes.Add(new(new(id, release, hash, shortcut), name, Field("Summary"), Field("Help").Replace("\\n", "\n").Replace("\\t", "    "), Field("Icon"), url, bytes,
                 Field("InstallType"), Optional("InstallExe"), wineVersion, settings, Optional("Glide"), Optional("CNCDDrawRenderer"), Boolean("CNCDDrawUncapped") == true, Optional("CNCDDrawFakeMode"), dllOverrides, allowExternal)
             {
-                AppArguments = appArguments
+                AppArguments = appArguments, DiscImages = images
             });
         }
         return recipes;
@@ -97,11 +103,19 @@ public static class Demos
             var uri = new Uri(demo.Url);
             string download = SafeFiles.Beneath(repository.AppDirectory(app), "Download/" + Path.GetFileName(uri.LocalPath));
             await Packages.Download(demo.Url, demo.Bytes, demo.Origin.PackageSHA256, download, cancellation, progress, allowExternal: demo.CustomSource);
-            string payload = demo.InstallType == "Installer" ? SafeFiles.Beneath(repository.AppDirectory(app), "Installer") : SafeFiles.Beneath(repository.Root(app), LibraryRepository.DriveC + "/App");
+            string payload = demo.InstallType == "Disc" ? SafeFiles.Beneath(repository.AppDirectory(app), "Discs")
+                : demo.InstallType == "Installer" ? SafeFiles.Beneath(repository.AppDirectory(app), "Installer") : SafeFiles.Beneath(repository.Root(app), LibraryRepository.DriveC + "/App");
             if (uri.LocalPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
                 await Packages.Extract(download, payload, cancellation, progress);
                 if (demo.InstallType == "Installer") { LibraryRepository.CheckInstaller(SafeFiles.Beneath(payload, demo.InstallExe ?? "")); app.Installer = "Installer/" + demo.InstallExe; }
+                if (demo.InstallType == "Disc")
+                {
+                    var images = CdromImages.ArchivePaths(string.Join('\n', demo.DiscImages));
+                    CdromImages.PrepareImport(images.Select(path => SafeFiles.Beneath(payload, path)));
+                    app.CdromImages = images.Select(path => "Discs/" + path).ToList();
+                    app.InstallFromDisc = true;
+                }
             }
             else
             {

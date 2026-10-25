@@ -84,7 +84,7 @@ public sealed class CollectionSnapshot
     public List<DemoRecipe> Recipes()
     {
         if (SchemaVersion != 1 || Apps.Count is < 1 or > 256) throw new InvalidDataException("A version 1 collection needs 1–256 apps.");
-        string[] allowed = ("ID Name Summary Help Icon FileURL FileSizeBytes FileSHA256 InstallType InstallExe ShortcutExe WineVersion WindowsVersion GDIRenderer Resolution InstallResolution BitsPerPixel CPUCount NativeOpenGL UseEGL CNCDDraw DisableHideCursor ForceRelativeMouse Glide CNCDDrawRenderer CNCDDrawUncapped CNCDDrawFakeMode WineDllOverrides AppArguments").Split(' ');
+        string[] allowed = ("ID Name Summary Help Icon FileURL FileSizeBytes FileSHA256 InstallType InstallExe ShortcutExe WineVersion WindowsVersion GDIRenderer Resolution InstallResolution BitsPerPixel CPUCount NativeOpenGL UseEGL CNCDDraw DisableHideCursor ForceRelativeMouse Glide CNCDDrawRenderer CNCDDrawUncapped CNCDDrawFakeMode WineDllOverrides AppArguments CDROMImages").Split(' ');
         if (Apps.Any(a => a == null || !a.TryGetValue("ID", out string? id) || !Regex.IsMatch(id, "^[a-z0-9][a-z0-9-]{0,63}$") || a.Any(p => !allowed.Contains(p.Key) || p.Value == null))) throw new InvalidDataException("Unsupported collection app fields.");
         foreach (var app in Apps)
         {

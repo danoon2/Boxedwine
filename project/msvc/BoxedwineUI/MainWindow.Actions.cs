@@ -158,7 +158,7 @@ public partial class MainWindow
         bool winePresent = File.Exists(repository.PackagePath(wine.Reference));
         if (!Dialogs.Confirm(this, "Install " + demo.Name + "?", $"Download {Math.Max(1, demo.Bytes / 1048576.0):0.#} MB for this demo" + (winePresent ? "." : $" and {wine.Bytes / 1048576.0:0} MB for Wine {wine.WineVersion}.") + "\n\nThe downloaded files are verified before installation.", "Download and Install")) return;
         RunOperation("Installing demo…", async (token, progress) => { var reference = await EnsureWine(wine, token, progress); return await Demos.Install(repository, demo, reference, token, progress); },
-            app => { Navigate("All Apps", app.Id.ToString()); if (app.Installer != null) Open(app, installing: true); });
+            app => { Navigate("All Apps", app.Id.ToString()); if (app.HasInstaller) Open(app, installing: true); });
     }
     private void Open(LibraryApp app, bool installing = false, string? alternate = null, string? external = null, bool browseDisc = false)
     {

@@ -7,6 +7,56 @@ import Testing
 @testable import BoxedwineLibrary
 
 struct DemoTests {
+    @Test func discCollectionInstallAndBackupResolveOwnedImagesInTheCurrentApp() async throws {
+        let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
+        let data = ZipFixture.archive([.init("Disc 1.iso", "first disc"), .init("Media/Disc 2.iso", "second disc")])
+        var recipe = demo(data, type: .disc)
+        recipe.discImages = ["Disc 1.iso", "Media/Disc 2.iso"]
+        recipe.settings = try DemoSettings.parse(["Resolution": "640x480", "InstallResolution": "640x480", "BitsPerPixel": "8"])
+        let imported = try await f.repository.importDemo(recipe, runtime: f.runtime, downloader: Download(data: data))
+        var app = try f.repository.recoverApp(imported.id, control: ImportControl())
+        #expect(app.hasInstaller && app.installFromDisc == true && app.installer == nil)
+        #expect(app.cdromImages == ["Discs/Disc 1.iso", "Discs/Media/Disc 2.iso"])
+        let args = try LaunchRequest(app: app, repository: f.repository, wineZip: f.repository.savedRuntimeURL(for: app), installing: true).arguments()
+        let index = try #require(args.firstIndex(of: "-cdrom"))
+        let first = f.repository.appDirectory(app).appendingPathComponent("Discs/Disc 1.iso")
+        let second = f.repository.appDirectory(app).appendingPathComponent("Discs/Media/Disc 2.iso")
+        #expect(Array(args[index..<index + 6]) == ["-cdrom", first.path, "e", "-cdrom", second.path, "e"])
+        #expect(args.last == "-cdromInstall" && args.contains("640x480"))
+        let program = LibraryRepository.driveC + "/Game/DEMO.EXE"
+        let executable = f.repository.root(for: app).appendingPathComponent(program)
+        try FileManager.default.createDirectory(at: executable.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("MZgame".utf8).write(to: executable)
+        app = try #require(try f.repository.selectingInstalledDemoProgram(app, after: RuntimeExit(status: 0, signalled: false, stoppedByUser: false)))
+        #expect(app.executable == program)
+        try f.repository.save([app])
+        #expect(try !LaunchRequest(app: app, repository: f.repository, wineZip: f.repository.savedRuntimeURL(for: app)).arguments().contains("-cdromInstall"))
+        let backup = f.base.appendingPathComponent("Discs.boxedwinebackup")
+        try AppBackup.export(app, repository: f.repository, runtime: f.repository.savedRuntimeURL(for: app), to: backup)
+        let other = LibraryRepository(directory: f.base.appendingPathComponent("restored-library"))
+        let restored = try AppBackup.restore(backup, repository: other)
+        #expect(restored.installFromDisc == true && restored.cdromImages == app.cdromImages)
+        let restoredFirst = other.appDirectory(restored).appendingPathComponent("Discs/Disc 1.iso")
+        #expect(try Data(contentsOf: restoredFirst) == Data("first disc".utf8))
+        let restoredArgs = try LaunchRequest(app: restored, repository: other, wineZip: other.savedRuntimeURL(for: restored), installing: true).arguments()
+        #expect(restoredArgs.contains(restoredFirst.path) && !restoredArgs.contains(first.path))
+        let access = try CdromImageAccess(app: restored, appDirectory: other.appDirectory(restored))
+        #expect(access.runtimeBookmarks.count == 2)
+        try FileManager.default.removeItem(at: restoredFirst)
+        try FileManager.default.createSymbolicLink(at: restoredFirst, withDestinationURL: f.runtime)
+        #expect(throws: (any Error).self) { try CdromImages.launchArguments(restored.cdromImages!, root: other.root(for: restored)) }
+    }
+
+    @Test func missingCollectionDiscDiscardsTheImport() async throws {
+        let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
+        let data = ZipFixture.archive([.init("Disc 1.iso", "first disc")])
+        var recipe = demo(data, type: .disc)
+        recipe.discImages = ["Disc 1.iso", "Missing.iso"]
+        await #expect(throws: (any Error).self) {
+            try await f.repository.importDemo(recipe, runtime: f.runtime, downloader: Download(data: data))
+        }
+        try unchanged(f)
+    }
     private struct Download: DemoDownloading {
         let data: Data
         var cancel = false

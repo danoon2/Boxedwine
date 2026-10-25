@@ -26,7 +26,7 @@ struct DemoOrigin: Codable, Equatable, Sendable {
 }
 
 struct Demo: Identifiable, Equatable, Sendable {
-    enum InstallType: String, Sendable { case portableZip = "Zip", installer = "Installer" }
+    enum InstallType: String, Sendable { case portableZip = "Zip", installer = "Installer", disc = "Disc" }
     enum CNCDDrawRenderer: String, Sendable { case gdi, opengl, direct3d9 }
     struct CNCDDrawMode: Equatable, Sendable {
         let section: String
@@ -70,6 +70,7 @@ struct Demo: Identifiable, Equatable, Sendable {
     var wineDllOverrides: String? = nil
     var customSource = false
     var appArguments: [String] = []
+    var discImages: [String] = []
     var isZip: Bool { url.pathExtension.lowercased() == "zip" }
 
     func catalogWine(in wines: [CatalogWine]) -> CatalogWine? {
@@ -159,7 +160,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
             guard name == "Demo", attributes.isEmpty, demos.count < 256 else { fail(parser, "Expected a Demo entry."); return }
             fields = [:]
         case 2:
-            guard (allowed.contains(name) || schema >= 2 && DemoSettings.catalogFields.contains(name) || schema >= 4 && name == "Glide" || schema >= 5 && name == "CNCDDrawRenderer" || schema >= 6 && name == "CNCDDrawUncapped" || schema >= 7 && name == "CNCDDrawFakeMode" || schema >= 8 && name == "WineDllOverrides" || schema >= 9 && name == "AppArguments"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
+            guard (allowed.contains(name) || allowExternal && name == "CDROMImages" || schema >= 2 && DemoSettings.catalogFields.contains(name) || schema >= 4 && name == "Glide" || schema >= 5 && name == "CNCDDrawRenderer" || schema >= 6 && name == "CNCDDrawUncapped" || schema >= 7 && name == "CNCDDrawFakeMode" || schema >= 8 && name == "WineDllOverrides" || schema >= 9 && name == "AppArguments"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
             fields[name] = ""
         default: fail(parser, "Nested recipe fields are unsupported."); return
         }
@@ -200,6 +201,14 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
         }
         let zip = url.pathExtension.lowercased() == "zip"
         let installer = field("InstallExe")
+        let images: [String]
+        if type == .disc {
+            guard allowExternal, zip, installer.isEmpty else { throw DemoError.catalog("CDROMImages requires a Disc collection ZIP without InstallExe.") }
+            images = try CdromImages.archivePaths(fields["CDROMImages"])
+        } else {
+            guard fields["CDROMImages"] == nil else { throw DemoError.catalog("CDROMImages requires InstallType Disc.") }
+            images = []
+        }
         guard type != .portableZip || zip, zip || ["exe", "msi"].contains(url.pathExtension.lowercased()),
               type != .installer || !zip || (DemoCatalog.validRelativePath(installer) && ["exe", "msi"].contains((installer as NSString).pathExtension.lowercased())),
               (type == .installer && zip) || installer.isEmpty else { throw DemoError.catalog("Unsupported installation recipe for \(name).") }
@@ -246,6 +255,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
                     settings: settings, glide: glide, cncDDrawRenderer: cncRenderer, cncDDrawUncapped: cncUncapped, cncDDrawMode: cncMode, wineDllOverrides: dllOverrides, customSource: allowExternal)
         // Arguments are literal: preserve whitespace and do not apply Help's escape expansion.
         demo.appArguments = try CollectionSnapshot.appArguments(fields["AppArguments"])
+        demo.discImages = images
         return demo
     }
 }

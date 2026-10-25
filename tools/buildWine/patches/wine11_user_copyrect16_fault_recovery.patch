@@ -1,0 +1,29 @@
+diff --git a/dlls/user.exe16/user.c b/dlls/user.exe16/user.c
+--- a/dlls/user.exe16/user.c
++++ b/dlls/user.exe16/user.c
+@@ -36,6 +36,7 @@
+ #include "ntuser.h"
+ #include "wine/list.h"
+ #include "wine/debug.h"
++#include "wine/exception.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(user);
+ 
+@@ -646,7 +647,16 @@ void WINAPI SetRectEmpty16( LPRECT16 rect )
+  */
+ BOOL16 WINAPI CopyRect16( RECT16 *dest, const RECT16 *src )
+ {
+-    *dest = *src;
++    /* Native Win16 USER registers a __GP handler around this copy. */
++    __TRY
++    {
++        *dest = *src;
++    }
++    __EXCEPT_PAGE_FAULT
++    {
++        return FALSE;
++    }
++    __ENDTRY
+     return TRUE;
+ }
+ 

@@ -78,6 +78,7 @@ void testX11ImageScanlinePadding();
 void testX11GetImageBounds();
 void testX11ImageReadback();
 void testX11PalettedDrawing();
+void testX11PatternFills();
 void testX11PaletteInvalidation();
 void testXInputValuatorLayout();
 void testCapturedMouseSensitivity();
@@ -1095,6 +1096,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testX11GetImageBounds, "Test X11 image capture bounds and padding"},
     {testX11ImageReadback, "Test X11 window readback and cursor save/restore"},
     {testX11PalettedDrawing, "Test X11 paletted drawing and clipping"},
+    {testX11PatternFills, "Test X11 tiled and stippled rectangle fills"},
     {testX11PaletteInvalidation, "Test X11 shared palette invalidation"},
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
     {testSDLGlWindowRemovalLockOrder, "Test SDL GL window removal lock order", TEST_ENTRY_SERIAL},

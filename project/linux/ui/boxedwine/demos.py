@@ -8,6 +8,7 @@ import zipfile
 from .files import beneath, delete_tree, extract_zip, validate_relative
 from .library import DRIVE_C, new_app, preference, resolution, check_installer
 from .packages import download, trusted_url
+from .cdrom import archive_paths
 
 
 def load_catalog(data, allow_external=False):
@@ -34,7 +35,8 @@ def load_catalog(data, allow_external=False):
         url, size, checksum = field('FileURL'), int(field('FileSizeBytes')), field('FileSHA256')
         if (not re.fullmatch('[a-z0-9][a-z0-9-]{0,63}', identifier) or identifier in ids or not 0 < len(field('Name')) <= 256 or
                 not (valid_url(url) if allow_external else trusted_url(url)) or not 0 < size <= 1024**3 or not re.fullmatch('[a-f0-9]{64}', checksum) or
-                not shortcut.lower().endswith('.exe') or '/' in shortcut or field('InstallType') not in ('Zip', 'Installer')):
+                not shortcut.lower().endswith('.exe') or '/' in shortcut or
+                field('InstallType') not in (('Zip', 'Installer', 'Disc') if allow_external else ('Zip', 'Installer'))):
             raise ValueError('Invalid demo identity or package.')
         validate_relative(shortcut)
         if field('Icon') and not (allow_external and valid_url(field('Icon'))):
@@ -51,6 +53,11 @@ def load_catalog(data, allow_external=False):
             raise ValueError('AppArguments requires schema 9.')
         # Arguments are literal: preserve whitespace and do not apply Help's escape expansion.
         arguments = app_arguments(element.findtext('AppArguments'))
+        disc = field('InstallType') == 'Disc'
+        images = archive_paths(element.findtext('CDROMImages')) if disc else []
+        if (disc and (not allow_external or not urllib.parse.urlsplit(url).path.lower().endswith('.zip') or field('InstallExe'))
+                or not disc and 'CDROMImages' in values):
+            raise ValueError('CDROMImages requires a Disc collection ZIP without InstallExe.')
         if dll_overrides is not None:
             if (int(root.get('schemaVersion')) < 8 or not 0 < len(dll_overrides) <= 1024 or
                     any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in dll_overrides)):
@@ -89,7 +96,7 @@ def load_catalog(data, allow_external=False):
                             wineVersion=wine_version, settings=settings, glide=values.get('Glide'),
                             cncRenderer=values.get('CNCDDrawRenderer'), cncUncapped=boolean('CNCDDrawUncapped') is True,
                             cncMode=values.get('CNCDDrawFakeMode'), wineDllOverrides=dll_overrides,
-                            appArguments=arguments))
+                            appArguments=arguments, discImages=images))
     return recipes
 
 
@@ -162,18 +169,27 @@ def install(library, recipe, wine, work):
         package = beneath(library.path(app), 'Download/' + filename)
         download(recipe['url'], recipe['bytes'], recipe['origin']['packageSHA256'], package, work, allow_external=recipe.get('custom', False))
         installer = recipe['installType'] == 'Installer'
-        payload = beneath(library.path(app), 'Installer') if installer else beneath(library.root(app), DRIVE_C + '/App')
+        disc = recipe['installType'] == 'Disc'
+        payload = (beneath(library.path(app), 'Discs') if disc else
+                   beneath(library.path(app), 'Installer') if installer else beneath(library.root(app), DRIVE_C + '/App'))
         if filename.lower().endswith('.zip'):
             extract_zip(package, payload, work)
             if installer:
                 selected = installer_path(payload, recipe['installExe'])
                 app['installer'] = 'Installer/' + selected.relative_to(payload).as_posix()
+            if disc:
+                images = archive_paths('\n'.join(recipe.get('discImages', [])))
+                for path in images:
+                    if not beneath(payload, path).is_file():
+                        raise ValueError('Missing collection ISO: ' + path)
+                app['cdromImages'] = ['Discs/' + path for path in images]
+                app['installFromDisc'] = True
         else:
             payload.mkdir(parents=True, exist_ok=True)
             app['installer'] = 'Installer/' + filename
             check_installer(package)
             package.rename(beneath(library.path(app), app['installer']))
-        if not installer:
+        if not installer and not disc:
             matches = [p for p in library.programs(app) if Path(p).name.casefold() == recipe['origin']['shortcutExe'].casefold()]
             if len(matches) != 1:
                 raise ValueError('The demo’s program could not be identified uniquely.')

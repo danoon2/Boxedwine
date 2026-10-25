@@ -7,7 +7,7 @@ enum CdromImageError: LocalizedError {
     case invalid, unavailable(String), noDrive, access
     var errorDescription: String? {
         switch self {
-        case .invalid: "Choose up to 256 CD-ROM images using full file paths."
+        case .invalid: "Choose up to 256 CD-ROM images using full paths or app-owned Discs/ paths."
         case .unavailable(let path): "CD-ROM image is unavailable: \(path)\nChoose or remove it in App Settings → General."
         case .noDrive: "No free CD-ROM drive letter is available from E: to Z:."
         case .access: "Access to the CD-ROM image could not be saved. Choose the image again."
@@ -16,12 +16,27 @@ enum CdromImageError: LocalizedError {
 }
 
 enum CdromImages {
+    static func archivePaths(_ value: String?) throws -> [String] {
+        let paths = (value ?? "").replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
+        guard (1...256).contains(paths.count), Set(paths.map { $0.lowercased() }).count == paths.count,
+              paths.allSatisfy({ DemoCatalog.validRelativePath($0) && $0.lowercased().hasSuffix(".iso") })
+        else { throw DemoError.catalog("CDROMImages needs 1–256 distinct ISO paths inside the ZIP, one per line.") }
+        return paths
+    }
+    static func resolved(_ path: String, appDirectory: URL) throws -> String {
+        guard path.hasPrefix("Discs/") else { return path }
+        _ = try archivePaths(path)
+        let url = appDirectory.appendingPathComponent(path).standardizedFileURL
+        guard url.resolvingSymlinksInPath() == url else { throw CdromImageError.unavailable(path) }
+        return url.path
+    }
     static func validate(_ paths: [String]) throws {
         guard paths.count <= 256, paths.allSatisfy({ path in
             !path.isEmpty && path.unicodeScalars.count <= 8192 && !path.contains("\0") && !path.contains("\r") && !path.contains("\n") &&
-            (path.hasPrefix("/") || path.range(of: #"^\\\\[^\\/]+[\\/][^\\/]+([\\/].*)?$"#, options: .regularExpression) != nil ||
+            (path.hasPrefix("Discs/") || path.hasPrefix("/") || path.range(of: #"^\\\\[^\\/]+[\\/][^\\/]+([\\/].*)?$"#, options: .regularExpression) != nil ||
              path.range(of: "^[A-Za-z]:[\\\\/]", options: .regularExpression) != nil)
         }) else { throw CdromImageError.invalid }
+        for path in paths where path.hasPrefix("Discs/") { _ = try archivePaths(path) }
     }
 
     static func validateBookmarks(_ bookmarks: [String: Data]) throws {
@@ -31,6 +46,7 @@ enum CdromImages {
 
     static func launchArguments(_ paths: [String], root: URL) throws -> [String] {
         try validate(paths)
+        let paths = try paths.map { try resolved($0, appDirectory: root.deletingLastPathComponent()) }
         guard !paths.isEmpty else { return [] }
         for path in paths {
             guard path.hasPrefix("/"), FileManager.default.isReadableFile(atPath: path),
@@ -65,11 +81,19 @@ final class CdromImageAccess {
     private var scopedURLs: [URL] = []
     private(set) var runtimeBookmarks: [Data] = []
 
-    init(app: LibraryApp) throws {
+    init(app: LibraryApp, appDirectory: URL? = nil) throws {
         try CdromImages.validate(app.cdromImages ?? [])
         try CdromImages.validateBookmarks(app.cdromBookmarks ?? [:])
         do {
             for path in app.cdromImages ?? [] {
+                if path.hasPrefix("Discs/") {
+                    guard let appDirectory else { throw CdromImageError.access }
+                    let url = URL(fileURLWithPath: try CdromImages.resolved(path, appDirectory: appDirectory))
+                    let implicit = try url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
+                    guard implicit.count <= 48 * 1024 else { throw CdromImageError.access }
+                    runtimeBookmarks.append(implicit)
+                    continue
+                }
                 guard let data = app.cdromBookmarks?[path] else { continue }
                 var stale = false
                 let url = try URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI],

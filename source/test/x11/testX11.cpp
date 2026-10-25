@@ -350,11 +350,11 @@ void testX11PalettedDrawing() {
     auto thread = testContext().thread;
     auto memory = thread->memory;
     CPU* cpu = testContext().cpu;
-    auto call = [&](U32 function, std::initializer_list<U32> args) {
+    auto call = [&](U32 function, std::initializer_list<U32> args, U32 expected = Success) {
         U32 i = 1;
         for (U32 arg : args) memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + i++ * 4, arg);
         callX11(cpu, function);
-        if (EAX != Success) testFail("Paletted drawing X11 call failed: %u", function);
+        if (EAX != expected) testFail("Paletted drawing X11 call failed: %u", function);
     };
     auto pixel = [&](U32 x, U32 y) { return drawable->getData()[y * drawable->getBytesPerLine() + x]; };
     memset(drawable->getData(), 0xcc, drawable->getDataSize());
@@ -397,6 +397,19 @@ void testX11PalettedDrawing() {
     if (pixel(1, 1) != 17) testFail("Empty GC clip must suppress drawing");
     call(X11_SET_CLIP_MASK, {0, gc->id, None});
 
+    // XSetDashes retains a complete pattern, expands odd lists, and rejects
+    // invalid replacements without changing the existing GC.
+    memory->writeb(rects, 3); memory->writeb(rects + 1, 2); memory->writeb(rects + 2, 1);
+    call(X11_SET_DASHES, {0, gc->id, 5, rects, 3});
+    if (gc->dashList != std::vector<U8>({3, 2, 1, 3, 2, 1}) || gc->values.dash_offset != 5)
+        testFail("XSetDashes odd pattern/offset");
+    memory->writeb(rects, 0);
+    call(X11_SET_DASHES, {0, gc->id, 0, rects, 1}, BadValue);
+    if (EAX != BadValue || gc->dashList[0] != 3 || gc->values.dash_offset != 5)
+        testFail("XSetDashes accepted a zero length");
+    call(X11_SET_DASHES, {0, gc->id, 0, rects, 0}, BadValue);
+    if (EAX != BadValue) testFail("XSetDashes accepted an empty pattern");
+
     const U8 rops[] = {0, 0x12, 0x84, 0x96, 0x48, 0x5a, 0xcc, 0xde,
         0x21, 0x33, 0xa5, 0xb7, 0x69, 0x7b, 0xed, 0xff};
     for (U32 op = 0; op < 16; op++) {
@@ -409,6 +422,90 @@ void testX11PalettedDrawing() {
     }
     server->removeGC(gc->id);
     server->removePixmap(drawable->id);
+}
+
+void testX11PatternFills() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    initPaletteTestServer();
+    auto server = XServer::getServer();
+    for (U32 bits : {1u, 8u, 16u, 32u}) {
+        auto visual = std::make_shared<Visual>(); visual->bits_per_rgb = bits;
+        auto bitmapVisual = std::make_shared<Visual>(); bitmapVisual->bits_per_rgb = 1;
+        auto target = server->createNewPixmap(7, 5, bits, visual);
+        auto tile = server->createNewPixmap(3, 2, bits, visual);
+        auto stipple = server->createNewPixmap(3, 2, 1, bitmapVisual);
+        auto gc = server->createGC(target);
+        auto pixel = [&](const XDrawablePtr& image, U32 x, U32 y) {
+            U8* row = image->getData() + y * image->getBytesPerLine();
+            U32 value = 0;
+            if (image->getBitsPerPixel() == 1) value = (row[x / 8] >> (x & 7)) & 1;
+            else memcpy(&value, row + x * (image->getBitsPerPixel() / 8), image->getBitsPerPixel() / 8);
+            return value;
+        };
+        for (U32 y = 0; y < 2; y++) for (U32 x = 0; x < 3; x++) {
+            U32 value = 1 + x + y * 3;
+            if (bits == 1) tile->getData()[y * tile->getBytesPerLine()] |= (value & 1) << x;
+            else memcpy(tile->getData() + y * tile->getBytesPerLine() + x * (bits / 8), &value, bits / 8);
+        }
+        stipple->getData()[0] = 5; stipple->getData()[stipple->getBytesPerLine()] = 2;
+        XGCValues values = gc->values;
+        values.tile = tile->id; values.stipple = stipple->id;
+        gc->updateValues(GCTile | GCStipple, &values);
+        server->removePixmap(tile->id); server->removePixmap(stipple->id);
+        gc->values.ts_x_origin = 4; gc->values.ts_y_origin = -3;
+        gc->values.fill_style = FillTiled;
+        memset(target->getData(), 0xcc, target->getDataSize());
+        if (target->fillRectangle(nullptr, gc, -2, -1, 12, 8) != Success) testFail("%u-bit tile fill failed", bits);
+        for (U32 y = 0; y < 5; y++) for (U32 x = 0; x < 7; x++) {
+            if (pixel(target, x, y) != pixel(tile, (x + 2) % 3, (y + 3) % 2)) testFail("%u-bit tile origin/repetition/lifetime", bits);
+        }
+        // Empty and offscreen rectangles leave both pixels and row padding intact.
+        std::vector<U8> before(target->getData(), target->getData() + target->getDataSize());
+        target->fillRectangle(nullptr, gc, 20, 20, 2, 2);
+        target->fillRectangle(nullptr, gc, 0, 0, 0, 5);
+        if (memcmp(before.data(), target->getData(), before.size())) testFail("%u-bit empty fill changed pixels", bits);
+        for (U32 y = 0; y < 5; y++) {
+            U32 used = (7 * bits + 7) / 8;
+            for (U32 x = used; x < target->getBytesPerLine(); x++)
+                if (target->getData()[y * target->getBytesPerLine() + x] != 0xcc) testFail("%u-bit tile changed row padding", bits);
+        }
+        // A retained tile must be ignored for solid brushes.
+        gc->values.fill_style = FillSolid; gc->values.foreground = 0x96;
+        const U32 rops[] = {0, 0x12, 0x84, 0x96, 0x48, 0x5a, 0xcc, 0xde,
+            ~0xdeu, ~0xccu, ~0x5au, 0x96u | ~0x5au, ~0x96u, ~0x96u | 0x5au, ~0x12u, 0xffffffff};
+        for (U32 op = 0; op < 16; op++) {
+            memset(target->getData(), 0, target->getDataSize());
+            target->getData()[0] = 0x5a;
+            gc->values.function = op; gc->values.plane_mask = bits == 1 ? 1 : 0x3c;
+            target->fillRectangle(nullptr, gc, 0, 0, 1, 1);
+            U32 expected = bits == 1 ? (rops[op] & 1) : ((0x5a & ~0x3c) | (rops[op] & 0x3c));
+            if (pixel(target, 0, 0) != expected) testFail("%u-bit patterned GC solid raster operation %u", bits, op);
+        }
+        gc->values.function = GXcopy; gc->values.plane_mask = 0xffffffff;
+        gc->values.foreground = 3; gc->values.background = 4;
+        XRectangle clip; clip.x = 0; clip.y = 0; clip.width = 4; clip.height = 2;
+        gc->hasClipRects = true; gc->clip_rects = {clip};
+        gc->values.clip_x_origin = 1; gc->values.clip_y_origin = 2;
+        for (S32 style : {FillTiled, FillStippled, FillOpaqueStippled}) {
+            gc->values.fill_style = style;
+            memset(target->getData(), 0, target->getDataSize());
+            target->fillRectangle(nullptr, gc, 0, 0, 7, 5);
+            for (U32 y = 0; y < 5; y++) for (U32 x = 0; x < 7; x++) {
+                U32 expected = 0;
+                if (x >= 1 && x < 5 && y >= 2 && y < 4) {
+                    U32 tx = (x + 2) % 3, ty = (y + 3) % 2;
+                    expected = style == FillTiled ? pixel(tile, tx, ty) : pixel(stipple, tx, ty) ? 3 : style == FillOpaqueStippled ? 4 : 0;
+                }
+                if (bits == 1) expected &= 1;
+                if (pixel(target, x, y) != expected) testFail("%u-bit fill style %d clip/origin", bits, style);
+            }
+        }
+        gc->clip_rects.clear();
+        memset(target->getData(), 0, target->getDataSize());
+        target->fillRectangle(nullptr, gc, 0, 0, 7, 5);
+        if (pixel(target, 1, 2)) testFail("Empty pattern clip should suppress painting");
+        server->removeGC(gc->id); server->removePixmap(target->id);
+    }
 }
 
 void testX11PaletteInvalidation() {

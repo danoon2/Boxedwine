@@ -2,10 +2,10 @@
   "schema_version": 1,
   "wine_tag": "wine-11.0",
   "wine_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
-  "filesystem_version": "22",
+  "filesystem_version": "23",
   "changes_file": "changes_wine11.txt",
   "wine_config": "wine_builds.json",
-  "webgl_config": "webgl_filesystems_v22.json",
+  "webgl_config": "webgl_filesystems_v23.json",
   "documentation_patches": [
     "../d3dToWebGL/webgl-gdi-owndc-sysmem-against-wine-11.0.patch",
     "../d3dToWebGL/webgl-rgb565-upload-scaling-against-wine-11.0.patch",

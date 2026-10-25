@@ -160,6 +160,10 @@ def build_arguments(library, app, wine, installing=False, alternate=None, extern
         result.append('-fullscreenAspect')
     result += launch_options(app.get('cdromImages') or [], library.root(app))
     extra = overrides(app.get('boxedwineArguments') or [])
+    if installing and app.get('installFromDisc'):
+        if not app.get('cdromImages'):
+            raise ValueError('Add an installation disc in App Settings → General.')
+        return result + extra + ['-cdromInstall']
     if tool is not None:
         return result + extra + ['-w', '/home/username', '/bin/wine', *WINE_TOOLS[tool][2]]
     builtin = built_in(app)

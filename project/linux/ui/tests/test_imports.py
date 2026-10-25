@@ -24,6 +24,25 @@ class ImportTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_disc_collections_validate_order_and_keep_invalid_updates_out(self):
+        entry = self.snapshot['apps'][0]
+        entry.update(InstallType='Disc', CDROMImages='Disc 1.iso\r\nMedia/Disc 2.ISO')
+        self.store.add(self.snapshot, 'Classic Games')
+        self.assertEqual(self.store.recipes('Classic Games')[0]['discImages'], ['Disc 1.iso', 'Media/Disc 2.ISO'])
+        saved = self.store.path.read_bytes()
+        for bad in ('', '../Disc.iso', '/Disc.iso', 'C:/Disc.iso', 'a\\Disc.iso', 'Disc.cue',
+                    'Disc.iso\n', 'Disc.iso\ndisc.ISO', 'a/../Disc.iso'):
+            entry['CDROMImages'] = bad
+            with self.assertRaises(ValueError): self.store.add(self.snapshot, 'Classic Games')
+            self.assertEqual(self.store.path.read_bytes(), saved)
+        entry.update(CDROMImages='Disc.iso', InstallType='Zip')
+        with self.assertRaises(ValueError): load_collection(self.snapshot)
+        entry.update(InstallType='Disc', InstallExe='setup.exe')
+        with self.assertRaises(ValueError): load_collection(self.snapshot)
+        del entry['InstallExe']
+        entry['FileURL'] = 'https://example.com/disc.iso'
+        with self.assertRaises(ValueError): load_collection(self.snapshot)
+
     def test_missing_wine_selects_highest_current_version_without_saving_a_pin(self):
         del self.snapshot['apps'][0]['WineVersion']
         self.store.add(self.snapshot, 'Classic Games')

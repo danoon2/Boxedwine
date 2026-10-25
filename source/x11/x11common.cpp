@@ -1680,7 +1680,12 @@ static void x11_CreatePixmap(CPU* cpu) {
         EAX = BadDrawable;
         return;
     }
-    std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(ARG3, ARG4, ARG5, d->getVisual());
+    VisualPtr visual = d->getVisual();
+    if (ARG5 == 1) {
+        visual = std::make_shared<Visual>(*visual);
+        visual->bits_per_rgb = 1;
+    }
+    std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(ARG3, ARG4, ARG5, visual);
     EAX = pixmap->id;
 }
 
@@ -1688,7 +1693,6 @@ static void x11_CreatePixmap(CPU* cpu) {
 static void x11_CreateBitmapFromData(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
-    XWindowPtr window = server->getWindow(ARG2); // even though it's a Drawable passed in, spec says it may be an InputOnly window
     U32 data = ARG3;
     U32 width = ARG4;
     U32 height = ARG5;
@@ -1698,8 +1702,16 @@ static void x11_CreateBitmapFromData(CPU* cpu) {
         return;
     }
 
-    std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(width, height, window->getDepth(), d->getVisual());
-    pixmap->copyImageData(thread, nullptr, data, pixmap->getBytesPerLine(), pixmap->getBitsPerPixel() , 0, 0, 0, 0, width, height);
+    // Bitmap input is always depth 1, packed to bytes (not the drawable's
+    // color depth or our internal four-byte row alignment).
+    VisualPtr visual = std::make_shared<Visual>(*d->getVisual());
+    visual->bits_per_rgb = 1;
+    std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(width, height, 1, visual);
+    if (pixmap->copyImageData(thread, nullptr, data, (width + 7) / 8, 1, 0, 0, 0, 0, width, height) != Success) {
+        server->removePixmap(pixmap->id);
+        EAX = None;
+        return;
+    }
     EAX = pixmap->id;
 }
 
@@ -1818,7 +1830,26 @@ static void x11_CreateGC(CPU* cpu) {
 }
 
 static void x11_SetDashes(CPU* cpu) {
-    kpanic("x11_SetDashes");
+    auto gc = XServer::getServer()->getGC(ARG2);
+    if (!gc) { EAX = BadGC; return; }
+    S32 count = ARG5;
+    if ((S32)ARG3 < 0 || count <= 0 || !cpu->memory->canRead(ARG4, count)) {
+        EAX = BadValue;
+        return;
+    }
+    std::vector<U8> dashes(count);
+    cpu->memory->memcpy(dashes.data(), ARG4, count);
+    for (U8 dash : dashes) {
+        if (!dash) { EAX = BadValue; return; }
+    }
+    // An odd list repeats twice so that its on/off phase alternates.
+    if (count & 1) {
+        dashes.resize((size_t)count * 2);
+        std::copy_n(dashes.begin(), count, dashes.begin() + count);
+    }
+    gc->dashList = std::move(dashes);
+    gc->values.dash_offset = ARG3;
+    EAX = Success;
 }
 
 // int XDrawLine(Display* display, Drawable d, GC gc, int x1, int y1, int x2, int y2)
@@ -1970,7 +2001,30 @@ static void x11_DrawPoint(CPU* cpu) {
 }
 
 static void x11_FillPolygon(CPU* cpu) {
-    kpanic("x11_FillPolygon");
+    auto server = XServer::getServer();
+    auto drawable = server->getDrawable(ARG2);
+    if (!drawable) { EAX = BadDrawable; return; }
+    auto gc = server->getGC(ARG3);
+    if (!gc) { EAX = BadGC; return; }
+    S32 count = ARG5;
+    if (count < 0 || ARG6 > Convex || ARG7 > CoordModePrevious ||
+        (U64)count * 4 > 0xffffffff || (U64)count * 4 + ARG4 > 0x100000000ull ||
+        (count && !cpu->memory->canRead(ARG4, (U32)count * 4))) {
+        EAX = BadValue;
+        return;
+    }
+    std::vector<XPoint> points;
+    points.reserve(count);
+    for (S32 i = 0; i < count; i++) {
+        U32 address = ARG4 + (U32)i * 4;
+        XPoint point = {(S16)cpu->memory->readw(address), (S16)cpu->memory->readw(address + 2)};
+        if (i && ARG7 == CoordModePrevious) {
+            point.x = (S16)(point.x + points.back().x);
+            point.y = (S16)(point.y + points.back().y);
+        }
+        points.push_back(point);
+    }
+    EAX = drawable->fillPolygon(cpu->thread, gc, points);
 }
 
 // int XChangeGC(Display* display, GC gc, unsigned long valuemask, XGCValues* values)

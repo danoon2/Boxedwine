@@ -31,6 +31,7 @@ public:
 	VisualPtr getVisual() {return visual;}
 	int putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage* image, S32 src_x, S32 src_y, S32 dest_x, S32 dest_y, U32 width, U32 height);
 	int fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height);
+	int fillPolygon(KThread* thread, const std::shared_ptr<XGC>& gc, const std::vector<XPoint>& points);
 	int drawRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height);
 	int drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1, S32 y1, S32 x2, S32 y2);
 	int copy(KThread* thread, const std::shared_ptr<XGC>& gc, const std::shared_ptr<XDrawable>& src, S32 srcX, S32 srcY, U32 width, U32 height, S32 dstX, S32 dstY);
@@ -74,7 +75,7 @@ protected:
 	U32 bytes_per_line;
 
 private:
-	void drawPixel8(const XGC& gc, S32 x, S32 y);
+	void drawPixel(const XGC& gc, S32 x, S32 y, U32 source);
 	BOXEDWINE_MUTEX mutex;
 	U32 w;
 	U32 h;

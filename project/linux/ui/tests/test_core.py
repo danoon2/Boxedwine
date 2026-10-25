@@ -55,6 +55,66 @@ class CoreTests(unittest.TestCase):
         (source / 'save.dat').write_bytes(b'saved progress')
         return self.library.import_app(source, 'folder', self.wine, Work())
 
+    def test_disc_collection_installs_and_backup_resolves_owned_images(self):
+        from boxedwine.imports import CollectionStore
+        from boxedwine.cdrom import has_installer
+        snapshot = json.loads((Path(__file__).resolve().parents[4] / 'resources/examples/collection.json').read_text())
+        entry = snapshot['apps'][0]
+        entry.update(InstallType='Disc', CDROMImages='Disc 1.iso\nMedia/Disc 2.iso',
+                     Resolution='640x480', InstallResolution='640x480', BitsPerPixel='8')
+        store = CollectionStore(self.library); store.add(snapshot, snapshot['folder'])
+        recipe = store.recipes(snapshot['folder'])[0]
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, 'w') as archive:
+            archive.writestr('Disc 1.iso', b'first disc')
+            archive.writestr('Media/Disc 2.iso', b'second disc')
+        def fetch(url, size, checksum, target, work, allow_external=False):
+            self.assertTrue(allow_external)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(payload.getvalue())
+        with patch('boxedwine.demos.download', side_effect=fetch):
+            app = install_demo(self.library, recipe, self.wine, Work())
+        app = self.library.load()['apps'][0]
+        self.assertTrue(has_installer(app))
+        self.assertTrue(app['installFromDisc'])
+        self.assertNotIn('installer', app)
+        self.assertEqual(app['cdromImages'], ['Discs/Disc 1.iso', 'Discs/Media/Disc 2.iso'])
+        args = build_arguments(self.library, app, self.library.wine_path(app), installing=True)
+        expected = [v for path in app['cdromImages'] for v in ('-cdrom', str(self.library.path(app) / path), 'e')]
+        self.assertEqual(args[args.index('-cdrom'):args.index('-cdrom') + 6], expected)
+        self.assertEqual(args[-1], '-cdromInstall')
+        self.assertEqual(args[args.index('-resolution') + 1], '640x480')
+        program = self.library.root(app) / DRIVE_C / 'Game/game.exe'
+        program.parent.mkdir(parents=True); program.write_bytes(b'MZgame')
+        app = self.library.select_installed_demo(app)
+        self.assertEqual(app['executable'], DRIVE_C + '/Game/game.exe')
+        args = build_arguments(self.library, app, self.library.wine_path(app))
+        self.assertNotIn('-cdromInstall', args)
+        self.assertEqual(args[args.index('-bpp') + 1], '8')
+        backup = self.directory / 'Discs.boxedwinebackup'
+        self.library.backup(app, backup, Work())
+        other = Library(self.directory / 'restored-library')
+        try:
+            restored = other.restore_backup(backup, Work())
+            self.assertTrue(restored['installFromDisc'])
+            self.assertEqual(restored['cdromImages'], app['cdromImages'])
+            first = other.path(restored) / app['cdromImages'][0]
+            self.assertEqual(first.read_bytes(), b'first disc')
+            args = build_arguments(other, restored, other.wine_path(restored), installing=True)
+            self.assertIn(str(first), args)
+            self.assertNotIn(str(self.library.path(app) / app['cdromImages'][0]), args)
+            # A saved relative path may not escape through a replaced disc directory.
+            first.unlink(); first.symlink_to(self.wine_source)
+            with self.assertRaises(ValueError): build_arguments(other, restored, other.wine_path(restored))
+        finally:
+            other.close()
+        recipe['origin']['id'] = 'missing-disc'; recipe['discImages'].append('Missing.iso')
+        with patch('boxedwine.demos.download', side_effect=fetch):
+            with self.assertRaisesRegex(ValueError, 'Missing collection ISO'):
+                install_demo(self.library, recipe, self.wine, Work())
+        self.assertEqual(len(self.library.load()['apps']), 1)
+        self.assertEqual(len(list((self.library.directory / 'Applications').iterdir())), 1)
+
     def current_release(self):
         source = self.directory / 'current.zip'
         with zipfile.ZipFile(self.wine_source) as old, zipfile.ZipFile(source, 'w') as new:
@@ -62,7 +122,7 @@ class CoreTests(unittest.TestCase):
                 new.writestr(entry, b'20' if entry.filename == 'version.txt' else old.read(entry))
         wine = validate_wine(source)
         resources = unittest.mock.Mock()
-        resources.wines.return_value = [dict(url='https://boxedwine.org/v2/22/TinyCore15Wine11.0.zip', reference=wine)]
+        resources.wines.return_value = [dict(url='https://boxedwine.org/v2/23/TinyCore15Wine11.0.zip', reference=wine)]
         return source, wine, resources
 
     def test_new_builtins_use_installed_current_release_and_keep_existing_apps(self):

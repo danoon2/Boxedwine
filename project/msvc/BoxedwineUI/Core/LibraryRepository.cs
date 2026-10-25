@@ -111,7 +111,7 @@ public sealed class LibraryRepository : IDisposable
     }
     public LibraryApp? SelectingInstalledDemoProgram(LibraryApp app, RuntimeExit exit)
     {
-        if (app.Demo == null || app.Installer == null || app.BuiltIn != null || !exit.Installing || exit.Code != 0 || exit.Stopped) return null;
+        if (app.Demo == null || !app.HasInstaller || app.BuiltIn != null || !exit.Installing || exit.Code != 0 || exit.Stopped) return null;
         // Match the Mac launcher: system programs are not installed-demo candidates.
         var candidates = Programs(app).Where(p => !p.Path.StartsWith(DriveC + "/windows/", StringComparison.OrdinalIgnoreCase)).ToList();
         if (app.Executable != null && candidates.Any(p => p.Path.Equals(app.Executable, StringComparison.OrdinalIgnoreCase))) return DataFormat.Clone(app);

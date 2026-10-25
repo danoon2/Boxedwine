@@ -21,6 +21,7 @@ except (ImportError, ValueError) as error:
                      'Debian/Ubuntu/Mint: sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1\n' + str(error))
 
 from . import demos, dialogs, desktop
+from .cdrom import has_installer
 from .imports import CollectionStore, CollectionIcons, valid_url
 from .files import Work, Cancelled, beneath, no_links, storage_size
 from .library import Library, DRIVE_C, built_in, now
@@ -715,7 +716,7 @@ class Window(Adw.ApplicationWindow):
                     add('restore', 'Restore App', lambda: self.restore_app(item), editable)
                 add('delete', 'Finish Deleting' if removed.get('deletionStartedAt') else 'Delete Permanently…', lambda: self.delete_app(item), editable)
             else:
-                label = 'Open App' if item.get('executable') or built_in(item) else 'Run Installer' if item.get('installer') else 'Choose Program…'
+                label = 'Open App' if item.get('executable') or built_in(item) else 'Run Installer' if has_installer(item) else 'Choose Program…'
                 add('open', label, lambda: self.open_app(item), editable)
                 if running:
                     add('stop', 'Stopping…' if identifier in self.stopping else 'Stop App', lambda: self.stop(item), identifier not in self.stopping)
@@ -854,7 +855,7 @@ class Window(Adw.ApplicationWindow):
         if session:
             box.append(dialogs.button(self, 'Stop App', lambda: self.stop(app), 'destructive-action', 'media-playback-stop-symbolic'))
         else:
-            label = 'Open App' if app.get('executable') or built_in(app) else 'Run Installer' if app.get('installer') else 'Choose Program'
+            label = 'Open App' if app.get('executable') or built_in(app) else 'Run Installer' if has_installer(app) else 'Choose Program'
             box.append(dialogs.button(self, label, lambda: self.open_app(app), 'suggested-action', 'media-playback-start-symbolic'))
         info = Adw.PreferencesGroup()
         dialogs.row(info, 'Display', app.get('resolution', '1024x768') + (' · Full screen' if app.get('fullScreen') else ' · Windowed'))
@@ -936,7 +937,7 @@ class Window(Adw.ApplicationWindow):
             self.toast('This app is already running'); return
         if app.get('executable') or built_in(app):
             self.launch(app)
-        elif app.get('installer'):
+        elif has_installer(app):
             self.launch(app, installing=True)
         else:
             self.choose_program(app)
@@ -1102,7 +1103,7 @@ class Window(Adw.ApplicationWindow):
 
     def app_added(self, app):
         self.reveal_app(app)
-        if app.get('installer'):
+        if has_installer(app):
             self.launch(app, installing=True)
         elif not app.get('executable') and not built_in(app):
             self.choose_program(app)

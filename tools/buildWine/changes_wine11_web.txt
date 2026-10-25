@@ -1,3 +1,5 @@
+v23 Oct 25, 2026 Include native-compatible Win16 CopyRect fault recovery, fixing Robot City shutdown without modifying the game executable. The separate WebGL DLLs retain their v20 identities.
+
 v22 Oct 24, 2026 Include the Win16 CD-ROM read-only open, 8-bit palette rendering and software cursor save-under fixes. The separate WebGL DLLs retain their v20 identities.
 
 v21 Oct 23, 2026 Refresh CD-ROM labels, serial numbers and cached media information after ejecting or swapping discs, and notify applications of media changes. The separate WebGL DLLs retain their v20 identities.

@@ -16,6 +16,8 @@ struct LibraryApp: Codable, Identifiable, Equatable, Sendable {
     var name: String
     var executable: String?
     var installer: String?
+    var installFromDisc: Bool?
+    var hasInstaller: Bool { installer != nil || installFromDisc == true }
     var createdAt = Date()
     var lastOpened: Date?
     var resolution = "1024x768"
@@ -590,6 +592,10 @@ struct LaunchRequest: Sendable {
                       "-title", app.name, "-resolution", resolution]
         if app.fullScreen { result.append("-fullscreenAspect") }
         result += try CdromImages.launchArguments(app.cdromImages ?? [], root: repository.root(for: app))
+        if installing, app.installFromDisc == true {
+            guard !(app.cdromImages ?? []).isEmpty else { throw CdromImageError.invalid }
+            return result + overrides + ["-cdromInstall"]
+        }
         if let program = app.wineProgram, !installing && alternateExecutable == nil && externalProgram == nil { return result + overrides + ["/bin/wine", program.command] + app.arguments }
         if let externalProgram {
             // Boxedwine gives the emulated user write permission under /home;

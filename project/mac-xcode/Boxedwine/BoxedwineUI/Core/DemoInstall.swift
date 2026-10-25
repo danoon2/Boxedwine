@@ -38,7 +38,7 @@ extension LibraryRepository {
         if app.windowsVersion != nil { app.windowsVersionPending = true }
         if let resolution = demo.settings?.resolution { app.resolution = resolution }
         let destination = appDirectory(app)
-        _ = try beginOperation(kind: demo.type == .installer ? .installer : .folder, name: app.name, id: app.id)
+        _ = try beginOperation(kind: demo.type == .portableZip ? .folder : .installer, name: app.name, id: app.id)
         do {
             try prepare(app)
             let staging = destination.appendingPathComponent("Download", isDirectory: true)
@@ -46,13 +46,25 @@ extension LibraryRepository {
             let download = staging.appendingPathComponent("package." + demo.url.pathExtension.lowercased())
             try await downloader.fetch(demo, to: download, control: control)
             try DemoArchive.verify(download, bytes: demo.bytes, sha256: demo.origin.packageSHA256, control: control)
-            let payload = demo.type == .installer ? destination.appendingPathComponent("Installer", isDirectory: true)
+            let payload = demo.type == .disc ? destination.appendingPathComponent("Discs", isDirectory: true)
+                : demo.type == .installer ? destination.appendingPathComponent("Installer", isDirectory: true)
                 : root(for: app).appendingPathComponent(Self.driveC + "/App", isDirectory: true)
             if demo.isZip {
                 try DemoArchive.extract(download, to: payload, control: control)
                 if demo.type == .installer {
                     let selected = payload.appendingPathComponent(demo.installExe!)
                     app.installer = "Installer/" + (try installerPath(selected, in: payload))
+                }
+                if demo.type == .disc {
+                    let images = try CdromImages.archivePaths(demo.discImages.joined(separator: "\n"))
+                    for path in images {
+                        let image = try confinedURL(path, beneath: payload)
+                        guard try image.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true else {
+                            throw CdromImageError.unavailable(path)
+                        }
+                    }
+                    app.cdromImages = images.map { "Discs/" + $0 }
+                    app.installFromDisc = true
                 }
             } else {
                 try FileManager.default.createDirectory(at: payload, withIntermediateDirectories: true)

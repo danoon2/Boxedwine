@@ -86,7 +86,7 @@ struct CollectionSnapshot: Codable, Equatable, Sendable {
         guard schemaVersion == 1, (1...256).contains(apps.count) else { throw DemoError.catalog("A version 1 collection needs 1–256 apps.") }
         func escaped(_ text: String) -> String { text.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;") }
         var xml = "<XML schemaVersion=\"8\" release=\"custom-collection\">"
-        let allowed: Set<String> = DemoSettings.catalogFields.union(["ID", "Name", "Summary", "Help", "Icon", "FileURL", "FileSizeBytes", "FileSHA256", "InstallType", "InstallExe", "ShortcutExe", "WineVersion", "Glide", "CNCDDrawRenderer", "CNCDDrawUncapped", "CNCDDrawFakeMode", "WineDllOverrides", "AppArguments"])
+        let allowed: Set<String> = DemoSettings.catalogFields.union(["ID", "Name", "Summary", "Help", "Icon", "FileURL", "FileSizeBytes", "FileSHA256", "InstallType", "InstallExe", "ShortcutExe", "WineVersion", "Glide", "CNCDDrawRenderer", "CNCDDrawUncapped", "CNCDDrawFakeMode", "WineDllOverrides", "AppArguments", "CDROMImages"])
         for app in apps {
             guard Set(app.keys).isSubset(of: allowed) else { throw DemoError.catalog("Unsupported collection app field.") }
             guard let id = app["ID"], DemoCatalog.validID(id) else { throw DemoError.catalog("App IDs must be stable lowercase letters, numbers, and hyphens.") }

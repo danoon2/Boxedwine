@@ -28,7 +28,26 @@ Remote icons are cached under `CollectionIcons` beside `collections.json`, keyed
 
 `AppArguments` optionally supplies the Windows app's launch arguments as a string with one argument per line, matching App Settings. For Quake II's timed demo, use `"AppArguments": "+timedemo\n1\n+map\ndemo1.dm2"`. Spaces within an argument are preserved; do not add shell quotes. LF and CRLF separators are accepted, and blank lines represent empty arguments. An omitted or empty string supplies no arguments. The limits are 256 arguments, 8192 UTF-8 bytes per argument, and 65536 bytes total; NUL and bare carriage returns are rejected. These values seed the editable app settings on first installation and are passed literally after the Windows executable, never to the installer or emulator. Refreshing a listing does not overwrite an installed app's arguments.
 
-`InstallType` is `Zip` for a ready-to-run ZIP or `Installer` for an EXE, MSI, or ZIP containing setup. Installer ZIPs also specify `InstallExe`, a relative path within the archive. `ShortcutExe` names the program to launch after installation. Packages require their exact byte size and SHA-256 checksum, including when hosted outside boxedwine.org.
+`InstallType` is `Zip` for a ready-to-run ZIP, `Installer` for an EXE, MSI, or ZIP containing setup, or `Disc` for a ZIP containing installation ISOs. Installer ZIPs also specify `InstallExe`, a relative path within the archive. `ShortcutExe` names the program to launch after installation. Packages require their exact byte size and SHA-256 checksum, including when hosted outside boxedwine.org.
+
+### Disc collections
+
+All three native launchers support `InstallType: "Disc"` in custom collections. Set `FileURL` to the ZIP and `CDROMImages` to the ordered ISO paths inside it, one per line. For example, these fields describe a ZIP with two images at its root:
+
+```json
+"InstallType": "Disc",
+"CDROMImages": "Robot City - Disc 1.iso\nRobot City - Disc 2.iso",
+"ShortcutExe": "ROBOTCTY.EXE",
+"Resolution": "640x480",
+"InstallResolution": "640x480",
+"BitsPerPixel": "8"
+```
+
+Disc 1 is inserted when installation starts. The engine tries its autorun command, falling back to Wine Explorer when no usable autorun command is present. Do not set `InstallExe` for a disc recipe. After installation, the launcher selects the installed `ShortcutExe`; normal app launches mount the discs without running setup again.
+
+The list accepts LF or CRLF separators and 1–256 distinct relative `.iso` paths (case-insensitive duplicate detection). Use `/` between folders and match ZIP entry names exactly. Absolute paths, `..`, blank lines, and CUE files are not accepted in collection recipes. Every listed ISO must exist after extraction or the import is discarded. The existing collection schema stays at version 1; these optional fields require a launcher that supports disc collections.
+
+The extracted images are stored in the app's `Discs` folder, with relative paths in its settings. They travel with app backups, moves, and Wine trial copies. External images selected through General settings remain external references. Users can reorder or replace images in **App Settings → General**, switch discs in the runtime status bar, or cycle through them with **Ctrl+Shift+F12**.
 
 ## Reimporting and updating
 

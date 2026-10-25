@@ -933,7 +933,7 @@ struct AppTroubleshootingView: View {
                             #endif
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
                     }
-                    if app.installer != nil {
+                    if app.hasInstaller {
                         GroupBox("Installation") {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text("If setup did not finish, run the saved installer again. It uses this app’s existing Windows files. You can back up the app first in App Settings.")

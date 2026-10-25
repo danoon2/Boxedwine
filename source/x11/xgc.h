@@ -164,6 +164,10 @@ public:
 
 	void updateValues(U32 mask, XGCValues* values);
 	XGCValues values;
+	// A GC keeps its pattern pixmaps alive after the client frees their IDs.
+	XDrawablePtr tile;
+	XDrawablePtr stipple;
+	std::vector<U8> dashList = {4, 4};
 private:
 	XDrawablePtr drawable;
 };
