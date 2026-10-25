@@ -605,6 +605,9 @@
     <ClCompile Include="..\..\..\..\..\platform\linux\platformOpenGL.cpp">
       <Filter>platform</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\linux\linuxOpenGL.cpp">
+      <Filter>platform</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\util\ring_buffer.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
@@ -2306,6 +2309,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\platformOpenGL.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\platform\linux\linuxOpenGL.h">
+      <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\tools\opengl\glxdef.h">
       <Filter>tools\opengl</Filter>

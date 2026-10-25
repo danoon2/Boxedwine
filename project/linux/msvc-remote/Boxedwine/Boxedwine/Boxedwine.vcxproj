@@ -1232,6 +1232,7 @@
     <ClCompile Include="..\..\..\..\..\lib\tiny-process\process_unix.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformOpenGL.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\linux\linuxOpenGL.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-armv8.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-x64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads.cpp" />
@@ -1651,6 +1652,7 @@
     <ClInclude Include="..\..\..\..\..\include\pixelformat.h" />
     <ClInclude Include="..\..\..\..\..\include\platformBoxedwine.h" />
     <ClInclude Include="..\..\..\..\..\include\platformOpenGL.h" />
+    <ClInclude Include="..\..\..\..\..\platform\linux\linuxOpenGL.h" />
     <ClInclude Include="..\..\..\..\..\include\platformtypes.h" />
     <ClInclude Include="..\..\..\..\..\include\player.h" />
     <ClInclude Include="..\..\..\..\..\include\procselfexe.h" />

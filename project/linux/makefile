@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test native-runtime native-ui test-ui test-native-input test-cdrom-statusbar deb
+.PHONY: default all clean release test native-runtime native-ui test-ui test-native-input test-native-gl test-cdrom-statusbar deb
 
 default all: release
 
@@ -37,6 +37,14 @@ native-ui: native-runtime
 
 test-native-input: native-runtime
 	@$(MAKE) -f makefile -f ../../tools/input/mouse_capture_test.mk native-input-test
+
+# Uses a real SDL/OpenGL driver; run in a desktop session. Select the backend
+# with SDL_VIDEODRIVER (and SDL_VIDEO_X11_FORCE_EGL=1 for X11/EGL).
+# GL_TEST_ARGS=--fullscreen also checks a visible fullscreen desktop window.
+test-native-gl:
+	@mkdir -p Build/Native
+	$(CXX) -std=c++20 -Wall ../../tools/input/test_linux_gl_fullscreen.cpp ../../platform/linux/linuxOpenGL.cpp $$(sdl2-config --cflags --libs) -lGL -lEGL -Wl,--wrap=SDL_GL_SwapWindow -o Build/Native/test-linux-gl-fullscreen
+	Build/Native/test-linux-gl-fullscreen $(GL_TEST_ARGS)
 
 test-cdrom-statusbar: native-runtime
 	@$(MAKE) -f makefile -f ../../tools/input/cdrom_statusbar_test.mk cdrom-statusbar-test

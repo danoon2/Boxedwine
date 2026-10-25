@@ -41,7 +41,10 @@
 #include "../../../platform/windows/windowsOpenGL.h"
 #include "../../../platform/windows/windowsAppIdentity.h"
 #endif
-#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
+#if defined(__linux__) && !defined(__EMSCRIPTEN__)
+#include "../../../platform/linux/linuxOpenGL.h"
+#endif
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC) || (defined(__linux__) && !defined(__EMSCRIPTEN__))
 #include "../../sdl/startupArgs.h"
 #endif
 
@@ -400,6 +403,8 @@ void SDLGlWindow::destroy() {
                 if (ownsWindow) {
 #ifdef BOXEDWINE_MSVC
                     windowsOpenGLDestroyWindow(window);
+#elif defined(__linux__) && !defined(__EMSCRIPTEN__)
+                    linuxOpenGLDestroyWindow(window);
 #endif
                     sdlStatusBarWindowDestroyed(window);
                     SDL_DestroyWindow(window);
@@ -484,13 +489,20 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
 
     SDL_DisplayMode dm = { 0 };
     int sdlFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
-#if defined(__APPLE__) || defined(BOXEDWINE_MSVC)
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC) || (defined(__linux__) && !defined(__EMSCRIPTEN__))
     KNativeScreenSDLPtr screen = std::dynamic_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
     bool fullscreen = wnd && screen && screen->fullScreen != FULLSCREEN_NOTSET && KSystem::videoOption == VIDEO_NORMAL;
     if (fullscreen) sdlFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 #endif
 
+    int windowWidth = cx, windowHeight = cy;
     if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
+#if defined(__linux__) && !defined(__EMSCRIPTEN__)
+        // X11 can report the fullscreen desktop size before its native GL
+        // drawable has resized. Start at the output size so the first frame
+        // is not clipped to the guest's smaller dimensions.
+        if (fullscreen) { windowWidth = dm.w; windowHeight = dm.h; }
+#endif
         if (cx == (U32)dm.w && cy == (U32)dm.h) {
             sdlFlags |= SDL_WINDOW_BORDERLESS;
         }
@@ -499,7 +511,7 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     S32 y = 0;
     KNativeSystem::getScreen()->getPos(x, y);
     const char* title = KSystem::title.length() ? KSystem::title.c_str() : "OpenGL Window";
-    SDL_Window* window = SDL_CreateWindow(title, x, y, cx, cy, sdlFlags);
+    SDL_Window* window = SDL_CreateWindow(title, x, y, windowWidth, windowHeight, sdlFlags);
 
     if (!window) {
         kwarn_fmt("Couldn't create window: %s", SDL_GetError());
@@ -512,6 +524,12 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
 #elif defined(BOXEDWINE_MSVC)
     windowsAppSetWindowIcon(window);
     if (fullscreen) windowsOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
+#elif defined(__linux__)
+    if (fullscreen && !linuxOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT)) {
+        kwarn_fmt("Couldn't configure fullscreen OpenGL: %s", SDL_GetError());
+        SDL_DestroyWindow(window);
+        return nullptr;
+    }
 #endif
 #if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
     linuxAppSetWindowIcon(window);
@@ -860,6 +878,10 @@ void KOpenGLSdl::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
             if (!windowsOpenGLResizeFullscreen(window->window, wnd->width(), wnd->height())) {
                 SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
             }
+#elif defined(__linux__)
+            if (!linuxOpenGLResizeFullscreen(window->window, wnd->width(), wnd->height())) {
+                SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
+            }
 #else
             SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
 #endif
@@ -982,8 +1004,12 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
             macOpenGLSwapBuffers(context->context);
         }
 #else
+#if defined(__linux__) && !defined(__EMSCRIPTEN__)
+        if (d->eglSwapInterval >= 0 && !linuxOpenGLSetSwapInterval(window->window, d->eglSwapInterval) && !window->swapIntervalWarning) {
+#else
         if (d->eglSwapInterval >= 0 && SDL_GL_GetSwapInterval() != d->eglSwapInterval &&
                 SDL_GL_SetSwapInterval(d->eglSwapInterval) != 0 && !window->swapIntervalWarning) {
+#endif
             kwarn_fmt("EGL native swap interval unavailable: %s", SDL_GetError());
             window->swapIntervalWarning = true;
         }
@@ -992,6 +1018,8 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
         }
 #ifdef BOXEDWINE_MSVC
         if (!windowsOpenGLSwapBuffers(window->window))
+#elif defined(__linux__)
+        if (!linuxOpenGLSwapBuffers(window->window))
 #endif
         SDL_GL_SwapWindow(window->window);
 #endif
@@ -1455,6 +1483,8 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
         result = attached && macOpenGLMakeCurrent(context->context);
 #elif defined(BOXEDWINE_MSVC)
         result = windowsOpenGLMakeCurrent(window->window, context->context);
+#elif defined(__linux__)
+        result = linuxOpenGLMakeCurrent(window->window, context->context);
 #else
         // Rebinding an already-current WGL context can force an expensive driver
         // synchronization. SDL can prove when both the context and drawable are
@@ -1528,6 +1558,8 @@ static void sdl_glFlush(CPU* cpu) {
             context->currentWindow->showWindow(true);
 #ifdef BOXEDWINE_MSVC
             windowsOpenGLSwapBuffers(context->currentWindow->window, false);
+#elif defined(__linux__) && !defined(__EMSCRIPTEN__)
+            linuxOpenGLSwapBuffers(context->currentWindow->window, false);
 #endif
         }
     }
