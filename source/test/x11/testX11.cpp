@@ -457,7 +457,9 @@ void testX11PaletteInvalidation() {
     auto privateMap = server->getColorMap(EAX);
     if (!privateMap) testFail("AllocAll did not create a colormap");
     for (U32 i = 0; i < MAX_COLORMAP_SIZE; i++) {
-        if (privateMap->colors[i].flags != (COLOR_ALLOCATED | COLOR_WRITE) || privateMap->colors[i].uses.get(77) != 1)
+        U32 uses = 0;
+        if (privateMap->colors[i].flags != (COLOR_ALLOCATED | COLOR_WRITE) ||
+            !privateMap->colors[i].uses.get(77, uses) || uses != 1)
             testFail("AllocAll did not allocate writable cell %u", i);
     }
     server->destroyWindow(first->id);
