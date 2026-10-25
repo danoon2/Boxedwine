@@ -1,3 +1,5 @@
+v22 Oct 24, 2026 Include the Win16 CD-ROM read-only open, 8-bit palette rendering and software cursor save-under fixes. The separate WebGL DLLs retain their v20 identities.
+
 v21 Oct 23, 2026 Refresh CD-ROM labels, serial numbers and cached media information after ejecting or swapping discs, and notify applications of media changes. The separate WebGL DLLs retain their v20 identities.
 
 v20 Oct 16, 2026 Fix partial stream-output fields in WineD3D so the boat tarp in 3DMark Vantage drapes and animates. Rebuild the separate WebGL WineD3D DLL with the same source fix; host graphics capability limits are unchanged.

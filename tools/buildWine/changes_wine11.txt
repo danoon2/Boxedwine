@@ -1,3 +1,5 @@
+v22 Oct 24, 2026 Allow Win16 applications to open existing CD-ROM files read-only when a read/write open fails. Fix 8-bit window palette rendering and software cursor save-under colors, including reserved palette entries and SYSPAL_NOSTATIC, for games such as Robot City.
+
 v21 Oct 23, 2026 Refresh CD-ROM labels, serial numbers and cached media information after ejecting or swapping discs, and notify applications of media changes.
 
 v20 Oct 16, 2026 Fix partial stream-output fields in WineD3D so the boat tarp in 3DMark Vantage drapes and animates. Rebuild the separate WebGL WineD3D DLL with the same source fix; host graphics capability limits are unchanged.

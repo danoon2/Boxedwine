@@ -35,7 +35,7 @@ v47 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapsh
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 21. Its `changes.txt` comes from
+The filesystem revision is 22. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -51,20 +51,31 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v21.json`](webgl_filesystems_v21.json) and the
+[`webgl_filesystems_v22.json`](webgl_filesystems_v22.json) and the
 [v47 patch manifest](../wineTests/webgl-test-divergences-v47.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v21 WebGL configuration pins DLLs, source patches, and the filesystem
-ZIP in its `full-v21` and `web-v21` profiles for Jenkins demo validation. The complete filesystem
+The v22 WebGL configuration pins DLLs, source patches, and the filesystem
+ZIP in its `full-v22` and `web-v22` profiles for Jenkins demo validation. The complete filesystem
 is assembled by `filesystem_wine11.json`.
-The v21 prefix leaves the renderer registry values unset. The profile records
+The v22 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
-Revision 21 is staged locally for `/v2/21/`; it has not been published. Publish
+Revision 22 is staged locally for `/v2/22/`; it has not been published. Publish
 and verify both archives before deploying the new UI/Jenkins pins. The staged
 legacy catalog must be deployed separately to `/v2/26R2/filesV2.xml`, and the
 `/v2/latest/` aliases must be refreshed from the same final archives.
-Revision 21 refreshes CD-ROM volume information and broadcasts media-change
+Revision 22 adds Win16 CD-ROM read-only opens and fixes palette rendering and
+software cursor save-under in 8-bit games such as Robot City. These fixes also
+require the current engine's indexed drawing and root-window readback changes.
+[`probes/paletted-window.c`](probes/paletted-window.c) and
+[`probes/paletted-cursor-save-under.c`](probes/paletted-cursor-save-under.c)
+exercise custom window palettes, reserved colors, DDB/DIB copies and restoring
+the static system palette. Compile each with `i686-w64-mingw32-gcc` and
+`-lgdi32`, and run against each packaged ZIP with `-resolution 640x480`,
+first `-bpp 8` and then `-bpp 32`; both must report zero failures.
+The separate WebGL DLL identities remain unchanged.
+
+Revision 21 refreshed CD-ROM volume information and added media-change
 notifications after eject/reinsert. The separate WebGL DLLs are unchanged from
 revision 20. [`probes/cdrom-media-change.c`](probes/cdrom-media-change.c) checks
 volume queries and removal/arrival notifications with an ISO labelled
@@ -213,7 +224,7 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
   --variant web --work-dir "$HOME/boxedwine-wine11-web" --jobs 12
 ```
 
-This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 21.
+This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 22.
 Use `--variant web` again when retrying individual phases. The assembler checks
 the Wine configuration stamp and the addon manifest to prevent mixing variants.
 
@@ -257,7 +268,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
-Build and validate with `--config tools/buildWine/webgl_filesystems_v21.json`.
+Build and validate with `--config tools/buildWine/webgl_filesystems_v22.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises
@@ -400,7 +411,7 @@ python3 tools/buildWine/webgl_filesystem.py validate \
 
 The following v3/v10 commands and manifest remain available for historical
 filesystem reproduction and validation. Normal commands now default to
-`webgl_filesystems_v21.json`; pass the historical config explicitly below.
+`webgl_filesystems_v22.json`; pass the historical config explicitly below.
 The dedicated `validate-set` command retains its v3/v10 default.
 
 `webgl_filesystem.py` is the pinned build, packaging, and validation command

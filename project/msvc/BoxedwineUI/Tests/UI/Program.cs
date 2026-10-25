@@ -31,7 +31,7 @@ internal static partial class Program
             if (args.Contains("--storage")) { CheckStorage(destination); return 0; }
             CheckRuntimeIcons(destination, args);
             var catalog = Packages.Catalog(Path.Combine(AppContext.BaseDirectory, "Resources"));
-            if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "20") throw new Exception("This release must offer only Wine 11 V20.");
+            if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "22") throw new Exception("This release must offer only Wine 11 V22.");
             foreach (string theme in new[] { "Light", "Dark" })
             {
                 string library = Path.Combine(destination, "library-" + theme);
@@ -243,14 +243,20 @@ internal static partial class Program
             {
                 if (HasButton(dialog, "Choose Wine Version…") != multiple || HasButton(dialog, "Import Wine ZIP…") != multiple) throw new Exception("Wine selection settings do not match catalog availability.");
                 if (!multiple && !HasButton(dialog, "Set Up Windows Support")) throw new Exception("The sole supported package must still be available for setup.");
-                if (!multiple && !Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("Wine 11.0 V20"))) throw new Exception("Settings should retain the filesystem revision.");
+                if (!multiple && !Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("Wine 11.0 V22"))) throw new Exception("Settings should retain the filesystem revision.");
             });
-            CheckDialog(window, "Add", [null!], Path.Combine(destination, $"{theme}-{suffix}-add.png"), dialog =>
+            // Wine selection now lives in source review, after Add to Library.
+            string source = Path.Combine(destination, $"{theme}-{suffix}-source");
+            Directory.CreateDirectory(source); File.WriteAllBytes(Path.Combine(source, "game.exe"), [0x4d, 0x5a]);
+            using var prepared = PreparedAppSource.Prepare(source, false, false, CancellationToken.None, null).GetAwaiter().GetResult();
+            CheckDialog(window, "ReviewImportSource", [prepared, false, false], Path.Combine(destination, $"{theme}-{suffix}-add.png"), dialog =>
             {
-                var picker = Descendants<ComboBox>(dialog).SingleOrDefault(c => AutomationProperties.GetName(c) == "Wine version");
+                Descendants<Expander>(dialog).Single(e => e.Header as string == "Compatibility options").IsExpanded = true;
+                dialog.UpdateLayout();
+                var picker = Descendants<ComboBox>(dialog).SingleOrDefault(c => c.ItemsSource is IEnumerable<CatalogWine>);
                 if ((picker != null) != multiple) throw new Exception("The Wine picker must be hidden for a single release.");
                 if (picker != null && (picker.Items.Count != 2 || ((CatalogWine)picker.SelectedItem).WineVersion != "11.0")) throw new Exception("Multiple versions or the supported default were lost.");
-                if (!multiple && (!Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("Wine 11.0")) || Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("V20")))) throw new Exception("App screens should show the Wine version without the filesystem revision.");
+                if (!multiple && Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("V22"))) throw new Exception("App screens should not show the filesystem revision.");
             });
             CheckDialog(window, "Troubleshoot", [repository.Load().Apps[0]], Path.Combine(destination, $"{theme}-{suffix}-troubleshooting.png"), dialog =>
             {
