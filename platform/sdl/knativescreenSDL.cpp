@@ -28,6 +28,10 @@
 #include "knativesystem.h"
 #include "kopengl.h"
 #include "../../source/x11/x11.h"
+#include "../../source/server/localserver.h"
+#ifdef BOXEDWINE_LOCAL_SERVER
+#include "../../source/server/screencapture.h"
+#endif
 #if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
 #include "../../project/linux/nativeAppIdentity.h"
 #endif
@@ -303,6 +307,9 @@ void KNativeScreenSDL::showWindow(bool show) {
 }
 
 void KNativeScreenSDL::clear() {
+#ifdef BOXEDWINE_LOCAL_SERVER
+    ScreenCapture::beginComposite(screenWidth(), screenHeight());
+#endif
 #ifdef BOXEDWINE_RECORDER
     if (Recorder::instance) {
         BOXEDWINE_MUTEX_LOCK(drawingMutex);
@@ -445,6 +452,10 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
     } else if (bitsPerPixel == 16 && wnd->bits) {
         bits = wnd->bits;
     }
+#ifdef BOXEDWINE_LOCAL_SERVER
+    // 8 and 16 bit windows were converted to 32 bit above.
+    ScreenCapture::blit(bits, (bitsPerPixel == 8 || bitsPerPixel == 16) ? dstPitch : originalSrcPitch, dstX, dstY, width, height);
+#endif
 #ifdef BOXEDWINE_RECORDER
     if ((Recorder::instance || Player::instance) && screenBpp() > 8) {
         int wndWidth = width;
@@ -554,6 +565,9 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
 }
 
 void KNativeScreenSDL::present() {
+#ifdef BOXEDWINE_LOCAL_SERVER
+    ScreenCapture::endComposite();
+#endif
     const bool skipRenderer = skipHiddenRenderer(visible, showOnDraw);
     if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer && !skipRenderer) {
         if (showOnDraw) {

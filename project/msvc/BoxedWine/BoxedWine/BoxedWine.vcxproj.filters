@@ -670,6 +670,24 @@
     <ClCompile Include="..\..\..\..\source\util\pixelMatch.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\server\audiocapture.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\server\encoding.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\server\localserver.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\server\mediaroutes.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\server\screencapture.cpp">
+      <Filter>source\server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\server\testLocalServer.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\stb_image.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
@@ -1898,6 +1916,18 @@
     <ClInclude Include="..\..\..\..\source\util\pixelMatch.h">
       <Filter>source\util</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\server\audiocapture.h">
+      <Filter>source\server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\server\encoding.h">
+      <Filter>source\server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\server\localserver.h">
+      <Filter>source\server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\server\screencapture.h">
+      <Filter>source\server</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\stb_image.h">
       <Filter>source\util</Filter>
     </ClInclude>
@@ -2463,6 +2493,9 @@
     </Filter>
     <Filter Include="source\test\fs">
       <UniqueIdentifier>{9c975ed9-698d-40d8-9b9c-d80fe58655b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\server">
+      <UniqueIdentifier>{a91c39b2-d54a-4691-a8b7-e4240a63ff29}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\util">
       <UniqueIdentifier>{61d9f8bc-45fb-4306-81d6-fcd7fe308745}</UniqueIdentifier>

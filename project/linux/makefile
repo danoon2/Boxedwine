@@ -1,6 +1,25 @@
+# Automation is independent of the release/test/native-runtime target. Keep
+# its objects separate: make does not track changes to compiler flags.
+AUTOMATION ?= 0
+ifneq ($(AUTOMATION),0)
+ifneq ($(AUTOMATION),1)
+$(error AUTOMATION must be 0 or 1)
+endif
+endif
+AUTOMATION_SUFFIX := $(if $(filter 1,$(AUTOMATION)),-Automation)
+AUTOMATION_FLAGS := $(if $(filter 1,$(AUTOMATION)),-DBOXEDWINE_AUTOMATION)
+
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test native-runtime native-ui test-ui test-native-input test-native-gl test-cdrom-statusbar deb
+# Distribution staging uses fixed, normal-build paths. Refuse to package an
+# automation build or accidentally reuse a previously built normal engine.
+ifeq ($(AUTOMATION),1)
+ifneq ($(filter native-ui deb,$(MAKECMDGOALS)),)
+$(error native-ui and deb require AUTOMATION=0; use native-runtime AUTOMATION=1 for the automation engine)
+endif
+endif
+
+.PHONY: default all clean release test automation native-runtime native-ui test-ui test-native-input test-native-gl test-cdrom-statusbar deb
 
 default all: release
 
@@ -19,18 +38,21 @@ else ifeq ($(uname_m), x86_64)
 BOXED_FLAGS := -DASMJIT_NO_AARCH64 -DASMJIT_STATIC -DBOXEDWINE_64 -DBOXEDWINE_JIT -DBOXEDWINE_JIT_X64 -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_MEM_CACHE -DBOXEDWINE_HOST_EXCEPTIONS
 endif
 
-BOXED_FLAGS += -DBOXEDWINE_VULKAN
+BOXED_FLAGS += -DBOXEDWINE_VULKAN $(AUTOMATION_FLAGS)
 
-release: export BUILD_DIR := Build/Release
+release: export BUILD_DIR := Build/Release$(AUTOMATION_SUFFIX)
 release: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS)
-test:   export BUILD_DIR := Build/Test
+test:   export BUILD_DIR := Build/Test$(AUTOMATION_SUFFIX)
 test: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -D__TEST
 
 # Separate emulator for the libadwaita launcher. Keep the legacy targets intact.
-native-runtime test-native-input test-cdrom-statusbar: export BUILD_DIR := Build/Native
+native-runtime test-native-input test-cdrom-statusbar: export BUILD_DIR := Build/Native$(AUTOMATION_SUFFIX)
 native-runtime test-native-input test-cdrom-statusbar: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_NATIVE_RUNTIME
 native-runtime:
 	@$(MAKE) -j$(or $(JOBS),8) TARGET_EXEC=boxedwine-engine
+
+automation:
+	@$(MAKE) release AUTOMATION=1
 
 native-ui: native-runtime
 	python3 ui/build.py
@@ -42,9 +64,9 @@ test-native-input: native-runtime
 # with SDL_VIDEODRIVER (and SDL_VIDEO_X11_FORCE_EGL=1 for X11/EGL).
 # GL_TEST_ARGS=--fullscreen also checks a visible fullscreen desktop window.
 test-native-gl:
-	@mkdir -p Build/Native
-	$(CXX) -std=c++20 -Wall ../../tools/input/test_linux_gl_fullscreen.cpp ../../platform/linux/linuxOpenGL.cpp $$(sdl2-config --cflags --libs) -lGL -lEGL -Wl,--wrap=SDL_GL_SwapWindow -o Build/Native/test-linux-gl-fullscreen
-	Build/Native/test-linux-gl-fullscreen $(GL_TEST_ARGS)
+	@mkdir -p Build/Native$(AUTOMATION_SUFFIX)
+	$(CXX) -std=c++20 -Wall ../../tools/input/test_linux_gl_fullscreen.cpp ../../platform/linux/linuxOpenGL.cpp $$(sdl2-config --cflags --libs) -lGL -lEGL -Wl,--wrap=SDL_GL_SwapWindow -o Build/Native$(AUTOMATION_SUFFIX)/test-linux-gl-fullscreen
+	Build/Native$(AUTOMATION_SUFFIX)/test-linux-gl-fullscreen $(GL_TEST_ARGS)
 
 test-cdrom-statusbar: native-runtime
 	@$(MAKE) -f makefile -f ../../tools/input/cdrom_statusbar_test.mk cdrom-statusbar-test
@@ -113,6 +135,7 @@ TEST_SOURCES += $(wildcard $(PROJDIR)/source/io/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/kernel/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/kernel/**/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/util/*.cpp)
+TEST_SOURCES += $(wildcard $(PROJDIR)/source/server/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/vulkan/*.cpp)
@@ -122,10 +145,14 @@ TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
 TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
 TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 
-ifeq ($(BUILD_DIR), Build/Test)
+ifeq ($(BUILD_DIR),Build/Test$(AUTOMATION_SUFFIX))
 SRCS := $(TEST_SOURCES)
 else
 SRCS := $(SOURCES)
+endif
+
+ifeq ($(AUTOMATION),0)
+SRCS := $(filter-out $(PROJDIR)/source/server/% $(PROJDIR)/source/test/server/%,$(SRCS))
 endif
 
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)

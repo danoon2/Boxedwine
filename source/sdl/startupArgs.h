@@ -19,6 +19,8 @@
 #ifndef __STARTUP_ARGS_H__
 #define __STARTUP_ARGS_H__
 
+#include "../server/localserver.h"
+
 #define UI_TYPE_UNSET 0
 #define UI_TYPE_OPENGL 1
 #define UI_TYPE_DX9 2
@@ -124,6 +126,10 @@ public:
     bool disableWasmJitForWrittenCode = false;
     bool safeMemory = false; // Opt into MT Wasm JIT guest-memory fences.
     bool disableLinearMemory = false;
+#ifdef BOXEDWINE_LOCAL_SERVER
+    // -localServer port, -1 when the local server is off. 0 picks a free port.
+    int localServerPort = -1;
+#endif
 
 private:
     static void addWineDllOverrides(std::vector<BString>& envValues, const char* overrides);

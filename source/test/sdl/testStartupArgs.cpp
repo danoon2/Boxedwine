@@ -13,6 +13,29 @@
 #include "../cpu/testCPU.h"
 #include "../../sdl/startupArgs.h"
 
+void testStartupArgsAutomationAvailability() {
+    StartUpArgs startup;
+    const char* argv[] = {"boxedwine", "-localServer", "8123"};
+#ifdef BOXEDWINE_LOCAL_SERVER
+    if (startup.localServerPort != -1) {
+        testFail("An automation build enabled the server without a command-line option");
+    }
+    if (!startup.parseStartupArgs(3, argv) || startup.localServerPort != 8123 || !startup.shouldStartUI()) {
+        testFail("An automation build did not consume the local server option");
+    }
+#else
+    // Unknown host options become the guest command. A normal build must not
+    // consume -localServer or otherwise activate the automation interface.
+    if (!startup.parseStartupArgs(3, argv) || startup.shouldStartUI()) {
+        testFail("A normal build consumed the automation-only local server option");
+    }
+    const auto childArgs = startup.buildArgs();
+    if (childArgs.size() < 2 || childArgs[childArgs.size() - 2] != "-localServer" || childArgs.back() != "8123") {
+        testFail("A normal build changed the guest command containing an unknown host option");
+    }
+#endif
+}
+
 void testStartupArgsMouseSensitivity() {
     for (const char* value : {"0", "1", "50", "100", "200", "1000"}) {
         StartUpArgs startup;

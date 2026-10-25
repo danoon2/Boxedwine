@@ -1566,6 +1566,11 @@
     <ClCompile Include="..\..\..\..\..\source\util\log.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\networkutils.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\pixelMatch.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\server\audiocapture.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\server\encoding.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\server\localserver.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\server\mediaroutes.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\server\screencapture.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\player.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\recorder.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\ring_buffer.cpp" />
@@ -2233,6 +2238,10 @@
     <ClInclude Include="..\..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\..\source\util\networkutils.h" />
     <ClInclude Include="..\..\..\..\..\source\util\pixelMatch.h" />
+    <ClInclude Include="..\..\..\..\..\source\server\audiocapture.h" />
+    <ClInclude Include="..\..\..\..\..\source\server\encoding.h" />
+    <ClInclude Include="..\..\..\..\..\source\server\localserver.h" />
+    <ClInclude Include="..\..\..\..\..\source\server\screencapture.h" />
     <ClInclude Include="..\..\..\..\..\source\util\ptrpool.h" />
     <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.h" />
     <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.tcc.h" />

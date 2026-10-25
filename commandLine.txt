@@ -49,6 +49,8 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -log filePath : Will copy the output sent to the terminal to a file.  For example -log "c:\games\mygame\log.txt"
 
+-localServer port : Automation builds only. Starts an HTTP and WebSocket server on 127.0.0.1 at this port (0 picks a free one; the log shows which). It serves screenshots, picture hashes, a PNG frame stream and the mixed audio, and works with -novideo. See docs/Local-Server.md
+
 -mount : Will mount a host directory or zip file, in the emulated file systems.  Example: -mount "c:\my games" "/home/username/my games" or -mount "c:\my games\mygame.zip" "/home/username/my games"
 
 -mount_drive : Will mount a host directory in the emulate file system and set up the Wine links so that it shows up as a drive in Wine. Example: -mount_drive "c:\my games" d
