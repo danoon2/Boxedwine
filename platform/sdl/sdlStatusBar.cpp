@@ -490,6 +490,30 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
     dirty = true;
 }
 
+void sdlStatusBarSetWindowSize(SDL_Window* window, int width, int height) {
+    SDL_SetWindowSize(window, width, height);
+#ifdef BOXEDWINE_MSVC
+    if (embedded && window == owner() && !fullscreen(window)) {
+        // SDL's Windows backend uses a top-level z-order band when resizing.
+        // We reparented this window, so apply its size without changing z-order
+        // before event pumping can replace SDL's size with the old native size.
+        SDL_SysWMinfo info = {};
+        SDL_VERSION(&info.version);
+        if (SDL_GetWindowWMInfo(window, &info)) {
+            SDL_GetWindowSize(window, &width, &height);
+            RECT rect = {};
+            HWND hwnd = info.info.win.window;
+            if (GetClientRect(hwnd, &rect) && (rect.right != width || rect.bottom != height)) {
+                if (!SetWindowPos(hwnd, nullptr, 0, 0, width, height,
+                        SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE)) {
+                    kwarn_fmt("Could not resize embedded guest window: %lu", GetLastError());
+                }
+            }
+        }
+    }
+#endif
+}
+
 void sdlStatusBarRaiseWindow(SDL_Window* window) {
     if (embedded && window == owner()) {
         SDL_RaiseWindow(bar.window);

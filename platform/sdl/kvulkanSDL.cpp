@@ -65,7 +65,7 @@ KVulkdanSDLImpl::~KVulkdanSDLImpl() {
 void KVulkdanSDLImpl::resizeWindow(const XWindowPtr& wnd) {
     screen->input->runOnUiThread([this, wnd]() {
         for (const auto& entry : surfaces) if (entry.second->guest.lock() == wnd) {
-            SDL_SetWindowSize(entry.second->window, std::max(1u, wnd->width()), std::max(1u, wnd->height()));
+            sdlStatusBarSetWindowSize(entry.second->window, std::max(1u, wnd->width()), std::max(1u, wnd->height()));
             if (SDL_GetKeyboardFocus() == entry.second->window) focusWindow(SDL_GetWindowID(entry.second->window));
             break;
         }

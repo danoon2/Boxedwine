@@ -114,6 +114,31 @@ and a fresh Wine root.
 
 ## GDI cursor and animation timing
 
+On Windows, also check AoE's transition from a 1024x768 desktop to its 800x600
+menu with the CD-ROM status bar enabled. The whole menu, including Exit, and the
+status bar must remain visible. Commit `75225285f` (October 24, 2026) introduced
+native child-window embedding for the status bar. SDL's Windows resize path
+still passed `HWND_NOTOPMOST` to `SetWindowPos` for that child, so its native
+client stayed at 1024x768 while SDL and the outer host switched to 800x600. The
+800x600 rendered image was stretched into the larger child and clipped by its
+parent. Boxedwine's `sdlStatusBarSetWindowSize` now applies the embedded guest's
+native size with `SWP_NOZORDER` immediately after SDL updates its dimensions,
+before event pumping can replace them with the stale native size. Software,
+Windows OpenGL, and Vulkan guest resize paths use this helper. SDL's source
+remains unchanged, and this does not require a Wine filesystem rebuild.
+
+After building the Release native runtime, run
+`tools/test_windows_embedded_resize.ps1` from the repository root. It reuses the
+engine objects to exercise production embedding and resizing. Checks compare
+SDL dimensions with Win32 `GetClientRect` before and after event pumping,
+covering shrink, growth, repeated sizes, ordinary versus embedded windows,
+software/OpenGL drawables, GL context retention, and the status-bar host size.
+The expected result is `RESULT checks=198 failures=0`. On October 25, 2026,
+running `tmp/windows-embedded-resize/x64/resize.exe --raw-sdl` bypassed the helper
+and reproduced 22 failures with the same unmodified SDL library; using the
+helper passed all 198. The rebuilt Windows x64 engine also displayed the
+complete AoE menu and status bar.
+
 Run the Age of Empires demo with Wine's GDI renderer, start a game, and open its
 in-game menu to pause animation. Move the mouse continuously over the menu;
 also check moving and clicking in active gameplay. The cursor should continue

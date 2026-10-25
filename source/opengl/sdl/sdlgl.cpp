@@ -885,7 +885,7 @@ void KOpenGLSdl::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
             resizeWebGLCanvas(window->window, wnd->width(), wnd->height());
 #elif defined(BOXEDWINE_MSVC)
             if (!windowsOpenGLResizeFullscreen(window->window, wnd->width(), wnd->height())) {
-                SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
+                sdlStatusBarSetWindowSize(window->window, wnd->width(), wnd->height());
             }
 #elif defined(__linux__)
             if (!linuxOpenGLResizeFullscreen(window->window, wnd->width(), wnd->height())) {

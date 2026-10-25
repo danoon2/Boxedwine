@@ -209,7 +209,7 @@ void KNativeScreenSDL::setScreenSize(U32 cx, U32 cy) {
         }
         if (window) {
             DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
-                SDL_SetWindowSize(window, cx, cy);
+                sdlStatusBarSetWindowSize(window, cx, cy);
             DISPATCH_MAIN_THREAD_BLOCK_END
         }
     }

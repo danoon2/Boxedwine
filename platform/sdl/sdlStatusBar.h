@@ -16,6 +16,7 @@ void sdlStatusBarShutdown();
 void sdlStatusBarConfigure(bool enabled);
 void sdlStatusBarWindowDestroyed(SDL_Window* window);
 void sdlStatusBarShowWindow(SDL_Window* window, bool show);
+void sdlStatusBarSetWindowSize(SDL_Window* window, int width, int height);
 void sdlStatusBarRaiseWindow(SDL_Window* window);
 #else
 inline void sdlStatusBarTick() {}
@@ -28,5 +29,6 @@ inline void sdlStatusBarShutdown() {}
 inline void sdlStatusBarConfigure(bool) {}
 inline void sdlStatusBarWindowDestroyed(SDL_Window*) {}
 inline void sdlStatusBarShowWindow(SDL_Window* window, bool show) { if (show) SDL_ShowWindow(window); else SDL_HideWindow(window); }
+inline void sdlStatusBarSetWindowSize(SDL_Window* window, int width, int height) { SDL_SetWindowSize(window, width, height); }
 inline void sdlStatusBarRaiseWindow(SDL_Window* window) { SDL_RaiseWindow(window); }
 #endif
