@@ -64,6 +64,7 @@ public:
 
 protected:	
 
+	virtual void readImage(U8* dst, U32 dstPitch, S32 x, S32 y, U32 width, U32 height, U32 dstX, U32 dstY);
 	static U32 calculateBytesPerLine(U32 bitsPerPixel, U32 width);
 	U32 depth;
 	VisualPtr visual;
@@ -73,6 +74,7 @@ protected:
 	U32 bytes_per_line;
 
 private:
+	void drawPixel8(const XGC& gc, S32 x, S32 y);
 	BOXEDWINE_MUTEX mutex;
 	U32 w;
 	U32 h;

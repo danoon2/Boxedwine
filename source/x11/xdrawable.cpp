@@ -34,7 +34,6 @@ XDrawable::~XDrawable() {
 }
 
 U32 XDrawable::getImage(KThread* thread, S32 x, S32 y, U32 width, U32 height, U32 planeMask, U32 format, U32 redMask, U32 greenMask, U32 blueMask) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
 	if (!this->data || !width || !height) {
 		return 0;
 	}
@@ -56,32 +55,34 @@ U32 XDrawable::getImage(KThread* thread, S32 x, S32 y, U32 width, U32 height, U3
 	// through a temporary pixmap would do. The filesystem's legacy X11 shim
 	// dereferences the returned image, so rejecting an edge rectangle with
 	// NULL faults while Wine holds its graphics error-handler mutex.
-	S64 left = std::max<S64>(0, x);
-	S64 right = std::min<S64>(w, (S64)x + width);
-	U32 dst = data;
-	std::vector<U8> row(bytesPerLine, 0);
-	for (U32 line = 0; line < height; line++) {
-		std::fill(row.begin(), row.end(), 0);
-		S64 sourceY = (S64)y + line;
-		if (left < right && sourceY >= 0 && sourceY < h) {
-			const U8* src = this->data + this->bytes_per_line * (U64)sourceY;
-			if (visual->bits_per_rgb == 1) {
-				for (S64 pixel = left; pixel < right; ++pixel) {
-					U32 target = (U32)(pixel - x);
-					row[target / 8] |= ((src[pixel / 8] >> (pixel & 7)) & 1) << (target & 7);
-				}
-			} else {
-				U32 pixelBytes = visual->bits_per_rgb / 8;
-				// Padding belongs to the destination, not the source rectangle.
-				memcpy(row.data() + (left - x) * pixelBytes, src + left * pixelBytes, (right - left) * pixelBytes);
-			}
-		}
-		thread->memory->memcpy(dst, row.data(), bytesPerLine);
-		dst += bytesPerLine;
-	}
+	std::vector<U8> pixels(len, 0);
+	readImage(pixels.data(), bytesPerLine, x, y, width, height, 0, 0);
+	thread->memory->memcpy(data, pixels.data(), len);
 
 	XImage::set(thread->memory, image, width, height, 0, format, data, 32, depth, bytesPerLine, visual->bits_per_rgb, redMask, greenMask, blueMask);
 	return image;
+}
+
+void XDrawable::readImage(U8* dst, U32 dstPitch, S32 x, S32 y, U32 width, U32 height, U32 dstX, U32 dstY) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+	S64 left = std::max<S64>(0, x), top = std::max<S64>(0, y);
+	S64 right = std::min<S64>(w, (S64)x + width), bottom = std::min<S64>(h, (S64)y + height);
+	if (!data || left >= right || top >= bottom) return;
+	for (S64 sourceY = top; sourceY < bottom; ++sourceY) {
+		const U8* src = data + bytes_per_line * sourceY;
+		U8* row = dst + dstPitch * ((U64)dstY + sourceY - y);
+		if (visual->bits_per_rgb == 1) {
+			for (S64 pixel = left; pixel < right; ++pixel) {
+				U32 target = dstX + (U32)(pixel - x);
+				U8 mask = (U8)(1 << (target & 7));
+				row[target / 8] = (row[target / 8] & ~mask) |
+					(((src[pixel / 8] >> (pixel & 7)) & 1) << (target & 7));
+			}
+		} else {
+			U32 pixelBytes = visual->bits_per_rgb / 8;
+			memcpy(row + (dstX + left - x) * pixelBytes, src + left * pixelBytes, (right - left) * pixelBytes);
+		}
+	}
 }
 
 U32 XDrawable::calculateBytesPerLine(U32 bitsPerPixel, U32 width) {
@@ -205,7 +206,62 @@ int XDrawable::copy(KThread* thread, const std::shared_ptr<XGC>& gc, const std::
 	return Success;
 }
 
+void XDrawable::drawPixel8(const XGC& gc, S32 x, S32 y) {
+	if (x < 0 || y < 0 || (U32)x >= w || (U32)y >= h) return;
+	S64 cx = (S64)x - gc.values.clip_x_origin, cy = (S64)y - gc.values.clip_y_origin;
+	if (gc.hasClipRects) {
+		bool visible = false;
+		for (const auto& rect : gc.clip_rects) {
+			if (cx >= rect.x && cy >= rect.y && cx < rect.x + rect.width && cy < rect.y + rect.height) {
+				visible = true;
+				break;
+			}
+		}
+		if (!visible) return;
+	}
+	if (gc.values.clip_mask) {
+		auto mask = XServer::getServer()->getPixmap(gc.values.clip_mask);
+		if (!mask || cx < 0 || cy < 0 || cx >= mask->width() || cy >= mask->height() ||
+			!(mask->getData()[cy * mask->getBytesPerLine() + cx / 8] & (1 << (cx & 7)))) return;
+	}
+	U8& dst = data[y * bytes_per_line + x];
+	U8 src = (U8)gc.values.foreground, result = src;
+	switch (gc.values.function) {
+	case GXclear: result = 0; break;
+	case GXand: result = src & dst; break;
+	case GXandReverse: result = src & ~dst; break;
+	case GXcopy: break;
+	case GXandInverted: result = ~src & dst; break;
+	case GXnoop: return;
+	case GXxor: result = src ^ dst; break;
+	case GXor: result = src | dst; break;
+	case GXnor: result = ~(src | dst); break;
+	case GXequiv: result = ~(src ^ dst); break;
+	case GXinvert: result = ~dst; break;
+	case GXorReverse: result = src | ~dst; break;
+	case GXcopyInverted: result = ~src; break;
+	case GXorInverted: result = ~src | dst; break;
+	case GXnand: result = ~(src & dst); break;
+	case GXset: result = 0xff; break;
+	}
+	dst = (dst & ~gc.values.plane_mask) | (result & gc.values.plane_mask);
+}
+
 int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1, S32 y1, S32 x2, S32 y2) {
+	if (visual->bits_per_rgb == 8 && (x1 == x2 || y1 == y2)) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+		S32 left = std::max<S32>(0, std::min(x1, x2));
+		S32 top = std::max<S32>(0, std::min(y1, y2));
+		S32 right = std::min<S32>(w - 1, std::max(x1, x2));
+		S32 bottom = std::min<S32>(h - 1, std::max(y1, y2));
+		for (S32 y = top; y <= bottom; y++) {
+			for (S32 x = left; x <= right; x++) {
+				if (gc->values.cap_style != CapNotLast || x != x2 || y != y2) drawPixel8(*gc, x, y);
+			}
+		}
+		setDirty();
+		return Success;
+	}
 	if (x1 == x2) {
 		if (x1 >= (S32)w) {
 			return Success;
@@ -244,6 +300,19 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 }
 
 int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height) {
+	if (visual->bits_per_rgb == 8 && gc->values.fill_style == FillSolid) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+		S32 left = std::max<S32>(0, x), top = std::max<S32>(0, y);
+		S32 right = (S32)std::min<S64>(w, (S64)x + width);
+		S32 bottom = (S32)std::min<S64>(h, (S64)y + height);
+		for (S32 dstY = top; dstY < bottom; dstY++) {
+			for (S32 dstX = left; dstX < right; dstX++) {
+				drawPixel8(*gc, dstX, dstY);
+			}
+		}
+		setDirty();
+		return Success;
+	}
 	if (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin) {
 		//klog("XDrawable::fillRectangle clipping not implemented");
 	}
@@ -275,7 +344,7 @@ int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S3
 }
 
 int XDrawable::drawRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height) {
-	if (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin) {
+	if (visual->bits_per_rgb != 8 && (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin)) {
 		klog("XDrawable::drawRectangle clipping not implemented");
 	}
 	// draw rectangle with no overlapping pixels

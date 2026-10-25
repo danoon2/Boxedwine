@@ -42,7 +42,7 @@ public:
 	const U32 id;
 	XColorMapColor colors[MAX_COLORMAP_SIZE] = {};
 	bool dirty = false;
-	U32 nativePixels[MAX_COLORMAP_SIZE];
+	U32 nativePixels[MAX_COLORMAP_SIZE] = {};
 
 	void buildCache();
 };

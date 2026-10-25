@@ -1,0 +1,196 @@
+diff --git a/dlls/win32u/dibdrv/dc.c b/dlls/win32u/dibdrv/dc.c
+index 8a72d9789ea..e0a176fb848 100644
+--- a/dlls/win32u/dibdrv/dc.c
++++ b/dlls/win32u/dibdrv/dc.c
+@@ -174,6 +174,12 @@ BOOL init_dib_info_from_bitmapobj(dib_info *dib, BITMAPOBJ *bmp)
+ 
+         get_ddb_bitmapinfo( bmp, &info );
+         init_dib_info_from_bitmapinfo( dib, &info, bmp->dib.dsBm.bmBits );
++        /* Device-dependent indexed bitmaps store system-palette indices. */
++        if (dib->bit_count == 8)
++        {
++            dib->color_table = get_ddb_color_table();
++            dib->color_table_size = 256;
++        }
+     }
+     else init_dib_info( dib, &bmp->dib.dsBmih, bmp->dib.dsBm.bmWidthBytes,
+                         bmp->dib.dsBitfields, bmp->color_table, bmp->dib.dsBm.bmBits );
+diff --git a/dlls/win32u/ntgdi_private.h b/dlls/win32u/ntgdi_private.h
+index fcfbce58fea..c3fc65e0892 100644
+--- a/dlls/win32u/ntgdi_private.h
++++ b/dlls/win32u/ntgdi_private.h
+@@ -412,6 +412,7 @@ extern POINT *GDI_Bezier( const POINT *Points, INT count, INT *nPtsOut );
+ 
+ /* palette.c */
+ extern HPALETTE PALETTE_Init(void);
++extern const RGBQUAD *get_ddb_color_table(void);
+ extern UINT get_palette_entries( HPALETTE hpalette, UINT start, UINT count,
+                                  PALETTEENTRY *entries );
+ 
+diff --git a/dlls/win32u/palette.c b/dlls/win32u/palette.c
+index 4cf03b1ae2d..c69b564b985 100644
+--- a/dlls/win32u/palette.c
++++ b/dlls/win32u/palette.c
+@@ -55,11 +55,42 @@ static const struct gdi_obj_funcs palette_funcs =
+     PALETTE_DeleteObject      /* pDeleteObject */
+ };
+ 
+-static UINT SystemPaletteUse = SYSPAL_STATIC;  /* currently not considered */
++static UINT SystemPaletteUse = SYSPAL_STATIC;
+ 
+ static HPALETTE hPrimaryPalette = 0; /* used for WM_PALETTECHANGED */
+ static HPALETTE hLastRealizedPalette = 0; /* UnrealizeObject() needs it */
+ 
++/* Selected DDBs must keep observing the device palette after realization.
++ * A fixed DIB color cube loses colors when an 8-bit screen is saved/restored. */
++static RGBQUAD ddb_color_table[256];
++static pthread_once_t ddb_color_table_once = PTHREAD_ONCE_INIT;
++
++static void init_ddb_color_table(void)
++{
++    memcpy( ddb_color_table, get_default_color_table( 8 ), sizeof(ddb_color_table) );
++}
++
++const RGBQUAD *get_ddb_color_table(void)
++{
++    pthread_once( &ddb_color_table_once, init_ddb_color_table );
++    return ddb_color_table;
++}
++
++static void update_ddb_color_table( DC *dc )
++{
++    PALETTEENTRY entries[256];
++    PHYSDEV dev = GET_DC_PHYSDEV( dc, pGetSystemPaletteEntries );
++    UINT i;
++
++    if (dev->funcs->pGetSystemPaletteEntries( dev, 0, 256, entries ) != 256) return;
++    get_ddb_color_table();
++    for (i = 0; i < 256; i++)
++    {
++        RGBQUAD color = { entries[i].peBlue, entries[i].peGreen, entries[i].peRed, 0 };
++        ddb_color_table[i] = color;
++    }
++}
++
+ 
+ /***********************************************************************
+  *           PALETTE_Init
+@@ -308,6 +339,7 @@ UINT WINAPI NtGdiSetSystemPaletteUse( HDC hdc, UINT use )
+         case SYSPAL_NOSTATIC256:        /* WINVER >= 0x0500 */
+         case SYSPAL_STATIC:
+             SystemPaletteUse = use;
++            if (old != use) hLastRealizedPalette = 0;
+             return old;
+         default:
+             return SYSPAL_ERROR;
+@@ -575,6 +607,7 @@ UINT WINAPI NtUserRealizePalette( HDC hdc )
+     }
+     else TRACE("  skipping (hLastRealizedPalette = %p)\n", hLastRealizedPalette);
+ 
++    update_ddb_color_table( dc );
+     release_dc_ptr( dc );
+     TRACE("   realized %i colors.\n", realized );
+ 
+diff --git a/dlls/winex11.drv/palette.c b/dlls/winex11.drv/palette.c
+index 43974fe8896..8ce51c1d884 100644
+--- a/dlls/winex11.drv/palette.c
++++ b/dlls/winex11.drv/palette.c
+@@ -294,7 +294,8 @@ int X11DRV_PALETTE_Init(void)
+         /* fall through */
+     case GrayScale:
+     case PseudoColor:
+-	if (private_color_map)
++        /* Indexed Windows desktops need writable cells for SYSPAL_NOSTATIC. */
++        if (private_color_map || (default_visual.class == PseudoColor && default_visual.depth == 8))
+ 	{
+ 	    XSetWindowAttributes win_attr;
+ 
+@@ -1137,10 +1138,39 @@ static void X11DRV_PALETTE_FormatSystemPalette(void)
+   * out if there are any available colorcells.
+   */
+ 
+-  int i, j = X11DRV_PALETTE_firstFree = NB_RESERVED_COLORS/2;
++  static UINT previous_use = SYSPAL_STATIC;
++  UINT use = NtGdiGetSystemPaletteUse( 0 );
++  int reserved = NB_RESERVED_COLORS / 2;
++  int i, j;
++
++  if (X11DRV_PALETTE_PaletteFlags & X11DRV_PALETTE_PRIVATE)
++  {
++      if (use == SYSPAL_NOSTATIC) reserved = 1;
++      if (use != previous_use)
++      {
++          PALETTEENTRY entries[NB_RESERVED_COLORS];
++          XColor color;
++
++          get_palette_entries( GetStockObject(DEFAULT_PALETTE), 0, NB_RESERVED_COLORS, entries );
++          for (i = 0; i < NB_RESERVED_COLORS; i++)
++          {
++              int index = i < NB_RESERVED_COLORS / 2 ? i : i + 256 - NB_RESERVED_COLORS;
++              COLOR_sysPal[index] = entries[i];
++              COLOR_sysPal[index].peFlags = PC_SYS_USED;
++              color.pixel = index;
++              color.red = entries[i].peRed * 257;
++              color.green = entries[i].peGreen * 257;
++              color.blue = entries[i].peBlue * 257;
++              color.flags = DoRed | DoGreen | DoBlue;
++              XStoreColor( gdi_display, default_colormap, &color );
++          }
++          previous_use = use;
++      }
++  }
++  j = X11DRV_PALETTE_firstFree = reserved;
+ 
+   COLOR_sysPal[j].peFlags = 0;
+-  for( i = NB_RESERVED_COLORS/2 + 1 ; i < 256 - NB_RESERVED_COLORS/2 ; i++ )
++  for( i = reserved + 1 ; i < 256 - reserved ; i++ )
+     if( i < COLOR_gapStart || i > COLOR_gapEnd )
+       {
+ 	COLOR_sysPal[i].peFlags = 0;  /* unused tag */
+@@ -1171,7 +1201,7 @@ static int X11DRV_LookupSysPaletteExact( BYTE r, BYTE g, BYTE b )
+     int i;
+     for( i = 0; i < palette_size; i++ )
+     {
+-        if( COLOR_sysPal[i].peFlags & PC_SYS_USED )  /* skips gap */
++        if ((COLOR_sysPal[i].peFlags & PC_SYS_USED) && !(COLOR_sysPal[i].peFlags & PC_SYS_RESERVED))
+             if( COLOR_sysPal[i].peRed == r &&
+                 COLOR_sysPal[i].peGreen == g &&
+                 COLOR_sysPal[i].peBlue == b )
+@@ -1244,7 +1274,7 @@ UINT X11DRV_RealizePalette( PHYSDEV dev, HPALETTE hpal, BOOL primary )
+                 flag |= PC_SYS_RESERVED;
+             }
+             
+-            if (! (entries[i].peFlags & PC_NOCOLLAPSE) ) {
++            if (!(entries[i].peFlags & (PC_NOCOLLAPSE | PC_RESERVED))) {
+ 	        /* try to collapse identical colors */
+                 index = X11DRV_LookupSysPaletteExact( entries[i].peRed, entries[i].peGreen, entries[i].peBlue );
+             }
+@@ -1267,21 +1297,21 @@ UINT X11DRV_RealizePalette( PHYSDEV dev, HPALETTE hpal, BOOL primary )
+                     COLOR_sysPal[index] = entries[i];
+                     COLOR_sysPal[index].peFlags = flag;
+ 		    X11DRV_PALETTE_freeList[index] = 0;
+-
+-                    if( X11DRV_PALETTE_PaletteToXPixel ) index = X11DRV_PALETTE_PaletteToXPixel[index];
+                 }
+                 else if ( X11DRV_PALETTE_PaletteFlags & X11DRV_PALETTE_VIRTUAL )
+                 {
+                     index = X11DRV_PALETTE_LookupPixel( physDev->color_shifts, RGB( entries[i].peRed, entries[i].peGreen, entries[i].peBlue ));
+                 }
+ 
+-                /* we have to map to existing entry in the system palette */
+-
+-                index = X11DRV_SysPaletteLookupPixel( RGB( entries[i].peRed, entries[i].peGreen, entries[i].peBlue ),
+-                                                      TRUE );
+             }
+ 
+-            if( X11DRV_PALETTE_PaletteToXPixel ) index = X11DRV_PALETTE_PaletteToXPixel[index];
++            if (index >= 0)
++            {
++                if (X11DRV_PALETTE_PaletteToXPixel) index = X11DRV_PALETTE_PaletteToXPixel[index];
++            }
++            else /* No free cell: the lookup already returns a physical pixel. */
++                index = X11DRV_SysPaletteLookupPixel( RGB( entries[i].peRed, entries[i].peGreen,
++                                                         entries[i].peBlue ), TRUE );
+         }
+ 
+         if( !prev_mapping || mapping[i] != index ) iRemapped++;

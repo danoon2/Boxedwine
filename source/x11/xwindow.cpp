@@ -313,6 +313,7 @@ int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* att
 	}
 	if (valueMask & CWColormap) {
 		colorMap = XServer::getServer()->getColorMap(attributes->colormap);
+		setDirty();
 	}
 	this->attributes.copyWithMask(attributes, valueMask);
 	return Success;
@@ -914,6 +915,25 @@ int XWindow::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 
 		return result == Success;
 	});
 	return result;
+}
+
+void XWindow::readImage(U8* dst, U32 dstPitch, S32 x, S32 y, U32 width, U32 height, U32 dstX, U32 dstY) {
+	XDrawable::readImage(dst, dstPitch, x, y, width, height, dstX, dstY);
+	// XGetImage on a window includes its visible inferiors. In particular,
+	// Wine saves the screen under a software cursor by reading the root
+	// window; its own backing pixels do not contain the application windows.
+	iterateMappedChildrenBackToFront([&](const XWindowPtr& child) {
+		if (child->c_class != InputOutput || child->getDepth() != getDepth()) return true;
+		S64 left = std::max<S64>(std::max<S64>(0, x), child->left);
+		S64 top = std::max<S64>(std::max<S64>(0, y), child->top);
+		S64 right = std::min<S64>(std::min<S64>(this->width(), (S64)x + width), (S64)child->left + child->width());
+		S64 bottom = std::min<S64>(std::min<S64>(this->height(), (S64)y + height), (S64)child->top + child->height());
+		if (left < right && top < bottom) {
+			child->readImage(dst, dstPitch, (S32)(left - child->left), (S32)(top - child->top),
+				(U32)(right - left), (U32)(bottom - top), dstX + (U32)(left - x), dstY + (U32)(top - y));
+		}
+		return true;
+	});
 }
 
 void XWindow::draw() {

@@ -1261,8 +1261,8 @@ static void x11_CreateColorMap(CPU* cpu) {
         if (ARG4 == AllocAll) {
             XColorMapPtr colorMap = server->getColorMap(EAX);
             for (U32 i = 0; i < MAX_COLORMAP_SIZE; i++) {
-                colorMap->colors->flags |= (COLOR_ALLOCATED | COLOR_WRITE);
-                colorMap->colors->uses.set(displayId, 1);
+                colorMap->colors[i].flags |= (COLOR_ALLOCATED | COLOR_WRITE);
+                colorMap->colors[i].uses.set(displayId, 1);
             }
         }
     }
@@ -1362,7 +1362,7 @@ static void x11_StoreColor(CPU* cpu) {
     c.r = (U8)(memory->readw(colorAddress + 4) >> 8);
     c.g = (U8)(memory->readw(colorAddress + 6) >> 8);
     c.b = (U8)(memory->readw(colorAddress + 8) >> 8);
-    colorMap->dirty = true;
+    server->colorMapChanged(colorMap);
     EAX = Success;
 }
 
@@ -1432,7 +1432,7 @@ static void x11_AllocColor(CPU* cpu) {
         colorMap->colors[freeIndex].b = b;
         colorMap->colors[freeIndex].flags = COLOR_ALLOCATED;
         colorMap->colors[freeIndex].uses.set(displayId, 1);
-        colorMap->dirty = true;
+        server->colorMapChanged(colorMap);
         memory->writed(colorAddress, freeIndex);
     } else {
         EAX = 0;
@@ -1946,7 +1946,23 @@ static void x11_FillRectangle(CPU* cpu) {
 }
 
 static void x11_FillRectangles(CPU* cpu) {
-    kpanic("x11_FillRectangles");
+    XServer* server = XServer::getServer();
+    XDrawablePtr drawable = server->getDrawable(ARG2);
+    if (!drawable) {
+        EAX = BadDrawable;
+        return;
+    }
+    XGCPtr gc = server->getGC(ARG3);
+    if (!gc) {
+        EAX = BadGC;
+        return;
+    }
+    for (S32 i = 0; i < (S32)ARG5; ++i) {
+        U32 rect = ARG4 + i * 8;
+        drawable->fillRectangle(cpu->thread, gc, (S16)cpu->memory->readw(rect),
+            (S16)cpu->memory->readw(rect + 2), cpu->memory->readw(rect + 4), cpu->memory->readw(rect + 6));
+    }
+    EAX = Success;
 }
 
 static void x11_DrawPoint(CPU* cpu) {
@@ -2140,6 +2156,8 @@ static void x11_SetClipMask(CPU* cpu) {
         return;
     }
     gc->values.clip_mask = ARG3;
+    gc->clip_rects.clear();
+    gc->hasClipRects = false;
     EAX = Success;
 }
 
@@ -2156,6 +2174,8 @@ static void x11_SetClipRectangles(CPU* cpu) {
     gc->values.clip_x_origin = (S32)ARG3;
     gc->values.clip_y_origin = (S32)ARG4;
     gc->clip_rects.clear();
+    gc->hasClipRects = true;
+    gc->values.clip_mask = None;
 
     U32 count = ARG6;
     U32 rectAddress = ARG5;

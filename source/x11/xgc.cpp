@@ -105,6 +105,8 @@ void XGC::updateValues(U32 mask, XGCValues* newValues) {
 	}
 	if (mask & GCClipMask) {
 		values.clip_mask = newValues->clip_mask;
+		clip_rects.clear();
+		hasClipRects = false;
 	}
 	if (mask & GCDashOffset) {
 		values.dash_offset = newValues->dash_offset;

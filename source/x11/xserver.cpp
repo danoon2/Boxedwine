@@ -530,6 +530,17 @@ void XServer::initClipboard() {
 	});
 }
 
+void XServer::colorMapChanged(const XColorMapPtr& colorMap) {
+	colorMap->dirty = true;
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
+	// Every window sharing the map needs a new RGB conversion, even when
+	// its indexed pixels have not changed (palette fades/animation).
+	for (auto& entry : windows) {
+		if (entry.value->colorMap == colorMap) entry.value->setDirty();
+	}
+	isDisplayDirty = true;
+}
+
 void XServer::draw(bool drawNow) {
 	static U32 lastDraw;
 

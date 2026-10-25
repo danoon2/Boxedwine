@@ -108,6 +108,7 @@ public:
 	void processExit(U32 pid);
 
 	void draw(bool drawNow = false);
+	void colorMapChanged(const XColorMapPtr& colorMap);
 	const XWindowPtr& getRoot();
 	U32 getEventTime();
 	U32 getInputModifiers();

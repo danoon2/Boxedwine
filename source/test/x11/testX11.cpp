@@ -13,6 +13,15 @@
 #include "../cpu/testCPU.h"
 #include "../../x11/x11.h"
 #include "../../../tools/x11/X11_def.h"
+#include "knativesystem.h"
+
+static BOXEDWINE_MUTEX paletteTestMutex;
+
+static void initPaletteTestServer() {
+    // The CPU test runner has no native screen. Allocate the headless backing
+    // screen before XServer queries its default depth; no SDL window is made.
+    if (!KNativeSystem::getScreen()) KNativeSystem::initWindow(640, 480, 8, 100, 100, B("0"), 0, 0);
+}
 
 extern void x11_init();
 
@@ -255,6 +264,204 @@ void testX11GetImageBounds() {
     if (memory->readd(image.data) != 0x55555555) testFail("XGetImage lost the monochrome bit offset");
     testContext().thread->process->free(image.data);
     testContext().thread->process->free(address);
+}
+
+void testX11ImageReadback() {
+    class ImageWindow : public XWindow {
+    public:
+        using XWindow::XWindow;
+        void setDirty() override { isDirty = true; }
+    };
+    testNewInstruction(0);
+    auto thread = testContext().thread;
+    auto memory = thread->memory;
+    for (U32 depth : {8u, 32u}) {
+        auto visual = std::make_shared<Visual>();
+        visual->bits_per_rgb = depth;
+        auto root = std::make_shared<ImageWindow>(0, nullptr, 8, 6, depth, 50, 60, InputOutput, 0, visual);
+        auto game = std::make_shared<ImageWindow>(0, root, 5, 4, depth, 1, 1, InputOutput, 0, visual);
+        auto nested = std::make_shared<ImageWindow>(0, game, 4, 4, depth, 3, 2, InputOutput, 0, visual);
+        auto overlap = std::make_shared<ImageWindow>(0, root, 2, 2, depth, 5, 3, InputOutput, 0, visual);
+        auto partial = std::make_shared<ImageWindow>(0, root, 4, 3, depth, 6, 5, InputOutput, 0, visual);
+        auto hidden = std::make_shared<ImageWindow>(0, root, 8, 6, depth, 0, 0, InputOutput, 0, visual);
+        auto input = std::make_shared<ImageWindow>(0, root, 8, 6, depth, 0, 0, InputOnly, 0, visual);
+        auto otherDepth = std::make_shared<ImageWindow>(0, root, 8, 6, depth + 1, 0, 0, InputOutput, 0, visual);
+        std::vector<XWindowPtr> windows = {root, game, nested, overlap, partial, hidden, input, otherDepth};
+        for (U32 i = 0; i < windows.size(); ++i) {
+            auto window = windows[i];
+            window->isMapped = window != hidden;
+            if (window != root) window->addToParent();
+            for (U32 y = 0; y < window->height(); ++y) for (U32 x = 0; x < window->width(); ++x) {
+                U32 color = 11 + i * 11;
+                memcpy(window->getData() + y * window->getBytesPerLine() + x * (depth / 8), &color, depth / 8);
+            }
+        }
+        auto expected = [&](S32 x, S32 y) -> U32 {
+            if (x < 0 || y < 0 || x >= 8 || y >= 6) return 0;
+            U32 value = 11;
+            if (x >= 1 && x < 6 && y >= 1 && y < 5) {
+                value = 22;
+                if (x >= 4 && y >= 3) value = 33;
+            }
+            if (x >= 5 && x < 7 && y >= 3 && y < 5) value = 44;
+            if (x >= 6 && y == 5) value = 55;
+            return value;
+        };
+        auto verify = [&]() {
+            U32 address = root->getImage(thread, -1, -1, 10, 8, AllPlanes, ZPixmap, 0, 0, 0);
+            XImage image;
+            XImage::read(memory, address, &image);
+            for (U32 y = 0; y < 8; ++y) for (U32 x = 0; x < 10; ++x) {
+                U32 pixel = image.data + y * image.bytes_per_line + x * (depth / 8);
+                U32 actual = depth == 8 ? memory->readb(pixel) : memory->readd(pixel);
+                if (actual != expected(x - 1, y - 1)) testFail("Window readback depth=%u at %u,%u: %u", depth, x, y, actual);
+            }
+            thread->process->free(image.data);
+            thread->process->free(address);
+        };
+        verify(); // Includes nested children, stacking, parent clipping and screen edges.
+        auto gc = std::make_shared<XGC>(root);
+        gc->values.subwindow_mode = IncludeInferiors;
+        for (U32 i = 0; i < 6; ++i) memory->writed(TEST_HEAP_ADDRESS + i * 4, 0xcccccccc);
+        for (S32 x : {0, 3, 5}) {
+            U32 address = root->getImage(thread, x, 3, 3, 2, AllPlanes, ZPixmap, 0, 0, 0);
+            XImage saved;
+            XImage::read(memory, address, &saved);
+            root->copyImageData(thread, gc, TEST_HEAP_ADDRESS, 3 * (depth / 8), depth, 0, 0, x, 3, 3, 2);
+            root->putImage(thread, gc, &saved, 0, 0, x, 3, 3, 2);
+            thread->process->free(saved.data);
+            thread->process->free(address);
+            verify(); // Repeated cursor movement must leave the visible background intact.
+        }
+        for (auto it = windows.rbegin(); it != windows.rend() - 1; ++it) (*it)->removeFromParent();
+    }
+}
+
+void testX11PalettedDrawing() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    x11_init();
+    testNewInstruction(0);
+    initPaletteTestServer();
+    auto visual = std::make_shared<Visual>();
+    visual->bits_per_rgb = 8;
+    auto server = XServer::getServer();
+    auto drawable = server->createNewPixmap(5, 4, 8, visual);
+    auto gc = server->createGC(drawable);
+    auto thread = testContext().thread;
+    auto memory = thread->memory;
+    CPU* cpu = testContext().cpu;
+    auto call = [&](U32 function, std::initializer_list<U32> args) {
+        U32 i = 1;
+        for (U32 arg : args) memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + i++ * 4, arg);
+        callX11(cpu, function);
+        if (EAX != Success) testFail("Paletted drawing X11 call failed: %u", function);
+    };
+    auto pixel = [&](U32 x, U32 y) { return drawable->getData()[y * drawable->getBytesPerLine() + x]; };
+    memset(drawable->getData(), 0xcc, drawable->getDataSize());
+    gc->values.foreground = 73;
+    drawable->fillRectangle(thread, gc, -2, -2, 4, 4);
+    for (U32 y = 0; y < 4; y++) for (U32 x = 0; x < drawable->getBytesPerLine(); x++) {
+        if (pixel(x, y) != (x < 2 && y < 2 ? 73 : 0xcc)) testFail("8-bit fill bounds/padding");
+    }
+    drawable->fillRectangle(thread, gc, 7, 7, 2, 2);
+    gc->values.foreground = 42;
+    drawable->drawLine(thread, gc, 4, 3, 4, -3);
+    drawable->drawLine(thread, gc, 8, 3, -3, 3);
+    for (U32 y = 0; y < 4; y++) if (pixel(4, y) != 42) testFail("8-bit reversed vertical line");
+    for (U32 x = 0; x < 5; x++) if (pixel(x, 3) != 42) testFail("8-bit reversed horizontal line");
+    gc->values.foreground = 99;
+    gc->values.cap_style = CapNotLast;
+    drawable->drawLine(thread, gc, 0, 3, 4, 3);
+    if (pixel(3, 3) != 99 || pixel(4, 3) != 42) testFail("8-bit CapNotLast endpoint");
+    gc->values.cap_style = CapButt;
+
+    // The XFillRectangles guest ABI uses signed 16-bit origins and 8-byte records.
+    U32 rects = TEST_HEAP_ADDRESS;
+    memory->writew(rects, (U16)-1); memory->writew(rects + 2, 0);
+    memory->writew(rects + 4, 2); memory->writew(rects + 6, 1);
+    memory->writew(rects + 8, 3); memory->writew(rects + 10, 2);
+    memory->writew(rects + 12, 2); memory->writew(rects + 14, 1);
+    call(X11_FILL_RECTANGLES, {0, drawable->id, gc->id, rects, 2});
+    if (pixel(0, 0) != 99 || pixel(3, 2) != 99 || pixel(4, 2) != 99) testFail("XFillRectangles guest layout");
+
+    memory->writew(rects, 0); memory->writew(rects + 2, 0);
+    memory->writew(rects + 4, 2); memory->writew(rects + 6, 1);
+    call(X11_SET_CLIP_RECTANGLES, {0, gc->id, 1, 1, rects, 1, 0});
+    gc->values.foreground = 17;
+    drawable->fillRectangle(thread, gc, 0, 0, 5, 4);
+    if (pixel(1, 1) != 17 || pixel(2, 1) != 17 || pixel(0, 0) != 99 || pixel(4, 3) != 42)
+        testFail("8-bit GC clip rectangle/origin");
+    call(X11_SET_CLIP_RECTANGLES, {0, gc->id, 0, 0, rects, 0, 0});
+    gc->values.foreground = 18;
+    drawable->fillRectangle(thread, gc, 0, 0, 5, 4);
+    if (pixel(1, 1) != 17) testFail("Empty GC clip must suppress drawing");
+    call(X11_SET_CLIP_MASK, {0, gc->id, None});
+
+    const U8 rops[] = {0, 0x12, 0x84, 0x96, 0x48, 0x5a, 0xcc, 0xde,
+        0x21, 0x33, 0xa5, 0xb7, 0x69, 0x7b, 0xed, 0xff};
+    for (U32 op = 0; op < 16; op++) {
+        drawable->getData()[0] = 0x5a;
+        gc->values.foreground = 0x96;
+        gc->values.function = op;
+        gc->values.plane_mask = 0x3c;
+        drawable->fillRectangle(thread, gc, 0, 0, 1, 1);
+        if (pixel(0, 0) != ((0x5a & ~0x3c) | (rops[op] & 0x3c))) testFail("8-bit raster operation %u", op);
+    }
+    server->removeGC(gc->id);
+    server->removePixmap(drawable->id);
+}
+
+void testX11PaletteInvalidation() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    x11_init();
+    testNewInstruction(0);
+    initPaletteTestServer();
+    auto server = XServer::getServer();
+    auto visual = std::make_shared<Visual>();
+    visual->bits_per_rgb = 8;
+    auto map = server->getColorMap(server->createColorMap(visual.get(), AllocNone));
+    for (U32 pixel : map->nativePixels) if (pixel) testFail("New colormap contains undefined RGB values");
+    auto first = server->createNewWindow(0, nullptr, 2, 2, 8, 0, 0, InputOutput, 0, visual);
+    auto second = server->createNewWindow(0, nullptr, 2, 2, 8, 0, 0, InputOutput, 0, visual);
+    first->colorMap = second->colorMap = map;
+    first->isDirty = second->isDirty = false;
+    map->colors[42].flags = COLOR_ALLOCATED | COLOR_WRITE;
+    CPU* cpu = testContext().cpu;
+    auto memory = cpu->memory;
+    U32 color = TEST_HEAP_ADDRESS;
+    memory->writed(color, 42);
+    memory->writew(color + 4, 0x1212); memory->writew(color + 6, 0x3434); memory->writew(color + 8, 0x5656);
+    memory->writeb(color + 10, 7);
+    U32 args[] = {0, map->id, color};
+    for (U32 i = 0; i < 3; i++) memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + (i + 1) * 4, args[i]);
+    server->isDisplayDirty = false;
+    callX11(cpu, X11_STORE_COLOR);
+    if (EAX != Success || !first->isDirty || !second->isDirty || !server->isDisplayDirty)
+        testFail("Palette-only change did not invalidate every sharing window");
+    map->buildCache();
+    if (map->nativePixels[42] != 0x123456) testFail("Palette RGB cache did not update");
+    // Replacing a window's map must also invalidate its converted pixels.
+    first->isDirty = false;
+    XSetWindowAttributes attributes = {};
+    attributes.colormap = server->createColorMap(visual.get(), AllocNone);
+    first->setAttributes(nullptr, &attributes, 1L << 13);
+    if (!first->isDirty || first->colorMap == map) testFail("Colormap replacement did not invalidate the window");
+    // AllocAll must make every palette cell writable, not just cell zero.
+    visual->c_class = PseudoColor;
+    visual->map_entries = MAX_COLORMAP_SIZE;
+    U32 visualAddress = TEST_HEAP_ADDRESS + 64;
+    visual->write(memory, visualAddress);
+    U32 createArgs[] = {77, 0, visualAddress, AllocAll};
+    for (U32 i = 0; i < 4; i++) memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + (i + 1) * 4, createArgs[i]);
+    callX11(cpu, X11_CREATE_COLORMAP);
+    auto privateMap = server->getColorMap(EAX);
+    if (!privateMap) testFail("AllocAll did not create a colormap");
+    for (U32 i = 0; i < MAX_COLORMAP_SIZE; i++) {
+        if (privateMap->colors[i].flags != (COLOR_ALLOCATED | COLOR_WRITE) || privateMap->colors[i].uses.get(77) != 1)
+            testFail("AllocAll did not allocate writable cell %u", i);
+    }
+    server->destroyWindow(first->id);
+    server->destroyWindow(second->id);
 }
 
 #endif

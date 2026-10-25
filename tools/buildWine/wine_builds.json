@@ -260,6 +260,16 @@
       "reason": "Let legacy Win16 CD-ROM applications such as Robot City retry existing disc files read-only when they request read/write access, while keeping writes and ordinary disk access protected"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_x11_paletted_direct_drawing.patch",
+      "reason": "Preserve realized palettes in 8-bit X11 windows instead of reducing games such as Robot City to the fixed desktop colors"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_paletted_cursor_save_under.patch",
+      "reason": "Preserve the active device palette in 8-bit cursor save/restore bitmaps, retain reserved color mappings, and honor SYSPAL_NOSTATIC so Robot City's software cursor does not corrupt the background"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

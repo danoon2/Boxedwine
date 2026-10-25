@@ -222,7 +222,9 @@ private:
 	friend class XServer;
 #ifdef __TEST
 	friend void testX11ImageIncludeInferiors();
+	friend void testX11ImageReadback();
 #endif
+	void readImage(U8* dst, U32 dstPitch, S32 x, S32 y, U32 width, U32 height, U32 dstX, U32 dstY) override;
 
 	XWindowPtr parent;
 	S32 left;

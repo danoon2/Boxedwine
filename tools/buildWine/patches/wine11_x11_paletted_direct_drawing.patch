@@ -1,0 +1,13 @@
+--- a/dlls/winex11.drv/bitblt.c
++++ b/dlls/winex11.drv/bitblt.c
+@@ -1954,6 +1954,10 @@
+ static BOOL enable_direct_drawing( struct x11drv_win_data *data, BOOL layered )
+ {
+     if (layered) return FALSE;
++    /* Window surfaces use a fixed color table. Keep indexed pixels in the
++     * X drawable so realized palettes and palette animation remain intact.
++     * Otherwise games such as Robot City collapse to the desktop colors. */
++    if (data->vis.class == PseudoColor) return TRUE;
+     if (data->embedded) return TRUE; /* draw directly to the window */
+     if (data->whole_window == root_window) return TRUE; /* draw directly to the window */
+     if (data->client_window) return TRUE; /* draw directly to the window */
