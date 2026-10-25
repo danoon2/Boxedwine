@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include "sdlStatusBar.h"
 #include "../../source/ui/mainui.h"
 #include "../../source/sdl/startupArgs.h"
 
@@ -62,7 +63,18 @@ EM_JS(void, boxedwinePresentSoftwareFrame, (const U32* pixels, int width, int he
         }
     }
     var count = width * height;
-    var rgba = new Uint8ClampedArray(count * 4);
+    var rgba;
+    if (typeof document !== 'undefined') {
+        // The frame is drawn before this returns, so one buffer serves every frame. A new
+        // frame sized buffer each time stalls the browser for a full garbage collection
+        // every second or so, long enough to break up audio.
+        rgba = Module.__boxedwineSoftwareFrame;
+        if (!rgba || rgba.length !== count * 4) {
+            rgba = Module.__boxedwineSoftwareFrame = new Uint8ClampedArray(count * 4);
+        }
+    } else {
+        rgba = new Uint8ClampedArray(count * 4); // transferred to the main thread
+    }
     var source = pixels >>> 2;
     // Refresh the heap view once per frame, avoiding a memory-growth check per pixel.
     var softwareHeap = HEAPU32;
@@ -261,15 +273,15 @@ void KNativeScreenSDL::showWindow(bool show) {
         }, show);
 #endif
         if (!show) {
-            SDL_HideWindow(window);
+            sdlStatusBarShowWindow(window, false);
             visible = false;            
         } else {
 #if defined(__EMSCRIPTEN__)
             ensureEmscriptenCanvasSize(screenWidth(), screenHeight());
 #endif
             if (KSystem::videoOption == VIDEO_NORMAL) {
-                SDL_ShowWindow(window);
-                SDL_RaiseWindow(window);
+                sdlStatusBarShowWindow(window, true);
+                sdlStatusBarRaiseWindow(window);
             }
             visible = true;
             if (KSystem::videoOption != VIDEO_NORMAL) {
@@ -958,6 +970,7 @@ void KNativeScreenSDL::destroyMainWindow() {
         renderer = nullptr;
     }
     if (window) {
+        sdlStatusBarWindowDestroyed(window);
         SDL_DestroyWindow(window);
         window = nullptr;
     }

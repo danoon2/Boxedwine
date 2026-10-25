@@ -37,6 +37,30 @@
 
 #ifdef BOXEDWINE_NATIVE_RUNTIME
 static NSURL* runtimeProgramFolder;
+static NSMutableArray<NSURL*>* runtimeCdromURLs;
+
+static int acquireCdromImages(void) {
+    const char* path = getenv("BOXEDWINE_CDROM_BOOKMARKS_FILE");
+    if (!path) { return 1; }
+    NSString* file = [NSString stringWithUTF8String:path];
+    unsetenv("BOXEDWINE_CDROM_BOOKMARKS_FILE");
+    NSDictionary* attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:file error:nil];
+    if (!attributes || [attributes fileSize] > 18 * 1024 * 1024) { return 0; }
+    NSData* data = [NSData dataWithContentsOfFile:file];
+    id bookmarks = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+    if (![bookmarks isKindOfClass:[NSArray class]] || [bookmarks count] > 256) { return 0; }
+    runtimeCdromURLs = [NSMutableArray array];
+    for (id encoded in bookmarks) {
+        if (![encoded isKindOfClass:[NSString class]] || [encoded length] > 64 * 1024) { return 0; }
+        NSData* bookmark = [[NSData alloc] initWithBase64EncodedString:encoded options:0];
+        BOOL stale = NO;
+        NSURL* url = bookmark ? [NSURL URLByResolvingBookmarkData:bookmark options:NSURLBookmarkResolutionWithoutUI
+                                        relativeToURL:nil bookmarkDataIsStale:&stale error:nil] : nil;
+        if (!url || stale || !url.isFileURL) { return 0; }
+        [runtimeCdromURLs addObject:url];
+    }
+    return 1;
+}
 
 #ifdef BOXEDWINE_DEVELOPMENT
 // Optional developer-only pause before boxedmain, allowing startup breakpoints
@@ -65,6 +89,7 @@ int MacPlatformWaitForDebugger(void) {
 // PowerBox grants are dynamic rights, so transfer the implicit-scope bookmark
 // explicitly instead of relying on the helper's static sandbox inheritance.
 int MacPlatformAcquireRuntimeProgramFolder(void) {
+    if (!acquireCdromImages()) { return 0; }
     const char* encoded = getenv("BOXEDWINE_PROGRAM_FOLDER_BOOKMARK");
     if (!encoded) { return 1; }
     NSString* value = strnlen(encoded, 64 * 1024 + 1) <= 64 * 1024 ? [NSString stringWithUTF8String:encoded] : nil;
@@ -87,6 +112,8 @@ int MacPlatformAcquireRuntimeProgramFolder(void) {
 void MacPlatformReleaseRuntimeProgramFolder(void) {
     [runtimeProgramFolder stopAccessingSecurityScopedResource];
     runtimeProgramFolder = nil;
+    for (NSURL* url in runtimeCdromURLs) { [url stopAccessingSecurityScopedResource]; }
+    runtimeCdromURLs = nil;
 }
 
 // Called on the main thread after SDL has initialized NSApplication. Each

@@ -20,6 +20,7 @@
 #include "knativesystem.h"
 #include <SDL.h>
 #include "knativescreenSDL.h"
+#include "sdlStatusBar.h"
 #ifdef __EMSCRIPTEN__
 #include "knativeinputSDL.h"
 #endif
@@ -265,6 +266,7 @@ void KNativeSystem::forceShutdown(U32 processId) {
 }
 
 void KNativeSystem::cleanup() {
+    sdlStatusBarConfigure(false);
     SDL_Quit();
 }
 

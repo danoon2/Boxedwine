@@ -65,6 +65,7 @@ public partial class MainWindow : Window
         LoadCatalog();
         InitializeComponent(); ready = true; RefreshCollections(); Refresh();
         Activated += (_, _) => DrainProgramChoices();
+        Closed += (_, _) => CancelStorage();
         Cards.PreviewMouseRightButtonDown += (_, e) =>
         {
             if (e.OriginalSource is DependencyObject source && ItemsControl.ContainerFromElement(Cards, source) is ListBoxItem item) item.IsSelected = true;
@@ -173,7 +174,7 @@ public partial class MainWindow : Window
         refreshing = true; Cards.ItemsSource = rows; Cards.SelectedItem = rows.FirstOrDefault(r => r.Key == previous); refreshing = false;
         PageTitle.Text = section == "All Apps" ? "Your Windows apps" : section;
         PageSubtitle.Text = section switch { "Demos" => "Discover a classic. Every demo gets its own Windows environment.", "Removed Apps" => "Your files and saves stay here until you restore or delete them.", "Recently Opened" => "Pick up where you left off.", "Unfinished Work" => "Review interrupted file operations.", _ => "A home for old favorites." };
-        CountLabel.Text = $"{rows.Count} {(section == "Unfinished Work" ? "operations" : "apps")}" + (section == "All Apps" ? "   ·   Drop an app folder or installer here" : "");
+        CountLabel.Text = $"{rows.Count} {(section == "Unfinished Work" ? "operations" : "apps")}" + (section == "All Apps" ? "   ·   Drop an app folder, installer, or disc image here" : "");
         EmptyState.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyTitle.Text = Search.Text.Length > 0 ? "No matches" : section switch { "Demos" => "Explore Windows classics", "Recently Opened" => "Your recent apps appear here", "Removed Apps" => "No removed apps", "Unfinished Work" => "Everything is up to date", _ => "Make room for your favorites" };
         EmptyDescription.Text = Search.Text.Length > 0 ? "Try another name or clear the search." : section switch { "Demos" => catalogError ?? "The catalog is empty.", "Recently Opened" => "Open an app from All Apps to get started.", "Removed Apps" => "Removing an app from the library keeps its files here.", "Unfinished Work" => "There are no interrupted copies to review.", _ => "Add an app folder or installer, browse a demo, or try Wine's Minesweeper to get started." };
@@ -191,6 +192,7 @@ public partial class MainWindow : Window
     }
     private void RenderDetails()
     {
+        CancelStorage();
         Details.Children.Clear();
         if (IsCollection && (section != "Demos" || canResetDemos)) DetailAction(section == "Demos" ? "Reset Demos…" : "Delete Collection…", () => DeleteCollection(section), !busy);
         var row = Selected;
@@ -228,12 +230,12 @@ public partial class MainWindow : Window
         }
         if (row.Demo is { } demo)
         {
-            Details.Children.Add(FormWindow.Paragraph(demo.Summary));
+            Details.Children.Add(FormWindow.SelectableParagraph(demo.Summary));
             var document = displayedLibrary; var installed = document.Apps.FirstOrDefault(a => a.Demo?.Id == demo.Origin.Id); var removed = document.RemovedApps.FirstOrDefault(a => a.App.Demo?.Id == demo.Origin.Id);
             DetailAction(installed != null ? "Show in Library" : removed != null ? "Show in Removed Apps" : "Download and Install", () => ActivateDemo(demo), !busy);
             Details.Children.Add(FormWindow.Paragraph($"{Math.Max(1, demo.Bytes / 1048576.0):0.#} MB download\n{demo.WineDescription(wines)}"));
             Details.Children.Add(FormWindow.Paragraph("App download: " + new Uri(demo.Url).Host));
-            if (!string.IsNullOrWhiteSpace(demo.Help)) { Details.Children.Add(FormWindow.Heading("About this app")); Details.Children.Add(FormWindow.Paragraph(demo.Help)); }
+            if (!string.IsNullOrWhiteSpace(demo.Help)) { Details.Children.Add(FormWindow.Heading("About this app")); Details.Children.Add(FormWindow.SelectableParagraph(demo.Help)); }
             return;
         }
         var app = row.App!;
@@ -242,6 +244,7 @@ public partial class MainWindow : Window
             Details.Children.Add(FormWindow.Paragraph(row.Removed.DeletionStartedAt != null ? "Deletion was interrupted. Finish deleting this app to reclaim its remaining files." : "This app's Windows files, settings and saves are still on this PC."));
             DetailAction("Restore to Library", () => { repository.Restore(app.Id); Navigate("All Apps", app.Id.ToString()); }, row.Removed.DeletionStartedAt == null && !busy);
             DetailAction("Back Up App…", () => Backup(app), row.Removed.DeletionStartedAt == null && !busy);
+            ShowStorageSummary(app);
             DetailAction("Delete Permanently…", () => Delete(app), !busy); DetailAction("Show Files", () => Reveal(repository.AppDirectory(app))); return;
         }
         Details.Children.Add(FormWindow.Paragraph(AppStatus(app)));
@@ -253,7 +256,7 @@ public partial class MainWindow : Window
         DetailAction("Troubleshooting…", () => Troubleshoot(app), !busy);
         DetailAction("Back Up App…", () => Backup(app), CanChange(app));
         Details.Children.Add(new Separator { Margin = new Thickness(0, 12, 0, 8) });
-        DetailAction("Storage and Files…", () => Storage(app), !busy);
+        ShowStorageSummary(app);
         DetailAction("Remove from Library…", () => Remove(app), CanChange(app));
         Details.Children.Add(FormWindow.Paragraph("Compatibility varies between Windows apps. Opening an app does not mean all of its features will work."));
     }
@@ -283,7 +286,13 @@ public partial class MainWindow : Window
     private void FilesDropped(object sender, DragEventArgs e)
     {
         if (busy || e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
-        if (paths.Length != 1) { Dialogs.Info(this, "Add one app at a time", "Drop a complete app folder, an installer folder, or a single installer file."); return; }
+        if (paths.Length > 0 && paths.All(CdromImages.IsImage))
+        {
+            e.Handled = true;
+            RunOperation("Checking disc images…", (token, _) => { token.ThrowIfCancellationRequested(); return Task.FromResult(PreparedAppSource.PrepareDiscs(paths)); }, prepared => ReviewImportSource(prepared, false, false));
+            return;
+        }
+        if (paths.Length != 1) { Dialogs.Info(this, "Add one app at a time", "Drop an app folder, an installer, or ISO/CUE images for one app."); return; }
         Safe(() => Add(paths[0]));
     }
     private void KeyboardShortcut(object sender, KeyEventArgs e)
@@ -325,7 +334,9 @@ public partial class MainWindow : Window
     private static void Reveal(string path)
     {
         if (!Directory.Exists(path) && !File.Exists(path)) throw new IOException("These files are no longer present.");
-        Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true, Arguments = '"' + Path.GetFullPath(path) + '"' });
+        var explorer = new ProcessStartInfo("explorer.exe") { UseShellExecute = true };
+        explorer.ArgumentList.Add(WindowsFiles.PathForShell(path));
+        Process.Start(explorer);
     }
     private async void WindowClosing(object? sender, CancelEventArgs e)
     {

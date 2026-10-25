@@ -57,18 +57,22 @@ struct Presentation {
     EGLDisplay eglDisplay = EGL_NO_DISPLAY;
     EGLSurface eglWindow = EGL_NO_SURFACE, eglBacking = EGL_NO_SURFACE;
     EGLConfig eglConfig = nullptr;
+    SDL_Window* backingWindow = nullptr;
 #define EGL_PROC(name) decltype(&::name) name = nullptr;
     EGL_PROC(eglGetCurrentDisplay)
     EGL_PROC(eglGetCurrentSurface)
     EGL_PROC(eglGetCurrentContext)
     EGL_PROC(eglQueryContext)
     EGL_PROC(eglChooseConfig)
+    EGL_PROC(eglGetConfigAttrib)
     EGL_PROC(eglCreatePbufferSurface)
     EGL_PROC(eglDestroySurface)
     EGL_PROC(eglMakeCurrent)
     EGL_PROC(eglSwapBuffers)
+    EGL_PROC(eglSwapInterval)
 #undef EGL_PROC
     bool useEgl = false;
+    bool initialized = false;
     bool hasBacking() const { return useEgl ? eglBacking != EGL_NO_SURFACE : backing != 0; }
     bool backingCurrent() { return useEgl ? eglGetCurrentSurface(EGL_DRAW) == eglBacking : glXGetCurrentDrawable() == backing; }
     SDL_GLContext currentContext() { return useEgl ? (SDL_GLContext)eglGetCurrentContext() : (SDL_GLContext)glXGetCurrentContext(); }
@@ -82,7 +86,7 @@ struct Presentation {
         return true;
     }
     bool initializeEgl() {
-        eglLibrary = SDL_LoadObject("libEGL.so.1");
+        if (!eglLibrary) eglLibrary = SDL_LoadObject("libEGL.so.1");
         if (!eglLibrary) return false;
 #define LOAD_EGL(name) name = reinterpret_cast<decltype(name)>(SDL_LoadFunction(eglLibrary, #name)); if (!name) return false;
         LOAD_EGL(eglGetCurrentDisplay)
@@ -90,10 +94,12 @@ struct Presentation {
         LOAD_EGL(eglGetCurrentContext)
         LOAD_EGL(eglQueryContext)
         LOAD_EGL(eglChooseConfig)
+        LOAD_EGL(eglGetConfigAttrib)
         LOAD_EGL(eglCreatePbufferSurface)
         LOAD_EGL(eglDestroySurface)
         LOAD_EGL(eglMakeCurrent)
         LOAD_EGL(eglSwapBuffers)
+        LOAD_EGL(eglSwapInterval)
 #undef LOAD_EGL
         eglDisplay = eglGetCurrentDisplay();
         eglWindow = eglGetCurrentSurface(EGL_DRAW);
@@ -101,8 +107,15 @@ struct Presentation {
                 eglDisplay == EGL_NO_DISPLAY || eglWindow == EGL_NO_SURFACE) return false;
         EGLint id = 0, count = 0;
         if (!eglQueryContext(eglDisplay, eglGetCurrentContext(), EGL_CONFIG_ID, &id)) { SDL_SetError("Could not query EGL context config"); return false; }
-        const EGLint attributes[] = {EGL_CONFIG_ID, id, EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT, EGL_NONE};
-        if (!eglChooseConfig(eglDisplay, attributes, &eglConfig, 1, &count) || count != 1) { SDL_SetError("EGL window config %d does not support pbuffers", id); return false; }
+        // EGL_CONFIG_ID makes eglChooseConfig ignore other selection attributes.
+        const EGLint attributes[] = {EGL_CONFIG_ID, id, EGL_NONE};
+        if (!eglChooseConfig(eglDisplay, attributes, &eglConfig, 1, &count) || count != 1) { SDL_SetError("Could not find EGL context config %d", id); return false; }
+        EGLint surfaces = 0;
+        if (!eglGetConfigAttrib(eglDisplay, eglConfig, EGL_SURFACE_TYPE, &surfaces) ||
+                (!(surfaces & EGL_PBUFFER_BIT) && !backingWindow)) {
+            SDL_SetError("EGL window config %d does not support fullscreen backing surfaces", id);
+            return false;
+        }
         return true;
     }
     PFNGLBINDFRAMEBUFFERPROC bindFramebuffer = nullptr;
@@ -114,16 +127,21 @@ struct Presentation {
     std::atomic<int> interval{-1};
 
     Presentation(int width, int height, bool aspect) : width(width), height(height), aspect(aspect) {}
-    ~Presentation() { release(); if (eglLibrary) SDL_UnloadObject(eglLibrary); }
+    ~Presentation() {
+        release();
+        if (backingWindow) SDL_DestroyWindow(backingWindow);
+        if (eglLibrary) SDL_UnloadObject(eglLibrary);
+    }
     void release() {
-        if (eglBacking != EGL_NO_SURFACE) eglDestroySurface(eglDisplay, eglBacking);
+        // SDL owns the Wayland window surface. Only destroy our own pbuffers.
+        if (eglBacking != EGL_NO_SURFACE && !backingWindow) eglDestroySurface(eglDisplay, eglBacking);
         eglBacking = EGL_NO_SURFACE;
         if (backing) glXDestroyPbuffer(display, backing);
         backing = 0;
     }
 
     bool initialize(SDL_Window* window) {
-        if (config || eglConfig) return true;
+        if (initialized) return true;
         if (!gl.available()) { SDL_SetError("Fullscreen GL entry points unavailable"); return false; }
         // SDL's creation attributes are global and can describe a different
         // window. Wine probes several formats/contexts before binding this one.
@@ -173,13 +191,27 @@ struct Presentation {
         GLboolean doubleBuffer = GL_FALSE;
         gl.glGetBooleanv(GL_DOUBLEBUFFER, &doubleBuffer);
         doubleBuffered = doubleBuffer != GL_FALSE;
+        if (backingWindow) {
+            SDL_GLContext context = SDL_GL_GetCurrentContext();
+            if (SDL_GL_MakeCurrent(backingWindow, context) != 0) return false;
+            eglBacking = eglGetCurrentSurface(EGL_DRAW);
+            // A hidden surface never receives compositor frame callbacks.
+            // Keep its swaps unthrottled and leave visible-window pacing to SDL.
+            eglSwapInterval(eglDisplay, 0);
+            if (SDL_GL_MakeCurrent(window, context) != 0) return false;
+        }
+        initialized = true;
         return true;
     }
 
     bool bind(SDL_GLContext context) {
         const int width = this->width.load(), height = this->height.load();
         if (!hasBacking() || backingWidth != width || backingHeight != height) {
-            if (useEgl) {
+            if (backingWindow) {
+                // Window creation/resizing stays on the UI thread. Rebind and
+                // advance its buffers so the driver adopts the new native size.
+                if (!makeCurrent(context, false) || !swapSurface(false)) return false;
+            } else if (useEgl) {
                 const EGLint attributes[] = {EGL_WIDTH, width, EGL_HEIGHT, height, EGL_NONE};
                 EGLSurface next = eglCreatePbufferSurface(eglDisplay, eglConfig, attributes);
                 if (next == EGL_NO_SURFACE || !eglMakeCurrent(eglDisplay, next, next, (EGLContext)context)) {
@@ -255,7 +287,7 @@ struct Presentation {
             viewport.x, bottom, viewport.x + viewport.width, bottom + viewport.height,
             GL_COLOR_BUFFER_BIT, GL_LINEAR);
         bool displayed = true;
-        if (doubleBuffered) displayed = swapSurface(true);
+        if (doubleBuffered) SDL_GL_SwapWindow(window);
         else gl.glFlush();
 
         gl.glReadBuffer(readBuffer);
@@ -270,7 +302,8 @@ struct Presentation {
         bool restored = makeCurrent(context, false);
         if (restored && doubleBuffered && swap) displayed = swapSurface(false) && displayed;
         // Some clients resize without another MakeCurrent. Adopt the new
-        // backing after presenting the old frame so the next one has its size.
+        // backing here so their next frame uses the new size. A resized native
+        // Wayland window, unlike a pbuffer, may already have lost its old pixels.
         return restored && bind(context) && displayed;
     }
 };
@@ -280,14 +313,28 @@ Presentation* presentation(SDL_Window* window) {
 }
 }
 
-void linuxOpenGLConfigureFullscreen(SDL_Window* window, int width, int height, bool aspect) {
-    SDL_SetWindowData(window, presentationKey, new Presentation(width, height, aspect));
+bool linuxOpenGLConfigureFullscreen(SDL_Window* window, int width, int height, bool aspect) {
+    auto p = new Presentation(width, height, aspect);
+    if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0) {
+        // Wayland EGL configs commonly support windows but no pbuffers. SDL
+        // creates a native EGL surface for a hidden window without mapping a
+        // desktop toplevel. Keep it guest-sized and never show it.
+        p->backingWindow = SDL_CreateWindow("Boxedwine OpenGL backing", 0, 0, width, height,
+            SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+        if (!p->backingWindow) { delete p; return false; }
+    }
+    delete (Presentation*)SDL_SetWindowData(window, presentationKey, p);
+    return true;
 }
 
 bool linuxOpenGLResizeFullscreen(SDL_Window* window, int width, int height) {
     auto p = presentation(window);
     if (!p) return false;
-    if (width > 0 && height > 0) { p->width = width; p->height = height; }
+    if (width > 0 && height > 0) {
+        if (p->backingWindow) SDL_SetWindowSize(p->backingWindow, width, height);
+        p->width = width;
+        p->height = height;
+    }
     return true;
 }
 

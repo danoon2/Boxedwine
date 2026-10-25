@@ -62,7 +62,7 @@ class CoreTests(unittest.TestCase):
                 new.writestr(entry, b'20' if entry.filename == 'version.txt' else old.read(entry))
         wine = validate_wine(source)
         resources = unittest.mock.Mock()
-        resources.wines.return_value = [dict(url='https://boxedwine.org/v2/20/TinyCore15Wine11.0.zip', reference=wine)]
+        resources.wines.return_value = [dict(url='https://boxedwine.org/v2/21/TinyCore15Wine11.0.zip', reference=wine)]
         return source, wine, resources
 
     def test_new_builtins_use_installed_current_release_and_keep_existing_apps(self):
@@ -432,12 +432,15 @@ class CoreTests(unittest.TestCase):
         with zipfile.ZipFile(payload, 'w') as archive:
             archive.writestr('game.exe', b'MZ game')
         data = payload.getvalue()
-        xml = ('<XML schemaVersion="8" release="test"><Demo><ID>scanner</ID><Name>Scanner</Name><FileSHA256>' +
+        arguments = ['+timedemo', '1', '+map', 'demo1.dm2', 'two words', ';literal']
+        xml = ('<XML schemaVersion="9" release="test"><Demo><ID>scanner</ID><Name>Scanner</Name><FileSHA256>' +
                'a' * 64 + '</FileSHA256><ShortcutExe>game.exe</ShortcutExe><FileURL>https://boxedwine.org/game.zip</FileURL>' +
                f'<FileSizeBytes>{len(data)}</FileSizeBytes><InstallType>Zip</InstallType><WineVersion>11.0</WineVersion>' +
-               f'<WineDllOverrides>{overrides}</WineDllOverrides></Demo></XML>')
+               f'<WineDllOverrides>{overrides}</WineDllOverrides><AppArguments>' + '\n'.join(arguments) + '</AppArguments></Demo></XML>')
         recipe = load_catalog(xml.encode())[0]
-        recipe['appArguments'] = ['+timedemo', '1', '+map', 'demo1.dm2', 'two words', ';literal']
+        self.assertEqual(recipe['appArguments'], arguments)
+        legacy_xml = xml.replace('<AppArguments>' + '\n'.join(arguments) + '</AppArguments>', '').replace('schemaVersion="9"', 'schemaVersion="8"')
+        self.assertEqual(load_catalog(legacy_xml.encode())[0]['wineDllOverrides'], overrides)
         recipe['wineVersion'] = None  # An automatic collection still pins the actual installed package.
         def fetch(url, size, checksum, target, work, allow_external=False):
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -456,7 +459,7 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(args[args.index('WINEDLLOVERRIDES=' + overrides) - 1], '-env')
         saved['boxedwineArguments'] = []
         self.assertNotIn('WINEDLLOVERRIDES=' + overrides, build_arguments(self.library, saved, self.library.wine_path(saved)))
-        for invalid in [xml.replace('schemaVersion="8"', 'schemaVersion="7"'), xml.replace(overrides, ''),
+        for invalid in [legacy_xml.replace('schemaVersion="8"', 'schemaVersion="7"'), xml.replace(overrides, ''),
                         xml.replace(overrides, 'GPUZ.sys=&#10;foo=b'), xml.replace(overrides, 'x' * 1025),
                         xml.replace('</Demo>', '<WineDllOverrides>GPUZ.sys=</WineDllOverrides></Demo>')]:
             with self.assertRaises(ValueError):
@@ -464,6 +467,33 @@ class CoreTests(unittest.TestCase):
 
 
 class ParsingTests(unittest.TestCase):
+    def test_catalog_app_arguments_are_literal_bounded_and_versioned(self):
+        xml = ('<XML schemaVersion="9" release="test"><Demo><ID>need-for-speed-hot-pursuit-2</ID><Name>Test</Name>' +
+               '<FileSHA256>' + 'a' * 64 + '</FileSHA256><ShortcutExe>demo.exe</ShortcutExe>' +
+               '<FileURL>https://boxedwine.org/demo.zip</FileURL><FileSizeBytes>5</FileSizeBytes>' +
+               '<InstallType>Zip</InstallType><WineVersion>11.0</WineVersion>FIELDS</Demo></XML>')
+        def parse(document):
+            return load_catalog(document.encode())[0]['appArguments']
+        fields = '<AppArguments><![CDATA[+nomovie\r\ntwo words\n  padded  \n;literal\nC:\\new\\test\n\n]]></AppArguments>'
+        expected = ['+nomovie', 'two words', '  padded  ', ';literal', r'C:\new\test', '', '']
+        self.assertEqual(parse(xml.replace('FIELDS', fields)), expected)
+        self.assertEqual(parse(xml.replace('FIELDS', fields).replace('need-for-speed-hot-pursuit-2', 'other-game')), expected)
+        self.assertEqual(parse(xml.replace('FIELDS', '<AppArguments>  </AppArguments>')), ['  '])
+        self.assertEqual(parse(xml.replace('FIELDS', '<AppArguments/>')), [])
+        self.assertEqual(parse(xml.replace('FIELDS', '<AppArguments>a&amp;b&#10;&lt;literal&gt;</AppArguments>')), ['a&b', '<literal>'])
+        for schema in range(1, 10):
+            versioned = xml.replace('schemaVersion="9"', f'schemaVersion="{schema}"')
+            self.assertEqual(parse(versioned.replace('FIELDS', '')), [])
+            if schema < 9:
+                with self.assertRaises(ValueError):
+                    parse(versioned.replace('FIELDS', fields))
+        for value in ['bare&#13;return', 'é' * 4097, '\n'.join(['arg'] * 257), '\n'.join(['x' * 8192] * 9)]:
+            with self.assertRaises(ValueError):
+                parse(xml.replace('FIELDS', '<AppArguments>' + value + '</AppArguments>'))
+        for invalid in [xml.replace('FIELDS', fields + fields), xml.replace('FIELDS', '').replace('schemaVersion="9"', 'schemaVersion="10"')]:
+            with self.assertRaises(ValueError):
+                parse(invalid)
+
     def test_win16_icon_resources_and_mask_height(self):
         dib = struct.pack('<IiiHHIIiiII', 40, 1, 2, 1, 32, 0, 4, 0, 0, 0, 0) + b'\x00\x00\xff\xff' + b'\x00' * 4
         group = struct.pack('<HHHBBBBHHIH', 0, 1, 1, 1, 2, 0, 0, 1, 32, len(dib), 1)

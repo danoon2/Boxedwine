@@ -6,6 +6,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Boxedwine.Library;
 using Microsoft.Win32;
 
@@ -13,6 +14,8 @@ namespace Boxedwine.UI;
 
 internal sealed class FormWindow : Window
 {
+    private readonly DockPanel dock = new() { Margin = new Thickness(24) };
+    private readonly ScrollViewer scroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     public StackPanel Body { get; } = new() { Margin = new Thickness(0, 0, 12, 0) };
     public StackPanel Buttons { get; } = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
     public FormWindow(Window owner, string title, string? explanation = null, double width = 560, double height = 0)
@@ -24,17 +27,31 @@ internal sealed class FormWindow : Window
         Owner = owner; Title = title; Width = width; MinWidth = width; MaxHeight = Math.Max(480, SystemParameters.WorkArea.Height - 70);
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false;
         if (height > 0) Height = Math.Min(height, MaxHeight); else SizeToContent = SizeToContent.Height;
-        var dock = new DockPanel { Margin = new Thickness(24) };
         dock.SetResourceReference(Panel.BackgroundProperty, "PageBrush");
         var heading = new TextBlock { Text = title, FontSize = 25, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 18), TextWrapping = TextWrapping.Wrap };
         DockPanel.SetDock(heading, Dock.Top); dock.Children.Add(heading);
         Buttons.Margin = new Thickness(0, 22, 0, 0); DockPanel.SetDock(Buttons, Dock.Bottom); dock.Children.Add(Buttons);
-        var scroll = new ScrollViewer { Content = Body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        scroll.Content = Body;
         dock.Children.Add(scroll); Content = dock;
         if (explanation != null) Body.Children.Add(Paragraph(explanation));
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { DialogResult = false; e.Handled = true; } };
     }
+    public void UseTabs(params (string Title, StackPanel Content)[] pages)
+    {
+        scroll.Content = null;
+        dock.Children.Remove(scroll);
+        var tabs = new TabControl { BorderThickness = new Thickness(0), Padding = new Thickness(0, 16, 0, 0) };
+        tabs.SetResourceReference(BackgroundProperty, "PageBrush");
+        tabs.SetResourceReference(ForegroundProperty, "TextBrush");
+        foreach (var page in pages)
+        {
+            var viewport = new ScrollViewer { Content = page.Content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+            tabs.Items.Add(new TabItem { Header = page.Title, Content = viewport, Padding = new Thickness(14, 8, 14, 8) });
+        }
+        dock.Children.Add(tabs);
+    }
     public static TextBlock Paragraph(string text) => new() { Text = text, Style = (Style)Application.Current.FindResource("Body") };
+    public static TextBox SelectableParagraph(string text) => new() { Text = text, Style = (Style)Application.Current.FindResource("SelectableBody") };
     public static TextBlock Heading(string text) => new() { Text = text, FontSize = 17, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 16, 0, 10), TextWrapping = TextWrapping.Wrap };
     public Button Button(string title, Action action, bool primary = false)
     {
@@ -164,10 +181,10 @@ internal static class Dialogs
         }
         void Pick(bool folder)
         {
-            string? source = folder ? Folder(form, "Choose Folder") : File(form, "Choose File", collection ? "Boxedwine collection|*.json" : "App files|*.zip;*.exe;*.msi;*.json");
+            string? source = folder ? Folder(form, "Choose Folder") : File(form, "Choose File", collection ? "Boxedwine collection|*.json" : "App files and disc images|*.zip;*.exe;*.msi;*.iso;*.cue;*.json");
             if (source != null) _ = Prepare(source, false);
         }
-        Choice(form, "Choose file…", collection ? "Collection JSON" : "ZIP, EXE, or MSI", () => Pick(false));
+        Choice(form, "Choose file…", collection ? "Collection JSON" : "ZIP, EXE, MSI, ISO, or CUE", () => Pick(false));
         if (!collection) Choice(form, "Choose folder…", "An app or setup with supporting files.", () => Pick(true));
         var link = FormWindow.Text(""); form.Field("File download URL", link);
         inputs = form.Body.Children.OfType<Control>().ToArray();
@@ -188,9 +205,34 @@ internal static class Dialogs
         form.Closed += (_, _) => { closed = true; cancellation?.Cancel(); };
         form.ShowDialog(); return result;
     }
-    public sealed record AddRequest(string Kind, string Program, string Name, string Windows, CatalogWine Wine);
+    public sealed record AddRequest(string Kind, string Program, string Name, string Windows, CatalogWine Wine, bool BrowseDisc = false);
+    private static AddRequest? ReviewDisc(Window owner, PreparedAppSource source, IReadOnlyList<CatalogWine> wines, WineReference? current)
+    {
+        var form = new FormWindow(owner, "Install from disc", "The first disc is mounted automatically. Install starts its autorun program, or opens the disc in Wine Explorer if none is available.", 620);
+        var name = FormWindow.Text(source.Name); form.Field("App name", name);
+        var discs = new CdromImagesEditor(form, source.DiscImages!);
+        form.Body.Children.Add(FormWindow.Heading("CD-ROM images")); form.Body.Children.Add(discs);
+        form.Body.Children.Add(FormWindow.Paragraph("Images stay in their current location. Keep CUE sheets and their track files together."));
+        var options = new StackPanel(); form.Body.Children.Add(new Expander { Header = "Compatibility options", Content = options });
+        var wine = new ComboBox { ItemsSource = wines, SelectedItem = wines.FirstOrDefault(w => w.Sha256 == current?.Sha256) ?? wines.FirstOrDefault(), MinHeight = 34 };
+        if (wines.Count > 1) { options.Children.Add(new Label { Content = "Wine version", Target = wine }); options.Children.Add(wine); }
+        var windows = FormWindow.Choices(LaunchArguments.WindowsVersions, "wineDefault"); options.Children.Add(new Label { Content = "Windows version", Target = windows }); options.Children.Add(windows);
+        AddRequest? result = null;
+        void Select(bool browse)
+        {
+            if (name.Text.Trim().Length == 0) throw new InvalidOperationException("Enter an app name.");
+            var images = CdromImages.PrepareImport(discs.Images);
+            if (wine.SelectedItem is not CatalogWine selected) throw new InvalidOperationException("The release Wine list is unavailable.");
+            source.DiscImages!.Clear(); source.DiscImages.AddRange(images);
+            result = new("disc", "", name.Text.Trim(), (string)windows.SelectedValue, selected, browse); form.DialogResult = true;
+        }
+        form.Cancel(); form.Button("Browse disc", () => Select(true)); form.Button("Install", () => Select(false), true);
+        WindowSizing.FitHeightOnOpen(form);
+        form.ShowDialog(); return result;
+    }
     public static AddRequest? ReviewApp(Window owner, PreparedAppSource source, IReadOnlyList<CatalogWine> wines, WineReference? current)
     {
+        if (source.DiscImages != null) return ReviewDisc(owner, source, wines, current);
         var form = new FormWindow(owner, "Review App", source.Original, 620);
         var name = FormWindow.Text(source.Name); form.Field("App name", name);
         var action = FormWindow.Choices(new() { [""] = "Choose how to add these files", ["app"] = "Ready-to-run app", ["installer"] = "Run an installer" }, source.SuggestedAction); form.Field("Add as", action);
@@ -260,20 +302,23 @@ internal static class Dialogs
         list.MouseDoubleClick += (_, _) => { if (list.SelectedItem is ProgramCandidate selected) { result = new(selected.Path, null); form.DialogResult = true; } };
         form.ShowDialog(); return result;
     }
-    public sealed record EditResult(LibraryApp App, bool Backup);
-    public static EditResult? Edit(Window owner, LibraryRepository repository, LibraryApp original, System.Runtime.InteropServices.Architecture architecture)
+    public static LibraryApp? Edit(Window owner, LibraryRepository repository, LibraryApp original, System.Runtime.InteropServices.Architecture architecture, Func<LibraryApp, ImageSource?> resolveIcon)
     {
-        var app = DataFormat.Clone(original); var form = new FormWindow(owner, "App settings", null, 620, 740);
+        var app = DataFormat.Clone(original); var form = new FormWindow(owner, "App settings", null, 620);
+        var iconEditor = new AppIconEditor(form, app, resolveIcon);
         var name = FormWindow.Text(app.Name); form.Field("Name", name);
-        var program = new Button { Content = app.Executable == null ? "Choose Program…" : new ProgramCandidate(app.Executable).WindowsPath, HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(10), Margin = new Thickness(0, 0, 0, 16) };
+        var program = new Button { Content = app.Executable == null ? "Choose Program…" : new ProgramCandidate(app.Executable).WindowsPath, HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(10, 7, 10, 7), Margin = new Thickness(0, 0, 0, 16) };
         if (app.BuiltIn == null)
         {
-            program.Click += (_, _) => { var choice = Program(form, repository, app); if (choice?.Path != null) { app.Executable = choice.Path; program.Content = new ProgramCandidate(choice.Path).WindowsPath; } };
+            program.Click += (_, _) => { var choice = Program(form, repository, app); if (choice?.Path != null) { app.Executable = choice.Path; program.Content = new ProgramCandidate(choice.Path).WindowsPath; iconEditor.Refresh(); } };
             form.Field("Program", program);
         }
-        var resolution = new ComboBox { IsEditable = true, ItemsSource = new[] { "640x480", "800x600", "1024x768", "1280x720", "1920x1080" }, Text = app.Resolution, MinHeight = 34 };
-        form.Field("Window size", resolution);
-        var full = new CheckBox { Content = "Open in full screen", IsChecked = app.FullScreen, Margin = new Thickness(0, 0, 0, 16) }; form.Body.Children.Add(full);
+        var resolution = new ComboBox { IsEditable = true, ItemsSource = new[] { "640x480", "800x600", "1024x768", "1280x720", "1920x1080" }, Text = app.Resolution, Width = 160, MinHeight = 34 };
+        AutomationProperties.SetName(resolution, "Window size");
+        form.Body.Children.Add(new Label { Content = "Window size", Target = resolution, Padding = new Thickness(0, 0, 0, 6), FontWeight = FontWeights.SemiBold });
+        var full = new CheckBox { Content = "Open in full screen", IsChecked = app.FullScreen, Margin = new Thickness(20, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var displayRow = new WrapPanel { Margin = new Thickness(0, 0, 0, 16) };
+        displayRow.Children.Add(resolution); displayRow.Children.Add(full); form.Body.Children.Add(displayRow);
         int mousePercent = LaunchArguments.MouseSensitivity(app.BoxedwineArguments ?? []);
         var mouse = new Slider { Minimum = Math.Min(25, mousePercent), Maximum = Math.Max(400, mousePercent), Value = mousePercent, TickFrequency = 1, IsSnapToTickEnabled = true, SmallChange = 1, LargeChange = 10, VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetName(mouse, "Mouse sensitivity");
@@ -281,63 +326,128 @@ internal static class Dialogs
         var mouseReset = new Button { Content = "Reset", Padding = new Thickness(10, 4, 10, 4) };
         AutomationProperties.SetName(mouseReset, "Reset mouse sensitivity");
         var mouseRow = new DockPanel(); DockPanel.SetDock(mouseReset, Dock.Right); mouseRow.Children.Add(mouseReset); DockPanel.SetDock(mouseValue, Dock.Right); mouseRow.Children.Add(mouseValue); mouseRow.Children.Add(mouse);
-        form.Field("Mouse sensitivity", mouseRow, "100% is normal. Adjusts mouse movement while a game captures the cursor. Applies the next time you launch the app.");
-        form.Body.Children.Add(FormWindow.Paragraph("Wine " + (app.SavedWineVersion ?? repository.DefaultWine?.WineVersion ?? "not configured") + " · " + (app.SavedWineVersion != null ? "saved for this app" : "library default")));
-        var windows = FormWindow.Choices(LaunchArguments.WindowsVersions, app.PreferredWindows); form.Field("Windows version", windows, "Changes apply and are checked before the next app or installer launch.");
-        var advanced = new StackPanel(); var expander = new Expander { Header = "Advanced", Content = advanced, Margin = new Thickness(0, 0, 0, 8) }; form.Body.Children.Add(expander);
-        void Field(string label, FrameworkElement control) { advanced.Children.Add(new Label { Content = label, Target = control, Padding = new Thickness(0, 12, 0, 6) }); advanced.Children.Add(control); AutomationProperties.SetName(control, label); }
-        var iconButtons = new StackPanel { Orientation = Orientation.Horizontal };
-        var image = new Button { Content = "Choose Image…", Padding = new Thickness(10, 6, 10, 6) }; var automatic = new Button { Content = "Use Automatic", Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(10, 6, 10, 6) };
-        var iconStatus = FormWindow.Paragraph(app.CustomIconPNG == null ? "Using the program or demo icon." : "Using your custom image.");
-        image.Click += (_, _) => { try { string? path = File(form, "Choose an app icon", "Images|*.png;*.jpg;*.jpeg;*.bmp;*.ico"); if (path != null) { app.CustomIconPNG = Icons.CustomPng(path); iconStatus.Text = "Custom image selected."; } } catch (Exception error) { Error(form, error.Message); } };
-        automatic.Click += (_, _) => { app.CustomIconPNG = null; iconStatus.Text = "Using the program or demo icon."; };
-        iconButtons.Children.Add(image); iconButtons.Children.Add(automatic); Field("App icon", iconButtons); advanced.Children.Add(iconStatus);
-        var renderer = FormWindow.Choices(new() { ["wineDefault"] = "Use Wine's default", ["openGL"] = "OpenGL", ["gdi"] = "GDI (compatibility)" }, app.PreferredRenderer); Field("Wine renderer", renderer);
-        advanced.Children.Add(FormWindow.Paragraph("GDI can help older 2D games and menus, but disables Direct3D acceleration."));
+        const string mouseHelp = "Adjusts mouse movement while a game captures the cursor. Applies the next time you launch the app.";
+        mouse.ToolTip = mouseHelp;
+        AutomationProperties.SetHelpText(mouse, mouseHelp);
+        var mouseHeading = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
+        mouseHeading.Children.Add(new Label { Content = "Mouse sensitivity", Target = mouse, Padding = new Thickness(0), FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        var mouseHint = new TextBlock { Text = "100% is normal · Captured mouse only", FontSize = 12, Margin = new Thickness(12, 0, 0, 0), TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center, ToolTip = mouseHelp };
+        mouseHint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); mouseHeading.Children.Add(mouseHint);
+        form.Body.Children.Add(mouseHeading);
+        mouseRow.Margin = new Thickness(0, 0, 0, 16); form.Body.Children.Add(mouseRow);
+        var windows = FormWindow.Choices(LaunchArguments.WindowsVersions, app.PreferredWindows); form.Field("Windows version", windows);
+        windows.Margin = new Thickness(0, 0, 0, 6);
+        var windowsHelp = FormWindow.Paragraph("Applies on the next launch.");
+        windowsHelp.Margin = new Thickness(0); form.Body.Children.Add(windowsHelp);
+        var cdromHeading = FormWindow.Heading("CD-ROM images");
+        cdromHeading.Margin = new Thickness(0, 24, 0, 8); form.Body.Children.Add(cdromHeading);
+        var discs = new CdromImagesEditor(form, app.CdromImages ?? []);
+        form.Body.Children.Add(discs);
+        var advanced = new StackPanel { Margin = new Thickness(0, 0, 12, 0) };
+        advanced.Children.Add(FormWindow.Paragraph("Wine " + (app.SavedWineVersion ?? repository.DefaultWine?.WineVersion ?? "not configured") + " · " + (app.SavedWineVersion != null ? "saved for this app" : "library default")));
+        form.UseTabs(("General", form.Body), ("Advanced", advanced));
+        TextBlock? Field(string label, FrameworkElement control, string? description = null, string? hint = null, Button? action = null)
+        {
+            var field = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
+            var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
+            if (action != null) { DockPanel.SetDock(action, Dock.Right); heading.Children.Add(action); }
+            heading.Children.Add(new Label { Content = label, Target = control, Padding = new Thickness(0), FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+            if (hint != null)
+            {
+                var instructions = new TextBlock { Text = hint, FontSize = 12, Margin = new Thickness(12, 0, 0, 0), TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+                instructions.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); heading.Children.Add(instructions);
+            }
+            field.Children.Add(heading); field.Children.Add(control); advanced.Children.Add(field);
+            AutomationProperties.SetName(control, label);
+            AutomationProperties.SetHelpText(control, string.Join(" ", new[] { hint, description }.Where(s => s != null)));
+            if (description == null) return null;
+            var help = FormWindow.Paragraph(description); help.Margin = new Thickness(0, 6, 0, 0); field.Children.Add(help); return help;
+        }
+        Field("App icon", iconEditor);
+        var renderer = FormWindow.Choices(new() { ["wineDefault"] = "Use Wine's default", ["openGL"] = "OpenGL", ["gdi"] = "GDI (compatibility)" }, app.PreferredRenderer);
+        Field("Wine renderer", renderer, "GDI supports older 2D apps; disables Direct3D acceleration.");
         var implementations = new Dictionary<string, string> { ["default"] = "Use global setting (" + OpenGLDrivers.Label(OpenGLDrivers.GlobalDefault(repository.Preferences, architecture)) + ")" };
         foreach (var choice in OpenGLDrivers.Choices(architecture, app.PreferredWindowsOpenGL)) implementations.Add(choice.Key, choice.Value);
-        var openGL = FormWindow.Choices(implementations, app.PreferredWindowsOpenGL); Field("OpenGL implementation", openGL);
-        advanced.Children.Add(FormWindow.Paragraph(OpenGLDrivers.Help(architecture)));
-        var backend = FormWindow.Choices(new() { ["wineDefault"] = "Use Wine's default", ["glx"] = "GLX", ["egl"] = "EGL" }, app.PreferredBackend); Field("Wine OpenGL interface", backend);
-        var bw = FormWindow.Text(string.Join("\n", app.BoxedwineArguments ?? []), true); Field("Boxedwine arguments — one option or value per line", bw);
-        bool updatingMouse = false;
-        bw.TextChanged += (_, _) =>
+        var openGL = FormWindow.Choices(implementations, app.PreferredWindowsOpenGL);
+        var openGLHelp = Field("OpenGL implementation", openGL, "")!;
+        AutomationProperties.SetName(openGLHelp, "OpenGL help");
+        AutomationProperties.SetLiveSetting(openGLHelp, AutomationLiveSetting.Polite);
+        void UpdateOpenGLHelp()
         {
-            if (updatingMouse) return;
-            try
+            if (openGL.SelectedValue is not string selected) return;
+            if (selected == "default") selected = OpenGLDrivers.GlobalDefault(repository.Preferences, architecture);
+            openGLHelp.Text = OpenGLDrivers.SelectionHelp(architecture, selected);
+            AutomationProperties.SetHelpText(openGL, openGLHelp.Text);
+        }
+        openGL.SelectionChanged += (_, _) => UpdateOpenGLHelp(); UpdateOpenGLHelp();
+        var backend = FormWindow.Choices(new() { ["wineDefault"] = "Use Wine's default", ["glx"] = "GLX", ["egl"] = "EGL" }, app.PreferredBackend); Field("Wine OpenGL interface", backend);
+        var supported = new Button { Content = "Supported options", FontSize = 12, Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(12, 0, 0, 0) };
+        supported.Click += (_, _) => Info(form, "Supported Boxedwine options", LaunchArguments.Help);
+        var bw = FormWindow.Text(string.Join("\n", LaunchArguments.WithMouseSensitivity(app.BoxedwineArguments ?? [], 100)), true);
+        var mouseTransfer = Field("Boxedwine arguments", bw, "", hint: "One option or value per line", action: supported)!;
+        mouseTransfer.Visibility = Visibility.Collapsed;
+        AutomationProperties.SetLiveSetting(mouseTransfer, AutomationLiveSetting.Polite);
+        AutomationProperties.SetName(bw, "Boxedwine arguments — one option or value per line");
+        void TransferMouseSensitivity()
+        {
+            var values = LaunchArguments.Lines(bw.Text);
+            if (!values.Contains(LaunchArguments.MouseSensitivityOption)) return;
+            int percent = LaunchArguments.MouseSensitivity(values);
+            // Remove only the option/value lines, preserving other text and the caret's position.
+            var remaining = new System.Text.StringBuilder();
+            int offset = 0, caret = bw.CaretIndex, removedBeforeCaret = 0;
+            bool removing = false;
+            string[] lines = bw.Text.Split('\n');
+            for (int i = 0; i < lines.Length; i++)
             {
-                int percent = LaunchArguments.MouseSensitivity(LaunchArguments.Lines(bw.Text));
-                updatingMouse = true;
-                mouse.Minimum = Math.Min(25, percent); mouse.Maximum = Math.Max(400, percent); mouse.Value = percent;
-                mouseValue.Text = percent + "%"; mouse.IsEnabled = mouseReset.IsEnabled = true;
+                string line = lines[i]; int length = line.Length + (i < lines.Length - 1 ? 1 : 0);
+                bool option = line.TrimEnd('\r') == LaunchArguments.MouseSensitivityOption;
+                if (option) removing = true;
+                if (removing)
+                {
+                    removedBeforeCaret += Math.Clamp(caret - offset, 0, length);
+                    if (!option && !string.IsNullOrWhiteSpace(line)) removing = false;
+                }
+                else { remaining.Append(line); if (i < lines.Length - 1) remaining.Append('\n'); }
+                offset += length;
             }
-            catch (InvalidDataException) { mouse.IsEnabled = mouseReset.IsEnabled = false; }
-            finally { updatingMouse = false; }
-        };
+            mouse.Minimum = Math.Min(25, percent); mouse.Maximum = Math.Max(400, percent); mouse.Value = percent;
+            bw.Text = remaining.ToString(); bw.CaretIndex = Math.Clamp(caret - removedBeforeCaret, 0, bw.Text.Length);
+            mouseTransfer.Text = $"Mouse sensitivity set to {percent}% in General.";
+            mouseTransfer.Visibility = Visibility.Visible;
+        }
+        void TryTransferMouseSensitivity()
+        {
+            try { TransferMouseSensitivity(); }
+            catch (InvalidDataException) { /* Keep unfinished input editable; Save reports validation errors. */ }
+        }
+        bw.LostKeyboardFocus += (_, _) => TryTransferMouseSensitivity();
+        // Paste fires before the text changes. Wait for insertion; ordinary typing transfers on leaving the field.
+        DataObject.AddPastingHandler(bw, (_, _) => bw.Dispatcher.BeginInvoke(new Action(TryTransferMouseSensitivity), DispatcherPriority.Input));
         mouse.ValueChanged += (_, _) =>
         {
-            if (updatingMouse) return;
-            int percent = (int)Math.Round(mouse.Value);
-            mouseValue.Text = percent + "%";
-            updatingMouse = true;
-            try { bw.Text = string.Join("\n", LaunchArguments.WithMouseSensitivity(LaunchArguments.Lines(bw.Text), percent)); }
-            finally { updatingMouse = false; }
+            mouseValue.Text = (int)Math.Round(mouse.Value) + "%";
+            mouseTransfer.Visibility = Visibility.Collapsed;
         };
         mouseReset.Click += (_, _) => mouse.Value = 100;
-        var supported = new Button { Content = "Supported Options", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 6) }; supported.Click += (_, _) => Info(form, "Supported Boxedwine options", LaunchArguments.Help); advanced.Children.Add(supported);
-        var args = FormWindow.Text(string.Join("\n", app.Arguments), true); Field("App arguments — one argument per line", args);
-        advanced.Children.Add(FormWindow.Paragraph("Spaces inside each line are preserved. Do not add surrounding quotes."));
-        EditResult? result = null;
-        void Save(bool backup)
+        var args = FormWindow.Text(string.Join("\n", app.Arguments), true);
+        Field("App arguments", args, "Spaces are preserved; omit surrounding quotes.", "One argument per line");
+        AutomationProperties.SetName(args, "App arguments — one argument per line");
+        LibraryApp? result = null;
+        void Save()
         {
+            TransferMouseSensitivity();
             app.Name = name.Text.Trim(); app.Resolution = resolution.Text.Trim(); app.FullScreen = full.IsChecked == true;
             app.ChooseWindows((string)windows.SelectedValue); app.ChooseRenderer((string)renderer.SelectedValue); app.ChooseBackend((string)backend.SelectedValue);
             app.WindowsOpenGL = (string)openGL.SelectedValue;
             app.Arguments = LaunchArguments.Lines(args.Text);
+            app.CdromImages = discs.Images.Count == 0 ? null : discs.Images;
             var overrides = LaunchArguments.Overrides(LaunchArguments.Lines(bw.Text));
-            app.BoxedwineArguments = LaunchArguments.WithMouseSensitivity(overrides, LaunchArguments.MouseSensitivity(overrides));
-            repository.ValidateApp(app); result = new(app, backup); form.DialogResult = true;
+            app.BoxedwineArguments = LaunchArguments.WithMouseSensitivity(overrides, (int)Math.Round(mouse.Value));
+            repository.ValidateApp(app); result = app; form.DialogResult = true;
         }
-        form.Button("Save and Back Up…", () => Save(true)); form.Cancel(); form.Button("Save", () => Save(false), true); form.ShowDialog(); return result;
+        form.Cancel(); form.Button("Save", Save, true);
+        WindowSizing.FitHeightOnOpen(form);
+        form.ShowDialog(); return result;
     }
 }

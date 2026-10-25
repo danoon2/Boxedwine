@@ -75,6 +75,7 @@ void testWasmJitFpuFaultState();
 void testWaitPid();
 void testX11ImageIncludeInferiors();
 void testX11ImageScanlinePadding();
+void testX11GetImageBounds();
 void testXInputValuatorLayout();
 void testCapturedMouseSensitivity();
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
@@ -95,6 +96,10 @@ void testHardLinksShareIdentityDataAndXattrs();
 void testStatxEmptyPathUsesOpenFile();
 void testReadOnlyCreatePreservesZipFile();
 void testZipRandomAccess();
+void testZipEntryTimes();
+void testDiscImageLayouts();
+void testIsoFilesAndDiscChanges();
+void testMalformedIsoDirectories();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testHostFolderSyncUpdatesLoadedChildren();
 void testSharedFileMappingGrowthKeepsPagesShared();
@@ -1084,6 +1089,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testWaitPid, "Test waitpid child selection"},
     {testX11ImageIncludeInferiors, "Test X11 image IncludeInferiors and child coordinates"},
     {testX11ImageScanlinePadding, "Test X11 image scanline padding"},
+    {testX11GetImageBounds, "Test X11 image capture bounds and padding"},
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
     {testSDLGlWindowRemovalLockOrder, "Test SDL GL window removal lock order", TEST_ENTRY_SERIAL},
 #endif
@@ -1242,6 +1248,10 @@ const TestEntry TEST_ENTRIES[] = {
     {testGuestWritePreservesPartialProgress, "Test guest write preserves partial progress"},
     {testReadOnlyCreatePreservesZipFile, "Test read-only create preserves ZIP file contents", TEST_ENTRY_SERIAL},
     {testZipRandomAccess, "Test ZIP random access and handle lifetime", TEST_ENTRY_SERIAL},
+    {testZipEntryTimes, "Test ZIP entry times are UTC", TEST_ENTRY_SERIAL},
+    {testDiscImageLayouts, "Test disc image layouts and CUE sheets beside BINs", TEST_ENTRY_SERIAL},
+    {testIsoFilesAndDiscChanges, "Test ISO file types, seeks and disc changes", TEST_ENTRY_SERIAL},
+    {testMalformedIsoDirectories, "Test malformed ISO directory rejection", TEST_ENTRY_SERIAL},
     {testStatxEmptyPathUsesOpenFile, "Test statx empty path uses open file identity", TEST_ENTRY_SERIAL},
     {testXInputValuatorLayout, "Test XInput valuator guest ABI layout"},
 };

@@ -17,6 +17,7 @@
  */
 
 #include "boxedwine.h"
+#include "../../../platform/sdl/sdlStatusBar.h"
 
 #ifdef BOXEDWINE_OPENGL_SDL
 #include "sdlgl.h"
@@ -405,6 +406,7 @@ void SDLGlWindow::destroy() {
 #elif defined(__linux__) && !defined(__EMSCRIPTEN__)
                     linuxOpenGLDestroyWindow(window);
 #endif
+                    sdlStatusBarWindowDestroyed(window);
                     SDL_DestroyWindow(window);
                 }
                 window = nullptr;
@@ -493,7 +495,14 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     if (fullscreen) sdlFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 #endif
 
+    int windowWidth = cx, windowHeight = cy;
     if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
+#if defined(__linux__) && !defined(__EMSCRIPTEN__)
+        // X11 can report the fullscreen desktop size before its native GL
+        // drawable has resized. Start at the output size so the first frame
+        // is not clipped to the guest's smaller dimensions.
+        if (fullscreen) { windowWidth = dm.w; windowHeight = dm.h; }
+#endif
         if (cx == (U32)dm.w && cy == (U32)dm.h) {
             sdlFlags |= SDL_WINDOW_BORDERLESS;
         }
@@ -502,7 +511,7 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     S32 y = 0;
     KNativeSystem::getScreen()->getPos(x, y);
     const char* title = KSystem::title.length() ? KSystem::title.c_str() : "OpenGL Window";
-    SDL_Window* window = SDL_CreateWindow(title, x, y, cx, cy, sdlFlags);
+    SDL_Window* window = SDL_CreateWindow(title, x, y, windowWidth, windowHeight, sdlFlags);
 
     if (!window) {
         kwarn_fmt("Couldn't create window: %s", SDL_GetError());
@@ -516,7 +525,11 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     windowsAppSetWindowIcon(window);
     if (fullscreen) windowsOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
 #elif defined(__linux__)
-    if (fullscreen) linuxOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
+    if (fullscreen && !linuxOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT)) {
+        kwarn_fmt("Couldn't configure fullscreen OpenGL: %s", SDL_GetError());
+        SDL_DestroyWindow(window);
+        return nullptr;
+    }
 #endif
 #if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
     linuxAppSetWindowIcon(window);
@@ -624,7 +637,7 @@ void SDLGlWindow::showWindow(bool show) {
                 if (ownsWindow && KNativeSystem::getScreen()->isVisible()) {
                     KNativeSystem::showScreen(false);
                 }
-                SDL_RaiseWindow(window);
+                sdlStatusBarRaiseWindow(window);
                 });
         }
         return;
@@ -633,7 +646,7 @@ void SDLGlWindow::showWindow(bool show) {
         KNativeSystem::getCurrentInput()->runOnUiThread([this, show]() {
             if (!show) {
                 shownGlWindows--;
-                SDL_HideWindow(window);
+                sdlStatusBarShowWindow(window, false);
                 if (shownGlWindows == 0) {
                     KNativeSystem::showScreen(true);
                 }
@@ -658,8 +671,8 @@ void SDLGlWindow::showWindow(bool show) {
                     KNativeSystem::showScreen(false);
                 }
                 if (KSystem::videoOption == VIDEO_NORMAL) {
-                    SDL_ShowWindow(window);
-                    SDL_RaiseWindow(window);
+                    sdlStatusBarShowWindow(window, true);
+                    sdlStatusBarRaiseWindow(window);
                     forceForegroundUntil = KSystem::getMilliesSinceStart() + 2000;
                 }
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && defined(BOXEDWINE_UI_LAUNCH_IN_PROCESS)

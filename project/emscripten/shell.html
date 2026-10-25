@@ -23,6 +23,8 @@
             <button id="startbtn" style="display: none" onclick="start()">Start</button>
             <button id="downloadbtn" style="display: none" onclick="buildGetFilesModal();">Get File(s)</button>
             <button id="savejitbtn" style="display: none" onclick="saveJitModules()">Save JIT Cache</button>
+            <select id="cdromdisc" style="display: none" onchange="insertCDRomDisc(Number(this.value))"></select>
+            <button id="cdromejectbtn" style="display: none" onclick="ejectCDRomDisc()">Eject</button>
             <a style="display: none" id="modalLink" href="#openModal">Open</a>
             <a style="display: none" id="modalLinkExe" href="#openModalExe">Open</a>
           <input type="checkbox" id="pointerLock">Lock/hide mouse pointer

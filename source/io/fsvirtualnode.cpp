@@ -19,6 +19,7 @@
 #include "boxedwine.h"
 
 #include "fsvirtualnode.h"
+#include "fsdiropennode.h"
 #include "kstat.h"
 
 bool FsVirtualNode::remove() {
@@ -26,11 +27,13 @@ bool FsVirtualNode::remove() {
 }
 
 U64 FsVirtualNode::lastModified() {
-    return 0;
+    return this->virtualLastModified;
 }
 
 U64 FsVirtualNode::length() {
-    return 0;
+    if (this->isDirectory() && !this->virtualLength)
+        return 4096;
+    return this->virtualLength;
 }
 
 U32 FsVirtualNode::getMode() {
@@ -38,17 +41,24 @@ U32 FsVirtualNode::getMode() {
 }
 
 FsOpenNode* FsVirtualNode::open(U32 flags) {
+    if (this->isDirectory()) {
+        return new FsDirOpenNode(shared_from_this(), flags);
+    }
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
-        if (!this->canRead())
+        if (!this->canRead()) {
+            errno = EACCES;
             return nullptr;
+        }
     } else if ((flags & K_O_ACCMODE)==K_O_WRONLY) {
-        if (!this->canWrite())
+        if (!this->canWrite()) {
+            errno = EACCES;
             return nullptr;
+        }
     } else {
-        if (!this->canWrite())
+        if (!this->canWrite() || !this->canRead()) {
+            errno = EACCES;
             return nullptr;
-        if (!this->canRead())
-            return nullptr;
+        }
     }
     if (flags & K_O_CREAT) {
         //return 0;
@@ -62,18 +72,19 @@ FsOpenNode* FsVirtualNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         kdebug("What about appending a virtual file");
     }
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->path, true);
-    return this->openFunc(node, flags, this->openData);
+    // The path may have been removed or replaced since the caller resolved it
+    // (for example, by a CD-ROM eject). Open that resolved node, not its replacement.
+    return this->openFunc(shared_from_this(), flags, this->openData);
 }
 
 U32 FsVirtualNode::getType(bool checkForLink) {
     if (this->isDirectory()) {
         return 4; // DT_DIR
     }
-    if (this->mode & K__S_IFCHR) {
+    if ((this->mode & K_S_IFMT) == K__S_IFCHR) {
         return 2; // DT_CHR
     }
-    if (this->mode & K_S_IFSOCK) {
+    if ((this->mode & K_S_IFMT) == K_S_IFSOCK) {
         return 12; // DT_SOCK
     }
     return 8; // DT_REG
@@ -84,8 +95,7 @@ U32 FsVirtualNode::rename(BString path) {
 }
 
 U32 FsVirtualNode::removeDir() {
-    kpanic("FsVirtualNode::removeDir not implemented");
-    return 0;
+    return -K_EROFS;
 }
 
 U32 FsVirtualNode::setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) {

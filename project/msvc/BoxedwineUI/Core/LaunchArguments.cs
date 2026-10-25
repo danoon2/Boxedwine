@@ -25,9 +25,9 @@ public static class LaunchArguments
         ["-dxvk"] = ["0", "1", "false", "true", "no", "yes"], ["-opengl"] = ["osmesa"]
     };
     public static string Help => "Put each option and each value on a separate line. Spaces inside a value are preserved; do not add shell quotes.\n\n" +
-        string.Join(", ", Flags) + "\n\n" + string.Join("\n", Ranges.Select(p => $"{p.Key}: {p.Value.Min}–{p.Value.Max}")) +
+        string.Join(", ", Flags) + "\n\n" + string.Join("\n", Ranges.Where(p => p.Key != MouseSensitivityOption).Select(p => $"{p.Key}: {p.Value.Min}–{p.Value.Max}")) +
         "\n\n" + string.Join("\n", Choices.Select(p => p.Key + ": " + string.Join(", ", p.Value))) +
-        "\n-env: NAME=value\n-glext: allowed OpenGL extensions\n\n-rel_mouse_sensitivity is a percentage for captured, hidden mouse input that the game recenters; 100 is normal, and legacy 0 also means normal. It is synchronized with the Mouse sensitivity slider.\n\nPaths, Wine packages, window size and mounts are managed by Boxedwine. The obsolete -opengl osmesa option is accepted when importing Mac metadata and omitted at launch.";
+        "\n-env: NAME=value\n-glext: allowed OpenGL extensions\n\nMouse sensitivity is managed in General. Pasted -rel_mouse_sensitivity values transfer to that slider; 100 is normal, and legacy 0 also means normal.\n\nPaths, Wine packages, window size and mounts are managed by Boxedwine. The obsolete -opengl osmesa option is accepted when importing Mac metadata and omitted at launch.";
     public static int MouseSensitivity(IReadOnlyList<string> args)
     {
         ValidateOverrides(args);
@@ -90,14 +90,25 @@ public static class LaunchArguments
         }
         return result;
     }
-    public static List<string> Build(LibraryRepository repository, LibraryApp app, string wine, bool installing = false, string? alternate = null, string? external = null)
+    public static List<string> Build(LibraryRepository repository, LibraryApp app, string wine, bool installing = false, string? alternate = null, string? external = null, bool browseDisc = false)
     {
         repository.ValidateApp(app);
         if (app.HasPendingSettings) throw new InvalidOperationException("Wine settings must be prepared before launching this app.");
         if (new[] { installing, alternate != null, external != null }.Count(x => x) > 1) throw new InvalidOperationException("Choose one launch mode.");
+        if (browseDisc && (!installing || app.InstallFromDisc != true)) throw new InvalidOperationException("Choose a disc installation to browse.");
         List<string> result = ["-root", repository.Root(app), "-zip", wine, "-title", app.Name, "-resolution", installing && app.DemoSettings != null ? app.DemoSettings.InstallResolution ?? "1024x768" : app.Resolution];
         if (app.FullScreen) result.Add("-fullscreenAspect");
+        result.AddRange(CdromImages.LaunchOptions(app.CdromImages ?? [], repository.Root(app)));
         var overrides = Overrides(app.BoxedwineArguments ?? []);
+        if (installing && app.InstallFromDisc == true)
+        {
+            if (app.CdromImages is not { Count: > 0 }) throw new InvalidOperationException("Add an installation disc in App Settings → General.");
+            CdromImages.PrepareImport(app.CdromImages);
+            result.AddRange(overrides);
+            if (browseDisc) result.AddRange(["/bin/wine", "explorer", result[result.IndexOf("-cdrom") + 2] + ":\\"]);
+            else result.Add("-cdromInstall");
+            return result;
+        }
         if (app.BuiltIn != null && !installing && alternate == null && external == null)
         {
             result.AddRange(overrides); result.AddRange(["/bin/wine", app.BuiltIn == "notepad" ? "notepad" : "winemine"]); result.AddRange(app.Arguments); return result;

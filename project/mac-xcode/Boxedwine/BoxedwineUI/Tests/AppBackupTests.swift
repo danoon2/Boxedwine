@@ -75,6 +75,16 @@ struct AppBackupTests {
         try f.repository.discardUncommittedImport(again)
     }
 
+    @Test func discListsSurviveBackupWithoutRequiringTheExternalImages() throws {
+        let f = try fixture()
+        defer { try? FileManager.default.removeItem(at: f.base) }
+        var app = f.app
+        app.cdromImages = ["C:\\Games\\disc.iso", "/missing/Disc 2.cue"]
+        try AppBackup.export(app, repository: f.repository, runtime: f.runtime, to: f.backup)
+        let restored = try AppBackup.restore(f.backup, repository: f.repository)
+        #expect(restored.cdromImages == app.cdromImages)
+    }
+
     @Test func damagedMissingAndUnexpectedFilesAreRejectedBeforeImport() throws {
         let f = try fixture()
         defer { try? FileManager.default.removeItem(at: f.base) }

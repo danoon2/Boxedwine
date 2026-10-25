@@ -93,9 +93,11 @@ void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* t
 
 static U32 lastTitleUpdate = 0;
 static int mainLoopTimingMode = -1;
+static int mainLoopTimingValue = -1;
 
 static void updateMainLoopTiming(bool idle) {
     int mode = EM_TIMING_SETTIMEOUT;
+    int value = 1;
 #ifdef BOXEDWINE_WASM_JIT
     // Keep yielding to the browser between slices without paying the nested
     // timer delay while guest work is available. Sleeping guests still use a
@@ -104,9 +106,24 @@ static void updateMainLoopTiming(bool idle) {
         mode = EM_TIMING_SETIMMEDIATE;
     }
 #endif
-    if (mode != mainLoopTimingMode) {
-        emscripten_set_main_loop_timing(mode, mode == EM_TIMING_SETTIMEOUT ? 1 : 0);
+    if (idle) {
+        // Browsers hold a timeout set from inside another timeout for at least 4 ms,
+        // which would run a guest timer due sooner than that late, such as one of an
+        // audio driver's 10 ms periods. A timeout set after a message is not held,
+        // so wait for such a timer with one message and then one timeout.
+        U32 nextTimer = getNextTimer();
+        if (nextTimer < 4) {
+            if (nextTimer == 0 || mainLoopTimingMode == EM_TIMING_SETTIMEOUT) {
+                mode = EM_TIMING_SETIMMEDIATE;
+            } else {
+                value = (int)nextTimer + 1; // emscripten rounds the delay down
+            }
+        }
+    }
+    if (mode != mainLoopTimingMode || (mode == EM_TIMING_SETTIMEOUT && value != mainLoopTimingValue)) {
+        emscripten_set_main_loop_timing(mode, mode == EM_TIMING_SETTIMEOUT ? value : 0);
         mainLoopTimingMode = mode;
+        mainLoopTimingValue = value;
     }
 }
 

@@ -1572,12 +1572,13 @@ final class LibraryStore: ObservableObject {
     private func startRuntimeSession(_ app: LibraryApp, zip: URL, installing: Bool, dockIcon: Data?, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil) {
         guard !importing, canLaunch(app), apps.contains(app), let repository else { return }
         do {
+            let cdromAccess = try CdromImageAccess(app: app)
             let request = LaunchRequest(app: app, repository: repository, wineZip: zip, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram)
             let arguments = try request.arguments()
             let executable = try RuntimeSession.executable()
             try repository.prepare(app)
             let session = RuntimeSession()
-            try session.start(executable: executable, arguments: arguments, log: logURL(app), dockIcon: dockIcon, programFolderBookmark: externalProgram?.folderBookmark, onWindowShown: { [weak self, weak session] in
+            try session.start(executable: executable, arguments: arguments, log: logURL(app), dockIcon: dockIcon, programFolderBookmark: externalProgram?.folderBookmark, cdromAccess: cdromAccess, onWindowShown: { [weak self, weak session] in
                 guard let self, let session, self.sessions[app.id] === session,
                       !self.stopping.contains(app.id), self.launching.remove(app.id) != nil else { return }
                 self.activity[app.id] = (externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Running \($0)" } ?? (installing ? "Installer running" : "Running")

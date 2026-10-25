@@ -40,7 +40,7 @@
         <ScrollViewer Grid.Row="2" MaxHeight="220" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <ItemsControl x:Name="LaunchingApps" AutomationProperties.Name="Launching apps">
             <ItemsControl.ItemTemplate><DataTemplate>
-              <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,9,16">
+              <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,16">
                 <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                   <TextBlock Text="{Binding Name, StringFormat=Launching {0}…}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0" AutomationProperties.LiveSetting="Polite"/>
                   <Button Grid.Column="1" Content="Stop" Tag="{Binding}" Click="StopLaunchClick" Padding="12,4" AutomationProperties.Name="{Binding Name, StringFormat=Stop launching {0}}"/>

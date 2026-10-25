@@ -62,6 +62,10 @@ sealed partial class TestSuite
         work = Path.Combine(Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith('-')) ?? "../../../../../../tmp/native-ui-tests"), Guid.NewGuid().ToString("N")); Directory.CreateDirectory(work);
         Console.WriteLine("Test workspace: " + work);
         fixture = WineFixture("wine.zip"); wine = await Packages.ValidateWine(fixture, default);
+        await DiscInstallTests();
+        if (args.Contains("--disc-install-only")) return;
+        await CdromSettingsTests();
+        if (args.Contains("--cdrom-only")) return;
         await CollectionImports();
         if (args.Contains("--collections-only")) return;
         await Test("Engine location stays with each UI; overrides never fall back or enter preferences", async () =>
@@ -363,6 +367,7 @@ sealed partial class TestSuite
                 Console.WriteLine($"Wine {reference.WineVersion}: full validation {fullMilliseconds:0} ms; SHA-256 launch check {hashMilliseconds:0} ms; shared cache {watch.Elapsed.TotalMilliseconds:0.0} ms.");
             });
         }
+        await DemoArguments();
         await Test("Demo DLL overrides preserve the disabled-driver value and require schema 8", async () =>
         {
             string value = "cpuz136_x32.sys,cpuz136_x64.sys,GPUZ.sys=";

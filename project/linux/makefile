@@ -1,6 +1,6 @@
 ifndef BUILD_DIR
 
-.PHONY: default all clean release test native-runtime native-ui test-ui test-native-input test-native-gl deb
+.PHONY: default all clean release test native-runtime native-ui test-ui test-native-input test-native-gl test-cdrom-statusbar deb
 
 default all: release
 
@@ -27,8 +27,8 @@ test:   export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -D__TEST
 
 # Separate emulator for the libadwaita launcher. Keep the legacy targets intact.
-native-runtime test-native-input: export BUILD_DIR := Build/Native
-native-runtime test-native-input: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_NATIVE_RUNTIME
+native-runtime test-native-input test-cdrom-statusbar: export BUILD_DIR := Build/Native
+native-runtime test-native-input test-cdrom-statusbar: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_NATIVE_RUNTIME
 native-runtime:
 	@$(MAKE) -j$(or $(JOBS),8) TARGET_EXEC=boxedwine-engine
 
@@ -38,10 +38,16 @@ native-ui: native-runtime
 test-native-input: native-runtime
 	@$(MAKE) -f makefile -f ../../tools/input/mouse_capture_test.mk native-input-test
 
-# Uses a real SDL/OpenGL driver; run in a desktop session.
-test-native-gl: native-runtime
-	$(CXX) -std=c++20 -Wall ../../tools/input/test_linux_gl_fullscreen.cpp ../../platform/linux/linuxOpenGL.cpp $$(sdl2-config --cflags --libs) -lGL -o Build/Native/test-linux-gl-fullscreen
-	Build/Native/test-linux-gl-fullscreen
+# Uses a real SDL/OpenGL driver; run in a desktop session. Select the backend
+# with SDL_VIDEODRIVER (and SDL_VIDEO_X11_FORCE_EGL=1 for X11/EGL).
+# GL_TEST_ARGS=--fullscreen also checks a visible fullscreen desktop window.
+test-native-gl:
+	@mkdir -p Build/Native
+	$(CXX) -std=c++20 -Wall ../../tools/input/test_linux_gl_fullscreen.cpp ../../platform/linux/linuxOpenGL.cpp $$(sdl2-config --cflags --libs) -lGL -lEGL -Wl,--wrap=SDL_GL_SwapWindow -o Build/Native/test-linux-gl-fullscreen
+	Build/Native/test-linux-gl-fullscreen $(GL_TEST_ARGS)
+
+test-cdrom-statusbar: native-runtime
+	@$(MAKE) -f makefile -f ../../tools/input/cdrom_statusbar_test.mk cdrom-statusbar-test
 
 # Build on a Debian/Ubuntu-family host of the desired architecture.
 # DEB_ARGS may set --version or --revision and --output.

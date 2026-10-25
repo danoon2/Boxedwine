@@ -14,14 +14,16 @@ import time
 import uuid
 from .files import beneath, delete_tree, no_links
 from .library import DRIVE_C, WINDOWS, built_in, check_installer, preference
+from .cdrom import launch_options
 
+MOUSE_SENSITIVITY = '-rel_mouse_sensitivity'
 FLAGS = {'-nosound', '-p2', '-p3', '-dpiAware', '-disableHideCursor', '-forceRelativeMouse', '-cacheReads', '-disableLinearMemory'}
 RANGES = {'-vsync': (0, 2), '-scale': (1, 1000), '-cpuAffinity': (1, 64), '-pollRate': (0, 10000), '-skipFrameFPS': (0, 1000), '-rel_mouse_sensitivity': (0, 1000)}
 CHOICES = {'-bpp': ('8', '16', '32'), '-scale_quality': ('0', '1', '2', 'nearest', 'linear', 'best'), '-dxvk': ('0', '1', 'false', 'true', 'no', 'yes'), '-opengl': ('osmesa',)}
 OPTIONS_HELP = ('Put each option and each value on a separate line. Spaces inside a value are preserved; do not add shell quotes.\n\n' +
-                ', '.join(sorted(FLAGS)) + '\n\n' + '\n'.join(f'{k}: {a}–{b}' for k, (a, b) in RANGES.items()) + '\n\n' +
+                ', '.join(sorted(FLAGS)) + '\n\n' + '\n'.join(f'{k}: {a}–{b}' for k, (a, b) in RANGES.items() if k != MOUSE_SENSITIVITY) + '\n\n' +
                 '\n'.join(k + ': ' + ', '.join(v) for k, v in CHOICES.items() if k != '-opengl') +
-                '\n-env: NAME=value\n-glext: allowed OpenGL extensions\n\nPaths, Wine packages, window size, and mounts are managed by Boxedwine.')
+                '\n-env: NAME=value\n-glext: allowed OpenGL extensions\n\nMouse sensitivity is managed in General. Pasted -rel_mouse_sensitivity values transfer to that slider; 100 is normal, and legacy 0 also means normal.\n\nPaths, Wine packages, window size, and mounts are managed by Boxedwine.')
 
 
 def lines(text):
@@ -50,6 +52,59 @@ def validate_overrides(arguments):
             raise ValueError(option + ' accepts ' + ', '.join(CHOICES[option]))
         if option == '-env' and not re.match('[A-Za-z_][A-Za-z0-9_]*=', value):
             raise ValueError('Use NAME=value after -env.')
+
+
+def mouse_sensitivity(arguments):
+    validate_overrides(arguments)
+    percent = 100
+    iterator = iter(arguments)
+    for option in iterator:
+        if option in FLAGS:
+            continue
+        value = next(iterator)
+        if option == MOUSE_SENSITIVITY:
+            percent = int(value)
+    return percent or 100
+
+
+def with_mouse_sensitivity(arguments, percent):
+    if type(percent) is not int or not 1 <= percent <= 1000:
+        raise ValueError('Mouse sensitivity must be from 1% to 1000%.')
+    validate_overrides(arguments)
+    result = []
+    iterator = iter(arguments)
+    for option in iterator:
+        value = None if option in FLAGS else next(iterator)
+        if option != MOUSE_SENSITIVITY:
+            result.append(option)
+            if value is not None:
+                result.append(value)
+    if percent != 100:
+        result += [MOUSE_SENSITIVITY, str(percent)]
+    return result
+
+
+def transfer_mouse_sensitivity(text, cursor=0):
+    """Remove validated option/value lines without reformatting unrelated text."""
+    arguments = lines(text)
+    if MOUSE_SENSITIVITY not in arguments:
+        return text, None, cursor
+    percent = mouse_sensitivity(arguments)
+    physical = text.split('\n')
+    physical = [value + ('\n' if i < len(physical) - 1 else '') for i, value in enumerate(physical)]
+    nonempty = [i for i, value in enumerate(physical) if value.strip()]
+    removed = set()
+    i = 0
+    while i < len(arguments):
+        if arguments[i] == MOUSE_SENSITIVITY:
+            removed.update((nonempty[i], nonempty[i + 1]))
+        i += 1 if arguments[i] in FLAGS else 2
+    offset = adjustment = 0
+    for i, value in enumerate(physical):
+        if i in removed:
+            adjustment += max(0, min(len(value), cursor - offset))
+        offset += len(value)
+    return ''.join(value for i, value in enumerate(physical) if i not in removed), percent, cursor - adjustment
 
 
 def overrides(arguments):
@@ -103,6 +158,7 @@ def build_arguments(library, app, wine, installing=False, alternate=None, extern
     result = ['-root', str(library.root(app)), '-zip', str(wine), '-title', title, '-resolution', size]
     if app.get('fullScreen'):
         result.append('-fullscreenAspect')
+    result += launch_options(app.get('cdromImages') or [], library.root(app))
     extra = overrides(app.get('boxedwineArguments') or [])
     if tool is not None:
         return result + extra + ['-w', '/home/username', '/bin/wine', *WINE_TOOLS[tool][2]]

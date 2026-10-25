@@ -89,24 +89,42 @@ public partial class MainWindow
             Button("Try Another Wine Version…", "trial", CanChange(app));
         }
         form.Body.Children.Add(FormWindow.Heading("Installation and launch output"));
-        if (app.Installer != null) Button("Run Installer Again", "installer", CanChange(app));
+        if (app.HasInstaller) Button("Run Installer Again", "installer", CanChange(app));
         Button("View Launch Log…", "log");
+        Button("Show App Files", "files");
         form.Body.Children.Add(FormWindow.Paragraph("Warnings and a successful exit do not guarantee every app feature works. Logs can include paths and personal app output; review them before sharing."));
         form.Button("Close", () => form.DialogResult = false, true); form.ShowDialog();
-        Safe(() => { switch (action) { case "choose": ChooseMain(app); break; case "another": Another(app); break; case "edit": Edit(app); break; case "trial": Trial(app); break; case "installer": Open(app, installing: true); break; case "log": ShowLog(app); break; } });
+        Safe(() => { switch (action) { case "choose": ChooseMain(app); break; case "another": Another(app); break; case "edit": Edit(app); break; case "trial": Trial(app); break; case "installer": Open(app, installing: true); break; case "log": ShowLog(app); break; case "files": Reveal(repository.AppDirectory(app)); break; } });
     }
-    private void Storage(LibraryApp app)
+    private CancellationTokenSource? storageCancellation;
+    private void CancelStorage()
     {
-        RunOperation("Measuring app storage…", (token, progress) =>
+        storageCancellation?.Cancel(); storageCancellation = null;
+    }
+    private async void ShowStorageSummary(LibraryApp app)
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 12, 0, 18), ToolTip = "An estimate of disk space used by this app's Windows files, saves, installer and logs. Shared Wine packages and exported backups are stored separately." };
+        panel.Children.Add(new TextBlock { Text = "Storage", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 5) });
+        var value = FormWindow.Paragraph(Running(app) ? "Available after app closes" : busy ? "Available when the operation finishes" : "Calculating…");
+        value.Margin = new Thickness(0);
+        System.Windows.Automation.AutomationProperties.SetAutomationId(value, "app-storage-value");
+        System.Windows.Automation.AutomationProperties.SetLiveSetting(value, System.Windows.Automation.AutomationLiveSetting.Polite);
+        panel.Children.Add(value); Details.Children.Add(panel);
+        if (Running(app) || busy || shuttingDown) return;
+        using var cancellation = new CancellationTokenSource();
+        storageCancellation = cancellation;
+        try
         {
-            long total = 0; int files = 0;
-            foreach (var path in SafeFiles.Tree(repository.AppDirectory(app))) { token.ThrowIfCancellationRequested(); if (File.Exists(path)) { total += new FileInfo(path).Length; files++; } }
-            return Task.FromResult((Total: total, Files: files));
-        }, size =>
+            string root = repository.AppDirectory(app);
+            long? size = await Task.Run(() => AppStorage.Measure(root, cancellation.Token), cancellation.Token);
+            if (!cancellation.IsCancellationRequested) value.Text = size is { } bytes ? AppStorage.Format(bytes) : "Files not found";
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or OverflowException)
         {
-            var form = new FormWindow(this, "App storage", $"{app.Name}\n\n{size.Total / 1048576.0:0.0} MB in {size.Files:N0} files\nShared Wine package: {(app.WinePackage?.Bytes ?? 0) / 1048576.0:0.0} MB\n\nWindows files, saves, installers and logs stay with this app.");
-            form.Button("Show Files", () => Reveal(repository.AppDirectory(app))); form.Button("Close", () => form.DialogResult = true, true); form.ShowDialog();
-        });
+            if (!cancellation.IsCancellationRequested) { value.Text = "Couldn’t calculate"; panel.ToolTip = error.Message; }
+        }
+        finally { if (storageCancellation == cancellation) storageCancellation = null; }
     }
     private void ShowLog(LibraryApp app)
     {

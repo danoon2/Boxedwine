@@ -7,8 +7,8 @@ executable. Extract it above the automation/ directory as before.
 
 The launchers download the full Wine filesystem pinned in filesystem.properties,
 check its exact byte count and SHA-256, and cache it beside automation/ in
-automation-filesystems/. The current pin is full Wine 11.0, filesystem v20:
-https://boxedwine.org/v2/20/TinyCore15Wine11.0.zip
+automation-filesystems/. The current pin is full Wine 11.0, filesystem v21:
+https://boxedwine.org/v2/21/TinyCore15Wine11.0.zip
 
 The verified download is staged unchanged as fs/fs.zip. A separate fs/user.reg
 preserves the source settings and applies these existing automation presets:

@@ -31,6 +31,8 @@
 #include "../io/fsfilenode.h"
 #include "../x11/x11.h"
 #include "kunixsocket.h"
+#include "devcdrom.h"
+#include "../io/fsiso.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -2178,22 +2180,63 @@ U32 KProcess::fallocate(FD fildes, U32 mode, S64 offset, S64 length) {
 #define FS_SIZE 107374182400l
 #define FS_FREE_SIZE 96636764160l
 
+struct StatfsValues {
+    U32 type;
+    U32 blockSize;
+    U64 blocks;
+    U64 freeBlocks;
+    U64 files;
+    U64 freeFiles;
+    U32 flags;
+};
+
+// Wine decides a drive is a CD-ROM from f_type (ntdll get_device_info) and sizes it
+// from f_frsize/f_blocks, so the mounted ISO reports what Linux's isofs does: a full,
+// read-only iso9660 volume of 2048 byte sectors. Everything else is ext3.
+static StatfsValues getStatfsValues(const std::shared_ptr<FsNode>& node) {
+    std::shared_ptr<FsIso> iso = node ? getCdromForPath(node->path) : nullptr;
+    if (iso) {
+        return { 0x9660, ISO_SECTOR_SIZE, iso->totalSectors, 0, 0, 0, 1 | 4096 }; // ST_RDONLY | ST_RELATIME
+    }
+    return { 0xEF53, FS_BLOCK_SIZE, FS_SIZE / FS_BLOCK_SIZE, FS_FREE_SIZE / FS_BLOCK_SIZE, 1024 * 1024, 1024 * 1024, 4096 }; // ST_RELATIME
+}
+
+// struct statfs, 32-bit fields
+static void writeStatfs(KMemory* memory, U32 address, const StatfsValues& values, U64 fsid) {
+    memory->writed(address, values.type); // f_type
+    memory->writed(address + 4, values.blockSize); // f_bsize
+    memory->writed(address + 8, (U32)values.blocks); // f_blocks
+    memory->writed(address + 12, (U32)values.freeBlocks); // f_bfree
+    memory->writed(address + 16, (U32)values.freeBlocks); // f_bavail
+    memory->writed(address + 20, (U32)values.files); // f_files
+    memory->writed(address + 24, (U32)values.freeFiles); // f_ffree
+    memory->writeq(address + 28, fsid); // f_fsid
+    memory->writed(address + 36, MAX_FILEPATH_LEN); // f_namelen
+    memory->writed(address + 40, values.blockSize); // f_frsize
+    memory->writed(address + 44, values.flags); // f_flags
+}
+
+// struct statfs64
+static void writeStatfs64(KMemory* memory, U32 address, const StatfsValues& values, U64 fsid) {
+    memory->writed(address, values.type); // f_type
+    memory->writed(address + 4, values.blockSize); // f_bsize
+    memory->writeq(address + 8, values.blocks); // f_blocks
+    memory->writeq(address + 16, values.freeBlocks); // f_bfree
+    memory->writeq(address + 24, values.freeBlocks); // f_bavail
+    memory->writeq(address + 32, values.files); // f_files
+    memory->writeq(address + 40, values.freeFiles); // f_ffree
+    memory->writeq(address + 48, fsid); // f_fsid
+    memory->writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
+    memory->writed(address + 60, values.blockSize); // f_frsize
+    memory->writed(address + 64, values.flags); // f_flags
+}
+
 U32 KProcess::statfs(BString path, U32 address) {
     FsPathResult resolution = resolvePathForSyscall(this->currentDirectory, path, true);
     if (resolution.error) {
         return resolution.error;
     }
-    memory->writed(address, 0xEF53); // f_type (EXT3)
-    memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
-    memory->writed(address + 8, FS_SIZE / FS_BLOCK_SIZE); // f_blocks
-    memory->writed(address + 16, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bfree
-    memory->writed(address + 24, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bavail
-    memory->writed(address + 32, 1024 * 1024); // f_files
-    memory->writed(address + 40, 1024 * 1024); // f_ffree
-    memory->writed(address + 48, 1278601602); // f_fsid
-    memory->writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
-    memory->writed(address + 60, FS_BLOCK_SIZE); // f_frsize
-    memory->writed(address + 64, 4096); // f_flags
+    writeStatfs(memory, address, getStatfsValues(resolution.node), 1278601602);
     return 0;
 }
 
@@ -2202,17 +2245,7 @@ U32 KProcess::statfs64(BString path, U32 address) {
     if (resolution.error) {
         return resolution.error;
     }
-    memory->writed(address, 0xEF53); // f_type (EXT3)
-    memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
-    memory->writeq(address + 8, FS_SIZE / FS_BLOCK_SIZE); // f_blocks
-    memory->writeq(address + 16, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bfree
-    memory->writeq(address + 24, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bavail
-    memory->writeq(address + 32, 1024 * 1024); // f_files
-    memory->writeq(address + 40, 1024 * 1024); // f_ffree
-    memory->writeq(address + 48, 1278601602); // f_fsid
-    memory->writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
-    memory->writed(address + 60, FS_BLOCK_SIZE); // f_frsize
-    memory->writed(address + 64, 4096); // f_flags
+    writeStatfs64(memory, address, getStatfsValues(resolution.node), 1278601602);
     return 0;
 }
 
@@ -2222,17 +2255,11 @@ U32 KProcess::fstatfs64(FD fildes, U32 address) {
     if (!fd) {
         return -K_EBADF;
     }
-    memory->writed(address, 0xEF53); // f_type (EXT3)
-    memory->writed(address + 4, FS_BLOCK_SIZE); // f_bsize
-    memory->writeq(address + 8, FS_SIZE / FS_BLOCK_SIZE); // f_blocks
-    memory->writeq(address + 16, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bfree
-    memory->writeq(address + 24, FS_FREE_SIZE / FS_BLOCK_SIZE); // f_bavail
-    memory->writeq(address + 32, 1024 * 1024); // f_files
-    memory->writeq(address + 40, 1024 * 1024); // f_ffree
-    memory->writeq(address + 48, 12719298601114463092ull); // f_fsid
-    memory->writed(address + 56, MAX_FILEPATH_LEN); // f_namelen
-    memory->writed(address + 60, FS_BLOCK_SIZE); // f_frsize
-    memory->writed(address + 64, 4096); // f_flags
+    std::shared_ptr<FsNode> node;
+    if (fd->kobject->type == KTYPE_FILE) {
+        node = std::dynamic_pointer_cast<KFile>(fd->kobject)->openFile->node;
+    }
+    writeStatfs64(memory, address, getStatfsValues(node), 12719298601114463092ull);
     return 0;
 }
 
@@ -3276,7 +3303,7 @@ struct statx {
 void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 atimeSeconds, U32 atimeNano, U32 mtimeSeconds, U32 mtimeNano, U32 ctimeSeconds, U32 ctimeNano) {
     // 0x00
     memory->writed(buf, 0xfff); buf += 4; // stx_mask
-    memory->writed(buf, 512); buf += 4; // stx_blksize
+    memory->writed(buf, FS_BLOCK_SIZE); buf += 4; // stx_blksize, same as stat. glibc sizes stdio buffers by it
     memory->writeq(buf, 0); buf += 8; // stx_attributes
     // 0x10
     memory->writed(buf, hardLinkCount); buf += 4; // stx_nlink

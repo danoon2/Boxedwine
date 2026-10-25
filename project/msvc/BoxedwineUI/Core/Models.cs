@@ -38,6 +38,9 @@ public sealed class LibraryApp
     public bool FullScreen { get; set; }
     public List<string> Arguments { get; set; } = [];
     public List<string>? BoxedwineArguments { get; set; }
+    public List<string>? CdromImages { get; set; }
+    public bool? InstallFromDisc { get; set; }
+    [JsonIgnore] public bool HasInstaller => Installer != null || InstallFromDisc == true;
     public bool IsNotepad { get; set; }
     public string? BuiltInProgram { get; set; }
     public string? SavedWineVersion { get; set; }

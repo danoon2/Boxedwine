@@ -5,6 +5,7 @@
 import copy
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -56,10 +57,11 @@ def main():
             until = time.monotonic() + .5
             while time.monotonic() < until:
                 yield
-            gi.require_version('GdkX11', '4.0')
-            from gi.repository import GdkX11
-            xid = GdkX11.X11Surface.get_xid(window.get_surface())
-            subprocess.run(['import', '-window', str(xid), '/tmp/boxedwine-wine-tools-picker.png'], check=True)
+            if window.get_display().get_name().startswith(':') and shutil.which('import'):
+                gi.require_version('GdkX11', '4.0')
+                from gi.repository import GdkX11
+                xid = GdkX11.X11Surface.get_xid(window.get_surface())
+                subprocess.run(['import', '-window', str(xid), '/tmp/boxedwine-wine-tools-picker.png'], check=True)
             rows['Registry Editor'].emit('activated')
             assert calls == [(saved['id'], {'tool': 'regedit'})]
             until = time.monotonic() + .4
@@ -85,11 +87,11 @@ def main():
                 dialogs.app_settings(window, window.find_app(saved['id']))
                 while window.busy:
                     yield
-            dialog = window.get_visible_dialog(); assert isinstance(dialog, Adw.PreferencesDialog)
+            dialog = window.get_visible_dialog(); assert isinstance(dialog, Adw.Dialog)
             rows = {w.get_title(): w for w in widgets(dialog) if isinstance(w, Adw.ComboRow)}
             assert rows['Windows version'].get_selected_item().get_string() == 'Windows 98'
-            assert rows['Wine renderer'].get_selected_item().get_string() == 'GDI'
-            assert rows['Wine display interface'].get_selected_item().get_string() == 'GLX'
+            assert rows['Wine renderer'].get_selected_item().get_string() == 'GDI (compatibility)'
+            assert rows['Wine OpenGL interface'].get_selected_item().get_string() == 'GLX'
             dialog.close()
             until = time.monotonic() + .4
             while time.monotonic() < until:

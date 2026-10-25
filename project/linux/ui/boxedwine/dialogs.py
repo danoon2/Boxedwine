@@ -1,14 +1,12 @@
 # Copyright (C) 2026 The Boxedwine Team
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Native libadwaita dialogs. All callbacks run on GTK's main thread."""
-import base64
-import copy
 from pathlib import Path
 import re
-from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 from .files import beneath, no_links
-from .library import DRIVE_C, WINDOWS, RENDERERS, built_in, preference, resolution
-from .runtime import OPTIONS_HELP, WINE_TOOLS, lines, validate_overrides
+from .library import DRIVE_C, WINDOWS, resolution
+from .runtime import WINE_TOOLS, lines
 
 
 def guarded(owner, callback):
@@ -203,72 +201,8 @@ def app_settings(owner, app):
     if app.get('wineConfigurationRefreshPending'):
         owner.read_back_configuration(app, lambda updated: app_settings(owner, updated))
         return
-    saved = copy.deepcopy(app)
-    dialog = Adw.PreferencesDialog(title='App Settings', content_width=660, content_height=680)
-    general = page(dialog, 'General', 'preferences-system-symbolic')
-    identity_group = group(general, 'App')
-    name = Adw.EntryRow(title='Name', text=saved['name']); identity_group.add(name)
-    program_row = None
-    if not built_in(saved):
-        def select_program():
-            def selected(path):
-                saved['executable'] = path
-                program_row.set_subtitle('C:/' + path[len(DRIVE_C) + 1:])
-            program_picker(owner, saved, selected)
-        program_row = action_row(owner, identity_group, 'Program', 'C:/' + saved['executable'][len(DRIVE_C) + 1:] if saved.get('executable') else 'Choose after installation', 'Choose…', select_program)
-    display = group(general, 'Display')
-    size = editable_combo(display, 'Window size', ['640x480', '800x600', '1024x768', '1280x720', '1920x1080'],
-                          saved.get('resolution', '1024x768'))
-    fullscreen = Adw.SwitchRow(title='Open in Full Screen', active=saved.get('fullScreen', False)); display.add(fullscreen)
-    compatibility = group(general, 'Windows Compatibility', 'Changes apply before the next app or installer launch.')
-    row(compatibility, 'Windows support', 'Wine ' + (saved.get('savedWineVersion') or 'default') + ' · Pinned for this app')
-    def configuration_choice(group, title, choices, field, subtitle=None):
-        custom = saved.get('wineConfigurationCustom', {}).get(field)
-        if custom:
-            choices = {**choices, 'custom': 'Custom (set in Wine)'}
-            subtitle = custom
-        return combo(group, title, choices, 'custom' if custom else preference(saved, field), subtitle)[1]
-    windows = configuration_choice(compatibility, 'Windows version', WINDOWS, 'windowsVersion')
-    advanced = page(dialog, 'Advanced', 'applications-engineering-symbolic')
-    icon_group = group(advanced, 'App Icon')
-    def set_icon(path):
-        if no_links(path).stat().st_size > 32 * 1024**2:
-            raise ValueError('Choose an image smaller than 32 MB.')
-        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), 256, 256, True)
-        success, data = pixbuf.save_to_bufferv('png', [], [])
-        if not success:
-            raise ValueError('Could not read this image.')
-        saved['customIconPNG'] = base64.b64encode(data).decode()
-        icon_row.set_subtitle(path.name)
-    icon_row = action_row(owner, icon_group, 'Custom icon', 'Use a PNG, JPEG, or other supported image', 'Choose…',
-                          lambda: choose_file(owner, 'Choose App Icon', set_icon))
-    action_row(owner, icon_group, 'Default icon', '', 'Reset', lambda: (saved.pop('customIconPNG', None), icon_row.set_subtitle('Using the default icon')))
-    graphics = group(advanced, 'Wine Graphics', 'Compatibility settings for older DirectDraw and Direct3D programs.')
-    renderer = configuration_choice(graphics, 'Wine renderer', RENDERERS, 'wineRenderer')
-    backend = configuration_choice(graphics, 'Wine display interface', {'wineDefault': 'Use Wine’s default', 'glx': 'GLX', 'egl': 'EGL'}, 'openGLBackend', 'Controls how Wine connects to the Linux OpenGL driver.')
-    _, arguments = text_editor(advanced, 'App Arguments', '\n'.join(saved.get('arguments', [])), 'One argument per line. Spaces are preserved; do not add shell quotes.')
-    _, boxed_arguments = text_editor(advanced, 'Boxedwine Arguments', '\n'.join(saved.get('boxedwineArguments') or []), 'Advanced emulator options, one option or value per line.')
-    help_group = group(advanced, '')
-    action_row(owner, help_group, 'Supported options', '', 'View', lambda: text_dialog(owner, 'Supported Options', OPTIONS_HELP, True))
-    actions = group(general, '')
-    def save():
-        if not owner.can_modify(app):
-            return
-        saved.update(name=name.get_text().strip(), resolution=size.get_text().strip(), fullScreen=fullscreen.get_active(),
-                     arguments=lines(arguments()), boxedwineArguments=lines(boxed_arguments()))
-        for field, value in [('windowsVersion', windows()), ('wineRenderer', renderer()), ('openGLBackend', backend())]:
-            if value == 'custom':
-                continue
-            if value != preference(app, field) or field in saved.get('wineConfigurationCustom', {}):
-                saved[field] = value; saved[field + 'Pending'] = True
-                saved.get('wineConfigurationCustom', {}).pop(field, None)
-        if not saved.get('wineConfigurationCustom'):
-            saved.pop('wineConfigurationCustom', None)
-        owner.library.validate_app(saved)
-        owner.library.update(saved)
-        dialog.close(); owner.refresh(); owner.toast('App settings saved')
-    action_row(owner, actions, 'Save changes', '', 'Save', save, 'suggested-action')
-    action_row(owner, group(advanced, ''), 'Save changes', '', 'Save', save, 'suggested-action')
+    from .app_settings import AppSettingsDialog
+    dialog = AppSettingsDialog(owner, app)
     dialog.present(owner)
     return dialog
 

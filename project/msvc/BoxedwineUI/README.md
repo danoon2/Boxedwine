@@ -6,18 +6,42 @@ file/folder pickers, keyboard navigation, drag and drop, and .NET's Fluent theme
 Settings supports the Windows appearance setting, Light, and Dark, with live
 changes across open windows. System high-contrast colors are respected.
 
+App Settings → General includes an ordered CD-ROM image list. Add one or several
+ISO/CUE images, drag rows to reorder them (or use Alt+Up/Down or the row's context
+menu), and remove references without deleting the files. The first image is
+inserted at launch; Ctrl+Shift+F12 cycles discs and the in-app status bar can also
+choose an image at runtime. Saved image paths apply to app, installer, and alternate
+program launches. Backups preserve the references; external image files stay in
+their original locations. Missing files are reported at launch and can still be
+removed in settings. The dialog fits its content once when opened, up to 90% of
+the current monitor's work area, and scrolls without resizing as images are added.
+
 App Settings includes a per-app mouse sensitivity slider (25%–400%, with 100%
 normal and a Reset button). It adjusts hidden, captured cursor movement after a
 game recenters the pointer, including games using cursor-position polling.
 Changes apply on the next launch. Ordinary visible pointer movement and
 programmatic cursor warps are unchanged; `-forceRelativeMouse` input is excluded.
 The setting is saved in the existing `boxedwineArguments` list as
-`-rel_mouse_sensitivity` plus a percentage, so backups retain it. Advanced values
-from 1%–1000% expand the slider's range; legacy 0 means 100%. The advanced argument
-editor and slider stay synchronized. This requires an engine built with the
+`-rel_mouse_sensitivity` plus a percentage, so backups retain it. Existing or pasted
+values from 1%–1000% expand the slider's range; legacy 0 means 100%. This option is
+hidden from Advanced. Complete pasted values transfer to the General slider;
+typed values transfer when leaving the field or saving. This requires an engine built with the
 sensitivity implementation; older engines parse the option but ignore it.
 
 ## Build and run
+
+Drop an ISO or CUE image onto the library to install from disc, or choose one
+through Add to Library. Several images dropped together become one app's ordered
+CD-ROM list. Review the name and disc order, then choose Install or Browse disc.
+Install mounts the first disc and runs its `autorun.inf` `open` (or `shellexecute`)
+entry. Missing, malformed, or unavailable autorun targets fall back to Wine
+Explorer at the CD-ROM drive. No installer-name guessing is performed.
+The same action is available later through Run Installer Again. Ordinary app
+launches and disc swaps do not run autorun. Images stay in their original
+locations, and CUE track files must remain available. The list and installation
+mode are saved in app settings and backups; external image contents are not
+copied into backups. The native engine exposes this explicit startup behavior
+as `-cdromInstall` with `-cdrom` images and no guest command.
 
 Install the .NET 10 SDK and Visual Studio's C++ desktop build tools. The complete
 x64 build was verified with Visual Studio 18 Community. The UI has no NuGet package
@@ -235,6 +259,8 @@ cd project/msvc/BoxedwineUI
 dotnet restore BoxedwineUI.sln --configfile NuGet.Config
 dotnet run --project Tests/Boxedwine.Tests.csproj -c Release --no-restore -- C:\Boxedwine\tmp\native-ui-tests
 dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\native-ui-previews
+dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\app-settings-checks --app-settings
+dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\storage-checks --storage
 dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\source-import-checks --source-errors
 ```
 

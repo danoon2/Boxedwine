@@ -22,7 +22,8 @@ static SDL_Cursor* currentCursor;
 static SDL_bool relativeMode = SDL_FALSE;
 static U32 physicalButtons;
 static int warpCount;
-extern "C" void SDL_WarpMouseInWindow(SDL_Window*, int, int) { ++warpCount; }
+static int physicalX = 400, physicalY = 300, warpX, warpY;
+extern "C" void SDL_WarpMouseInWindow(SDL_Window*, int x, int y) { ++warpCount; warpX = x; warpY = y; }
 extern "C" const char* SDL_GetWindowTitle(SDL_Window* w) { return titles[uintptr_t(w)].c_str(); }
 extern "C" void SDL_SetWindowTitle(SDL_Window* w, const char* title) { titles[uintptr_t(w)] = title; }
 extern "C" int SDL_ShowCursor(int toggle) { if (toggle >= 0) cursorShown = toggle; return cursorShown; }
@@ -30,7 +31,7 @@ extern "C" void SDL_SetCursor(SDL_Cursor* cursor) { currentCursor = cursor; }
 extern "C" SDL_Cursor* SDL_GetDefaultCursor() { return reinterpret_cast<SDL_Cursor*>(1); }
 extern "C" int SDL_SetRelativeMouseMode(SDL_bool enabled) { relativeMode = enabled; return 0; }
 extern "C" SDL_bool SDL_GetRelativeMouseMode() { return relativeMode; }
-extern "C" Uint32 SDL_GetMouseState(int* x, int* y) { if (x) *x = 400; if (y) *y = 300; return physicalButtons; }
+extern "C" Uint32 SDL_GetMouseState(int* x, int* y) { if (x) *x = physicalX; if (y) *y = physicalY; return physicalButtons; }
 static bool alive[4] = {false, true, true, true};
 static SDL_Window* window(U32 id) { return reinterpret_cast<SDL_Window*>(uintptr_t(id)); }
 extern "C" SDL_Window* SDL_GetKeyboardFocus() { return focused; }
@@ -322,6 +323,68 @@ int main() {
     assert(!grabbed && titles[3] == "Alice - 60 FPS");
     shortcut.type = SDL_KEYDOWN;
     assert(!input.handleMouseCaptureEvent(&shortcut)); // No capture to toggle.
+    // Entering the status bar releases capture with SDL's position below the
+    // guest. Recapture must warp inside the guest, or the bar immediately
+    // releases capture again and every subsequent guest click repeats the loop.
+    physicalY = 615;
+    input.setMouseCaptureReleased(true);
+    input.getMousePos(&x, &y);
+    assert(x == 400 && y == 599);
+    click.type = SDL_MOUSEBUTTONDOWN;
+    assert(input.handleMouseCaptureEvent(&click));
+    assert(!input.isMouseCaptureReleased() && warpX == 400 && warpY == 599);
+    click.type = SDL_MOUSEBUTTONUP;
+    assert(input.handleMouseCaptureEvent(&click));
+    assert(!input.isMouseCaptureReleased() && input.swallowedMouseButtons == 0);
+    physicalY = 300;
+    // Normal desktop apps only suspend input over host UI. Moving back resumes
+    // at the actual pointer position: no capture hint, extra click, or warp.
+    input.setCursor(reinterpret_cast<SDL_Cursor*>(2));
+    int previousWarps = warpCount;
+    for (U32 eventType : {SDL_MOUSEMOTION, SDL_MOUSEBUTTONDOWN}) {
+        input.releaseMouseForHostUi();
+        assert(input.isMouseCaptureReleased() && input.hostUiMouseReleased && !grabbed);
+        assert(titles[3] == "Alice - 60 FPS" && currentCursor == SDL_GetDefaultCursor());
+        // Typing while the pointer is over the bar must not move the pointer
+        // or intercept the desktop app's Ctrl+Alt+G shortcut.
+        assert(!input.handleMouseCaptureEvent(&shortcut));
+        assert(input.isMouseCaptureReleased() && input.hostUiMouseReleased && !input.captureShortcutDown);
+        focused = nullptr;
+        SDL_Event enter = {};
+        enter.type = SDL_MOUSEMOTION;
+        enter.window.windowID = 3;
+        assert(input.handleMouseCaptureEvent(&enter)); // A popup still owns focus.
+        assert(input.isMouseCaptureReleased());
+        focused = window(3);
+        physicalX = 210; physicalY = 180;
+        enter.type = eventType;
+        if (eventType == SDL_MOUSEBUTTONDOWN) enter.button.button = SDL_BUTTON_LEFT;
+        assert(!input.handleMouseCaptureEvent(&enter));
+        assert(!input.isMouseCaptureReleased() && !input.hostUiMouseReleased && !grabbed);
+        assert(warpCount == previousWarps && currentCursor == reinterpret_cast<SDL_Cursor*>(2));
+        input.getMousePos(&x, &y);
+        assert(x == 210 && y == 180 && titles[3] == "Alice - 60 FPS");
+        if (eventType == SDL_MOUSEBUTTONDOWN) {
+            enter.type = SDL_MOUSEBUTTONUP;
+            assert(!input.handleMouseCaptureEvent(&enter));
+        }
+    }
+    // Games that really lock the pointer still require an explicit recapture.
+    input.setMouseConfinement(true);
+    input.releaseMouseForHostUi();
+    assert(input.isMouseCaptureReleased() && !input.hostUiMouseReleased && !grabbed);
+    motion.type = SDL_MOUSEMOTION;
+    motion.motion.windowID = 3;
+    assert(input.handleMouseCaptureEvent(&motion));
+    assert(input.isMouseCaptureReleased() && titles[3] == "Alice - 60 FPS - Click to capture mouse");
+    input.releaseMouseForHostUi(); // Repeated host events cannot change that policy.
+    click.type = SDL_MOUSEBUTTONDOWN;
+    assert(input.handleMouseCaptureEvent(&click));
+    assert(!input.isMouseCaptureReleased() && grabbed == window(3) && warpCount == previousWarps + 1);
+    click.type = SDL_MOUSEBUTTONUP;
+    assert(input.handleMouseCaptureEvent(&click));
+    input.setMouseConfinement(false);
+    physicalX = 400; physicalY = 300;
     testMappedWindowFocus();
     screen.window = nullptr; // Do not destroy the fake host window.
     SDL_Quit();

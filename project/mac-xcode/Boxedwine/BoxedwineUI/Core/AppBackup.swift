@@ -39,6 +39,7 @@ struct AppBackup {
     static func export(_ app: LibraryApp, repository: LibraryRepository, runtime: URL,
                        to destination: URL, control: ImportControl = ImportControl()) throws {
         try BoxedwineArguments.validate(app.boxedwineArguments ?? [])
+        try CdromImages.validate(app.cdromImages ?? [])
         let source = repository.appDirectory(app).resolvingSymlinksInPath().standardizedFileURL
         let destination = destination.standardizedFileURL
         let resolved = destination.resolvingSymlinksInPath().standardizedFileURL
@@ -122,6 +123,8 @@ struct AppBackup {
         guard !manifest.app.hasOpenGLBackendPreference || manifest.format >= 6 else { throw BackupError.changed }
         try manifest.app.demoSettings?.validate()
         try BoxedwineArguments.validate(manifest.app.boxedwineArguments ?? [])
+        try CdromImages.validate(manifest.app.cdromImages ?? [])
+        try CdromImages.validateBookmarks(manifest.app.cdromBookmarks ?? [:])
         guard !manifest.app.hasBoxedwineArguments || manifest.format >= 5 else { throw BackupError.changed }
         guard manifest.entries.count <= 100_000, !manifest.app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               manifest.app.name.utf8.count <= 1024 else { throw BackupError.invalid("The app details are invalid.") }

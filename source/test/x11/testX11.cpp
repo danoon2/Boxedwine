@@ -198,4 +198,63 @@ void testXInputValuatorLayout() {
 	if (memory->readd(address + 48) != 0xcccccccc) testFail("XInput valuator write overran guest structure");
 }
 
+void testX11GetImageBounds() {
+    testNewInstruction(0);
+    auto visual = std::make_shared<Visual>();
+    visual->bits_per_rgb = 8;
+    XDrawable drawable(4, 2, 8, visual, false);
+    for (U32 i = 0; i < 8; ++i) drawable.getData()[i] = (U8)(i + 1);
+    auto capture = [&](S32 x, S32 y, U32 w, U32 h) {
+        return drawable.getImage(testContext().thread, x, y, w, h, AllPlanes, ZPixmap, 0, 0, 0);
+    };
+    if (capture(0, 0, 0, 1) || capture(0, 0, 1, 0) || capture(0, 0, 0xffffffff, 2))
+        testFail("XGetImage accepted an empty or overflowing image");
+    // Last pixel of the last row: copying the padded stride would overread.
+    U32 address = capture(3, 1, 1, 1);
+    if (!address) { testFail("XGetImage rejected a valid edge pixel"); return; }
+    XImage image;
+    auto memory = testContext().memory;
+    XImage::read(memory, address, &image);
+    if (image.bytes_per_line != 4 || memory->readd(image.data) != 8)
+        testFail("XGetImage edge pixel/padding incorrect");
+    testContext().thread->process->free(image.data);
+    testContext().thread->process->free(address);
+    // A software cursor can save pixels across all four edges. Keep the
+    // requested dimensions, fill missing pixels/padding, and copy only bounds.
+    address = capture(-1, -1, 6, 4);
+    if (!address) { testFail("XGetImage rejected a rectangle crossing drawable edges"); return; }
+    XImage::read(memory, address, &image);
+    if (image.width != 6 || image.height != 4 || image.bytes_per_line != 8)
+        testFail("XGetImage changed the requested edge rectangle");
+    for (U32 row = 0; row < 4; ++row) {
+        for (U32 column = 0; column < 8; ++column) {
+            U8 expected = row >= 1 && row <= 2 && column >= 1 && column <= 4 ?
+                (U8)((row - 1) * 4 + column) : 0;
+            if (memory->readb(image.data + row * 8 + column) != expected)
+                testFail("XGetImage edge clipping/padding incorrect");
+        }
+    }
+    testContext().thread->process->free(image.data);
+    testContext().thread->process->free(address);
+    address = capture(4, 2, 1, 1);
+    if (!address) { testFail("XGetImage rejected an offscreen cursor rectangle"); return; }
+    XImage::read(memory, address, &image);
+    if (memory->readd(image.data)) testFail("XGetImage offscreen pixels were not cleared");
+    testContext().thread->process->free(image.data);
+    testContext().thread->process->free(address);
+    drawable.setSize(0, 0);
+    if (capture(0, 0, 1, 1)) testFail("XGetImage accepted an empty backing store");
+    auto monoVisual = std::make_shared<Visual>();
+    monoVisual->bits_per_rgb = 1;
+    XDrawable mono(33, 1, 1, monoVisual, false);
+    if (mono.getBytesPerLine() != 8) testFail("monochrome drawable lost a partial byte");
+    memset(mono.getData(), 0xaa, mono.getDataSize());
+    address = mono.getImage(testContext().thread, 1, 0, 32, 1, AllPlanes, ZPixmap, 0, 0, 0);
+    if (!address) { testFail("XGetImage rejected a monochrome rectangle"); return; }
+    XImage::read(memory, address, &image);
+    if (memory->readd(image.data) != 0x55555555) testFail("XGetImage lost the monochrome bit offset");
+    testContext().thread->process->free(image.data);
+    testContext().thread->process->free(address);
+}
+
 #endif

@@ -87,6 +87,7 @@
 #define K_EHOSTUNREACH   113
 #define K_EALREADY       114
 #define K_EINPROGRESS    115
+#define K_ENOMEDIUM      123
 
 #define K_CONTINUE       998
 #define K_WAIT           999

@@ -50,6 +50,9 @@ final class RuntimeSession {
     private let process = Process()
     private let input = Pipe()
     private var stopRequested = false
+    private var cdromAccess: CdromImageAccess?
+    private var cdromManifest: URL?
+    deinit { if let cdromManifest { try? FileManager.default.removeItem(at: cdromManifest) } }
     private var onExit: (@MainActor (RuntimeExit) -> Void)?
     private var onWindowShown: (@MainActor () -> Void)?
     var isRunning: Bool { process.isRunning }
@@ -57,6 +60,7 @@ final class RuntimeSession {
     func start(executable: URL, arguments: [String], log: URL,
                dockIcon: Data? = nil,
                programFolderBookmark: Data? = nil,
+               cdromAccess: CdromImageAccess? = nil,
                onWindowShown: (@MainActor () -> Void)? = nil,
                onExit: @escaping @MainActor (RuntimeExit) -> Void) throws {
         precondition(self.onExit == nil, "A runtime session can only be started once")
@@ -70,6 +74,7 @@ final class RuntimeSession {
                 guard let self, self.onExit != nil, !self.stopRequested, self.process.isRunning else { return }
                 let callback = self.onWindowShown
                 self.onWindowShown = nil
+                self.clearCdromManifest()
                 callback?()
             }
         }
@@ -81,6 +86,21 @@ final class RuntimeSession {
         environment["BOXEDWINE_DOCK_ICON_PNG"] = dockIcon.flatMap { $0.count <= 72 * 1024 ? $0.base64EncodedString() : nil }
         if let programFolderBookmark, programFolderBookmark.count > 48 * 1024 { throw ExternalProgramError.access }
         environment["BOXEDWINE_PROGRAM_FOLDER_BOOKMARK"] = programFolderBookmark?.base64EncodedString()
+        environment["BOXEDWINE_CDROM_BOOKMARKS_FILE"] = nil
+        if let cdromAccess, !cdromAccess.runtimeBookmarks.isEmpty {
+            let manifest = log.deletingLastPathComponent().appendingPathComponent(".cdrom-access-\(UUID().uuidString).json")
+            let data = try JSONEncoder().encode(cdromAccess.runtimeBookmarks)
+            do {
+                try data.write(to: manifest, options: .atomic)
+                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: manifest.path)
+            } catch {
+                try? FileManager.default.removeItem(at: manifest)
+                throw error
+            }
+            self.cdromManifest = manifest
+            environment["BOXEDWINE_CDROM_BOOKMARKS_FILE"] = manifest.path
+        }
+        self.cdromAccess = cdromAccess
         process.environment = environment
         process.currentDirectoryURL = log.deletingLastPathComponent()
         process.standardInput = input
@@ -98,6 +118,7 @@ final class RuntimeSession {
                 let callback = self.onExit
                 self.onExit = nil
                 self.onWindowShown = nil
+                self.releaseCdromAccess()
                 let result = RuntimeExit(status: status, signalled: signalled, stoppedByUser: self.stopRequested)
                 output.finish(result.logDescription) { problem in
                     Task { @MainActor in
@@ -112,6 +133,7 @@ final class RuntimeSession {
         catch {
             self.onExit = nil
             self.onWindowShown = nil
+            releaseCdromAccess()
             process.terminationHandler = nil
             output.failedToStart("The runtime could not start: " + error.localizedDescription)
             throw error
@@ -119,6 +141,16 @@ final class RuntimeSession {
         output.childStarted()
         // Only the child should retain the read end; closing the parent will deliver EOF.
         try? input.fileHandleForReading.close()
+    }
+
+    private func clearCdromManifest() {
+        if let cdromManifest { try? FileManager.default.removeItem(at: cdromManifest) }
+        cdromManifest = nil
+    }
+
+    private func releaseCdromAccess() {
+        clearCdromManifest()
+        cdromAccess = nil
     }
 
     func stop() {

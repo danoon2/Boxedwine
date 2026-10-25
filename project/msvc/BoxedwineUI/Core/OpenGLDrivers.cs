@@ -42,6 +42,19 @@ public static class OpenGLDrivers
             : "software rendering (LLVMpipe) or Direct3D 12";
         return native + $" Mesa offers {renderers}. Mesa is downloaded once when first needed. Hardware acceleration requires a compatible graphics driver.";
     }
+    public static string SelectionHelp(Architecture architecture, string implementation)
+    {
+        if (!Choices(architecture).ContainsKey(implementation)) return "Unavailable for this engine. Choose another implementation.";
+        string description = implementation switch
+        {
+            "native" => "Uses your graphics card's OpenGL driver.",
+            "llvmpipe" => "Uses your CPU for rendering; can be slower.",
+            "d3d12" => "Uses Direct3D 12; requires a compatible graphics driver.",
+            "zink" => "Uses Vulkan; requires a compatible graphics driver.",
+            _ => throw new InvalidDataException("Unknown OpenGL implementation.")
+        };
+        return implementation == "native" ? description : description + "\nDownloads graphics components if needed.";
+    }
     public static bool IsKnown(string value) => value is "native" or "llvmpipe" or "d3d12" or "zink";
     public static string Label(string value) => value switch
     {

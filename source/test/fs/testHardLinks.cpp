@@ -16,6 +16,7 @@
 #include "../../io/fsmemnode.h"
 #include "../../io/fsmemopennode.h"
 #include "../../io/fsvirtualopennode.h"
+#include "../../io/discimage.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
 #include "../../emulation/softmmu/soft_ram.h"
 #include "../../util/bnativeheap.h"
@@ -694,6 +695,76 @@ void testZipRandomAccess() {
         }
     }
     KSystem::cacheReads = previousCacheReads;
+    cleanupRoot(root);
+#endif
+}
+
+void testZipEntryTimes() {
+#ifdef BOXEDWINE_ZLIB
+    const BString root = B("tmp/test-zip-entry-times-root");
+    cleanupRoot(root);
+    initTestFileSystem(root);
+    const BString archivePath = root.stringByApppendingPath(B("fixture.zip"));
+    // extended timestamp mtime 1791929988, 2026-10-13 22:19:48 UTC
+    U8 extendedTimestamp[9] = {0x55, 0x54, 5, 0, 1};
+    for (int i = 0; i < 4; i++) {
+        extendedTimestamp[5 + i] = (U8)(1791929988u >> (i * 8));
+    }
+    // NTFS mtime 500 ms later, in 100 ns units since 1601
+    U64 fileTime = (1791929988500ull + 11644473600000ull) * 10000;
+    U8 ntfs[36] = {0x0a, 0, 32, 0, 0, 0, 0, 0, 1, 0, 24, 0};
+    for (int i = 0; i < 8; i++) {
+        ntfs[12 + i] = (U8)(fileTime >> (i * 8));
+    }
+    struct Entry {
+        const char* name;
+        const U8* extra;
+        U16 extraLength;
+        U32 mday;
+        U64 expected;
+    } entries[] = {
+        // the MS-DOS time 2026-10-13 14:19:48 read as UTC, whatever the timezone
+        {"dos", nullptr, 0, 13, 1791901188000ull},
+        {"extended", extendedTimestamp, sizeof(extendedTimestamp), 13, 1791929988000ull},
+        {"ntfs", ntfs, sizeof(ntfs), 13, 1791929988500ull},
+        // day 0 is not a date, so the earliest MS-DOS time, 1980-01-01
+        {"invalid", nullptr, 0, 0, 315532800000ull},
+    };
+    zipFile archive = zipOpen64(archivePath.c_str(), APPEND_STATUS_CREATE);
+    if (!archive) {
+        testFail("could not create ZIP time fixture");
+        cleanupRoot(root);
+        return;
+    }
+    for (const Entry& entry : entries) {
+        zip_fileinfo info = {};
+        info.tmz_date.tm_year = 2026;
+        info.tmz_date.tm_mon = 9;
+        info.tmz_date.tm_mday = entry.mday;
+        info.tmz_date.tm_hour = 14;
+        info.tmz_date.tm_min = 19;
+        info.tmz_date.tm_sec = 48;
+        expectZero("open ZIP time member", zipOpenNewFileInZip64(archive,
+            entry.name, &info, nullptr, 0, entry.extra, entry.extraLength, nullptr, 0, 0, 0));
+        expectZero("write ZIP time member", zipWriteInFileInZip(archive, "x", 1));
+        expectZero("close ZIP time member", zipCloseFileInZip(archive));
+    }
+    expectZero("close ZIP time fixture", zipClose(archive, nullptr));
+    {
+        auto zip = std::make_shared<FsZip>();
+        if (!zip->init(archivePath, B(""))) {
+            testFail("could not mount ZIP time fixture");
+        } else {
+            for (const Entry& entry : entries) {
+                auto node = Fs::getNodeFromLocalPath(B("/"), BString::copy(entry.name), false);
+                if (!node) {
+                    testFail("ZIP time member not found: %s", entry.name);
+                    continue;
+                }
+                expectU64(entry.name, node->lastModified(), entry.expected);
+            }
+        }
+    }
     cleanupRoot(root);
 #endif
 }
@@ -7430,6 +7501,90 @@ void testGuestWritePreservesPartialProgress() {
             testFail("successful cross-page write must return the complete byte count");
         }
     }
+}
+
+
+namespace {
+
+// a disc image of `sectors` data sectors stored as `sectorSize` byte sectors with the user
+// data at `dataOffset`: sector 16 holds the primary volume descriptor, every sector starts
+// its user data with its own number
+std::vector<U8> dataTrackImage(U32 sectors, U32 sectorSize, U32 dataOffset) {
+    std::vector<U8> image((size_t)sectors * sectorSize, 0);
+    for (U32 sector = 0; sector < sectors; sector++) {
+        U8* data = image.data() + (size_t)sector * sectorSize + dataOffset;
+        if (sectorSize == DISC_RAW_SECTOR_SIZE) {
+            U8* raw = image.data() + (size_t)sector * sectorSize;
+            memset(raw + 1, 0xFF, 10); // sync pattern
+        }
+        if (sector == 16) {
+            memcpy(data, "\001CD001", 6);
+        } else {
+            data[0] = (U8)sector;
+        }
+    }
+    return image;
+}
+
+void writeTestFile(const std::filesystem::path& path, const void* data, size_t size) {
+    FILE* file = fopen(path.string().c_str(), "wb");
+    if (file) {
+        fwrite(data, 1, size, file);
+        fclose(file);
+    }
+}
+
+}
+
+void testDiscImageLayouts() {
+    std::error_code error;
+    std::filesystem::path dir = std::filesystem::temp_directory_path(error) / "boxedwine-discimage-test";
+    std::filesystem::remove_all(dir, error);
+    std::filesystem::create_directories(dir, error);
+
+    struct Layout { const char* name; U32 sectorSize; U32 dataOffset; U32 mode; };
+    const Layout layouts[] = {
+        { "iso.iso", 2048, 0, 1 },
+        { "mode1.bin", 2352, 16, 1 },
+        { "mode2.bin", 2352, 24, 2 },
+        { "mode2336.bin", 2336, 8, 2 },
+    };
+    for (const Layout& layout : layouts) {
+        std::vector<U8> image = dataTrackImage(20, layout.sectorSize, layout.dataOffset);
+        writeTestFile(dir / layout.name, image.data(), image.size());
+        std::shared_ptr<DiscImage> disc = DiscImage::open(BString::copy((dir / layout.name).string().c_str()));
+        if (!disc || disc->tracks.size() != 1 || disc->leadOut != 20) {
+            testFail("%s did not open as one data track of 20 sectors", layout.name);
+            continue;
+        }
+        if (disc->tracks[0].audio || disc->tracks[0].mode != layout.mode) {
+            testFail("%s data track has mode %u, expected %u", layout.name, disc->tracks[0].mode, layout.mode);
+        }
+        U8 descriptor[6] = {};
+        U8 sector3 = 0;
+        if (disc->readData(16 * 2048, descriptor, 6) != 6 || memcmp(descriptor, "\001CD001", 6)
+                || disc->readData(3 * 2048, &sector3, 1) != 1 || sector3 != 3) {
+            testFail("%s does not read user data from where its layout keeps it", layout.name);
+        }
+    }
+
+    // A BIN is read through the CUE sheet of the same name, which adds its audio track
+    std::vector<U8> bin = dataTrackImage(20, 2352, 16);
+    bin.resize(bin.size() + 10 * 2352, 0);
+    const char* cue = "FILE \"%s\" BINARY\n  TRACK 01 MODE1/2352\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 01 00:00:20\n";
+    for (const char* name : { "game", "GAME" }) {
+        BString binName = BString::copy(name) + (name[0] == 'g' ? ".bin" : ".BIN");
+        BString cueName = BString::copy(name) + (name[0] == 'g' ? ".cue" : ".CUE");
+        writeTestFile(dir / binName.c_str(), bin.data(), bin.size());
+        char text[256];
+        snprintf(text, sizeof(text), cue, binName.c_str());
+        writeTestFile(dir / cueName.c_str(), text, strlen(text));
+        std::shared_ptr<DiscImage> disc = DiscImage::open(BString::copy((dir / binName.c_str()).string().c_str()));
+        if (!disc || disc->tracks.size() != 2 || !disc->tracks[1].audio || disc->tracks[1].start != 20 || disc->leadOut != 30) {
+            testFail("%s was not read through %s", binName.c_str(), cueName.c_str());
+        }
+    }
+    std::filesystem::remove_all(dir, error);
 }
 
 #endif

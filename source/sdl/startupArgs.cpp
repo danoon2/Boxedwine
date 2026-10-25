@@ -18,6 +18,7 @@
 
 #include "boxedwine.h"
 #include "startupArgs.h"
+#include "../../platform/sdl/sdlStatusBar.h"
 #include "../emulation/cpu/wasm/wasmMemoryOrdering.h"
 
 #include "devtty.h"
@@ -37,6 +38,9 @@
 #include "devmixer.h"
 #include "devsequencer.h"
 #include "devfb.h"
+#include "devcdrom.h"
+#include "../io/fsiso.h"
+#include "../io/cdromautorun.h"
 #include "mainloop.h"
 #include "../io/fsfilenode.h"
 #include "../io/fszip.h"
@@ -212,6 +216,41 @@ void StartUpArgs::buildVirtualFileSystem() {
 	Fs::addVirtualFile(B("/dev/mixer"), openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 0), devNode);
     Fs::addVirtualFile(B("/dev/sequencer"), openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 1), devNode);    
 
+    // CD-ROM block device (Linux SCSI CD-ROM major = 11)
+    Fs::addVirtualFile(B("/dev/cdrom"), openDevCDROM, K__S_IREAD | K__S_IFCHR, k_mdev(11, 0), devNode);
+    Fs::addVirtualFile(B("/dev/sr0"),   openDevCDROM, K__S_IREAD | K__S_IFCHR, k_mdev(11, 0), devNode);
+
+    // /proc/sys/dev/cdrom/info — Wine reads this to detect CD drives
+    std::shared_ptr<FsNode> procSysDevNode = Fs::addFileNode(B("/proc/sys/dev"), B(""), B(""), true, procSysNode);
+    std::shared_ptr<FsNode> procSysCdromNode = Fs::addFileNode(B("/proc/sys/dev/cdrom"), B(""), B(""), true, procSysDevNode);
+    Fs::addVirtualFile(B("/proc/sys/dev/cdrom/info"), [](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+        return new BufferAccess(node, flags, B(
+            "CD-ROM information, Id: cdrom.c 3.20 2003/12/17\n"
+            "\n"
+            "drive name:\t\tsr0\n"
+            "drive speed:\t\t52\n"
+            "drive # of slots:\t1\n"
+            "Can close tray:\t\t1\n"
+            "Can open tray:\t\t1\n"
+            "Can lock tray:\t\t1\n"
+            "Can change speed:\t1\n"
+            "Can select disk:\t0\n"
+            "Can read multisession:\t1\n"
+            "Can read MCN:\t\t1\n"
+            "Reports media changed:\t1\n"
+            "Can play audio:\t\t1\n"
+            "Can write CD-R:\t\t0\n"
+            "Can write CD-RW:\t0\n"
+            "Can read DVD:\t\t1\n"
+            "Can write DVD-R:\t0\n"
+            "Can write DVD-RAM:\t0\n"
+            "Can read MRW:\t\t1\n"
+            "Can write MRW:\t\t0\n"
+            "Can write RAM:\t\t0\n"
+            "\n\n"
+        ));
+    }, K__S_IREAD, k_mdev(0, 0), procSysCdromNode);
+
     Fs::addVirtualFile(B("/etc/hostname"), openHostname, K__S_IREAD, k_mdev(0, 0), etcNode);
     Fs::addVirtualFile(B("/etc/hosts"), openHosts, K__S_IREAD, k_mdev(0, 0), etcNode);
 }
@@ -231,6 +270,12 @@ std::vector<BString> StartUpArgs::buildArgs() {
         args.push_back(B("-title"));
         args.push_back(title);
     }
+    for (auto& path : cdromPaths) {
+        args.push_back(B("-cdrom"));
+        args.push_back(path);
+        args.push_back(cdromDrive);
+    }
+    if (cdromInstall) args.push_back(B("-cdromInstall"));
     if (userId != UID) {
         args.push_back(B("-uid"));
         args.push_back(BString::valueOf(userId));
@@ -349,10 +394,123 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->disableLinearMemory) {
         args.push_back(B("-disableLinearMemory"));
     }
-    for (auto& a : this->args) {
-        args.push_back(a);
-    }
+    if (!cdromInstall) for (auto& a : this->args) args.push_back(a);
     return args;
+}
+
+static std::vector<BString> cdromInstallerArgs(const BString& drive) {
+    BString windowsRoot = drive + ":\\";
+    std::vector<BString> fallback = {B("/bin/wine"), B("explorer"), windowsRoot};
+    auto root = Fs::getNodeFromLocalPath(B(""), B("/mnt/cdrom"), true);
+    auto ini = root ? root->getChildByNameIgnoreCase(B("autorun.inf")) : nullptr;
+    if (!ini || ini->isDirectory() || ini->length() > 65536) return fallback;
+    std::unique_ptr<FsOpenNode> file(ini->open(K_O_RDONLY));
+    if (!file) return fallback;
+    std::string contents((size_t)ini->length(), '\0');
+    if (file->readNative((U8*)contents.data(), (U32)contents.size()) != contents.size()) return fallback;
+    auto command = CdromAutorun::command(contents);
+    if (command.empty()) return fallback;
+    auto parts = CdromAutorun::path(command[0], drive.c_str()[0]);
+    if (parts.empty()) return fallback;
+    auto target = root;
+    for (const auto& part : parts) {
+        target = target && target->isDirectory() ? target->getChildByNameIgnoreCase(BString::copy(part.c_str())) : nullptr;
+    }
+    if (!target || target->isDirectory()) return fallback;
+    // /unix avoids start's special interpretation of quoted filenames as titles.
+    // /d preserves the disc-root working directory expected by old installers.
+    std::vector<BString> result = {B("/bin/wine"), B("start"), B("/wait"), B("/d"), windowsRoot, B("/unix"), target->path};
+    for (size_t i = 1; i < command.size(); ++i) result.push_back(BString::copy(command[i].c_str()));
+    return result;
+}
+
+// mountmgr reads each drive's type from HKLM\Software\Wine\Drives once, when Wine
+// starts, so the value has to be in system.reg before launch ("reg add" from the
+// launched command would only take effect on the next run). winecfg writes the
+// same value when a drive's type is set to CD-ROM.
+static void setWineDriveType(const char* drive, const char* type) {
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/system.reg"), true);
+    FsOpenNode* openNode = node ? node->open(K_O_RDONLY) : nullptr;
+    if (!openNode) {
+        klog_fmt("could not set drive %s to %s: system.reg was not found", drive, type);
+        return;
+    }
+    std::string reg;
+    U8 buffer[4096];
+    U32 len;
+    while ((len = openNode->readNative(buffer, sizeof(buffer))) > 0 && len != (U32)-1) {
+        reg.append((const char*)buffer, len);
+    }
+    openNode->close();
+    delete openNode;
+
+    auto lower = [](std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (char)tolower(c); });
+        return s;
+    };
+    // system.reg keys are relative to HKLM and escape their backslashes
+    const std::string section = "[Software\\\\Wine\\\\Drives]";
+    const std::string name = std::string("\"") + drive + "\"=";
+    const std::string entry = name + "\"" + type + "\"";
+    size_t insertAt = std::string::npos;
+    bool inSection = false;
+    bool replaced = false;
+    for (size_t pos = 0; pos < reg.size();) {
+        size_t next = reg.find('\n', pos);
+        next = (next == std::string::npos) ? reg.size() : next + 1;
+        std::string line = reg.substr(pos, next - pos);
+        while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) {
+            line.pop_back();
+        }
+        std::string lowerLine = lower(line);
+        if (!line.empty() && line[0] == '[') {
+            if (inSection) {
+                break;
+            }
+            inSection = lowerLine.compare(0, section.size(), lower(section)) == 0;
+            if (inSection) {
+                insertAt = next;
+            }
+        } else if (inSection) {
+            if (lowerLine.compare(0, name.size(), lower(name)) == 0) {
+                if (lowerLine == lower(entry)) {
+                    return;
+                }
+                reg.replace(pos, line.size(), entry);
+                replaced = true;
+                break;
+            }
+            if (!line.empty() && line[0] == '#') {
+                insertAt = next; // keep the value after the key's #time= line
+            }
+        }
+        pos = next;
+    }
+    if (!replaced) {
+        if (insertAt == std::string::npos) {
+            if (!reg.empty() && reg.back() != '\n') {
+                reg += "\n";
+            }
+            reg += "\n" + section + "\n";
+            insertAt = reg.size();
+        } else if (insertAt > 0 && reg[insertAt - 1] != '\n') {
+            reg.insert(insertAt++, "\n");
+        }
+        reg.insert(insertAt, entry + "\n");
+    }
+
+    openNode = node->open(K_O_WRONLY | K_O_TRUNC);
+    if (!openNode) {
+        klog_fmt("could not set drive %s to %s: system.reg could not be written", drive, type);
+        return;
+    }
+    if (openNode->writeNative((U8*)reg.data(), (U32)reg.size()) != reg.size()) {
+        klog_fmt("could not set drive %s to %s: system.reg write failed", drive, type);
+    } else {
+        klog_fmt("set Wine drive %s to %s in system.reg", drive, type);
+    }
+    openNode->close();
+    delete openNode;
 }
 
 bool StartUpArgs::apply() {
@@ -628,6 +786,63 @@ bool StartUpArgs::apply() {
     }
 #endif
 
+    bool configureCdrom = !this->cdromPaths.empty();
+#if !defined(__EMSCRIPTEN__) && !defined(__TEST) && !defined(__ANDROID__)
+    // Reserve an empty drive before Wine's mountmgr starts, so a user can
+    // choose the first disc at runtime. D: is normally the writable host mount.
+    if (!configureCdrom) {
+        for (char letter = 'e'; letter <= 'z'; ++letter) {
+            BString candidate;
+            candidate.append(letter);
+            BString link = B("/home/username/.wine/dosdevices/") + candidate + ":";
+            if (!Fs::getNodeFromLocalPath(B(""), link, false) &&
+                    !Fs::getNodeFromLocalPath(B(""), link + ":", false)) {
+                this->cdromDrive = candidate;
+                configureCdrom = true;
+                break;
+            }
+        }
+    }
+#endif
+    if (configureCdrom) {
+        // The drive letter links to the disc while one is in the drive (see cdromInit).
+        // Disc 1 goes in now: Wine's mountmgr only sets up drives whose link exists
+        // when it starts.
+        BString drive = this->cdromDrive + ":";
+        BString link = "/home/username/.wine/dosdevices/" + drive;
+        std::shared_ptr<FsNode> dosdevParent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
+        if (Fs::getNodeFromLocalPath(B(""), link, false)) {
+            klog_fmt("-cdrom: drive %s is already in use, so the CD-ROM drive has no drive letter", drive.c_str());
+            link = BString::empty;
+        } else if (dosdevParent) {
+            Fs::addFileNode(link + ":", B("/dev/sr0"), B(""), false, dosdevParent);
+            setWineDriveType(drive.c_str(), "cdrom");
+        } else {
+            link = BString::empty;
+        }
+        cdromInit(this->cdromPaths, B("/mnt/cdrom"), link);
+        if (!this->cdromPaths.empty()) {
+            bool inserted = cdromInsert(0);
+            if (cdromInstall && (!inserted || link.isEmpty())) {
+                klog("Could not mount the installation disc. Check the image and any CUE track files.");
+                return false;
+            }
+        }
+        else if (!link.isEmpty()) {
+            // mountmgr enumerates the letter from this empty mount at startup;
+            // /dev/sr0 reports no medium until a disc is selected.
+            Fs::addFileNode(link, B("/mnt/cdrom"), B(""), false, dosdevParent);
+        }
+    }
+
+    sdlStatusBarConfigure(configureCdrom && videoOption == VIDEO_NORMAL &&
+        runAutomation.isEmpty() && recordAutomation.isEmpty());
+
+    if (cdromInstall) {
+        this->args = cdromInstallerArgs(cdromDrive);
+        workingDir = B("/mnt/cdrom");
+        klog(this->args[1] == "explorer" ? "No usable disc autorun entry; opening the CD-ROM in Wine Explorer." : "Starting the disc's autorun program.");
+    }
     if (this->args.size()==0) {
         args.push_back(B("/bin/wine"));
         args.push_back(B("explorer"));
@@ -808,6 +1023,22 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         if (!strcmp(argv[i], "-root") && i+1<argc) {
             this->setRoot(BString::copy(argv[i+1]));
             i++;
+        } else if (!strcmp(argv[i], "-cdromInstall")) {
+            this->cdromInstall = true;
+        } else if (!strcmp(argv[i], "-cdrom")) {
+            if (i+2>=argc || strlen(argv[i+2])!=1 || !isalpha((unsigned char)argv[i+2][0])) {
+                klog("-cdrom expects 2 parameters: <iso file to mount> <drive letter to use for wine>");
+                klog("  example: -cdrom \"c:\\my games\\game.iso\" e");
+                return false;
+            }
+            BString drive = BString::copy(argv[i+2]).toLowerCase();
+            if (!this->cdromDrive.isEmpty() && this->cdromDrive != drive) {
+                klog("-cdrom: every disc must use the same drive letter, they are swapped in one CD-ROM drive");
+                return false;
+            }
+            this->cdromPaths.push_back(BString::copy(argv[i+1]));
+            this->cdromDrive = drive;
+            i+=2;
         } else if (!strcmp(argv[i], "-zip") && i+1<argc) {
 #ifdef BOXEDWINE_ZLIB
             this->addZip(BString::copy(argv[i+1]));
@@ -1080,6 +1311,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         
     for (i=0;i<argc;i++) {
         args.push_back(BString::copy(argv[i]));
+    }
+    if (cdromInstall && (cdromPaths.empty() || !args.empty())) {
+        klog("-cdromInstall requires -cdrom and replaces the guest command with disc autorun or Explorer.");
+        return false;
     }
     return true;
 }

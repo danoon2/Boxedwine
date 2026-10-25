@@ -24,7 +24,11 @@ internal static partial class Program
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(app.Dispatcher));
             app.ThemeMode = ThemeMode.System;
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/{typeof(MainWindow).Assembly.GetName().Name};component/Styles.xaml", UriKind.Relative) });
+            if (args.Contains("--disc-install")) { CheckDiscInstall(destination); return 0; }
+            if (args.Contains("--cdrom-settings")) { CheckCdromSettings(destination); return 0; }
+            if (args.Contains("--advanced-settings")) { CheckAdvancedSettings(destination); return 0; }
             if (args.Contains("--source-errors")) { CheckSourceImports(destination); return 0; }
+            if (args.Contains("--storage")) { CheckStorage(destination); return 0; }
             CheckRuntimeIcons(destination, args);
             var catalog = Packages.Catalog(Path.Combine(AppContext.BaseDirectory, "Resources"));
             if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "20") throw new Exception("This release must offer only Wine 11 V20.");
@@ -71,68 +75,144 @@ internal static partial class Program
                 });
                 var repositoryField = typeof(MainWindow).GetField("repository", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 var activeRepository = (LibraryRepository)repositoryField.GetValue(window)!;
-                CheckWineChoices(window, activeRepository, destination, theme);
-                CheckLaunching(window, activeRepository.Load().Apps[0], destination, theme);
-                CheckInstallerCompletion(window, activeRepository, destination, theme);
+                if (!args.Contains("--app-settings"))
+                {
+                    CheckWineChoices(window, activeRepository, destination, theme);
+                    CheckLaunching(window, activeRepository.Load().Apps[0], destination, theme);
+                    CheckInstallerCompletion(window, activeRepository, destination, theme);
+                }
                 CheckMouseSensitivity(window, activeRepository, destination, theme);
                 CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-app-settings.png"));
                 CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-advanced.png"), dialog =>
                 {
-                    var advanced = Descendants<Expander>(dialog).Single(); advanced.IsExpanded = true;
-                    dialog.UpdateLayout();
+                    SelectSettingsTab(dialog, "Advanced");
                     var openGL = Descendants<ComboBox>(dialog).Single(c => AutomationProperties.GetName(c) == "OpenGL implementation");
                     if ((string)openGL.SelectedValue != "default" || !openGL.Items.Cast<KeyValuePair<string, string>>().Single(c => c.Key == "default").Value.Contains("Direct3D 12")) throw new Exception("App OpenGL selection must show the inherited global setting.");
                     openGL.SelectedValue = "llvmpipe";
-                    dialog.UpdateLayout(); Descendants<ScrollViewer>(dialog).First().ScrollToVerticalOffset(490);
+                    Render(dialog, Path.Combine(destination, theme.ToLowerInvariant() + "-advanced-top.png"), (int)dialog.ActualWidth - 16, (int)dialog.ActualHeight - 40);
+                    dialog.Height = 520;
+                    dialog.UpdateLayout();
+                    var viewport = (ScrollViewer)((TabItem)Descendants<TabControl>(dialog).Single().SelectedItem).Content;
+                    viewport.ScrollToEnd(); dialog.UpdateLayout();
+                    var arguments = Descendants<TextBox>(dialog).Single(t => AutomationProperties.GetName(t) == "App arguments — one argument per line");
+                    var position = arguments.TransformToAncestor(viewport).Transform(new Point());
+                    if (position.Y < 0 || position.Y + arguments.ActualHeight > viewport.ViewportHeight) throw new Exception("Advanced arguments must be reachable in a short settings window.");
+                    var save = Descendants<Button>(dialog).Single(b => b.Content as string == "Save");
+                    if (save.TransformToAncestor(dialog).Transform(new Point()).Y < viewport.TransformToAncestor(dialog).Transform(new Point(0, viewport.ActualHeight)).Y) throw new Exception("Save must remain below the scrolling page.");
                 }, "Save");
                 if (activeRepository.Load().Apps[0].WindowsOpenGL != "llvmpipe") throw new Exception("App OpenGL selection was not saved.");
                 CheckDialog(window, "Edit", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-advanced-cancel.png"), dialog =>
                 {
-                    Descendants<Expander>(dialog).Single().IsExpanded = true;
-                    dialog.UpdateLayout();
+                    SelectSettingsTab(dialog, "Advanced");
                     Descendants<ComboBox>(dialog).Single(c => AutomationProperties.GetName(c) == "OpenGL implementation").SelectedValue = "native";
                 });
                 if (activeRepository.Load().Apps[0].WindowsOpenGL != "llvmpipe") throw new Exception("Cancel changed the saved OpenGL selection.");
                 CheckDialog(window, "Troubleshoot", [activeRepository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-troubleshooting.png"));
                 window.Close();
             }
-            Console.WriteLine("Rendered both themes and verified launch readiness, early exit, stop during startup and installer program selection."); return 0;
+            Console.WriteLine(args.Contains("--app-settings")
+                ? "Rendered both themes and verified app settings tabs, scrolling, save/cancel and mouse sensitivity synchronization."
+                : "Rendered both themes and verified launch readiness, early exit, stop during startup and installer program selection."); return 0;
         }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }
     }
     private static void CheckMouseSensitivity(MainWindow window, LibraryRepository repository, string destination, string theme)
     {
-        Slider Slider(Window dialog) => Descendants<Slider>(dialog).Single(s => AutomationProperties.GetName(s) == "Mouse sensitivity");
+        Slider Slider(Window dialog)
+        {
+            SelectSettingsTab(dialog, "General");
+            return Descendants<Slider>(dialog).Single(s => AutomationProperties.GetName(s) == "Mouse sensitivity");
+        }
         TextBox Arguments(Window dialog)
         {
-            Descendants<Expander>(dialog).Single().IsExpanded = true; dialog.UpdateLayout();
+            SelectSettingsTab(dialog, "Advanced");
             return Descendants<TextBox>(dialog).Single(t => AutomationProperties.GetName(t) == "Boxedwine arguments — one option or value per line");
         }
         int Saved() => LaunchArguments.MouseSensitivity(repository.Load().Apps[0].BoxedwineArguments ?? []);
         void Check(string suffix, Action<Window> action, string? accept = null) => CheckDialog(window, "Edit", [repository.Load().Apps[0]], Path.Combine(destination, theme.ToLowerInvariant() + "-mouse-" + suffix + ".png"), action, accept);
+        void Paste(TextBox text, string value)
+        {
+            // Exercise WPF's before-insertion paste event without touching the user's clipboard.
+            var data = new DataObject(DataFormats.UnicodeText, value);
+            text.RaiseEvent(new DataObjectPastingEventArgs(data, false, DataFormats.UnicodeText));
+            text.SelectedText = value;
+            text.Dispatcher.Invoke(() => { }, DispatcherPriority.Background);
+        }
         Check("save", dialog =>
         {
             var slider = Slider(dialog);
             if (slider.Value != 100) throw new Exception("Mouse sensitivity must default to 100%.");
             slider.Value = 50;
-            if (LaunchArguments.MouseSensitivity(LaunchArguments.Lines(Arguments(dialog).Text)) != 50) throw new Exception("Slider did not update arguments.");
+            var text = Arguments(dialog);
+            if (text.Text.Contains(LaunchArguments.MouseSensitivityOption)) throw new Exception("Slider leaked sensitivity into Advanced.");
+            text.Text = "-env\nNAME=one two\n-nosound";
+            if (Slider(dialog).Value != 50) throw new Exception("Editing unrelated options reset the slider.");
         }, "Save");
         if (Saved() != 50) throw new Exception("Mouse sensitivity was not saved.");
-        Check("cancel", dialog => Slider(dialog).Value = 200);
-        if (Saved() != 50) throw new Exception("Cancel changed mouse sensitivity.");
-        Check("advanced", dialog =>
+        Check("cancel", dialog =>
         {
-            Descendants<Expander>(dialog).Single().IsExpanded = true; dialog.UpdateLayout();
-            var text = Arguments(dialog); var slider = Slider(dialog);
-            text.Text = "-nosound\n-rel_mouse_sensitivity\n750";
-            if (slider.Value != 750 || slider.Maximum < 750) throw new Exception("Advanced sensitivity was clamped or not reflected in the slider.");
-            text.Text += "\n-env";
-            if (slider.IsEnabled) throw new Exception("Incomplete advanced options must not be replaced by a slider edit.");
-            text.Text += "\nNAME=value";
-            if (!slider.IsEnabled || slider.Value != 750) throw new Exception("Slider did not recover after completing advanced options.");
-            dialog.UpdateLayout();
+            var slider = Slider(dialog);
+            if (slider.Value != 50 || Arguments(dialog).Text.Contains(LaunchArguments.MouseSensitivityOption)) throw new Exception("Saved sensitivity was not moved into General.");
+            slider.Value = 200;
+        });
+        if (Saved() != 50) throw new Exception("Cancel changed mouse sensitivity.");
+        Check("paste", dialog =>
+        {
+            var slider = Slider(dialog); var text = Arguments(dialog);
+            double height = dialog.ActualHeight;
+            text.Text = "-env\r\nNAME=one two\r\n\r\n-nosound\r\n";
+            string otherArguments = text.Text;
+            text.CaretIndex = 0;
+            Paste(text, "-rel_mouse_sensitivity\r\n750\r\n");
+            if (slider.Value != 750 || slider.Maximum < 750 || text.Text != otherArguments || text.CaretIndex != 0)
+                throw new Exception("Paste must move sensitivity to General and preserve other text and caret position.");
+            if (dialog.ActualHeight != height) throw new Exception("Transferring sensitivity resized the window.");
+            if (!Descendants<TextBlock>(dialog).Any(t => t.Text == "Mouse sensitivity set to 750% in General." && t.IsVisible)) throw new Exception("Paste transfer needs visible confirmation.");
         }, "Save");
-        if (Saved() != 750) throw new Exception("Advanced sensitivity was not saved.");
+        if (Saved() != 750) throw new Exception("Pasted mouse sensitivity was not saved.");
+        var pasted = repository.Load().Apps[0];
+        var launch = LaunchArguments.Build(repository, pasted, "fixture.zip");
+        if (launch.Count(a => a == LaunchArguments.MouseSensitivityOption) != 1 || launch[launch.IndexOf(LaunchArguments.MouseSensitivityOption) + 1] != "750")
+            throw new Exception("The launch must contain exactly one mouse sensitivity override.");
+        Check("typing", dialog =>
+        {
+            var slider = Slider(dialog); var text = Arguments(dialog);
+            text.Focus();
+            text.Text = "-nosound\n-rel_mouse_sensitivity\n1";
+            text.AppendText("2"); text.AppendText("3");
+            if (slider.Value != 750 || !text.Text.EndsWith("123")) throw new Exception("Typing a sensitivity was consumed before the value was complete.");
+            SelectSettingsTab(dialog, "General"); slider.Focus();
+            if (slider.Value != 123) throw new Exception("Leaving Advanced did not transfer the typed sensitivity.");
+            SelectSettingsTab(dialog, "Advanced");
+            if (text.Text.Contains(LaunchArguments.MouseSensitivityOption)) throw new Exception("Typed sensitivity stayed in Advanced after transfer.");
+        }, "Save");
+        if (Saved() != 123) throw new Exception("Typed mouse sensitivity was not saved.");
+        Check("invalid", dialog =>
+        {
+            var slider = Slider(dialog); var text = Arguments(dialog);
+            foreach (string invalid in new[] { "-rel_mouse_sensitivity", "-rel_mouse_sensitivity\n1001", "-rel_mouse_sensitivity\noops", "-rel_mouse_sensitivity\n250\n-env" })
+            {
+                text.SelectAll(); Paste(text, invalid);
+                if (text.Text != invalid || slider.Value != 123 || !slider.IsEnabled) throw new Exception("Invalid input must remain editable without altering sensitivity.");
+            }
+            slider.Value = 200;
+            if (!text.Text.EndsWith("-env")) throw new Exception("Slider changes overwrote incomplete Advanced input.");
+        });
+        if (Saved() != 123) throw new Exception("Cancel changed the saved value after invalid input.");
+        Check("duplicates", dialog =>
+        {
+            var slider = Slider(dialog); var text = Arguments(dialog);
+            foreach (var (value, expected) in new[] { ("0", 100), ("1", 1), ("1000", 1000) })
+            {
+                text.SelectAll(); Paste(text, "-env\nNAME=value\n-rel_mouse_sensitivity\n50\n-rel_mouse_sensitivity\n" + value);
+                if (slider.Value != expected || slider.Minimum > expected || slider.Maximum < expected || text.Text.Contains(LaunchArguments.MouseSensitivityOption))
+                    throw new Exception("Duplicate, legacy or extended-range sensitivity did not transfer correctly.");
+            }
+        }, "Save");
+        if (Saved() != 1000 || repository.Load().Apps[0].BoxedwineArguments!.Count(a => a == LaunchArguments.MouseSensitivityOption) != 1)
+            throw new Exception("Duplicate mouse options were persisted.");
+        Check("save-typed", dialog => Arguments(dialog).Text += "\n-rel_mouse_sensitivity\n250", "Save");
+        if (Saved() != 250) throw new Exception("Save did not transfer a complete value still in Advanced.");
         Check("reset", dialog =>
         {
             Descendants<Button>(dialog).Single(b => AutomationProperties.GetName(b) == "Reset mouse sensitivity").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -140,7 +220,13 @@ internal static partial class Program
             if (!Arguments(dialog).Text.Contains("NAME=value")) throw new Exception("Reset lost unrelated arguments.");
         }, "Save");
         if (Saved() != 100) throw new Exception("Mouse sensitivity reset was not saved.");
-        Console.WriteLine($"PASS {theme} mouse sensitivity: save, cancel, advanced synchronization and reset");
+        Console.WriteLine($"PASS {theme} mouse sensitivity: hidden arguments, saved/pasted/typed transfer, invalid input, duplicates, launch, cancel and reset");
+    }
+    private static void SelectSettingsTab(Window dialog, string title)
+    {
+        var tabs = Descendants<TabControl>(dialog).Single();
+        tabs.SelectedItem = tabs.Items.Cast<TabItem>().Single(t => t.Header as string == title);
+        dialog.UpdateLayout();
     }
     private static void CheckWineChoices(MainWindow window, LibraryRepository repository, string destination, string theme)
     {

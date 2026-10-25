@@ -8,7 +8,7 @@ URL. An unchanged pin makes no network request when its verified ZIP is cached.
 
 The package contains `catalog.xml` and its referenced PNGs in one flat directory.
 The XML's `release` matches the lock's `version`; `schemaVersion` describes the
-recipe format separately. The current pin, `26R2-catalog-10`, contains 40 recipes and icons,
+recipe format separately. The current pin, `26R2-catalog-13`, contains 40 recipes and icons,
 including 3DMark2001 SE, 3DMark03 (2003), 3DMark05 (2004),
 3DMark06 (2006), 3DMark Vantage (2008), and Sim Tower Demo (1994).
 The 3DMark03, 3DMark05, 3DMark06, and Vantage details include their full-version
@@ -23,9 +23,19 @@ and vkQuake's obsolete Wine 10 mouse-button warning has been removed.
 Java Solitaire and FreeCol were removed in `26R2-catalog-2`.
 Catalog 9 corrects the 3DMark05 display year to 2004; its installer and recipe are unchanged.
 Catalog 10 retains that correction and adds Vantage's CPU-Z/GPU-Z driver exclusions.
-The new ZIP is prepared locally; upload it to the pinned URL and verify a fresh
-download before merging the pin. See the
-[recipe schema](../project/mac-xcode/Boxedwine/BoxedwineUI/DEMO_CATALOG.md).
+Catalog 11 updates Broken Sword's payload size and SHA-256 for the hosted demo ZIP
+containing the quit fix: 119,336,877 bytes, SHA-256
+`a3ccc4755169b089829cc0875baa1a1d976bff134e5f26240f23ee169b144d76`.
+The hosted ZIP was downloaded and verified, including the patched WINSWORD.EXE.
+Catalog 12 retains that payload update and explains Need for Speed: Hot Pursuit 2's
+intro-movie crash and the `+nomovie` workaround. Catalog 13 moves that default into
+the Need for Speed recipe's `<AppArguments>+nomovie</AppArguments>` field using
+schema 9, removing the game-specific defaults from all three launchers.
+CPU affinity 1 can help but does not reliably prevent the crash. Existing
+installations retain their saved arguments.
+Catalog 13 is published at the pinned URL. A fresh download was verified against
+the lock: 118,421 bytes, SHA-256
+`7001da2fbd37684263a5f65f25bd6899754e5ab84f6ed3ccf9998046e386f8c2`.
 
 The native launchers initialize newly installed Alice demos (ID `alice`) with
 200% mouse sensitivity. This is saved as an editable per-app Boxedwine argument;
@@ -37,6 +47,23 @@ Boxedwine arguments as `-env` followed by `WINEDLLOVERRIDES=<value>`. The value 
 passed literally, including a trailing `=` used to disable a DLL or driver. The
 existing app metadata and backup formats already preserve these arguments.
 Catalog updates do not change previously installed apps or their custom settings.
+
+Schema 9 adds optional `AppArguments`, using the same format and validation as
+[custom collections](../docs/App-Imports-and-Collections.md): one literal Windows
+application argument per line, with no shell parsing or quote removal. Spaces,
+backslashes (including literal `\n`), and empty lines are preserved. Use actual LF
+or CRLF line breaks in XML, or `&#10;`; XML entities are decoded normally. Avoid
+indentation or surrounding newlines inside this field unless they belong in the
+arguments. An omitted or empty field supplies no arguments. There may be at most
+256 arguments, 8192 UTF-8 bytes per argument, and 65536 bytes total; NUL and bare
+carriage returns are rejected after XML's standard newline normalization.
+These defaults seed editable app settings on first installation and are passed
+after the Windows executable, never to its installer or the emulator. Older
+schemas remain supported, but `AppArguments` requires schema 9.
+
+```xml
+<AppArguments>+nomovie</AppArguments>
+```
 
 Vantage uses `<WineDllOverrides>cpuz136_x32.sys,cpuz136_x64.sys,GPUZ.sys=</WineDllOverrides>`
 to avoid its GPU-Z hardware-scan exception. This only disables those probes in

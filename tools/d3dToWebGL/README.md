@@ -10,12 +10,13 @@ Versions 2 through 46 retain earlier build and test selections for reproducing h
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 
-Filesystem 20 selects v47. Patch 68 adds partial stream-output varyings alongside
+Filesystems 20 and 21 select v47. Patch 68 adds partial stream-output varyings alongside
 rasterizer outputs, matching the main WineD3D tarp fix. It changes the separately
 built `wined3d.dll`; the other seven DLLs retain their previous identities.
 WebGL geometry-shader and stream-output capability limits remain unchanged.
 The candidate DLLs and archives are pinned by
-[`webgl_filesystems_v20.json`](../buildWine/webgl_filesystems_v20.json).
+[`webgl_filesystems_v21.json`](../buildWine/webgl_filesystems_v21.json).
+Filesystem 21 changes Wine mountmgr media handling and retains all eight WebGL DLL hashes.
 
 Filesystems 18 and 19 select v46. Patches 66 and 67 add the shared WineD3D stream-output
 overflow query and DXGI fullscreen activation fixes used by 3DMark Vantage.

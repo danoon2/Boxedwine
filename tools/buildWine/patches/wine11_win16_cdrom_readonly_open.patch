@@ -1,0 +1,57 @@
+--- a/dlls/krnl386.exe16/file.c
++++ b/dlls/krnl386.exe16/file.c
+@@ -211,6 +211,36 @@
+     GetEnvironmentVariableA( "PATH", p, ret + len - p );
+     return ret;
+ }
++
++/* Some Win16 programs (including Robot City) request read/write access even
++ * for their CD data. Retry existing CD-ROM files read-only; never turn a
++ * denied open on an ordinary disk, a write-only open or a create into success. */
++static HFILE open_cdrom_file16( const char *path, INT mode )
++{
++    HFILE file = _lopen( path, mode );
++    DWORD error, length;
++    char full_path[MAX_PATH];
++
++    if (file != HFILE_ERROR) return file;
++    error = GetLastError();
++    if ((mode & 3) == OF_READWRITE && !(mode & OF_CREATE) &&
++        (error == ERROR_ACCESS_DENIED || error == ERROR_WRITE_PROTECT))
++    {
++        length = GetFullPathNameA( path, sizeof(full_path), full_path, NULL );
++        if (length >= 3 && length < sizeof(full_path) && full_path[1] == ':' && full_path[2] == '\\')
++        {
++            full_path[3] = 0;
++            if (GetDriveTypeA( full_path ) == DRIVE_CDROM)
++            {
++                TRACE( "retrying CD-ROM file %s read-only\n", debugstr_a(path) );
++                return _lopen( path, mode & ~3 );
++            }
++        }
++    }
++    SetLastError( error );
++    return HFILE_ERROR;
++}
++
+ 
+ /***********************************************************************
+  *           OpenFile   (KERNEL.74)
+@@ -314,7 +344,7 @@
+             return 1;
+         }
+ 
+-        handle = (HANDLE)_lopen( ofs->szPathName, mode );
++        handle = (HANDLE)open_cdrom_file16( ofs->szPathName, mode );
+         if (handle == INVALID_HANDLE_VALUE) goto error;
+ 
+         GetFileTime( handle, NULL, NULL, &filetime );
+@@ -390,7 +420,7 @@
+  */
+ HFILE16 WINAPI _lopen16( LPCSTR path, INT16 mode )
+ {
+-    return Win32HandleToDosFileHandle( (HANDLE)_lopen( path, mode ) );
++    return Win32HandleToDosFileHandle( (HANDLE)open_cdrom_file16( path, mode ) );
+ }
+ 
+ 
