@@ -29,6 +29,7 @@
 @property int guestWidth;
 @property int guestHeight;
 @property BOOL preserveAspect;
+@property BOOL runtimeManaged;
 @property(strong) NSHashTable<NSOpenGLContext*>* contexts;
 - (MacOpenGLViewport)viewport;
 - (void)updatePresentation;
@@ -165,7 +166,23 @@ bool macOpenGLResizeFullscreen(SDL_Window* window, U32 width, U32 height) {
             view.guestHeight = height;
             [view updatePresentation];
         }
-        return true;
+        return !view.runtimeManaged || (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN);
+    }
+}
+
+void macOpenGLPrepareWindow(SDL_Window* window, U32 width, U32 height) {
+    // Attach the presentation view before the guest binds its CGL contexts.
+    // In a window this is a 1:1 drawable; fullscreen resizes only its host view.
+    macOpenGLConfigureFullscreen(window, width, height, true);
+    presentationView(getWindowView(window)).runtimeManaged = YES;
+}
+
+void macOpenGLEnableFullscreen(SDL_Window* window) {
+    BoxedwineGLPresentationView* view = presentationView(getWindowView(window));
+    if (view) {
+        view.runtimeManaged = YES;
+        view.preserveAspect = YES;
+        [view updatePresentation];
     }
 }
 

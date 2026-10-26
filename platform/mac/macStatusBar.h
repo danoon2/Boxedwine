@@ -7,6 +7,8 @@ bool macStatusBarEmbedGuest(SDL_Window* guest, SDL_Window* host, bool attach);
 void macStatusBarPositionGuest(SDL_Window* guest, SDL_Window* host);
 void macStatusBarSetOwner(SDL_Window* child, SDL_Window* parent);
 void macStatusBarFocus(SDL_Window* window);
+void macStatusBarShowHint(SDL_Window* window, SDL_Window* parent);
+void macStatusBarHideHint(SDL_Window* window);
 // UTF-8 path, valid until the next picker invocation.
 const char* macStatusBarChooseImage();
 void macStatusBarReleaseImages();

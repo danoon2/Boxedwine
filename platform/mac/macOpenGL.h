@@ -19,6 +19,8 @@ void* macOpenGLGetProcAddressFallback(const char* name);
 
 // Main-thread only. Offscreen/pbuffer windows never get a presentation view.
 void macOpenGLConfigureFullscreen(SDL_Window* window, U32 width, U32 height, bool aspect);
+void macOpenGLPrepareWindow(SDL_Window* window, U32 width, U32 height);
+void macOpenGLEnableFullscreen(SDL_Window* window);
 bool macOpenGLResizeFullscreen(SDL_Window* window, U32 width, U32 height);
 MacOpenGLViewport macOpenGLGetViewport(SDL_Window* window);
 

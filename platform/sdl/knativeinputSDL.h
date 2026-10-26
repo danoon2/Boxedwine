@@ -86,12 +86,12 @@ private:
 #endif
     void updateMouseConfinement(SDL_Window* window);
     bool wantsMouseCapture();
-    void updateMouseCaptureTitle(SDL_Window* window);
     void setMouseCaptureReleased(bool released);
     void releaseMouseForHostUi();
     bool handleMouseCaptureEvent(SDL_Event* event);
     std::atomic<bool> mouseConfinementRequested{false};
     U32 confinedWindowId = 0; // Accessed only on the SDL thread.
+    U32 captureGuestWindowId = 0; // Embedded guest focus events use a different ID than the host grab.
     std::atomic<bool> mouseCaptureReleased{false};
     bool hostUiMouseReleased = false; // Resume ordinary desktop input without a click or warp.
     std::atomic<U64> releasedMousePosition{0};
@@ -101,9 +101,6 @@ private:
     bool focusClickthroughBeforeRelease = false;
     SDL_Cursor* guestCursor = nullptr;
     bool guestCursorVisible = true;
-    U32 mouseHintWindowId = 0;
-    BString mouseHintBaseTitle;
-    BString mouseHintTitle;
 };
 
 typedef std::shared_ptr<KNativeInputSDL> KNativeInputSDLPtr;

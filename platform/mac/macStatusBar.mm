@@ -65,6 +65,20 @@ void macStatusBarFocus(SDL_Window* window) {
     }
 }
 
+void macStatusBarShowHint(SDL_Window* window, SDL_Window* parent) {
+    NSWindow* native = nativeWindow(window);
+    native.ignoresMouseEvents = YES;
+    macStatusBarSetOwner(window, parent);
+    // SDL_ShowWindow can make an SDL Cocoa window key. A transient hint must
+    // leave both keyboard focus and mouse capture with the running game.
+    [native orderFront:nil];
+}
+
+void macStatusBarHideHint(SDL_Window* window) {
+    [nativeWindow(window) orderOut:nil];
+    macStatusBarSetOwner(window, nullptr);
+}
+
 void macStatusBarPositionGuest(SDL_Window* guest, SDL_Window* host) {
     NSWindow* child = nativeWindow(guest);
     NSWindow* parent = nativeWindow(host);

@@ -15,6 +15,7 @@ public:
     static bool supported(SDL_Window* window);
     static void toSurfaceCoordinates(SDL_Window* window, int& x, int& y);
     bool attach(SDL_Window* window, SDL_Window* parent);
+    void setInputTransparent();
     void position(int x, int y);
     bool present(SDL_Surface* pixels);
     void hide();
@@ -28,6 +29,7 @@ public:
     static bool supported(SDL_Window*) { return false; }
     static void toSurfaceCoordinates(SDL_Window*, int&, int&) {}
     bool attach(SDL_Window*, SDL_Window*) { return false; }
+    void setInputTransparent() {}
     void position(int, int) {}
     bool present(SDL_Surface*) { return false; }
     void hide() {}

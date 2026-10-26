@@ -10,17 +10,23 @@
 #include "addon/imguitinyfiledialogs.h"
 #include <SDL_syswm.h>
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include "knativesystem.h"
+#include "knativescreenSDL.h"
 #include "../linux/waylandStatusSurface.h"
 #ifdef __linux__
 #include "../linux/linuxImagePicker.h"
+#include "../linux/linuxOpenGL.h"
 #endif
 #ifdef __APPLE__
 #include "../mac/macStatusBar.h"
+#include "../mac/macOpenGL.h"
 #endif
 #ifdef BOXEDWINE_MSVC
 #include <commdlg.h>
 #include "../windows/windowsAppIdentity.h"
+#include "../windows/windowsOpenGL.h"
 #endif
 #if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__linux__)
 #include "../../project/linux/nativeAppIdentity.h"
@@ -51,13 +57,22 @@ struct Surface {
         return !subsurface || subsurface->present(pixels);
     }
 };
-Surface bar, menu;
+Surface bar, menu, hint;
 std::unique_ptr<ImFontAtlas> atlas;
 ImFont* font = nullptr;
 int atlasWidth = 0, atlasHeight = 0;
 U32 ownerId = 0, nextRefresh = 0;
 bool opened = false, dirty = true;
 bool barPressed = false;
+bool fullscreenPressed = false, fullscreenKeyDown = false;
+int barHover = 0;
+SdlMouseCaptureState captureState = SdlMouseCaptureState::Free;
+U32 hintUntil = 0;
+bool hintPresented = false;
+int hintOwnerWidth = 0;
+int runtimeFullscreen = -1;
+SDL_Rect windowedBounds = {};
+bool haveWindowedBounds = false;
 int pressedMenuRow = -1;
 bool pressedMenuRemove = false;
 U32 dismissedButtons = 0;
@@ -87,11 +102,32 @@ struct X11Embedding {
     int (*attributes)(Display*, Window, unsigned long, XSetWindowAttributes*) = library ?
         (decltype(attributes))SDL_LoadFunction(library, "XChangeWindowAttributes") : nullptr;
     int (*flush)(Display*) = library ? (decltype(flush))SDL_LoadFunction(library, "XFlush") : nullptr;
+    Atom (*atom)(Display*, const char*, Bool) = library ? (decltype(atom))SDL_LoadFunction(library, "XInternAtom") : nullptr;
+    int (*property)(Display*, Window, Atom, long, long, Bool, Atom, Atom*, int*, unsigned long*, unsigned long*, unsigned char**) = library ?
+        (decltype(property))SDL_LoadFunction(library, "XGetWindowProperty") : nullptr;
+    int (*freeData)(void*) = library ? (decltype(freeData))SDL_LoadFunction(library, "XFree") : nullptr;
+    void* shapeLibrary = SDL_LoadObject("libXext.so.6");
+    void (*shapeRectangles)(Display*, Window, int, int, int, XRectangle*, int, int, int) = shapeLibrary ?
+        (decltype(shapeRectangles))SDL_LoadFunction(shapeLibrary, "XShapeCombineRectangles") : nullptr;
 };
 X11Embedding& x11() { static X11Embedding api; return api; }
 #endif
 bool fullscreen(SDL_Window* window) {
     return window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN);
+}
+
+int fullscreenButtonWidth(int width = 0) {
+    return width > 0 && width < 480 ? 36 : 118;
+}
+
+int discButtonWidth(int width) {
+    return state.configured ? std::max(90, std::min(285, width - fullscreenButtonWidth(width) - 185)) : 0;
+}
+
+int barControlAt(int x, int width) {
+    if (x < 0 || x >= width) return 0;
+    if (fullscreenButtonWidth(width) && x >= width - fullscreenButtonWidth(width)) return 2;
+    return x < discButtonWidth(width) ? 1 : 0;
 }
 
 // Owned windows stay with the game in the Windows task switcher and minimize
@@ -155,14 +191,17 @@ bool embedGuest(SDL_Window* child, SDL_Window* parent, bool attach) {
     if (!SDL_GetWindowWMInfo(child, &c) || !SDL_GetWindowWMInfo(parent, &p)) return false;
     HWND hwnd = c.info.win.window;
     if (attach) {
+        // Reparenting a previously visible top-level window sends WM_SIZE
+        // while its frame is being removed. Preserve the guest client size
+        // before that transient native size reaches SDL's window cache.
+        int w, h;
+        SDL_GetWindowSize(child, &w, &h);
         guestStyle = GetWindowLongPtr(hwnd, GWL_STYLE);
         guestExStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
         SetWindowLongPtr(hwnd, GWL_STYLE, (guestStyle & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)) | WS_CHILD | WS_CLIPSIBLINGS);
         SetWindowLongPtr(hwnd, GWL_EXSTYLE, guestExStyle & ~(WS_EX_APPWINDOW | WS_EX_WINDOWEDGE));
         SetWindowLongPtr(p.info.win.window, GWL_STYLE, GetWindowLongPtr(p.info.win.window, GWL_STYLE) | WS_CLIPCHILDREN);
         SetParent(hwnd, p.info.win.window);
-        int w, h;
-        SDL_GetWindowSize(child, &w, &h);
         SetWindowPos(hwnd, nullptr, 0, 0, w, h, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
     } else {
         SDL_HideWindow(child);
@@ -178,6 +217,23 @@ bool embedGuest(SDL_Window* child, SDL_Window* parent, bool attach) {
     if (!SDL_GetWindowWMInfo(child, &c) || !SDL_GetWindowWMInfo(parent, &p) ||
             c.subsystem != SDL_SYSWM_X11 || p.subsystem != SDL_SYSWM_X11 || !x11().reparent || !x11().flush) return false;
     SDL_HideWindow(child);
+    if (attach && x11().atom && x11().property && x11().freeData) {
+        // The WM withdraws a former fullscreen toplevel asynchronously and
+        // reparents it back to the root. Wait for that withdrawal before
+        // embedding, or its late reparent can pull the game out of our host.
+        Atom stateAtom = x11().atom(c.info.x11.display, "WM_STATE", False);
+        U32 until = SDL_GetTicks() + 500;
+        do {
+            Atom type; int format; unsigned long count, remaining;
+            unsigned char* data = nullptr;
+            int result = x11().property(c.info.x11.display, c.info.x11.window, stateAtom,
+                0, 2, False, AnyPropertyType, &type, &format, &count, &remaining, &data);
+            bool withdrawn = result != Success || !count || (format == 32 && *(long*)data == 0); // WithdrawnState
+            if (data) x11().freeData(data);
+            if (withdrawn) break;
+            SDL_Delay(5);
+        } while ((S32)(SDL_GetTicks() - until) < 0);
+    }
     x11().reparent(c.info.x11.display, c.info.x11.window,
         attach ? p.info.x11.window : DefaultRootWindow(c.info.x11.display), 0, 0);
     x11().flush(c.info.x11.display);
@@ -204,6 +260,7 @@ bool createSurface(Surface& surface, const char* title, int width, int height, b
     } else {
         U32 flags = SDL_WINDOW_HIDDEN;
         if (!passive || wayland) flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_UTILITY;
+        if (&surface == &hint && !wayland) flags = (flags & ~SDL_WINDOW_UTILITY) | SDL_WINDOW_TOOLTIP;
         surface.window = SDL_CreateWindow(title, 0, 0, width, height, flags);
         if (!surface.window) return false;
         if (wayland) {
@@ -274,6 +331,43 @@ void fill(Surface& surface, int x, int y, int w, int h, U8 r, U8 g, U8 b) {
     SDL_RenderFillRect(surface.renderer, &rect);
 }
 
+void drawMouseIcon(Surface& surface, int x, int y, bool captured) {
+    // A fixed white outline on a square badge: capture changes the background,
+    // keeping the mouse recognizable in either state. Cache subpixel coverage.
+    static const auto coverage = [] {
+        std::array<U8, 28 * 28> pixels = {};
+        for (int row = 0; row < 28; ++row) for (int col = 0; col < 28; ++col) {
+            int covered = 0;
+            for (int sy = 0; sy < 4; ++sy) for (int sx = 0; sx < 4; ++sx) {
+                float px = col + (sx + .5f) / 4, py = row + (sy + .5f) / 4;
+                auto body = [&](float inset) {
+                    float radius = (py < 14 ? 5.f : 8.f) - inset;
+                    float dx = std::max(std::abs(px - 14) - (8 - inset - radius), 0.f);
+                    float dy = std::max(std::abs(py - 14) - (11 - inset - radius), 0.f);
+                    return dx * dx + dy * dy <= radius * radius;
+                };
+                float dx = px - 14;
+                float dy = std::max(std::abs(py - 7.5f) - 3.5f, 0.f);
+                bool wheel = dx * dx + dy * dy <= 1.21f;
+                if ((body(0) && !body(2)) || wheel) ++covered;
+            }
+            pixels[row * 28 + col] = (U8)((covered * 255 + 8) / 16);
+        }
+        return pixels;
+    }();
+    fill(surface, x, y, 28, 28, captured ? 34 : 94, captured ? 129 : 102, captured ? 88 : 112);
+    SDL_BlendMode previous;
+    SDL_GetRenderDrawBlendMode(surface.renderer, &previous);
+    SDL_SetRenderDrawBlendMode(surface.renderer, SDL_BLENDMODE_BLEND);
+    for (int row = 0; row < 28; ++row) for (int col = 0; col < 28; ++col) {
+        U8 alpha = coverage[row * 28 + col];
+        if (!alpha) continue;
+        SDL_SetRenderDrawColor(surface.renderer, 255, 255, 255, alpha);
+        SDL_RenderDrawPoint(surface.renderer, x + col, y + row);
+    }
+    SDL_SetRenderDrawBlendMode(surface.renderer, previous);
+}
+
 void text(Surface& surface, const BString& value, int x, int y, int maxWidth, U8 gray = 40) {
     SDL_Rect clip = {x, y, std::max(0, maxWidth), rowHeight};
     SDL_RenderSetClipRect(surface.renderer, &clip);
@@ -311,6 +405,7 @@ BString discName(int index) {
 void closeMenu(bool restoreFocus) {
     opened = false;
     barPressed = false;
+    fullscreenPressed = false;
     pressedMenuRow = -1;
     hover = -1;
     if (menu.window) {
@@ -342,7 +437,7 @@ void positionSurfaces() {
     if (wayland) {
         int surfaceW = w, surfaceH = h;
         WaylandStatusSurface::toSurfaceCoordinates(parent, surfaceW, surfaceH);
-        bool showBar = state.configured && !fullscreen(parent) && (SDL_GetWindowFlags(parent) & SDL_WINDOW_SHOWN);
+        bool showBar = !fullscreen(parent) && (SDL_GetWindowFlags(parent) & SDL_WINDOW_SHOWN);
         if (showBar) {
             showBar = createSurface(bar, SDL_GetWindowTitle(parent), w, barHeight, true);
             if (showBar) {
@@ -406,8 +501,10 @@ void draw() {
         height = barHeight;
         fill(bar, 0, 0, width, height, 242, 243, 245);
         fill(bar, 0, 0, width, 1, 190, 194, 200);
-        if (opened) fill(bar, 1, 1, std::min(width - 2, 285), height - 2, 218, 233, 250);
+        int discWidth = discButtonWidth(width);
+        if (opened) fill(bar, 1, 1, discWidth - 2, height - 2, 218, 233, 250);
         // Optical disc icon, drawn without any font/icon dependency.
+        if (state.configured) {
         SDL_SetRenderDrawColor(bar.renderer, 92, 105, 122, 255);
         for (int radius : {8, 2}) {
             for (int angle = 0; angle < 64; ++angle) {
@@ -419,9 +516,37 @@ void draw() {
         BString label = B("CD-ROM");
         if (!state.drive.isEmpty()) label += " (" + state.drive + ")";
         label += state.index >= 0 ? B("  -  Disc ") + BString::valueOf(state.index + 1) : B("  -  Empty");
-        text(bar, label, 36, 7, std::min(width - 45, 235));
-        for (int i = 0; i < 4; ++i) fill(bar, 267 + i, 14 + i, 7 - i * 2, 1, 80, 86, 96);
-        if (width > 660) text(bar, B("Ctrl+Shift+F12: Next disc"), width - 193, 8, 185, 110);
+        text(bar, label, 36, 7, discWidth - 58);
+        for (int i = 0; i < 4; ++i) fill(bar, discWidth - 18 + i, 14 + i, 7 - i * 2, 1, 80, 86, 96);
+        }
+        int fullWidth = fullscreenButtonWidth(width);
+        int mouseWidth = std::min(240, std::max(30, width - discWidth - fullWidth));
+        int mouseX = width - fullWidth - mouseWidth + 6;
+        bool captured = captureState == SdlMouseCaptureState::Captured;
+        drawMouseIcon(bar, mouseX, 2, captured);
+        BString mouseLabel = captured ? B("Captured") : captureState == SdlMouseCaptureState::Released ? B("Click game to capture") : B("Mouse free");
+        if (captured && mouseWidth >= 220) {
+#ifdef __APPLE__
+            mouseLabel = B("Captured - Ctrl+Option+G");
+#else
+            mouseLabel = B("Captured - Ctrl+Alt+G");
+#endif
+        }
+        text(bar, mouseLabel, mouseX + 36, 7, mouseWidth - 48, captured ? 45 : 100);
+        if (state.configured && mouseX - discWidth > 198) text(bar, B("Ctrl+Shift+F12: Next disc"), discWidth + 8, 8, 185, 110);
+        if (fullWidth) {
+            int left = width - fullWidth;
+            if (barHover == 2) fill(bar, left + 2, 3, fullWidth - 5, barHeight - 6, 218, 233, 250);
+            fill(bar, left, 7, 1, 18, 210, 214, 220);
+            SDL_SetRenderDrawColor(bar.renderer, 70, 81, 98, 255);
+            for (int corner = 0; corner < 4; ++corner) {
+                int x = left + 11 + (corner & 1) * 14, y = 9 + (corner >> 1) * 14;
+                SDL_RenderDrawLine(bar.renderer, x, y, x + ((corner & 1) ? -5 : 5), y);
+                SDL_RenderDrawLine(bar.renderer, x, y, x, y + ((corner & 2) ? -5 : 5));
+            }
+            if (fullWidth > 36) text(bar, B("Full screen"), left + 34, 7, fullWidth - 40);
+        }
+        SDL_RenderSetViewport(bar.renderer, nullptr);
         presented &= bar.present();
     }
     if (opened && menu.window) {
@@ -454,6 +579,142 @@ void draw() {
         presented &= menu.present();
     }
     dirty = !presented;
+}
+
+void hideHint() {
+    hintUntil = 0;
+    hintPresented = false;
+    hintOwnerWidth = 0;
+#ifdef __APPLE__
+    if (hint.window) macStatusBarHideHint(hint.window);
+#endif
+    hint.hide();
+}
+
+void updateHint() {
+    if (!hintUntil) return;
+    if (!owner() || !fullscreen(owner()) || (S32)(SDL_GetTicks() - hintUntil) >= 0 ||
+            !(SDL_GetWindowFlags(owner()) & SDL_WINDOW_SHOWN) || (SDL_GetWindowFlags(owner()) & SDL_WINDOW_MINIMIZED)) {
+        hideHint();
+        return;
+    }
+    constexpr int width = 326, height = 44;
+    int x, y, w;
+    SDL_GetWindowPosition(owner(), &x, &y);
+    SDL_GetWindowSize(owner(), &w, nullptr);
+    if (hintPresented && hintOwnerWidth == w) return;
+    if (!createSurface(hint, "Boxedwine fullscreen hint", width, height, false)) { hideHint(); return; }
+    if (!wayland) setOwner(hint.window, owner(), true);
+#ifdef BOXEDWINE_MSVC
+    SDL_SysWMinfo info = {}; SDL_VERSION(&info.version);
+    if (SDL_GetWindowWMInfo(hint.window, &info)) {
+        HWND hwnd = info.info.win.window;
+        SetWindowLongPtr(hwnd, GWL_EXSTYLE, GetWindowLongPtr(hwnd, GWL_EXSTYLE) |
+            WS_EX_NOACTIVATE | WS_EX_TRANSPARENT | WS_EX_LAYERED);
+        SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+    }
+#elif defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
+    if (!wayland) {
+        SDL_SysWMinfo info = {}; SDL_VERSION(&info.version);
+        if (SDL_GetWindowWMInfo(hint.window, &info) && info.subsystem == SDL_SYSWM_X11 && x11().shapeRectangles) {
+            // Empty ShapeInput region: clicks and motion go to the game below.
+            x11().shapeRectangles(info.info.x11.display, info.info.x11.window, 2, 0, 0, nullptr, 0, 0, 0);
+            x11().flush(info.info.x11.display);
+        }
+    }
+#endif
+    if (wayland) {
+        int hx = (w - width) / 2, hy = 24;
+        WaylandStatusSurface::toSurfaceCoordinates(owner(), hx, hy);
+        hint.subsurface->setInputTransparent();
+        hint.subsurface->position(hx, hy);
+    } else SDL_SetWindowPosition(hint.window, x + (w - width) / 2, y + 24);
+    fill(hint, 0, 0, width, height, 34, 39, 48);
+#ifdef __APPLE__
+    text(hint, B("Press Option+Return to exit full screen"), 18, 14, width - 36, 245);
+#else
+    text(hint, B("Press Alt+Enter to exit full screen"), 18, 14, width - 36, 245);
+#endif
+    hintPresented = hint.present();
+    hintOwnerWidth = w;
+#ifdef __APPLE__
+    macStatusBarShowHint(hint.window, owner());
+#else
+    // A Wayland subsurface stays SDL-hidden to avoid a second shell role.
+    // Windows respects WS_EX_NOACTIVATE; X11 tooltips do not acquire focus.
+    if (!wayland) SDL_ShowWindow(hint.window);
+#endif
+}
+
+bool setFullscreen(bool value, bool announce) {
+    SDL_Window* window = owner();
+    if (!window) return false;
+    closeMenu(false);
+    hideHint();
+    if (wayland) { bar.hide(); waylandBarShown = false; }
+    auto screen = std::dynamic_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
+    if (value) {
+        if (!fullscreen(window)) {
+            SDL_GetWindowPosition(embedded ? bar.window : window, &windowedBounds.x, &windowedBounds.y);
+            SDL_GetWindowSize(window, &windowedBounds.w, &windowedBounds.h);
+            haveWindowedBounds = true;
+        }
+        if (embedded) {
+            embedGuest(window, bar.window, false);
+            embedded = false;
+            bar.hide();
+            SDL_SetWindowPosition(window, windowedBounds.x, windowedBounds.y);
+        }
+    }
+    if (SDL_SetWindowFullscreen(window, value ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) != 0) {
+        kwarn_fmt("Could not change fullscreen mode: %s", SDL_GetError());
+        // Leave a usable window on failure, with the same host controls.
+        value = fullscreen(window);
+    }
+    // Keep the guest-sized GL buffer after returning to a window. Resizing
+    // that window can then proceed normally without changing guest GL state.
+#ifdef BOXEDWINE_MSVC
+    windowsOpenGLEnableFullscreen(window);
+#elif defined(__APPLE__)
+    macOpenGLEnableFullscreen(window);
+#elif defined(__linux__)
+    linuxOpenGLEnableFullscreen(window);
+#endif
+    if (!value) {
+        int w, h;
+        SDL_GetWindowSize(window, &w, &h);
+        if (haveWindowedBounds) { w = windowedBounds.w; h = windowedBounds.h; }
+#ifdef BOXEDWINE_MSVC
+        auto viewport = windowsOpenGLGetViewport(window);
+#elif defined(__APPLE__)
+        auto viewport = macOpenGLGetViewport(window);
+#else
+        auto viewport = linuxOpenGLGetViewport(window);
+#endif
+        if (viewport.valid()) { w = viewport.guestWidth; h = viewport.guestHeight; }
+        if (screen) screen->windowedSize(window, w, h);
+        SDL_SetWindowSize(window, w, h);
+        if (wayland) {
+            positionSurfaces();
+        } else if (createSurface(bar, SDL_GetWindowTitle(window), w, h + barHeight, true)) {
+            if (haveWindowedBounds) SDL_SetWindowPosition(bar.window, windowedBounds.x, windowedBounds.y);
+            else SDL_SetWindowPosition(bar.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            embedded = embedGuest(window, bar.window, true);
+        }
+    }
+#ifndef __APPLE__
+    if (!wayland && menu.window) setOwner(menu.window, embedded ? bar.window : window, false);
+#endif
+    if (embedded) { positionSurfaces(); SDL_ShowWindow(bar.window); }
+    SDL_ShowWindow(window);
+    // SDL defers the desktop-size transition while the detached guest is
+    // hidden. Calculate software scaling only after ShowWindow applies it.
+    if (screen) screen->hostFullscreenChanged(window, value);
+    SDL_RaiseWindow(embedded ? bar.window : window);
+    focusGuest();
+    dirty = true;
+    if (value && announce) { hintUntil = SDL_GetTicks() + 4000; updateHint(); }
+    return true;
 }
 
 #ifndef __linux__
@@ -538,7 +799,32 @@ void activate(int row, int x) {
 } // namespace
 
 bool sdlStatusBarOwns(SDL_Window* window) {
-    return window && (window == bar.window || window == menu.window);
+    return window && (window == bar.window || window == menu.window || window == hint.window);
+}
+
+void sdlStatusBarSetMouseCapture(SdlMouseCaptureState value) {
+    if (captureState != value) { captureState = value; dirty = true; }
+}
+
+bool sdlStatusBarToggleFullscreen() {
+    if (!enabled || !owner()) return false;
+    bool result = setFullscreen(!fullscreen(owner()), true);
+    if (result) runtimeFullscreen = fullscreen(owner()) ? 1 : 0;
+    return result;
+}
+
+bool sdlStatusBarFullscreenShortcut(SDL_Event& event) {
+    if (!enabled || !owner() || (event.type != SDL_KEYDOWN && event.type != SDL_KEYUP) ||
+            event.key.keysym.sym != SDLK_RETURN) return false;
+    if (event.type == SDL_KEYUP && fullscreenKeyDown) { fullscreenKeyDown = false; return true; }
+    SDL_Window* target = SDL_GetWindowFromID(event.key.windowID);
+    bool altOnly = (event.key.keysym.mod & KMOD_ALT) && !(event.key.keysym.mod & (KMOD_CTRL | KMOD_SHIFT | KMOD_GUI));
+    if (event.type == SDL_KEYDOWN && (target == owner() || sdlStatusBarOwns(target)) &&
+            (altOnly || (fullscreenKeyDown && event.key.repeat))) {
+        if (!event.key.repeat) { fullscreenKeyDown = true; sdlStatusBarToggleFullscreen(); }
+        return true;
+    }
+    return false;
 }
 
 void sdlStatusBarTick() {
@@ -558,6 +844,7 @@ void sdlStatusBarTick() {
         nextRefresh = SDL_GetTicks() + 100;
     }
     positionSurfaces();
+    updateHint();
     if (dirty) draw();
 }
 
@@ -568,6 +855,7 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
     }
     if (!show) {
         if (owner() == window) {
+            hideHint();
             closeMenu(false);
             if (embedded || wayland) bar.hide();
             waylandBarShown = false;
@@ -576,6 +864,9 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
         return;
     }
     if (owner() != window) {
+        hideHint();
+        hint.destroy();
+        haveWindowedBounds = false;
 #ifdef __linux__
         imagePicker.cancel();
 #endif
@@ -590,13 +881,18 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
         int w, h, x, y;
         SDL_GetWindowSize(window, &w, &h);
         SDL_GetWindowPosition(window, &x, &y);
-        if (!wayland && !fullscreen(window) && state.configured && createSurface(bar, SDL_GetWindowTitle(window), w, h + barHeight, true)) {
+        if (!wayland && !fullscreen(window) && createSurface(bar, SDL_GetWindowTitle(window), w, h + barHeight, true)) {
             SDL_SetWindowPosition(bar.window, x, y);
             embedded = embedGuest(window, bar.window, true);
         }
 #ifndef __APPLE__
         if (!wayland && menu.window) setOwner(menu.window, embedded ? bar.window : window, false);
 #endif
+        if (runtimeFullscreen >= 0 && fullscreenButtonWidth() && fullscreen(window) != (runtimeFullscreen != 0)) {
+            setFullscreen(runtimeFullscreen != 0, false);
+        } else if (fullscreenButtonWidth() && fullscreen(window)) {
+            hintUntil = SDL_GetTicks() + 4000;
+        }
     }
     if (embedded) {
         positionSurfaces();
@@ -678,7 +974,7 @@ void sdlStatusBarOpen() {
 }
 
 SDL_Window* sdlStatusBarInputWindow(SDL_Window* window) {
-    if (window && window == menu.window) return nullptr;
+    if (window && (window == menu.window || window == hint.window)) return nullptr;
     return (embedded || wayland) && window == bar.window ? owner() : window;
 }
 
@@ -718,6 +1014,7 @@ bool sdlStatusBarEvent(SDL_Event& event) {
     if (!windowEvent) return false;
     U32 id = (event.type >= SDL_DROPFILE && event.type <= SDL_DROPCOMPLETE) ? event.drop.windowID : event.window.windowID;
     SDL_Window* target = SDL_GetWindowFromID(id);
+    if (target && target == hint.window) return true;
     if (wayland && opened) {
         // A subsurface shares the toplevel's keyboard focus. Route its menu
         // keys here without changing the guest's drawable or native focus.
@@ -729,12 +1026,14 @@ bool sdlStatusBarEvent(SDL_Event& event) {
         }
     }
     const bool wasBarPressed = barPressed;
+    const bool wasFullscreenPressed = fullscreenPressed;
     const int wasMenuRow = pressedMenuRow;
     const bool wasMenuRemove = pressedMenuRemove;
     if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
         U32 button = SDL_BUTTON(event.button.button);
         if (event.button.button == SDL_BUTTON_LEFT) {
             barPressed = false;
+            fullscreenPressed = false;
             pressedMenuRow = -1;
         }
         if (event.type == SDL_MOUSEBUTTONDOWN) {
@@ -758,11 +1057,18 @@ bool sdlStatusBarEvent(SDL_Event& event) {
     if (!sdlStatusBarOwns(target)) {
         // Alt+F4 can target the focused child. SDL no longer synthesizes QUIT
         // automatically because the host and popup are additional windows.
-        if ((embedded || wayland) && target == owner() && event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE) {
+        if (target == owner() && event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE) {
             SDL_Event quit = {}; quit.type = SDL_QUIT; SDL_PushEvent(&quit);
             return true;
         }
         if (target == owner() && event.type == SDL_WINDOWEVENT) dirty = true;
+        if (target == owner() && event.type == SDL_WINDOWEVENT &&
+                event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED && runtimeFullscreen >= 0) {
+            // X11, Wayland and Cocoa may apply a fullscreen size after the
+            // toggle returns. Refresh software scaling from the configured size.
+            if (auto screen = std::dynamic_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen()))
+                screen->hostFullscreenChanged(target, fullscreen(target));
+        }
         return false;
     }
     // Ignore queued input for the popup after it has been hidden.
@@ -782,6 +1088,7 @@ bool sdlStatusBarEvent(SDL_Event& event) {
         (event.type == SDL_WINDOWEVENT && (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED ||
             event.window.event == SDL_WINDOWEVENT_FOCUS_LOST)));
     if (embedded && target == bar.window && guestEvent) {
+        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) focusGuest();
         event.window.windowID = ownerId;
         return false;
     }
@@ -797,11 +1104,11 @@ bool sdlStatusBarEvent(SDL_Event& event) {
         SDL_GetWindowSize(target, &width, &height);
         if (target == bar.window) {
             int top = wayland ? 0 : guestHeight;
-            bool inside = event.button.x >= 0 && event.button.x < std::min(width, 285) &&
-                event.button.y >= top && event.button.y < top + barHeight;
-            if (event.type == SDL_MOUSEBUTTONDOWN) barPressed = inside;
+            int control = event.button.y >= top && event.button.y < top + barHeight ? barControlAt(event.button.x, width) : 0;
+            if (event.type == SDL_MOUSEBUTTONDOWN) { barPressed = control == 1; fullscreenPressed = control == 2; }
             else {
-                if (wasBarPressed && inside) sdlStatusBarOpen();
+                if (wasBarPressed && control == 1) sdlStatusBarOpen();
+                else if (wasFullscreenPressed && control == 2) sdlStatusBarToggleFullscreen();
             }
         } else {
             int row = event.button.x >= 4 && event.button.x < width - 4 &&
@@ -814,6 +1121,10 @@ bool sdlStatusBarEvent(SDL_Event& event) {
                 if (row >= 0 && row == wasMenuRow && wasMenuRemove == removeControl(row, event.button.x)) activate(row, event.button.x);
             }
         }
+    } else if (event.type == SDL_MOUSEMOTION && target == bar.window) {
+        int width; SDL_GetWindowSize(bar.window, &width, nullptr);
+        int control = barControlAt(event.motion.x, width);
+        if (barHover != control) { barHover = control; dirty = true; }
     } else if (event.type == SDL_MOUSEMOTION && target == menu.window) {
         hover = (event.motion.y - 4) / rowHeight;
         dirty = true;
@@ -846,11 +1157,20 @@ void sdlStatusBarShutdown() {
     embedded = false;
     menu.destroy();
     bar.destroy();
+    hint.destroy();
     atlas.reset();
     font = nullptr;
     ownerId = 0;
     opened = false;
     barPressed = false;
+    fullscreenPressed = fullscreenKeyDown = false;
+    barHover = 0;
+    captureState = SdlMouseCaptureState::Free;
+    hintUntil = 0;
+    hintPresented = false;
+    hintOwnerWidth = 0;
+    runtimeFullscreen = -1;
+    haveWindowedBounds = false;
     pressedMenuRow = -1;
     dismissedButtons = 0;
     state = {};
@@ -868,6 +1188,8 @@ void sdlStatusBarConfigure(bool value) {
 
 void sdlStatusBarWindowDestroyed(SDL_Window* window) {
     if (window && SDL_GetWindowID(window) == ownerId) {
+        hideHint();
+        hint.destroy();
 #ifdef __linux__
         imagePicker.cancel();
 #endif

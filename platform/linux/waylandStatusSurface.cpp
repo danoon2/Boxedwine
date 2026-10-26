@@ -32,10 +32,13 @@ struct Connection {
     wl_display* display = nullptr; // Owned by SDL.
     wl_registry* registry = nullptr;
     wl_subcompositor* compositor = nullptr;
+    wl_compositor* surfaceCompositor = nullptr;
     wl_shm* shm = nullptr;
     static void global(void* data, wl_registry* registry, uint32_t name, const char* interface, uint32_t) {
         auto& self = *static_cast<Connection*>(data);
-        if (!strcmp(interface, wl_subcompositor_interface.name)) {
+        if (!strcmp(interface, wl_compositor_interface.name)) {
+            self.surfaceCompositor = static_cast<wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
+        } else if (!strcmp(interface, wl_subcompositor_interface.name)) {
             self.compositor = static_cast<wl_subcompositor*>(wl_registry_bind(registry, name, &wl_subcompositor_interface, 1));
         } else if (!strcmp(interface, wl_shm_interface.name)) {
             self.shm = static_cast<wl_shm*>(wl_registry_bind(registry, name, &wl_shm_interface, 1));
@@ -51,6 +54,7 @@ struct Connection {
     }
     ~Connection() {
         if (compositor) wl_subcompositor_destroy(compositor);
+        if (surfaceCompositor) wl_compositor_destroy(surfaceCompositor);
         if (shm) wl_shm_destroy(shm);
         if (registry) wl_registry_destroy(registry);
     }
@@ -152,6 +156,14 @@ void WaylandStatusSurface::position(int x, int y) {
     wl_surface_commit(impl->parent); // Subsurface positions are parent-buffered.
     wl_display_flush(impl->connection->display);
     impl->x = x; impl->y = y;
+}
+
+void WaylandStatusSurface::setInputTransparent() {
+    if (!impl || !impl->connection->surfaceCompositor) return;
+    wl_region* empty = wl_compositor_create_region(impl->connection->surfaceCompositor);
+    wl_surface_set_input_region(impl->surface, empty);
+    wl_region_destroy(empty);
+    wl_surface_commit(impl->surface);
 }
 
 bool WaylandStatusSurface::present(SDL_Surface* pixels) {

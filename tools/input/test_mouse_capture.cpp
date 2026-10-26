@@ -214,13 +214,13 @@ int main() {
     assert(!grabbed);
     auto& screen = *std::static_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
     screen.window = window(3);
-    // Ctrl+Alt+G releases both relative mode and the grab, with a discoverable title.
+    // Ctrl+Alt+G releases both relative mode and the grab, preserving the app title.
     server->isGrabbed = true;
     server->grabbedConfinedId = 0;
     server->setMouseCursorVisible(false);
     input.setCursor(nullptr);
     input.updateMouseConfinement(focused);
-    assert(titles[3] == "Alice Gameplay - Ctrl+Alt+G releases mouse");
+    assert(titles[3] == "Alice Gameplay");
     input.ownsRelativeMouseMode = true;
     relativeMode = SDL_TRUE;
     SDL_Event shortcut = {};
@@ -252,7 +252,7 @@ int main() {
     assert(SDL_GetHintBoolean(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, SDL_FALSE));
     assert(input.isMouseCaptureReleased() && !grabbed && relativeMode == SDL_FALSE);
     assert(cursorShown == SDL_ENABLE);
-    assert(titles[3] == "Alice Gameplay - Click to capture mouse");
+    assert(titles[3] == "Alice Gameplay");
     shortcut.key.repeat = 1;
     shortcut.key.keysym.mod = KMOD_NONE; // Modifiers may be released before G.
     assert(input.handleMouseCaptureEvent(&shortcut));
@@ -276,7 +276,7 @@ int main() {
     focused = window(3);
     focus(input, 3, true);
     input.processEvents();
-    assert(!grabbed && titles[3] == "Alice Gameplay - Click to capture mouse");
+    assert(!grabbed && titles[3] == "Alice Gameplay");
     input.setCursor(nullptr); // The guest cannot hide the released desktop cursor.
     assert(cursorShown == SDL_ENABLE);
     SDL_Event motion = {};
@@ -300,11 +300,11 @@ int main() {
     physicalButtons = 0;
     assert(input.handleMouseCaptureEvent(&click));
     assert(input.swallowedMouseButtons == 0);
-    // Title changes are preserved, and the hint must not accumulate.
+    // App/FPS title changes remain untouched while captured.
     titles[3] = "Alice - 60 FPS";
     input.processEvents();
     input.processEvents();
-    assert(titles[3] == "Alice - 60 FPS - Ctrl+Alt+G releases mouse");
+    assert(titles[3] == "Alice - 60 FPS");
     // Shortcut works with either side's modifiers and does not leak its G key-up.
     shortcut.type = SDL_KEYDOWN;
     shortcut.key.repeat = 0;
@@ -376,7 +376,7 @@ int main() {
     motion.type = SDL_MOUSEMOTION;
     motion.motion.windowID = 3;
     assert(input.handleMouseCaptureEvent(&motion));
-    assert(input.isMouseCaptureReleased() && titles[3] == "Alice - 60 FPS - Click to capture mouse");
+    assert(input.isMouseCaptureReleased() && titles[3] == "Alice - 60 FPS");
     input.releaseMouseForHostUi(); // Repeated host events cannot change that policy.
     click.type = SDL_MOUSEBUTTONDOWN;
     assert(input.handleMouseCaptureEvent(&click));

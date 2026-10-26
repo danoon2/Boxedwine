@@ -152,6 +152,8 @@ KNativeScreenSDL::KNativeScreenSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scal
     this->bpp = bpp;
     this->scaleQuality = scaleQuality;
     this->fullScreen = fullScreen;
+    windowedScaleX = scaleX;
+    windowedScaleY = scaleY;
     this->vsync = vsync;
 
     this->defaultScreenWidth = cx;
@@ -170,6 +172,39 @@ KNativeScreenSDL::~KNativeScreenSDL() {
 
 KNativeInputPtr KNativeScreenSDL::getInput() {
     return input;
+}
+
+void KNativeScreenSDL::windowedSize(SDL_Window* target, int& width, int& height) {
+    if (target == window) {
+        width = input->width * windowedScaleX / 100;
+        height = input->height * windowedScaleY / 100;
+    }
+}
+
+void KNativeScreenSDL::hostFullscreenChanged(SDL_Window* target, bool fullscreen) {
+    if (target == window) {
+        if (fullscreen && fullScreen == FULLSCREEN_NOTSET) {
+            windowedScaleX = input->scaleX;
+            windowedScaleY = input->scaleY;
+        }
+        input->scaleXOffset = input->scaleYOffset = 0;
+        if (fullscreen) {
+            int width, height;
+            SDL_GetWindowSize(target, &width, &height);
+            U32 scale = std::max(1u, std::min(width * 100 / input->width, height * 100 / input->height));
+            input->scaleX = input->scaleY = scale;
+            input->scaleXOffset = (width - input->width * scale / 100) / 2;
+            input->scaleYOffset = (height - input->height * scale / 100) / 2;
+        } else {
+            input->scaleX = windowedScaleX;
+            input->scaleY = windowedScaleY;
+        }
+    }
+    fullScreen = fullscreen ? FULLSCREEN_ASPECT : FULLSCREEN_NOTSET;
+    if (auto server = XServer::getServer(true)) {
+        server->resetCapturedMouse();
+        server->isDisplayDirty = true;
+    }
 }
 
 void KNativeScreenSDL::setScreenSize(U32 cx, U32 cy) {

@@ -107,9 +107,22 @@ int main(int argc, char**) {
     }
     // Wine resets creation attributes while probing other pixel formats.
     // They must not determine the backend of this already-created context.
+    const SDL_GLattr creationAttributes[] = {SDL_GL_RED_SIZE, SDL_GL_GREEN_SIZE, SDL_GL_BLUE_SIZE,
+        SDL_GL_ALPHA_SIZE, SDL_GL_DEPTH_SIZE, SDL_GL_STENCIL_SIZE, SDL_GL_DOUBLEBUFFER,
+        SDL_GL_CONTEXT_MAJOR_VERSION, SDL_GL_CONTEXT_MINOR_VERSION, SDL_GL_CONTEXT_PROFILE_MASK};
+    int creationValues[sizeof(creationAttributes) / sizeof(*creationAttributes)] = {};
+    for (unsigned i = 0; i < sizeof(creationAttributes) / sizeof(*creationAttributes); ++i)
+        SDL_GL_GetAttribute(creationAttributes[i], &creationValues[i]);
     SDL_GL_ResetAttributes();
     for (bool aspect : {true, false}) {
-        if (!aspect) assert(linuxOpenGLConfigureFullscreen(window, 160, 90, aspect));
+        if (!aspect) {
+            // A replacement Wayland backing window needs the same creation
+            // format as its existing context, just like the production path.
+            for (unsigned i = 0; i < sizeof(creationAttributes) / sizeof(*creationAttributes); ++i)
+                SDL_GL_SetAttribute(creationAttributes[i], creationValues[i]);
+            assert(linuxOpenGLConfigureFullscreen(window, 160, 90, aspect));
+            SDL_GL_ResetAttributes();
+        }
         if (!linuxOpenGLMakeCurrent(window, context)) {
             std::fprintf(stderr, "%s\n", SDL_GetError());
             return 1;
@@ -205,6 +218,52 @@ int main(int argc, char**) {
         SDL_GL_MakeCurrent(window, context);
         linuxOpenGLDestroyWindow(window);
     }
+    SDL_GL_DeleteContext(context);
+    SDL_DestroyWindow(window);
+    // Start windowed, then switch while the guest keeps its context current.
+    // The first swap must adopt the guest backing without another MakeCurrent.
+    window = SDL_CreateWindow("Runtime fullscreen GL regression", 20, 20, 160, 90,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+    assert(window && linuxOpenGLPrepareWindow(window, 160, 90));
+    context = SDL_GL_CreateContext(window);
+    assert(context && linuxOpenGLMakeCurrent(window, context));
+    assert(!linuxOpenGLGetViewport(window).valid());
+    assert(!linuxOpenGLSwapBuffers(window));
+    SDL_ShowWindow(window);
+    SDL_PumpEvents();
+    glClear(GL_COLOR_BUFFER_BIT);
+    __real_SDL_GL_SwapWindow(window);
+    linuxOpenGLEnableFullscreen(window);
+    assert(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) == 0);
+    SDL_Delay(250); SDL_PumpEvents();
+    assert(linuxOpenGLSwapBuffers(window));
+    expectedColor[0] = 255; expectedColor[1] = 0;
+    for (int frame = 0; frame < 3; ++frame) {
+        // EGL may allocate the resized visible buffers at the first swap.
+        checkPresentationPixels = frame != 0;
+        glViewport(0, 0, 160, 90);
+        glClearColor(1, 0, 0, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+        unsigned char pixel[4] = {};
+        glReadPixels(159, 89, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+        assert(pixel[0] == 255 && pixel[1] == 0);
+        assert(linuxOpenGLSwapBuffers(window));
+    }
+    checkPresentationPixels = true;
+    assert(linuxOpenGLResizeFullscreen(window, 160, 90));
+    assert(SDL_SetWindowFullscreen(window, 0) == 0);
+    SDL_SetWindowSize(window, 320, 200);
+    SDL_Delay(250); SDL_PumpEvents();
+    assert(!linuxOpenGLResizeFullscreen(window, 320, 200));
+    checkPresentationPixels = false;
+    assert(linuxOpenGLSwapBuffers(window));
+    checkPresentationPixels = true;
+    glViewport(0, 0, 320, 200);
+    glClear(GL_COLOR_BUFFER_BIT);
+    assert(linuxOpenGLSwapBuffers(window));
+    assert(presentationErrors == 0 && glGetError() == GL_NO_ERROR);
+    SDL_GL_MakeCurrent(window, context);
+    linuxOpenGLDestroyWindow(window);
     SDL_GL_DeleteContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();

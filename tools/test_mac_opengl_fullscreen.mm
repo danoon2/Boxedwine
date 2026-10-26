@@ -73,6 +73,25 @@ int main() {
         macOpenGLDestroyContext(context);
         SDL_DestroyWindow(offscreen);
         SDL_DestroyWindow(window);
+        window = SDL_CreateWindow("Boxedwine runtime fullscreen test", 0, 0, 640, 480,
+            SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+        assert(window);
+        macOpenGLPrepareWindow(window, 640, 480);
+        context = macOpenGLCreateContext(1, major, 2, 0, 0, nullptr);
+        assert(context && macOpenGLSetWindow(context, window) && macOpenGLMakeCurrent(context));
+        verifyBackingSize(640, 480);
+        macOpenGLEnableFullscreen(window);
+        SDL_SetWindowSize(window, 1280, 800);
+        viewport = macOpenGLGetViewport(window);
+        assert(viewport.valid() && viewport.width == 1066 && viewport.height == 800);
+        verifyBackingSize(640, 480);
+        // Runtime-managed windows still permit normal guest mode changes.
+        assert(!macOpenGLResizeFullscreen(window, 800, 600));
+        SDL_SetWindowSize(window, 800, 600);
+        verifyBackingSize(800, 600);
+        macOpenGLClearCurrent();
+        macOpenGLDestroyContext(context);
+        SDL_DestroyWindow(window);
     }
     SDL_Quit();
     std::puts("Native OpenGL fullscreen backing checks passed (legacy and core profiles)");

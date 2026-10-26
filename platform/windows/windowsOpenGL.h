@@ -6,6 +6,8 @@
 // Window configuration/destruction and input queries run on the SDL UI thread.
 // Binding and presentation run on the guest's GL thread, like SDL's WGL calls.
 void windowsOpenGLConfigureFullscreen(SDL_Window* window, int width, int height, bool aspect);
+void windowsOpenGLPrepareWindow(SDL_Window* window, int width, int height);
+void windowsOpenGLEnableFullscreen(SDL_Window* window);
 bool windowsOpenGLResizeFullscreen(SDL_Window* window, int width, int height);
 OpenGLViewport windowsOpenGLGetViewport(SDL_Window* window);
 bool windowsOpenGLMakeCurrent(SDL_Window* window, SDL_GLContext context);

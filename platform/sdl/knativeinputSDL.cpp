@@ -335,33 +335,10 @@ void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
         SDL_SetWindowGrab(target, SDL_TRUE);
     }
     bool captured = target && SDL_GetWindowGrab(target) == SDL_TRUE;
-    updateMouseCaptureTitle(window && (captured || (mouseCaptureReleased && !hostUiMouseReleased)) ? window : nullptr);
+    sdlStatusBarSetMouseCapture(captured ? SdlMouseCaptureState::Captured :
+        mouseCaptureReleased && !hostUiMouseReleased ? SdlMouseCaptureState::Released : SdlMouseCaptureState::Free);
+    captureGuestWindowId = window && (captured || (mouseCaptureReleased && !hostUiMouseReleased)) ? SDL_GetWindowID(window) : 0;
 #endif
-}
-
-void KNativeInputSDL::updateMouseCaptureTitle(SDL_Window* window) {
-    SDL_Window* previous = SDL_GetWindowFromID(mouseHintWindowId);
-    if (previous != window) {
-        if (previous && mouseHintTitle == SDL_GetWindowTitle(previous)) {
-            SDL_SetWindowTitle(previous, mouseHintBaseTitle.c_str());
-        }
-        mouseHintWindowId = window ? SDL_GetWindowID(window) : 0;
-        mouseHintBaseTitle = window ? BString::copy(SDL_GetWindowTitle(window)) : BString::empty;
-        mouseHintTitle = BString::empty;
-    }
-    if (window) {
-        // The normal title (including FPS) can change while the mouse is captured.
-        BString current = BString::copy(SDL_GetWindowTitle(window));
-        if (current != mouseHintTitle) mouseHintBaseTitle = current;
-#ifdef __APPLE__
-        const BString captureHint = B(" - Control+Option+G releases mouse");
-#else
-        const BString captureHint = B(" - Ctrl+Alt+G releases mouse");
-#endif
-        mouseHintTitle = mouseHintBaseTitle + (mouseCaptureReleased ?
-            B(" - Click to capture mouse") : captureHint);
-        if (current != mouseHintTitle) SDL_SetWindowTitle(window, mouseHintTitle.c_str());
-    }
 }
 
 void KNativeInputSDL::setCursor(SDL_Cursor* cursor) {
@@ -1169,6 +1146,12 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         return true;
     }
 #endif    
+    // A fullscreen shortcut belongs to the host, but must not release a game's
+    // mouse capture as opening a menu would. Consume both halves and repeats.
+    if (sdlStatusBarFullscreenShortcut(*e)) {
+        updateRelativeMouseMode();
+        return true;
+    }
     // A captured game cannot enter host controls merely by moving down. SDL's
     // outer-window grab includes the bar, so constrain those events first.
     if (confinedWindowId && !mouseCaptureReleased) sdlStatusBarConstrainPointer(*e);
@@ -1275,7 +1258,7 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         } else if (e->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
             captureShortcutDown = false; // Its key-up may go to another application.
             if (XServer* server = XServer::getServer(true)) server->setMouseFocused(false);
-            if (e->window.windowID == confinedWindowId || e->window.windowID == mouseHintWindowId) {
+            if (e->window.windowID == confinedWindowId || e->window.windowID == captureGuestWindowId) {
                 updateMouseConfinement(nullptr);
             }
             for (auto& callback : onFocusLost) {

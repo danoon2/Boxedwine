@@ -84,6 +84,48 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "Could not load OpenGL library: %s\n", SDL_GetError());
         return 1;
     }
+    // Start windowed and toggle without another guest MakeCurrent. Guest
+    // readback, context state and host presentation must survive both ways.
+    {
+        auto window = SDL_CreateWindow("Runtime fullscreen", 80, 90, 640, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        assert(window);
+        windowsOpenGLPrepareWindow(window, 640, 480);
+        auto context = SDL_GL_CreateContext(window);
+        assert(context && windowsOpenGLMakeCurrent(window, context));
+        api.load();
+        assert(!windowsOpenGLGetViewport(window).valid());
+        assert(!windowsOpenGLResizeFullscreen(window, 640, 480));
+        api.glViewport(2, 3, 630, 470);
+        for (bool full : {true, false, true, false}) {
+            assert(SDL_SetWindowFullscreen(window, full ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) == 0);
+            if (!full) SDL_SetWindowSize(window, 640, 480);
+            windowsOpenGLEnableFullscreen(window);
+            assert(windowsOpenGLResizeFullscreen(window, 640, 480) == full);
+            assert(windowsOpenGLSwapBuffers(window));
+            api.glDisable(GL_SCISSOR_TEST);
+            api.glClearColor(0, 1, 0, 1);
+            api.glClear(GL_COLOR_BUFFER_BIT);
+            pixel(639, 479, 0, 255);
+            assert(windowsOpenGLSwapBuffers(window));
+            GLint viewport[4]; api.glGetIntegerv(GL_VIEWPORT, viewport);
+            assert(viewport[0] == 2 && viewport[1] == 3 && viewport[2] == 630 && viewport[3] == 470);
+            auto fit = windowsOpenGLGetViewport(window);
+            assert(fit.valid() && fit.guestWidth == 640 && fit.guestHeight == 480);
+            assert(SDL_GL_MakeCurrent(nullptr, nullptr) == 0);
+            assert(SDL_GL_MakeCurrent(window, context) == 0);
+            api.glReadBuffer(GL_FRONT);
+            pixel(fit.x + fit.width / 2, fit.y + fit.height / 2, 0, 255);
+            if (fit.x) pixel(0, fit.y + fit.height / 2, 0, 0);
+            api.glReadBuffer(GL_BACK);
+            assert(windowsOpenGLMakeCurrent(window, context));
+            assert(api.glGetError() == GL_NO_ERROR);
+        }
+        SDL_GL_MakeCurrent(nullptr, nullptr);
+        SDL_GL_DeleteContext(context);
+        windowsOpenGLDestroyWindow(window);
+        SDL_DestroyWindow(window);
+        std::puts("Runtime fullscreen transitions preserve guest pixels, GL state and input mapping.");
+    }
     for (int major : {0, 3}) {
         for (bool aspect : {true, false}) {
             SDL_GL_ResetAttributes();
