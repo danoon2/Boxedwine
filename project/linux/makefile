@@ -68,8 +68,14 @@ test-native-gl:
 	$(CXX) -std=c++20 -Wall ../../tools/input/test_linux_gl_fullscreen.cpp ../../platform/linux/linuxOpenGL.cpp $$(sdl2-config --cflags --libs) -lGL -lEGL -Wl,--wrap=SDL_GL_SwapWindow -o Build/Native$(AUTOMATION_SUFFIX)/test-linux-gl-fullscreen
 	Build/Native$(AUTOMATION_SUFFIX)/test-linux-gl-fullscreen $(GL_TEST_ARGS)
 
-test-cdrom-statusbar: native-runtime
+test-cdrom-statusbar: native-runtime test-linux-image-picker
 	@$(MAKE) -f makefile -f ../../tools/input/cdrom_statusbar_test.mk cdrom-statusbar-test
+
+.PHONY: test-linux-image-picker
+test-linux-image-picker:
+	@mkdir -p Build/Native$(AUTOMATION_SUFFIX)
+	$(CXX) -std=c++20 -Wall -Wextra -UNDEBUG ../../tools/input/test_linux_image_picker.cpp ../../platform/linux/linuxImagePicker.cpp -o Build/Native$(AUTOMATION_SUFFIX)/test-linux-image-picker
+	Build/Native$(AUTOMATION_SUFFIX)/test-linux-image-picker
 
 # Build on a Debian/Ubuntu-family host of the desired architecture.
 # DEB_ARGS may set --version or --revision and --output.
@@ -169,6 +175,11 @@ SDL_LIBS = $(shell sdl2-config --libs)
 CPPFLAGS ?= -std=c++20 -O2 $(EXTRA_CPP_FLAGS) $(GCC_EXTRA_FLAGS) -Werror=switch -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS)
 CFLAGS ?= -O2 $(INCLUDES)
 LDFLAGS = -L./linux_build/lib -lcurl -lssl -lcrypto -lpthread -lm -lz -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
+# Unit tests compile out the status bar and do not need Wayland development
+# libraries. Keep the dependency on release/native builds that use the surface.
+ifneq ($(BUILD_DIR),Build/Test$(AUTOMATION_SUFFIX))
+LDFLAGS += -lwayland-client
+endif
 
 #$(TEST_BUILD_DIR)/boxedwineTest: $(TEST_OBJS)
 #	$(CC) $(TEST_OBJS) -o $@ $(LDFLAGS)

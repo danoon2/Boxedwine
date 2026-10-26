@@ -67,6 +67,7 @@ class AutomationBuildTests(unittest.TestCase):
                     self.assertEqual("-DBOXEDWINE_AUTOMATION" in output, bool(automation))
                     self.assertEqual("/source/server/localserver.cpp" in output, bool(automation))
                     self.assertEqual("-D__TEST" in output, target == "test")
+                    self.assertEqual(" -lwayland-client" in output, target != "test")
 
     def test_convenience_target_enables_automation(self):
         output = self.make("automation", "AUTOMATION=0")

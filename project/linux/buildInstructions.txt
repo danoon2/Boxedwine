@@ -2,6 +2,7 @@ On Ubuntu 20.04/Raspberry Pi the follow packages need to be installed
 
 build-essential (might already be installed)
 libsdl2-dev
+libwayland-dev
 libssl-dev
 libminizip-dev
 libcurl4-openssl-dev
