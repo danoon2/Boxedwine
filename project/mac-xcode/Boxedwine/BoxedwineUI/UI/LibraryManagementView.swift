@@ -150,10 +150,6 @@ struct AppStorageView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Storage").font(.callout.weight(.medium))
                     Text(value).font(.callout).foregroundStyle(.secondary)
-                    if let storage, !storage.missing, !running {
-                        Text("\(ByteCountFormatter.string(fromByteCount: storage.fileBytes, countStyle: .file)) in files")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
                 }
             }
         }
