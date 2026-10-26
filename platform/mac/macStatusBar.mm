@@ -9,11 +9,28 @@
 // The guest normally owns keyboard focus. Host controls must accept their
 // first click without changing SDL's global click-through policy for guests.
 @interface BWStatusBarInputView : NSView
+@property(nonatomic) Uint32 windowId;
 @end
 @implementation BWStatusBarInputView
 - (BOOL)acceptsFirstMouse:(NSEvent*)event { return YES; }
-- (void)mouseDown:(NSEvent*)event { [self.superview mouseDown:event]; }
-- (void)mouseUp:(NSEvent*)event { [self.superview mouseUp:event]; }
+- (void)sendButton:(NSEvent*)event pressed:(BOOL)pressed {
+    // Returning keyboard focus to the guest can clear SDL's mouse focus
+    // between press and release. Keep the native gesture addressed to this
+    // host, with coordinates from the event rather than SDL's mouse cache.
+    NSView* content = self.window.contentView;
+    NSPoint point = [content convertPoint:event.locationInWindow fromView:nil];
+    SDL_Event button = {};
+    button.type = pressed ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
+    button.button.windowID = self.windowId;
+    button.button.button = SDL_BUTTON_LEFT;
+    button.button.state = pressed ? SDL_PRESSED : SDL_RELEASED;
+    button.button.clicks = (Uint8)event.clickCount;
+    button.button.x = (int)point.x;
+    button.button.y = (int)(NSHeight(content.bounds) - point.y);
+    SDL_PushEvent(&button);
+}
+- (void)mouseDown:(NSEvent*)event { [self sendButton:event pressed:YES]; }
+- (void)mouseUp:(NSEvent*)event { [self sendButton:event pressed:NO]; }
 - (void)rightMouseDown:(NSEvent*)event { [self.superview rightMouseDown:event]; }
 - (void)rightMouseUp:(NSEvent*)event { [self.superview rightMouseUp:event]; }
 @end
@@ -107,7 +124,8 @@ bool macStatusBarEmbedGuest(SDL_Window* guest, SDL_Window* host, bool attach) {
             if ([view isKindOfClass:[BWStatusBarInputView class]]) hasInputView = true;
         }
         if (!hasInputView) {
-            NSView* input = [[BWStatusBarInputView alloc] initWithFrame:NSMakeRect(0, 0, NSWidth(parent.contentView.bounds), 32)];
+            BWStatusBarInputView* input = [[BWStatusBarInputView alloc] initWithFrame:NSMakeRect(0, 0, NSWidth(parent.contentView.bounds), 32)];
+            input.windowId = SDL_GetWindowID(host);
             input.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
             [parent.contentView addSubview:input];
         }

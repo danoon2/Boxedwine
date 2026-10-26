@@ -19,6 +19,7 @@
 int testWaylandStatusBar(bool nativePicker);
 #endif
 #ifdef __APPLE__
+void testCocoaFullscreenButton(SDL_Window* guest, SDL_Window* host);
 void testCocoaStatusBar(SDL_Window* guest, SDL_Window* host, SDL_Window* popup);
 void testCocoaVulkanStatusBar();
 #endif
@@ -286,7 +287,7 @@ static void testRuntimeFullscreen(SDL_Window* guest, SDL_Window* host) {
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
     SDL_SetMainReady();
-    assert(SDL_Init(SDL_INIT_VIDEO) == 0);
+    assert(KNativeSystem::init(VIDEO_NORMAL, false));
     const BString root = B("../../tmp/statusbar-native-test-root");
     std::filesystem::create_directories(root.c_str());
     assert(Fs::initFileSystem(root));
@@ -330,6 +331,9 @@ int main(int argc, char** argv) {
         // focus, as a user click would before starting a capture gesture.
         SDL_SetWindowInputFocus(guest);
         settleStatusBar();
+#endif
+#ifdef __APPLE__
+        testCocoaFullscreenButton(guest, host);
 #endif
         testEmbeddedMouseCapture(guest, host);
         testRuntimeFullscreen(guest, host);
@@ -491,6 +495,8 @@ int main(int argc, char** argv) {
     }
 #ifdef __APPLE__
     testCocoaVulkanStatusBar();
+    // Model a fresh launch, without the earlier runtime windowed preference.
+    sdlStatusBarConfigure(true);
     // Fullscreen uses the original guest window; the menu must still be
     // available without exposing the windowed status-bar host.
     SDL_Window* full = SDL_CreateWindow("Fullscreen status bar harness", 0, 0, 640, 480,
@@ -498,10 +504,12 @@ int main(int argc, char** argv) {
     assert(full);
     sdlStatusBarShowWindow(full, true);
     sdlStatusBarTick();
+    assert(SDL_GetWindowFlags(full) & SDL_WINDOW_FULLSCREEN);
     assert(sdlStatusBarInputWindow(full) == full);
     for (U32 id = 1; id < 32; ++id) {
         SDL_Window* candidate = SDL_GetWindowFromID(id);
-        if (sdlStatusBarOwns(candidate)) assert(!(SDL_GetWindowFlags(candidate) & SDL_WINDOW_SHOWN));
+        if (sdlStatusBarOwns(candidate) && strcmp(SDL_GetWindowTitle(candidate), "Boxedwine fullscreen hint"))
+            assert(!(SDL_GetWindowFlags(candidate) & SDL_WINDOW_SHOWN));
     }
     sdlStatusBarOpen();
     SDL_Window* fullscreenMenu = nullptr;
