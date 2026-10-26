@@ -11,6 +11,10 @@
 #include <SDL_syswm.h>
 #include <algorithm>
 #include <cmath>
+#include "../linux/waylandStatusSurface.h"
+#ifdef __linux__
+#include "../linux/linuxImagePicker.h"
+#endif
 #ifdef __APPLE__
 #include "../mac/macStatusBar.h"
 #endif
@@ -28,13 +32,23 @@ struct Surface {
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     SDL_Texture* fontTexture = nullptr;
+    SDL_Surface* pixels = nullptr;
+    std::unique_ptr<WaylandStatusSurface> subsurface;
     void destroy() {
+        subsurface.reset();
         SDL_DestroyTexture(fontTexture);
         SDL_DestroyRenderer(renderer);
+        SDL_FreeSurface(pixels);
         SDL_DestroyWindow(window);
         window = nullptr;
         renderer = nullptr;
         fontTexture = nullptr;
+        pixels = nullptr;
+    }
+    void hide() { if (subsurface) subsurface->hide(); else if (window) SDL_HideWindow(window); }
+    bool present() {
+        SDL_RenderPresent(renderer);
+        return !subsurface || subsurface->present(pixels);
     }
 };
 Surface bar, menu;
@@ -51,10 +65,14 @@ bool enabled = false;
 int hover = -1, firstDisc = 0;
 int guestHeight = 0;
 bool embedded = false;
+bool wayland = false, waylandBarShown = false;
 #ifdef BOXEDWINE_MSVC
 LONG_PTR guestStyle = 0, guestExStyle = 0;
 #endif
 CdromState state;
+#ifdef __linux__
+LinuxImagePicker imagePicker;
+#endif
 
 SDL_Window* owner() { return SDL_GetWindowFromID(ownerId); }
 #if defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
@@ -66,6 +84,8 @@ struct X11Embedding {
         (decltype(focus))SDL_LoadFunction(library, "XSetInputFocus") : nullptr;
     int (*transient)(Display*, Window, Window) = library ?
         (decltype(transient))SDL_LoadFunction(library, "XSetTransientForHint") : nullptr;
+    int (*attributes)(Display*, Window, unsigned long, XSetWindowAttributes*) = library ?
+        (decltype(attributes))SDL_LoadFunction(library, "XChangeWindowAttributes") : nullptr;
     int (*flush)(Display*) = library ? (decltype(flush))SDL_LoadFunction(library, "XFlush") : nullptr;
 };
 X11Embedding& x11() { static X11Embedding api; return api; }
@@ -96,6 +116,14 @@ void setOwner(SDL_Window* child, SDL_Window* parent, bool passive) {
     if (SDL_GetWindowWMInfo(child, &c) && SDL_GetWindowWMInfo(parent, &p) &&
             c.subsystem == SDL_SYSWM_X11 && p.subsystem == SDL_SYSWM_X11 && x11().transient && x11().flush) {
         x11().transient(c.info.x11.display, c.info.x11.window, p.info.x11.window);
+        if (!passive && x11().attributes) {
+            // Keep the popup's pixels and input region together under WMs
+            // such as WSLg. Set this natively: sdl2-compat treats SDL's popup
+            // flag as an SDL3 child of whichever window happens to have focus.
+            XSetWindowAttributes attributes = {};
+            attributes.override_redirect = True;
+            x11().attributes(c.info.x11.display, c.info.x11.window, CWOverrideRedirect, &attributes);
+        }
         x11().flush(c.info.x11.display);
     }
 #endif
@@ -153,6 +181,9 @@ bool embedGuest(SDL_Window* child, SDL_Window* parent, bool attach) {
     x11().reparent(c.info.x11.display, c.info.x11.window,
         attach ? p.info.x11.window : DefaultRootWindow(c.info.x11.display), 0, 0);
     x11().flush(c.info.x11.display);
+    // SDL may apply a pending top-level position when the child is shown
+    // (notably through sdl2-compat). Keep its cached position at the origin too.
+    if (attach) SDL_SetWindowPosition(child, 0, 0);
     return true;
 #else
     return false;
@@ -160,22 +191,26 @@ bool embedGuest(SDL_Window* child, SDL_Window* parent, bool attach) {
 }
 
 bool createSurface(Surface& surface, const char* title, int width, int height, bool passive) {
-    if (surface.window) return true;
-    U32 flags = SDL_WINDOW_HIDDEN;
-    if (!passive) {
-        flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_SKIP_TASKBAR;
-#if defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
-        // A managed utility window can be positioned independently by the WM
-        // (notably WSLg), leaving its visible popup and input region apart.
-        // SDL's popup flag creates an override-redirect X11 menu instead.
-        const char* driver = SDL_GetCurrentVideoDriver();
-        flags |= driver && !strcmp(driver, "x11") ? SDL_WINDOW_POPUP_MENU : SDL_WINDOW_UTILITY;
-#else
-        flags |= SDL_WINDOW_UTILITY;
-#endif
+    if (surface.window) {
+        if (!surface.pixels || (surface.pixels->w == width && surface.pixels->h == height)) return true;
+        SDL_SetWindowSize(surface.window, width, height);
+        SDL_DestroyTexture(surface.fontTexture);
+        SDL_DestroyRenderer(surface.renderer);
+        SDL_FreeSurface(surface.pixels);
+        surface.fontTexture = nullptr;
+        surface.renderer = nullptr;
+        surface.pixels = nullptr;
+        dirty = true;
+    } else {
+        U32 flags = SDL_WINDOW_HIDDEN;
+        if (!passive || wayland) flags |= SDL_WINDOW_BORDERLESS | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_UTILITY;
+        surface.window = SDL_CreateWindow(title, 0, 0, width, height, flags);
+        if (!surface.window) return false;
+        if (wayland) {
+            surface.subsurface = std::make_unique<WaylandStatusSurface>();
+            if (!surface.subsurface->attach(surface.window, owner())) { surface.destroy(); return false; }
+        }
     }
-    surface.window = SDL_CreateWindow(title, 0, 0, width, height, flags);
-    if (!surface.window) return false;
 #ifdef BOXEDWINE_MSVC
     windowsAppSetWindowIcon(surface.window);
 #endif
@@ -184,7 +219,24 @@ bool createSurface(Surface& surface, const char* title, int width, int height, b
 #endif
     // Never select a GL renderer here: the guest may have a context current on
     // this thread. In particular, do not change its read/draw framebuffer.
-    surface.renderer = SDL_CreateRenderer(surface.window, -1, SDL_RENDERER_SOFTWARE);
+    if (surface.subsurface) {
+        surface.pixels = SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_ARGB8888);
+        if (surface.pixels) surface.renderer = SDL_CreateSoftwareRenderer(surface.pixels);
+    } else {
+#ifdef __linux__
+        // A software renderer can still get a GL-backed window surface on Linux,
+        // including with sdl2-compat. Use the native framebuffer for these controls.
+        const char* acceleration = SDL_GetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION);
+        bool hadAcceleration = acceleration != nullptr;
+        BString previousAcceleration = acceleration ? BString::copy(acceleration) : BString::empty;
+        SDL_SetHintWithPriority(SDL_HINT_FRAMEBUFFER_ACCELERATION, "0", SDL_HINT_OVERRIDE);
+#endif
+        surface.renderer = SDL_CreateRenderer(surface.window, -1, SDL_RENDERER_SOFTWARE);
+#ifdef __linux__
+        SDL_SetHintWithPriority(SDL_HINT_FRAMEBUFFER_ACCELERATION,
+            hadAcceleration ? previousAcceleration.c_str() : nullptr, SDL_HINT_OVERRIDE);
+#endif
+    }
     if (!surface.renderer) { surface.destroy(); return false; }
     if (!atlas) {
         atlas = std::make_unique<ImFontAtlas>();
@@ -212,7 +264,7 @@ bool createSurface(Surface& surface, const char* title, int width, int height, b
     if (!surface.fontTexture) { surface.destroy(); return false; }
     SDL_UpdateTexture(surface.fontTexture, nullptr, pixels, atlasWidth * 4);
     SDL_SetTextureBlendMode(surface.fontTexture, SDL_BLENDMODE_BLEND);
-    if (!passive && owner()) setOwner(surface.window, embedded ? bar.window : owner(), false);
+    if (!passive && !wayland && owner()) setOwner(surface.window, embedded ? bar.window : owner(), false);
     return true;
 }
 
@@ -262,15 +314,22 @@ void closeMenu(bool restoreFocus) {
     pressedMenuRow = -1;
     hover = -1;
     if (menu.window) {
-        SDL_HideWindow(menu.window);
+        menu.hide();
 #ifdef __APPLE__
         // AppKit restores child windows when showing their parent. A closed
         // popup must stay detached across owner recreation and fullscreen.
         macStatusBarSetOwner(menu.window, nullptr);
 #endif
     }
-    if (restoreFocus && owner()) { SDL_RaiseWindow(embedded ? bar.window : owner()); focusGuest(); }
+    if (restoreFocus && owner() && !wayland) { SDL_RaiseWindow(embedded ? bar.window : owner()); focusGuest(); }
     dirty = true;
+}
+
+void releaseWayland() {
+    if (!wayland) return;
+    menu.destroy();
+    bar.destroy();
+    wayland = waylandBarShown = false;
 }
 
 void positionSurfaces() {
@@ -280,6 +339,29 @@ void positionSurfaces() {
     SDL_GetWindowPosition(embedded ? bar.window : parent, &x, &y);
     SDL_GetWindowSize(parent, &w, &h);
     guestHeight = h;
+    if (wayland) {
+        int surfaceW = w, surfaceH = h;
+        WaylandStatusSurface::toSurfaceCoordinates(parent, surfaceW, surfaceH);
+        bool showBar = state.configured && !fullscreen(parent) && (SDL_GetWindowFlags(parent) & SDL_WINDOW_SHOWN);
+        if (showBar) {
+            showBar = createSurface(bar, SDL_GetWindowTitle(parent), w, barHeight, true);
+            if (showBar) {
+                bar.subsurface->position(0, surfaceH);
+            }
+        }
+        if (!showBar) bar.hide();
+        if (showBar != waylandBarShown) dirty = true;
+        waylandBarShown = showBar;
+        if (opened) {
+            int height = rows() * rowHeight + 8;
+            if (createSurface(menu, "Boxedwine CD-ROM menu", std::min(menuWidth, w), height, false)) {
+                int menuW = 0;
+                WaylandStatusSurface::toSurfaceCoordinates(menu.window, menuW, height);
+                menu.subsurface->position(0, std::max(0, surfaceH - height));
+            } else closeMenu(false);
+        }
+        return;
+    }
     if (embedded) {
         int oldW, oldH;
         SDL_GetWindowSize(bar.window, &oldW, &oldH);
@@ -313,12 +395,13 @@ void positionSurfaces() {
 }
 
 void draw() {
-    if (bar.window && embedded) {
+    bool presented = true;
+    if (bar.window && (embedded || waylandBarShown)) {
         int width, height;
         SDL_GetWindowSize(bar.window, &width, &height);
         SDL_SetRenderDrawColor(bar.renderer, 0, 0, 0, 255);
         SDL_RenderClear(bar.renderer);
-        SDL_Rect viewport = {0, guestHeight, width, barHeight};
+        SDL_Rect viewport = {0, wayland ? 0 : guestHeight, width, barHeight};
         SDL_RenderSetViewport(bar.renderer, &viewport);
         height = barHeight;
         fill(bar, 0, 0, width, height, 242, 243, 245);
@@ -339,7 +422,7 @@ void draw() {
         text(bar, label, 36, 7, std::min(width - 45, 235));
         for (int i = 0; i < 4; ++i) fill(bar, 267 + i, 14 + i, 7 - i * 2, 1, 80, 86, 96);
         if (width > 660) text(bar, B("Ctrl+Shift+F12: Next disc"), width - 193, 8, 185, 110);
-        SDL_RenderPresent(bar.renderer);
+        presented &= bar.present();
     }
     if (opened && menu.window) {
         int width, height;
@@ -368,11 +451,12 @@ void draw() {
         if (state.discs.size() > maxDiscs) {
             text(menu, B("Scroll for more"), width - 115, 11, 107, 120);
         }
-        SDL_RenderPresent(menu.renderer);
+        presented &= menu.present();
     }
-    dirty = false;
+    dirty = !presented;
 }
 
+#ifndef __linux__
 BString chooseImage() {
 #ifdef __APPLE__
     const char* selected = macStatusBarChooseImage();
@@ -402,15 +486,41 @@ BString chooseImage() {
     return selected ? BString::copy(selected) : BString::empty;
 #endif
 }
+#endif
+
+void refreshDiscState(bool success) {
+    if (!success) SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Could not insert disc",
+        "The image could not be opened as an ISO or CUE disc.\nThe current disc has been kept in the drive.", owner());
+    state = cdromGetState();
+    firstDisc = std::min(firstDisc, std::max(0, (int)state.discs.size() - maxDiscs));
+    dirty = true;
+    positionSurfaces();
+}
+
+void finishImageSelection(const BString& path) {
+    bool success = path.isEmpty() || cdromInsertPath(path);
+    if (owner()) { SDL_RaiseWindow(embedded ? bar.window : owner()); focusGuest(); }
+    refreshDiscState(success);
+}
+
+#ifdef __linux__
+void pickerError() {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Could not open image picker",
+        "The file picker could not be opened. Install zenity or kdialog and try again.\nThe current disc has been kept in the drive.", owner());
+}
+#endif
 
 void activate(int row, int x) {
     if (row < 0 || row >= rows()) return;
     bool success = true;
     if (row == 0) {
         closeMenu(false);
-        BString path = chooseImage();
-        if (!path.isEmpty()) success = cdromInsertPath(path);
-        if (owner()) { SDL_RaiseWindow(embedded ? bar.window : owner()); focusGuest(); }
+#ifdef __linux__
+        if (!imagePicker.open(wayland)) pickerError();
+#else
+        finishImageSelection(chooseImage());
+#endif
+        return;
     } else if (row <= visibleDiscs()) {
         int index = firstDisc + row - 1;
         if (removeControl(row, x)) {
@@ -423,12 +533,7 @@ void activate(int row, int x) {
         cdromEject();
         closeMenu(true);
     }
-    if (!success) SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Could not insert disc",
-        "The image could not be opened as an ISO or CUE disc.\nThe current disc has been kept in the drive.", owner());
-    state = cdromGetState();
-    firstDisc = std::min(firstDisc, std::max(0, (int)state.discs.size() - maxDiscs));
-    dirty = true;
-    positionSurfaces();
+    refreshDiscState(success);
 }
 } // namespace
 
@@ -438,6 +543,14 @@ bool sdlStatusBarOwns(SDL_Window* window) {
 
 void sdlStatusBarTick() {
     if (!enabled || !owner()) return;
+#ifdef __linux__
+    std::string path;
+    bool failed;
+    if (imagePicker.poll(path, failed)) {
+        if (failed) pickerError();
+        else finishImageSelection(BString::copy(path.c_str()));
+    }
+#endif
     if ((S32)(SDL_GetTicks() - nextRefresh) >= 0) {
         CdromState latest = cdromGetState();
         if (state.index != latest.index || state.drive != latest.drive || state.discs != latest.discs) dirty = true;
@@ -456,27 +569,33 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
     if (!show) {
         if (owner() == window) {
             closeMenu(false);
-            if (embedded) SDL_HideWindow(bar.window);
+            if (embedded || wayland) bar.hide();
+            waylandBarShown = false;
         }
         SDL_HideWindow(window);
         return;
     }
     if (owner() != window) {
+#ifdef __linux__
+        imagePicker.cancel();
+#endif
         closeMenu(false);
+        releaseWayland();
         if (embedded && owner()) embedGuest(owner(), bar.window, false);
         embedded = false;
         if (bar.window) SDL_HideWindow(bar.window);
         ownerId = SDL_GetWindowID(window);
+        wayland = WaylandStatusSurface::supported(window);
         state = cdromGetState();
         int w, h, x, y;
         SDL_GetWindowSize(window, &w, &h);
         SDL_GetWindowPosition(window, &x, &y);
-        if (!fullscreen(window) && state.configured && createSurface(bar, SDL_GetWindowTitle(window), w, h + barHeight, true)) {
+        if (!wayland && !fullscreen(window) && state.configured && createSurface(bar, SDL_GetWindowTitle(window), w, h + barHeight, true)) {
             SDL_SetWindowPosition(bar.window, x, y);
             embedded = embedGuest(window, bar.window, true);
         }
 #ifndef __APPLE__
-        if (menu.window) setOwner(menu.window, embedded ? bar.window : window, false);
+        if (!wayland && menu.window) setOwner(menu.window, embedded ? bar.window : window, false);
 #endif
     }
     if (embedded) {
@@ -487,6 +606,7 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
         SDL_RaiseWindow(bar.window);
         focusGuest();
     } else SDL_ShowWindow(window);
+    if (wayland) positionSurfaces();
     dirty = true;
 }
 
@@ -499,6 +619,9 @@ void sdlStatusBarRaiseWindow(SDL_Window* window) {
 
 void sdlStatusBarOpen() {
     sdlStatusBarTick();
+#ifdef __linux__
+    if (imagePicker.isOpen()) return;
+#endif
     if (!owner() || !state.configured) return;
     if (opened) { closeMenu(true); return; }
     if (!createSurface(menu, "Boxedwine CD-ROM menu", menuWidth, 200, false)) return;
@@ -509,17 +632,22 @@ void sdlStatusBarOpen() {
     opened = true;
     hover = 0;
     positionSurfaces();
-    SDL_ShowWindow(menu.window);
-    SDL_RaiseWindow(menu.window);
+    if (!wayland) {
+        SDL_ShowWindow(menu.window);
+        SDL_RaiseWindow(menu.window);
+    }
 #ifdef __APPLE__
     macStatusBarFocus(menu.window);
 #endif
 #if defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
     // Override-redirect menus do not get keyboard focus from the WM.
+    // sdl2-compat implements SDL_SetWindowInputFocus as just a window raise.
     SDL_SysWMinfo info = {};
     SDL_VERSION(&info.version);
-    if (SDL_GetWindowWMInfo(menu.window, &info) && info.subsystem == SDL_SYSWM_X11)
-        SDL_SetWindowInputFocus(menu.window);
+    if (SDL_GetWindowWMInfo(menu.window, &info) && info.subsystem == SDL_SYSWM_X11 && x11().focus && x11().flush) {
+        x11().focus(info.info.x11.display, info.info.x11.window, RevertToParent, CurrentTime);
+        x11().flush(info.info.x11.display);
+    }
 #endif
     dirty = true;
     draw();
@@ -527,7 +655,7 @@ void sdlStatusBarOpen() {
 
 SDL_Window* sdlStatusBarInputWindow(SDL_Window* window) {
     if (window && window == menu.window) return nullptr;
-    return embedded && window == bar.window ? owner() : window;
+    return (embedded || wayland) && window == bar.window ? owner() : window;
 }
 
 void sdlStatusBarConstrainPointer(SDL_Event& event) {
@@ -566,6 +694,16 @@ bool sdlStatusBarEvent(SDL_Event& event) {
     if (!windowEvent) return false;
     U32 id = (event.type >= SDL_DROPFILE && event.type <= SDL_DROPCOMPLETE) ? event.drop.windowID : event.window.windowID;
     SDL_Window* target = SDL_GetWindowFromID(id);
+    if (wayland && opened) {
+        // A subsurface shares the toplevel's keyboard focus. Route its menu
+        // keys here without changing the guest's drawable or native focus.
+        if ((target == owner() || target == bar.window) &&
+            (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP || event.type == SDL_TEXTINPUT || event.type == SDL_TEXTEDITING)) {
+            target = menu.window;
+        } else if (target == owner() && event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+            closeMenu(false);
+        }
+    }
     const bool wasBarPressed = barPressed;
     const int wasMenuRow = pressedMenuRow;
     const bool wasMenuRemove = pressedMenuRemove;
@@ -596,7 +734,7 @@ bool sdlStatusBarEvent(SDL_Event& event) {
     if (!sdlStatusBarOwns(target)) {
         // Alt+F4 can target the focused child. SDL no longer synthesizes QUIT
         // automatically because the host and popup are additional windows.
-        if (embedded && target == owner() && event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE) {
+        if ((embedded || wayland) && target == owner() && event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE) {
             SDL_Event quit = {}; quit.type = SDL_QUIT; SDL_PushEvent(&quit);
             return true;
         }
@@ -634,8 +772,9 @@ bool sdlStatusBarEvent(SDL_Event& event) {
         int width, height;
         SDL_GetWindowSize(target, &width, &height);
         if (target == bar.window) {
+            int top = wayland ? 0 : guestHeight;
             bool inside = event.button.x >= 0 && event.button.x < std::min(width, 285) &&
-                event.button.y >= guestHeight && event.button.y < guestHeight + barHeight;
+                event.button.y >= top && event.button.y < top + barHeight;
             if (event.type == SDL_MOUSEBUTTONDOWN) barPressed = inside;
             else {
                 if (wasBarPressed && inside) sdlStatusBarOpen();
@@ -675,6 +814,10 @@ bool sdlStatusBarEvent(SDL_Event& event) {
 }
 
 void sdlStatusBarShutdown() {
+#ifdef __linux__
+    imagePicker.cancel();
+#endif
+    releaseWayland();
     if (embedded && owner()) embedGuest(owner(), bar.window, false);
     embedded = false;
     menu.destroy();
@@ -701,7 +844,11 @@ void sdlStatusBarConfigure(bool value) {
 
 void sdlStatusBarWindowDestroyed(SDL_Window* window) {
     if (window && SDL_GetWindowID(window) == ownerId) {
+#ifdef __linux__
+        imagePicker.cancel();
+#endif
         closeMenu(false);
+        releaseWayland();
         if (embedded) { embedGuest(window, bar.window, false); SDL_HideWindow(bar.window); }
         embedded = false;
         ownerId = 0;

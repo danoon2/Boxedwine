@@ -69,6 +69,7 @@ package you might need to install:
 zlib1g-dev
 libminizip-dev
 libsdl2-dev
+libwayland-dev
 libssl-dev
 libcurl4-openssl-dev
 

@@ -20,7 +20,7 @@ ARCHITECTURES = {'amd64': 62, 'arm64': 183}  # ELF e_machine
 MAINTAINER = 'James Bryant <jwbryant72@yahoo.com>'
 UI_DEPENDENCIES = ('python3 (>= 3.10)', 'python3-gi', 'gir1.2-gtk-4.0 (>= 4.14)',
                    'gir1.2-adw-1 (>= 1.5)', 'ca-certificates', 'hicolor-icon-theme',
-                   'libgl1', 'libx11-6', 'libvulkan1')
+                   'libgl1', 'libx11-6', 'libvulkan1', 'zenity | kdialog')
 
 
 def output(command, **kwargs):

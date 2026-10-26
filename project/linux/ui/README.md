@@ -27,8 +27,34 @@ sudo dnf install python3-gobject gtk4 libadwaita
 ```
 
 The emulator also needs the existing Linux build dependencies from
-`project/linux/buildInstructions.txt` (C++20 compiler, SDL2, OpenGL, zlib,
+`project/linux/buildInstructions.txt` (C++20 compiler, SDL2, Wayland, OpenGL, zlib,
 curl, and OpenSSL development packages).
+
+The CD-ROM status bar supports native Wayland and X11. On Wayland, the bar and
+disc menu use subsurfaces with their own software buffers, keeping the guest's
+drawable and graphics context intact. The bar is hidden in fullscreen; the
+disc-menu shortcut remains available. SDL chooses the display backend normally.
+Builds require the Wayland client headers/library
+(`libwayland-dev` on Debian/Ubuntu, `wayland-devel` on Fedora).
+The runtime image picker requires `zenity` or `kdialog`. It runs asynchronously
+so the guest keeps drawing and processing input while the picker is open, and
+uses Wayland when the guest does, even if the launcher forces its own UI to X11.
+
+Run the status-bar lifecycle and input-routing checks in a desktop session:
+
+```sh
+SDL_VIDEODRIVER=wayland make -C project/linux test-cdrom-statusbar
+SDL_VIDEODRIVER=x11 make -C project/linux test-cdrom-statusbar
+```
+
+Add `STATUSBAR_TEST_ARGS=--native-picker` to the Wayland command to also open
+the installed file picker for five seconds while SDL keeps rendering, then
+check that destroying the guest closes the picker. The default test also runs
+isolated picker-process tests for selection, cancellation and backend isolation.
+
+The Wayland checks cover software/OpenGL drawing, menu input, guest dimensions,
+resize, fullscreen, hide/show, closing and recreation. Also check real mouse
+clicks and fractional display scaling in the compositor used for release testing.
 
 ## Build and run
 

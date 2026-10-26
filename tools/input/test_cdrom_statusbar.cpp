@@ -1,5 +1,5 @@
 /* Copyright (C) 2026 The BoxedWine Team. GPL-2.0-or-later.
- * Run under X11: make -C project/linux test-cdrom-statusbar
+ * Run under Wayland or X11: make -C project/linux test-cdrom-statusbar
  * Also works with xvfb-run -a for the display/GL lifecycle checks. */
 #include "boxedwine.h"
 #include <SDL.h>
@@ -12,6 +12,9 @@
 #undef private
 #include <cassert>
 #include <cstdio>
+#if defined(__linux__) && defined(SDL_VIDEO_DRIVER_WAYLAND)
+int testWaylandStatusBar(bool nativePicker);
+#endif
 #ifdef __APPLE__
 void testCocoaStatusBar(SDL_Window* guest, SDL_Window* host, SDL_Window* popup);
 void testCocoaVulkanStatusBar();
@@ -158,6 +161,9 @@ int main(int argc, char** argv) {
     Fs::makeLocalDirs(B("/mnt"));
     cdromInit({}, B("/mnt/cdrom"), B(""));
     sdlStatusBarConfigure(true);
+#if defined(__linux__) && defined(SDL_VIDEO_DRIVER_WAYLAND)
+    if (!strcmp(SDL_GetCurrentVideoDriver(), "wayland")) return testWaylandStatusBar(argc > 1 && !strcmp(argv[1], "--native-picker"));
+#endif
     for (bool useGl : {false, true}) {
         U32 flags = SDL_WINDOW_HIDDEN | (useGl ? SDL_WINDOW_OPENGL : 0);
 #ifdef __APPLE__
