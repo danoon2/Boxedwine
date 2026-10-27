@@ -50,6 +50,112 @@ static void focus(KNativeInputSDL& input, U32 id, bool gained) {
     assert(input.handlSdlEvent(&e));
 }
 
+static void testMouseLookScaling(KNativeInputSDL& input) {
+    auto server = XServer::getServer();
+    auto root = server->getRoot();
+    auto game = server->createNewWindow(43, root, 800, 600, 32, 70, 30, InputOutput, 0, server->visual);
+    U32 serial = 0;
+    auto display = std::make_shared<DisplayData>();
+    display->displayId = 43;
+    display->displayAddress = 123;
+    display->pCurrentRequest = &serial;
+    server->displays.set(43, display);
+    display->setInput2Mask(root->id, XI_RawMotionMask);
+    server->grabbedId = game->id;
+    server->grabbedDisplayId = 43;
+    server->grabbedConfinedId = 0;
+    server->grabbedMask = PointerMotionMask | ButtonPressMask | ButtonReleaseMask;
+    server->isGrabbed = true;
+    server->setFakeFullScreenWindow(game);
+    server->setMouseFocused(true);
+    server->setMouseCursorVisible(false);
+    const U32 sensitivity = KSystem::relativeMouseSensitivity;
+    const bool forceRelative = KSystem::forceRelativeMouse;
+    for (int mode = 0; mode < 5; ++mode) {
+        input.scaleX = input.scaleY = mode == 0 ? 100 : 200;
+        input.scaleXOffset = 13; input.scaleYOffset = 21;
+        input.openGLViewport = mode < 2 ? OpenGLViewport{} :
+            OpenGLViewport::fit(mode == 2 ? 2000 : mode == 3 ? 1920 : 400,
+                mode == 2 ? 1200 : mode == 3 ? 1080 : 300, 800, 600, true);
+        KSystem::forceRelativeMouse = false;
+        for (U32 percent : {100u, 200u}) {
+            KSystem::relativeMouseSensitivity = percent;
+            input.setMousePos(400, 300);
+            // One physical pixel must survive even a fractional enlargement.
+            for (int delta : {10, 1, -1, -10}) {
+                physicalX = warpX + delta; physicalY = warpY - delta;
+                int x, y;
+                int expectedX = 400 + delta * (int)percent / 100;
+                int expectedY = 300 - delta * (int)percent / 100;
+                for (int repeat = 0; repeat < 2; ++repeat) {
+                    assert(input.getMousePos(&x, &y));
+                    assert(x == expectedX && y == expectedY);
+                }
+                display->eventQueue.clear();
+                assert(input.mouseMove(physicalX, physicalY, false));
+                assert(display->eventQueue.size() == 1);
+                auto event = display->eventQueue.back();
+                assert(event.type == MotionNotify && event.xmotion.x_root == expectedX && event.xmotion.y_root == expectedY);
+                assert(input.mouseButton(1, 0, physicalX, physicalY));
+                event = display->eventQueue.back();
+                assert(event.type == ButtonPress && event.xbutton.x_root == expectedX && event.xbutton.y_root == expectedY);
+                input.mouseWheel(1, physicalX, physicalY);
+                event = display->eventQueue.back();
+                assert(event.type == ButtonRelease && event.xbutton.x_root == expectedX && event.xbutton.y_root == expectedY);
+            }
+        }
+        // Fractional sensitivity accumulates across warps, not across repeated
+        // queries/events for the same physical position.
+        KSystem::relativeMouseSensitivity = 50;
+        input.setMousePos(400, 300);
+        for (int i = 0; i < 6; ++i) {
+            physicalX = warpX + 1; physicalY = warpY - 1;
+            int x, y;
+            input.getMousePos(&x, &y);
+            assert(x == 400 + i % 2 && y == 300 - i % 2);
+            input.getMousePos(&x, &y);
+            assert(x == 400 + i % 2 && y == 300 - i % 2);
+            input.setMousePos(400, 300);
+            physicalX = warpX; physicalY = warpY;
+            input.getMousePos(&x, &y);
+            assert(x == 400 && y == 300);
+        }
+        KSystem::forceRelativeMouse = true;
+        for (int delta : {10, 1, -1, -10}) {
+            display->eventQueue.clear();
+            input.mouseMove(delta, -delta, true);
+            assert(display->eventQueue.size() == 1);
+            auto event = display->eventQueue.back();
+            assert(event.type == GenericEvent && event.xcookie.evtype == XI_RawMotion);
+            // The serialized XIRawEvent stores deltas in its two valuator
+            // address slots; x11_GetEventData expands these for the guest.
+            assert((S32)event.pad[8 + 12] == delta && (S32)event.pad[8 + 13] == -delta);
+        }
+    }
+    // A visible menu retains absolute coordinate scaling and the game offset.
+    KSystem::forceRelativeMouse = false;
+    input.openGLViewport = {};
+    input.scaleX = input.scaleY = 200;
+    server->setMouseCursorVisible(true);
+    input.setMousePos(400, 300);
+    physicalX = warpX + 10; physicalY = warpY - 6;
+    int x, y;
+    input.getMousePos(&x, &y);
+    assert(x == 405 && y == 297);
+    display->eventQueue.clear();
+    input.mouseMove(physicalX, physicalY, false);
+    auto event = display->eventQueue.back();
+    assert(event.xmotion.x_root == 405 && event.xmotion.y_root == 297);
+    server->isGrabbed = false;
+    server->clearFakeFullScreenWindow(game);
+    server->displays.remove(43);
+    input.scaleX = input.scaleY = 100;
+    input.scaleXOffset = input.scaleYOffset = 0;
+    KSystem::relativeMouseSensitivity = sensitivity;
+    KSystem::forceRelativeMouse = forceRelative;
+    puts("Mouse look is independent of software/GL scale; recentering, polling, buttons, sensitivity and absolute menus passed");
+}
+
 static void testMappedWindowFocus() {
     XServer* server = XServer::getServer();
     auto root = server->getRoot();
@@ -386,6 +492,7 @@ int main() {
     input.setMouseConfinement(false);
     physicalX = 400; physicalY = 300;
     testMappedWindowFocus();
+    testMouseLookScaling(input);
     screen.window = nullptr; // Do not destroy the fake host window.
     SDL_Quit();
     puts("Mouse confinement lifecycle checks passed");

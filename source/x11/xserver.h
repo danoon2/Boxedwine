@@ -34,16 +34,16 @@ public:
 
 	XServer();
 	
-	void mouseMove(S32 x, S32 y, bool relative);
+	void mouseMove(S32 x, S32 y, bool relative, const CapturedMouse::HostPosition* host = nullptr);
 	bool wantsRelativeMouse();
     bool wantsMouseConfinement();
 	void clampPointerToGrab(S32& x, S32& y);
-    void mapCapturedMouse(S32& x, S32& y);
-    void warpCapturedMouse(S32 x, S32 y);
+    void mapCapturedMouse(S32& x, S32& y, const CapturedMouse::HostPosition* host = nullptr);
+    void warpCapturedMouse(S32 x, S32 y, const CapturedMouse::HostPosition* host = nullptr);
     void resetCapturedMouse();
     void setMouseCursorVisible(bool visible);
     void setMouseFocused(bool focused);
-	void mouseButton(U32 button, S32 x, S32 y, bool pressed);
+	void mouseButton(U32 button, S32 x, S32 y, bool pressed, const CapturedMouse::HostPosition* host = nullptr);
 	void key(U32 key, bool pressed);
 
 	U32 internAtom(const BString& name, bool onlyIfExists);

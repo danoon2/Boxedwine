@@ -1230,16 +1230,16 @@ void XServer::configureCapturedMouse() {
         mouseCursorVisible, mouseFocused, KSystem::relativeMouseSensitivity);
 }
 
-void XServer::mapCapturedMouse(S32& x, S32& y) {
+void XServer::mapCapturedMouse(S32& x, S32& y, const CapturedMouse::HostPosition* host) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
     configureCapturedMouse();
-    capturedMouse.map(x, y);
+    capturedMouse.map(x, y, host);
 }
 
-void XServer::warpCapturedMouse(S32 x, S32 y) {
+void XServer::warpCapturedMouse(S32 x, S32 y, const CapturedMouse::HostPosition* host) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
     configureCapturedMouse();
-    capturedMouse.warp(x, y);
+    capturedMouse.warp(x, y, host);
 }
 
 void XServer::resetCapturedMouse() {
@@ -1270,7 +1270,7 @@ void XServer::clampPointerToGrab(S32& x, S32& y) {
 	confined->windowToScreen(x, y);
 }
 
-void XServer::mouseMove(S32 x, S32 y, bool relative) {
+void XServer::mouseMove(S32 x, S32 y, bool relative, const CapturedMouse::HostPosition* host) {
 	if (relative) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 		if (isGrabbed && KSystem::forceRelativeMouse && root) {
@@ -1308,7 +1308,7 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 			if (presentedWindow) {
 				presentedWindow->windowToScreen(x, y);
 			}
-			mapCapturedMouse(x, y);
+			mapCapturedMouse(x, y, host);
 			clampPointerToGrab(x, y);
 			grabbed->motionNotify(grabbedDisplay, x, y);
 			return;
@@ -1335,12 +1335,12 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 	}
 }
 
-void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
+void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed, const CapturedMouse::HostPosition* host) {
 	XWindowPtr presentedWindow = getFakeFullScreenWindow();
 	if (presentedWindow) {
 		presentedWindow->windowToScreen(x, y);
 	}
-    mapCapturedMouse(x, y);
+    mapCapturedMouse(x, y, host);
 	clampPointerToGrab(x, y);
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);

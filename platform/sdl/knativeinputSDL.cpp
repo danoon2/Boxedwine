@@ -484,21 +484,10 @@ U32 KNativeInputSDL::screenHeight() {
 
 bool KNativeInputSDL::mouseMove(int x, int y, bool relative) {
     XServer* server = XServer::getServer(true);
-
-    if (relative) {
-        // Deltas have no screen origin or letterbox offset.
-#if defined(__APPLE__) || defined(BOXEDWINE_MSVC) || (defined(__linux__) && !defined(__EMSCRIPTEN__))
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(openGLViewportMutex);
-        if (openGLViewport.valid()) {
-            x = openGLViewport.deltaX(x);
-            y = openGLViewport.deltaY(y);
-        } else
-#endif
-        {
-            x = x * 100 / (int)scaleX;
-            y = y * 100 / (int)scaleY;
-        }
-    } else {
+    const CapturedMouse::HostPosition host = {x, y};
+    // Relative motion describes physical movement, independent of the size
+    // of the displayed game. Only absolute cursor positions use that scale.
+    if (!relative) {
         x = xFromScreen(x);
         y = yFromScreen(y);
     }
@@ -511,13 +500,14 @@ bool KNativeInputSDL::mouseMove(int x, int y, bool relative) {
 #endif
 
     if (server) {
-        server->mouseMove(x, y, relative);
+        server->mouseMove(x, y, relative, relative ? nullptr : &host);
         return true;
     }
     return false;
 }
 
 bool KNativeInputSDL::mouseWheel(int amount, int x, int y) {
+    const CapturedMouse::HostPosition host = {x, y};
     x = xFromScreen(x);
     y = yFromScreen(y);
 
@@ -526,14 +516,15 @@ bool KNativeInputSDL::mouseWheel(int amount, int x, int y) {
     XServer* server = XServer::getServer(true);
     if (server) {
         U32 btn = amount > 0 ? 4 : 5;
-        server->mouseButton(btn, x, y, true);
-        server->mouseButton(btn, x, y, false);
+        server->mouseButton(btn, x, y, true, &host);
+        server->mouseButton(btn, x, y, false, &host);
         return true;
     }
     return false;
 }
 
 bool KNativeInputSDL::mouseButton(U32 down, U32 button, int x, int y) {
+    const CapturedMouse::HostPosition host = {x, y};
 #ifdef __EMSCRIPTEN__
     // Absolute browser events bypass SDL. Keep polling consistent with those
     // events and with SDL events delivered while the pointer is locked.
@@ -570,7 +561,7 @@ bool KNativeInputSDL::mouseButton(U32 down, U32 button, int x, int y) {
         } else if (btn == 5) {
             btn = 9;
         }
-        server->mouseButton(btn, x, y, down ? true : false);
+        server->mouseButton(btn, x, y, down ? true : false, &host);
         return true;
     }
     return false;
@@ -620,6 +611,7 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
         SDL_GetMouseState(x, y);
     }
 
+    const CapturedMouse::HostPosition host = {*x, *y};
     *x = xFromScreen(*x);
     *y = yFromScreen(*y);
 
@@ -628,7 +620,7 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
         presentedWindow->windowToScreen(*x, *y);
     }
     if (XServer* server = XServer::getServer(true)) {
-        server->mapCapturedMouse(*x, *y);
+        server->mapCapturedMouse(*x, *y, &host);
         server->clampPointerToGrab(*x, *y);
     }
     return checkMousePos(*x, *y, false);
@@ -663,7 +655,8 @@ void KNativeInputSDL::setMousePos(int x, int y) {
             releasedMousePosition = ((U64)(U32)guestX << 32) | (U32)guestY;
             return;
         }
-        if (XServer* server = XServer::getServer(true)) server->warpCapturedMouse(guestX, guestY);
+        const CapturedMouse::HostPosition host = {x, y};
+        if (XServer* server = XServer::getServer(true)) server->warpCapturedMouse(guestX, guestY, &host);
         KNativeSystem::warpMouse(x, y);
     });
 }
