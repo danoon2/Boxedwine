@@ -267,6 +267,8 @@
 		B70915130000000000000002 = { isa = PBXBuildFile; fileRef = B70915130000000000000001; };
 		B70915130000000000000004 = { isa = PBXBuildFile; fileRef = B70915130000000000000003; };
 		7F40DDE09A1C456F9B942CC1 /* Runtime AppIcon in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
+		BC0262000000000000000001 = {isa = PBXBuildFile; fileRef = BC0262000000000000000002; };
+		BC0262000000000000000003 = {isa = PBXBuildFile; fileRef = BC0262000000000000000004; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -526,6 +528,8 @@
 		B70915130000000000000001 = { isa = PBXFileReference; path = "Core/TipStore.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		B70915130000000000000003 = { isa = PBXFileReference; path = "UI/SupportView.swift"; lastKnownFileType = sourcecode.swift; sourceTree = "<group>"; };
 		B70915130000000000000005 = { isa = PBXFileReference; path = "Tests/Fixtures/BoxedwineTips.storekit"; lastKnownFileType = text; sourceTree = "<group>"; };
+		BC0262000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = macLaunch.mm; path = ../../../platform/mac/macLaunch.mm; sourceTree = "<group>"; };
+		BC0262000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/EngineProcess.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -660,6 +664,7 @@
 				CCD020260000000000000202 /* macStatusBar.h */,
 				B0C0D0020000000000000001 /* macCursor.mm */,
 				CCD020260000000000000201 /* macStatusBar.mm */,
+				BC0262000000000000000002 /* macLaunch.mm */,
 				B0C0D0010000000000000001 /* macOpenGL.mm */,
 				1AFC48092663FFC000EE5FCC /* pixelformat.cpp */,
 				1AFC479C2648471000EE5FCC /* audiounit.cpp */,
@@ -2454,6 +2459,7 @@
 				"D1ABE85958F641BEF990FAB0",
 				"B0C0D0020000000000000007",
 				"CCD020260000000000000207",
+				"BC0262000000000000000001",
 				"CCD020260000000000000005",
 				"CCD020260000000000000008",
 				"CCD020260000000000000007",
@@ -2941,6 +2947,7 @@
 				"A976CEE4F0158A5B004000F8",
 				"200B6132DD0709EBAC25E2E2",
 				"48679D22D52E6CF3D11B53A0",
+				"BC0262000000000000000004",
 				"401E5D6B41822EC45C290564",
 				"B1466C52137F58AEC3FAB213",
 				"76432D88BE8500CC14CDF56D",
@@ -2989,6 +2996,7 @@
 				9878282A3C66219582980F53,
 				"B9D1FDF9AB22234E14C71F6D",
 				"024630932937EFB1FDC4385D",
+				"BC0262000000000000000003",
 				"8B5708C2EA258BEB434BFCA0",
 				"344AD27D466F81DD1BE503E6",
 				"13F54A39CDE341CD7198B608",
@@ -3542,12 +3550,12 @@
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = ();
-			inputPaths = ("$(SRCROOT)/../../../include/boxedwine.h", "$(SRCROOT)/BoxedwineUI/Tools/prepare-version-plist.py");
+			inputPaths = ("$(SRCROOT)/../../../include/boxedwine.h", "$(SRCROOT)/BoxedwineUI/Tools/prepare-version-plist.py", "$(SRCROOT)/BoxedwineUI/Engine-Info.plist");
 			name = "Prepare Boxedwine Version";
 			outputPaths = ("$(DERIVED_FILE_DIR)/Versioned-Info.plist");
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/BoxedwineUI/Tools/prepare-version-plist.py\" --header \"$SRCROOT/../../../include/boxedwine.h\" --output \"$DERIVED_FILE_DIR/Versioned-Info.plist\"\n";
+			shellScript = "set -eu\n/usr/bin/python3 \"$SRCROOT/BoxedwineUI/Tools/prepare-version-plist.py\" --header \"$SRCROOT/../../../include/boxedwine.h\" --output \"$DERIVED_FILE_DIR/Versioned-Info.plist\" --template \"$SRCROOT/BoxedwineUI/Engine-Info.plist\"\n";
 		};
 		BC0261000000000000000002 = {
 			isa = PBXShellScriptBuildPhase;

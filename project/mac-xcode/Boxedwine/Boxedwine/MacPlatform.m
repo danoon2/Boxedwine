@@ -53,10 +53,11 @@ static int acquireCdromImages(void) {
     for (id encoded in bookmarks) {
         if (![encoded isKindOfClass:[NSString class]] || [encoded length] > 64 * 1024) { return 0; }
         NSData* bookmark = [[NSData alloc] initWithBase64EncodedString:encoded options:0];
-        BOOL stale = NO;
         NSURL* url = bookmark ? [NSURL URLByResolvingBookmarkData:bookmark options:NSURLBookmarkResolutionWithoutUI
-                                        relativeToURL:nil bookmarkDataIsStale:&stale error:nil] : nil;
-        if (!url || stale || !url.isFileURL) { return 0; }
+                                        relativeToURL:nil bookmarkDataIsStale:nil error:nil] : nil;
+        // A different sandbox container can make a transferred bookmark stale
+        // even though its resolved URL and access grant are still valid.
+        if (!url || !url.isFileURL) { return 0; }
         [runtimeCdromURLs addObject:url];
     }
     return 1;
@@ -79,7 +80,7 @@ int MacPlatformWaitForDebugger(void) {
         if (sysctl(query, 4, &process, &size, NULL, 0) != 0) { return 0; }
         if (process.kp_proc.p_flag & P_TRACED) { return 1; }
         // stdin belongs to the UI: quit or a closed pipe must still stop a
-        // waiting child if the user cancels, quits, or the launcher crashes.
+        // waiting engine if the user cancels, quits, or the launcher crashes.
         struct pollfd input = {STDIN_FILENO, POLLIN | POLLHUP, 0};
         if (poll(&input, 1, 50) > 0 && input.revents) { return 0; }
     }
@@ -87,7 +88,7 @@ int MacPlatformWaitForDebugger(void) {
 #endif
 
 // PowerBox grants are dynamic rights, so transfer the implicit-scope bookmark
-// explicitly instead of relying on the helper's static sandbox inheritance.
+// explicitly into the engine's independent sandbox.
 int MacPlatformAcquireRuntimeProgramFolder(void) {
     if (!acquireCdromImages()) { return 0; }
     const char* encoded = getenv("BOXEDWINE_PROGRAM_FOLDER_BOOKMARK");
@@ -96,14 +97,13 @@ int MacPlatformAcquireRuntimeProgramFolder(void) {
     unsetenv("BOXEDWINE_PROGRAM_FOLDER_BOOKMARK");
     NSData* data = value ? [[NSData alloc] initWithBase64EncodedString:value options:0] : nil;
     if (!data) { return 0; }
-    BOOL stale = NO;
     NSError* error = nil;
     NSURL* url = [NSURL URLByResolvingBookmarkData:data options:NSURLBookmarkResolutionWithoutUI
-                                   relativeToURL:nil bookmarkDataIsStale:&stale error:&error];
+                                   relativeToURL:nil bookmarkDataIsStale:nil error:&error];
     NSNumber* directory = nil;
     // Resolving an implicit-scope bookmark activates access in this process.
     // Retain its URL until boxedmain returns (or the process terminates).
-    if (!url || stale || !url.isFileURL ||
+    if (!url || !url.isFileURL ||
         ![url getResourceValue:&directory forKey:NSURLIsDirectoryKey error:&error] || !directory.boolValue) { return 0; }
     runtimeProgramFolder = url;
     return 1;
@@ -134,6 +134,17 @@ void MacPlatformSetRuntimeDockIcon(void) {
         NSImage* icon = [[NSImage alloc] initWithSize:NSMakeSize(128, 128)];
         [icon addRepresentation:bitmap];
         [NSApplication sharedApplication].applicationIconImage = icon;
+        // Launch Services can finish registering the Dock tile after the
+        // accessory-to-regular transition. Publish its contents on the next
+        // main-loop turn, once SDL starts processing the visible window.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSDockTile* tile = NSApp.dockTile;
+            NSImageView* view = [[NSImageView alloc] initWithFrame:NSMakeRect(0, 0, tile.size.width, tile.size.height)];
+            view.image = icon;
+            view.imageScaling = NSImageScaleProportionallyUpOrDown;
+            tile.contentView = view;
+            [tile display];
+        });
     }
 }
 #endif

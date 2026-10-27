@@ -36,6 +36,7 @@
 #endif
 
 #if defined(BOXEDWINE_NATIVE_RUNTIME) && defined(__APPLE__)
+#include "../../platform/mac/macLaunch.h"
 extern "C" int MacPlatformAcquireRuntimeProgramFolder(void);
 extern "C" void MacPlatformReleaseRuntimeProgramFolder(void);
 #endif
@@ -62,9 +63,9 @@ int boxedmain(int argc, const char **argv) {
         ~ProgramFolderAccess() { MacPlatformReleaseRuntimeProgramFolder(); }
     } programFolderAccess;
 #endif
-    // A bundled helper must receive a launch request; never open the legacy UI.
+    // The native engine requires a program; never open the legacy UI.
     if (argc < 2) {
-        klog("Launch Boxedwine through BoxedwineUI, or provide a program and its arguments.");
+        klog("Provide a program and its arguments, directly or in an engine launch document.");
         return 2;
     }
 #endif
@@ -149,6 +150,9 @@ int boxedmain(int argc, const char **argv) {
 #ifdef __linux__
     startLinuxNativeControl();
 #else
+#ifdef __APPLE__
+    if (macLaunchHasControl()) {
+#endif
     std::thread([]() {
         char command[32];
         while (fgets(command, sizeof(command), stdin)) {
@@ -160,8 +164,14 @@ int boxedmain(int argc, const char **argv) {
         if (KSystem::logFile.isOpen()) {
             KSystem::logFile.flush();
         }
+#ifdef __APPLE__
+        macLaunchReportExit(0);
+#endif
         std::_Exit(0);
     }).detach();
+#ifdef __APPLE__
+    }
+#endif
 #endif
 #endif
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(BOXEDWINE_NATIVE_RUNTIME)

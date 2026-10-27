@@ -155,11 +155,13 @@ def entitlement_errors(configuration, launcher, runtime):
         for direction in ("client", "server"):
             if launcher.get(f"com.apple.security.network.{direction}") is not True:
                 errors.append("Launcher is missing network permission for guest apps: " + direction)
-        if runtime.get("com.apple.security.inherit") is not True:
-            errors.append("Runtime does not declare sandbox inheritance")
-        sandbox_keys = {k for k in runtime if k.startswith("com.apple.security.") and not k.startswith("com.apple.security.cs.")}
-        if sandbox_keys != {"com.apple.security.app-sandbox", "com.apple.security.inherit"}:
-            errors.append("Runtime has sandbox keys beyond app-sandbox and inherit")
+        if runtime.get("com.apple.security.inherit"):
+            errors.append("Runtime must define its own sandbox, not inherit one")
+        if runtime.get("com.apple.security.files.user-selected.read-write") is not True:
+            errors.append("Runtime is missing read/write permission for user-selected files")
+        for direction in ("client", "server"):
+            if runtime.get(f"com.apple.security.network.{direction}") is not True:
+                errors.append("Runtime is missing network permission for guest apps: " + direction)
     return errors
 
 

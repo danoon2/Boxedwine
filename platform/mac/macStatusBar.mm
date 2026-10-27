@@ -161,6 +161,11 @@ bool macStatusBarEmbedGuest(SDL_Window* guest, SDL_Window* host, bool attach) {
 const char* macStatusBarChooseImage() {
     @autoreleasepool {
         NSOpenPanel* panel = [NSOpenPanel openPanel];
+        if (!panel) {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Choose CD-ROM Disc Image",
+                "The file picker could not open. Check the engine's file-access permissions.", nullptr);
+            return nullptr;
+        }
         panel.title = @"Choose CD-ROM Disc Image";
         panel.allowedContentTypes = @[[UTType typeWithFilenameExtension:@"iso"], [UTType typeWithFilenameExtension:@"cue"]];
         panel.canChooseDirectories = NO;

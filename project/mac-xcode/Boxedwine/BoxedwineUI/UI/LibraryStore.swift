@@ -1578,7 +1578,7 @@ final class LibraryStore: ObservableObject {
             let executable = try RuntimeSession.executable()
             try repository.prepare(app)
             let session = RuntimeSession()
-            try session.start(executable: executable, arguments: arguments, log: logURL(app), dockIcon: dockIcon, programFolderBookmark: externalProgram?.folderBookmark, cdromAccess: cdromAccess, onWindowShown: { [weak self, weak session] in
+            try session.start(executable: executable, arguments: arguments, log: logURL(app), dockIcon: dockIcon, programFolderBookmark: externalProgram?.folderBookmark, cdromAccess: cdromAccess, access: [repository.appDirectory(app), zip], onWindowShown: { [weak self, weak session] in
                 guard let self, let session, self.sessions[app.id] === session,
                       !self.stopping.contains(app.id), self.launching.remove(app.id) != nil else { return }
                 self.activity[app.id] = (externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Running \($0)" } ?? (installing ? "Installer running" : "Running")

@@ -236,24 +236,13 @@ struct WineConfigurationProcess: WineConfigurationRunning {
         try FileManager.default.createDirectory(at: job, withIntermediateDirectories: false)
         defer { try? FileManager.default.removeItem(at: job) }
         let token = UUID().uuidString
-        let process = Process(), input = Pipe()
-        guard fcntl(input.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1) != -1 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-        }
         let arguments = try Self.arguments(request, job: job, token: token)
-        let output = try RuntimeLogCapture(url: request.log, executable: executable)
-        process.executableURL = executable
-        process.arguments = arguments
-        process.currentDirectoryURL = job
-        process.standardInput = input
-        process.standardOutput = output.pipe
-        process.standardError = output.pipe
+        let process = try EngineProcess(executable: executable, arguments: arguments, directory: job,
+                                        access: [request.root, request.runtime])
+        let output = try RuntimeLogCapture(url: request.log, executable: executable, input: process.output)
         output.start()
-        do { try process.run() }
+        do { try process.run { _ in } }
         catch { output.failedToStart("Wine configuration could not start: " + error.localizedDescription); throw error }
-        output.childStarted()
-        try? input.fileHandleForReading.close()
-        defer { try? input.fileHandleForWriting.close() }
         let start = ProcessInfo.processInfo.systemUptime
         var stoppingAt: TimeInterval?
         var cancelled = false, timedOut = false, excessiveOutput = false
@@ -261,15 +250,15 @@ struct WineConfigurationProcess: WineConfigurationRunning {
             let now = ProcessInfo.processInfo.systemUptime
             if let size = try? RuntimePackage.Stamp.read(job.appendingPathComponent(request.outputName)).size, size > 64 * 1024 {
                 excessiveOutput = true
-                kill(process.processIdentifier, SIGKILL)
+                process.stop(force: true)
             }
             if stoppingAt == nil, control.progress.cancelled || now - start >= timeout {
                 cancelled = control.progress.cancelled
                 timedOut = !cancelled
                 stoppingAt = now
-                try? input.fileHandleForWriting.write(contentsOf: Data("quit\n".utf8))
+                process.stop()
             }
-            if let stoppingAt, now - stoppingAt >= stopGrace { kill(process.processIdentifier, SIGKILL) }
+            if let stoppingAt, now - stoppingAt >= stopGrace { process.stop(force: true) }
             Thread.sleep(forTimeInterval: 0.05)
         }
         process.waitUntilExit()
