@@ -16,6 +16,20 @@
 @property NSURL* request;
 @end
 @implementation BWEngineLaunch
+- (void)applicationWillFinishLaunching:(NSNotification*)notification {
+    [NSAppleEventManager.sharedAppleEventManager setEventHandler:self andSelector:@selector(openApplication:withReplyEvent:)
+        forEventClass:kCoreEventClass andEventID:kAEOpenApplication];
+}
+- (void)openApplication:(NSAppleEventDescriptor*)event withReplyEvent:(NSAppleEventDescriptor*)reply {
+    if (self.request) return;
+    NSAppleEventDescriptor* descriptor = [event paramDescriptorForKeyword:0x42574c51]; // 'BWLQ'
+    NSData* bookmark = descriptor.data;
+    if (descriptor.descriptorType != typeData || !bookmark.length || bookmark.length > 64 * 1024) return;
+    // An implicit-scope bookmark carries the launcher's access to just this
+    // request. No document-handler registration or Automation permission is needed.
+    self.request = [NSURL URLByResolvingBookmarkData:bookmark options:NSURLBookmarkResolutionWithoutUI
+        relativeToURL:nil bookmarkDataIsStale:nil error:nil];
+}
 - (void)application:(NSApplication*)application openURLs:(NSArray<NSURL*>*)urls {
     if (!self.request && urls.count == 1) self.request = urls.firstObject;
 }
@@ -315,6 +329,7 @@ int macLaunch(int argc, const char** argv, int (*run)(int, const char**)) {
             [NSApplication sharedApplication];
             BWEngineLaunch* delegate = [BWEngineLaunch new];
             NSApp.delegate = delegate;
+            NSAppleEventManager* events = NSAppleEventManager.sharedAppleEventManager;
             [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
             [NSApp finishLaunching];
             NSDate* deadline = [NSDate dateWithTimeIntervalSinceNow:15];
@@ -324,6 +339,7 @@ int macLaunch(int argc, const char** argv, int (*run)(int, const char**)) {
                 if (event) [NSApp sendEvent:event];
             }
             NSApp.delegate = nil; // SDL installs its usual application delegate.
+            [events removeEventHandlerForEventClass:kCoreEventClass andEventID:kAEOpenApplication];
             request = loadRequest(delegate.request);
             if (!request || !connectSession(delegate.request, request)) {
                 NSLog(@"Boxedwine could not read its engine launch request.");

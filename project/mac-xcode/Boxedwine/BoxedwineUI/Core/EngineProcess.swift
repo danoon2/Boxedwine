@@ -15,6 +15,7 @@ final class EngineProcess: @unchecked Sendable {
     private let childInput: Pipe?
     private let bundle: URL?
     private let session: URL?
+    private let requestBookmark: Data?
     private let lock = NSLock()
     private let queue = DispatchQueue(label: "org.boxedwine.engine-process")
     private var timer: DispatchSourceTimer?
@@ -36,7 +37,8 @@ final class EngineProcess: @unchecked Sendable {
         let url = executable.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         guard url.pathExtension == "app", let bundle = Bundle(url: url),
               bundle.executableURL?.standardizedFileURL == executable.standardizedFileURL,
-              bundle.object(forInfoDictionaryKey: "BoxedwineLaunchProtocol") as? Int == 1 else { return nil }
+              let version = bundle.object(forInfoDictionaryKey: "BoxedwineLaunchProtocol") as? Int,
+              (1...2).contains(version) else { return nil }
         return url
     }
 
@@ -53,6 +55,7 @@ final class EngineProcess: @unchecked Sendable {
             process.standardOutput = outgoing
             process.standardError = outgoing
             child = process; childInput = incoming; session = nil
+            requestBookmark = nil
             input = incoming.fileHandleForWriting
             output = outgoing.fileHandleForReading
             outputKeeper = outgoing.fileHandleForWriting
@@ -91,7 +94,14 @@ final class EngineProcess: @unchecked Sendable {
                     "directory": directory.path, "bookmarks": bookmarks, "environment": forwarded]
                 let data = try JSONSerialization.data(withJSONObject: document)
                 guard data.count <= 20 * 1024 * 1024 else { throw CocoaError(.fileWriteOutOfSpace) }
-                try data.write(to: folder.appendingPathComponent("request.bwlaunch"), options: .atomic)
+                let request = folder.appendingPathComponent("request.bwlaunch")
+                try data.write(to: request, options: .atomic)
+                if let bundle, Bundle(url: bundle)?.object(forInfoDictionaryKey: "BoxedwineLaunchProtocol") as? Int == 2 {
+                    requestBookmark = try request.bookmarkData(options: .minimalBookmark,
+                        includingResourceValuesForKeys: nil, relativeTo: nil)
+                } else {
+                    requestBookmark = nil // Compatibility with version 1 engines.
+                }
             } catch {
                 opened.forEach { try? $0.close() }
                 try? FileManager.default.removeItem(at: folder)
@@ -132,11 +142,28 @@ final class EngineProcess: @unchecked Sendable {
             configuration.createsNewApplicationInstance = true
             configuration.addsToRecentItems = false
             configuration.activates = false // SDL activates visible guest windows.
-            NSWorkspace.shared.open([session.appendingPathComponent("request.bwlaunch")],
-                withApplicationAt: bundle, configuration: configuration) { [self] app, error in
+            let didLaunch: @Sendable (NSRunningApplication?, (any Error)?) -> Void = { [self] app, error in
                 if let error { finish(status: -1, problem: "The runtime could not start: " + error.localizedDescription); return }
                 let stop = lock.withLock { self.app = app; return forced || !running }
                 if stop { requestWorkspaceStop() }
+            }
+            if let requestBookmark {
+                // Launch Services rejects document claims for nested engines in
+                // translocated downloads. Send a capability for the request in
+                // the app's initial event, without relying on document registration.
+                guard let descriptor = NSAppleEventDescriptor(descriptorType: typeData, data: requestBookmark) else {
+                    finish(status: -1, problem: "The runtime launch request could not be encoded.")
+                    return
+                }
+                let event = NSAppleEventDescriptor(eventClass: AEEventClass(kCoreEventClass),
+                    eventID: AEEventID(kAEOpenApplication), targetDescriptor: nil,
+                    returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID))
+                event.setParam(descriptor, forKeyword: 0x42574c51) // 'BWLQ', shared with macLaunch.mm.
+                configuration.appleEvent = event
+                NSWorkspace.shared.openApplication(at: bundle, configuration: configuration, completionHandler: didLaunch)
+            } else {
+                NSWorkspace.shared.open([session.appendingPathComponent("request.bwlaunch")],
+                    withApplicationAt: bundle, configuration: configuration, completionHandler: didLaunch)
             }
         }
     }

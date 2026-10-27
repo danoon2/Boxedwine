@@ -1,6 +1,7 @@
 // Copyright (C) 2026 The Boxedwine Team. GPL-2.0-or-later.
 @testable import BoxedwineLibrary
 import AppKit
+import CoreServices
 
 @MainActor
 @main struct Launcher {
@@ -15,6 +16,19 @@ import AppKit
         let file = directory.appendingPathComponent("file with spaces 日本語.iso")
         try Data("scoped file access works".utf8).write(to: file)
         let executable = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/Engine.app/Contents/MacOS/Engine")
+        if CommandLine.arguments.contains("no-document-handler") {
+            // Reproduce the Launch Services failure seen with downloaded,
+            // translocated engines even on a local developer build.
+            let document = directory.appendingPathComponent("type-check.bwlaunch")
+            try Data("{}".utf8).write(to: document)
+            guard let application = EngineProcess.application(for: executable) else { throw CocoaError(.fileReadCorruptFile) }
+            var accepts = DarwinBoolean(false)
+            let status = LSCanURLAcceptURL(document as CFURL, application as CFURL, .editor, [], &accepts)
+            guard status == noErr, !accepts.boolValue else {
+                throw NSError(domain: "LaunchProbe", code: Int(status), userInfo: [NSLocalizedDescriptionKey: "Fixture unexpectedly accepts launch documents"])
+            }
+            print("DOCUMENT_HANDLER_REJECTED")
+        }
         var environment = ["BOXEDWINE_TEST_ENV":"environment passed"]
         if mode == "icon" {
             let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 128, pixelsHigh: 128,

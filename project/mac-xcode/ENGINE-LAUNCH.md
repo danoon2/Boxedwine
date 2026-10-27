@@ -5,8 +5,9 @@ has its own user-selected-file, bookmark, network, and JIT entitlements, so the
 CD-ROM picker runs inside the engine. There is no separate picker application.
 The launcher does not need to be BoxedwineUI.
 
-Launch the app with `NSWorkspace.open(_:withApplicationAt:configuration:completionHandler:)`
-and set `createsNewApplicationInstance = true`. Send one `.bwlaunch` document.
+Launch the app with `NSWorkspace.openApplication(at:configuration:completionHandler:)`
+and set `createsNewApplicationInstance = true`. Pass an implicit-scope bookmark
+for the `.bwlaunch` request in `OpenConfiguration.appleEvent`, as described below.
 A sandboxed GUI frontend should use this API instead of `Process`/`NSTask`,
 which creates a child process subject to the caller's sandbox. Direct launches
 from Bash are supported as described below.
@@ -17,9 +18,31 @@ Swift implementation is `Boxedwine/BoxedwineUI/Core/EngineProcess.swift`; the
 engine implementation is `../../platform/mac/macLaunch.mm`. Third-party UIs can
 implement the same protocol without loading any BoxedwineUI code.
 
-## Version 1 protocol
+## Launch transport
 
-Check the engine's `Info.plist` for `BoxedwineLaunchProtocol = 1`. Make a new
+Check the engine's `Info.plist` for `BoxedwineLaunchProtocol = 2`. Create a
+`kCoreEventClass` / `kAEOpenApplication` Apple event with a nil target descriptor,
+`kAutoGenerateReturnID`, and `kAnyTransactionID`. Set its `BWLQ` (`0x42574c51`)
+parameter to a `typeData` descriptor containing the request file's bookmark,
+created with `URL.bookmarkData(options: .minimalBookmark, ...)`. Set that event
+on the open configuration. The engine resolves the bookmark before reading the
+request; the bookmark must be at most 64 KiB. This uses the normal application
+launch API and requires no Automation entitlement.
+
+Downloaded apps may run under App Translocation. Launch Services can reject a
+nested engine's document claim there with `kLSAppDoesNotClaimTypeErr` (-10820),
+even when the bundle is correctly signed and notarized. Passing the bookmark in
+the app-open event avoids depending on document-handler registration while
+preserving the file-access grant. Do not remove quarantine or recover the app's
+original path to work around this.
+
+Version 1 engines use `NSWorkspace.open(_:withApplicationAt:configuration:completionHandler:)`
+with the request document as the sole URL. BoxedwineUI retains that fallback, and
+version 2 engines still accept the older document delivery for existing clients.
+
+## Request format (version 1)
+
+Both transports use the same request format and session files. Make a new
 private session directory (mode `0700`) for every engine instance. Create three
 named FIFOs (`mkfifo`, mode `0600`):
 
@@ -105,7 +128,7 @@ status with an explanation. The first authorization needs an interactive macOS
 session.
 
 Unsandboxed Debug builds accept the same arguments without sandbox prompts.
-Plain executable overrides and older bundles without protocol version 1 continue
+Plain executable overrides and older bundles without a recognized launch protocol continue
 to use `Process` in BoxedwineUI.
 
 After a Sandbox build, run
@@ -122,6 +145,14 @@ exit status, simultaneous launches, Stop, Force Stop, and launcher disappearance
 Add `--picker` to select a disc image interactively and verify the engine can
 open it using its own entitlement.
 
+Run with `--no-document-handler` to reproduce an unavailable document claim. The
+fixture asserts that Launch Services rejects `.bwlaunch` documents for its engine,
+then verifies that bookmark delivery, file access, lifecycle control, and Dock
+integration still work. Run with `--legacy-document` to check the version 1 fallback.
+Also smoke-test a downloaded, notarized Jenkins artifact from Downloads; a local
+build alone does not exercise Gatekeeper and App Translocation.
+
 Apple references: [NSWorkspace arguments](https://developer.apple.com/documentation/appkit/nsworkspace/openconfiguration/arguments),
+[initial Apple event](https://developer.apple.com/documentation/appkit/nsworkspace/openconfiguration/appleevent),
 [GUI process launch guidance](https://developer.apple.com/forums/thread/735493),
 [App Sandbox inheritance](https://developer.apple.com/library/archive/documentation/Miscellaneous/Reference/EntitlementKeyReference/Chapters/EnablingAppSandbox.html).

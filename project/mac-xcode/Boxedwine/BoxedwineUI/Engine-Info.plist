@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-    <key>BoxedwineLaunchProtocol</key><integer>1</integer>
+    <key>BoxedwineLaunchProtocol</key><integer>2</integer>
     <key>CFBundleDocumentTypes</key><array><dict>
         <key>CFBundleTypeRole</key><string>Editor</string>
         <key>LSHandlerRank</key><string>None</string>
