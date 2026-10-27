@@ -7,7 +7,7 @@ RUNTIME_MEMORY_FLAGS := -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472
 
 # JIT modes replace the common runtime exports; ccall is needed by the shell
 # (host folder cache invalidation) and by WebGL counters for names.
-JIT_CCALL_EXPORTS := ,ccall
+JIT_CCALL_EXPORTS := ,ccall,IDBFS
 
 BUILD_PHASE ?= all
 
