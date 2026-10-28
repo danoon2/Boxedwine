@@ -1004,7 +1004,8 @@ void sdlStatusBarConstrainPointer(SDL_Event& event) {
     event.window.windowID = ownerId;
 }
 
-bool sdlStatusBarEvent(SDL_Event& event) {
+bool sdlStatusBarEvent(SDL_Event& event, bool* releaseCapture) {
+    if (releaseCapture) *releaseCapture = false;
     // These SDL event types all place windowID after timestamp. Do not inspect
     // that union field for user events, controller events, or SDL_QUIT.
     bool windowEvent = event.type == SDL_WINDOWEVENT || event.type == SDL_KEYDOWN || event.type == SDL_KEYUP ||
@@ -1015,6 +1016,14 @@ bool sdlStatusBarEvent(SDL_Event& event) {
     U32 id = (event.type >= SDL_DROPFILE && event.type <= SDL_DROPCOMPLETE) ? event.drop.windowID : event.window.windowID;
     SDL_Window* target = SDL_GetWindowFromID(id);
     if (target && target == hint.window) return true;
+    // Fullscreen and guest-window replacement can leave queued motion/keys
+    // for a hidden status bar. Consume them without releasing capture or
+    // activating controls. Wayland subsurfaces are intentionally SDL-hidden.
+    if (target && target == bar.window && event.type != SDL_WINDOWEVENT &&
+            !(wayland ? waylandBarShown : (SDL_GetWindowFlags(target) & SDL_WINDOW_SHOWN))) {
+        if (event.type == SDL_DROPFILE || event.type == SDL_DROPTEXT) SDL_free(event.drop.file);
+        return true;
+    }
     if (wayland && opened) {
         // A subsurface shares the toplevel's keyboard focus. Route its menu
         // keys here without changing the guest's drawable or native focus.
@@ -1046,6 +1055,7 @@ bool sdlStatusBarEvent(SDL_Event& event) {
             if (opened && outside) {
                 closeMenu(target == owner() || target == bar.window);
                 dismissedButtons |= button;
+                if (releaseCapture) *releaseCapture = true;
                 return true;
             }
         } else if (dismissedButtons & button) {
@@ -1092,6 +1102,8 @@ bool sdlStatusBarEvent(SDL_Event& event) {
         event.window.windowID = ownerId;
         return false;
     }
+    if (releaseCapture) *releaseCapture = event.type == SDL_MOUSEBUTTONDOWN ||
+        event.type == SDL_MOUSEMOTION || event.type == SDL_KEYDOWN;
     if (event.type == SDL_WINDOWEVENT) {
         if (event.window.event == SDL_WINDOWEVENT_EXPOSED || event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) dirty = true;
         if (target == menu.window && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) closeMenu(false);

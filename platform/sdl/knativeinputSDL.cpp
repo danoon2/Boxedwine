@@ -316,6 +316,24 @@ bool KNativeInputSDL::wantsMouseCapture() {
 
 void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
 #ifndef __EMSCRIPTEN__
+    SDL_Rect bounds = {(int)scaleXOffset, (int)scaleYOffset,
+        (int)((U64)width * scaleX / 100), (int)((U64)height * scaleY / 100)};
+#if defined(__APPLE__) || defined(BOXEDWINE_MSVC) || defined(__linux__)
+    // Refresh mapping and confinement together after fullscreen, resize, and
+    // guest mode changes. Retain the last mapping while focus is elsewhere.
+    if (window) {
+#ifdef __APPLE__
+        OpenGLViewport viewport = macOpenGLGetViewport(window);
+#elif defined(BOXEDWINE_MSVC)
+        OpenGLViewport viewport = windowsOpenGLGetViewport(window);
+#else
+        OpenGLViewport viewport = linuxOpenGLGetViewport(window);
+#endif
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(openGLViewportMutex);
+        openGLViewport = viewport;
+        if (viewport.valid()) bounds = {viewport.x, viewport.y, viewport.width, viewport.height};
+    }
+#endif
     // Browser pointer lock and its UI are controlled by the web page.
     // Store an ID rather than a pointer: rendering can destroy/recreate windows.
     SDL_Window* previous = SDL_GetWindowFromID(confinedWindowId);
@@ -328,8 +346,26 @@ void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
         sdlStatusBarInputWindow(focused) == window ? focused : nullptr;
     if (previous && previous != target) {
         SDL_SetWindowGrab(previous, SDL_FALSE);
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+        SDL_SetWindowMouseRect(previous, nullptr);
+#endif
     }
     confinedWindowId = target ? SDL_GetWindowID(target) : 0;
+    mouseConfinementRect = {};
+    if (target) {
+        // Embedded guests share the host's top-left origin. Intersect with the
+        // guest window so neither letterboxing nor the status strip is captured.
+        SDL_Rect client = {};
+        SDL_GetWindowSize(window, &client.w, &client.h);
+        SDL_IntersectRect(&bounds, &client, &mouseConfinementRect);
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+        const SDL_Rect* rect = SDL_RectEmpty(&mouseConfinementRect) ? nullptr : &mouseConfinementRect;
+        const SDL_Rect* current = SDL_GetWindowMouseRect(target);
+        if ((rect && (!current || !SDL_RectEquals(rect, current))) || (!rect && current)) {
+            SDL_SetWindowMouseRect(target, rect);
+        }
+#endif
+    }
     if (target && SDL_GetWindowGrab(target) != SDL_TRUE) {
         // Preserve absolute motion and the game's existing cursor warps.
         SDL_SetWindowGrab(target, SDL_TRUE);
@@ -339,6 +375,25 @@ void KNativeInputSDL::updateMouseConfinement(SDL_Window* window) {
         mouseCaptureReleased && !hostUiMouseReleased ? SdlMouseCaptureState::Released : SdlMouseCaptureState::Free);
     captureGuestWindowId = window && (captured || (mouseCaptureReleased && !hostUiMouseReleased)) ? SDL_GetWindowID(window) : 0;
 #endif
+}
+
+void KNativeInputSDL::constrainMouseToViewport(SDL_Event& event) {
+    if (!confinedWindowId || mouseCaptureReleased || SDL_RectEmpty(&mouseConfinementRect)) return;
+    bool motion = event.type == SDL_MOUSEMOTION;
+    bool button = event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP;
+    if ((!motion && !button) || (event.window.windowID != confinedWindowId &&
+            event.window.windowID != captureGuestWindowId)) return;
+    int& x = motion ? event.motion.x : event.button.x;
+    int& y = motion ? event.motion.y : event.button.y;
+    int clippedX = std::clamp(x, mouseConfinementRect.x, mouseConfinementRect.x + mouseConfinementRect.w - 1);
+    int clippedY = std::clamp(y, mouseConfinementRect.y, mouseConfinementRect.y + mouseConfinementRect.h - 1);
+    if (x != clippedX || y != clippedY) {
+        // Also cover queued events from before a resize and SDL backends without
+        // mouse rectangles. Clamp the physical pointer, not only guest coordinates,
+        // so moving back from an edge has no accumulated travel through black bars.
+        x = clippedX; y = clippedY;
+        if (SDL_Window* window = SDL_GetWindowFromID(confinedWindowId)) SDL_WarpMouseInWindow(window, x, y);
+    }
 }
 
 void KNativeInputSDL::setCursor(SDL_Cursor* cursor) {
@@ -803,23 +858,8 @@ void KNativeInputSDL::updateRelativeMouseMode() {
     // SDL relative mode and hidden-cursor mouse look both require a host grab,
     // even when the guest did not specify an X11 confinement window.
     updateMouseConfinement(sdlStatusBarInputWindow(SDL_GetKeyboardFocus()));
-#if defined(__APPLE__) || defined(BOXEDWINE_MSVC) || (defined(__linux__) && !defined(__EMSCRIPTEN__))
-    // Refresh after native fullscreen/resolution transitions. Keep the last
-    // mapping while unfocused so guest cursor warps still use guest coordinates.
-    if (SDL_Window* window = sdlStatusBarInputWindow(SDL_GetKeyboardFocus())) {
-#ifdef __APPLE__
-        OpenGLViewport viewport = macOpenGLGetViewport(window);
-#elif defined(BOXEDWINE_MSVC)
-        OpenGLViewport viewport = windowsOpenGLGetViewport(window);
-#else
-        OpenGLViewport viewport = linuxOpenGLGetViewport(window);
-#endif
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(openGLViewportMutex);
-        openGLViewport = viewport;
-    }
 #ifdef __APPLE__
     macCursorUpdate();
-#endif
 #endif
 #endif
 }
@@ -1148,11 +1188,12 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
     // A captured game cannot enter host controls merely by moving down. SDL's
     // outer-window grab includes the bar, so constrain those events first.
     if (confinedWindowId && !mouseCaptureReleased) sdlStatusBarConstrainPointer(*e);
+    constrainMouseToViewport(*e);
     // Host controls must be handled before capture/guest input. Their pixels
     // and mouse positions do not belong to the emulated desktop.
-    if (sdlStatusBarEvent(*e)) {
-        if (e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEMOTION || e->type == SDL_KEYDOWN)
-            releaseMouseForHostUi();
+    bool releaseCapture = false;
+    if (sdlStatusBarEvent(*e, &releaseCapture)) {
+        if (releaseCapture) releaseMouseForHostUi();
         // A menu may acquire focus while modifiers are still down in the guest.
         if (e->type == SDL_KEYUP && (e->key.keysym.sym == SDLK_LCTRL || e->key.keysym.sym == SDLK_RCTRL ||
                 e->key.keysym.sym == SDLK_LSHIFT || e->key.keysym.sym == SDLK_RSHIFT ||
@@ -1259,6 +1300,8 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
             }
         } else if (e->window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
             if (XServer* server = XServer::getServer(true)) server->resetCapturedMouse();
+            SDL_Window* window = SDL_GetWindowFromID(e->window.windowID);
+            if (window && window == sdlStatusBarInputWindow(SDL_GetKeyboardFocus())) updateMouseConfinement(window);
         }
     }
     return true;

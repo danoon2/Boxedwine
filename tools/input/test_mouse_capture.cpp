@@ -37,6 +37,18 @@ static SDL_Window* window(U32 id) { return reinterpret_cast<SDL_Window*>(uintptr
 extern "C" SDL_Window* SDL_GetKeyboardFocus() { return focused; }
 extern "C" SDL_Window* SDL_GetWindowFromID(Uint32 id) { return id < 4 && alive[id] ? window(id) : nullptr; }
 extern "C" Uint32 SDL_GetWindowID(SDL_Window* w) { return Uint32(reinterpret_cast<uintptr_t>(w)); }
+extern "C" void SDL_GetWindowSize(SDL_Window*, int* w, int* h) { if (w) *w = 800; if (h) *h = 600; }
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+static SDL_Rect mouseRects[4]{};
+extern "C" const SDL_Rect* SDL_GetWindowMouseRect(SDL_Window* w) {
+    auto& rect = mouseRects[uintptr_t(w)];
+    return SDL_RectEmpty(&rect) ? nullptr : &rect;
+}
+extern "C" int SDL_SetWindowMouseRect(SDL_Window* w, const SDL_Rect* rect) {
+    mouseRects[uintptr_t(w)] = rect ? *rect : SDL_Rect{};
+    return 0;
+}
+#endif
 extern "C" SDL_bool SDL_GetWindowGrab(SDL_Window* w) { return grabbed == w ? SDL_TRUE : SDL_FALSE; }
 extern "C" void SDL_SetWindowGrab(SDL_Window* w, SDL_bool enabled) {
     if (enabled) grabbed = w;

@@ -9,7 +9,9 @@ enum class SdlMouseCaptureState { Free, Captured, Released };
 // of the guest's GDI/OpenGL/Vulkan drawable and its coordinate system.
 #if !defined(__EMSCRIPTEN__) && !defined(__TEST) && !defined(__ANDROID__)
 void sdlStatusBarTick();
-bool sdlStatusBarEvent(SDL_Event& event);
+// Consumed events may be stale input for hidden controls. Only actual host UI
+// interaction requests a mouse release; swallowing an event alone does not.
+bool sdlStatusBarEvent(SDL_Event& event, bool* releaseCapture = nullptr);
 void sdlStatusBarConstrainPointer(SDL_Event& event);
 SDL_Window* sdlStatusBarInputWindow(SDL_Window* window);
 bool sdlStatusBarOwns(SDL_Window* window);
@@ -25,7 +27,7 @@ bool sdlStatusBarFullscreenShortcut(SDL_Event& event);
 bool sdlStatusBarToggleFullscreen();
 #else
 inline void sdlStatusBarTick() {}
-inline bool sdlStatusBarEvent(SDL_Event&) { return false; }
+inline bool sdlStatusBarEvent(SDL_Event&, bool* releaseCapture = nullptr) { if (releaseCapture) *releaseCapture = false; return false; }
 inline void sdlStatusBarConstrainPointer(SDL_Event&) {}
 inline SDL_Window* sdlStatusBarInputWindow(SDL_Window* window) { return window; }
 inline bool sdlStatusBarOwns(SDL_Window*) { return false; }
