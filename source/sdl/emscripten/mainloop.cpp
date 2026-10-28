@@ -98,14 +98,12 @@ static int mainLoopTimingValue = -1;
 static void updateMainLoopTiming(bool idle) {
     int mode = EM_TIMING_SETTIMEOUT;
     int value = 1;
-#ifdef BOXEDWINE_WASM_JIT
     // Keep yielding to the browser between slices without paying the nested
     // timer delay while guest work is available. Sleeping guests still use a
     // timer so they do not continuously post messages to the browser.
     if (!idle) {
         mode = EM_TIMING_SETIMMEDIATE;
     }
-#endif
     if (idle) {
         // Browsers hold a timeout set from inside another timeout for at least 4 ms,
         // which would run a guest timer due sooner than that late, such as one of an
