@@ -404,6 +404,9 @@ void KNativeInputSDL::setCursor(SDL_Cursor* cursor) {
 }
 
 void KNativeInputSDL::setMouseCaptureReleased(bool released) {
+#ifdef __APPLE__
+    fullscreenCaptureWindowId = 0;
+#endif
     if (released == mouseCaptureReleased) return;
     if (released) {
         int x, y;
@@ -475,6 +478,12 @@ bool KNativeInputSDL::handleMouseCaptureEvent(SDL_Event* event) {
             (confinedWindowId || ownsRelativeMouseMode || (mouseCaptureReleased && !hostUiMouseReleased) || captureShortcutDown)) {
         if (!event->key.repeat && !captureShortcutDown) {
             captureShortcutDown = true;
+#ifdef __APPLE__
+            if (fullscreenCaptureWindowId) {
+                fullscreenCaptureWindowId = 0;
+                return true;
+            }
+#endif
             setMouseCaptureReleased(!mouseCaptureReleased);
         }
         return true;
@@ -842,6 +851,20 @@ bool KNativeInputSDL::key(U32 sdlScanCode, U32 key, U32 down) {
 }
 
 void KNativeInputSDL::updateRelativeMouseMode() {
+#ifdef __APPLE__
+    if (fullscreenCaptureWindowId) {
+        SDL_Window* window = SDL_GetWindowFromID(fullscreenCaptureWindowId);
+        if (!window || !mouseCaptureReleased || !wantsMouseCapture() ||
+                !(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) ||
+                window != sdlStatusBarInputWindow(SDL_GetKeyboardFocus())) {
+            fullscreenCaptureWindowId = 0;
+        } else if (SDL_TICKS_PASSED(SDL_GetTicks(), fullscreenCaptureAt)) {
+            updateMouseConfinement(window);
+            setMouseCaptureReleased(false);
+            return;
+        }
+    }
+#endif
 #ifndef __EMSCRIPTEN__
     // Browser pointer lock is controlled by a user gesture, not X11 grabs.
     XServer* server = XServer::getServer(true);
@@ -867,6 +890,9 @@ void KNativeInputSDL::updateRelativeMouseMode() {
 bool KNativeInputSDL::waitForEvent(U32 ms) {
     sdlStatusBarTick();
     updateRelativeMouseMode();
+#ifdef __APPLE__
+    if (fullscreenCaptureWindowId) ms = std::min(ms, (U32)std::max(1, (S32)(fullscreenCaptureAt - SDL_GetTicks())));
+#endif
     SDL_Event e = { 0 };
     if (SDL_WaitEventTimeout(&e, ms) == 1) {
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -1185,9 +1211,18 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         // only for the input that enters fullscreen, so an explicit release
         // still survives later focus changes and guest-window replacement.
         if (!wasFullscreen && sdlStatusBarIsFullscreen() && mouseCaptureReleased && wantsMouseCapture()) {
+#ifdef __APPLE__
+            // SDL 2 can permanently clip to the old window size if capture is
+            // installed during Cocoa's asynchronous fullscreen transition.
+            // Keep the event loop running before restoring capture.
+            SDL_Window* window = sdlStatusBarInputWindow(SDL_GetKeyboardFocus());
+            fullscreenCaptureWindowId = window ? SDL_GetWindowID(window) : 0;
+            fullscreenCaptureAt = SDL_GetTicks() + 100;
+#else
             // Restore the virtual pointer using the new fullscreen viewport.
             updateMouseConfinement(sdlStatusBarInputWindow(SDL_GetKeyboardFocus()));
             setMouseCaptureReleased(false);
+#endif
         }
     };
     // A fullscreen shortcut belongs to the host, but must not release a game's

@@ -101,6 +101,10 @@ private:
     std::atomic<U32> swallowedMouseButtons{0};
     U32 pressedMouseButtons = 0;
     bool captureShortcutDown = false;
+#ifdef __APPLE__
+    U32 fullscreenCaptureWindowId = 0;
+    U32 fullscreenCaptureAt = 0;
+#endif
     bool focusClickthroughBeforeRelease = false;
     SDL_Cursor* guestCursor = nullptr;
     bool guestCursorVisible = true;
