@@ -818,7 +818,7 @@ bool sdlStatusBarIsFullscreen() {
     return enabled && fullscreen(owner());
 }
 
-bool sdlStatusBarFullscreenShortcut(SDL_Event& event) {
+bool sdlStatusBarFullscreenShortcut(SDL_Event& event, const std::function<void()>& beforeToggle) {
     if (!enabled || !owner() || (event.type != SDL_KEYDOWN && event.type != SDL_KEYUP) ||
             event.key.keysym.sym != SDLK_RETURN) return false;
     if (event.type == SDL_KEYUP && fullscreenKeyDown) { fullscreenKeyDown = false; return true; }
@@ -826,7 +826,11 @@ bool sdlStatusBarFullscreenShortcut(SDL_Event& event) {
     bool altOnly = (event.key.keysym.mod & KMOD_ALT) && !(event.key.keysym.mod & (KMOD_CTRL | KMOD_SHIFT | KMOD_GUI));
     if (event.type == SDL_KEYDOWN && (target == owner() || sdlStatusBarOwns(target)) &&
             (altOnly || (fullscreenKeyDown && event.key.repeat))) {
-        if (!event.key.repeat) { fullscreenKeyDown = true; sdlStatusBarToggleFullscreen(); }
+        if (!event.key.repeat) {
+            fullscreenKeyDown = true;
+            if (beforeToggle) beforeToggle();
+            sdlStatusBarToggleFullscreen();
+        }
         return true;
     }
     return false;

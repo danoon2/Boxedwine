@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 #include <SDL.h>
+#include <functional>
 
 enum class SdlMouseCaptureState { Free, Captured, Released };
 
@@ -23,7 +24,8 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show);
 void sdlStatusBarSetWindowSize(SDL_Window* window, int width, int height);
 void sdlStatusBarRaiseWindow(SDL_Window* window);
 void sdlStatusBarSetMouseCapture(SdlMouseCaptureState state);
-bool sdlStatusBarFullscreenShortcut(SDL_Event& event);
+// beforeToggle runs only for a fresh shortcut press, before resizing the guest.
+bool sdlStatusBarFullscreenShortcut(SDL_Event& event, const std::function<void()>& beforeToggle = {});
 bool sdlStatusBarToggleFullscreen();
 bool sdlStatusBarIsFullscreen();
 #else
@@ -40,7 +42,7 @@ inline void sdlStatusBarShowWindow(SDL_Window* window, bool show) { if (show) SD
 inline void sdlStatusBarSetWindowSize(SDL_Window* window, int width, int height) { SDL_SetWindowSize(window, width, height); }
 inline void sdlStatusBarRaiseWindow(SDL_Window* window) { SDL_RaiseWindow(window); }
 inline void sdlStatusBarSetMouseCapture(SdlMouseCaptureState) {}
-inline bool sdlStatusBarFullscreenShortcut(SDL_Event&) { return false; }
+inline bool sdlStatusBarFullscreenShortcut(SDL_Event&, const std::function<void()>& = {}) { return false; }
 inline bool sdlStatusBarToggleFullscreen() { return false; }
 inline bool sdlStatusBarIsFullscreen() { return false; }
 #endif

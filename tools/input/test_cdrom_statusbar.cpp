@@ -228,15 +228,56 @@ void testSoftwareFullscreenScale() {
     sdlStatusBarConfigure(true);
     KNativeSystem::initWindow(640, 480, 32, 100, 100, B("0"), FULLSCREEN_NOTSET, VSYNC_DISABLED);
     auto screen = std::static_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
-    sdlStatusBarShowWindow(screen->window, true);
+    screen->showWindow(true); // Route engine pointer warps to this software window.
     settleStatusBar();
-    // Capture in a window, release, then enter fullscreen from the status bar.
-    // Cocoa used to retain the 640x480 physical limit after automatic recapture,
-    // even though SDL reported the correct fullscreen confinement rectangle.
     auto& input = *screen->input;
     input.mouseConfinementRequested = true;
     input.updateMouseConfinement(screen->window);
     assert(SDL_GetWindowGrab(SDL_GetKeyboardFocus()));
+    // Alt+Enter must also refresh an already-captured pointer. A mouse-look
+    // game repeatedly warps to its centre; an old native clip prevents that
+    // warp and turns the resulting offset into continuous camera movement.
+    SDL_Event key = {};
+    key.key.windowID = SDL_GetWindowID(screen->window);
+    key.key.keysym.sym = SDLK_RETURN;
+    key.key.keysym.mod = KMOD_ALT;
+    auto toggleFullscreen = [&]() {
+        key.type = SDL_KEYDOWN; assert(input.handlSdlEvent(&key));
+        key.type = SDL_KEYUP; assert(input.handlSdlEvent(&key));
+        U32 until = SDL_GetTicks() + 250;
+        do {
+            input.processEvents();
+            SDL_Delay(5);
+        } while ((S32)(SDL_GetTicks() - until) < 0);
+    };
+    input.setMousePos(320, 240);
+    input.processEvents();
+    toggleFullscreen();
+    assert(sdlStatusBarIsFullscreen() && !input.isMouseCaptureReleased());
+    auto assertCentered = [&]() {
+        int globalX, globalY, windowX, windowY;
+        SDL_GetGlobalMouseState(&globalX, &globalY);
+        SDL_GetWindowPosition(screen->window, &windowX, &windowY);
+        if (std::abs(globalX - windowX - input.xToScreen(320)) > 1 ||
+                std::abs(globalY - windowY - input.yToScreen(240)) > 1)
+            fprintf(stderr, "Fullscreen mouse-look recenter: %d,%d; expected %d,%d\n",
+                globalX - windowX, globalY - windowY, input.xToScreen(320), input.yToScreen(240));
+        assert(std::abs(globalX - windowX - input.xToScreen(320)) <= 1);
+        assert(std::abs(globalY - windowY - input.yToScreen(240)) <= 1);
+    };
+#ifdef __APPLE__
+    assertCentered(); // Automatic recapture restores the saved virtual position.
+#endif
+    for (int warp = 0; warp < 3; ++warp) {
+        input.setMousePos(320, 240);
+        assertCentered();
+    }
+    toggleFullscreen();
+    assert(!sdlStatusBarIsFullscreen() && !input.isMouseCaptureReleased());
+    puts("Captured fullscreen shortcut preserves mouse-look recentering");
+    // Capture in a window, release, then enter fullscreen from the status bar.
+    // Cocoa used to retain the 640x480 physical limit after automatic recapture,
+    // even though SDL reported the correct fullscreen confinement rectangle.
     // Restoring this position after scaling also exceeds the old window bounds.
     input.setMousePos(500, 400);
     input.processEvents();
