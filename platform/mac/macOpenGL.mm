@@ -328,15 +328,19 @@ void macOpenGLClearCurrent() {
     }
 }
 
+void macOpenGLFlush(void* context) {
+    @autoreleasepool {
+        glFlush();
+        if (context) applyContextUpdate(getContext(context));
+    }
+}
+
 void macOpenGLSwapBuffers(void* context) {
     if (!context) {
         return;
     }
     @autoreleasepool {
-        // flushBuffer presents double-buffered contexts. Single-buffered
-        // drawables also need their queued front-buffer drawing submitted.
-        glFlush();
-        applyContextUpdate(getContext(context));
+        macOpenGLFlush(context);
         [getContext(context) flushBuffer];
     }
 }

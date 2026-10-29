@@ -118,8 +118,8 @@ and read-only volumes continue to apply.
 Relative host paths use Bash's `PWD`, because App Sandbox changes the engine's
 working directory before `main`. This covers roots, archives, mounted folders,
 disc images, logs, and recorder/playback directories. Guest paths and arguments
-retain their usual meaning. A closed or piped stdin does not shut down a direct
-CLI invocation; the stdin/lifetime control channels belong to document launches.
+retain their usual meaning. A closed or piped stdin does not shut down an ordinary
+CLI invocation.
 
 For scripts that must not display file-access dialogs, set
 `BOXEDWINE_NO_FILE_ACCESS_PROMPT=1`. Remembered access still works. Missing access,
@@ -128,8 +128,14 @@ status with an explanation. The first authorization needs an interactive macOS
 session.
 
 Unsandboxed Debug builds accept the same arguments without sandbox prompts.
-Plain executable overrides and older bundles without a recognized launch protocol continue
-to use `Process` in BoxedwineUI.
+Executable symlinks into a recognized engine bundle use the same Launch Services
+transport as the bundle's executable. Plain executable overrides and older
+bundles without a recognized launch protocol continue to use `Process` in
+BoxedwineUI. For these launches the UI sets `BOXEDWINE_STDIN_CONTROL=1`: `quit\n`
+requests a normal stop, and closing stdin ends the engine. Third-party launchers
+using `Process` can opt in the same way. The engine consumes this setting before
+starting the guest; normal Bash launches should leave it unset. The separate
+`lifetime` FIFO remains specific to launch requests.
 
 After a Sandbox build, run
 `python3 tools/input/test_mac_engine_cli.py --wine /path/to/wine.zip --authorize`

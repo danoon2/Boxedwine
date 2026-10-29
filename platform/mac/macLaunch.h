@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 int macLaunch(int argc, const char** argv, int (*run)(int, const char**));
+// Launch requests, or Process launchers explicitly setting BOXEDWINE_STDIN_CONTROL=1.
 bool macLaunchHasControl();
 void macLaunchReportExit(int status);
 bool macLaunchIsCommandLine();

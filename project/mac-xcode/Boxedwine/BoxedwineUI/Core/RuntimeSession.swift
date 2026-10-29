@@ -69,6 +69,9 @@ final class RuntimeSession {
         if let programFolderBookmark, programFolderBookmark.count > 48 * 1024 { throw ExternalProgramError.access }
         environment["BOXEDWINE_PROGRAM_FOLDER_BOOKMARK"] = programFolderBookmark?.base64EncodedString()
         environment["BOXEDWINE_CDROM_BOOKMARKS_FILE"] = nil
+        // The first disc launch needs Logs for its access manifest as well as
+        // its output file. Prepare it before writing or bookmarking either.
+        let outputFile = try LaunchLog.prepare(log)
         if let cdromAccess, !cdromAccess.runtimeBookmarks.isEmpty {
             let manifest = log.deletingLastPathComponent().appendingPathComponent(".cdrom-access-\(UUID().uuidString).json")
             let data = try JSONEncoder().encode(cdromAccess.runtimeBookmarks)
@@ -84,8 +87,6 @@ final class RuntimeSession {
         }
         self.cdromAccess = cdromAccess
         do {
-            // Prepare the log directory before creating a bookmark for it.
-            let outputFile = try LaunchLog.prepare(log)
             let process = try EngineProcess(executable: executable, arguments: arguments,
                 directory: log.deletingLastPathComponent(), environment: environment, access: access)
             self.process = process

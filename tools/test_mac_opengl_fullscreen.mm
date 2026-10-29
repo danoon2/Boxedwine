@@ -9,18 +9,20 @@
 #include <cstdio>
 #include <atomic>
 #include <thread>
+#include <vector>
 
 // Isolate the presentation code from Boxedwine's guest pixel-format table.
 void* macOpenGLChoosePixelFormat(U32 nativeId, int major) {
-    CGLPixelFormatAttribute attributes[] = {
-        kCGLPFAAccelerated, kCGLPFADoubleBuffer,
+    std::vector<CGLPixelFormatAttribute> attributes = {
+        kCGLPFAAccelerated,
         kCGLPFAColorSize, (CGLPixelFormatAttribute)24,
-        kCGLPFAOpenGLProfile, (CGLPixelFormatAttribute)(major >= 3 ? kCGLOGLPVersion_3_2_Core : kCGLOGLPVersion_Legacy),
-        (CGLPixelFormatAttribute)0
+        kCGLPFAOpenGLProfile, (CGLPixelFormatAttribute)(major >= 3 ? kCGLOGLPVersion_3_2_Core : kCGLOGLPVersion_Legacy)
     };
+    if (nativeId != 2) attributes.push_back(kCGLPFADoubleBuffer);
+    attributes.push_back((CGLPixelFormatAttribute)0);
     CGLPixelFormatObj format = nullptr;
     GLint count = 0;
-    assert(CGLChoosePixelFormat(attributes, &format, &count) == kCGLNoError && format);
+    assert(CGLChoosePixelFormat(attributes.data(), &format, &count) == kCGLNoError && format);
     return format;
 }
 
@@ -54,18 +56,25 @@ static void waitForPhase(const std::atomic_int& phase, int expected) {
     }
 }
 
-static void testResizeWhileRendering() {
+static void testResizeWhileRendering(bool singleBuffered) {
     SDL_Window* window = SDL_CreateWindow("Boxedwine threaded fullscreen test", 0, 0, 640, 480,
         SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
     assert(window);
     macOpenGLPrepareWindow(window, 640, 480);
-    void* context = macOpenGLCreateContext(1, 0, 0, 0, 0, nullptr);
+    void* context = macOpenGLCreateContext(singleBuffered ? 2 : 1, 0, 0, 0, 0, nullptr);
     assert(context && macOpenGLSetWindow(context, window));
     std::atomic_int phase{0};
     std::atomic_bool stop{false};
     std::atomic_uint frames{0};
     std::thread renderer([&] {
         assert(macOpenGLMakeCurrent(context));
+        GLboolean doubleBuffered;
+        glGetBooleanv(GL_DOUBLEBUFFER, &doubleBuffered);
+        assert((doubleBuffered != GL_FALSE) == !singleBuffered);
+        auto present = [&]() {
+            if (singleBuffered) macOpenGLFlush(context);
+            else macOpenGLSwapBuffers(context);
+        };
         verifyBackingSize(640, 480);
         // A fullscreen resize can arrive in the middle of Alice's glBegin/glEnd.
         glBegin(GL_TRIANGLES);
@@ -77,7 +86,7 @@ static void testResizeWhileRendering() {
         glEnd();
         // The UI thread must leave the live context alone until this frame ends.
         verifyBackingSize(640, 480);
-        macOpenGLSwapBuffers(context);
+        present();
         verifyBackingSize(800, 600);
         glDisable(GL_SCISSOR_TEST);
         glViewport(0, 0, 800, 600);
@@ -100,7 +109,7 @@ static void testResizeWhileRendering() {
             glTexCoord2f(0.5f, 1);
             glVertex2f(0, 1);
             glEnd();
-            macOpenGLSwapBuffers(context);
+            present();
             assert(glGetError() == GL_NO_ERROR);
             ++frames;
         }
@@ -126,14 +135,16 @@ static void testResizeWhileRendering() {
     assert(frames > 0);
     macOpenGLDestroyContext(context);
     SDL_DestroyWindow(window);
-    std::puts("Concurrent OpenGL resize waits for the rendering thread's frame boundary");
+    std::puts(singleBuffered ? "Concurrent single-buffered resize completes through glFlush without swapping" :
+        "Concurrent OpenGL resize waits for the rendering thread's frame boundary");
 }
 
 int main() {
     SDL_SetHint(SDL_HINT_MAC_BACKGROUND_APP, "1");
     assert(SDL_Init(SDL_INIT_VIDEO) == 0);
     mainThread = SDL_ThreadID();
-    testResizeWhileRendering();
+    testResizeWhileRendering(false);
+    testResizeWhileRendering(true);
     for (int major : {0, 3}) {
         SDL_Window* window = SDL_CreateWindow("Boxedwine fullscreen test", 0, 0, 1280, 800, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
         assert(window);

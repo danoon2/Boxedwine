@@ -83,6 +83,7 @@ void macLaunchFinishApplication(bool visible) {
 static NSMutableArray<NSURL*>* launchAccess;
 static std::atomic<int> exitFile{-1};
 static bool launchedWithRequest;
+static bool stdinControl;
 static NSMutableArray<NSURL*>* commandLineAccess;
 static NSString* commandLineDirectory;
 static NSString* const commandLineBookmarksKey = @"BoxedwineCommandLineFolderBookmarks";
@@ -218,7 +219,7 @@ bool macLaunchAccess(const char* path, bool directory, bool write, bool allowMis
 
 bool macLaunchHasControl() {
     // A shell pipeline is ordinary CLI input, not a launcher lifetime channel.
-    return launchedWithRequest;
+    return launchedWithRequest || stdinControl;
 }
 
 void macLaunchReportExit(int status) {
@@ -355,6 +356,9 @@ int macLaunch(int argc, const char** argv, int (*run)(int, const char**)) {
             launchAccess = [NSMutableArray array];
             restoreCommandLineAccess();
         }
+        const char* control = getenv("BOXEDWINE_STDIN_CONTROL");
+        stdinControl = control && !strcmp(control, "1");
+        unsetenv("BOXEDWINE_STDIN_CONTROL"); // Applies only to this host engine.
 #ifdef BOXEDWINE_DEVELOPMENT
         if (!MacPlatformWaitForDebugger()) { macLaunchReportExit(0); return 0; }
 #endif

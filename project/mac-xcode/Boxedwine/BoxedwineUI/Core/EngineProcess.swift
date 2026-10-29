@@ -34,9 +34,10 @@ final class EngineProcess: @unchecked Sendable {
     var launchProblem: String? { lock.withLock { problem } }
 
     static func application(for executable: URL) -> URL? {
+        let executable = executable.resolvingSymlinksInPath()
         let url = executable.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         guard url.pathExtension == "app", let bundle = Bundle(url: url),
-              bundle.executableURL?.standardizedFileURL == executable.standardizedFileURL,
+              bundle.executableURL?.resolvingSymlinksInPath() == executable,
               let version = bundle.object(forInfoDictionaryKey: "BoxedwineLaunchProtocol") as? Int,
               (1...2).contains(version) else { return nil }
         return url
@@ -49,7 +50,11 @@ final class EngineProcess: @unchecked Sendable {
             let process = Process(), incoming = Pipe(), outgoing = Pipe()
             process.executableURL = executable
             process.arguments = arguments
-            process.environment = environment
+            var childEnvironment = environment
+            // A launcher-owned pipe carries Stop/EOF commands; an ordinary
+            // shell's stdin must remain available for command-line use.
+            childEnvironment["BOXEDWINE_STDIN_CONTROL"] = "1"
+            process.environment = childEnvironment
             process.currentDirectoryURL = directory
             process.standardInput = incoming
             process.standardOutput = outgoing

@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import time
 import uuid
 
 repo = Path(__file__).resolve().parents[2]
@@ -34,16 +35,17 @@ unapproved.mkdir()
 print('Folder to approve:', folder, flush=True)
 
 
-def execute(name, args, *, authorize=False, pipe=False):
+def execute(name, args, *, authorize=False, input_text=None):
     environment = dict(os.environ)
+    environment.pop('BOXEDWINE_STDIN_CONTROL', None)
     if authorize:
         environment.pop('BOXEDWINE_NO_FILE_ACCESS_PROMPT', None)
     else:
         environment['BOXEDWINE_NO_FILE_ACCESS_PROMPT'] = '1'
     command = ['/bin/bash', '-c', 'exec "$@"', 'bash', str(options.engine.resolve()), *args]
     result = subprocess.run(command, cwd=folder, env=environment, text=True,
-                            input='' if pipe else None,
-                            stdin=None if pipe else subprocess.DEVNULL,
+                            input=input_text,
+                            stdin=None if input_text is not None else subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             timeout=180 if authorize else 30)
     (output / (name + '.log')).write_text(result.stdout)
@@ -60,13 +62,49 @@ arguments = ['-root', 'root-cli-test', '-zip', 'wine.zip', '-hideWindow',
              'printf "MOUNT_WRITE_OK\\n" > /home/username/host/output.txt; '
              'printf "%s\\n" "$1"; printf "CLI_ARGUMENT_OK\\n"',
              'probe', 'literal $(no-shell) 日本語', '-log', str(unapproved / 'guest-argument.log')]
-for name, authorize, pipe in [('cli-first', options.authorize, False), ('cli-cached', False, False), ('cli-piped-stdin', False, True)]:
-    result = execute(name, arguments, authorize=authorize, pipe=pipe)
+for name, authorize, input_text in [('cli-first', options.authorize, None), ('cli-cached', False, None),
+                                     ('cli-piped-stdin', False, ''), ('cli-quit-stdin', False, 'quit\n')]:
+    result = execute(name, arguments, authorize=authorize, input_text=input_text)
     assert result.returncode == 0 and '\nCLI_ARGUMENT_OK\n' in result.stdout, result.stdout
     assert '\nliteral $(no-shell) 日本語\n' in result.stdout, result.stdout
     assert (folder / 'mounted/output.txt').read_text() == 'MOUNT_WRITE_OK\n'
     assert 'CLI_ARGUMENT_OK' in (folder / 'engine.log').read_text()
     assert not (unapproved / 'guest-argument.log').exists()
+    print('PASS', name, flush=True)
+
+# Process-based launchers explicitly own stdin. Both their Stop command and
+# their disappearance must end a running guest, without affecting ordinary CLI.
+for mode in ['quit', 'eof']:
+    name = 'cli-control-' + mode
+    marker = folder / 'mounted' / (name + '.ready')
+    marker.unlink(missing_ok=True)
+    log = output / (name + '.log')
+    environment = dict(os.environ, BOXEDWINE_STDIN_CONTROL='1', BOXEDWINE_NO_FILE_ACCESS_PROMPT='1')
+    command = ['/bin/bash', '-c', 'exec "$@"', 'bash', str(options.engine.resolve()),
+               '-root', 'root-cli-test', '-zip', 'wine.zip', '-hideWindow', '-nosound',
+               '-mount', 'mounted', '/home/username/host', '/bin/sh', '-c',
+               'test -z "$BOXEDWINE_STDIN_CONTROL" || exit 10; '
+               f'echo ready > /home/username/host/{marker.name}; sleep 30']
+    with log.open('w') as output_file:
+        process = subprocess.Popen(command, cwd=folder, env=environment, text=True,
+                                   stdin=subprocess.PIPE, stdout=output_file, stderr=subprocess.STDOUT)
+        try:
+            deadline = time.monotonic() + 15
+            while not marker.exists() and process.poll() is None and time.monotonic() < deadline:
+                time.sleep(.05)
+            assert marker.exists() and process.poll() is None, log.read_text()
+            if mode == 'quit':
+                process.stdin.write('quit\n')
+                process.stdin.flush()
+            else:
+                process.stdin.close()
+            assert process.wait(timeout=5) == 0, log.read_text()
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            process.stdin.close()
+    assert 'choose a folder in the file-access dialog' not in log.read_text(), log.read_text()
     print('PASS', name, flush=True)
 
 # Denied access and invalid resources must fail, without a dialog or a crash.
