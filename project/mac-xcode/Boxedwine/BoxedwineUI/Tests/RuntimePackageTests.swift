@@ -13,7 +13,7 @@ enum ZipFixture {
         var method: UInt16 = 0
         var flags: UInt16 = 0
         var attributes: UInt32 = 0
-        var expandedSize: UInt32?
+        var expandedSize: UInt64?
         var checksum: UInt32?
         init(_ name: String, _ data: Data) { self.name = name; self.data = data }
         init(_ name: String, _ text: String) { self.init(name, Data(text.utf8)) }
@@ -53,16 +53,20 @@ enum ZipFixture {
     static func archive(_ entries: [File]) -> Data {
         func u16(_ value: UInt16) -> Data { Data([UInt8(truncatingIfNeeded: value), UInt8(truncatingIfNeeded: value >> 8)]) }
         func u32(_ value: UInt32) -> Data { u16(UInt16(truncatingIfNeeded: value)) + u16(UInt16(truncatingIfNeeded: value >> 16)) }
+        func u64(_ value: UInt64) -> Data { u32(UInt32(truncatingIfNeeded: value)) + u32(UInt32(truncatingIfNeeded: value >> 32)) }
         var output = Data(), central = Data()
         for file in entries {
             let offset = UInt32(output.count), name = Data(file.name.utf8)
             let crc = file.checksum ?? self.crc(file.data)
-            let size = file.expandedSize ?? UInt32(file.data.count)
-            let shared = u16(file.flags) + u16(file.method) + u32(0) + u32(crc) + u32(UInt32(file.data.count)) + u32(size)
-            output += u32(0x04034b50) + u16(20) + shared + u16(UInt16(name.count)) + u16(0) + name + file.data
-            central += u32(0x02014b50) + u16(20) + u16(20) + shared
-            central += u16(UInt16(name.count)) + u16(0) + u16(0) + u16(0) + u16(0)
-            central += u32(file.attributes) + u32(offset) + name
+            let size = file.expandedSize ?? UInt64(file.data.count)
+            let zip64 = size >= UInt32.max
+            let extra = zip64 ? u16(1) + u16(8) + u64(size) : Data()
+            let version: UInt16 = zip64 ? 45 : 20
+            let shared = u16(file.flags) + u16(file.method) + u32(0) + u32(crc) + u32(UInt32(file.data.count)) + u32(UInt32(clamping: size))
+            output += u32(0x04034b50) + u16(version) + shared + u16(UInt16(name.count)) + u16(UInt16(extra.count)) + name + extra + file.data
+            central += u32(0x02014b50) + u16(version) + u16(version) + shared
+            central += u16(UInt16(name.count)) + u16(UInt16(extra.count)) + u16(0) + u16(0) + u16(0)
+            central += u32(file.attributes) + u32(offset) + name + extra
         }
         let offset = UInt32(output.count)
         output += central

@@ -134,7 +134,7 @@ enum DemoArchive {
         defer { bwzip_close(zip) }
         guard count > 0, count <= 100_000 else { throw DemoError.archive("The ZIP has too many entries or is empty.") }
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        var seen: [String: Bool] = [:], expanded: UInt64 = 0
+        var seen: [String: Bool] = [:]
         var explicit: Set<String> = []
         var buffer = [UInt8](repeating: 0, count: 1024 * 1024)
         for index in 0..<count {
@@ -147,11 +147,9 @@ enum DemoArchive {
             let folder = raw.hasSuffix("/") || mode == 0x4000
             let path = raw.hasSuffix("/") ? String(raw.dropLast()) : raw
             guard [0, 0x4000, 0x8000].contains(mode), DemoCatalog.validRelativePath(path),
-                  path.split(separator: "/").count <= 128, info.size <= 512 * 1024 * 1024,
-                  expanded <= 2 * 1024 * 1024 * 1024 - info.size, !folder || info.size == 0 else {
-                throw DemoError.archive("An entry has an unsafe path, link, file type, or expanded size.")
+                  path.split(separator: "/").count <= 128, !folder || info.size == 0 else {
+                throw DemoError.archive("An entry has an unsafe path, link, file type, or directory size.")
             }
-            expanded += info.size
             let key = path.precomposedStringWithCanonicalMapping.lowercased()
             guard explicit.insert(key).inserted, seen[key] == nil || (folder && seen[key] == true) else { throw DemoError.archive("The ZIP has conflicting file names.") }
             var parent = ""
@@ -180,8 +178,8 @@ enum DemoArchive {
                     let length = bwzip_read(zip, &buffer, UInt32(buffer.count))
                     guard length >= 0 else { throw DemoError.archive("The entry is damaged.") }
                     if length == 0 { break }
+                    guard !folder, UInt64(length) <= info.size - completed else { throw DemoError.archive("The entry has an incorrect size.") }
                     completed += UInt64(length)
-                    guard completed <= info.size, !folder else { throw DemoError.archive("The entry has an incorrect size.") }
                     try output?.write(contentsOf: Data(buffer.prefix(Int(length))))
                     control.update(phase: .extracting, copied: Int64(index), total: Int64(count), file: path)
                 }
