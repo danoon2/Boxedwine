@@ -1179,9 +1179,21 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         return true;
     }
 #endif    
+    const bool wasFullscreen = sdlStatusBarIsFullscreen();
+    auto restoreFullscreenCapture = [&]() {
+        // Entering fullscreen returns to a game waiting for capture. Do this
+        // only for the input that enters fullscreen, so an explicit release
+        // still survives later focus changes and guest-window replacement.
+        if (!wasFullscreen && sdlStatusBarIsFullscreen() && mouseCaptureReleased && wantsMouseCapture()) {
+            // Restore the virtual pointer using the new fullscreen viewport.
+            updateMouseConfinement(sdlStatusBarInputWindow(SDL_GetKeyboardFocus()));
+            setMouseCaptureReleased(false);
+        }
+    };
     // A fullscreen shortcut belongs to the host, but must not release a game's
     // mouse capture as opening a menu would. Consume both halves and repeats.
     if (sdlStatusBarFullscreenShortcut(*e)) {
+        restoreFullscreenCapture();
         updateRelativeMouseMode();
         return true;
     }
@@ -1194,6 +1206,7 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
     bool releaseCapture = false;
     if (sdlStatusBarEvent(*e, &releaseCapture)) {
         if (releaseCapture) releaseMouseForHostUi();
+        restoreFullscreenCapture();
         // A menu may acquire focus while modifiers are still down in the guest.
         if (e->type == SDL_KEYUP && (e->key.keysym.sym == SDLK_LCTRL || e->key.keysym.sym == SDLK_RCTRL ||
                 e->key.keysym.sym == SDLK_LSHIFT || e->key.keysym.sym == SDLK_RSHIFT ||

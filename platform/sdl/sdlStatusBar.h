@@ -25,6 +25,7 @@ void sdlStatusBarRaiseWindow(SDL_Window* window);
 void sdlStatusBarSetMouseCapture(SdlMouseCaptureState state);
 bool sdlStatusBarFullscreenShortcut(SDL_Event& event);
 bool sdlStatusBarToggleFullscreen();
+bool sdlStatusBarIsFullscreen();
 #else
 inline void sdlStatusBarTick() {}
 inline bool sdlStatusBarEvent(SDL_Event&, bool* releaseCapture = nullptr) { if (releaseCapture) *releaseCapture = false; return false; }
@@ -41,4 +42,5 @@ inline void sdlStatusBarRaiseWindow(SDL_Window* window) { SDL_RaiseWindow(window
 inline void sdlStatusBarSetMouseCapture(SdlMouseCaptureState) {}
 inline bool sdlStatusBarFullscreenShortcut(SDL_Event&) { return false; }
 inline bool sdlStatusBarToggleFullscreen() { return false; }
+inline bool sdlStatusBarIsFullscreen() { return false; }
 #endif

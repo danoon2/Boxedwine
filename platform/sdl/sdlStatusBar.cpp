@@ -650,6 +650,7 @@ bool setFullscreen(bool value, bool announce) {
     SDL_Window* window = owner();
     if (!window) return false;
     closeMenu(false);
+    barHover = 0;
     hideHint();
     if (wayland) { bar.hide(); waylandBarShown = false; }
     auto screen = std::dynamic_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
@@ -813,6 +814,10 @@ bool sdlStatusBarToggleFullscreen() {
     return result;
 }
 
+bool sdlStatusBarIsFullscreen() {
+    return enabled && fullscreen(owner());
+}
+
 bool sdlStatusBarFullscreenShortcut(SDL_Event& event) {
     if (!enabled || !owner() || (event.type != SDL_KEYDOWN && event.type != SDL_KEYUP) ||
             event.key.keysym.sym != SDLK_RETURN) return false;
@@ -864,6 +869,7 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
         return;
     }
     if (owner() != window) {
+        barHover = 0;
         hideHint();
         hint.destroy();
         haveWindowedBounds = false;
@@ -1024,6 +1030,23 @@ bool sdlStatusBarEvent(SDL_Event& event, bool* releaseCapture) {
         if (event.type == SDL_DROPFILE || event.type == SDL_DROPTEXT) SDL_free(event.drop.file);
         return true;
     }
+    // Update hover before guest input is routed away from the status bar.
+    // Hiding a host or moving into its embedded guest may not send a leave.
+    int nextBarHover = barHover;
+    if (event.type == SDL_MOUSEMOTION) {
+        nextBarHover = 0;
+        int top = wayland ? 0 : guestHeight;
+        if (target && target == bar.window && event.motion.y >= top && event.motion.y < top + barHeight) {
+            int width;
+            SDL_GetWindowSize(bar.window, &width, nullptr);
+            nextBarHover = barControlAt(event.motion.x, width);
+        }
+    } else if (target && target == bar.window && event.type == SDL_WINDOWEVENT &&
+            (event.window.event == SDL_WINDOWEVENT_LEAVE || event.window.event == SDL_WINDOWEVENT_HIDDEN ||
+                event.window.event == SDL_WINDOWEVENT_FOCUS_LOST)) {
+        nextBarHover = 0;
+    }
+    if (barHover != nextBarHover) { barHover = nextBarHover; dirty = true; }
     if (wayland && opened) {
         // A subsurface shares the toplevel's keyboard focus. Route its menu
         // keys here without changing the guest's drawable or native focus.
@@ -1133,10 +1156,6 @@ bool sdlStatusBarEvent(SDL_Event& event, bool* releaseCapture) {
                 if (row >= 0 && row == wasMenuRow && wasMenuRemove == removeControl(row, event.button.x)) activate(row, event.button.x);
             }
         }
-    } else if (event.type == SDL_MOUSEMOTION && target == bar.window) {
-        int width; SDL_GetWindowSize(bar.window, &width, nullptr);
-        int control = barControlAt(event.motion.x, width);
-        if (barHover != control) { barHover = control; dirty = true; }
     } else if (event.type == SDL_MOUSEMOTION && target == menu.window) {
         hover = (event.motion.y - 4) / rowHeight;
         dirty = true;

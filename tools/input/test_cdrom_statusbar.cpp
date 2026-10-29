@@ -266,6 +266,9 @@ static void testRuntimeFullscreen(SDL_Window* guest, SDL_Window* host) {
         assert(input.handlSdlEvent(&event));
     };
     refreshInput();
+    // Entering fullscreen by shortcut recaptures a waiting game immediately.
+    input.setMouseCaptureReleased(true);
+    assert(input.isMouseCaptureReleased());
     SDL_Event key = {};
     key.type = SDL_KEYDOWN;
     key.key.windowID = SDL_GetWindowID(host);
@@ -360,6 +363,43 @@ static void testRuntimeFullscreen(SDL_Window* guest, SDL_Window* host) {
     assert(sdlStatusBarToggleFullscreen());
     settleStatusBar();
     assert(!(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN));
+    // Exercise the status-bar button through the real input routing too. The
+    // mouse-up that enters fullscreen must recapture a game, but not a desktop
+    // app whose cursor was temporarily released over the host controls.
+    for (bool game : {true, false}) {
+        input.mouseConfinementRequested = game;
+        refreshInput();
+        input.releaseMouseForHostUi();
+        assert(input.isMouseCaptureReleased());
+        click.type = SDL_MOUSEBUTTONDOWN; assert(input.handlSdlEvent(&click));
+        click.type = SDL_MOUSEBUTTONUP; assert(input.handlSdlEvent(&click));
+        settleStatusBar();
+        refreshInput();
+        assert(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN);
+        assert(input.isMouseCaptureReleased() == !game);
+        assert((SDL_GetWindowGrab(guest) == SDL_TRUE) == game);
+        assert(input.pressedMouseButtons == 0); // Host clicks never reach Wine.
+        if (game) {
+            // The release shortcut remains effective while fullscreen.
+            SDL_Event release = {}; release.type = SDL_KEYDOWN;
+            release.key.windowID = SDL_GetWindowID(guest);
+            release.key.keysym.sym = SDLK_g;
+            release.key.keysym.mod = KMOD_CTRL | KMOD_ALT;
+            assert(input.handlSdlEvent(&release));
+            release.type = SDL_KEYUP; assert(input.handlSdlEvent(&release));
+            assert(input.isMouseCaptureReleased() && !SDL_GetWindowGrab(guest));
+        }
+        key.type = SDL_KEYDOWN; assert(input.handlSdlEvent(&key));
+        key.type = SDL_KEYUP; assert(input.handlSdlEvent(&key));
+        settleStatusBar();
+        refreshInput();
+        assert(!(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN));
+        assert(input.isMouseCaptureReleased()); // Exiting never recaptures.
+        input.setMouseCaptureReleased(false);
+        input.mouseConfinementRequested = false;
+        refreshInput();
+    }
+    puts("Fullscreen button and shortcut recapture waiting games; desktop input and explicit release are preserved");
     puts("Runtime fullscreen, capture, hint timeout, button and window restoration checks passed");
 }
 
@@ -412,7 +452,15 @@ static void testCaptureWindowReplacement() {
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
     SDL_SetMainReady();
+    extern bool doMainLoop();
+    doMainLoop(); // Register this thread as SDL's owner; there are no guest threads.
     assert(KNativeSystem::init(VIDEO_NORMAL, false));
+    // Recapture restores the virtual pointer through the native screen. Keep
+    // an offscreen runtime screen while the harness owns its test windows.
+    auto videoOption = KSystem::videoOption;
+    KSystem::videoOption = VIDEO_NO_WINDOW;
+    KNativeSystem::initWindow(640, 480, 32, 100, 100, B("0"), FULLSCREEN_NOTSET, VSYNC_DISABLED);
+    KSystem::videoOption = videoOption;
     const BString root = B("../../tmp/statusbar-native-test-root");
     std::filesystem::create_directories(root.c_str());
     assert(Fs::initFileSystem(root));
