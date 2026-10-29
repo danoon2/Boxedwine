@@ -95,8 +95,12 @@ struct X11Embedding {
     void* library = SDL_LoadObject("libX11.so.6");
     int (*reparent)(Display*, Window, Window, int, int) = library ?
         (decltype(reparent))SDL_LoadFunction(library, "XReparentWindow") : nullptr;
+    int (*move)(Display*, Window, int, int) = library ?
+        (decltype(move))SDL_LoadFunction(library, "XMoveWindow") : nullptr;
     int (*focus)(Display*, Window, int, Time) = library ?
         (decltype(focus))SDL_LoadFunction(library, "XSetInputFocus") : nullptr;
+    int (*getFocus)(Display*, Window*, int*) = library ?
+        (decltype(getFocus))SDL_LoadFunction(library, "XGetInputFocus") : nullptr;
     int (*transient)(Display*, Window, Window) = library ?
         (decltype(transient))SDL_LoadFunction(library, "XSetTransientForHint") : nullptr;
     int (*attributes)(Display*, Window, unsigned long, XSetWindowAttributes*) = library ?
@@ -823,6 +827,25 @@ bool sdlStatusBarFullscreenShortcut(SDL_Event& event, const std::function<void()
             event.key.keysym.sym != SDLK_RETURN) return false;
     if (event.type == SDL_KEYUP && fullscreenKeyDown) { fullscreenKeyDown = false; return true; }
     SDL_Window* target = SDL_GetWindowFromID(event.key.windowID);
+#if defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
+    // Clicking the embedded guest can move native focus to its host while SDL
+    // loses its cached keyboard focus. Those keys arrive with windowID == 0.
+    // Accept them only if X11 still focuses one of our runtime windows.
+    if (!target && !event.key.windowID && x11().getFocus) {
+        SDL_SysWMinfo info = {}; SDL_VERSION(&info.version);
+        if (SDL_GetWindowWMInfo(owner(), &info) && info.subsystem == SDL_SYSWM_X11) {
+            Window focused; int revert;
+            x11().getFocus(info.info.x11.display, &focused, &revert);
+            for (SDL_Window* candidate : {owner(), bar.window, menu.window}) {
+                if (candidate && SDL_GetWindowWMInfo(candidate, &info) &&
+                        info.subsystem == SDL_SYSWM_X11 && info.info.x11.window == focused) {
+                    target = candidate;
+                    break;
+                }
+            }
+        }
+    }
+#endif
     bool altOnly = (event.key.keysym.mod & KMOD_ALT) && !(event.key.keysym.mod & (KMOD_CTRL | KMOD_SHIFT | KMOD_GUI));
     if (event.type == SDL_KEYDOWN && (target == owner() || sdlStatusBarOwns(target)) &&
             (altOnly || (fullscreenKeyDown && event.key.repeat))) {
@@ -918,7 +941,18 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
 
 void sdlStatusBarSetWindowSize(SDL_Window* window, int width, int height) {
     SDL_SetWindowSize(window, width, height);
-#ifdef BOXEDWINE_MSVC
+#if defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)
+    if (embedded && window == owner() && !fullscreen(window) && x11().move && x11().flush) {
+        // SDL's X11 backend moves non-resizable windows when resizing them,
+        // using its cached desktop position. Our guest is a native child, so
+        // that position would offset both the picture and input inside the host.
+        SDL_SysWMinfo info = {}; SDL_VERSION(&info.version);
+        if (SDL_GetWindowWMInfo(window, &info) && info.subsystem == SDL_SYSWM_X11) {
+            x11().move(info.info.x11.display, info.info.x11.window, 0, 0);
+            x11().flush(info.info.x11.display);
+        }
+    }
+#elif defined(BOXEDWINE_MSVC)
     if (embedded && window == owner() && !fullscreen(window)) {
         // SDL's Windows backend uses a top-level z-order band when resizing.
         // We reparented this window, so apply its size without changing z-order
@@ -1025,7 +1059,15 @@ bool sdlStatusBarEvent(SDL_Event& event, bool* releaseCapture) {
     if (!windowEvent) return false;
     U32 id = (event.type >= SDL_DROPFILE && event.type <= SDL_DROPCOMPLETE) ? event.drop.windowID : event.window.windowID;
     SDL_Window* target = SDL_GetWindowFromID(id);
-    if (target && target == hint.window) return true;
+    if (target && target == hint.window) {
+        // Mapping or uncovering the native window can discard its first frame.
+        // Handle repaint requests before consuming the hint's passive events.
+        if (event.type == SDL_WINDOWEVENT && (event.window.event == SDL_WINDOWEVENT_EXPOSED ||
+                event.window.event == SDL_WINDOWEVENT_SHOWN || event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)) {
+            hintPresented = false;
+        }
+        return true;
+    }
     // Fullscreen and guest-window replacement can leave queued motion/keys
     // for a hidden status bar. Consume them without releasing capture or
     // activating controls. Wayland subsurfaces are intentionally SDL-hidden.

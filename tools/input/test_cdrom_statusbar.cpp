@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 The BoxedWine Team. GPL-2.0-or-later.
  * Run under Wayland or X11: make -C project/linux test-cdrom-statusbar
- * Also works with xvfb-run -a for the display/GL lifecycle checks. */
+ * Also works with xvfb-run -a for the display/GL lifecycle checks.
+ * STATUSBAR_TEST_ARGS=--native-fullscreen checks real X11 clicks and keys. */
 #include "boxedwine.h"
 #include <SDL.h>
 #include <SDL_opengl.h>
@@ -26,6 +27,7 @@ void testCocoaVulkanStatusBar();
 #endif
 
 #ifdef SDL_VIDEO_DRIVER_X11
+#include <X11/keysym.h>
 static void* nativeXtest;
 // Real X11 pointer events cover WM/input routing that the synthetic SDL tests
 // below cannot exercise. Run with --native-pointer, preferably under xvfb-run.
@@ -90,6 +92,83 @@ static void testNativePopupInput(SDL_Window* guest, SDL_Window* host, SDL_Window
     // XTest registers Xlib display-close hooks. Keep it loaded until SDL_Quit.
     SDL_UnloadObject(xlib);
     puts("Native X11 popup pointer, ownership, focus, and dismissal checks passed");
+}
+
+static void testNativeFullscreenShortcut(SDL_Window* guest, SDL_Window* host) {
+    SDL_SysWMinfo info = {}; SDL_VERSION(&info.version);
+    assert(SDL_GetWindowWMInfo(guest, &info) && info.subsystem == SDL_SYSWM_X11);
+    void* xlib = SDL_LoadObject("libX11.so.6");
+    if (!nativeXtest) nativeXtest = SDL_LoadObject("libXtst.so.6");
+    auto keycode = (KeyCode (*)(Display*, KeySym))SDL_LoadFunction(xlib, "XKeysymToKeycode");
+    auto key = (int (*)(Display*, unsigned int, Bool, unsigned long))SDL_LoadFunction(nativeXtest, "XTestFakeKeyEvent");
+    auto sync = (int (*)(Display*, Bool))SDL_LoadFunction(xlib, "XSync");
+    auto translate = (Bool (*)(Display*, Window, Window, int, int, int*, int*, Window*))SDL_LoadFunction(xlib, "XTranslateCoordinates");
+    auto getFocus = (int (*)(Display*, Window*, int*))SDL_LoadFunction(xlib, "XGetInputFocus");
+    auto motion = (int (*)(Display*, int, int, int, unsigned long))SDL_LoadFunction(nativeXtest, "XTestFakeMotionEvent");
+    auto button = (int (*)(Display*, unsigned int, Bool, unsigned long))SDL_LoadFunction(nativeXtest, "XTestFakeButtonEvent");
+    assert(keycode && key && sync && translate && motion && button && getFocus);
+    Display* display = info.info.x11.display;
+    KeyCode alt = keycode(display, XK_Alt_L), enter = keycode(display, XK_Return);
+    KNativeInputSDL input(640, 480, 100, 100);
+    auto pump = [&]() {
+        U32 until = SDL_GetTicks() + 350;
+        do {
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                input.handlSdlEvent(&event);
+            }
+            sdlStatusBarTick();
+            SDL_Delay(5);
+        } while ((S32)(SDL_GetTicks() - until) < 0);
+    };
+    auto click = [&](SDL_Window* target, int x, int y) {
+        SDL_SysWMinfo targetInfo = {}; SDL_VERSION(&targetInfo.version);
+        assert(SDL_GetWindowWMInfo(target, &targetInfo));
+        int screenX, screenY; Window child;
+        assert(translate(display, targetInfo.info.x11.window, DefaultRootWindow(display), x, y, &screenX, &screenY, &child));
+        motion(display, -1, screenX, screenY, 0); sync(display, False); pump();
+        button(display, SDL_BUTTON_LEFT, True, 0); sync(display, False); pump();
+        button(display, SDL_BUTTON_LEFT, False, 0); sync(display, False); pump();
+    };
+    SDL_RaiseWindow(host);
+    pump();
+    click(host, 625, 495);
+    assert(sdlStatusBarIsFullscreen());
+    for (bool expected : {false, true, false, true, false}) {
+        // Cinnamon focuses the host after a guest click, but SDL can lose its
+        // cached focus and assign windowID 0 to the subsequent native keys.
+        if (expected) click(guest, 200, 150);
+        key(display, alt, True, 0); sync(display, False); pump();
+        key(display, enter, True, 0); sync(display, False); pump();
+        bool heldFullscreen = sdlStatusBarIsFullscreen();
+        // Always release native keys before reporting a failed assertion.
+        key(display, enter, False, 0); key(display, alt, False, 0); sync(display, False); pump();
+        if (heldFullscreen != expected || sdlStatusBarIsFullscreen() != expected)
+            fprintf(stderr, "Native Alt+Enter: expected=%d held=%d released=%d\n", expected, heldFullscreen, sdlStatusBarIsFullscreen());
+        assert(heldFullscreen == expected && sdlStatusBarIsFullscreen() == expected);
+    }
+
+    // An unassigned key must not toggle the runtime when another window owns
+    // native focus, even though the runtime's SDL window still exists.
+    SDL_Window* other = SDL_CreateWindow("Unrelated focus", 50, 50, 200, 100, SDL_WINDOW_SHOWN);
+    assert(other);
+    pump();
+    SDL_SetWindowInputFocus(other);
+    pump();
+    SDL_SysWMinfo otherInfo = {}; SDL_VERSION(&otherInfo.version);
+    assert(SDL_GetWindowWMInfo(other, &otherInfo));
+    Window focus; int revert;
+    getFocus(display, &focus, &revert);
+    assert(focus == otherInfo.info.x11.window);
+    SDL_Event unassigned = {};
+    unassigned.type = SDL_KEYDOWN;
+    unassigned.key.keysym.sym = SDLK_RETURN;
+    unassigned.key.keysym.mod = KMOD_ALT;
+    assert(!sdlStatusBarFullscreenShortcut(unassigned));
+    assert(!sdlStatusBarIsFullscreen());
+    SDL_DestroyWindow(other);
+    SDL_UnloadObject(xlib);
+    puts("Native X11 Alt+Enter survives guest clicks, toggles once per press, and respects unrelated focus");
 }
 #endif
 
@@ -168,6 +247,36 @@ static void settleStatusBar() {
         SDL_Delay(5);
     } while ((S32)(SDL_GetTicks() - until) < 0);
 }
+
+#ifdef SDL_VIDEO_DRIVER_X11
+static void testNativeEmbeddedResize(SDL_Window* guest, SDL_Window* host) {
+    SDL_SysWMinfo child = {}, parent = {};
+    SDL_VERSION(&child.version); SDL_VERSION(&parent.version);
+    assert(SDL_GetWindowWMInfo(guest, &child) && child.subsystem == SDL_SYSWM_X11);
+    assert(SDL_GetWindowWMInfo(host, &parent));
+    void* xlib = SDL_LoadObject("libX11.so.6");
+    auto translate = (Bool (*)(Display*, Window, Window, int, int, int*, int*, Window*))SDL_LoadFunction(xlib, "XTranslateCoordinates");
+    assert(translate);
+    // SDL caches desktop coordinates after mapping. A game changing its mode
+    // must resize the native child without applying that position in the host.
+    for (SDL_Point size : {SDL_Point{1024, 768}, SDL_Point{800, 600}, SDL_Point{640, 480}}) {
+        sdlStatusBarSetWindowSize(guest, size.x, size.y);
+        settleStatusBar();
+        int x, y; Window ignored;
+        assert(translate(child.info.x11.display, child.info.x11.window, parent.info.x11.window,
+            0, 0, &x, &y, &ignored));
+        if (x || y) fprintf(stderr, "Embedded window offset after %dx%d resize: %d,%d\n", size.x, size.y, x, y);
+        assert(x == 0 && y == 0);
+        int w, h;
+        SDL_GetWindowSize(guest, &w, &h);
+        assert(w == size.x && h == size.y);
+        SDL_GetWindowSize(host, &w, &h);
+        assert(w == size.x && h == size.y + 32);
+    }
+    SDL_UnloadObject(xlib);
+    puts("Native X11 guest mode changes preserve the embedded origin and status bar dimensions");
+}
+#endif
 
 static void testViewportMouseCapture(KNativeInputSDL& input, SDL_Window* guest, SDL_Rect expected) {
     input.mouseConfinementRequested = true;
@@ -397,6 +506,23 @@ static void testRuntimeFullscreen(SDL_Window* guest, SDL_Window* host) {
     }
     if (!hint) fprintf(stderr, "Missing fullscreen hint: guest flags=%x, SDL: %s\n", SDL_GetWindowFlags(guest), SDL_GetError());
     assert(hint);
+    // Simulate a window-system repaint losing the hint's original contents.
+    // Exposure must restore the pixels even when the owner size is unchanged.
+    SDL_Renderer* hintRenderer = SDL_GetRenderer(hint);
+    assert(hintRenderer);
+    SDL_SetRenderDrawColor(hintRenderer, 255, 0, 255, 255);
+    SDL_RenderClear(hintRenderer);
+    SDL_RenderPresent(hintRenderer);
+    SDL_Event exposed = {};
+    exposed.type = SDL_WINDOWEVENT;
+    exposed.window.windowID = SDL_GetWindowID(hint);
+    exposed.window.event = SDL_WINDOWEVENT_EXPOSED;
+    assert(input.handlSdlEvent(&exposed));
+    sdlStatusBarTick();
+    SDL_Rect corner = {0, 0, 1, 1};
+    U8 hintPixel[4] = {};
+    assert(SDL_RenderReadPixels(hintRenderer, &corner, SDL_PIXELFORMAT_RGBA32, hintPixel, 4) == 0);
+    assert(hintPixel[0] == 34 && hintPixel[1] == 39 && hintPixel[2] == 48);
     SDL_Event passive = {}; passive.type = SDL_MOUSEMOTION;
     passive.motion.windowID = SDL_GetWindowID(hint);
     assert(input.handlSdlEvent(&passive));
@@ -614,6 +740,16 @@ int main(int argc, char** argv) {
         // focus, as a user click would before starting a capture gesture.
         SDL_SetWindowInputFocus(guest);
         settleStatusBar();
+        if (argc > 1 && (!strcmp(argv[1], "--native-fullscreen") || !strcmp(argv[1], "--native-resize"))) {
+            if (!strcmp(argv[1], "--native-resize")) testNativeEmbeddedResize(guest, host);
+            else testNativeFullscreenShortcut(guest, host);
+            sdlStatusBarConfigure(false);
+            SDL_DestroyWindow(guest);
+            Fs::shutDown();
+            SDL_Quit();
+            if (nativeXtest) SDL_UnloadObject(nativeXtest);
+            return 0;
+        }
 #endif
 #ifdef __APPLE__
         testCocoaFullscreenButton(guest, host);
