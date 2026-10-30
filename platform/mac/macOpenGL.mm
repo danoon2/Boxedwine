@@ -20,15 +20,28 @@
 #include <SDL_syswm.h>
 #include <atomic>
 #include <cstdio>
+#include <mutex>
 #include "platformtypes.h"
 #include "macOpenGL.h"
 #include "macOpenGLFramebuffer.h"
 #import <objc/runtime.h>
 
+@interface BoxedwineGLContext : NSOpenGLContext {
+@public
+    std::mutex updateMutex;
+    bool updatePending;
+    int pendingWidth;
+    int pendingHeight;
+}
+@end
+@implementation BoxedwineGLContext
+@end
+
 @interface BoxedwineGLPresentationView : NSView
 @property int guestWidth;
 @property int guestHeight;
 @property BOOL preserveAspect;
+@property BOOL runtimeManaged;
 @property(strong) NSHashTable<NSOpenGLContext*>* contexts;
 - (MacOpenGLViewport)viewport;
 - (void)updatePresentation;
@@ -44,6 +57,46 @@ static bool setBackingSize(NSOpenGLContext* context, int width, int height) {
         return false;
     }
     return true;
+}
+
+static void requestContextUpdate(NSOpenGLContext* context, int width = 0, int height = 0) {
+    BoxedwineGLContext* pending = (BoxedwineGLContext*)context;
+    std::lock_guard<std::mutex> lock(pending->updateMutex);
+    pending->updatePending = true;
+    if (width && height) {
+        pending->pendingWidth = width;
+        pending->pendingHeight = height;
+    }
+}
+
+static void clearContextUpdate(NSOpenGLContext* context) {
+    BoxedwineGLContext* pending = (BoxedwineGLContext*)context;
+    std::lock_guard<std::mutex> lock(pending->updateMutex);
+    pending->updatePending = false;
+    pending->pendingWidth = pending->pendingHeight = 0;
+}
+
+static void applyContextUpdate(NSOpenGLContext* context) {
+    BoxedwineGLContext* pending = (BoxedwineGLContext*)context;
+    int width, height;
+    {
+        std::lock_guard<std::mutex> lock(pending->updateMutex);
+        if (!pending->updatePending) return;
+        width = pending->pendingWidth;
+        height = pending->pendingHeight;
+        pending->updatePending = false;
+        pending->pendingWidth = pending->pendingHeight = 0;
+    }
+    // AppKit requires a view-backed context update on the main thread, but the
+    // renderer must be idle while it runs. Wait here at the frame boundary;
+    // doing this directly from a resize can interrupt the game's glBegin/glEnd
+    // and corrupt Apple's renderer while audio and the host UI keep running.
+    void (^update)(void) = ^{
+        if (width && height) setBackingSize(context, width, height);
+        [context update];
+    };
+    if ([NSThread isMainThread]) update();
+    else dispatch_sync(dispatch_get_main_queue(), update);
 }
 
 @implementation BoxedwineGLPresentationView
@@ -69,8 +122,7 @@ static bool setBackingSize(NSOpenGLContext* context, int width, int height) {
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if (context.view != self) continue;
 #pragma clang diagnostic pop
-        setBackingSize(context, self.guestWidth, self.guestHeight);
-        [context update];
+        requestContextUpdate(context, self.guestWidth, self.guestHeight);
     }
 }
 @end
@@ -105,7 +157,7 @@ void* macOpenGLCreateContext(U32 nativeId, int major, int minor, int profile, in
             return nullptr;
         }
 
-        NSOpenGLContext* context = [[NSOpenGLContext alloc] initWithCGLContextObj:cglContext];
+        NSOpenGLContext* context = [[BoxedwineGLContext alloc] initWithCGLContextObj:cglContext];
         CGLReleaseContext(cglContext);
         if (!context) {
             std::fprintf(stderr, "NSOpenGLContext initWithCGLContextObj failed\n");
@@ -165,7 +217,23 @@ bool macOpenGLResizeFullscreen(SDL_Window* window, U32 width, U32 height) {
             view.guestHeight = height;
             [view updatePresentation];
         }
-        return true;
+        return !view.runtimeManaged || (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN);
+    }
+}
+
+void macOpenGLPrepareWindow(SDL_Window* window, U32 width, U32 height) {
+    // Attach the presentation view before the guest binds its CGL contexts.
+    // In a window this is a 1:1 drawable; fullscreen resizes only its host view.
+    macOpenGLConfigureFullscreen(window, width, height, true);
+    presentationView(getWindowView(window)).runtimeManaged = YES;
+}
+
+void macOpenGLEnableFullscreen(SDL_Window* window) {
+    BoxedwineGLPresentationView* view = presentationView(getWindowView(window));
+    if (view) {
+        view.runtimeManaged = YES;
+        view.preserveAspect = YES;
+        [view updatePresentation];
     }
 }
 
@@ -191,6 +259,9 @@ bool macOpenGLSetWindow(void* context, SDL_Window* window) {
             return false;
         }
         NSOpenGLContext* nativeContext = getContext(context);
+        // The caller waits for this initial/rebinding operation on the UI
+        // thread. Discard resize requests for the context's previous drawable.
+        clearContextUpdate(nativeContext);
         BoxedwineGLPresentationView* presentation = presentationView(view);
         if (presentation) view = presentation;
         // SDL owns this NSView; attaching the context directly preserves its window/input handling.
@@ -223,7 +294,9 @@ bool macOpenGLMakeCurrent(void* context) {
     @autoreleasepool {
         NSOpenGLContext* nativeContext = getContext(context);
         [nativeContext makeCurrentContext];
-        return CGLGetCurrentContext() == [nativeContext CGLContextObj];
+        if (CGLGetCurrentContext() != [nativeContext CGLContextObj]) return false;
+        applyContextUpdate(nativeContext);
+        return true;
     }
 }
 
@@ -233,6 +306,7 @@ bool macOpenGLMakeCurrentPbuffer(void* context, void* pbuffer) {
     }
     @autoreleasepool {
         NSOpenGLContext* nativeContext = getContext(context);
+        clearContextUpdate(nativeContext);
         [nativeContext clearDrawable];
         CGLContextObj cglContext = [nativeContext CGLContextObj];
         CGLDisable(cglContext, kCGLCESurfaceBackingSize);
@@ -254,14 +328,19 @@ void macOpenGLClearCurrent() {
     }
 }
 
+void macOpenGLFlush(void* context) {
+    @autoreleasepool {
+        glFlush();
+        if (context) applyContextUpdate(getContext(context));
+    }
+}
+
 void macOpenGLSwapBuffers(void* context) {
     if (!context) {
         return;
     }
     @autoreleasepool {
-        // flushBuffer presents double-buffered contexts. Single-buffered
-        // drawables also need their queued front-buffer drawing submitted.
-        glFlush();
+        macOpenGLFlush(context);
         [getContext(context) flushBuffer];
     }
 }
@@ -281,7 +360,7 @@ void macOpenGLUpdateContext(void* context) {
         return;
     }
     @autoreleasepool {
-        [getContext(context) update];
+        requestContextUpdate(getContext(context));
     }
 }
 
@@ -290,6 +369,7 @@ void macOpenGLDetachContext(void* context) {
         return;
     }
     @autoreleasepool {
+        clearContextUpdate(getContext(context));
         [getContext(context) clearDrawable];
     }
 }

@@ -53,7 +53,7 @@ struct LaunchLogTests {
         var windows = 0
         var result: RuntimeExit?
         try session.start(executable: URL(fileURLWithPath: "/bin/sh"),
-                          arguments: ["-c", "dd if=/dev/zero bs=65536 count=80 2>/dev/null; printf '\nShow'; sleep 0.05; printf 'ing Window\r\nShowing Window\n' >&2; read command; test \"$command\" = quit"],
+                          arguments: ["-c", "test \"$BOXEDWINE_STDIN_CONTROL\" = 1 || exit 9; dd if=/dev/zero bs=65536 count=80 2>/dev/null; printf '\nShow'; sleep 0.05; printf 'ing Window\r\nShowing Window\n' >&2; read command; test \"$command\" = quit"],
                           log: log, onWindowShown: { windows += 1 }) { result = $0 }
         defer { session.forceStop() }
         for _ in 0..<500 {
@@ -113,6 +113,31 @@ struct LaunchLogTests {
         #expect(tail.contains("TAIL-STDOUT") && tail.contains("TAIL-STDERR"))
         #expect(tail.hasSuffix("Boxedwine runtime exited with code 17.\n"))
         #expect(try LaunchLog.read(log) == data)
+    }
+
+    @Test @MainActor func firstDiscLaunchCreatesLogsBeforeTransferringAccess() async throws {
+        let base = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: base) }
+        let discs = base.appendingPathComponent("Discs")
+        try FileManager.default.createDirectory(at: discs, withIntermediateDirectories: false)
+        try Data("disc fixture".utf8).write(to: discs.appendingPathComponent("test.iso"))
+        var app = LibraryApp(name: "First disc launch")
+        app.cdromImages = ["Discs/test.iso"]
+        let access = try CdromImageAccess(app: app, appDirectory: base)
+        #expect(!access.runtimeBookmarks.isEmpty)
+        let log = base.appendingPathComponent("Logs/latest.log")
+        #expect(!FileManager.default.fileExists(atPath: log.deletingLastPathComponent().path))
+        let session = RuntimeSession()
+        let result = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<RuntimeExit, any Error>) in
+            do {
+                try session.start(executable: URL(fileURLWithPath: "/bin/sh"),
+                    arguments: ["-c", "test -s \"$BOXEDWINE_CDROM_BOOKMARKS_FILE\" || exit 9; printf 'Showing Window\\n'"],
+                    log: log, cdromAccess: access) { continuation.resume(returning: $0) }
+            } catch { continuation.resume(throwing: error) }
+        }
+        #expect(result.status == 0 && result.logProblem == nil)
+        #expect(try String(contentsOf: log, encoding: .utf8).contains("Showing Window"))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: log.deletingLastPathComponent().path) == ["latest.log"])
     }
 
     @Test @MainActor func nextLaunchPreservesOnlyThePreviousAttempt() async throws {

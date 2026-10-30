@@ -60,6 +60,28 @@
 #include MKDIR_INCLUDE
 #include CURDIR_INCLUDE
 
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME) && !defined(__TEST)
+#include "../../platform/mac/macLaunch.h"
+#endif
+
+static BString nativeCommandLinePath(const BString& path) {
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME) && !defined(__TEST)
+    const char* directory = macLaunchWorkingDirectory();
+    if (macLaunchIsCommandLine() && directory && !path.isEmpty() && !path.startsWith("/")) {
+        return BString::copy(directory).stringByApppendingPath(path);
+    }
+#endif
+    return path;
+}
+
+static bool nativeCommandLineAccess(const BString& path, bool directory, bool write, bool allowMissing = false) {
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME) && !defined(__TEST)
+    return macLaunchAccess(path.c_str(), directory, write, allowMissing);
+#else
+    return true;
+#endif
+}
+
 void gl_init(BString allowExtensions);
 void vulkan_init();
 void x11_init();
@@ -606,7 +628,9 @@ bool StartUpArgs::apply() {
     for (auto& zip : zips) {
         U64 startTime = KSystem::getMicroCounter();
         std::shared_ptr<FsZip> fsZip = std::make_shared<FsZip>();
-        fsZip->init(zip, B(""));
+        if (!fsZip->init(zip, B(""))) {
+            return false;
+        }
         openZips.push_back(fsZip);
         U64 endTime = KSystem::getMicroCounter();
         klog_fmt("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
@@ -769,7 +793,9 @@ bool StartUpArgs::apply() {
                 if (!info.localPath.endsWith("/", false)) {
                     info.localPath= info.localPath+"/";
                 }
-                fsZip->init(info.nativePath, info.localPath);
+                if (!fsZip->init(info.nativePath, info.localPath)) {
+                    return false;
+                }
                 openZips.push_back(fsZip);
                 U64 endTime = KSystem::getMicroCounter();
                 klog_fmt("Mounted %s in %d ms", info.nativePath.c_str(), (U32)(endTime - startTime) / 1000);
@@ -1036,8 +1062,14 @@ bool StartUpArgs::loadDefaultResource(const char* app) {
 
 bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     int i;
+    // CLI sandbox access is requested after parsing host options, so guest
+    // arguments that happen to contain "-log" cannot open host files or panels.
+    bool openEarlyLog = true;
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME) && !defined(__TEST)
+    openEarlyLog = !macLaunchIsCommandLine();
+#endif
     // look for -log as soon as possible so that logging is enabled as soon as possible
-    for (i = 1; i < argc; i++) {
+    for (i = 1; openEarlyLog && i < argc; i++) {
         if (!strcmp(argv[i], "-log") && i + 1 < argc) {
             this->logPath = BString::copy(argv[i + 1]);
             KSystem::logFile.createNew(logPath);
@@ -1051,7 +1083,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     klog_nonewline("\n");
     for (i=1;i<argc;i++) {
         if (!strcmp(argv[i], "-root") && i+1<argc) {
-            this->setRoot(BString::copy(argv[i+1]));
+            this->setRoot(nativeCommandLinePath(BString::copy(argv[i+1])));
             i++;
         } else if (!strcmp(argv[i], "-cdromInstall")) {
             this->cdromInstall = true;
@@ -1066,12 +1098,12 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 klog("-cdrom: every disc must use the same drive letter, they are swapped in one CD-ROM drive");
                 return false;
             }
-            this->cdromPaths.push_back(BString::copy(argv[i+1]));
+            this->cdromPaths.push_back(nativeCommandLinePath(BString::copy(argv[i+1])));
             this->cdromDrive = drive;
             i+=2;
         } else if (!strcmp(argv[i], "-zip") && i+1<argc) {
 #ifdef BOXEDWINE_ZLIB
-            this->addZip(BString::copy(argv[i+1]));
+            this->addZip(nativeCommandLinePath(BString::copy(argv[i+1])));
 #else
             kwarn("BoxedWine wasn't compiled with zlib support");
 #endif
@@ -1190,7 +1222,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 klog("-mount_drive expects 2 parameters: <host directory to mount> <drive letter to use for wine>");
                 klog("  example: -mount_drive \"c:\\my games\" d");
             } else {
-                this->mountInfo.push_back(MountInfo(BString::copy(argv[i+2]), BString::copy(argv[i+1]), true));
+                this->mountInfo.push_back(MountInfo(BString::copy(argv[i+2]), nativeCommandLinePath(BString::copy(argv[i+1])), true));
             }
             i+=2;
         } else if (!strcmp(argv[i], "-mount")) {
@@ -1203,7 +1235,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                     klog_fmt("mount directory/file does not exist: %s", argv[i + 2]);
                     return false;
                 }
-                this->mountInfo.push_back(MountInfo(BString::copy(argv[i+2]), BString::copy(argv[i+1]), false));
+                this->mountInfo.push_back(MountInfo(BString::copy(argv[i+2]), nativeCommandLinePath(BString::copy(argv[i+1])), false));
             }
             i+=2;
         } else if (!strcmp(argv[i], "-showStartupWindow")) {
@@ -1241,31 +1273,40 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->skipFrameFPS = atoi(argv[i+1]);
             i++;
         } else if (!strcmp(argv[i], "-log") && i + 1 < argc) {
-            this->logPath = BString::copy(argv[i + 1]);
+            this->logPath = nativeCommandLinePath(BString::copy(argv[i + 1]));
             i++;
         } 
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
-            if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
-                static_cast<void>(Platform::mkdir(argv[i+1])); // return result ignored
-                if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
+            if (i + 1 >= argc) return false;
+            BString path = nativeCommandLinePath(BString::copy(argv[i + 1]));
+            if (!nativeCommandLineAccess(path, true, true, true)) return false;
+            if (!Fs::doesNativePathExist(path)) {
+                static_cast<void>(Platform::mkdir(path.c_str())); // return result ignored
+                if (!Fs::doesNativePathExist(path)) {
                     klog_fmt("-record path does not exist and could not be created: %s", argv[i+1]);
                     return false;
                 }
             }
-            this->recordAutomation = BString::copy(argv[i + 1]);
+            this->recordAutomation = path;
             i++;
         }  else if (!strcmp(argv[i], "-automation")) {
-            if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
+            if (i + 1 >= argc) return false;
+            BString path = nativeCommandLinePath(BString::copy(argv[i + 1]));
+            if (!nativeCommandLineAccess(path, true, false)) return false;
+            if (!Fs::doesNativePathExist(path)) {
                 klog_fmt("-automation directory does not exist %s", argv[i+1]);
                 return false;
             }
-            this->runAutomation = BString::copy(argv[i + 1]);
+            this->runAutomation = path;
             // also cover a kpanic during startup, before apply() runs
             KSystem::noErrorDialog = true;
             i++;
         }  else if (!strcmp(argv[i], "-play")) {
-            this->runAutomation = BString::copy(argv[i + 1]);
+            if (i + 1 >= argc) return false;
+            BString path = nativeCommandLinePath(BString::copy(argv[i + 1]));
+            if (!nativeCommandLineAccess(path, true, false)) return false;
+            this->runAutomation = path;
             KSystem::noErrorDialog = true;
             i++;
         }
@@ -1308,7 +1349,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         }
     } 
     char curdir[1024];
-    char* base = getcwd(curdir, sizeof(curdir));
+    const char* base = getcwd(curdir, sizeof(curdir));
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME) && !defined(__TEST)
+    if (macLaunchIsCommandLine() && macLaunchWorkingDirectory()) base = macLaunchWorkingDirectory();
+#endif
     char pathSeperator = '/';
 
     if (base!=nullptr && strchr(base, '\\') != nullptr) {
@@ -1320,6 +1364,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         if (zips.size()==0 && !nozip) {
             std::vector<Platform::ListNodeResult> results;
             if (base) {
+                if (!nativeCommandLineAccess(BString::copy(base), true, false)) return false;
                 Platform::listNodes(BString::copy(base), results);
                 for (auto&& item : results) {
                     if (strstr(item.name.c_str(), "Wine") && strstr(item.name.c_str(), ".zip")) {
@@ -1358,6 +1403,21 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         klog("-cdromInstall requires -cdrom and replaces the guest command with disc autorun or Explorer.");
         return false;
     }
+    if (!nativeCommandLineAccess(root, true, true, true)) return false;
+    for (const auto& zip : zips) {
+        if (!nativeCommandLineAccess(zip, false, false)) return false;
+    }
+    for (const auto& mount : mountInfo) {
+        bool zip = !mount.wine && mount.nativePath.endsWith(".zip", true);
+        if (!nativeCommandLineAccess(mount.nativePath, !zip, !zip)) return false;
+    }
+    for (const auto& disc : cdromPaths) {
+        if (!nativeCommandLineAccess(disc, false, false)) return false;
+        // A CUE sheet can reference other files in its containing folder.
+        if (disc.endsWith(".cue", true) && !nativeCommandLineAccess(Fs::getNativeParentPath(disc), true, false)) return false;
+    }
+    if (!logPath.isEmpty() && !nativeCommandLineAccess(logPath, false, true, true)) return false;
+    if (!openEarlyLog && !logPath.isEmpty()) KSystem::logFile.createNew(logPath);
     return true;
 }
 

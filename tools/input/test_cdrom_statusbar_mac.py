@@ -5,6 +5,8 @@ Reuse the actual engine objects/settings, replacing only its entry point.
 All generated files stay in tmp; the built app is not modified.
 """
 from pathlib import Path
+import argparse
+import plistlib
 import shlex
 import subprocess
 import sys
@@ -16,6 +18,9 @@ def run(command, **kwargs):
 
 
 root = Path(__file__).resolve().parents[2]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--build-only', action='store_true', help='Compile the harness for later testing in a desktop session')
+options = parser.parse_args()
 objects = root / 'project/mac-xcode/bin/native-build/Build/Intermediates.noindex/Boxedwine.build/Debug/Boxedwine.build/Objects-normal/arm64'
 output = root / 'tmp/cdrom-statusbar-mac'
 output.mkdir(parents=True, exist_ok=True)
@@ -38,5 +43,10 @@ command = ['xcrun', 'clang++', '-target', 'arm64-apple-macos15.0', '-isysroot', 
 for framework in frameworks:
     command += ['-framework', framework]
 run([*command, '-o', str(output / 'test-cdrom-statusbar')])
-run(['codesign', '--force', '--sign', '-', '--entitlements', str(root / 'project/mac-xcode/Boxedwine/BoxedwineUI/Boxedwine-Development.entitlements'), str(output / 'test-cdrom-statusbar')])
-run([str(output / 'test-cdrom-statusbar')], cwd=root / 'project/mac-xcode')
+entitlements = output / 'entitlements.plist'
+# Like Xcode's signing step, serialize canonical XML (including LF endings)
+# before passing entitlements to the stricter AMFI parser.
+entitlements.write_bytes(plistlib.dumps(plistlib.loads((root / 'project/mac-xcode/Boxedwine/BoxedwineUI/Boxedwine-Development.entitlements').read_bytes())))
+run(['codesign', '--force', '--sign', '-', '--entitlements', str(entitlements), str(output / 'test-cdrom-statusbar')])
+if not options.build_only:
+    run([str(output / 'test-cdrom-statusbar')], cwd=root / 'project/mac-xcode')

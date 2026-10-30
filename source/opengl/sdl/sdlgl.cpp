@@ -525,11 +525,14 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     resizeWebGLCanvas(window, cx, cy);
 #elif defined(__APPLE__)
     if (fullscreen) macOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
+    else if (wnd) macOpenGLPrepareWindow(window, cx, cy);
 #elif defined(BOXEDWINE_MSVC)
     windowsAppSetWindowIcon(window);
     if (fullscreen) windowsOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT);
+    else windowsOpenGLPrepareWindow(window, cx, cy);
 #elif defined(__linux__)
-    if (fullscreen && !linuxOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT)) {
+    if (!(fullscreen ? linuxOpenGLConfigureFullscreen(window, cx, cy, screen->fullScreen == FULLSCREEN_ASPECT) :
+            linuxOpenGLPrepareWindow(window, cx, cy))) {
         kwarn_fmt("Couldn't configure fullscreen OpenGL: %s", SDL_GetError());
         SDL_DestroyWindow(window);
         return nullptr;
@@ -1655,7 +1658,12 @@ static void sdl_glFlush(CPU* cpu) {
             if (!deferGlWindowShowUntilSwap())
 #endif
             context->currentWindow->showWindow(true);
-#ifdef BOXEDWINE_MSVC
+#ifdef __APPLE__
+            // Single-buffered clients may keep a context current and only flush.
+            // Apply queued drawable updates here without swapping their buffers.
+            macOpenGLFlush(context->context);
+            return;
+#elif defined(BOXEDWINE_MSVC)
             windowsOpenGLSwapBuffers(context->currentWindow->window, false);
 #elif defined(__linux__) && !defined(__EMSCRIPTEN__)
             linuxOpenGLSwapBuffers(context->currentWindow->window, false);

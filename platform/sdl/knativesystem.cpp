@@ -33,6 +33,9 @@
 
 #ifdef __APPLE__
 #include "../mac/macCursor.h"
+#ifdef BOXEDWINE_NATIVE_RUNTIME
+#include "../mac/macLaunch.h"
+#endif
 #endif
 
 #include UNISTD
@@ -46,15 +49,13 @@
 
 #ifndef __TEST
 int boxedmain(int argc, const char** argv);
-#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME) && defined(BOXEDWINE_DEVELOPMENT)
-extern "C" int MacPlatformWaitForDebugger(void);
-#endif
 
 int main(int argc, char** argv) {
-#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME) && defined(BOXEDWINE_DEVELOPMENT)
-    if (!MacPlatformWaitForDebugger()) { return 0; }
-#endif
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME)
+    return macLaunch(argc, (const char**)argv, boxedmain);
+#else
     return boxedmain(argc, (const char**)argv);
+#endif
 }
 #endif
 
@@ -107,6 +108,8 @@ bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
     SDL_StopTextInput();
 #endif
 #if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME)
+    macLaunchFinishApplication(videoOption == VIDEO_NORMAL);
+    // Publish the guest artwork after AppKit creates the visible Dock tile.
     MacPlatformSetRuntimeDockIcon();
 #endif
     return true;
@@ -244,6 +247,9 @@ void KNativeSystem::scheduledNewThread(KThread* thread) {
 
 void KNativeSystem::exit(const char* msg, U32 code) {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", msg, nullptr);
+#if defined(__APPLE__) && defined(BOXEDWINE_NATIVE_RUNTIME)
+    macLaunchReportExit(code);
+#endif
     _exit(code);
 }
 

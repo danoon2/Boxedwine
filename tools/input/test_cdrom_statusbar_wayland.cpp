@@ -47,6 +47,8 @@ void size(SDL_Window* window, int width, int height) {
 }
 }
 
+void testSoftwareFullscreenScale();
+
 int testWaylandStatusBar(bool nativePicker) {
     for (bool useGl : {false, true}) {
         SDL_Window* guest = SDL_CreateWindow("Wayland status bar harness", 0, 0, 640, 480,
@@ -125,9 +127,16 @@ int testWaylandStatusBar(bool nativePicker) {
         pump();
         size(guest, 800, 600);
         size(bar, 800, 32);
-        assert(SDL_SetWindowFullscreen(guest, SDL_WINDOW_FULLSCREEN_DESKTOP) == 0);
+        assert(button(bar, true, 740, 16));
+        assert(button(bar, false, 740, 16));
         paint();
         pump();
+        assert(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN);
+        SDL_Window* hint = findControl("Boxedwine fullscreen hint");
+        assert(hint);
+        SDL_SysWMinfo hintNative = {}; SDL_VERSION(&hintNative.version);
+        assert(SDL_GetWindowWMInfo(hint, &hintNative) && !hintNative.info.wl.xdg_surface);
+        assert(SDL_GetKeyboardFocus() == guest);
         int fullW, fullH;
         SDL_GetWindowSize(guest, &fullW, &fullH);
         sdlStatusBarOpen(); // The shortcut menu remains available in fullscreen.
@@ -135,7 +144,12 @@ int testWaylandStatusBar(bool nativePicker) {
         assert(key(guest, SDLK_F1));
         size(guest, fullW, fullH);
         assert(key(guest, SDLK_ESCAPE));
-        assert(SDL_SetWindowFullscreen(guest, 0) == 0);
+        SDL_Event toggle = {}; toggle.type = SDL_KEYDOWN;
+        toggle.key.windowID = SDL_GetWindowID(guest);
+        toggle.key.keysym.sym = SDLK_RETURN; toggle.key.keysym.mod = KMOD_ALT;
+        assert(sdlStatusBarFullscreenShortcut(toggle));
+        toggle.type = SDL_KEYUP; toggle.key.keysym.mod = 0;
+        assert(sdlStatusBarFullscreenShortcut(toggle));
         paint();
         pump();
         size(guest, 800, 600);
@@ -176,6 +190,7 @@ int testWaylandStatusBar(bool nativePicker) {
         SDL_DestroyWindow(guest);
         pump();
     }
+    testSoftwareFullscreenScale();
     sdlStatusBarShutdown();
     Fs::shutDown();
     SDL_Quit();

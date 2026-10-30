@@ -6,6 +6,27 @@ import Testing
 
 @MainActor
 struct EngineLocationTests {
+    @Test(arguments: [1, 2]) func executableSymlinksKeepThePackagedLaunchTransport(_ version: Int) throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("boxedwine-engine-alias-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let application = root.appendingPathComponent("Engine.app")
+        let executable = application.appendingPathComponent("Contents/MacOS/Engine")
+        try FileManager.default.createDirectory(at: executable.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let info: [String: Any] = ["CFBundleIdentifier": "org.boxedwine.test.engine-alias", "CFBundleExecutable": "Engine",
+                                   "CFBundlePackageType": "APPL", "BoxedwineLaunchProtocol": version]
+        try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
+            .write(to: application.appendingPathComponent("Contents/Info.plist"))
+        try Data("#!/bin/sh\nexit 0\n".utf8).write(to: executable)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+        let alias = root.appendingPathComponent("boxedwine"), indirect = root.appendingPathComponent("alias")
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: executable)
+        try FileManager.default.createSymbolicLink(at: indirect, withDestinationURL: alias)
+        for path in [executable, alias, indirect] {
+            #expect(EngineProcess.application(for: path) == application.resolvingSymlinksInPath())
+        }
+        #expect(EngineProcess.application(for: URL(fileURLWithPath: "/bin/sh")) == nil)
+    }
+
     @Test func bundledEngineAndTransientOverrideHaveNoFallback() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("boxedwine-engine-" + UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

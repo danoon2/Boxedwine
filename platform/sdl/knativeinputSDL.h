@@ -20,6 +20,7 @@
 #define __KNATIVEWINDOW_SDL_H__
 
 #include "knativeinput.h"
+#include <SDL_rect.h>
 #if defined(__APPLE__) || defined(BOXEDWINE_MSVC) || (defined(__linux__) && !defined(__EMSCRIPTEN__))
 #include "openGLViewport.h"
 #endif
@@ -85,25 +86,28 @@ private:
     std::atomic<U64> emscriptenMousePosition{~(U64)0};
 #endif
     void updateMouseConfinement(SDL_Window* window);
+    void constrainMouseToViewport(SDL_Event& event);
     bool wantsMouseCapture();
-    void updateMouseCaptureTitle(SDL_Window* window);
     void setMouseCaptureReleased(bool released);
     void releaseMouseForHostUi();
     bool handleMouseCaptureEvent(SDL_Event* event);
     std::atomic<bool> mouseConfinementRequested{false};
     U32 confinedWindowId = 0; // Accessed only on the SDL thread.
+    SDL_Rect mouseConfinementRect{}; // Displayed guest area in host window coordinates.
+    U32 captureGuestWindowId = 0; // Embedded guest focus events use a different ID than the host grab.
     std::atomic<bool> mouseCaptureReleased{false};
     bool hostUiMouseReleased = false; // Resume ordinary desktop input without a click or warp.
     std::atomic<U64> releasedMousePosition{0};
     std::atomic<U32> swallowedMouseButtons{0};
     U32 pressedMouseButtons = 0;
     bool captureShortcutDown = false;
+#ifdef __APPLE__
+    U32 fullscreenCaptureWindowId = 0;
+    U32 fullscreenCaptureAt = 0;
+#endif
     bool focusClickthroughBeforeRelease = false;
     SDL_Cursor* guestCursor = nullptr;
     bool guestCursorVisible = true;
-    U32 mouseHintWindowId = 0;
-    BString mouseHintBaseTitle;
-    BString mouseHintTitle;
 };
 
 typedef std::shared_ptr<KNativeInputSDL> KNativeInputSDLPtr;

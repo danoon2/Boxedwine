@@ -19,6 +19,8 @@ void* macOpenGLGetProcAddressFallback(const char* name);
 
 // Main-thread only. Offscreen/pbuffer windows never get a presentation view.
 void macOpenGLConfigureFullscreen(SDL_Window* window, U32 width, U32 height, bool aspect);
+void macOpenGLPrepareWindow(SDL_Window* window, U32 width, U32 height);
+void macOpenGLEnableFullscreen(SDL_Window* window);
 bool macOpenGLResizeFullscreen(SDL_Window* window, U32 width, U32 height);
 MacOpenGLViewport macOpenGLGetViewport(SDL_Window* window);
 
@@ -34,8 +36,12 @@ bool macOpenGLSetWindow(void* context, SDL_Window* window);
 bool macOpenGLMakeCurrent(void* context);
 bool macOpenGLMakeCurrentPbuffer(void* context, void* pbuffer);
 void macOpenGLClearCurrent();
+// Render-thread flush boundary for clients that draw without swapping buffers.
+void macOpenGLFlush(void* context);
 void macOpenGLSwapBuffers(void* context);
 void macOpenGLSetSwapInterval(void* context, int interval);
+// Queue a drawable refresh; make-current/flush/swap waits for the UI thread to apply
+// it while the rendering thread is idle, never in the middle of a guest frame.
 void macOpenGLUpdateContext(void* context);
 void macOpenGLDetachContext(void* context);
 

@@ -17,6 +17,62 @@ static NSWindow* native(SDL_Window* window) {
     return info.info.cocoa.window;
 }
 
+void testCocoaFullscreenButton(SDL_Window* guest, SDL_Window* host) {
+    auto pump = [&]() {
+        Uint32 until = SDL_GetTicks() + 100;
+        do {
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
+                    assert(event.button.windowID == SDL_GetWindowID(host));
+                if (getenv("BOXEDWINE_STATUSBAR_TEST_TRACE")) {
+                    if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
+                        fprintf(stderr, "fullscreen button %u %u %d,%d\n", event.type, event.button.windowID, event.button.x, event.button.y);
+                    if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
+                        fprintf(stderr, "fullscreen key %u %u %d mod=%x\n", event.type, event.key.windowID, event.key.keysym.sym, event.key.keysym.mod);
+                }
+                if (!sdlStatusBarFullscreenShortcut(event)) sdlStatusBarEvent(event);
+            }
+            sdlStatusBarTick();
+            SDL_Delay(5);
+        } while ((Sint32)(SDL_GetTicks() - until) < 0);
+    };
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        SDL_WarpMouseInWindow(host, 580, 495);
+        pump();
+        NSWindow* parent = native(host);
+        NSPoint position = NSMakePoint(580, NSHeight(parent.contentView.bounds) - 495);
+        for (NSEventType type : {NSEventTypeLeftMouseDown, NSEventTypeLeftMouseUp}) {
+            [NSApp postEvent:[NSEvent mouseEventWithType:type location:position modifierFlags:0
+                timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:parent.windowNumber
+                context:nil eventNumber:0 clickCount:1 pressure:type == NSEventTypeLeftMouseDown ? 1 : 0] atStart:NO];
+            pump();
+        }
+        assert(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN);
+        assert(!parent.isVisible && native(guest).parentWindow == nil);
+        assert(NSEqualRects(native(guest).frame, native(guest).screen.frame));
+        assert(SDL_GetKeyboardFocus() == guest);
+        [NSApp postEvent:[NSEvent keyEventWithType:NSEventTypeFlagsChanged location:NSZeroPoint modifierFlags:NSEventModifierFlagOption
+            timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:native(guest).windowNumber
+            context:nil characters:@"" charactersIgnoringModifiers:@"" isARepeat:NO keyCode:58] atStart:NO];
+        pump();
+        for (NSEventType type : {NSEventTypeKeyDown, NSEventTypeKeyUp}) {
+            [NSApp postEvent:[NSEvent keyEventWithType:type location:NSZeroPoint modifierFlags:NSEventModifierFlagOption
+                timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:native(guest).windowNumber
+                context:nil characters:@"\r" charactersIgnoringModifiers:@"\r" isARepeat:NO keyCode:36] atStart:NO];
+            pump();
+        }
+        [NSApp postEvent:[NSEvent keyEventWithType:NSEventTypeFlagsChanged location:NSZeroPoint modifierFlags:0
+            timestamp:NSProcessInfo.processInfo.systemUptime windowNumber:native(guest).windowNumber
+            context:nil characters:@"" charactersIgnoringModifiers:@"" isARepeat:NO keyCode:58] atStart:NO];
+        pump();
+        assert(!(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN));
+        assert(parent.isVisible && native(guest).parentWindow == parent);
+        assert(NSWidth(native(guest).contentView.bounds) == 640 && NSHeight(native(guest).contentView.bounds) == 480);
+    }
+    puts("Cocoa fullscreen button and Option+Return checks passed");
+}
+
 void testCocoaStatusBar(SDL_Window* guest, SDL_Window* host, SDL_Window* popup) {
     bool sawQuit = false;
     auto pump = [&]() {
@@ -38,6 +94,8 @@ void testCocoaStatusBar(SDL_Window* guest, SDL_Window* host, SDL_Window* popup) 
     };
     auto visible = [&]() { return (SDL_GetWindowFlags(popup) & SDL_WINDOW_SHOWN) != 0; };
     auto click = [&](SDL_Window* window, int x, int y) {
+        SDL_WarpMouseInWindow(window, x, y);
+        pump();
         NSWindow* target = native(window);
         NSPoint position = NSMakePoint(x, NSHeight(target.contentView.bounds) - y);
         for (NSEventType type : {NSEventTypeMouseMoved, NSEventTypeLeftMouseDown, NSEventTypeLeftMouseUp}) {

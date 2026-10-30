@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 The BoxedWine Team. GPL-2.0-or-later.
  * Run under Wayland or X11: make -C project/linux test-cdrom-statusbar
- * Also works with xvfb-run -a for the display/GL lifecycle checks. */
+ * Also works with xvfb-run -a for the display/GL lifecycle checks.
+ * STATUSBAR_TEST_ARGS=--native-fullscreen checks real X11 clicks and keys. */
 #include "boxedwine.h"
 #include <SDL.h>
 #include <SDL_opengl.h>
@@ -9,18 +10,24 @@
 #include "devcdrom.h"
 #define private public
 #include "knativeinputSDL.h"
+#include "knativescreenSDL.h"
 #undef private
+#include "knativesystem.h"
+#include "../../source/sdl/startupArgs.h"
 #include <cassert>
 #include <cstdio>
 #if defined(__linux__) && defined(SDL_VIDEO_DRIVER_WAYLAND)
 int testWaylandStatusBar(bool nativePicker);
 #endif
 #ifdef __APPLE__
+#include "../../platform/mac/macOpenGL.h"
+void testCocoaFullscreenButton(SDL_Window* guest, SDL_Window* host);
 void testCocoaStatusBar(SDL_Window* guest, SDL_Window* host, SDL_Window* popup);
 void testCocoaVulkanStatusBar();
 #endif
 
 #ifdef SDL_VIDEO_DRIVER_X11
+#include <X11/keysym.h>
 static void* nativeXtest;
 // Real X11 pointer events cover WM/input routing that the synthetic SDL tests
 // below cannot exercise. Run with --native-pointer, preferably under xvfb-run.
@@ -86,6 +93,83 @@ static void testNativePopupInput(SDL_Window* guest, SDL_Window* host, SDL_Window
     SDL_UnloadObject(xlib);
     puts("Native X11 popup pointer, ownership, focus, and dismissal checks passed");
 }
+
+static void testNativeFullscreenShortcut(SDL_Window* guest, SDL_Window* host) {
+    SDL_SysWMinfo info = {}; SDL_VERSION(&info.version);
+    assert(SDL_GetWindowWMInfo(guest, &info) && info.subsystem == SDL_SYSWM_X11);
+    void* xlib = SDL_LoadObject("libX11.so.6");
+    if (!nativeXtest) nativeXtest = SDL_LoadObject("libXtst.so.6");
+    auto keycode = (KeyCode (*)(Display*, KeySym))SDL_LoadFunction(xlib, "XKeysymToKeycode");
+    auto key = (int (*)(Display*, unsigned int, Bool, unsigned long))SDL_LoadFunction(nativeXtest, "XTestFakeKeyEvent");
+    auto sync = (int (*)(Display*, Bool))SDL_LoadFunction(xlib, "XSync");
+    auto translate = (Bool (*)(Display*, Window, Window, int, int, int*, int*, Window*))SDL_LoadFunction(xlib, "XTranslateCoordinates");
+    auto getFocus = (int (*)(Display*, Window*, int*))SDL_LoadFunction(xlib, "XGetInputFocus");
+    auto motion = (int (*)(Display*, int, int, int, unsigned long))SDL_LoadFunction(nativeXtest, "XTestFakeMotionEvent");
+    auto button = (int (*)(Display*, unsigned int, Bool, unsigned long))SDL_LoadFunction(nativeXtest, "XTestFakeButtonEvent");
+    assert(keycode && key && sync && translate && motion && button && getFocus);
+    Display* display = info.info.x11.display;
+    KeyCode alt = keycode(display, XK_Alt_L), enter = keycode(display, XK_Return);
+    KNativeInputSDL input(640, 480, 100, 100);
+    auto pump = [&]() {
+        U32 until = SDL_GetTicks() + 350;
+        do {
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                input.handlSdlEvent(&event);
+            }
+            sdlStatusBarTick();
+            SDL_Delay(5);
+        } while ((S32)(SDL_GetTicks() - until) < 0);
+    };
+    auto click = [&](SDL_Window* target, int x, int y) {
+        SDL_SysWMinfo targetInfo = {}; SDL_VERSION(&targetInfo.version);
+        assert(SDL_GetWindowWMInfo(target, &targetInfo));
+        int screenX, screenY; Window child;
+        assert(translate(display, targetInfo.info.x11.window, DefaultRootWindow(display), x, y, &screenX, &screenY, &child));
+        motion(display, -1, screenX, screenY, 0); sync(display, False); pump();
+        button(display, SDL_BUTTON_LEFT, True, 0); sync(display, False); pump();
+        button(display, SDL_BUTTON_LEFT, False, 0); sync(display, False); pump();
+    };
+    SDL_RaiseWindow(host);
+    pump();
+    click(host, 625, 495);
+    assert(sdlStatusBarIsFullscreen());
+    for (bool expected : {false, true, false, true, false}) {
+        // Cinnamon focuses the host after a guest click, but SDL can lose its
+        // cached focus and assign windowID 0 to the subsequent native keys.
+        if (expected) click(guest, 200, 150);
+        key(display, alt, True, 0); sync(display, False); pump();
+        key(display, enter, True, 0); sync(display, False); pump();
+        bool heldFullscreen = sdlStatusBarIsFullscreen();
+        // Always release native keys before reporting a failed assertion.
+        key(display, enter, False, 0); key(display, alt, False, 0); sync(display, False); pump();
+        if (heldFullscreen != expected || sdlStatusBarIsFullscreen() != expected)
+            fprintf(stderr, "Native Alt+Enter: expected=%d held=%d released=%d\n", expected, heldFullscreen, sdlStatusBarIsFullscreen());
+        assert(heldFullscreen == expected && sdlStatusBarIsFullscreen() == expected);
+    }
+
+    // An unassigned key must not toggle the runtime when another window owns
+    // native focus, even though the runtime's SDL window still exists.
+    SDL_Window* other = SDL_CreateWindow("Unrelated focus", 50, 50, 200, 100, SDL_WINDOW_SHOWN);
+    assert(other);
+    pump();
+    SDL_SetWindowInputFocus(other);
+    pump();
+    SDL_SysWMinfo otherInfo = {}; SDL_VERSION(&otherInfo.version);
+    assert(SDL_GetWindowWMInfo(other, &otherInfo));
+    Window focus; int revert;
+    getFocus(display, &focus, &revert);
+    assert(focus == otherInfo.info.x11.window);
+    SDL_Event unassigned = {};
+    unassigned.type = SDL_KEYDOWN;
+    unassigned.key.keysym.sym = SDLK_RETURN;
+    unassigned.key.keysym.mod = KMOD_ALT;
+    assert(!sdlStatusBarFullscreenShortcut(unassigned));
+    assert(!sdlStatusBarIsFullscreen());
+    SDL_DestroyWindow(other);
+    SDL_UnloadObject(xlib);
+    puts("Native X11 Alt+Enter survives guest clicks, toggles once per press, and respects unrelated focus");
+}
 #endif
 
 static void testEmbeddedMouseCapture(SDL_Window* guest, SDL_Window* host) {
@@ -109,7 +193,7 @@ static void testEmbeddedMouseCapture(SDL_Window* guest, SDL_Window* host) {
     focus(true);
     assert(SDL_GetWindowGrab(focused) == SDL_TRUE);
     assert(input.confinedWindowId == SDL_GetWindowID(focused));
-    assert(input.mouseHintWindowId == SDL_GetWindowID(guest));
+    assert(!strcmp(SDL_GetWindowTitle(guest), "Status bar harness"));
 #ifdef BOXEDWINE_MSVC
     SDL_SysWMinfo info = {}; SDL_VERSION(&info.version);
     assert(SDL_GetWindowWMInfo(host, &info));
@@ -117,6 +201,9 @@ static void testEmbeddedMouseCapture(SDL_Window* guest, SDL_Window* host) {
     assert(GetClientRect(info.info.win.window, &expected));
     ClientToScreen(info.info.win.window, (POINT*)&expected.left);
     ClientToScreen(info.info.win.window, (POINT*)&expected.right);
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    expected.bottom = expected.top + 480; // Captured area excludes the status strip.
+#endif
     assert(GetClipCursor(&actual) && EqualRect(&expected, &actual));
 #endif
     // Reproduce leaving downward: motion in the outer window's status strip
@@ -136,12 +223,12 @@ static void testEmbeddedMouseCapture(SDL_Window* guest, SDL_Window* host) {
     assert(GetCursorPos(&cursor) && ScreenToClient(child.info.win.window, &cursor));
     assert(cursor.y >= 0 && cursor.y < 480);
 #endif
-    // Explicit release and focus loss must release the host while keeping
-    // titles and guest input associated with the embedded view.
+    // Explicit release and focus loss must release the host without changing
+    // the application's title or its guest input association.
     input.mouseCaptureReleased = true;
     focus(true);
     assert(SDL_GetWindowGrab(focused) == SDL_FALSE);
-    assert(strstr(SDL_GetWindowTitle(guest), "Click to capture mouse"));
+    assert(!strcmp(SDL_GetWindowTitle(guest), "Status bar harness"));
     input.mouseCaptureReleased = false;
     focus(true);
     assert(SDL_GetWindowGrab(focused) == SDL_TRUE);
@@ -151,10 +238,465 @@ static void testEmbeddedMouseCapture(SDL_Window* guest, SDL_Window* host) {
     puts("Embedded mouse confinement, release, recapture, and caption checks passed");
 }
 
+static void settleStatusBar() {
+    U32 until = SDL_GetTicks() + 250;
+    do {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) sdlStatusBarEvent(event);
+        sdlStatusBarTick();
+        SDL_Delay(5);
+    } while ((S32)(SDL_GetTicks() - until) < 0);
+}
+
+#ifdef SDL_VIDEO_DRIVER_X11
+static void testNativeEmbeddedResize(SDL_Window* guest, SDL_Window* host) {
+    SDL_SysWMinfo child = {}, parent = {};
+    SDL_VERSION(&child.version); SDL_VERSION(&parent.version);
+    assert(SDL_GetWindowWMInfo(guest, &child) && child.subsystem == SDL_SYSWM_X11);
+    assert(SDL_GetWindowWMInfo(host, &parent));
+    void* xlib = SDL_LoadObject("libX11.so.6");
+    auto translate = (Bool (*)(Display*, Window, Window, int, int, int*, int*, Window*))SDL_LoadFunction(xlib, "XTranslateCoordinates");
+    assert(translate);
+    // SDL caches desktop coordinates after mapping. A game changing its mode
+    // must resize the native child without applying that position in the host.
+    for (SDL_Point size : {SDL_Point{1024, 768}, SDL_Point{800, 600}, SDL_Point{640, 480}}) {
+        sdlStatusBarSetWindowSize(guest, size.x, size.y);
+        settleStatusBar();
+        int x, y; Window ignored;
+        assert(translate(child.info.x11.display, child.info.x11.window, parent.info.x11.window,
+            0, 0, &x, &y, &ignored));
+        if (x || y) fprintf(stderr, "Embedded window offset after %dx%d resize: %d,%d\n", size.x, size.y, x, y);
+        assert(x == 0 && y == 0);
+        int w, h;
+        SDL_GetWindowSize(guest, &w, &h);
+        assert(w == size.x && h == size.y);
+        SDL_GetWindowSize(host, &w, &h);
+        assert(w == size.x && h == size.y + 32);
+    }
+    SDL_UnloadObject(xlib);
+    puts("Native X11 guest mode changes preserve the embedded origin and status bar dimensions");
+}
+#endif
+
+static void testViewportMouseCapture(KNativeInputSDL& input, SDL_Window* guest, SDL_Rect expected) {
+    input.mouseConfinementRequested = true;
+    input.updateMouseConfinement(guest);
+    SDL_Window* focused = SDL_GetKeyboardFocus();
+    assert(focused && SDL_GetWindowGrab(focused));
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    const SDL_Rect* rect = SDL_GetWindowMouseRect(focused);
+    assert(rect && SDL_RectEquals(rect, &expected));
+#endif
+    const int left = expected.x, right = expected.x + expected.w - 1;
+    const int top = expected.y, bottom = expected.y + expected.h - 1;
+    for (auto point : {SDL_Point{left - 100, top - 100}, SDL_Point{right + 100, bottom + 100}}) {
+        SDL_Event event = {};
+        event.type = SDL_MOUSEMOTION;
+        event.motion.windowID = SDL_GetWindowID(guest);
+        event.motion.x = point.x; event.motion.y = point.y;
+        event.motion.xrel = 7; event.motion.yrel = -9;
+        assert(input.handlSdlEvent(&event));
+        assert(event.motion.x == (point.x < left ? left : right));
+        assert(event.motion.y == (point.y < top ? top : bottom));
+        assert(event.motion.xrel == 7 && event.motion.yrel == -9); // Mouse-look deltas retain their scale.
+        int globalX, globalY, windowX, windowY;
+        SDL_GetGlobalMouseState(&globalX, &globalY);
+        SDL_GetWindowPosition(focused, &windowX, &windowY);
+        if (std::abs(globalX - windowX - event.motion.x) > 1 || std::abs(globalY - windowY - event.motion.y) > 1)
+            fprintf(stderr, "Pointer relative to window: %d,%d; expected %d,%d\n",
+                globalX - windowX, globalY - windowY, event.motion.x, event.motion.y);
+        assert(std::abs(globalX - windowX - event.motion.x) <= 1);
+        assert(std::abs(globalY - windowY - event.motion.y) <= 1);
+        // A small move back must immediately leave the edge, regardless of how
+        // far the preceding event overshot into the black bars.
+        event.motion.x += point.x < left ? 3 : -3;
+        event.motion.y += point.y < top ? 3 : -3;
+        int x = event.motion.x, y = event.motion.y;
+        assert(input.handlSdlEvent(&event));
+        assert(event.motion.x == x && event.motion.y == y);
+        assert(x > left && x < right && y > top && y < bottom);
+    }
+    input.mouseCaptureReleased = true;
+    input.updateMouseConfinement(guest);
+    assert(!SDL_GetWindowGrab(focused));
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    assert(!SDL_GetWindowMouseRect(focused));
+#endif
+    input.mouseCaptureReleased = false;
+    input.updateMouseConfinement(guest);
+    assert(SDL_GetWindowGrab(focused));
+    input.updateMouseConfinement(nullptr);
+    assert(!SDL_GetWindowGrab(focused));
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    assert(!SDL_GetWindowMouseRect(focused));
+#endif
+    input.mouseConfinementRequested = false;
+}
+
+void testSoftwareFullscreenScale() {
+    sdlStatusBarConfigure(true);
+    KNativeSystem::initWindow(640, 480, 32, 100, 100, B("0"), FULLSCREEN_NOTSET, VSYNC_DISABLED);
+    auto screen = std::static_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
+    screen->showWindow(true); // Route engine pointer warps to this software window.
+    settleStatusBar();
+    auto& input = *screen->input;
+    input.mouseConfinementRequested = true;
+    input.updateMouseConfinement(screen->window);
+    assert(SDL_GetWindowGrab(SDL_GetKeyboardFocus()));
+    // Alt+Enter must also refresh an already-captured pointer. A mouse-look
+    // game repeatedly warps to its centre; an old native clip prevents that
+    // warp and turns the resulting offset into continuous camera movement.
+    SDL_Event key = {};
+    key.key.windowID = SDL_GetWindowID(screen->window);
+    key.key.keysym.sym = SDLK_RETURN;
+    key.key.keysym.mod = KMOD_ALT;
+    auto toggleFullscreen = [&]() {
+        key.type = SDL_KEYDOWN; assert(input.handlSdlEvent(&key));
+        key.type = SDL_KEYUP; assert(input.handlSdlEvent(&key));
+        U32 until = SDL_GetTicks() + 250;
+        do {
+            input.processEvents();
+            SDL_Delay(5);
+        } while ((S32)(SDL_GetTicks() - until) < 0);
+    };
+    input.setMousePos(320, 240);
+    input.processEvents();
+    toggleFullscreen();
+    assert(sdlStatusBarIsFullscreen() && !input.isMouseCaptureReleased());
+    auto assertCentered = [&]() {
+        int globalX, globalY, windowX, windowY;
+        SDL_GetGlobalMouseState(&globalX, &globalY);
+        SDL_GetWindowPosition(screen->window, &windowX, &windowY);
+        if (std::abs(globalX - windowX - input.xToScreen(320)) > 1 ||
+                std::abs(globalY - windowY - input.yToScreen(240)) > 1)
+            fprintf(stderr, "Fullscreen mouse-look recenter: %d,%d; expected %d,%d\n",
+                globalX - windowX, globalY - windowY, input.xToScreen(320), input.yToScreen(240));
+        assert(std::abs(globalX - windowX - input.xToScreen(320)) <= 1);
+        assert(std::abs(globalY - windowY - input.yToScreen(240)) <= 1);
+    };
+#ifdef __APPLE__
+    assertCentered(); // Automatic recapture restores the saved virtual position.
+#endif
+    for (int warp = 0; warp < 3; ++warp) {
+        input.setMousePos(320, 240);
+        assertCentered();
+    }
+    toggleFullscreen();
+    assert(!sdlStatusBarIsFullscreen() && !input.isMouseCaptureReleased());
+    puts("Captured fullscreen shortcut preserves mouse-look recentering");
+    // Capture in a window, release, then enter fullscreen from the status bar.
+    // Cocoa used to retain the 640x480 physical limit after automatic recapture,
+    // even though SDL reported the correct fullscreen confinement rectangle.
+    // Restoring this position after scaling also exceeds the old window bounds.
+    input.setMousePos(500, 400);
+    input.processEvents();
+    input.setMouseCaptureReleased(true);
+    input.processEvents();
+    SDL_Delay(100);
+    input.processEvents();
+    SDL_Window* host = nullptr;
+    for (U32 id = 1; id < SDL_GetWindowID(screen->window) + 20; ++id) {
+        SDL_Window* candidate = SDL_GetWindowFromID(id);
+        if (candidate && sdlStatusBarOwns(candidate) && (SDL_GetWindowFlags(candidate) & SDL_WINDOW_SHOWN)) host = candidate;
+    }
+    assert(host);
+    SDL_WarpMouseInWindow(host, 580, 495);
+    input.processEvents();
+    SDL_Event click = {};
+    click.button.windowID = SDL_GetWindowID(host);
+    click.button.button = SDL_BUTTON_LEFT;
+    click.button.x = 580; click.button.y = 495;
+    click.type = SDL_MOUSEBUTTONDOWN; assert(input.handlSdlEvent(&click));
+    click.type = SDL_MOUSEBUTTONUP; assert(input.handlSdlEvent(&click));
+    // Exercise normal event processing, without manually refreshing capture.
+    U32 until = SDL_GetTicks() + 250;
+    do {
+        input.processEvents();
+        SDL_Delay(5);
+    } while ((S32)(SDL_GetTicks() - until) < 0);
+    assert(!input.isMouseCaptureReleased());
+    assert(SDL_GetWindowGrab(screen->window));
+    int width, height;
+    SDL_GetWindowSize(screen->window, &width, &height);
+    U32 expected = std::min(width * 100 / 640, height * 100 / 480);
+    assert(screen->input->scaleX == expected && screen->input->scaleY == expected);
+    assert(screen->screenWidth() == 640 && screen->screenHeight() == 480);
+    assert(screen->input->scaleXOffset == (width - 640 * expected / 100) / 2);
+    assert(screen->input->scaleYOffset == (height - 480 * expected / 100) / 2);
+    SDL_Rect expectedRect = {(int)input.scaleXOffset, (int)input.scaleYOffset,
+        (int)(640 * expected / 100), (int)(480 * expected / 100)};
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+    const SDL_Rect* captured = SDL_GetWindowMouseRect(screen->window);
+    assert(captured && SDL_RectEquals(captured, &expectedRect));
+#endif
+    testViewportMouseCapture(input, screen->window, expectedRect);
+    // A game can change its own mode while fullscreen. Return to a window
+    // sized for that mode, retaining the original windowed scale.
+    screen->setScreenSize(800, 600);
+    assert(sdlStatusBarToggleFullscreen());
+    settleStatusBar();
+    SDL_GetWindowSize(screen->window, &width, &height);
+    assert(width == 800 && height == 600);
+    assert(screen->input->scaleX == 100 && screen->input->scaleY == 100);
+    assert(screen->input->scaleXOffset == 0 && screen->input->scaleYOffset == 0);
+    testViewportMouseCapture(*screen->input, screen->window, {0, 0, 800, 600});
+    screen.reset();
+    KNativeSystem::shutdown();
+    puts("Software fullscreen scaling, guest mode preservation and mode-change restoration checks passed");
+}
+
+static void testRuntimeFullscreen(SDL_Window* guest, SDL_Window* host) {
+    int x, y;
+    SDL_GetWindowPosition(host, &x, &y);
+    KNativeInputSDL input(640, 480, 100, 100);
+    input.mouseConfinementRequested = true;
+    auto refreshInput = [&]() {
+        input.processEvents();
+        SDL_PumpEvents();
+        SDL_Event event = {}; event.type = SDL_WINDOWEVENT;
+        event.window.windowID = SDL_GetWindowID(guest);
+        event.window.event = SDL_WINDOWEVENT_FOCUS_GAINED;
+        assert(input.handlSdlEvent(&event));
+    };
+    refreshInput();
+    // Entering fullscreen by shortcut recaptures a waiting game without a click.
+    input.setMouseCaptureReleased(true);
+    assert(input.isMouseCaptureReleased());
+    SDL_Event key = {};
+    key.type = SDL_KEYDOWN;
+    key.key.windowID = SDL_GetWindowID(host);
+    key.key.keysym.sym = SDLK_RETURN;
+    key.key.keysym.mod = KMOD_ALT;
+    assert(input.handlSdlEvent(&key));
+    settleStatusBar();
+    refreshInput();
+    assert(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN);
+    assert(!(SDL_GetWindowFlags(host) & SDL_WINDOW_SHOWN));
+    assert(!input.isMouseCaptureReleased());
+    SDL_PumpEvents();
+    refreshInput();
+    assert(SDL_GetKeyboardFocus() == guest);
+    assert(SDL_GetWindowGrab(guest));
+    // Fullscreen hides the outer host, but motion queued for it may arrive
+    // after the guest has capture. These are not user requests to release it.
+    for (U32 type : {SDL_MOUSEMOTION, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP, SDL_KEYDOWN}) {
+        SDL_Event stale = {};
+        stale.type = type;
+        stale.window.windowID = SDL_GetWindowID(host);
+        if (type == SDL_MOUSEMOTION) { stale.motion.x = 200; stale.motion.y = 495; }
+        if (type == SDL_MOUSEBUTTONDOWN || type == SDL_MOUSEBUTTONUP) {
+            stale.button.button = SDL_BUTTON_LEFT; stale.button.x = 580; stale.button.y = 495;
+        }
+        if (type == SDL_KEYDOWN) stale.key.keysym.sym = SDLK_SPACE;
+        assert(input.handlSdlEvent(&stale));
+        assert(!input.isMouseCaptureReleased() && SDL_GetWindowGrab(guest));
+        assert(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN);
+    }
+    key.key.repeat = 1;
+    assert(input.handlSdlEvent(&key));
+    assert(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN);
+    key.type = SDL_KEYUP;
+    key.key.keysym.mod = 0; // Alt may be released before Enter.
+    assert(input.handlSdlEvent(&key));
+    sdlStatusBarTick();
+    SDL_Window* hint = nullptr;
+    for (U32 id = 1; id < 64; ++id) {
+        auto candidate = SDL_GetWindowFromID(id);
+        if (candidate && !strcmp(SDL_GetWindowTitle(candidate), "Boxedwine fullscreen hint")) hint = candidate;
+    }
+    if (!hint) fprintf(stderr, "Missing fullscreen hint: guest flags=%x, SDL: %s\n", SDL_GetWindowFlags(guest), SDL_GetError());
+    assert(hint);
+    // Simulate a window-system repaint losing the hint's original contents.
+    // Exposure must restore the pixels even when the owner size is unchanged.
+    SDL_Renderer* hintRenderer = SDL_GetRenderer(hint);
+    assert(hintRenderer);
+    SDL_SetRenderDrawColor(hintRenderer, 255, 0, 255, 255);
+    SDL_RenderClear(hintRenderer);
+    SDL_RenderPresent(hintRenderer);
+    SDL_Event exposed = {};
+    exposed.type = SDL_WINDOWEVENT;
+    exposed.window.windowID = SDL_GetWindowID(hint);
+    exposed.window.event = SDL_WINDOWEVENT_EXPOSED;
+    assert(input.handlSdlEvent(&exposed));
+    sdlStatusBarTick();
+    SDL_Rect corner = {0, 0, 1, 1};
+    U8 hintPixel[4] = {};
+    assert(SDL_RenderReadPixels(hintRenderer, &corner, SDL_PIXELFORMAT_RGBA32, hintPixel, 4) == 0);
+    assert(hintPixel[0] == 34 && hintPixel[1] == 39 && hintPixel[2] == 48);
+    SDL_Event passive = {}; passive.type = SDL_MOUSEMOTION;
+    passive.motion.windowID = SDL_GetWindowID(hint);
+    assert(input.handlSdlEvent(&passive));
+    assert(!input.isMouseCaptureReleased() && SDL_GetWindowGrab(guest));
+#ifdef BOXEDWINE_MSVC
+    assert(SDL_GetWindowFlags(hint) & SDL_WINDOW_SHOWN);
+    SDL_SysWMinfo info = {}; SDL_VERSION(&info.version);
+    assert(SDL_GetWindowWMInfo(hint, &info));
+    LONG_PTR style = GetWindowLongPtr(info.info.win.window, GWL_EXSTYLE);
+    assert((style & (WS_EX_NOACTIVATE | WS_EX_TRANSPARENT | WS_EX_LAYERED)) ==
+        (WS_EX_NOACTIVATE | WS_EX_TRANSPARENT | WS_EX_LAYERED));
+#endif
+    SDL_Delay(4050);
+    sdlStatusBarTick();
+    assert(!(SDL_GetWindowFlags(hint) & SDL_WINDOW_SHOWN));
+    key.type = SDL_KEYDOWN;
+    key.key.windowID = SDL_GetWindowID(guest);
+    key.key.keysym.mod = KMOD_ALT;
+    key.key.repeat = 0;
+    assert(input.handlSdlEvent(&key));
+    settleStatusBar();
+    assert(!(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN));
+    key.type = SDL_KEYUP;
+    assert(input.handlSdlEvent(&key));
+    SDL_PumpEvents();
+    refreshInput();
+    SDL_Window* focused = SDL_GetKeyboardFocus();
+    assert(focused && sdlStatusBarInputWindow(focused) == guest && SDL_GetWindowGrab(focused));
+    assert(!input.isMouseCaptureReleased());
+    int w, h, restoredX, restoredY;
+    SDL_GetWindowSize(guest, &w, &h);
+    SDL_GetWindowPosition(host, &restoredX, &restoredY);
+    printf("Restored %dx%d at %d,%d (expected 640x480 at %d,%d)\n", w, h, restoredX, restoredY, x, y);
+    assert(w == 640 && h == 480 && restoredX == x && restoredY == y);
+    assert(input.width == 640 && input.height == 480);
+    input.mouseConfinementRequested = false;
+    refreshInput();
+    // Both halves of a button click are required. Neither may reach Wine.
+    SDL_Event click = {}; click.type = SDL_MOUSEBUTTONUP;
+    click.button.windowID = SDL_GetWindowID(host);
+    click.button.button = SDL_BUTTON_LEFT;
+    click.button.x = 580; click.button.y = 495;
+    assert(sdlStatusBarEvent(click));
+    assert(!(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN));
+    click.type = SDL_MOUSEBUTTONDOWN; assert(sdlStatusBarEvent(click));
+    click.type = SDL_MOUSEBUTTONUP; assert(sdlStatusBarEvent(click));
+    settleStatusBar();
+    assert(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN);
+    assert(sdlStatusBarToggleFullscreen());
+    settleStatusBar();
+    assert(!(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN));
+    // Exercise the status-bar button through the real input routing too. The
+    // mouse-up that enters fullscreen must recapture a game, but not a desktop
+    // app whose cursor was temporarily released over the host controls.
+    for (bool game : {true, false}) {
+        input.mouseConfinementRequested = game;
+        refreshInput();
+        input.releaseMouseForHostUi();
+        assert(input.isMouseCaptureReleased());
+        click.type = SDL_MOUSEBUTTONDOWN; assert(input.handlSdlEvent(&click));
+        click.type = SDL_MOUSEBUTTONUP; assert(input.handlSdlEvent(&click));
+        settleStatusBar();
+        refreshInput();
+        assert(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN);
+        assert(input.isMouseCaptureReleased() == !game);
+        assert((SDL_GetWindowGrab(guest) == SDL_TRUE) == game);
+        assert(input.pressedMouseButtons == 0); // Host clicks never reach Wine.
+        if (game) {
+            // The release shortcut remains effective while fullscreen.
+            SDL_Event release = {}; release.type = SDL_KEYDOWN;
+            release.key.windowID = SDL_GetWindowID(guest);
+            release.key.keysym.sym = SDLK_g;
+            release.key.keysym.mod = KMOD_CTRL | KMOD_ALT;
+            assert(input.handlSdlEvent(&release));
+            release.type = SDL_KEYUP; assert(input.handlSdlEvent(&release));
+            assert(input.isMouseCaptureReleased() && !SDL_GetWindowGrab(guest));
+        }
+        key.type = SDL_KEYDOWN; assert(input.handlSdlEvent(&key));
+        key.type = SDL_KEYUP; assert(input.handlSdlEvent(&key));
+        settleStatusBar();
+        refreshInput();
+        assert(!(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN));
+        assert(input.isMouseCaptureReleased()); // Exiting never recaptures.
+        input.setMouseCaptureReleased(false);
+        input.mouseConfinementRequested = false;
+        refreshInput();
+    }
+    puts("Fullscreen button and shortcut recapture waiting games; desktop input and explicit release are preserved");
+#ifdef __APPLE__
+    // A release during Cocoa's settling period must cancel automatic capture.
+    input.mouseConfinementRequested = true;
+    refreshInput();
+    input.setMouseCaptureReleased(true);
+    key.type = SDL_KEYDOWN; assert(input.handlSdlEvent(&key));
+    key.type = SDL_KEYUP; assert(input.handlSdlEvent(&key));
+    assert(input.fullscreenCaptureWindowId);
+    SDL_Event release = {}; release.type = SDL_KEYDOWN;
+    release.key.windowID = SDL_GetWindowID(guest);
+    release.key.keysym.sym = SDLK_g;
+    release.key.keysym.mod = KMOD_CTRL | KMOD_ALT;
+    assert(input.handlSdlEvent(&release));
+    release.type = SDL_KEYUP; assert(input.handlSdlEvent(&release));
+    settleStatusBar();
+    refreshInput();
+    assert(input.isMouseCaptureReleased() && !SDL_GetWindowGrab(guest));
+    assert(!input.fullscreenCaptureWindowId);
+    key.type = SDL_KEYDOWN; assert(input.handlSdlEvent(&key));
+    key.type = SDL_KEYUP; assert(input.handlSdlEvent(&key));
+    settleStatusBar();
+    input.mouseConfinementRequested = false;
+    input.setMouseCaptureReleased(false);
+    puts("Release cancels pending macOS fullscreen capture");
+#endif
+    puts("Runtime fullscreen, capture, hint timeout, button and window restoration checks passed");
+}
+
+static void testCaptureWindowReplacement() {
+    sdlStatusBarConfigure(true);
+    auto create = [] {
+        SDL_Window* window = SDL_CreateWindow("Capture handoff", 20, 20, 640, 480, SDL_WINDOW_HIDDEN);
+        assert(window);
+        sdlStatusBarShowWindow(window, true);
+        return window;
+    };
+    SDL_Window* guest = create();
+    assert(sdlStatusBarToggleFullscreen());
+    settleStatusBar();
+    KNativeInputSDL input(640, 480, 100, 100);
+    input.mouseConfinementRequested = true;
+    input.updateMouseConfinement(guest);
+    assert(SDL_GetWindowGrab(guest) && !input.isMouseCaptureReleased());
+    for (bool explicitlyReleased : {false, true}) {
+        if (explicitlyReleased) input.setMouseCaptureReleased(true);
+        sdlStatusBarWindowDestroyed(guest);
+        SDL_DestroyWindow(guest);
+        guest = create();
+        settleStatusBar();
+        assert(SDL_GetWindowFlags(guest) & SDL_WINDOW_FULLSCREEN);
+        input.updateMouseConfinement(guest);
+        assert(input.isMouseCaptureReleased() == explicitlyReleased);
+        assert((SDL_GetWindowGrab(guest) == SDL_TRUE) == !explicitlyReleased);
+        SDL_Window* host = nullptr;
+        for (U32 id = 1; id < 128; ++id) {
+            SDL_Window* candidate = SDL_GetWindowFromID(id);
+            if (candidate && sdlStatusBarOwns(candidate) && !strcmp(SDL_GetWindowTitle(candidate), "Capture handoff")) host = candidate;
+        }
+        assert(host && !(SDL_GetWindowFlags(host) & SDL_WINDOW_SHOWN));
+        SDL_Event stale = {}; stale.type = SDL_MOUSEMOTION;
+        stale.motion.windowID = SDL_GetWindowID(host);
+        stale.motion.x = 100; stale.motion.y = 495;
+        assert(input.handlSdlEvent(&stale));
+        assert(input.isMouseCaptureReleased() == explicitlyReleased);
+        assert((SDL_GetWindowGrab(guest) == SDL_TRUE) == !explicitlyReleased);
+    }
+    input.mouseConfinementRequested = false;
+    input.updateMouseConfinement(nullptr);
+    sdlStatusBarWindowDestroyed(guest);
+    SDL_DestroyWindow(guest);
+    sdlStatusBarConfigure(true);
+    puts("Fullscreen window replacement preserves capture and explicit release; hidden host input is ignored");
+}
+
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
     SDL_SetMainReady();
-    assert(SDL_Init(SDL_INIT_VIDEO) == 0);
+    extern bool doMainLoop();
+    doMainLoop(); // Register this thread as SDL's owner; there are no guest threads.
+    assert(KNativeSystem::init(VIDEO_NORMAL, false));
+    // Recapture restores the virtual pointer through the native screen. Keep
+    // an offscreen runtime screen while the harness owns its test windows.
+    auto videoOption = KSystem::videoOption;
+    KSystem::videoOption = VIDEO_NO_WINDOW;
+    KNativeSystem::initWindow(640, 480, 32, 100, 100, B("0"), FULLSCREEN_NOTSET, VSYNC_DISABLED);
+    KSystem::videoOption = videoOption;
     const BString root = B("../../tmp/statusbar-native-test-root");
     std::filesystem::create_directories(root.c_str());
     assert(Fs::initFileSystem(root));
@@ -192,7 +734,28 @@ int main(int argc, char** argv) {
         SDL_GetWindowSize(guest, &w, &h);
         assert(w == 640 && h == 480);
         assert(sdlStatusBarInputWindow(host) == guest);
+        settleStatusBar();
+#ifdef SDL_VIDEO_DRIVER_X11
+        // Wait for the WM's initial map/activation before requesting guest
+        // focus, as a user click would before starting a capture gesture.
+        SDL_SetWindowInputFocus(guest);
+        settleStatusBar();
+        if (argc > 1 && (!strcmp(argv[1], "--native-fullscreen") || !strcmp(argv[1], "--native-resize"))) {
+            if (!strcmp(argv[1], "--native-resize")) testNativeEmbeddedResize(guest, host);
+            else testNativeFullscreenShortcut(guest, host);
+            sdlStatusBarConfigure(false);
+            SDL_DestroyWindow(guest);
+            Fs::shutDown();
+            SDL_Quit();
+            if (nativeXtest) SDL_UnloadObject(nativeXtest);
+            return 0;
+        }
+#endif
+#ifdef __APPLE__
+        testCocoaFullscreenButton(guest, host);
+#endif
         testEmbeddedMouseCapture(guest, host);
+        testRuntimeFullscreen(guest, host);
         SDL_Event key = {};
         key.type = SDL_KEYDOWN;
         key.key.windowID = SDL_GetWindowID(host);
@@ -351,6 +914,8 @@ int main(int argc, char** argv) {
     }
 #ifdef __APPLE__
     testCocoaVulkanStatusBar();
+    // Model a fresh launch, without the earlier runtime windowed preference.
+    sdlStatusBarConfigure(true);
     // Fullscreen uses the original guest window; the menu must still be
     // available without exposing the windowed status-bar host.
     SDL_Window* full = SDL_CreateWindow("Fullscreen status bar harness", 0, 0, 640, 480,
@@ -358,10 +923,24 @@ int main(int argc, char** argv) {
     assert(full);
     sdlStatusBarShowWindow(full, true);
     sdlStatusBarTick();
+    assert(SDL_GetWindowFlags(full) & SDL_WINDOW_FULLSCREEN);
     assert(sdlStatusBarInputWindow(full) == full);
+    settleStatusBar();
+    int hostWidth, hostHeight;
+    SDL_GetWindowSize(full, &hostWidth, &hostHeight);
+    macOpenGLConfigureFullscreen(full, 640, 480, true);
+    KNativeInputSDL capturedInput(640, 480, 100, 100);
+    for (auto size : {SDL_Point{640, 480}, SDL_Point{1280, 480}}) {
+        assert(macOpenGLResizeFullscreen(full, size.x, size.y));
+        auto viewport = OpenGLViewport::fit(hostWidth, hostHeight, size.x, size.y, true);
+        testViewportMouseCapture(capturedInput, full, {viewport.x, viewport.y, viewport.width, viewport.height});
+        assert(capturedInput.openGLViewport.guestWidth == size.x && capturedInput.openGLViewport.guestHeight == size.y);
+    }
+    puts("GL pillarbox/letterbox capture, immediate edge reversal, release and focus-loss checks passed");
     for (U32 id = 1; id < 32; ++id) {
         SDL_Window* candidate = SDL_GetWindowFromID(id);
-        if (sdlStatusBarOwns(candidate)) assert(!(SDL_GetWindowFlags(candidate) & SDL_WINDOW_SHOWN));
+        if (sdlStatusBarOwns(candidate) && strcmp(SDL_GetWindowTitle(candidate), "Boxedwine fullscreen hint"))
+            assert(!(SDL_GetWindowFlags(candidate) & SDL_WINDOW_SHOWN));
     }
     sdlStatusBarOpen();
     SDL_Window* fullscreenMenu = nullptr;
@@ -378,6 +957,8 @@ int main(int argc, char** argv) {
     SDL_DestroyWindow(full);
     puts("Cocoa fullscreen menu lifecycle checks passed");
 #endif
+    testCaptureWindowReplacement();
+    testSoftwareFullscreenScale();
     sdlStatusBarConfigure(false);
     Fs::shutDown();
     SDL_Quit();

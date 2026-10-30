@@ -130,7 +130,7 @@ struct RuntimeWindowMarker {
 /// All mutable state and descriptor access after start are confined to `queue`.
 /// Output is drained even after a disk error, so diagnostics cannot block the guest.
 final class RuntimeLogCapture: @unchecked Sendable {
-    let pipe = Pipe()
+    private let input: FileHandle
     private let file: FileHandle
     private let queue = DispatchQueue(label: "org.boxedwine.runtime-log", qos: .utility)
     private var source: DispatchSourceRead?
@@ -141,13 +141,14 @@ final class RuntimeLogCapture: @unchecked Sendable {
     private var windowMarker = RuntimeWindowMarker()
     private var onWindowShown: (@Sendable () -> Void)?
 
-    init(url: URL, executable: URL? = nil, onWindowShown: (@Sendable () -> Void)? = nil) throws {
+    init(url: URL, executable: URL? = nil, input: FileHandle, preparedFile: FileHandle? = nil, onWindowShown: (@Sendable () -> Void)? = nil) throws {
         self.onWindowShown = onWindowShown
-        let descriptor = pipe.fileHandleForReading.fileDescriptor
+        self.input = input
+        let descriptor = input.fileDescriptor
         guard fcntl(descriptor, F_SETFL, O_NONBLOCK) != -1 else {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
-        file = try LaunchLog.prepare(url)
+        file = try preparedFile ?? LaunchLog.prepare(url)
         let header = "Boxedwine launch — \(ISO8601DateFormatter().string(from: Date()))\n" +
             (executable.map { "Engine: \($0.path)\n" } ?? "") + "\n"
         try file.write(contentsOf: Data(header.utf8))
@@ -157,14 +158,12 @@ final class RuntimeLogCapture: @unchecked Sendable {
     deinit { source?.cancel() }
 
     func start() {
-        let source = DispatchSource.makeReadSource(fileDescriptor: pipe.fileHandleForReading.fileDescriptor, queue: queue)
+        let source = DispatchSource.makeReadSource(fileDescriptor: input.fileDescriptor, queue: queue)
         self.source = source
         source.setEventHandler { [weak self] in self?.drain() }
-        source.setCancelHandler { [pipe] in try? pipe.fileHandleForReading.close() }
+        source.setCancelHandler { [input] in try? input.close() }
         source.resume()
     }
-
-    func childStarted() { try? pipe.fileHandleForWriting.close() }
 
     func finish(_ message: String, completion: @escaping @Sendable (String?) -> Void) {
         queue.async { [self] in
@@ -174,7 +173,6 @@ final class RuntimeLogCapture: @unchecked Sendable {
     }
 
     func failedToStart(_ message: String) {
-        childStarted()
         // Complete the failed attempt before a retry can rotate it into Previous.
         queue.sync { complete(message) }
     }
@@ -194,7 +192,7 @@ final class RuntimeLogCapture: @unchecked Sendable {
         var buffer = [UInt8](repeating: 0, count: 64 * 1024)
         // A descendant that inherited stdout must not hold the termination callback open.
         for _ in 0..<32 {
-            let count = Darwin.read(pipe.fileHandleForReading.fileDescriptor, &buffer, buffer.count)
+            let count = Darwin.read(input.fileDescriptor, &buffer, buffer.count)
             if count > 0 {
                 let data = Data(buffer.prefix(count))
                 // Observe pipe output independently of log retention or disk errors.

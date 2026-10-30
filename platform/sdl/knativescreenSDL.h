@@ -113,6 +113,10 @@ public:
     void buildCursor(KThread* thread, const std::shared_ptr<XCursor>& cursor, U32 pixelsAddress, U32 width, U32 height, S32 xHot, S32 yHot) override;
 
     KNativeInputSDLPtr input;
+
+    // SDL thread only: resize the host presentation without changing guest mode.
+    void hostFullscreenChanged(SDL_Window* target, bool fullscreen);
+    void windowedSize(SDL_Window* target, int& width, int& height);
     
 private:
     friend class KVulkdanSDLImpl;
@@ -124,6 +128,7 @@ private:
     U32 bpp = 0;
     BString scaleQuality;
     U32 fullScreen;
+    U32 windowedScaleX = 100, windowedScaleY = 100;
     U32 vsync;
     U32 defaultScreenWidth;
     U32 defaultScreenHeight;

@@ -191,8 +191,7 @@ class BundleAuditTests(unittest.TestCase):
         launcher = {"com.apple.security.app-sandbox": True,
                     "com.apple.security.files.user-selected.read-write": True,
                     "com.apple.security.network.client": True, "com.apple.security.network.server": True}
-        runtime = {"com.apple.security.app-sandbox": True, "com.apple.security.inherit": True,
-                   "com.apple.security.cs.allow-jit": True}
+        runtime = dict(launcher, **{"com.apple.security.cs.allow-jit": True})
         self.assertEqual(module.entitlement_errors("Debug", developer, developer), [])
         self.assertTrue(module.entitlement_errors("Debug", launcher, runtime))
         self.assertTrue(module.entitlement_errors("Debug", developer, {}))
@@ -207,6 +206,10 @@ class BundleAuditTests(unittest.TestCase):
             readonly["com.apple.security.files.user-selected.read-only"] = True
             self.assertTrue(module.entitlement_errors(configuration, readonly, runtime))
             self.assertTrue(module.entitlement_errors(configuration, dict(launcher, **{"com.apple.security.inherit": True}), runtime))
+            self.assertTrue(module.entitlement_errors(configuration, launcher, dict(runtime, **{"com.apple.security.inherit": True})))
+            missing_picker = dict(runtime)
+            missing_picker.pop("com.apple.security.files.user-selected.read-write")
+            self.assertTrue(module.entitlement_errors(configuration, launcher, missing_picker))
 
     def test_distribution_requires_developer_id_timestamp_runtime_and_matching_team(self):
         details = "CodeDirectory v=20500 flags=0x10000(runtime)\nAuthority=Developer ID Application: Test (TEAM123)\nTeamIdentifier=TEAM123\nTimestamp=Sep 13, 2026 at 12:00:00\n"

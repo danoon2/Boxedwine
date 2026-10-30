@@ -542,9 +542,8 @@ struct DemoTests {
         let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
         var link = ZipFixture.File("link", "../../outside"); link.attributes = 0xa1ff << 16
         var crc = ZipFixture.File("DEMO.EXE", "MZdemo"); crc.checksum = 0
-        var huge = ZipFixture.File("large", ""); huge.expandedSize = 600 * 1024 * 1024
         let variants: [[ZipFixture.File]] = [[.init("../outside", "bad")], [.init("/outside", "bad")], [.init("C:/outside", "bad")], [.init("a\\..\\outside", "bad")],
-            [link], [crc], [huge], [.init("DEMO.EXE", "a"), .init("demo.exe", "b")], [.init("folder", "a"), .init("folder/file", "b")]]
+            [link], [crc], [.init("DEMO.EXE", "a"), .init("demo.exe", "b")], [.init("folder", "a"), .init("folder/file", "b")]]
         for files in variants {
             let data = ZipFixture.archive(files)
             do { _ = try await f.repository.importDemo(demo(data), runtime: f.runtime, downloader: Download(data: data)); Issue.record("Unsafe ZIP imported") }
@@ -552,6 +551,28 @@ struct DemoTests {
             try unchanged(f)
             #expect(!FileManager.default.fileExists(atPath: f.base.appendingPathComponent("outside").path))
         }
+    }
+
+    // Just above the former 512 MiB / 2 GiB caps, beyond ZIP32, and ZIP64's maximum.
+    private static let largeArchiveSizes: [UInt64] = [536_870_913, 2_147_483_649, 4_294_967_296, .max]
+
+    @Test(arguments: largeArchiveSizes)
+    func largeZipAndZip64EntriesAreStreamedAndCheckedForTruncation(_ size: UInt64) async throws {
+        let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
+        // A deliberately truncated payload exercises the real import path
+        // without allocating gigabytes. Size alone must not reject its header;
+        // the missing contents must still fail the streaming integrity check.
+        var file = ZipFixture.File("Disc.iso", ""); file.expandedSize = size
+        let data = ZipFixture.archive([file])
+        var recipe = demo(data, type: .disc)
+        recipe.discImages = ["Disc.iso"]
+        do {
+            _ = try await f.repository.importDemo(recipe, runtime: f.runtime, downloader: Download(data: data))
+            Issue.record("Truncated disc imported")
+        } catch DemoError.archive(let reason) {
+            #expect(reason == "The entry is incomplete.")
+        }
+        try unchanged(f)
     }
 
     @Test func failedLibraryCommitCanDiscardOnlyTheNewDemo() async throws {

@@ -37,7 +37,9 @@ struct Presentation {
     std::mutex mutex;
     std::atomic<int> width, height;
     int backingWidth = 0, backingHeight = 0;
-    const bool aspect;
+    std::atomic<bool> aspect;
+    std::atomic<bool> enabled{true};
+    bool runtimeManaged = false;
     Display* display = nullptr;
     GLXDrawable windowDrawable = 0;
     GLXPbuffer backing = 0;
@@ -335,13 +337,32 @@ bool linuxOpenGLResizeFullscreen(SDL_Window* window, int width, int height) {
         p->width = width;
         p->height = height;
     }
+    return p->enabled && (!p->runtimeManaged || (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN));
+}
+
+bool linuxOpenGLPrepareWindow(SDL_Window* window, int width, int height) {
+    // Publish before any guest rendering thread uses this window. Wayland's
+    // hidden backing surface must also be created on the SDL thread.
+    if (!linuxOpenGLConfigureFullscreen(window, width, height, true)) return false;
+    auto p = presentation(window);
+    p->enabled = false;
+    p->runtimeManaged = true;
     return true;
+}
+
+void linuxOpenGLEnableFullscreen(SDL_Window* window) {
+    if (auto p = presentation(window)) {
+        p->runtimeManaged = true;
+        p->aspect = true;
+        p->enabled = true;
+    }
 }
 
 OpenGLViewport linuxOpenGLGetViewport(SDL_Window* window) {
     int width = 0, height = 0;
     SDL_GetWindowSize(window, &width, &height);
     if (auto p = presentation(window)) {
+        if (!p->enabled) return {};
         // Never wait on rendering from the UI thread: a GLX driver can
         // synchronously send window messages while binding/swapping surfaces.
         return OpenGLViewport::fit(width, height, p->width, p->height, p->aspect);
@@ -354,20 +375,26 @@ bool linuxOpenGLMakeCurrent(SDL_Window* window, SDL_GLContext context) {
         if (SDL_GL_MakeCurrent(window, context) != 0) return false;
     }
     auto p = presentation(window);
-    if (!p) return true;
+    if (!p || !p->enabled) return true;
     std::lock_guard<std::mutex> lock(p->mutex);
     return p->initialize(window) && p->bind(context);
 }
 
 bool linuxOpenGLSetSwapInterval(SDL_Window* window, int interval) {
-    if (auto p = presentation(window)) { p->interval = interval; return true; }
+    if (auto p = presentation(window)) { p->interval = interval; if (p->enabled) return true; }
     return SDL_GL_GetSwapInterval() == interval || SDL_GL_SetSwapInterval(interval) == 0;
 }
 
 bool linuxOpenGLSwapBuffers(SDL_Window* window, bool swap) {
     auto p = presentation(window);
-    if (!p) return false;
+    if (!p || !p->enabled) return false;
     std::lock_guard<std::mutex> lock(p->mutex);
+    // A running game need not call MakeCurrent after a host fullscreen toggle.
+    // Adopt the backing on its rendering thread before the next frame.
+    if (!p->initialized || !p->hasBacking()) {
+        auto context = SDL_GL_GetCurrentContext();
+        if (context && p->initialize(window) && p->bind(context)) return true;
+    }
     if (!p->present(window, swap) && !p->warned) {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not present the fullscreen OpenGL buffer: %s", SDL_GetError());
         p->warned = true;

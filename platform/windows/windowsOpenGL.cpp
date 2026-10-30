@@ -52,7 +52,9 @@ struct Presentation {
     std::mutex mutex;
     std::atomic<int> width, height;
     int backingWidth = 0, backingHeight = 0;
-    const bool aspect;
+    std::atomic<bool> aspect;
+    std::atomic<bool> enabled{true};
+    bool runtimeManaged = false;
     HDC windowDC = nullptr, backingDC = nullptr;
     HANDLE backing = nullptr;
     CreatePbuffer create = nullptr;
@@ -212,17 +214,35 @@ void windowsOpenGLConfigureFullscreen(SDL_Window* window, int width, int height,
     SDL_SetWindowData(window, presentationKey, new Presentation(width, height, aspect));
 }
 
+void windowsOpenGLPrepareWindow(SDL_Window* window, int width, int height) {
+    // Publish once, before a guest GL thread can use the window. Windowed GL
+    // continues directly until the user first requests scaled fullscreen.
+    auto p = new Presentation(width, height, true);
+    p->enabled = false;
+    p->runtimeManaged = true;
+    SDL_SetWindowData(window, presentationKey, p);
+}
+
+void windowsOpenGLEnableFullscreen(SDL_Window* window) {
+    if (auto p = presentation(window)) {
+        p->runtimeManaged = true;
+        p->aspect = true;
+        p->enabled = true;
+    }
+}
+
 bool windowsOpenGLResizeFullscreen(SDL_Window* window, int width, int height) {
     auto p = presentation(window);
     if (!p) return false;
     if (width > 0 && height > 0) { p->width = width; p->height = height; }
-    return true;
+    return p->enabled && (!p->runtimeManaged || (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN));
 }
 
 OpenGLViewport windowsOpenGLGetViewport(SDL_Window* window) {
     int width = 0, height = 0;
     SDL_GetWindowSize(window, &width, &height);
     if (auto p = presentation(window)) {
+        if (!p->enabled) return {};
         // Never wait on rendering from the UI thread: a Windows GL driver can
         // synchronously send window messages while binding/swapping surfaces.
         return OpenGLViewport::fit(width, height, p->width, p->height, p->aspect);
@@ -235,14 +255,14 @@ bool windowsOpenGLMakeCurrent(SDL_Window* window, SDL_GLContext context) {
         if (SDL_GL_MakeCurrent(window, context) != 0) return false;
     }
     auto p = presentation(window);
-    if (!p) return true;
+    if (!p || !p->enabled) return true;
     std::lock_guard<std::mutex> lock(p->mutex);
     return p->initialize(window) && p->bind(context);
 }
 
 bool windowsOpenGLSwapBuffers(SDL_Window* window, bool swap) {
     auto p = presentation(window);
-    if (!p) {
+    if (!p || !p->enabled) {
         if (!swap) return false;
         // SDL2's Windows backend calls GDI SwapBuffers, which dispatches through
         // the system OpenGL library even when SDL loaded a different one. Mesa
@@ -257,6 +277,12 @@ bool windowsOpenGLSwapBuffers(SDL_Window* window, bool swap) {
         return true;
     }
     std::lock_guard<std::mutex> lock(p->mutex);
+    // A running context may not call MakeCurrent again after Alt+Enter. Bind
+    // its backing on this rendering thread, without touching GL from the UI.
+    if (!p->backing) {
+        auto context = SDL_GL_GetCurrentContext();
+        if (context && p->initialize(window) && p->bind(context)) return true;
+    }
     if (!p->present(window, swap) && !p->warned) {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not present the fullscreen OpenGL buffer: %s (Windows error %lu)", SDL_GetError(), GetLastError());
         p->warned = true;

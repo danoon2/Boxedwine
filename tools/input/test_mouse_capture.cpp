@@ -37,6 +37,18 @@ static SDL_Window* window(U32 id) { return reinterpret_cast<SDL_Window*>(uintptr
 extern "C" SDL_Window* SDL_GetKeyboardFocus() { return focused; }
 extern "C" SDL_Window* SDL_GetWindowFromID(Uint32 id) { return id < 4 && alive[id] ? window(id) : nullptr; }
 extern "C" Uint32 SDL_GetWindowID(SDL_Window* w) { return Uint32(reinterpret_cast<uintptr_t>(w)); }
+extern "C" void SDL_GetWindowSize(SDL_Window*, int* w, int* h) { if (w) *w = 800; if (h) *h = 600; }
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+static SDL_Rect mouseRects[4]{};
+extern "C" const SDL_Rect* SDL_GetWindowMouseRect(SDL_Window* w) {
+    auto& rect = mouseRects[uintptr_t(w)];
+    return SDL_RectEmpty(&rect) ? nullptr : &rect;
+}
+extern "C" int SDL_SetWindowMouseRect(SDL_Window* w, const SDL_Rect* rect) {
+    mouseRects[uintptr_t(w)] = rect ? *rect : SDL_Rect{};
+    return 0;
+}
+#endif
 extern "C" SDL_bool SDL_GetWindowGrab(SDL_Window* w) { return grabbed == w ? SDL_TRUE : SDL_FALSE; }
 extern "C" void SDL_SetWindowGrab(SDL_Window* w, SDL_bool enabled) {
     if (enabled) grabbed = w;
@@ -48,6 +60,112 @@ static void focus(KNativeInputSDL& input, U32 id, bool gained) {
     e.window.windowID = id;
     e.window.event = gained ? SDL_WINDOWEVENT_FOCUS_GAINED : SDL_WINDOWEVENT_FOCUS_LOST;
     assert(input.handlSdlEvent(&e));
+}
+
+static void testMouseLookScaling(KNativeInputSDL& input) {
+    auto server = XServer::getServer();
+    auto root = server->getRoot();
+    auto game = server->createNewWindow(43, root, 800, 600, 32, 70, 30, InputOutput, 0, server->visual);
+    U32 serial = 0;
+    auto display = std::make_shared<DisplayData>();
+    display->displayId = 43;
+    display->displayAddress = 123;
+    display->pCurrentRequest = &serial;
+    server->displays.set(43, display);
+    display->setInput2Mask(root->id, XI_RawMotionMask);
+    server->grabbedId = game->id;
+    server->grabbedDisplayId = 43;
+    server->grabbedConfinedId = 0;
+    server->grabbedMask = PointerMotionMask | ButtonPressMask | ButtonReleaseMask;
+    server->isGrabbed = true;
+    server->setFakeFullScreenWindow(game);
+    server->setMouseFocused(true);
+    server->setMouseCursorVisible(false);
+    const U32 sensitivity = KSystem::relativeMouseSensitivity;
+    const bool forceRelative = KSystem::forceRelativeMouse;
+    for (int mode = 0; mode < 5; ++mode) {
+        input.scaleX = input.scaleY = mode == 0 ? 100 : 200;
+        input.scaleXOffset = 13; input.scaleYOffset = 21;
+        input.openGLViewport = mode < 2 ? OpenGLViewport{} :
+            OpenGLViewport::fit(mode == 2 ? 2000 : mode == 3 ? 1920 : 400,
+                mode == 2 ? 1200 : mode == 3 ? 1080 : 300, 800, 600, true);
+        KSystem::forceRelativeMouse = false;
+        for (U32 percent : {100u, 200u}) {
+            KSystem::relativeMouseSensitivity = percent;
+            input.setMousePos(400, 300);
+            // One physical pixel must survive even a fractional enlargement.
+            for (int delta : {10, 1, -1, -10}) {
+                physicalX = warpX + delta; physicalY = warpY - delta;
+                int x, y;
+                int expectedX = 400 + delta * (int)percent / 100;
+                int expectedY = 300 - delta * (int)percent / 100;
+                for (int repeat = 0; repeat < 2; ++repeat) {
+                    assert(input.getMousePos(&x, &y));
+                    assert(x == expectedX && y == expectedY);
+                }
+                display->eventQueue.clear();
+                assert(input.mouseMove(physicalX, physicalY, false));
+                assert(display->eventQueue.size() == 1);
+                auto event = display->eventQueue.back();
+                assert(event.type == MotionNotify && event.xmotion.x_root == expectedX && event.xmotion.y_root == expectedY);
+                assert(input.mouseButton(1, 0, physicalX, physicalY));
+                event = display->eventQueue.back();
+                assert(event.type == ButtonPress && event.xbutton.x_root == expectedX && event.xbutton.y_root == expectedY);
+                input.mouseWheel(1, physicalX, physicalY);
+                event = display->eventQueue.back();
+                assert(event.type == ButtonRelease && event.xbutton.x_root == expectedX && event.xbutton.y_root == expectedY);
+            }
+        }
+        // Fractional sensitivity accumulates across warps, not across repeated
+        // queries/events for the same physical position.
+        KSystem::relativeMouseSensitivity = 50;
+        input.setMousePos(400, 300);
+        for (int i = 0; i < 6; ++i) {
+            physicalX = warpX + 1; physicalY = warpY - 1;
+            int x, y;
+            input.getMousePos(&x, &y);
+            assert(x == 400 + i % 2 && y == 300 - i % 2);
+            input.getMousePos(&x, &y);
+            assert(x == 400 + i % 2 && y == 300 - i % 2);
+            input.setMousePos(400, 300);
+            physicalX = warpX; physicalY = warpY;
+            input.getMousePos(&x, &y);
+            assert(x == 400 && y == 300);
+        }
+        KSystem::forceRelativeMouse = true;
+        for (int delta : {10, 1, -1, -10}) {
+            display->eventQueue.clear();
+            input.mouseMove(delta, -delta, true);
+            assert(display->eventQueue.size() == 1);
+            auto event = display->eventQueue.back();
+            assert(event.type == GenericEvent && event.xcookie.evtype == XI_RawMotion);
+            // The serialized XIRawEvent stores deltas in its two valuator
+            // address slots; x11_GetEventData expands these for the guest.
+            assert((S32)event.pad[8 + 12] == delta && (S32)event.pad[8 + 13] == -delta);
+        }
+    }
+    // A visible menu retains absolute coordinate scaling and the game offset.
+    KSystem::forceRelativeMouse = false;
+    input.openGLViewport = {};
+    input.scaleX = input.scaleY = 200;
+    server->setMouseCursorVisible(true);
+    input.setMousePos(400, 300);
+    physicalX = warpX + 10; physicalY = warpY - 6;
+    int x, y;
+    input.getMousePos(&x, &y);
+    assert(x == 405 && y == 297);
+    display->eventQueue.clear();
+    input.mouseMove(physicalX, physicalY, false);
+    auto event = display->eventQueue.back();
+    assert(event.xmotion.x_root == 405 && event.xmotion.y_root == 297);
+    server->isGrabbed = false;
+    server->clearFakeFullScreenWindow(game);
+    server->displays.remove(43);
+    input.scaleX = input.scaleY = 100;
+    input.scaleXOffset = input.scaleYOffset = 0;
+    KSystem::relativeMouseSensitivity = sensitivity;
+    KSystem::forceRelativeMouse = forceRelative;
+    puts("Mouse look is independent of software/GL scale; recentering, polling, buttons, sensitivity and absolute menus passed");
 }
 
 static void testMappedWindowFocus() {
@@ -214,13 +332,13 @@ int main() {
     assert(!grabbed);
     auto& screen = *std::static_pointer_cast<KNativeScreenSDL>(KNativeSystem::getScreen());
     screen.window = window(3);
-    // Ctrl+Alt+G releases both relative mode and the grab, with a discoverable title.
+    // Ctrl+Alt+G releases both relative mode and the grab, preserving the app title.
     server->isGrabbed = true;
     server->grabbedConfinedId = 0;
     server->setMouseCursorVisible(false);
     input.setCursor(nullptr);
     input.updateMouseConfinement(focused);
-    assert(titles[3] == "Alice Gameplay - Ctrl+Alt+G releases mouse");
+    assert(titles[3] == "Alice Gameplay");
     input.ownsRelativeMouseMode = true;
     relativeMode = SDL_TRUE;
     SDL_Event shortcut = {};
@@ -252,7 +370,7 @@ int main() {
     assert(SDL_GetHintBoolean(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, SDL_FALSE));
     assert(input.isMouseCaptureReleased() && !grabbed && relativeMode == SDL_FALSE);
     assert(cursorShown == SDL_ENABLE);
-    assert(titles[3] == "Alice Gameplay - Click to capture mouse");
+    assert(titles[3] == "Alice Gameplay");
     shortcut.key.repeat = 1;
     shortcut.key.keysym.mod = KMOD_NONE; // Modifiers may be released before G.
     assert(input.handleMouseCaptureEvent(&shortcut));
@@ -276,7 +394,7 @@ int main() {
     focused = window(3);
     focus(input, 3, true);
     input.processEvents();
-    assert(!grabbed && titles[3] == "Alice Gameplay - Click to capture mouse");
+    assert(!grabbed && titles[3] == "Alice Gameplay");
     input.setCursor(nullptr); // The guest cannot hide the released desktop cursor.
     assert(cursorShown == SDL_ENABLE);
     SDL_Event motion = {};
@@ -300,11 +418,11 @@ int main() {
     physicalButtons = 0;
     assert(input.handleMouseCaptureEvent(&click));
     assert(input.swallowedMouseButtons == 0);
-    // Title changes are preserved, and the hint must not accumulate.
+    // App/FPS title changes remain untouched while captured.
     titles[3] = "Alice - 60 FPS";
     input.processEvents();
     input.processEvents();
-    assert(titles[3] == "Alice - 60 FPS - Ctrl+Alt+G releases mouse");
+    assert(titles[3] == "Alice - 60 FPS");
     // Shortcut works with either side's modifiers and does not leak its G key-up.
     shortcut.type = SDL_KEYDOWN;
     shortcut.key.repeat = 0;
@@ -376,7 +494,7 @@ int main() {
     motion.type = SDL_MOUSEMOTION;
     motion.motion.windowID = 3;
     assert(input.handleMouseCaptureEvent(&motion));
-    assert(input.isMouseCaptureReleased() && titles[3] == "Alice - 60 FPS - Click to capture mouse");
+    assert(input.isMouseCaptureReleased() && titles[3] == "Alice - 60 FPS");
     input.releaseMouseForHostUi(); // Repeated host events cannot change that policy.
     click.type = SDL_MOUSEBUTTONDOWN;
     assert(input.handleMouseCaptureEvent(&click));
@@ -386,6 +504,7 @@ int main() {
     input.setMouseConfinement(false);
     physicalX = 400; physicalY = 300;
     testMappedWindowFocus();
+    testMouseLookScaling(input);
     screen.window = nullptr; // Do not destroy the fake host window.
     SDL_Quit();
     puts("Mouse confinement lifecycle checks passed");

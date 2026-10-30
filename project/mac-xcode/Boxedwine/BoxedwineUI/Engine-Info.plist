@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>BoxedwineLaunchProtocol</key><integer>2</integer>
+    <key>CFBundleDocumentTypes</key><array><dict>
+        <key>CFBundleTypeRole</key><string>Editor</string>
+        <key>LSHandlerRank</key><string>None</string>
+        <key>LSItemContentTypes</key><array><string>org.boxedwine.engine-launch</string></array>
+    </dict></array>
+    <key>UTExportedTypeDeclarations</key><array><dict>
+        <key>UTTypeIdentifier</key><string>org.boxedwine.engine-launch</string>
+        <key>UTTypeConformsTo</key><array><string>public.data</string></array>
+        <key>UTTypeTagSpecification</key><dict>
+            <key>public.filename-extension</key><array><string>bwlaunch</string></array>
+        </dict>
+    </dict></array>
+</dict></plist>

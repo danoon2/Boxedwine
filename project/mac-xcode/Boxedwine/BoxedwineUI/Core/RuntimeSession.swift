@@ -11,7 +11,7 @@ struct RuntimeExit: Sendable {
     var logProblem: String? = nil
 
     var logDescription: String {
-        let detail = signalled ? "terminated by signal \(status)" : "exited with code \(status)"
+        let detail = status < 0 ? "ended without an exit status" : signalled ? "terminated by signal \(status)" : "exited with code \(status)"
         return "Boxedwine runtime \(detail)\(stoppedByUser ? " (stop requested)" : "")."
     }
 }
@@ -47,46 +47,31 @@ final class RuntimeSession {
         NSError(domain: "Boxedwine", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
     }
 
-    private let process = Process()
-    private let input = Pipe()
+    private var process: EngineProcess?
     private var stopRequested = false
     private var cdromAccess: CdromImageAccess?
     private var cdromManifest: URL?
     deinit { if let cdromManifest { try? FileManager.default.removeItem(at: cdromManifest) } }
     private var onExit: (@MainActor (RuntimeExit) -> Void)?
     private var onWindowShown: (@MainActor () -> Void)?
-    var isRunning: Bool { process.isRunning }
+    var isRunning: Bool { process?.isRunning == true }
 
     func start(executable: URL, arguments: [String], log: URL,
                dockIcon: Data? = nil,
                programFolderBookmark: Data? = nil,
                cdromAccess: CdromImageAccess? = nil,
+               access: [URL] = [],
                onWindowShown: (@MainActor () -> Void)? = nil,
                onExit: @escaping @MainActor (RuntimeExit) -> Void) throws {
         precondition(self.onExit == nil, "A runtime session can only be started once")
-        // A child can close stdin before its termination callback arrives. A stop
-        // in that interval must produce a write error, not SIGPIPE in the launcher.
-        guard fcntl(input.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1) != -1 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-        }
-        let output = try RuntimeLogCapture(url: log, executable: executable) { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self, self.onExit != nil, !self.stopRequested, self.process.isRunning else { return }
-                let callback = self.onWindowShown
-                self.onWindowShown = nil
-                self.clearCdromManifest()
-                callback?()
-            }
-        }
-        process.executableURL = executable
-        process.arguments = arguments
-        // Launch metadata belongs to this child only, not to the app's saved
-        // command line. Bound it well below the macOS argument/environment limit.
         var environment = ProcessInfo.processInfo.environment
         environment["BOXEDWINE_DOCK_ICON_PNG"] = dockIcon.flatMap { $0.count <= 72 * 1024 ? $0.base64EncodedString() : nil }
         if let programFolderBookmark, programFolderBookmark.count > 48 * 1024 { throw ExternalProgramError.access }
         environment["BOXEDWINE_PROGRAM_FOLDER_BOOKMARK"] = programFolderBookmark?.base64EncodedString()
         environment["BOXEDWINE_CDROM_BOOKMARKS_FILE"] = nil
+        // The first disc launch needs Logs for its access manifest as well as
+        // its output file. Prepare it before writing or bookmarking either.
+        let outputFile = try LaunchLog.prepare(log)
         if let cdromAccess, !cdromAccess.runtimeBookmarks.isEmpty {
             let manifest = log.deletingLastPathComponent().appendingPathComponent(".cdrom-access-\(UUID().uuidString).json")
             let data = try JSONEncoder().encode(cdromAccess.runtimeBookmarks)
@@ -101,46 +86,55 @@ final class RuntimeSession {
             environment["BOXEDWINE_CDROM_BOOKMARKS_FILE"] = manifest.path
         }
         self.cdromAccess = cdromAccess
-        process.environment = environment
-        process.currentDirectoryURL = log.deletingLastPathComponent()
-        process.standardInput = input
-        process.standardOutput = output.pipe
-        process.standardError = output.pipe
-        self.onExit = onExit
-        self.onWindowShown = onWindowShown
-        output.start()
-        process.terminationHandler = { [weak self] child in
-            let status = child.terminationStatus
-            let signalled = child.terminationReason == .uncaughtSignal
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                try? self.input.fileHandleForWriting.close()
-                let callback = self.onExit
-                self.onExit = nil
-                self.onWindowShown = nil
-                self.releaseCdromAccess()
-                let result = RuntimeExit(status: status, signalled: signalled, stoppedByUser: self.stopRequested)
-                output.finish(result.logDescription) { problem in
-                    Task { @MainActor in
-                        var finished = result
-                        finished.logProblem = problem
-                        callback?(finished)
-                    }
+        do {
+            let process = try EngineProcess(executable: executable, arguments: arguments,
+                directory: log.deletingLastPathComponent(), environment: environment, access: access)
+            self.process = process
+            let output = try RuntimeLogCapture(url: log, executable: executable, input: process.output, preparedFile: outputFile) { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self, self.onExit != nil, !self.stopRequested, self.isRunning else { return }
+                    let callback = self.onWindowShown
+                    self.onWindowShown = nil
+                    self.clearCdromManifest()
+                    callback?()
                 }
             }
-        }
-        do { try process.run() }
-        catch {
+            self.onExit = onExit
+            self.onWindowShown = onWindowShown
+            output.start()
+            do {
+                try process.run { [weak self] child in
+                    let result = RuntimeExit(status: child.terminationStatus, signalled: child.terminationReason == .uncaughtSignal,
+                                             stoppedByUser: false, logProblem: child.launchProblem)
+                    Task { @MainActor [weak self] in
+                        guard let self else { return }
+                        let callback = self.onExit
+                        self.onExit = nil
+                        self.onWindowShown = nil
+                        self.releaseCdromAccess()
+                        let finalResult = RuntimeExit(status: result.status, signalled: result.signalled,
+                                                      stoppedByUser: self.stopRequested, logProblem: result.logProblem)
+                        output.finish(finalResult.logDescription + (result.logProblem.map { "\n" + $0 } ?? "")) { problem in
+                            Task { @MainActor in
+                                var saved = finalResult
+                                saved.logProblem = [saved.logProblem, problem].compactMap { $0 }.joined(separator: "\n")
+                                if saved.logProblem?.isEmpty == true { saved.logProblem = nil }
+                                callback?(saved)
+                            }
+                        }
+                    }
+                }
+            } catch {
+                output.failedToStart("The runtime could not start: " + error.localizedDescription)
+                throw error
+            }
+        } catch {
             self.onExit = nil
             self.onWindowShown = nil
+            process = nil
             releaseCdromAccess()
-            process.terminationHandler = nil
-            output.failedToStart("The runtime could not start: " + error.localizedDescription)
             throw error
         }
-        output.childStarted()
-        // Only the child should retain the read end; closing the parent will deliver EOF.
-        try? input.fileHandleForReading.close()
     }
 
     private func clearCdromManifest() {
@@ -154,17 +148,16 @@ final class RuntimeSession {
     }
 
     func stop() {
-        guard process.isRunning else { return }
+        guard isRunning else { return }
         stopRequested = true
         onWindowShown = nil
-        // SDL handles the quit event on its own main thread.
-        try? input.fileHandleForWriting.write(contentsOf: Data("quit\n".utf8))
+        process?.stop()
     }
 
     func forceStop() {
-        guard process.isRunning else { return }
+        guard isRunning else { return }
         stopRequested = true
         onWindowShown = nil
-        kill(process.processIdentifier, SIGKILL)
+        process?.stop(force: true)
     }
 }
