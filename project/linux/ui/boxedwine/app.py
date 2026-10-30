@@ -24,7 +24,7 @@ from . import demos, dialogs, desktop
 from .cdrom import has_installer
 from .imports import CollectionStore, CollectionIcons, valid_url
 from .files import Work, Cancelled, beneath, no_links, storage_size
-from .library import Library, DRIVE_C, built_in, now
+from .library import Library, DRIVE_C, WINDOWS, built_in, now, preference
 from .packages import Resources, WineChecks, catalog_files, ensure_wine, ensure_current_wine, import_wine
 from .runtime import Session, WINE_TOOLS, apply_configuration, build_arguments, default_emulator, refresh_configuration
 
@@ -859,7 +859,11 @@ class Window(Adw.ApplicationWindow):
             box.append(dialogs.button(self, label, lambda: self.open_app(app), 'suggested-action', 'media-playback-start-symbolic'))
         info = Adw.PreferencesGroup()
         dialogs.row(info, 'Display', app.get('resolution', '1024x768') + (' · Full screen' if app.get('fullScreen') else ' · Windowed'))
-        dialogs.row(info, 'Windows support', 'Wine ' + (app.get('savedWineVersion') or 'default'))
+        wine = 'Wine ' + (app.get('savedWineVersion') or 'default')
+        windows = preference(app, 'windowsVersion')
+        if windows != 'wineDefault':
+            wine += ' - ' + WINDOWS[windows]
+        dialogs.row(info, 'Windows support', wine)
         if any(app.get(f + 'Pending') for f in ('windowsVersion', 'wineRenderer', 'openGLBackend')):
             dialogs.row(info, 'Settings pending', 'Will be applied before the next launch')
         box.append(info)

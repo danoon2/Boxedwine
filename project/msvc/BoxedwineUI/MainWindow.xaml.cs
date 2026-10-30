@@ -190,6 +190,30 @@ public partial class MainWindow : Window
         var button = new Button { Content = text, Style = (Style)FindResource("DetailButton"), IsEnabled = enabled };
         button.Click += (_, _) => Safe(action); Details.Children.Add(button); return button;
     }
+    private void DetailInformation(LibraryApp app)
+    {
+        var rows = new StackPanel();
+        void Row(string title, string value)
+        {
+            var content = new StackPanel { Margin = new Thickness(14, 12, 14, 12) };
+            content.Children.Add(new TextBlock { Text = title, TextWrapping = TextWrapping.Wrap });
+            var description = new TextBlock { Text = value, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
+            description.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+            content.Children.Add(description);
+            rows.Children.Add(content);
+        }
+        Row("Display", $"{app.Resolution} · {(app.FullScreen ? "Full screen" : "Windowed")}");
+        var divider = new Border { Height = 1 };
+        divider.SetResourceReference(Border.BackgroundProperty, "LineBrush");
+        rows.Children.Add(divider);
+        string wine = $"Wine {app.SavedWineVersion ?? repository.DefaultWine?.WineVersion ?? "not configured"}";
+        if (app.PreferredWindows != "wineDefault") wine += " - " + LaunchArguments.WindowsVersions[app.PreferredWindows];
+        Row("Windows support", wine);
+        var card = new Border { Child = rows, CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), Margin = new Thickness(0, 12, 0, 18) };
+        card.SetResourceReference(Border.BackgroundProperty, "PanelBrush");
+        card.SetResourceReference(Border.BorderBrushProperty, "LineBrush");
+        Details.Children.Add(card);
+    }
     private void RenderDetails()
     {
         CancelStorage();
@@ -249,8 +273,7 @@ public partial class MainWindow : Window
         }
         Details.Children.Add(FormWindow.Paragraph(AppStatus(app)));
         DetailAction(Running(app) ? "■   Stop App" : "▶   Open App", () => { if (Running(app)) Stop(app); else Open(app); }, (!busy || Running(app)) && !stopping.Contains(app.Id));
-        Details.Children.Add(new Separator { Margin = new Thickness(0, 12, 0, 18) });
-        Details.Children.Add(FormWindow.Paragraph($"{(app.FullScreen ? "Full screen" : "Windowed")} · {app.Resolution}\nWine {app.SavedWineVersion ?? repository.DefaultWine?.WineVersion ?? "not configured"}\n{LaunchArguments.WindowsVersions[app.PreferredWindows]}"));
+        DetailInformation(app);
         DetailAction("Run Another Program…", () => Another(app), CanChange(app));
         DetailAction("App Settings…", () => Edit(app), CanChange(app));
         DetailAction("Troubleshooting…", () => Troubleshoot(app), !busy);

@@ -353,9 +353,10 @@ final class LibraryStore: ObservableObject {
     }
     var launchingApps: [LibraryApp] { apps.filter { launching.contains($0.id) } }
     func wineDescription(for app: LibraryApp) -> String {
-        if let reference = app.winePackage { return "Wine \(reference.wineVersion) · pinned for this app" }
-        if let version = app.savedWineVersion { return "Wine \(version) · saved with this app" }
-        if let support = runtimeSupport, runtimeAvailable { return "Wine \(support.package.info.wineVersion) · library default" }
+        let windows = app.preferredWindowsVersion == .wineDefault ? "" : " - \(app.preferredWindowsVersion.title)"
+        if let reference = app.winePackage { return "Wine \(reference.wineVersion)\(windows) · pinned for this app" }
+        if let version = app.savedWineVersion { return "Wine \(version)\(windows) · saved with this app" }
+        if let support = runtimeSupport, runtimeAvailable { return "Wine \(support.package.info.wineVersion)\(windows) · library default" }
         return runtimeChecking ? "Checking library default…" : "Library default unavailable"
     }
 
