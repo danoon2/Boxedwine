@@ -390,3 +390,47 @@ creates a deterministic ZIP containing explicitly selected regular files under
 `home/username/.wine/drive_c/`. Repeat `--include`; use a trailing slash to select
 a directory. Both output paths must be new. The report records source and member
 hashes and omitted paths. Packaging does not validate the application's startup.
+
+### 3DMark2001 SE
+
+Install the cached `3DMark2001SE.exe` (SE build 330) through native Boxedwine into
+a fresh writable root, using the current full Wine filesystem. Keep the default
+`C:\Program Files\MadOnion.com\3DMark2001 SE` destination. Allow the installer's
+texture conversion to finish, select **Purchase Later** for the free edition,
+disable **View Readme**, and finish setup before packaging.
+
+From WSL, package that writable root:
+
+```bash
+python3 tools/jenkins/prepare_3dmark2001_demo.py \
+    tmp/3dmark2001-demo/installed-root \
+    tmp/3dmark2001-demo/3dmark2001se.zip \
+    --report tmp/3dmark2001-demo/package.json
+python3 -m unittest discover -s tools/jenkins -p test_prepare_3dmark2001_demo.py
+```
+
+The helper retains the installed application, converted textures, help and local
+runtime DLLs. It adds `C:\3dmark2001se.bat` to set the working directory before
+launching. Wine/Linux libraries, global registry hives, installer caches, logs
+and saved benchmark results are excluded. Output ZIP and report paths must be
+new; retain the report's file hashes with the ZIP.
+
+Copy `3dmark2001se.zip` into the site's `demos/apps/` and merge only its entry
+from `demos.example.json` into that directory's `demos.json`, preserving the
+other demos. The generator detects it as an overlay, like `c3.zip`.
+Place the demo thumbnail at `demos/apps/images/3dmark2001se.png` as well.
+Validate startup and a rendered scene with the web filesystem and a fresh game
+profile before publishing. Updating `demos.example.json` alone does not deploy assets.
+
+For Jenkins, put the same ZIP and merged manifest in the configured
+`BUILD_SITE_REMOTE` site's `demos/apps/`, or supply a complete demo asset directory
+via `BUILD_SITE_DEMOS_SOURCE`. The next successful publish generates all four
+launch modes and preserves the ZIP with the build. Local regeneration can reuse
+the existing runtimes with `BUILD_RESULT=SUCCESS tools/jenkins/local-build-site.sh
+--skip-sync --skip-build --no-server`; `SUCCESS` is required to generate demo links.
+
+The 2026-10-30 smoke test with the v23 web filesystem and the existing MT JIT
+runtime reached the main menu without importing registry hives. The cinematic
+**Demo** reported that render-to-texture support was unavailable. **Benchmark**
+reached the Car Chase loading screen, then remained black during the smoke test;
+a rendered scene and complete benchmark run have not been validated.

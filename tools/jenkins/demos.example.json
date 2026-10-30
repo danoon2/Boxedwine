@@ -1,5 +1,14 @@
 {
   "demos": {
+    "3dmark2001se.zip": {
+      "title": "3DMark2001 SE (2002 D3D 8.1)",
+      "exe": "c:/3dmark2001se.bat",
+      "urlParams": {
+        "resolution": "1024x768",
+        "bpp": "32"
+      },
+      "description": "3DMark2001 SE build 330 benchmark and demo, running from an installed Wine drive overlay."
+    },
     "abiword.zip": {
       "title": "AbiWord",
       "exe": "ABIWORD.EXE",
