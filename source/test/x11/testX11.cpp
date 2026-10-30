@@ -558,6 +558,37 @@ void testX11PatternFills() {
     }
 }
 
+void testX11HiddenWindowInvalidation() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    x11_init();
+    testNewInstruction(0);
+    initPaletteTestServer();
+    auto server = XServer::getServer();
+    auto visual = std::make_shared<Visual>();
+    visual->bits_per_rgb = 8;
+    auto window = server->createNewWindow(0, nullptr, 2, 2, 8, 0, 0, InputOutput, 0, visual);
+    auto gc = server->createGC(window);
+    gc->values.foreground = 42;
+    window->fillRectangle(nullptr, gc, 0, 0, 2, 2);
+
+    // A presentation consumes the display request but skips unmapped windows.
+    // Their backing pixels remain dirty until they can actually be drawn.
+    server->isDisplayDirty = false;
+    window->draw();
+    if (!window->isDirty) testFail("Hidden window lost its pending pixels");
+    window->mapWindow();
+    if (!server->isDisplayDirty) testFail("Mapping an already-dirty window did not request a redraw");
+
+    window->unmapWindow();
+    server->isDisplayDirty = false;
+    window->draw();
+    gc->values.foreground = 73;
+    window->fillRectangle(nullptr, gc, 0, 0, 2, 2);
+    if (!server->isDisplayDirty) testFail("Updating an already-dirty window did not request a redraw");
+    server->removeGC(gc->id);
+    server->destroyWindow(window->id);
+}
+
 void testX11PaletteInvalidation() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
     x11_init();
