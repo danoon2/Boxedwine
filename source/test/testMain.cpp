@@ -83,6 +83,7 @@ void testX11ImageReadback();
 void testX11PalettedDrawing();
 void testX11PatternFills();
 void testX11PaletteInvalidation();
+void testX11HiddenWindowInvalidation();
 void testXInputValuatorLayout();
 void testCapturedMouseSensitivity();
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
@@ -1113,6 +1114,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testX11PalettedDrawing, "Test X11 paletted drawing and clipping"},
     {testX11PatternFills, "Test X11 tiled and stippled rectangle fills"},
     {testX11PaletteInvalidation, "Test X11 shared palette invalidation"},
+    {testX11HiddenWindowInvalidation, "Test X11 hidden window redraw invalidation"},
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
     {testSDLGlWindowRemovalLockOrder, "Test SDL GL window removal lock order", TEST_ENTRY_SERIAL},
 #endif

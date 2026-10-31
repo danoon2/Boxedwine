@@ -25,6 +25,7 @@
 
 #ifdef BOXEDWINE_MULTI_THREADED
 #include "knativethread.h"
+#include "../../x11/x11.h"
 
 U32 getNextTimer();
 void runTimers();
@@ -55,6 +56,12 @@ extern int allocatedRamPages;
 void mainloop() {
     isMainThread = true;
     checkBrowserSocketEvents();
+    if (XServer* server = XServer::getServer(true)) {
+        // Direct X11 drawing can dirty a window without an XFlush (for example,
+        // MDK Perf's 8-bit GDI graph). Present it on the normal redraw cadence
+        // instead of waiting for mouse input to flush the guest's X display.
+        server->draw();
+    }
         U32 t = KSystem::getMilliesSinceStart();
         U32 nextTimer = getNextTimer();
         if (nextTimer == 0) {

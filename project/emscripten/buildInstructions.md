@@ -61,6 +61,23 @@ node server.mjs <port number>
 
 alternatively make sure your web server returns COEP, COOP headers
 
+### X11 redraw regression check
+
+Launch MDK Perf from the demo catalogue in both multi-threaded modes, using
+the GDI DirectDraw renderer, `bpp=8`, and `resolution=640x480`. Use the Wine 11
+v22 or newer filesystem; v21 does not exercise the direct paletted drawing
+path. Leave the mouse still for at least 15 seconds. The "This Machine" graph
+and score must continue updating, including before the first mouse movement.
+Move the mouse, stop again, and check that updates continue. The bars should
+retain their green palette. This catches dirty X11 windows being presented
+only when Wine flushes its display while processing input.
+
+Launch Halo Trial in multi-threaded JIT mode with fresh memory storage. Its
+"Halo - Warning" startup dialog must appear without mouse input, and clicking
+"Continue Anyway" must reach the animated main menu. This catches a hidden
+window retaining dirty pixels after a presentation and then failing to request
+another presentation when mapped.
+
 ## Browser audio
 
 All four targets use an AudioWorklet output backend when AudioWorklet and
