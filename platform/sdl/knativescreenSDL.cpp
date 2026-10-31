@@ -291,6 +291,11 @@ U32 KNativeScreenSDL::getLastUpdateTime() {
 }
 
 void KNativeScreenSDL::showWindow(bool show) {
+    // Headless runs have no SDL window or UI event loop to handle visibility.
+    // X11 map/unmap must still update guest state without dispatching to it.
+    if (KSystem::videoOption == VIDEO_NO_WINDOW) {
+        return;
+    }
     if (show && XServer::getServer(true)) {
         XServer::getServer()->setFakeFullScreenWindow(nullptr);
     }
