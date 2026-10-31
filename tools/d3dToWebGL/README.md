@@ -1,14 +1,32 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current source series is pinned by
-[`webgl-test-divergences-v47.json`](../wineTests/webgl-test-divergences-v47.json).
-It contains 68 production patches and one separate, complete Wine graphics-test
-adaptation. The [v47 inventory](../wineTests/webgl-patch-inventory-v47.json)
+[`webgl-test-divergences-v48.json`](../wineTests/webgl-test-divergences-v48.json).
+It contains 69 production patches and one separate, complete Wine graphics-test
+adaptation. The [v48 inventory](../wineTests/webgl-patch-inventory-v48.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 46 retain earlier build and test selections for reproducing historical
+Versions 2 through 47 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
+
+Patch 69, [direct GLSL FFP generation](webgl-direct-glsl-ffp-against-wine-11.0.patch),
+stops forcing the WebGL fixed-function pipeline through Wine's guest HLSL
+compiler. It uses WineD3D's existing GLSL generator by default and honors the
+`ffp_hlsl` setting for an explicit HLSL opt-in, matching the desktop OpenGL
+default. Only the separately built `wined3d.dll` needs rebuilding. The v48
+source series has not yet been packaged into a published filesystem.
+
+The local direct-GLSL prototype passed 3,117 alpha-test checks and 2,236
+texture-coordinate generation checks (96 cases). A 144-case lighting/fog
+comparison matched all 432 sampled pixels against HLSL. In the user's Car
+Chase comparison, the largest gap after loading fell from 2.544 to 0.427
+seconds, with no gaps over 0.5 seconds in the roughly 24.3-second compared
+span; the user confirmed correct rendering. These are presentation intervals,
+not 3DMark-reported FPS. The prototype forced `ffp_hlsl=false` and included
+timing instrumentation and earlier compiler/cache experiments; patch 69
+contains only the route selection and preserves the configuration opt-in.
+This focused coverage does not replace a full graphics-suite qualification.
 
 Filesystems 20 through 23 select v47. Patch 68 adds partial stream-output varyings alongside
 rasterizer outputs, matching the main WineD3D tarp fix. It changes the separately
@@ -250,6 +268,8 @@ The manifest appends these corrections after production patch 10, in order:
 
 - `WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1` enables the WebGL path. The
   Emscripten launcher sets it explicitly; native Wine leaves it disabled by default.
+- Add `ffp_hlsl=1` to `WINE_D3D_CONFIG` to opt back into guest HLSL compilation
+  of fixed-function shaders, e.g. `webgl=1,webgl_glsl_es=1,ffp_hlsl=1`.
 - `BOXEDWINE_WEBGL_PROFILE=1` enables WineD3D and DirectDraw timing counters.
 - `BOXEDWINE_WEBGL_BLTFAST_LOCKS=1` restores the older DirectDraw `BltFast`
   lock path for comparison.
@@ -269,7 +289,7 @@ Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
 python3 tools/wineTests/webglTestDivergences.py \
-  --manifest tools/wineTests/webgl-test-divergences-v47.json
+  --manifest tools/wineTests/webgl-test-divergences-v48.json
 ```
 
 The validator checks patch hashes, forbids production changes to Wine test
@@ -291,7 +311,7 @@ import sys
 
 repo = Path.cwd()
 source = Path(sys.argv[1]).resolve()
-manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v47.json").read_text())
+manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v48.json").read_text())
 head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
 if head != manifest["wine_source_commit"]:
     raise SystemExit("Wine checkout is not at the pinned source commit")

@@ -1,0 +1,13 @@
+diff --git a/dlls/wined3d/adapter_gl.c b/dlls/wined3d/adapter_gl.c
+--- a/dlls/wined3d/adapter_gl.c
++++ b/dlls/wined3d/adapter_gl.c
+@@ -1162,7 +1162,8 @@
+     d3d_info->fences = false;
+     d3d_info->persistent_map = false;
+     d3d_info->ffp_alpha_test = false;
+-    d3d_info->ffp_hlsl = true;
++    /* Default to direct GLSL generation, retaining the explicit HLSL opt-in. */
++    d3d_info->ffp_hlsl = wined3d_settings.ffp_hlsl;
+
+     d3d_info->feature_level = min(d3d_info->feature_level, WINED3D_FEATURE_LEVEL_9_3);
+ }
