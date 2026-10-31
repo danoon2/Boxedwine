@@ -1,0 +1,43 @@
+--- a/dlls/wined3d/utils.c
++++ b/dlls/wined3d/utils.c
+@@ -2220,6 +2220,12 @@
+
+     switch (format->id)
+     {
++        case WINED3DFMT_R8G8B8A8_SNORM:
++            /* WebGL 2 supports signed RGBA8 sampling, but not core rendering
++             * or automatic mipmap generation for this format. */
++            format_clear_caps(format, WINED3D_FORMAT_CAP_SRGB_READ | WINED3D_FORMAT_CAP_GEN_MIPMAP);
++            break;
++
+         case WINED3DFMT_B5G6R5_UNORM:
+             format_clear_caps(format, WINED3D_FORMAT_CAP_SRGB_READ);
+             break;
+@@ -2237,7 +2243,6 @@
+             if (wined3d_settings.webgl)
+                 break;
+             /* fall through */
+-        case WINED3DFMT_R8G8B8A8_SNORM:
+         case WINED3DFMT_R16G16_SNORM:
+             format_clear_caps(format, WINED3D_FORMAT_CAP_TEXTURE
+                     | WINED3D_FORMAT_CAP_POSTPIXELSHADER_BLENDING
+@@ -2332,6 +2337,19 @@
+                 format->rt_internal = GL_RGBA4;
+             format->format = GL_RGBA;
+             format->type = GL_UNSIGNED_BYTE;
++            break;
++
++        case WINED3DFMT_R8G8B8A8_SNORM:
++            /* Q8W8V8U8 is already in signed RGBA byte order. Use the core
++             * WebGL 2 format, avoiding the desktop BGRA/UNORM conversion. */
++            format->internal = GL_RGBA8_SNORM;
++            format->srgb_internal = GL_RGBA8_SNORM;
++            format->rt_internal = 0;
++            format->format = GL_RGBA;
++            format->type = GL_BYTE;
++            format->f.conv_byte_count = 0;
++            format->f.upload = NULL;
++            format->f.color_fixup = COLOR_FIXUP_IDENTITY;
+             break;
+
+         case WINED3DFMT_R8G8_SNORM:

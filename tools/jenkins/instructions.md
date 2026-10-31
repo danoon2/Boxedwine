@@ -418,6 +418,10 @@ new; retain the report's file hashes with the ZIP.
 Copy `3dmark2001se.zip` into the site's `demos/apps/` and merge only its entry
 from `demos.example.json` into that directory's `demos.json`, preserving the
 other demos. The generator detects it as an overlay, like `c3.zip`.
+Keep `urlParams.resolution` at `1024x768` and `urlParams.bpp` at `32` for both
+local and build demo links. 3DMark's default benchmark mode is 1024x768x32,
+and the WebGL backend advertises only the current desktop mode. Starting at
+640x480 makes 3DMark fall back to 640x480x16, even with a 32-bit desktop.
 Place the demo thumbnail at `demos/apps/images/3dmark2001se.png` as well.
 Validate startup and a rendered scene with the web filesystem and a fresh game
 profile before publishing. Updating `demos.example.json` alone does not deploy assets.

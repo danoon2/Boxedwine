@@ -1,0 +1,77 @@
+{
+  "recorded_at": "2026-10-30",
+  "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+  "manifest": "tools/wineTests/webgl-test-divergences-v49.json",
+  "manifest_sha256": "887ed11c96f1ef80443fc006c7ae001c123d8612d8b0e9740a500fcaef3496f1",
+  "scope": "Q8W8V8U8 WebGL 2 texture sampling. Clean pinned v47 WineD3D build plus patches 69 and 70; no private compiler/cache optimizations or added timing logs.",
+  "dll_sha256": "83b1d3492cbc9f414d9b3a66ddea6eb5be856fbbb69599cb550c83e6e3113c12",
+  "overlay_sha256": "f85832330767710171e3dce26a4197d73e5da8d2c610aca72fb19db0b09c1324",
+  "source_replay": {
+    "production_patches": 70,
+    "test_adaptation_applies": true,
+    "changed_sources_compile": "PE32"
+  },
+  "probe_source": "tools/wineTests/tests/d3d9_q8w8v8u8_probe.c",
+  "probe_source_sha256": "047e428a23d9268a47383ca3da1a0efc62dd6bae7d5697682a89ce8d9c3d4722",
+  "probe_runs": [
+    {
+      "file": "ours-1793413434968.json",
+      "sha256": "e7be3ff48ec6eaa23d8709bbb6bc452f23d3b41b48dc11d0ed5b560aa8189b0a",
+      "trial": "normal-format",
+      "checks": 20572,
+      "pixels": 5120,
+      "failures": 0,
+      "errors": []
+    },
+    {
+      "file": "ours-1793413464341.json",
+      "sha256": "16cf80bd3072d34815773458a96a26bda8a47db5bf797f077accd0a1b8d6d11a",
+      "trial": "normal-format-control",
+      "checks": 2,
+      "pixels": 0,
+      "failures": 1,
+      "errors": []
+    },
+    {
+      "file": "ours-1793413516201.json",
+      "sha256": "844200dc0668e0eebdb65408beaa3750328830320cde1ba46878e345a7739582",
+      "trial": "normal-format-v49",
+      "checks": 20572,
+      "pixels": 5120,
+      "failures": 0,
+      "errors": []
+    }
+  ],
+  "nature": {
+    "completed": true,
+    "reported_fps": 32.5,
+    "resolution": [
+      640,
+      480
+    ],
+    "color_bits": 16,
+    "texture_bits": 16,
+    "cpu_optimization": "D3D Pure Hardware T&L",
+    "only_selected_test": "Game 4 - Nature",
+    "observations": "Scene, trees, terrain and water rendered; no bump-normal error or browser GL errors. Visual inspection, not a native reference pixel comparison.",
+    "live_trace_file": "ours-cache-1793413516159.json",
+    "frozen_trace": "tmp/3dmark-shader-trace-20261030/build/nature-clean/nature-completed.json",
+    "frozen_trace_sha256": "445a2cbf35bf0e2718b858dad6a6bf00334f55a7e1e9f9644f02cd0d05a8cc13",
+    "result_screenshot": "tmp/3dmark-shader-trace-20261030/build/nature-clean/nature-result.png"
+  },
+  "publication": "Local overlay only; published filesystem manifests and archives unchanged.",
+  "inputs": {
+    "runtime": {
+      "file": "boxedwine.wasm",
+      "sha256": "f4208506f9f9a09dd1e861b1c110c9456d64af39cd2533f3612b6ebd561f0ce1"
+    },
+    "rootfs": {
+      "file": "TinyCore15Wine11.0-web.zip",
+      "sha256": "4d505092956dd78e36712dac8111c252e5d1b859ce2373fbe7c80242bb65ad47"
+    },
+    "demo": {
+      "file": "3dmark2001se.zip",
+      "sha256": "c607e995f0a02a1a8aaee14bffb645ee137f12bb5151db229b5ea6d8cca9a0ef"
+    }
+  }
+}

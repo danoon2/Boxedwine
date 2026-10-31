@@ -1,14 +1,35 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current source series is pinned by
-[`webgl-test-divergences-v48.json`](../wineTests/webgl-test-divergences-v48.json).
-It contains 69 production patches and one separate, complete Wine graphics-test
-adaptation. The [v48 inventory](../wineTests/webgl-patch-inventory-v48.json)
+[`webgl-test-divergences-v49.json`](../wineTests/webgl-test-divergences-v49.json).
+It contains 70 production patches and one separate, complete Wine graphics-test
+adaptation. The [v49 inventory](../wineTests/webgl-patch-inventory-v49.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 47 retain earlier build and test selections for reproducing historical
+Versions 2 through 48 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
+
+Patch 70, [Q8W8V8U8 textures](webgl-q8w8v8u8-texture-against-wine-11.0.patch),
+enables the signed normal-map format required by 3DMark2001 SE Nature. It maps
+the four signed bytes directly to `RGBA8_SNORM` / `RGBA` / `BYTE`, removing
+the desktop BGRA conversion and UNORM shader correction for this format.
+Signed texture sampling and filtering are core
+[WebGL 2 capabilities](https://www.khronos.org/files/webgl20-reference-guide.pdf);
+render-target, sRGB and automatic mipmap capabilities remain disabled.
+The change is confined to WebGL WineD3D; other formats and native Wine keep
+their existing behavior. The v49 source series is not yet packaged into a
+published filesystem.
+
+The [signed-texture probe](../wineTests/tests/d3d9_q8w8v8u8_probe.c) checks
+all four channels across the signed-byte range, partial rectangle updates,
+explicit mip levels, linear filtering, pixel shader 1.1 and direct GLSL
+fixed-function sampling. A clean v49 DLL passed 20,572 checks over 5,120
+pixels. The prior DLL fails the first format support query with
+`D3DERR_NOTAVAILABLE`. Nature completed at 32.5 FPS at 640x480, 16-bit color
+and textures, with no bump-normal error or browser GL errors. See the
+[validation record](../wineTests/q8w8v8u8-validation-20261030.json) for build
+identities, the failing control and test scope.
 
 Patch 69, [direct GLSL FFP generation](webgl-direct-glsl-ffp-against-wine-11.0.patch),
 stops forcing the WebGL fixed-function pipeline through Wine's guest HLSL
@@ -289,7 +310,7 @@ Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
 python3 tools/wineTests/webglTestDivergences.py \
-  --manifest tools/wineTests/webgl-test-divergences-v48.json
+  --manifest tools/wineTests/webgl-test-divergences-v49.json
 ```
 
 The validator checks patch hashes, forbids production changes to Wine test
@@ -311,7 +332,7 @@ import sys
 
 repo = Path.cwd()
 source = Path(sys.argv[1]).resolve()
-manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v48.json").read_text())
+manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v49.json").read_text())
 head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
 if head != manifest["wine_source_commit"]:
     raise SystemExit("Wine checkout is not at the pinned source commit")
