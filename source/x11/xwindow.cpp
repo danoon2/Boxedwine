@@ -885,10 +885,10 @@ int XWindow::reparentWindow(const XWindowPtr& parent, S32 x, S32 y) {
 }
 
 void XWindow::setDirty() {
-	if (!isDirty) {
-		isDirty = true;
-		XServer::getServer()->isDisplayDirty = true;
-	}
+	// An unmapped window can stay dirty after the display was presented.
+	// Mapping or drawing it must schedule another presentation in that case.
+	isDirty = true;
+	XServer::getServer()->isDisplayDirty = true;
 }
 
 int XWindow::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, S32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height) {
