@@ -122,7 +122,7 @@ class CoreTests(unittest.TestCase):
                 new.writestr(entry, b'20' if entry.filename == 'version.txt' else old.read(entry))
         wine = validate_wine(source)
         resources = unittest.mock.Mock()
-        resources.wines.return_value = [dict(url='https://boxedwine.org/v2/23/TinyCore15Wine11.0.zip', reference=wine)]
+        resources.wines.return_value = [dict(url='https://boxedwine.org/v2/24/TinyCore15Wine11.0.zip', reference=wine)]
         return source, wine, resources
 
     def test_new_builtins_use_installed_current_release_and_keep_existing_apps(self):

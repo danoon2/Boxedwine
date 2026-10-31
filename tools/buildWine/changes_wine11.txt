@@ -1,3 +1,5 @@
+v24 Oct 30, 2026 Update the bundled WebGL WineD3D to generate fixed-function GLSL directly, reducing shader compilation stalls in 3DMark2001 SE. Add signed Q8W8V8U8 normal-map textures so the Nature benchmark can run. Regular Wine graphics behavior is unchanged.
+
 v23 Oct 25, 2026 Match native Win16 CopyRect fault recovery for invalid rectangle pointers, allowing the original Robot City executable to exit without crashing or launching WineDbg.
 
 v22 Oct 24, 2026 Allow Win16 applications to open existing CD-ROM files read-only when a read/write open fails. Fix 8-bit window palette rendering and software cursor save-under colors, including reserved palette entries and SYSPAL_NOSTATIC, for games such as Robot City.

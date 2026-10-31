@@ -18,8 +18,10 @@ Signed texture sampling and filtering are core
 [WebGL 2 capabilities](https://www.khronos.org/files/webgl20-reference-guide.pdf);
 render-target, sRGB and automatic mipmap capabilities remain disabled.
 The change is confined to WebGL WineD3D; other formats and native Wine keep
-their existing behavior. The v49 source series is not yet packaged into a
-published filesystem.
+their existing behavior. Filesystem revision 24 packages the v49 source series
+in both full and web variants, staged locally for upload to `/v2/24/`.
+Their DLL and archive identities are pinned by
+[`webgl_filesystems_v24.json`](../buildWine/webgl_filesystems_v24.json).
 
 The [signed-texture probe](../wineTests/tests/d3d9_q8w8v8u8_probe.c) checks
 all four channels across the signed-byte range, partial rectangle updates,
@@ -53,7 +55,7 @@ Filesystems 20 through 23 select v47. Patch 68 adds partial stream-output varyin
 rasterizer outputs, matching the main WineD3D tarp fix. It changes the separately
 built `wined3d.dll`; the other seven DLLs retain their previous identities.
 WebGL geometry-shader and stream-output capability limits remain unchanged.
-The candidate DLLs and archives are pinned by
+Those historical DLLs and archives are pinned by
 [`webgl_filesystems_v23.json`](../buildWine/webgl_filesystems_v23.json).
 Filesystem 21 changes Wine mountmgr media handling. Filesystem 22 adds Win16
 CD-ROM read-only opens and 8-bit palette/cursor fixes. Filesystem 23 adds Win16 CopyRect fault recovery. All retain the eight v20 WebGL DLL hashes.
