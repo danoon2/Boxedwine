@@ -632,7 +632,9 @@ bool XServer::requestCloseWindow(const XWindowPtr& wnd) {
 }
 
 void XServer::requestFocusWindow(const XWindowPtr& wnd) {
-    if (!wnd || !wnd->isThisAndAncestorsMapped()) return;
+    // Override-redirect windows (menus, tooltips) bypass window-manager
+    // activation. WM_TAKE_FOCUS makes Wine activate a popup and dismiss its menu.
+    if (!wnd || wnd->attributes.override_redirect || !wnd->isThisAndAncestorsMapped()) return;
     U32 protocols = internAtom(B("WM_PROTOCOLS"), true);
     U32 takeFocus = internAtom(B("WM_TAKE_FOCUS"), true);
     if (!protocols || !takeFocus) return;

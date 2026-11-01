@@ -88,6 +88,46 @@ several related implementation gaps, not 12 independent root causes. The probe
 passes all 12 after the focus fixes. The extended run passes all 27 on both
 the corrected Boxedwine engine and Xvfb.
 
+## Popup activation
+
+`map-focus.c` checks the window-manager activation handshake separately from
+core X11 focus reversion. Build the same 32-bit client for both environments:
+
+```sh
+gcc -m32 -O2 -Wall -Wextra -Werror map-focus.c -lX11 -o map-focus
+xvfb-run -a ./map-focus
+```
+
+Inside Boxedwine, mount the binary's directory and run
+`/mnt/probes/map-focus boxedwine` with a disposable root and `-novideo`.
+Keep the engine's stdin open until it exits. The argument enables checks for
+Boxedwine's built-in window-manager handshake; bare Xvfb has no window manager
+and should not send those messages. Expect `RESULT checks=12 failures=0`.
+
+Both environments check that mapping/reopening an override-redirect popup
+advertising `WM_TAKE_FOCUS` sends no activation message and leaves its owner's
+focus alone. Tests also cover changing override-redirect after creation,
+children, windows without the protocol, repeated maps, explicit client focus,
+and activation of normal windows and transient dialogs after `MapNotify`.
+
+Cinebench R11.5 exposed this regression: clicking File briefly displayed its
+menu, then an unsolicited `WM_TAKE_FOCUS` activated the popup and dismissed it.
+The handshake introduced in `23b8d8f7` for Alice also applied to override-redirect
+windows. These windows bypass window-manager activation, as described by
+[ICCCM Pop-up Windows](https://www.x.org/releases/current/doc/xorg-docs/icccm/icccm.html#Pop_up_Windows).
+`requestFocusWindow` now excludes them while leaving explicit `XSetInputFocus`
+and managed-window activation available.
+
+On November 1, 2026, Xvfb passed all 12 checks. The Windows x64 engine with both
+pending branches (`65df440e1` and `3ef75372b`) failed three popup checks before
+the guard and passed all 12 afterward. The existing extended focus probe also
+passed all 27 checks. Ten native X11/SDL checks, including dialog-owner focus
+restoration, and the pending OpenGL branch's three memory tests passed.
+Cinebench's File and Help menus remained open; Preferences could be selected
+and closed with focus returning to the main window, and clicking outside
+dismissed the popup normally. This is an engine fix and does not require a Wine
+filesystem rebuild.
+
 ## Closing a display while it owns mouse capture
 
 `capture-close.c` exercises the shutdown path used by the 3DMark2001 SE
