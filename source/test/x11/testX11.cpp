@@ -589,6 +589,61 @@ void testX11HiddenWindowInvalidation() {
     server->destroyWindow(window->id);
 }
 
+void testX11DialogFocusRevert() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    x11_init();
+    testNewInstruction(0);
+    initPaletteTestServer();
+    auto server = XServer::getServer();
+    auto visual = std::make_shared<Visual>();
+    visual->bits_per_rgb = 8;
+    const XWindowPtr& root = server->getRoot();
+    auto owner = server->createNewWindow(0, root, 4, 4, 8, 0, 0, InputOutput, 0, visual);
+    auto dialog = server->createNewWindow(0, root, 2, 2, 8, 1, 1, InputOutput, 0, visual);
+    auto plain = server->createNewWindow(0, root, 2, 2, 8, 1, 1, InputOutput, 0, visual);
+    dialog->setTransient(owner->id);
+    owner->mapWindow();
+    dialog->mapWindow();
+    plain->mapWindow();
+
+    // Wine focuses its windows with RevertToParent. Like a window manager, the server must give
+    // focus back to a closing dialog's owner; the parent of a top-level dialog is the root, and
+    // Wine then treats the owner as deactivated (a fullscreen game minimizes itself).
+    if (server->setInputFocus(nullptr, dialog->id, RevertToParent, 0) != Success || server->getInputFocusWindow() != dialog)
+        testFail("Could not focus the dialog");
+    dialog->unmapWindow();
+    if (server->getInputFocusWindow() != owner) testFail("Closing a dialog did not focus its owner window");
+
+    // Explicit None and PointerRoot policies must also be honored for transients.
+    dialog->mapWindow();
+    if (server->setInputFocus(nullptr, dialog->id, RevertToNone, 0) != Success)
+        testFail("Could not focus the dialog with RevertToNone");
+    dialog->unmapWindow();
+    U32 revertTo;
+    U32 focus = server->getInputFocus(revertTo);
+    if (focus != None || revertTo != RevertToNone)
+        testFail("RevertToNone: got focus=%u (owner=%u), revert=%u; expected None", focus, owner->id, revertTo);
+
+    dialog->mapWindow();
+    if (server->setInputFocus(nullptr, dialog->id, RevertToPointerRoot, 0) != Success)
+        testFail("Could not focus the dialog with RevertToPointerRoot");
+    dialog->unmapWindow();
+    focus = server->getInputFocus(revertTo);
+    if (focus != PointerRoot || revertTo != RevertToPointerRoot)
+        testFail("RevertToPointerRoot did not preserve the requested policy");
+
+    // A window without an owner still reverts to its parent.
+    if (server->setInputFocus(nullptr, plain->id, RevertToParent, 0) != Success || server->getInputFocusWindow() != plain)
+        testFail("Could not focus the plain window");
+    plain->unmapWindow();
+    if (server->getInputFocusWindow() != root) testFail("RevertToParent did not focus the parent");
+
+    server->setInputFocus(nullptr, PointerRoot, RevertToPointerRoot, 0);
+    server->destroyWindow(dialog->id);
+    server->destroyWindow(plain->id);
+    server->destroyWindow(owner->id);
+}
+
 void testX11PaletteInvalidation() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
     x11_init();

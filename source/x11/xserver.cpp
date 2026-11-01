@@ -388,6 +388,14 @@ void XServer::changeInputFocus(const XWindowPtr& window, bool pointerRoot, const
 
 void XServer::revertInputFocus(const XWindowPtr& unmapped) {
 	XWindowPtr pointer = getPointerWindowForFocus();
+	// Like a window manager, give focus back to the window a closing dialog belongs to. Reverting
+	// a top-level dialog to its parent focuses the root, and Wine then treats its owner as
+	// deactivated: a fullscreen DirectDraw game minimizes itself and stops responding.
+	XWindowPtr owner;
+	if (unmapped->getParent() == root && unmapped->WM_TRANSIENT_FOR()) {
+		owner = getWindow(unmapped->WM_TRANSIENT_FOR());
+		if (owner && (owner == unmapped || !owner->isThisAndAncestorsMapped())) owner.reset();
+	}
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(inputFocusMutex);
 		if (inputFocusIsPointerRoot || !focusAncestor(unmapped, inputFocus)) return;
@@ -395,6 +403,8 @@ void XServer::revertInputFocus(const XWindowPtr& unmapped) {
 		bool pointerRoot = inputFocusRevertTo == RevertToPointerRoot;
 		if (pointerRoot) {
 			next = root;
+		} else if (inputFocusRevertTo == RevertToParent && owner) {
+			next = owner;
 		} else if (inputFocusRevertTo == RevertToParent) {
 			next = inputFocus->getParent();
 			while (next && !next->isThisAndAncestorsMapped()) next = next->getParent();
