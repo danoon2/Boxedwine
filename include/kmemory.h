@@ -142,6 +142,14 @@ public:
 
     U8* getRamPtr(U32 address, U32 len, bool write, bool futex = false);
 
+    // Prepare a span for native code, which cannot take JIT memory faults.
+    // Returns nullptr when the linear alias cannot represent the whole span.
+#if defined(BOXEDWINE_64) && !defined(__EMSCRIPTEN__)
+    U8* getLinearRamPtr(U32 address, U32 len, bool write);
+#else
+    U8* getLinearRamPtr(U32, U32, bool) { return nullptr; }
+#endif
+
     // caller is responsible for making sure the address+len is valid
     void iteratePages(U32 address, U32 len, std::function<bool(U32 page)> callback);
 

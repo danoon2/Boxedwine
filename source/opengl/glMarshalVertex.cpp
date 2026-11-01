@@ -23,6 +23,15 @@
 #include "glcommon.h"
 #include "glMarshal.h"
 
+struct ClientArrayCopyCache {
+    static constexpr U32 maxEntries = 16;
+    struct Entry { U32 address; U64 end; U8* bytes; };
+    Entry entries[maxEntries];
+    U32 count = 0;
+    KThread* thread = nullptr;
+    U32 vertexCount = 0;
+};
+
 static U32 getVertexPointerValueSize(const OpenGLVetexPointer* p) {
     U32 components = p->size == GL_BGRA ? 4 : p->size;
     switch (p->type) {
@@ -39,7 +48,40 @@ static U32 getVertexPointerValueSize(const OpenGLVetexPointer* p) {
     }
 }
 
-U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
+static void includeOverlappingClientRange(const OpenGLVetexPointer& source, const OpenGLVetexPointer& p,
+    U32 count, U32& address, U64& end) {
+    if (!p.refreshEachCall || p.isArrayBuffer || !p.ptr || !count) return;
+    U32 valueSize = getVertexPointerValueSize(&p);
+    U32 stride = p.stride ? p.stride : valueSize;
+    U32 sourceStride = source.stride ? source.stride : getVertexPointerValueSize(&source);
+    U32 distance = p.ptr > source.ptr ? p.ptr - source.ptr : source.ptr - p.ptr;
+    // Share attributes from the same interleaved records. Arbitrarily merging
+    // intersecting arrays could turn a small copy into a much larger one.
+    if (stride != sourceStride || distance >= stride) return;
+    U64 otherEnd = (U64)p.ptr + (U64)(count - 1) * stride + valueSize;
+    U32 start = std::min(address, p.ptr);
+    U64 stop = std::max(end, otherEnd);
+    if (p.ptr < end && otherEnd > address && stop <= 0x100000000ULL && stop - start <= 0xffffffffULL) {
+        address = start;
+        end = stop;
+    }
+}
+
+static void includeOverlappingClientArrays(const ClientArrayCopyCache& cache,
+    const OpenGLVetexPointer& source, U32& address, U64& end) {
+    // Merge only ranges that this draw already needs. In particular, never
+    // round into padding after the final strided value or a native allocation.
+    includeOverlappingClientRange(source, cache.thread->glVertextPointer, cache.vertexCount, address, end);
+    for (auto& attribute : cache.thread->glVertextPointersByIndex)
+        includeOverlappingClientRange(source, *attribute.value, cache.vertexCount, address, end);
+    includeOverlappingClientRange(source, cache.thread->glNormalPointer, cache.vertexCount, address, end);
+    includeOverlappingClientRange(source, cache.thread->glColorPointer, cache.vertexCount, address, end);
+    includeOverlappingClientRange(source, cache.thread->glSecondaryColorPointer, cache.vertexCount, address, end);
+    for (auto& attribute : cache.thread->glTexCoordPointersByTexture)
+        includeOverlappingClientRange(source, *attribute.value, cache.vertexCount, address, end);
+}
+
+static U32 updateVertexPointerWithCache(CPU* cpu, OpenGLVetexPointer* p, U32 count, ClientArrayCopyCache* cache) {
     if (p->isArrayBuffer) {
         // VBO pointers are offsets into the currently bound host buffer. They do
         // not reference guest memory and must never be refreshed or marshalled.
@@ -66,11 +108,29 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
         // Revalidate the entire range on every draw. Guest allocations may be
         // reused, and another array must not relocate pages behind this array's
         // cached host pointer. Copy fragmented ranges instead of remapping them.
-        U8* ramPtr = getGlContiguousMemory(cpu, p->ptr, datasize);
+        U8* ramPtr = nullptr;
+        if (cache) {
+            for (U32 i = 0; i < cache->count; ++i) {
+                const auto& entry = cache->entries[i];
+                if (p->ptr >= entry.address && (U64)p->ptr + datasize <= entry.end) {
+                    ramPtr = entry.bytes + (p->ptr - entry.address);
+                    break;
+                }
+            }
+        }
+        if (!ramPtr) ramPtr = getGlContiguousMemory(cpu, p->ptr, datasize);
         if (!ramPtr) {
-            p->marshalBuffer.resize(datasize);
-            cpu->memory->memcpy(p->marshalBuffer.data(), p->ptr, datasize);
-            ramPtr = p->marshalBuffer.data();
+            U32 copyAddress = p->ptr;
+            U64 copyEnd = (U64)p->ptr + datasize;
+            if (cache && count == cache->vertexCount && cache->count < ClientArrayCopyCache::maxEntries) {
+                includeOverlappingClientArrays(*cache, *p, copyAddress, copyEnd);
+            }
+            U32 copySize = (U32)(copyEnd - copyAddress);
+            p->marshalBuffer.resize(copySize);
+            cpu->memory->memcpy(p->marshalBuffer.data(), copyAddress, copySize);
+            ramPtr = p->marshalBuffer.data() + (p->ptr - copyAddress);
+            if (cache && cache->count < ClientArrayCopyCache::maxEntries)
+                cache->entries[cache->count++] = {copyAddress, copyEnd, p->marshalBuffer.data()};
         }
         p->marshal_size = datasize;
         p->lastMarshalledPtr = p->ptr;
@@ -83,6 +143,10 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
         p->marshal = nullptr;
     }
     return 0;
+}
+
+U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
+    return updateVertexPointerWithCache(cpu, p, count, nullptr);
 }
 
 static void clearInterleavedArrayReplay(CPU* cpu) {
@@ -124,10 +188,15 @@ static bool selectClientActiveTextureForReplay(GLenum texture) {
 }
 
 void updateVertexPointers(CPU* cpu, U32 count) {
+    // The cache exists only during this draw. It borrows per-array storage,
+    // which remains alive for the GL call, and never reuses a prior snapshot.
+    ClientArrayCopyCache copies;
+    copies.thread = cpu->thread;
+    copies.vertexCount = count;
     GLint savedArrayBuffer = 0;
     bool checkedArrayBuffer = false;
     auto updateClientPointer = [&](OpenGLVetexPointer* pointer, U32 vertexCount) {
-        if (!updateVertexPointer(cpu, pointer, vertexCount)) {
+        if (!updateVertexPointerWithCache(cpu, pointer, vertexCount, &copies)) {
             return false;
         }
 #ifndef DISABLE_GL_EXTENSIONS

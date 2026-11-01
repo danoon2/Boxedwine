@@ -4664,6 +4664,115 @@ static TestResult testClientArrayMemoryReuse(TestContext&) {
     return success ? pass("fragmented client arrays and subsequent buffer uploads matched") : fail(error);
 }
 
+static TestResult testClientArraySharedCopy(TestContext&) {
+    if (!glx.VertexAttribPointer || !glx.EnableVertexAttribArray || !glx.DisableVertexAttribArray ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("client-array entry points are unavailable");
+    }
+    std::string error;
+    GLuint program = makeVertexAttribRenderProgram(error);
+    if (!program) return fail(error);
+    constexpr size_t bytes = 256 * 1024;
+    constexpr GLint first = 2045;
+    constexpr GLsizei stride = 64;
+    unsigned char* allocation = (unsigned char*)VirtualAlloc(nullptr, bytes + 4096, MEM_RESERVE, PAGE_READWRITE);
+    unsigned char* other = (unsigned char*)VirtualAlloc(nullptr, bytes, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    GLuint buffer = 0;
+    auto cleanup = [&]() {
+        glx.DisableVertexAttribArray(0);
+        glx.DisableVertexAttribArray(1);
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        if (buffer) glx.DeleteBuffers(1, &buffer);
+        glx.UseProgram(0);
+        glx.DeleteProgram(program);
+        if (allocation) VirtualFree(allocation, 0, MEM_RELEASE);
+        if (other) VirtualFree(other, 0, MEM_RELEASE);
+    };
+    if (!allocation || !other || !VirtualAlloc(allocation, bytes, MEM_COMMIT, PAGE_READWRITE)) {
+        cleanup();
+        return fail("VirtualAlloc failed");
+    }
+    for (size_t offset = 0; offset < bytes; offset += 4096) {
+        std::memset(allocation + offset, 0, 4096);
+        std::memset(other + offset, 0, 4096);
+    }
+    // Colour ends exactly at the guard page. Position starts eight bytes
+    // earlier, so the two strided ranges overlap but neither contains the other.
+    unsigned char* vertices = allocation + bytes - (first + 2) * stride - 24;
+    const GLfloat triangle[] = {-0.8f, -0.8f, 0.8f, -0.8f, 0.0f, 0.8f};
+    const GLfloat colours[][4] = {{0, 1, 0, 1}, {1, 0, 0, 1}, {0, 0, 1, 1}};
+    auto fill = [&](GLint start, int colour, bool visible = true) {
+        for (int i = 0; i < 3; ++i) {
+            GLfloat* vertex = (GLfloat*)(vertices + (start + i) * stride);
+            vertex[0] = visible ? triangle[i * 2] : 0;
+            vertex[1] = visible ? triangle[i * 2 + 1] : 0;
+            std::memcpy(vertex + 2, colours[colour], 16);
+        }
+    };
+    glx.UseProgram(program);
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, vertices);
+    glx.VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, vertices + 8);
+    glx.EnableVertexAttribArray(0);
+    glx.EnableVertexAttribArray(1);
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0, 0, 0, 1);
+    auto verify = [&](GLint start, int colour, const char* phase) {
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDrawArrays(GL_TRIANGLES, start, 3);
+        unsigned char pixel[4] = {};
+        glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+        GLenum status = glGetError();
+        for (int c = 0; c < 3; ++c) {
+            bool high = colour >= 0 && colours[colour][c] != 0;
+            if (status || (high ? pixel[c] < 220 : pixel[c] > 32)) {
+                error = std::string(phase) + " GL=" + std::to_string(status) +
+                    " pixel=" + std::to_string(pixel[0]) + "," + std::to_string(pixel[1]) +
+                    "," + std::to_string(pixel[2]);
+                return false;
+            }
+        }
+        return true;
+    };
+    fill(0, 0);
+    fill(first, 0);
+    bool success = verify(0, 0, "small overlapping arrays") && verify(first, 0, "grown overlapping arrays");
+    fill(first, 1);
+    success = success && verify(first, 1, "updated shared colour");
+    fill(first, 1, false);
+    success = success && verify(first, -1, "updated shared position");
+    fill(first, 0);
+    // The previous copy owner becomes VBO-backed. The remaining client colour
+    // array must stop borrowing its buffer and refresh its own data.
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    glx.BufferData(GL_ARRAY_BUFFER, bytes, allocation, GL_STATIC_DRAW);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, (void*)(vertices - allocation));
+    fill(first, 2);
+    success = success && verify(first, 2, "copy owner changed to VBO");
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, vertices);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    fill(first, 1);
+    success = success && verify(first, 1, "copy owner restored with VBO bound");
+    GLint binding = 0;
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &binding);
+    if ((GLuint)binding != buffer) { success = false; error = "array replay changed the VBO binding"; }
+    // Recommit the page containing both consumed attributes at the same guest address.
+    if (!VirtualFree(allocation + bytes - 4096, 4096, MEM_DECOMMIT) ||
+        VirtualAlloc(allocation + bytes - 4096, 4096, MEM_COMMIT, PAGE_READWRITE) != allocation + bytes - 4096) {
+        success = false;
+        error = "could not recommit shared array page";
+    } else {
+        fill(first, 0);
+        success = success && verify(first, 0, "recommitted overlapping arrays");
+    }
+    cleanup();
+    return success ? pass("overlapping arrays refreshed across updates, growth, VBO rebinding and memory reuse") : fail(error);
+}
+
 static TestResult testVertexArrayObjectPageBoundary(TestContext&) {
     if (!glx.GenVertexArrays || !glx.CreateVertexArrays || !glx.DeleteVertexArrays ||
         !glx.BindVertexArray || !glx.IsVertexArray || !glx.VertexArrayVertexBuffers ||
@@ -16207,6 +16316,7 @@ static std::vector<TestCase> tests() {
         { "vertex-attrib-pointer-page-boundary", testVertexAttribPointerPageBoundary },
         { "vertex-attrib-client-array-render-page-boundary", testVertexAttribClientArrayRenderPageBoundary },
         { "client-array-memory-reuse", testClientArrayMemoryReuse },
+        { "client-array-shared-copy", testClientArraySharedCopy },
         { "vertex-array-object-page-boundary", testVertexArrayObjectPageBoundary },
         { "bind-vertex-buffers-page-boundary", testBindVertexBuffersPageBoundary },
         { "bind-buffers-range-page-boundary", testBindBuffersRangePageBoundary },
@@ -16378,16 +16488,21 @@ static std::vector<TestCase> tests() {
     };
 }
 
+#include "ClientArrayBenchmark.h"
+
 int main(int argc, char** argv) {
     std::string only;
     std::string logPath;
     bool list = false;
     bool quiet = false;
+    bool benchmark = false;
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "--list") == 0) {
             list = true;
         } else if (std::strcmp(argv[i], "--quiet") == 0) {
             quiet = true;
+        } else if (std::strcmp(argv[i], "--benchmark-client-arrays") == 0) {
+            benchmark = true;
         } else if (std::strcmp(argv[i], "--test") == 0 && i + 1 < argc) {
             only = argv[++i];
         } else if (std::strcmp(argv[i], "--log") == 0 && i + 1 < argc) {
@@ -16436,6 +16551,15 @@ int main(int argc, char** argv) {
     const char* renderer = (const char*)glGetString(GL_RENDERER);
     ctx.write(std::string("OpenGL version: ") + (version ? version : "<unknown>"));
     ctx.write(std::string("OpenGL renderer: ") + (renderer ? renderer : "<unknown>"));
+
+    if (benchmark) {
+        TestResult result = benchmarkClientArrays(ctx);
+        ctx.write(std::string(result.status == TestResult::Pass ? "PASS" :
+            result.status == TestResult::Fail ? "FAIL" : "SKIP") +
+            " client-array-benchmark: " + result.message);
+        destroyContext(ctx);
+        return result.status == TestResult::Fail ? 1 : 0;
+    }
 
     bool found = only.empty();
     for (const auto& t : allTests) {

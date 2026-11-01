@@ -86,6 +86,70 @@ static void testResize(bool embedded, bool useGL) {
     sdlStatusBarShutdown();
 }
 
+static void checkClientSize(SDL_Window* window, int width, int height, const char* label) {
+    int actualWidth, actualHeight;
+    SDL_GetWindowSize(window, &actualWidth, &actualHeight);
+    RECT client = {};
+    bool nativeSize = GetClientRect(nativeWindow(window), &client) &&
+        client.right == width && client.bottom == height;
+    if (actualWidth != width || actualHeight != height || !nativeSize) {
+        printf("%s: SDL=%dx%d native=%ldx%ld expected=%dx%d\n", label,
+            actualWidth, actualHeight, client.right, client.bottom, width, height);
+    }
+    check(actualWidth == width && actualHeight == height && nativeSize, label, true, width, height);
+}
+
+static void testOwnerSwitch(bool recreateGL) {
+    printf("Testing repeated desktop/OpenGL handoff recreateGL=%d\n", recreateGL);
+    sdlStatusBarConfigure(true);
+    SDL_Window* desktop = SDL_CreateWindow("Desktop handoff", 20, 20, 800, 600, SDL_WINDOW_HIDDEN);
+    SDL_Window* gl = nullptr;
+    SDL_GLContext context = nullptr;
+    check(desktop != nullptr, "create desktop", true, 800, 600);
+    if (!desktop) return;
+    sdlStatusBarShowWindow(desktop, true);
+    for (int cycle = 0; cycle < 4; ++cycle) {
+        if (!gl) {
+            gl = SDL_CreateWindow("OpenGL handoff", 20, 20, 640, 480, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
+            context = gl ? SDL_GL_CreateContext(gl) : nullptr;
+            check(context != nullptr, "create handoff GL context", true, 640, 480);
+            if (!context) break;
+        }
+        sdlStatusBarShowWindow(desktop, false);
+        sdlStatusBarShowWindow(gl, true);
+        for (bool pump : {false, true}) {
+            if (pump) SDL_PumpEvents();
+            checkClientSize(desktop, 800, 600, "detached desktop client size");
+            checkClientSize(gl, 640, 480, "attached GL client size");
+        }
+        if (recreateGL) {
+            SDL_GL_DeleteContext(context);
+            context = nullptr;
+            sdlStatusBarWindowDestroyed(gl);
+            SDL_DestroyWindow(gl);
+            gl = nullptr;
+        } else sdlStatusBarShowWindow(gl, false);
+        sdlStatusBarShowWindow(desktop, true);
+        for (bool pump : {false, true}) {
+            if (pump) SDL_PumpEvents();
+            checkClientSize(desktop, 800, 600, "reattached desktop client size");
+            if (gl) {
+                checkClientSize(gl, 640, 480, "detached GL client size");
+                int width, height;
+                SDL_GL_GetDrawableSize(gl, &width, &height);
+                check(width == 640 && height == 480, "detached GL drawable size", true, 640, 480);
+                check(SDL_GL_GetCurrentContext() == context, "handoff retains GL context", true, 640, 480);
+            }
+        }
+        sdlStatusBarTick();
+    }
+    sdlStatusBarConfigure(false);
+    checkClientSize(desktop, 800, 600, "shutdown preserves desktop client size");
+    if (context) SDL_GL_DeleteContext(context);
+    if (gl) SDL_DestroyWindow(gl);
+    SDL_DestroyWindow(desktop);
+}
+
 int main(int argc, char** argv) {
     rawSDL = argc > 1 && !strcmp(argv[1], "--raw-sdl");
     SDL_SetMainReady();
@@ -101,6 +165,8 @@ int main(int argc, char** argv) {
         testResize(false, useGL);
         testResize(true, useGL);
     }
+    testOwnerSwitch(false);
+    testOwnerSwitch(true);
     SDL_Quit();
     printf("RESULT checks=%d failures=%d\n", checks, failures);
     return failures ? 1 : 0;

@@ -194,12 +194,14 @@ bool embedGuest(SDL_Window* child, SDL_Window* parent, bool attach) {
     SDL_VERSION(&c.version); SDL_VERSION(&p.version);
     if (!SDL_GetWindowWMInfo(child, &c) || !SDL_GetWindowWMInfo(parent, &p)) return false;
     HWND hwnd = c.info.win.window;
+    // Both directions change the non-client frame and can synchronously
+    // update SDL's cached size. Keep the guest client area across the change.
+    int w, h;
+    SDL_GetWindowSize(child, &w, &h);
     if (attach) {
         // Reparenting a previously visible top-level window sends WM_SIZE
         // while its frame is being removed. Preserve the guest client size
         // before that transient native size reaches SDL's window cache.
-        int w, h;
-        SDL_GetWindowSize(child, &w, &h);
         guestStyle = GetWindowLongPtr(hwnd, GWL_STYLE);
         guestExStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
         SetWindowLongPtr(hwnd, GWL_STYLE, (guestStyle & ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)) | WS_CHILD | WS_CLIPSIBLINGS);
@@ -212,7 +214,12 @@ bool embedGuest(SDL_Window* child, SDL_Window* parent, bool attach) {
         SetParent(hwnd, nullptr);
         SetWindowLongPtr(hwnd, GWL_STYLE, guestStyle);
         SetWindowLongPtr(hwnd, GWL_EXSTYLE, guestExStyle);
-        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+        // Restoring the top-level frame at the child window's outer size
+        // would consume part of its client area on every GDI/GL handoff.
+        RECT bounds = {0, 0, w, h};
+        AdjustWindowRectEx(&bounds, (DWORD)guestStyle, GetMenu(hwnd) != nullptr, (DWORD)guestExStyle);
+        SetWindowPos(hwnd, nullptr, 0, 0, bounds.right - bounds.left, bounds.bottom - bounds.top,
+            SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
     }
     return true;
 #elif defined(__linux__) && defined(SDL_VIDEO_DRIVER_X11)

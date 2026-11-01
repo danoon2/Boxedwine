@@ -21,7 +21,12 @@
 
 // Native backing on the first page does not imply that later guest pages
 // have adjacent backing, or still belong to the same native mapping.
-inline U8* getGlContiguousMemory(CPU* cpu, U32 address, U32 size, bool write = false) {
+inline U8* getGlContiguousMemory(CPU* cpu, U32 address, U32 size, bool write = false, bool allowLinearMemory = true) {
+    if (allowLinearMemory) {
+        if (U8* linear = cpu->memory->getLinearRamPtr(address, size, write)) {
+            return linear;
+        }
+    }
     U8* first = cpu->memory->getRamPtr(address, 1, write);
     U64 offset = K_PAGE_SIZE - (address & K_PAGE_MASK);
     while (offset < size) {
@@ -36,6 +41,15 @@ inline U8* getGlContiguousMemory(CPU* cpu, U32 address, U32 size, bool write = f
 template <typename T, U32 writeSize = sizeof(T)>
 void marshalBackArray(CPU* cpu, T* buffer, U32 address, U32 count) {
     if (address) {
+        if constexpr (writeSize == sizeof(T)) {
+            U64 bytes = (U64)count * sizeof(T);
+            if (bytes <= 0xffffffffULL) {
+                if (U8* linear = cpu->memory->getLinearRamPtr(address, (U32)bytes, true)) {
+                    if (linear != (U8*)buffer) ::memcpy(linear, buffer, (size_t)bytes);
+                    return;
+                }
+            }
+        }
         if constexpr (std::is_same_v<GLfloat, T>) {
             int2Float f2i;
             for (U32 i = 0; i < count; i++) {
@@ -78,7 +92,7 @@ void marshalBackArray(CPU* cpu, T* buffer, U32 address, U32 count) {
 }
 
 template <typename T, U32 readSize = sizeof(T)>
-const T* marshalArray(CPU* cpu, U32 address, U32 count) {
+const T* marshalArray(CPU* cpu, U32 address, U32 count, bool allowLinearMemory = true) {
     thread_local static T** buffer;
     thread_local static U32* bufferLen;
     thread_local static U32 indexCount;
@@ -90,15 +104,24 @@ const T* marshalArray(CPU* cpu, U32 address, U32 count) {
     if (!count) {
         return (T*)(U64)address;
     }
-    U32 len = count * sizeof(T);
-    U32 page = address >> K_PAGE_SHIFT;
-    U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
-    if (page == pageStop && cpu->memory->canRead(page)) {
-        return (T*)cpu->memory->getRamPtr(address, len, false);
-    }
-    if (cpu->memory->isPageNative(page)) {
-        if (U8* contiguous = getGlContiguousMemory(cpu, address, len)) {
-            return (T*)contiguous;
+    // A direct pointer is valid only when guest and host element layouts match.
+    // In particular, GLintptr/GLsizeiptr arrays need widening on 64-bit hosts.
+    if constexpr (readSize == sizeof(T)) {
+        U32 len = count * sizeof(T);
+        if (allowLinearMemory && (U64)count * sizeof(T) <= 0xffffffffULL) {
+            if (U8* linear = cpu->memory->getLinearRamPtr(address, len, false)) {
+                return (T*)linear;
+            }
+        }
+        U32 page = address >> K_PAGE_SHIFT;
+        U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
+        if (page == pageStop && cpu->memory->canRead(page)) {
+            return (T*)cpu->memory->getRamPtr(address, len, false);
+        }
+        if (cpu->memory->isPageNative(page)) {
+            if (U8* contiguous = getGlContiguousMemory(cpu, address, len, false, allowLinearMemory)) {
+                return (T*)contiguous;
+            }
         }
     }
     if (!buffer) {
@@ -148,7 +171,10 @@ const T* marshalArray(CPU* cpu, U32 address, U32 count) {
     } else {
         for (U32 i = 0; i < count; i++) {
             if constexpr (readSize == 4) {
-                buffer[index][i] = (T)cpu->memory->readd(address);
+                if constexpr (std::is_integral_v<T> && std::is_signed_v<T>)
+                    buffer[index][i] = (T)(S32)cpu->memory->readd(address);
+                else
+                    buffer[index][i] = (T)cpu->memory->readd(address);
                 address += 4;
             } else if constexpr (readSize == 2) {
                 buffer[index][i] = cpu->memory->readw(address);
@@ -181,6 +207,11 @@ public:
     T* getPtr() {
         if (!buffer) {
             U32 len = count * sizeof(T);
+            if (address && (U64)count * sizeof(T) <= 0xffffffffULL) {
+                if (U8* linear = cpu->memory->getLinearRamPtr(address, len, true)) {
+                    return (T*)linear;
+                }
+            }
             U32 page = address >> K_PAGE_SHIFT;
             U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
             if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
@@ -191,7 +222,8 @@ public:
                     return (T*)contiguous;
                 }
             }
-            buffer = (T*)marshalArray<T>(cpu, address, count);
+            // A read-only linear alias is not a writable fallback.
+            buffer = (T*)marshalArray<T>(cpu, address, count, false);
         }
         return buffer;
     }
@@ -247,7 +279,7 @@ inline const GLchar* marshalsz(CPU* cpu, U32 address) {
 // GL_4_BYTES, GL_FLOAT, GL_UNSIGNED_INT, GL_INT
 //
 // base on the type, the correct marshal function will be called
-const GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address);
+const GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address, bool allowLinearMemory = true);
 
 // will call the correct marshal function based on the type the count passed to the marshal
 // function will be set to the correct number to include all the data for a single pixel for the format
@@ -418,13 +450,18 @@ public:
             }
             if (count) {
                 U32 len = count * sizeof(T);
+                if (address && (U64)count * sizeof(T) <= 0xffffffffULL) {
+                    if (U8* linear = cpu->memory->getLinearRamPtr(address, len, true)) {
+                        return (T*)linear;
+                    }
+                }
                 U32 page = address >> K_PAGE_SHIFT;
                 U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
                 if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
                     return (T*)cpu->memory->getRamPtr(address, len, true);
                 }
             }
-            buffer = (T*)marshalArray<T>(cpu, address, count);
+            buffer = (T*)marshalArray<T>(cpu, address, count, false);
         }
         return buffer;
     }

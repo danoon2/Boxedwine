@@ -427,6 +427,9 @@
     <ClCompile Include="..\..\..\..\source\test\mmu\testSelfModifying.cpp">
       <Filter>source\test\mmu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\opengl\testOpenGL.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\test\process\testWaitPid.cpp">
       <Filter>source\test\process</Filter>
     </ClCompile>

@@ -1082,6 +1082,11 @@ const TestEntry TEST_ENTRIES[] = {
     {testJitMemoryReadFaultState, "Test JIT memory load preserves fault state", TEST_ENTRY_SERIAL},
     {testLinearMemoryCloneMappings, "Test linear-memory COW and shared clone mappings", TEST_ENTRY_SERIAL},
     {testLinearMemoryCodeInvalidation, "Test linear-memory code invalidation", TEST_ENTRY_SERIAL},
+#ifdef BOXEDWINE_OPENGL
+    {testOpenGLLinearMemory, "Test OpenGL linear-memory spans and fallback", TEST_ENTRY_SERIAL},
+    {testOpenGLLinearMemoryWrites, "Test OpenGL linear-memory COW and code writes", TEST_ENTRY_SERIAL},
+    {testOpenGLMarshalPointerWidths, "Test OpenGL guest pointer widths", TEST_ENTRY_SERIAL},
+#endif
     {testDecodedOpLargeRangeRemoval, "Test decoded op large-range removal"},
     {testJitOverlappingBlockUnmap, "Test JIT overlapping block unmap", TEST_ENTRY_SERIAL},
     {testJitOverlappingBlockRemoveCode, "Test JIT overlapping block code removal", TEST_ENTRY_SERIAL},

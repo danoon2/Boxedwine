@@ -2160,6 +2160,37 @@ U8* KMemory::getRamPtr(U32 address, U32 len, bool write, bool futex) {
     return result;
 }
 
+#if defined(BOXEDWINE_64) && !defined(__EMSCRIPTEN__)
+U8* KMemory::getLinearRamPtr(U32 address, U32 len, bool write) {
+    if (!data->linearMemoryBase || !len || (U64)address + len > 0x100000000ULL ||
+        (write && debugMemoryWriteTrapActive.load(std::memory_order_relaxed))) {
+        return nullptr;
+    }
+    const U32 required = write ? 2 : 1;
+    U32 page = address >> K_PAGE_SHIFT;
+    U32 offset = address & K_PAGE_MASK;
+    U32 remaining = len;
+    while (remaining) {
+        U32 bytes = std::min(remaining, K_PAGE_SIZE - offset);
+        if (!(data->linearMemoryMappings[page] & required)) {
+            U32 permission = write ? PAGE_WRITE : (PAGE_READ | PAGE_EXEC);
+            if (!(data->mmu[page].flags & permission)) return nullptr;
+            // Materialize lazy/file pages and resolve COW or code writes through
+            // the normal MMU. Some native mappings and mixed host-page groups
+            // cannot be installed in the aperture; let the caller fall back.
+            if (!getRamPtr((page << K_PAGE_SHIFT) + offset, bytes, write) ||
+                !(data->linearMemoryMappings[page] & required)) {
+                return nullptr;
+            }
+        }
+        remaining -= bytes;
+        ++page;
+        offset = 0;
+    }
+    return data->linearMemoryBase + address;
+}
+#endif
+
 void KMemory::clone(KMemory* from, bool vfork) {
     // don't allow changes to the from pages while we are cloning
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(from->mutex);

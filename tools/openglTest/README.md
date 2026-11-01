@@ -104,6 +104,7 @@ Useful options:
 --test <name>       Run one test
 --log <path>        Write a log file
 --quiet             Do not write test output to stdout
+--benchmark-client-arrays  Measure repeated client-array draws (opt-in)
 ```
 
 Tests report `PASS`, `FAIL`, or `SKIP`. Extension-dependent paths skip cleanly
@@ -111,6 +112,20 @@ when the host OpenGL driver does not expose the required functions.
 
 When running inside Wine/BoxedWine, use `--quiet --log opengl-test.log` if the
 console path emits cursor-control escape sequences.
+
+The client-array benchmark runs three trials with a 1 KiB contiguous control
+and 64 KiB, 1 MiB, and 4 MiB fragmented allocations. It compares a VBO control,
+one client attribute, two
+overlapping interleaved attributes, and interleaved data modified between draws.
+Each trial warms the draw path, times 4096 draws for the smaller allocations
+or 256 draws for the larger ones with `QueryPerformanceCounter`
+and `glFinish`, and verifies the rendered pixel. Trial order alternates.
+Only three vertices near the end of each allocation are drawn, deliberately
+stressing the marshalled span while keeping GPU geometry work small. This is a
+worst-case diagnostic, not a prediction of game FPS. Keep the browser foreground,
+avoid other GPU workloads, and compare repeated runs of the same build mode.
+The benchmark is excluded from the normal test suite and has no timing pass/fail
+threshold. Example: `OpenGLMarshalTest.exe --benchmark-client-arrays --log arrays.log`.
 
 For F-16's missing or flickering psVoodoo overlays, run
 `mapped-buffer-rebinding` and `mapped-buffer-rebinding-arb`. These map two
@@ -202,6 +217,31 @@ attributes where supported. Each phase checks the rendered
 pixel, and the test checks that pointer refresh preserves the buffer binding.
 This catches stale host pointers, overreads after the final vertex, and uploads
 that assume a native first page makes the entire guest range contiguous.
+
+`client-array-shared-copy` verifies overlapping position/colour ranges whose
+last value ends at a guard page. It checks span growth, changes to both
+attributes, switching the copy owner to a VBO and back while preserving the
+buffer binding, and decommitting/recommitting the shared tail page. Copies may
+be shared within a draw, but the next draw must always observe current data.
+
+Native builds with an active single-offset linear mapping use that mapping for
+compatible GL arrays, vertex spans, uploads, and readbacks. The memory helper
+prepares lazy/file pages and copy-on-write destinations before native code can
+access them. Unrepresentable mappings (including some driver-owned memory and
+protected code pages) retain the existing fallback. Pointer arrays and elements
+whose guest/host widths differ still require conversion. The fast path is
+compiled out on 32-bit hosts and Emscripten, and is inactive when native linear
+memory is disabled.
+
+The core test executable's `-list` includes `Test OpenGL linear-memory spans and
+fallback`, `Test OpenGL linear-memory COW and code writes`, and `Test OpenGL guest
+pointer widths`. Run these with linear memory enabled and with
+`-disableLinearMemory`; the span test verifies pointer identity as well as data,
+first-touch file mappings, page reuse, permissions, and native-memory fallback.
+The width test covers signed pointer-sized arrays, pointer tables, buffer offsets,
+and four-byte guest output slots. Rendering coverage includes the client-array
+tests above, `readpixels-page-boundary`, `pbo-readpixels`, shader string arrays,
+and the `bind-*-range-page-boundary` tests.
 
 `element-buffer-client-array-max-index` combines a page-boundary client vertex
 array with an element-array buffer. It verifies

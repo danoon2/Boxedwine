@@ -43,7 +43,7 @@ U32 marshalTypeSize(U32 type) {
     }
 }
 
-const GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
+const GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address, bool allowLinearMemory) {
     const GLvoid* data= nullptr;
 
     if (!address)
@@ -58,34 +58,34 @@ const GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
 
     switch (type) {
         case GL_UNSIGNED_BYTE:
-            data = marshalArray<GLubyte>(cpu, address, count);
+            data = marshalArray<GLubyte>(cpu, address, count, allowLinearMemory);
             break;
         case GL_BYTE: 
-            data = marshalArray<GLbyte>(cpu, address, count);
+            data = marshalArray<GLbyte>(cpu, address, count, allowLinearMemory);
             break;
         case GL_2_BYTES:
-            data = marshalArray<GLbyte>(cpu, address, count*2);
+            data = marshalArray<GLbyte>(cpu, address, count*2, allowLinearMemory);
             break;
         case GL_UNSIGNED_SHORT:
-            data = marshalArray<GLushort>(cpu, address, count);
+            data = marshalArray<GLushort>(cpu, address, count, allowLinearMemory);
             break;
         case GL_SHORT: 
-            data = marshalArray<GLshort>(cpu, address, count);
+            data = marshalArray<GLshort>(cpu, address, count, allowLinearMemory);
             break;
         case GL_3_BYTES:
-            data = marshalArray<GLbyte>(cpu, address, count*3);
+            data = marshalArray<GLbyte>(cpu, address, count*3, allowLinearMemory);
             break;
         case GL_4_BYTES:
-            data = marshalArray<GLbyte>(cpu, address, count*4);
+            data = marshalArray<GLbyte>(cpu, address, count*4, allowLinearMemory);
             break;
         case GL_FLOAT:
-            data = marshalArray<GLfloat>(cpu, address, count);
+            data = marshalArray<GLfloat>(cpu, address, count, allowLinearMemory);
             break;
         case GL_UNSIGNED_INT:
-            data = marshalArray<GLuint>(cpu, address, count);
+            data = marshalArray<GLuint>(cpu, address, count, allowLinearMemory);
             break;
         case GL_INT:
-            data = marshalArray<GLint>(cpu, address, count);
+            data = marshalArray<GLint>(cpu, address, count, allowLinearMemory);
             break;
         default:
             kpanic_fmt("marshalType unknown type: %d", type);
@@ -140,7 +140,13 @@ MarshalReadWriteType::~MarshalReadWriteType() {
 
 GLvoid* MarshalReadWriteType::getPtr() {
     if (!buffer) {
-        buffer = (GLvoid*)marshalType(cpu, type, count, address);
+        U64 bytes = (U64)count * marshalTypeSize(type);
+        if (address && bytes <= 0xffffffffULL) {
+            if (U8* linear = cpu->memory->getLinearRamPtr(address, (U32)bytes, true)) {
+                return linear;
+            }
+        }
+        buffer = (GLvoid*)marshalType(cpu, type, count, address, false);
     }
     return buffer;
 }
@@ -305,26 +311,26 @@ U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsiz
     return (U32)len;
 }
 
-const GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U32 len) {
+const GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U32 len, bool allowLinearMemory = true) {
     if (bytes_per_comp == 0) {
-        return marshalArray<GLfloat>(cpu, pixels, len / 4);
+        return marshalArray<GLfloat>(cpu, pixels, len / 4, allowLinearMemory);
     } else if (bytes_per_comp == 1) {
         if (isSigned) {
-            return marshalArray<GLbyte>(cpu, pixels, len);
+            return marshalArray<GLbyte>(cpu, pixels, len, allowLinearMemory);
         } else {
-            return marshalArray<GLubyte>(cpu, pixels, len);
+            return marshalArray<GLubyte>(cpu, pixels, len, allowLinearMemory);
         }
     } else if (bytes_per_comp == 2) {
         if (isSigned) {
-            return marshalArray<GLshort>(cpu, pixels, len / 2);
+            return marshalArray<GLshort>(cpu, pixels, len / 2, allowLinearMemory);
         } else {
-            return marshalArray<GLushort>(cpu, pixels, len / 2);
+            return marshalArray<GLushort>(cpu, pixels, len / 2, allowLinearMemory);
         }
     } else if (bytes_per_comp == 4) {
         if (isSigned) {
-            return marshalArray<GLint>(cpu, pixels, len / 4);
+            return marshalArray<GLint>(cpu, pixels, len / 4, allowLinearMemory);
         } else {
-            return marshalArray<GLuint>(cpu, pixels, len / 4);
+            return marshalArray<GLuint>(cpu, pixels, len / 4, allowLinearMemory);
         }
     }
     kpanic_fmt("glcommongl.c marshalPixels unknown bytes_per_comp %d", bytes_per_comp);
@@ -382,12 +388,17 @@ GLvoid* MarshalReadWritePackedPixels::getPtr() {
         if (!len) {
             return (GLvoid*)(U64)pixels;
         }
+        if (pixels) {
+            if (U8* linear = cpu->memory->getLinearRamPtr(pixels, len, true)) {
+                return linear;
+            }
+        }
         U32 page = pixels >> K_PAGE_SHIFT;
         U32 pageStop = (pixels + len - 1) >> K_PAGE_SHIFT;
         if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
             return (GLvoid*)cpu->memory->getRamPtr(pixels, len, true);
         }
-        buffer = (void*)marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
+        buffer = (void*)marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len, false);
     }
     return buffer;
 }

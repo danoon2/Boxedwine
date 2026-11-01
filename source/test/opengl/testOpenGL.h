@@ -10,6 +10,12 @@
 #ifndef __TEST_OPENGL_H__
 #define __TEST_OPENGL_H__
 
+#ifdef BOXEDWINE_OPENGL
+void testOpenGLLinearMemory();
+void testOpenGLLinearMemoryWrites();
+void testOpenGLMarshalPointerWidths();
+#endif
+
 #if defined(__EMSCRIPTEN__) && defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY)
 void testEmscriptenMtOpenGLProcAddressBootstrap();
 #endif
