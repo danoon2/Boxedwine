@@ -583,6 +583,25 @@ addToLibrary({
           });
         },
 
+        // Like an OS, hand out ephemeral ports in turn from a random start. A program that closes
+        // a socket and opens another (Road Rash does until its port differs from every other
+        // player's) must get a different port, and players shouldn't all start on the same one.
+        allocateUdpPort: function () {
+          var first = 49152;
+          var count = 65536 - first;
+          if (!this.nextUdpPort) {
+            this.nextUdpPort = first + Math.floor(Math.random() * count);
+          }
+          for (var i = 0; i < count; i++) {
+            var port = first + (this.nextUdpPort - first + i) % count;
+            if (!this.udpPortInUse(0, port)) {
+              this.nextUdpPort = first + (port - first + 1) % count;
+              return port;
+            }
+          }
+          return 0;
+        },
+
         socket: function (domain, type, protocol) {
           if (type !== 1 && type !== 2) {
             BoxedWineNetwork.debugLog("socket rejected domain=" + domain + " type=" + type + " protocol=" + protocol);
@@ -590,10 +609,8 @@ addToLibrary({
           }
           var localPort = 0;
           if (type === 2) {
-            for (localPort = 49152; localPort <= 65535; localPort++) {
-              if (!this.udpPortInUse(0, localPort)) break;
-            }
-            if (localPort > 65535) return -BoxedWineNetwork.EADDRINUSE;
+            localPort = this.allocateUdpPort();
+            if (!localPort) return -BoxedWineNetwork.EADDRINUSE;
           }
           var handle = BoxedWineNetwork.allocateSocket(domain, type, protocol);
           this.sockets[handle] = {

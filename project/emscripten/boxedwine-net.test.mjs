@@ -115,7 +115,7 @@ test("UDP bind rejects occupied ports without changing either socket", () => {
   assert.equal(t.bind(a, 0, bPort), 0);
   assert.equal(t.getLocalPort(a), bPort);
   const c = t.socket(2, 2, 17);
-  assert.equal(t.getLocalPort(c), aPort);
+  assert.notEqual(t.getLocalPort(c), t.getLocalPort(a));
 });
 
 test("delayed UDP acknowledgements cannot overwrite a newer port reservation", () => {
@@ -128,8 +128,17 @@ test("delayed UDP acknowledgements cannot overwrite a newer port reservation", (
   t.onControl({ type: "udp-bind", id: a, status: 0, host: "0.0.0.0", port: 27910 });
   assert.equal(t.getLocalPort(a), 27911);
   const b = t.socket(2, 2, 17);
-  assert.equal(t.getLocalPort(b), initialPort);
+  assert.notEqual(t.getLocalPort(b), 27911);
   assert.equal(t.bind(b, 0, 27911), -98);
+});
+
+test("a new UDP socket gets a fresh ephemeral port after the previous one closes", () => {
+  const { transport: t } = setup();
+  const a = t.socket(2, 2, 17), port = t.getLocalPort(a);
+  t.close(a);
+  const b = t.socket(2, 2, 17);
+  assert.ok(t.getLocalPort(b) >= 49152 && t.getLocalPort(b) <= 65535);
+  assert.notEqual(t.getLocalPort(b), port);
 });
 
 test("canceling a pending connection updates listener readiness and preserves other accepts", () => {
