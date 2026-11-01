@@ -70,6 +70,15 @@
 #ifndef GL_ARRAY_BUFFER
 #define GL_ARRAY_BUFFER 0x8892
 #endif
+#ifndef GL_ARRAY_BUFFER_BINDING
+#define GL_ARRAY_BUFFER_BINDING 0x8894
+#endif
+#ifndef GL_HALF_FLOAT
+#define GL_HALF_FLOAT 0x140B
+#endif
+#ifndef GL_INT_2_10_10_10_REV
+#define GL_INT_2_10_10_10_REV 0x8D9F
+#endif
 #ifndef GL_ELEMENT_ARRAY_BUFFER
 #define GL_ELEMENT_ARRAY_BUFFER 0x8893
 #endif
@@ -4476,7 +4485,6 @@ static TestResult testVertexAttribClientArrayRenderPageBoundary(TestContext&) {
         glx.BindBuffer(GL_ARRAY_BUFFER, 0);
     }
     glViewport(0, 0, 64, 64);
-    glDisable(GL_TEXTURE_2D);
     glDisable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -4504,6 +4512,156 @@ static TestResult testVertexAttribClientArrayRenderPageBoundary(TestContext&) {
         return fail("generic vertex attrib client-array render pixel check failed");
     }
     return pass("page-boundary generic vertex attrib client arrays rendered expected pixel");
+}
+
+static TestResult testClientArrayMemoryReuse(TestContext&) {
+    if (!glx.VertexAttribPointer || !glx.EnableVertexAttribArray || !glx.DisableVertexAttribArray ||
+        !glx.VertexAttrib4fv || !glx.UseProgram || !glx.BindAttribLocation ||
+        !glx.GenBuffers || !glx.BindBuffer || !glx.BufferData || !glx.DeleteBuffers) {
+        return skip("generic vertex array entry points are unavailable");
+    }
+    std::string error;
+    GLuint program = makeVertexAttribRenderProgram(error);
+    if (!program) return fail(error);
+
+    // Touch alternating allocations so adjacent guest pages need not have
+    // adjacent host backing. Grow the same client array beyond 128 KiB.
+    constexpr size_t bytes = 256 * 1024;
+    unsigned char* vertices = (unsigned char*)VirtualAlloc(nullptr, bytes + 4096, MEM_RESERVE, PAGE_READWRITE);
+    unsigned char* padding = (unsigned char*)VirtualAlloc(nullptr, bytes, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    GLuint buffer = 0;
+    auto cleanup = [&]() {
+        glx.DisableVertexAttribArray(0);
+        glx.UseProgram(0);
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        if (buffer) glx.DeleteBuffers(1, &buffer);
+        glx.DeleteProgram(program);
+        if (vertices) VirtualFree(vertices, 0, MEM_RELEASE);
+        if (padding) VirtualFree(padding, 0, MEM_RELEASE);
+    };
+    if (!vertices || !padding || !VirtualAlloc(vertices, bytes, MEM_COMMIT, PAGE_READWRITE)) {
+        cleanup(); return fail("VirtualAlloc failed");
+    }
+    for (size_t offset = 0; offset < bytes; offset += 4096) {
+        std::memset(vertices + offset, 0, 4096);
+        std::memset(padding + offset, 0xa5, 4096);
+    }
+    const GLfloat triangle[] = { -0.8f, -0.8f, 0.8f, -0.8f, 0.0f, 0.8f };
+    constexpr GLint tail = 20000;
+    std::memcpy(vertices, triangle, sizeof(triangle));
+    std::memcpy(vertices + tail * 2 * sizeof(GLfloat), triangle, sizeof(triangle));
+    glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+    glx.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glx.UseProgram(program);
+    glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+    glx.EnableVertexAttribArray(0);
+    glx.DisableVertexAttribArray(1);
+    const GLfloat green[] = {0, 1, 0, 1};
+    glx.VertexAttrib4fv(1, green);
+    glViewport(0, 0, 64, 64);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(0, 0, 0, 1);
+    auto verify = [&](GLint first, const char* phase, bool greenPixel = true) {
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDrawArrays(GL_TRIANGLES, first, 3);
+        unsigned char pixel[4] = {};
+        glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+        GLenum status = glGetError();
+        if (status || pixel[0] > 32 || pixel[2] > 32 ||
+            (greenPixel ? pixel[1] < 220 : pixel[1] > 32)) {
+            error = std::string(phase) + " pixel=" + std::to_string(pixel[0]) + "," +
+                std::to_string(pixel[1]) + "," + std::to_string(pixel[2]) + " GL=" + std::to_string(status);
+            return false;
+        }
+        return true;
+    };
+    // Leave an unrelated VBO bound while drawing the already specified client
+    // array. Refreshing its host address must preserve this binding.
+    glx.GenBuffers(1, &buffer);
+    glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+    bool success = verify(0, "small client span") && verify(tail, "large client span");
+    GLint binding = 0;
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &binding);
+    if ((GLuint)binding != buffer) {
+        error = "client pointer refresh changed GL_ARRAY_BUFFER_BINDING";
+        success = false;
+    }
+    if (success) {
+        std::memset(vertices + tail * 2 * sizeof(GLfloat), 0, sizeof(triangle));
+        success = verify(tail, "updated client contents", false);
+        std::memcpy(vertices + tail * 2 * sizeof(GLfloat), triangle, sizeof(triangle));
+        success = verify(tail, "restored client contents") && success;
+    }
+    if (success) {
+        unsigned char* tailPage = vertices + ((tail * 2 * sizeof(GLfloat)) & ~size_t(4095));
+        if (!VirtualFree(tailPage, 4096, MEM_DECOMMIT) ||
+            VirtualAlloc(tailPage, 4096, MEM_COMMIT, PAGE_READWRITE) != tailPage) {
+            error = "could not recommit the client array's tail page";
+            success = false;
+        } else {
+            std::memcpy(vertices + tail * 2 * sizeof(GLfloat), triangle, sizeof(triangle));
+            success = verify(tail, "recommitted client backing");
+        }
+    }
+    if (success) {
+        // The last vertex ends at the committed range. Do not copy stride
+        // padding after it into the reserved, uncommitted guard page.
+        constexpr GLsizei stride = 64;
+        constexpr GLint guardFirst = 2045;
+        unsigned char* strided = vertices + bytes - (guardFirst + 2) * stride - 2 * sizeof(GLfloat);
+        for (size_t i = 0; i < 3; ++i) {
+            std::memcpy(strided + (guardFirst + i) * stride, triangle + i * 2, 2 * sizeof(GLfloat));
+        }
+        glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+        glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, strided);
+        glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+        success = verify(guardFirst, "strided client span ending at guard page");
+    }
+    if (success) {
+        const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+        int major = 0, minor = 0;
+        if (version) std::sscanf(version, "%d.%d", &major, &minor);
+        bool webgl = version && std::strstr(version, "BoxedWine WebGL");
+        constexpr GLsizei stride = 64;
+        constexpr GLint first = 2045;
+        unsigned char* strided = vertices + bytes - (first + 2) * stride - 4;
+        auto setFormat = [&](GLint components, GLenum type, GLboolean normalized) {
+            glx.BindBuffer(GL_ARRAY_BUFFER, 0);
+            glx.VertexAttribPointer(0, components, type, normalized, stride, strided);
+            glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+        };
+        if (major >= 3 || hasExtensionString("GL_ARB_half_float_vertex")) {
+            const GLushort halfTriangle[] = {0xbc00, 0xbc00, 0x3c00, 0xbc00, 0, 0x3c00};
+            for (size_t i = 0; i < 3; ++i) {
+                std::memcpy(strided + (first + i) * stride, halfTriangle + i * 2, 4);
+            }
+            setFormat(2, GL_HALF_FLOAT, GL_FALSE);
+            success = verify(first, "half-float client span ending at guard page");
+        }
+        if (success && (webgl || major > 3 || (major == 3 && minor >= 3) ||
+            hasExtensionString("GL_ARB_vertex_type_2_10_10_10_rev"))) {
+            const GLuint packedTriangle[] = {
+                (513u | (513u << 10) | (1u << 30)),
+                (511u | (513u << 10) | (1u << 30)),
+                ((511u << 10) | (1u << 30))
+            };
+            for (size_t i = 0; i < 3; ++i) {
+                std::memcpy(strided + (first + i) * stride, packedTriangle + i, 4);
+            }
+            setFormat(4, GL_INT_2_10_10_10_REV, GL_TRUE);
+            success = verify(first, "packed client span ending at guard page");
+        }
+    }
+    if (success) {
+        // Upload from a range whose prefix has already been used as a client
+        // array. A native first page does not imply the whole range is native.
+        glx.BindBuffer(GL_ARRAY_BUFFER, buffer);
+        glx.BufferData(GL_ARRAY_BUFFER, bytes, vertices, GL_STATIC_DRAW);
+        glx.VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+        success = verify(tail, "upload after client span growth");
+    }
+    cleanup();
+    return success ? pass("fragmented client arrays and subsequent buffer uploads matched") : fail(error);
 }
 
 static TestResult testVertexArrayObjectPageBoundary(TestContext&) {
@@ -16048,6 +16206,7 @@ static std::vector<TestCase> tests() {
         { "uniform-block-page-boundary", testUniformBlockPageBoundary },
         { "vertex-attrib-pointer-page-boundary", testVertexAttribPointerPageBoundary },
         { "vertex-attrib-client-array-render-page-boundary", testVertexAttribClientArrayRenderPageBoundary },
+        { "client-array-memory-reuse", testClientArrayMemoryReuse },
         { "vertex-array-object-page-boundary", testVertexArrayObjectPageBoundary },
         { "bind-vertex-buffers-page-boundary", testBindVertexBuffersPageBoundary },
         { "bind-buffers-range-page-boundary", testBindBuffersRangePageBoundary },

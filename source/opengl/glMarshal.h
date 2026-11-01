@@ -18,6 +18,20 @@
 
 #ifndef __GL_MARSHAL_H__
 #define __GL_MARSHAL_H__
+
+// Native backing on the first page does not imply that later guest pages
+// have adjacent backing, or still belong to the same native mapping.
+inline U8* getGlContiguousMemory(CPU* cpu, U32 address, U32 size, bool write = false) {
+    U8* first = cpu->memory->getRamPtr(address, 1, write);
+    U64 offset = K_PAGE_SIZE - (address & K_PAGE_MASK);
+    while (offset < size) {
+        if ((uintptr_t)cpu->memory->getRamPtr(address + (U32)offset, 1, write) != (uintptr_t)first + offset) {
+            return nullptr;
+        }
+        offset += K_PAGE_SIZE;
+    }
+    return first;
+}
    
 template <typename T, U32 writeSize = sizeof(T)>
 void marshalBackArray(CPU* cpu, T* buffer, U32 address, U32 count) {
@@ -83,7 +97,9 @@ const T* marshalArray(CPU* cpu, U32 address, U32 count) {
         return (T*)cpu->memory->getRamPtr(address, len, false);
     }
     if (cpu->memory->isPageNative(page)) {
-        return (T*)cpu->memory->getRamPtr(address, 1, false);
+        if (U8* contiguous = getGlContiguousMemory(cpu, address, len)) {
+            return (T*)contiguous;
+        }
     }
     if (!buffer) {
         buffer = new T * [index + 1];
@@ -171,7 +187,9 @@ public:
                 return (T*)cpu->memory->getRamPtr(address, len, true);
             }
             if (cpu->memory->isPageNative(page)) {
-                return (T*)cpu->memory->getRamPtr(address, 1, true);
+                if (U8* contiguous = getGlContiguousMemory(cpu, address, len, true)) {
+                    return (T*)contiguous;
+                }
             }
             buffer = (T*)marshalArray<T>(cpu, address, count);
         }

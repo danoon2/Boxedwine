@@ -193,6 +193,16 @@ the guest can verify the actual bytes. The page wrapper owns padding for ST and
 ST-JIT (including both Emscripten typed-array overloads); the C++ marshaller
 owns it for worker-hosted MT and MT-JIT contexts.
 
+`client-array-memory-reuse` grows a fragmented client vertex array beyond
+128 KiB, updates its contents, decommits and recommits its tail page without
+respecifying the array pointer, and uploads the same allocation to a VBO.
+It also leaves an unrelated VBO bound during client draws and places the final
+strided vertex next to an uncommitted guard page, including half-float and packed
+attributes where supported. Each phase checks the rendered
+pixel, and the test checks that pointer refresh preserves the buffer binding.
+This catches stale host pointers, overreads after the final vertex, and uploads
+that assume a native first page makes the entire guest range contiguous.
+
 `element-buffer-client-array-max-index` combines a page-boundary client vertex
 array with an element-array buffer. It verifies
 nonzero element-buffer offsets, unsigned byte/short/int index widths, a partial

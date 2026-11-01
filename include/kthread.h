@@ -33,6 +33,7 @@ public:
     U32 count = 0; // used by marshalEdgeFlagPointerEXT
     U32 ptr = 0;
     U8* marshal = nullptr;
+    std::vector<U8> marshalBuffer;
     U32 lastMarshalledPtr = 0;
     U32 marshal_size = 0;
     U32 refreshEachCall = 0;
