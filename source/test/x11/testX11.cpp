@@ -614,6 +614,24 @@ void testX11DialogFocusRevert() {
     dialog->unmapWindow();
     if (server->getInputFocusWindow() != owner) testFail("Closing a dialog did not focus its owner window");
 
+    // Explicit None and PointerRoot policies must also be honored for transients.
+    dialog->mapWindow();
+    if (server->setInputFocus(nullptr, dialog->id, RevertToNone, 0) != Success)
+        testFail("Could not focus the dialog with RevertToNone");
+    dialog->unmapWindow();
+    U32 revertTo;
+    U32 focus = server->getInputFocus(revertTo);
+    if (focus != None || revertTo != RevertToNone)
+        testFail("RevertToNone: got focus=%u (owner=%u), revert=%u; expected None", focus, owner->id, revertTo);
+
+    dialog->mapWindow();
+    if (server->setInputFocus(nullptr, dialog->id, RevertToPointerRoot, 0) != Success)
+        testFail("Could not focus the dialog with RevertToPointerRoot");
+    dialog->unmapWindow();
+    focus = server->getInputFocus(revertTo);
+    if (focus != PointerRoot || revertTo != RevertToPointerRoot)
+        testFail("RevertToPointerRoot did not preserve the requested policy");
+
     // A window without an owner still reverts to its parent.
     if (server->setInputFocus(nullptr, plain->id, RevertToParent, 0) != Success || server->getInputFocusWindow() != plain)
         testFail("Could not focus the plain window");

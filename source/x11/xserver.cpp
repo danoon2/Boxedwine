@@ -403,7 +403,7 @@ void XServer::revertInputFocus(const XWindowPtr& unmapped) {
 		bool pointerRoot = inputFocusRevertTo == RevertToPointerRoot;
 		if (pointerRoot) {
 			next = root;
-		} else if (owner) {
+		} else if (inputFocusRevertTo == RevertToParent && owner) {
 			next = owner;
 		} else if (inputFocusRevertTo == RevertToParent) {
 			next = inputFocus->getParent();
