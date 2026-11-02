@@ -1,14 +1,43 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current source series is pinned by
-[`webgl-test-divergences-v49.json`](../wineTests/webgl-test-divergences-v49.json).
-It contains 70 production patches and one separate, complete Wine graphics-test
-adaptation. The [v49 inventory](../wineTests/webgl-patch-inventory-v49.json)
+[`webgl-test-divergences-v50.json`](../wineTests/webgl-test-divergences-v50.json).
+It contains 73 production patches and one separate, complete Wine graphics-test
+adaptation. The [v50 inventory](../wineTests/webgl-patch-inventory-v50.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 48 retain earlier build and test selections for reproducing historical
+Versions 2 through 49 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
+
+Patches 71 to 73 reduce per-draw WebGL overhead in WineD3D; the other DLLs
+are unchanged. They were measured as binary patches of the v47 `wined3d.dll`,
+on 3DMark2001 SE and the MechWarrior 3 demo (single-threaded Jit build). v47
+still compiled fixed-function shaders from HLSL; the gains have not been
+re-measured with the direct GLSL path of v48 and later.
+
+- [Push-constant dedup](webgl-ffp-push-constant-dedup-against-wine-11.0.patch)
+  keeps a copy of what was last pushed to each constant buffer and drops or
+  trims pushes that change nothing. About 88% of uploaded uniform floats were
+  unchanged; uniform data reaching WebGL fell from about 35,500 to 16,300
+  floats per frame. Only the immediate context compares, because deferred
+  contexts replay later.
+- [Vertex-array unload](webgl-vertex-attrib-unload-against-wine-11.0.patch)
+  restores the upstream check so that only arrays the context marks as
+  enabled are disabled, instead of every unused array on every draw: about
+  920 `disableVertexAttribArray` calls per frame fell to 4 to 12. With the
+  previous patch, 3DMark2001 SE rendered 5 to 9% more frames. A version that
+  also marked every array enabled after each present stopped the next draw
+  from enabling the arrays it used, and drew nothing.
+- [Streaming buffer size](webgl-streaming-buffer-size-against-wine-11.0.patch)
+  replaces the 16 MB WebGL minimum with 256 KB. Chrome charges a
+  `bufferSubData` into a buffer that a queued draw still uses in proportion to
+  the whole buffer, about 0.9 ms at 16 MB and 0.02 ms at 256 KB, and every
+  `DrawPrimitiveUP` draw streams through this buffer. The MechWarrior 3 demo
+  went from 4.4 to 29.4 frames per second.
+
+These need a new WebGL DLL build and filesystem revision; no filesystem
+configuration pins them yet.
 
 Patch 70, [Q8W8V8U8 textures](webgl-q8w8v8u8-texture-against-wine-11.0.patch),
 enables the signed normal-map format required by 3DMark2001 SE Nature. It maps

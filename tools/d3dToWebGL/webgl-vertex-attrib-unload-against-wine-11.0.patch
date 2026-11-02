@@ -1,0 +1,13 @@
+diff --git a/dlls/wined3d/context_gl.c b/dlls/wined3d/context_gl.c
+index 0b0515f..0b50646 100644
+--- a/dlls/wined3d/context_gl.c
++++ b/dlls/wined3d/context_gl.c
+@@ -5352,7 +5352,7 @@ static void wined3d_context_gl_load_numbered_arrays(struct wined3d_context_gl *c
+ 
+         if (!(stream_info->use_map & (1u << i)))
+         {
+-            if (wined3d_settings.webgl || (context->numbered_array_mask & (1u << i)))
++            if (context->numbered_array_mask & (1u << i))
+                 wined3d_context_gl_unload_numbered_array(context_gl, i);
+             if (!(context_gl->default_attrib_value_set & (1u << i)))
+                 GL_EXTCALL(glVertexAttrib4f(i, 0.0f, 0.0f, 0.0f, 0.0f));

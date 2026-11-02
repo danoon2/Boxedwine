@@ -1,0 +1,120 @@
+diff --git a/dlls/wined3d/cs.c b/dlls/wined3d/cs.c
+index ebfa659..1fd7f96 100644
+--- a/dlls/wined3d/cs.c
++++ b/dlls/wined3d/cs.c
+@@ -2270,18 +2270,75 @@ static void wined3d_device_context_emit_push_constants(struct wined3d_device_con
+     wined3d_device_context_submit(&cs->c, WINED3D_CS_QUEUE_DEFAULT);
+ }
+ 
++/* The WebGL profile pushes the FFP constants for nearly every draw although
++ * little of them changes, and every pushed vec4 is uploaded to the GLSL program
++ * again. Keep a copy of what was pushed, drop pushes that change nothing and
++ * trim the rest to the elements that differ. Sets *count to 0 to drop a push. */
++static void push_constants_trim(struct wined3d_device *device, const struct push_constant_info *info,
++        enum wined3d_push_constants type, unsigned int *start_idx, unsigned int *count, const void **constants)
++{
++    unsigned int buffer_size = info->max_count * info->size;
++    unsigned int byte_offset = *start_idx * info->size;
++    unsigned int byte_size = *count * info->size;
++    const unsigned char *src = *constants;
++    unsigned char *shadow, *known;
++    unsigned int first, last;
++
++    if (!byte_size || byte_offset > buffer_size || byte_size > buffer_size - byte_offset)
++        return;
++    if (!device->push_constants_shadow[type] && !(device->push_constants_shadow[type] = calloc(2, buffer_size)))
++        return;
++    shadow = device->push_constants_shadow[type];
++    known = shadow + buffer_size;
++
++    for (first = 0; first < byte_size; ++first)
++    {
++        if (!known[byte_offset + first] || shadow[byte_offset + first] != src[first])
++            break;
++    }
++    if (first == byte_size)
++    {
++        *count = 0;
++        return;
++    }
++    for (last = byte_size - 1; last > first; --last)
++    {
++        if (!known[byte_offset + last] || shadow[byte_offset + last] != src[last])
++            break;
++    }
++
++    memcpy(shadow + byte_offset + first, src + first, last - first + 1);
++    memset(known + byte_offset + first, 1, last - first + 1);
++
++    first /= info->size;
++    last /= info->size;
++    *constants = src + first * info->size;
++    *start_idx += first;
++    *count = last - first + 1;
++}
++
+ void wined3d_device_context_push_constants(struct wined3d_device_context *context,
+         enum wined3d_push_constants type, uint32_t update_mask, unsigned int start_idx,
+         unsigned int count, const void *constants)
+ {
+     const struct push_constant_info *info = &wined3d_cs_push_constant_info[type];
+-    unsigned int byte_offset = start_idx * info->size;
+-    unsigned int byte_size = count * info->size;
++    unsigned int byte_offset, byte_size;
+     struct wined3d_box box;
+ 
+     if (!prepare_push_constant_buffer(context, type))
+         return;
+ 
++    /* Deferred contexts replay later, so only the immediate context can
++     * compare against what was pushed last. */
++    if (wined3d_settings.webgl && context == &context->device->cs->c)
++    {
++        push_constants_trim(context->device, info, type, &start_idx, &count, &constants);
++        if (!count)
++            return;
++    }
++    byte_offset = start_idx * info->size;
++    byte_size = count * info->size;
++
+     wined3d_box_set(&box, byte_offset, 0, byte_offset + byte_size, 1, 0, 1);
+     wined3d_device_context_emit_update_sub_resource(context,
+             &context->device->push_constants[type]->resource, 0, &box, constants, byte_size, byte_size);
+diff --git a/dlls/wined3d/device.c b/dlls/wined3d/device.c
+index cad0b24..2bdd193 100644
+--- a/dlls/wined3d/device.c
++++ b/dlls/wined3d/device.c
+@@ -1740,8 +1740,10 @@ void wined3d_device_uninit_3d(struct wined3d_device *device)
+     {
+         if ((buffer = device->push_constants[i]))
+             wined3d_buffer_decref(buffer);
++        free(device->push_constants_shadow[i]);
+     }
+     memset(device->push_constants, 0, sizeof(device->push_constants));
++    memset(device->push_constants_shadow, 0, sizeof(device->push_constants_shadow));
+ 
+     wined3d_device_context_emit_reset_state(&device->cs->c, true);
+     state_cleanup(state);
+@@ -5082,6 +5084,8 @@ HRESULT CDECL wined3d_device_reset(struct wined3d_device *device,
+             if (device->push_constants[i])
+                 wined3d_buffer_decref(device->push_constants[i]);
+             device->push_constants[i] = NULL;
++            free(device->push_constants_shadow[i]);
++            device->push_constants_shadow[i] = NULL;
+         }
+         state_unbind_resources(state);
+     }
+diff --git a/dlls/wined3d/wined3d_private.h b/dlls/wined3d/wined3d_private.h
+index 148dea6..d14429e 100644
+--- a/dlls/wined3d/wined3d_private.h
++++ b/dlls/wined3d/wined3d_private.h
+@@ -3129,6 +3129,9 @@ struct wined3d_device
+     struct wined3d_cs *cs;
+ 
+     struct wined3d_buffer *push_constants[WINED3D_PUSH_CONSTANTS_COUNT];
++    /* WebGL profile: what was last pushed to each buffer, followed by a byte
++     * map of which bytes have been written. See push_constants_trim(). */
++    unsigned char *push_constants_shadow[WINED3D_PUSH_CONSTANTS_COUNT];
+     float process_vertices_material_power;
+ 
+     /* Context management */
