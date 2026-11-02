@@ -359,6 +359,9 @@ public:
     U32 signaled = 0;
     U32 exitCode = 0;
     U32 umaskValue = 0;
+    // Set once exit_group starts: its status is final, as on Linux, even if a
+    // SIGKILL arrives while the process is still releasing its resources.
+    bool exiting = false;
     bool terminated = false;
     U32 ptraceTracerProcessId = 0;
     U32 ptraceTraceeThreadId = 0;
