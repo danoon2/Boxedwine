@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -951,6 +952,17 @@ def remove_preserved_base_entries_from_stage(stage: Path) -> None:
             path.unlink(missing_ok=True)
 
 
+def directory_zip_info(arcname: str, path: Optional[Path] = None) -> zipfile.ZipInfo:
+    """A directory entry with an explicit mode. Python 3.13 and later give a
+    bare ZipInfo mode 0o600, which Boxedwine honours: Wine then cannot
+    traverse the packaged tree and wineboot fails to copy its files."""
+    info = zipfile.ZipInfo(arcname)
+    info.compress_type = zipfile.ZIP_DEFLATED
+    mode = stat.S_IMODE(path.stat().st_mode) if path is not None else 0o755
+    info.external_attr = ((stat.S_IFDIR | mode) << 16) | 0x10
+    return info
+
+
 def package_zip(base_zip: Path, stage: Path, output_zip: Path) -> None:
     resolved_base = base_zip.resolve(strict=False)
     resolved_stage = stage.resolve(strict=False)
@@ -988,8 +1000,7 @@ def package_zip(base_zip: Path, stage: Path, output_zip: Path) -> None:
                         continue
                     raise BuildError(f"Duplicate zip entry: {arcname}")
                 if path.is_dir():
-                    info = zipfile.ZipInfo(arcname)
-                    info.compress_type = zipfile.ZIP_DEFLATED
+                    info = directory_zip_info(arcname, path)
                     zf.writestr(info, b"")
                 else:
                     zf.write(path, arcname)
@@ -1046,16 +1057,14 @@ def merge_directory_into_zip(zip_path: Path, source_dir: Path, archive_root: str
                 zf.writestr(info, existing.read(info))
                 existing_names.add(info.filename)
 
-            root_info = zipfile.ZipInfo(archive_prefix)
-            root_info.compress_type = zipfile.ZIP_DEFLATED
+            root_info = directory_zip_info(archive_prefix)
             zf.writestr(root_info, b"")
             existing_names.add(archive_prefix)
             for path, arcname in entries:
                 if arcname in existing_names:
                     continue
                 if path.is_dir():
-                    info = zipfile.ZipInfo(arcname)
-                    info.compress_type = zipfile.ZIP_DEFLATED
+                    info = directory_zip_info(arcname, path)
                     zf.writestr(info, b"")
                 else:
                     zf.write(path, arcname)
