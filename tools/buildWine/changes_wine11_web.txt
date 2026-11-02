@@ -1,3 +1,5 @@
+v25 Nov 02, 2026 Reduce per-draw WebGL overhead with fewer constant uploads and vertex-array disables and a smaller streaming vertex buffer. Includes the v50 WebGL patch series.
+
 v24 Oct 30, 2026 Reduce fixed-function shader compilation stalls with direct GLSL generation and support the signed Q8W8V8U8 normal maps required by 3DMark2001 SE Nature. Includes the v49 WebGL patch series.
 
 v23 Oct 25, 2026 Include native-compatible Win16 CopyRect fault recovery, fixing Robot City shutdown without modifying the game executable. The separate WebGL DLLs retain their v20 identities.

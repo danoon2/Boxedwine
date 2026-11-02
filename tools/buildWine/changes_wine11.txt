@@ -1,3 +1,5 @@
+v25 Nov 02, 2026 Reduce per-draw overhead in the bundled WebGL WineD3D: skip constant uploads and vertex-array disables that change nothing, and shrink the streaming vertex buffer, which made the MechWarrior 3 demo several times faster in the browser. Regular Wine graphics behavior is unchanged.
+
 v24 Oct 30, 2026 Update the bundled WebGL WineD3D to generate fixed-function GLSL directly, reducing shader compilation stalls in 3DMark2001 SE. Add signed Q8W8V8U8 normal-map textures so the Nature benchmark can run. Regular Wine graphics behavior is unchanged.
 
 v23 Oct 25, 2026 Match native Win16 CopyRect fault recovery for invalid rectangle pointers, allowing the original Robot City executable to exit without crashing or launching WineDbg.
