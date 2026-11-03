@@ -65,6 +65,7 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 
 ## Documentation
 
+- [Getting Started](docs/Getting-Started.md)
 - [Upcoming Features](docs/Roadmap-Features.md)
 - [Troubleshooting Games/Apps](docs/Troubleshooting-Games-Apps.md)
 - [Developer Debugging](docs/Developer-Debugging.md)
