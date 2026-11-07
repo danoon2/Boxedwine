@@ -10,6 +10,22 @@ bundles, validation, and publication order. Review it before starting builds.
 
 ## Complete Wine 11 filesystem from WSL
 
+New Wine 11.0 builds apply
+[`wine11_dsound_sse_resampler.patch`](patches/wine11_dsound_sse_resampler.patch)
+to both the main and web variants. This backports 32 upstream DirectSound
+resampler commits through `61e1bac10fc85a527e0fa200f409de55f723f238`, including
+the FIR filter and arithmetic prerequisites for SSE upsampling/downsampling.
+The patch header records every selected upstream commit. Wine 11.21 already
+contains the SSE resampler and does not select this backport.
+
+The tested backport improved Halo Trial's opening-beach sample from 5.21 to
+6.67/6.72 frames per second, with normal audio reported in both enabled runs.
+These were manual scene starts, not a deterministic timedemo. The patch changes
+the FIR filter as well as its implementation, so output is not bit-identical to
+Wine 11.0. Existing filesystem archives are unchanged; rebuild Wine before
+assembling a filesystem to include it (`--phase assemble` alone can reuse old
+Wine binaries).
+
 `build_filesystem.py` builds Wine, initializes a new prefix in Boxedwine, installs
 Wine Gecko, and adds the graphics components. It does not read an existing full
 Wine filesystem to construct the result. Its inputs are the pinned TinyCore
