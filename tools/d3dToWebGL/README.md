@@ -11,10 +11,12 @@ results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 
 Patches 71 to 73 reduce per-draw WebGL overhead in WineD3D; the other DLLs
-are unchanged. Filesystem revision 25 packages them, pinned by
-[`webgl_filesystems_v25.json`](../buildWine/webgl_filesystems_v25.json). They
-were first measured as binary patches of the v47 `wined3d.dll`, then retested
-with the v25 filesystem and the single-threaded Jit build. Each A/B test
+are unchanged. Filesystem revision 26 selects them, pinned by
+[`webgl_filesystems_v26.json`](../buildWine/webgl_filesystems_v26.json). Both
+v26 archives still need rebuilding with revision 25's DirectSound backport;
+their archive sizes/hashes are placeholders. These patches were first measured
+as binary patches of the v47 `wined3d.dll`, then retested with this branch's
+November 2 candidate (then numbered v25) and the single-threaded Jit build. Each A/B test
 changed only `wined3d.dll`: the v50 DLL against the same source built without
 these three patches, which is v49.
 
@@ -36,7 +38,7 @@ these three patches, which is v49.
   the whole buffer, about 0.9 ms at 16 MB and 0.02 ms at 256 KB, and every
   `DrawPrimitiveUP` draw streams through this buffer.
 
-Results with filesystem 25:
+Results with the November 2 candidate (before merging the DirectSound changes):
 
 | Test | v49 | v50 |
 | --- | --- | --- |
@@ -62,10 +64,11 @@ Signed texture sampling and filtering are core
 [WebGL 2 capabilities](https://www.khronos.org/files/webgl20-reference-guide.pdf);
 render-target, sRGB and automatic mipmap capabilities remain disabled.
 The change is confined to WebGL WineD3D; other formats and native Wine keep
-their existing behavior. Filesystem revision 24 packages the v49 source series
-in both full and web variants, staged locally for upload to `/v2/24/`.
+their existing behavior. Filesystem revision 25 retains the v49 DLLs from
+revision 24 and adds the DirectSound SSE backport to regular Wine in both
+variants. Revision 25 is staged locally for upload to `/v2/25/`.
 Their DLL and archive identities are pinned by
-[`webgl_filesystems_v24.json`](../buildWine/webgl_filesystems_v24.json).
+[`webgl_filesystems_v25.json`](../buildWine/webgl_filesystems_v25.json).
 
 The [signed-texture probe](../wineTests/tests/d3d9_q8w8v8u8_probe.c) checks
 all four channels across the signed-byte range, partial rectangle updates,

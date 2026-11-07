@@ -1,4 +1,6 @@
-v25 Nov 02, 2026 Reduce per-draw overhead in the bundled WebGL WineD3D: skip constant uploads and vertex-array disables that change nothing, and shrink the streaming vertex buffer, which made the MechWarrior 3 demo several times faster in the browser. Regular Wine graphics behavior is unchanged.
+v26 Nov 07, 2026 Reduce per-draw overhead in the bundled WebGL WineD3D: skip constant uploads and vertex-array disables that change nothing, and shrink the streaming vertex buffer, which made the MechWarrior 3 demo several times faster in the browser. Regular Wine graphics behavior is unchanged.
+
+v25 Nov 07, 2026 Backport upstream DirectSound FIR and SSE resampling optimizations to reduce guest audio CPU use. Improves Halo Trial audio continuity and performance. Includes the prerequisite filter and arithmetic changes; the separate WebGL DLLs retain their v24 identities.
 
 v24 Oct 30, 2026 Update the bundled WebGL WineD3D to generate fixed-function GLSL directly, reducing shader compilation stalls in 3DMark2001 SE. Add signed Q8W8V8U8 normal-map textures so the Nature benchmark can run. Regular Wine graphics behavior is unchanged.
 
