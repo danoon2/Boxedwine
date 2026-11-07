@@ -2496,7 +2496,9 @@ static void testArmNarrowArithmetic() {
         case DirectArithmeticTestOp::Xor:group=6;result=lhs^rhs;break;
         }
         if(group==0||group==5)if((lhs^rhs^result)&16)flags|=AF;
-        if(!result)flags|=ZF;if(result&sign)flags|=SF;flags|=directArithmeticParityFlag(result);
+        if(!result)flags|=ZF;
+        if(result&sign)flags|=SF;
+        flags|=directArithmeticParityFlag(result);
         expected[dstFull]=(expected[dstFull]&~(mask<<dstShift))|(result<<dstShift);
         expected[0]=(expected[0]&0xffffff00)|(directArithmeticCondition(condition,flags)?1:0);
         if(bits==16)bytes({0x66});
@@ -3954,7 +3956,8 @@ static void testArmConditionalCompare() {
         }
         if(!live&&form==0&&seed==0) {
             for(U32 address:{branch1,compare2,branch2})for(U32 fresh:{0u,(U32)FMASK_TEST}) {
-                for(U32 r=0;r<8;++r)cpu->reg[r].u32=expected[r];cpu->reg[3].u32=0;
+                for(U32 r=0;r<8;++r)cpu->reg[r].u32=expected[r];
+                cpu->reg[3].u32=0;
                 cpu->setFlags(fresh,FMASK_ALL);cpu->lazyFlagType=FLAGS_NONE;
                 bool fail=address==branch1?directArithmeticCondition(first,fresh)||take2:
                     address==compare2?take2:directArithmeticCondition(second,fresh);
@@ -3964,7 +3967,8 @@ static void testArmConditionalCompare() {
             // Replace the second comparison with ADD. The newly written guest
             // instruction must execute even when the former region was fused.
             ctx.memory->writeb(compare2,0x01);
-            for(U32 r=0;r<8;++r)cpu->reg[r].u32=expected[r];cpu->reg[3].u32=0;
+            for(U32 r=0;r<8;++r)cpu->reg[r].u32=expected[r];
+            cpu->reg[3].u32=0;
             U32 result;U32 addFlags=directArithmeticFlags(DirectArithmeticTestOp::Add,d,c,result);
             execute(TEST_CODE_ADDRESS);
             if(cpu->reg[2].u32!=(take1?d:result)||cpu->reg[3].u32!=(!take1&&!directArithmeticCondition(second,addFlags)?1u:0u))

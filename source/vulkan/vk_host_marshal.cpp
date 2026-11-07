@@ -11017,7 +11017,7 @@ void MarshalVkCheckpointDataNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memo
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
     memory->writed(address, s->stage);address+=4;
-    memory->writed(address, *(U32*)&s->pCheckpointMarker);address+=4;
+    memory->writed(address, (U32)(uintptr_t)s->pCheckpointMarker);address+=4;
 }
 MarshalVkCheckpointDataNV::~MarshalVkCheckpointDataNV() {
     vulkanDeleteNextPtr(s.pNext);
@@ -14052,7 +14052,7 @@ void MarshalVkInitializePerformanceApiInfoINTEL::write(BoxedVulkanInfo* pBoxedIn
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->pUserData);address+=4;
+    memory->writed(address, (U32)(uintptr_t)s->pUserData);address+=4;
 }
 MarshalVkInitializePerformanceApiInfoINTEL::~MarshalVkInitializePerformanceApiInfoINTEL() {
     vulkanDeleteNextPtr(s.pNext);
@@ -18963,7 +18963,7 @@ void MarshalVkCheckpointData2NV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* mem
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
     memory->writeq(address, s->stage);address+=8;
-    memory->writed(address, *(U32*)&s->pCheckpointMarker);address+=4;
+    memory->writed(address, (U32)(uintptr_t)s->pCheckpointMarker);address+=4;
 }
 MarshalVkCheckpointData2NV::~MarshalVkCheckpointData2NV() {
     vulkanDeleteNextPtr(s.pNext);
@@ -20158,7 +20158,10 @@ void MarshalStdVideoDecodeH264PictureInfo::read(BoxedVulkanInfo* pBoxedInfo, KMe
     memory->memcpy(&s->PicOrderCnt, address, 8);address+=8;
 }
 void MarshalStdVideoDecodeH264PictureInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeH264PictureInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->seq_parameter_set_id);address+=1;
     memory->writeb(address, s->pic_parameter_set_id);address+=1;
     memory->writeb(address, s->reserved1);address+=1;
@@ -20174,7 +20177,10 @@ void MarshalStdVideoDecodeH264ReferenceInfo::read(BoxedVulkanInfo* pBoxedInfo, K
     memory->memcpy(&s->PicOrderCnt, address, 8);address+=8;
 }
 void MarshalStdVideoDecodeH264ReferenceInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeH264ReferenceInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writew(address, s->FrameNum);address+=2;
     memory->writew(address, s->reserved);address+=2;
     memory->memcpy(address, s->PicOrderCnt, 8); address+=8;
@@ -20196,7 +20202,10 @@ void MarshalVkVideoDecodeH264ProfileInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, 
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->stdProfileIdc);address+=4;
+    U32 stdProfileIdcBits;
+    static_assert(sizeof(s->stdProfileIdc) == sizeof(stdProfileIdcBits));
+    memcpy(&stdProfileIdcBits, &s->stdProfileIdc, sizeof(stdProfileIdcBits));
+    memory->writed(address, stdProfileIdcBits);address+=4;
     memory->writed(address, s->pictureLayout);address+=4;
 }
 MarshalVkVideoDecodeH264ProfileInfoKHR::~MarshalVkVideoDecodeH264ProfileInfoKHR() {
@@ -20219,7 +20228,10 @@ void MarshalVkVideoDecodeH264CapabilitiesKHR::write(BoxedVulkanInfo* pBoxedInfo,
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->maxLevelIdc);address+=4;
+    U32 maxLevelIdcBits;
+    static_assert(sizeof(s->maxLevelIdc) == sizeof(maxLevelIdcBits));
+    memcpy(&maxLevelIdcBits, &s->maxLevelIdc, sizeof(maxLevelIdcBits));
+    memory->writed(address, maxLevelIdcBits);address+=4;
     MarshalVkOffset2D::write(pBoxedInfo, memory, address, &s->fieldOffsetGranularity); address+=8;
 }
 MarshalVkVideoDecodeH264CapabilitiesKHR::~MarshalVkVideoDecodeH264CapabilitiesKHR() {
@@ -20273,15 +20285,30 @@ void MarshalStdVideoH264SequenceParameterSet::read(BoxedVulkanInfo* pBoxedInfo, 
     }
 }
 void MarshalStdVideoH264SequenceParameterSet::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH264SequenceParameterSet* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->profile_idc);address+=4;
-    memory->writed(address, *(U32*)&s->level_idc);address+=4;
-    memory->writed(address, *(U32*)&s->chroma_format_idc);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 profile_idcBits;
+    static_assert(sizeof(s->profile_idc) == sizeof(profile_idcBits));
+    memcpy(&profile_idcBits, &s->profile_idc, sizeof(profile_idcBits));
+    memory->writed(address, profile_idcBits);address+=4;
+    U32 level_idcBits;
+    static_assert(sizeof(s->level_idc) == sizeof(level_idcBits));
+    memcpy(&level_idcBits, &s->level_idc, sizeof(level_idcBits));
+    memory->writed(address, level_idcBits);address+=4;
+    U32 chroma_format_idcBits;
+    static_assert(sizeof(s->chroma_format_idc) == sizeof(chroma_format_idcBits));
+    memcpy(&chroma_format_idcBits, &s->chroma_format_idc, sizeof(chroma_format_idcBits));
+    memory->writed(address, chroma_format_idcBits);address+=4;
     memory->writeb(address, s->seq_parameter_set_id);address+=1;
     memory->writeb(address, s->bit_depth_luma_minus8);address+=1;
     memory->writeb(address, s->bit_depth_chroma_minus8);address+=1;
     memory->writeb(address, s->log2_max_frame_num_minus4);address+=1;
-    memory->writed(address, *(U32*)&s->pic_order_cnt_type);address+=4;
+    U32 pic_order_cnt_typeBits;
+    static_assert(sizeof(s->pic_order_cnt_type) == sizeof(pic_order_cnt_typeBits));
+    memcpy(&pic_order_cnt_typeBits, &s->pic_order_cnt_type, sizeof(pic_order_cnt_typeBits));
+    memory->writed(address, pic_order_cnt_typeBits);address+=4;
     memory->writed(address, s->offset_for_non_ref_pic);address+=4;
     memory->writed(address, s->offset_for_top_to_bottom_field);address+=4;
     memory->writeb(address, s->log2_max_pic_order_cnt_lsb_minus4);address+=1;
@@ -20339,12 +20366,18 @@ void MarshalStdVideoH264PictureParameterSet::read(BoxedVulkanInfo* pBoxedInfo, K
     }
 }
 void MarshalStdVideoH264PictureParameterSet::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH264PictureParameterSet* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->seq_parameter_set_id);address+=1;
     memory->writeb(address, s->pic_parameter_set_id);address+=1;
     memory->writeb(address, s->num_ref_idx_l0_default_active_minus1);address+=1;
     memory->writeb(address, s->num_ref_idx_l1_default_active_minus1);address+=1;
-    memory->writed(address, *(U32*)&s->weighted_bipred_idc);address+=4;
+    U32 weighted_bipred_idcBits;
+    static_assert(sizeof(s->weighted_bipred_idc) == sizeof(weighted_bipred_idcBits));
+    memcpy(&weighted_bipred_idcBits, &s->weighted_bipred_idc, sizeof(weighted_bipred_idcBits));
+    memory->writed(address, weighted_bipred_idcBits);address+=4;
     memory->writeb(address, s->pic_init_qp_minus26);address+=1;
     memory->writeb(address, s->pic_init_qs_minus26);address+=1;
     memory->writeb(address, s->chroma_qp_index_offset);address+=1;
@@ -20632,7 +20665,10 @@ void MarshalStdVideoH265VideoParameterSet::read(BoxedVulkanInfo* pBoxedInfo, KMe
     }
 }
 void MarshalStdVideoH265VideoParameterSet::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265VideoParameterSet* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->vps_video_parameter_set_id);address+=1;
     memory->writeb(address, s->vps_max_sub_layers_minus1);address+=1;
     memory->writeb(address, s->reserved1);address+=1;
@@ -20759,8 +20795,14 @@ void MarshalStdVideoH265SequenceParameterSet::read(BoxedVulkanInfo* pBoxedInfo, 
     }
 }
 void MarshalStdVideoH265SequenceParameterSet::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265SequenceParameterSet* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->chroma_format_idc);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 chroma_format_idcBits;
+    static_assert(sizeof(s->chroma_format_idc) == sizeof(chroma_format_idcBits));
+    memcpy(&chroma_format_idcBits, &s->chroma_format_idc, sizeof(chroma_format_idcBits));
+    memory->writed(address, chroma_format_idcBits);address+=4;
     memory->writed(address, s->pic_width_in_luma_samples);address+=4;
     memory->writed(address, s->pic_height_in_luma_samples);address+=4;
     memory->writeb(address, s->sps_video_parameter_set_id);address+=1;
@@ -20903,7 +20945,10 @@ void MarshalStdVideoH265PictureParameterSet::read(BoxedVulkanInfo* pBoxedInfo, K
     }
 }
 void MarshalStdVideoH265PictureParameterSet::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265PictureParameterSet* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->pps_pic_parameter_set_id);address+=1;
     memory->writeb(address, s->pps_seq_parameter_set_id);address+=1;
     memory->writeb(address, s->sps_video_parameter_set_id);address+=1;
@@ -20970,7 +21015,10 @@ void MarshalStdVideoDecodeH265PictureInfo::read(BoxedVulkanInfo* pBoxedInfo, KMe
     memory->memcpy(&s->RefPicSetLtCurr, address, 8);address+=8;
 }
 void MarshalStdVideoDecodeH265PictureInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeH265PictureInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->sps_video_parameter_set_id);address+=1;
     memory->writeb(address, s->pps_seq_parameter_set_id);address+=1;
     memory->writeb(address, s->pps_pic_parameter_set_id);address+=1;
@@ -20987,7 +21035,10 @@ void MarshalStdVideoDecodeH265ReferenceInfo::read(BoxedVulkanInfo* pBoxedInfo, K
     s->PicOrderCntVal = (int32_t)memory->readd(address);address+=4;
 }
 void MarshalStdVideoDecodeH265ReferenceInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeH265ReferenceInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writed(address, s->PicOrderCntVal);address+=4;
 }
 void MarshalVkVideoDecodeH265ProfileInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265ProfileInfoKHR* s) {
@@ -21006,7 +21057,10 @@ void MarshalVkVideoDecodeH265ProfileInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, 
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->stdProfileIdc);address+=4;
+    U32 stdProfileIdcBits;
+    static_assert(sizeof(s->stdProfileIdc) == sizeof(stdProfileIdcBits));
+    memcpy(&stdProfileIdcBits, &s->stdProfileIdc, sizeof(stdProfileIdcBits));
+    memory->writed(address, stdProfileIdcBits);address+=4;
 }
 MarshalVkVideoDecodeH265ProfileInfoKHR::~MarshalVkVideoDecodeH265ProfileInfoKHR() {
     vulkanDeleteNextPtr(s.pNext);
@@ -21027,7 +21081,10 @@ void MarshalVkVideoDecodeH265CapabilitiesKHR::write(BoxedVulkanInfo* pBoxedInfo,
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->maxLevelIdc);address+=4;
+    U32 maxLevelIdcBits;
+    static_assert(sizeof(s->maxLevelIdc) == sizeof(maxLevelIdcBits));
+    memcpy(&maxLevelIdcBits, &s->maxLevelIdc, sizeof(maxLevelIdcBits));
+    memory->writed(address, maxLevelIdcBits);address+=4;
 }
 MarshalVkVideoDecodeH265CapabilitiesKHR::~MarshalVkVideoDecodeH265CapabilitiesKHR() {
     vulkanDeleteNextPtr(s.pNext);
@@ -21339,8 +21396,14 @@ void MarshalStdVideoAV1SequenceHeader::read(BoxedVulkanInfo* pBoxedInfo, KMemory
     }
 }
 void MarshalStdVideoAV1SequenceHeader::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1SequenceHeader* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->seq_profile);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 seq_profileBits;
+    static_assert(sizeof(s->seq_profile) == sizeof(seq_profileBits));
+    memcpy(&seq_profileBits, &s->seq_profile, sizeof(seq_profileBits));
+    memory->writed(address, seq_profileBits);address+=4;
     memory->writeb(address, s->frame_width_bits_minus_1);address+=1;
     memory->writeb(address, s->frame_height_bits_minus_1);address+=1;
     memory->writew(address, s->max_frame_width_minus_1);address+=2;
@@ -21453,15 +21516,27 @@ void MarshalStdVideoDecodeAV1PictureInfo::read(BoxedVulkanInfo* pBoxedInfo, KMem
     }
 }
 void MarshalStdVideoDecodeAV1PictureInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeAV1PictureInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->frame_type);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 frame_typeBits;
+    static_assert(sizeof(s->frame_type) == sizeof(frame_typeBits));
+    memcpy(&frame_typeBits, &s->frame_type, sizeof(frame_typeBits));
+    memory->writed(address, frame_typeBits);address+=4;
     memory->writed(address, s->current_frame_id);address+=4;
     memory->writeb(address, s->OrderHint);address+=1;
     memory->writeb(address, s->primary_ref_frame);address+=1;
     memory->writeb(address, s->refresh_frame_flags);address+=1;
     memory->writeb(address, s->reserved1);address+=1;
-    memory->writed(address, *(U32*)&s->interpolation_filter);address+=4;
-    memory->writed(address, *(U32*)&s->TxMode);address+=4;
+    U32 interpolation_filterBits;
+    static_assert(sizeof(s->interpolation_filter) == sizeof(interpolation_filterBits));
+    memcpy(&interpolation_filterBits, &s->interpolation_filter, sizeof(interpolation_filterBits));
+    memory->writed(address, interpolation_filterBits);address+=4;
+    U32 TxModeBits;
+    static_assert(sizeof(s->TxMode) == sizeof(TxModeBits));
+    memcpy(&TxModeBits, &s->TxMode, sizeof(TxModeBits));
+    memory->writed(address, TxModeBits);address+=4;
     memory->writeb(address, s->delta_q_res);address+=1;
     memory->writeb(address, s->delta_lf_res);address+=1;
     memory->memcpy(address, s->SkipModeFrame, 2); address+=2;
@@ -21544,7 +21619,10 @@ void MarshalStdVideoDecodeAV1ReferenceInfo::read(BoxedVulkanInfo* pBoxedInfo, KM
     memory->memcpy(&s->SavedOrderHints, address, 8);address+=8;
 }
 void MarshalStdVideoDecodeAV1ReferenceInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeAV1ReferenceInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->frame_type);address+=1;
     memory->writeb(address, s->RefFrameSignBias);address+=1;
     memory->writeb(address, s->OrderHint);address+=1;
@@ -21567,7 +21645,10 @@ void MarshalVkVideoDecodeAV1ProfileInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, K
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->stdProfile);address+=4;
+    U32 stdProfileBits;
+    static_assert(sizeof(s->stdProfile) == sizeof(stdProfileBits));
+    memcpy(&stdProfileBits, &s->stdProfile, sizeof(stdProfileBits));
+    memory->writed(address, stdProfileBits);address+=4;
     memory->writed(address, s->filmGrainSupport);address+=4;
 }
 MarshalVkVideoDecodeAV1ProfileInfoKHR::~MarshalVkVideoDecodeAV1ProfileInfoKHR() {
@@ -21589,7 +21670,10 @@ void MarshalVkVideoDecodeAV1CapabilitiesKHR::write(BoxedVulkanInfo* pBoxedInfo, 
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->maxLevel);address+=4;
+    U32 maxLevelBits;
+    static_assert(sizeof(s->maxLevel) == sizeof(maxLevelBits));
+    memcpy(&maxLevelBits, &s->maxLevel, sizeof(maxLevelBits));
+    memory->writed(address, maxLevelBits);address+=4;
 }
 MarshalVkVideoDecodeAV1CapabilitiesKHR::~MarshalVkVideoDecodeAV1CapabilitiesKHR() {
     vulkanDeleteNextPtr(s.pNext);
@@ -22403,7 +22487,10 @@ void MarshalVkVideoEncodeH264CapabilitiesKHR::write(BoxedVulkanInfo* pBoxedInfo,
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
     memory->writed(address, s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->maxLevelIdc);address+=4;
+    U32 maxLevelIdcBits;
+    static_assert(sizeof(s->maxLevelIdc) == sizeof(maxLevelIdcBits));
+    memcpy(&maxLevelIdcBits, &s->maxLevelIdc, sizeof(maxLevelIdcBits));
+    memory->writed(address, maxLevelIdcBits);address+=4;
     memory->writed(address, s->maxSliceCount);address+=4;
     memory->writed(address, s->maxPPictureL0ReferenceCount);address+=4;
     memory->writed(address, s->maxBPictureL0ReferenceCount);address+=4;
@@ -22478,15 +22565,27 @@ void MarshalStdVideoEncodeH264SliceHeader::read(BoxedVulkanInfo* pBoxedInfo, KMe
     }
 }
 void MarshalStdVideoEncodeH264SliceHeader::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264SliceHeader* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writed(address, s->first_mb_in_slice);address+=4;
-    memory->writed(address, *(U32*)&s->slice_type);address+=4;
+    U32 slice_typeBits;
+    static_assert(sizeof(s->slice_type) == sizeof(slice_typeBits));
+    memcpy(&slice_typeBits, &s->slice_type, sizeof(slice_typeBits));
+    memory->writed(address, slice_typeBits);address+=4;
     memory->writeb(address, s->slice_alpha_c0_offset_div2);address+=1;
     memory->writeb(address, s->slice_beta_offset_div2);address+=1;
     memory->writeb(address, s->slice_qp_delta);address+=1;
     memory->writeb(address, s->reserved1);address+=1;
-    memory->writed(address, *(U32*)&s->cabac_init_idc);address+=4;
-    memory->writed(address, *(U32*)&s->disable_deblocking_filter_idc);address+=4;
+    U32 cabac_init_idcBits;
+    static_assert(sizeof(s->cabac_init_idc) == sizeof(cabac_init_idcBits));
+    memcpy(&cabac_init_idcBits, &s->cabac_init_idc, sizeof(cabac_init_idcBits));
+    memory->writed(address, cabac_init_idcBits);address+=4;
+    U32 disable_deblocking_filter_idcBits;
+    static_assert(sizeof(s->disable_deblocking_filter_idc) == sizeof(disable_deblocking_filter_idcBits));
+    memcpy(&disable_deblocking_filter_idcBits, &s->disable_deblocking_filter_idc, sizeof(disable_deblocking_filter_idcBits));
+    memory->writed(address, disable_deblocking_filter_idcBits);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress != 0) {
         MarshalStdVideoEncodeH264WeightTable::write(pBoxedInfo, memory, paramAddress, s->pWeightTable);
@@ -22520,11 +22619,17 @@ void MarshalStdVideoEncodeH264PictureInfo::read(BoxedVulkanInfo* pBoxedInfo, KMe
     }
 }
 void MarshalStdVideoEncodeH264PictureInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264PictureInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->seq_parameter_set_id);address+=1;
     memory->writeb(address, s->pic_parameter_set_id);address+=1;
     memory->writew(address, s->idr_pic_id);address+=2;
-    memory->writed(address, *(U32*)&s->primary_pic_type);address+=4;
+    U32 primary_pic_typeBits;
+    static_assert(sizeof(s->primary_pic_type) == sizeof(primary_pic_typeBits));
+    memcpy(&primary_pic_typeBits, &s->primary_pic_type, sizeof(primary_pic_typeBits));
+    memory->writed(address, primary_pic_typeBits);address+=4;
     memory->writed(address, s->frame_num);address+=4;
     memory->writed(address, s->PicOrderCnt);address+=4;
     memory->writeb(address, s->temporal_id);address+=1;
@@ -22550,8 +22655,14 @@ void MarshalStdVideoEncodeH264ReferenceInfo::read(BoxedVulkanInfo* pBoxedInfo, K
     s->temporal_id = (uint8_t)memory->readb(address);address+=1;
 }
 void MarshalStdVideoEncodeH264ReferenceInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264ReferenceInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->primary_pic_type);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 primary_pic_typeBits;
+    static_assert(sizeof(s->primary_pic_type) == sizeof(primary_pic_typeBits));
+    memcpy(&primary_pic_typeBits, &s->primary_pic_type, sizeof(primary_pic_typeBits));
+    memory->writed(address, primary_pic_typeBits);address+=4;
     memory->writed(address, s->FrameNum);address+=4;
     memory->writed(address, s->PicOrderCnt);address+=4;
     memory->writew(address, s->long_term_pic_num);address+=2;
@@ -22576,7 +22687,10 @@ void MarshalVkVideoEncodeH264SessionCreateInfoKHR::write(BoxedVulkanInfo* pBoxed
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
     memory->writed(address, s->useMaxLevelIdc);address+=4;
-    memory->writed(address, *(U32*)&s->maxLevelIdc);address+=4;
+    U32 maxLevelIdcBits;
+    static_assert(sizeof(s->maxLevelIdc) == sizeof(maxLevelIdcBits));
+    memcpy(&maxLevelIdcBits, &s->maxLevelIdc, sizeof(maxLevelIdcBits));
+    memory->writed(address, maxLevelIdcBits);address+=4;
 }
 MarshalVkVideoEncodeH264SessionCreateInfoKHR::~MarshalVkVideoEncodeH264SessionCreateInfoKHR() {
     vulkanDeleteNextPtr(s.pNext);
@@ -22843,7 +22957,10 @@ void MarshalVkVideoEncodeH264ProfileInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, 
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->stdProfileIdc);address+=4;
+    U32 stdProfileIdcBits;
+    static_assert(sizeof(s->stdProfileIdc) == sizeof(stdProfileIdcBits));
+    memcpy(&stdProfileIdcBits, &s->stdProfileIdc, sizeof(stdProfileIdcBits));
+    memory->writed(address, stdProfileIdcBits);address+=4;
 }
 MarshalVkVideoEncodeH264ProfileInfoKHR::~MarshalVkVideoEncodeH264ProfileInfoKHR() {
     vulkanDeleteNextPtr(s.pNext);
@@ -23028,7 +23145,10 @@ void MarshalVkVideoEncodeH265CapabilitiesKHR::write(BoxedVulkanInfo* pBoxedInfo,
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
     memory->writed(address, s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->maxLevelIdc);address+=4;
+    U32 maxLevelIdcBits;
+    static_assert(sizeof(s->maxLevelIdc) == sizeof(maxLevelIdcBits));
+    memcpy(&maxLevelIdcBits, &s->maxLevelIdc, sizeof(maxLevelIdcBits));
+    memory->writed(address, maxLevelIdcBits);address+=4;
     memory->writed(address, s->maxSliceSegmentCount);address+=4;
     MarshalVkExtent2D::write(pBoxedInfo, memory, address, &s->maxTiles); address+=8;
     memory->writed(address, s->ctbSizes);address+=4;
@@ -23118,8 +23238,14 @@ void MarshalStdVideoEncodeH265PictureInfo::read(BoxedVulkanInfo* pBoxedInfo, KMe
     }
 }
 void MarshalStdVideoEncodeH265PictureInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265PictureInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->pic_type);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 pic_typeBits;
+    static_assert(sizeof(s->pic_type) == sizeof(pic_typeBits));
+    memcpy(&pic_typeBits, &s->pic_type, sizeof(pic_typeBits));
+    memory->writed(address, pic_typeBits);address+=4;
     memory->writeb(address, s->sps_video_parameter_set_id);address+=1;
     memory->writeb(address, s->pps_seq_parameter_set_id);address+=1;
     memory->writeb(address, s->pps_pic_parameter_set_id);address+=1;
@@ -23179,8 +23305,14 @@ void MarshalStdVideoEncodeH265SliceSegmentHeader::read(BoxedVulkanInfo* pBoxedIn
     }
 }
 void MarshalStdVideoEncodeH265SliceSegmentHeader::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265SliceSegmentHeader* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->slice_type);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 slice_typeBits;
+    static_assert(sizeof(s->slice_type) == sizeof(slice_typeBits));
+    memcpy(&slice_typeBits, &s->slice_type, sizeof(slice_typeBits));
+    memory->writed(address, slice_typeBits);address+=4;
     memory->writed(address, s->slice_segment_address);address+=4;
     memory->writeb(address, s->collocated_ref_idx);address+=1;
     memory->writeb(address, s->MaxNumMergeCand);address+=1;
@@ -23211,8 +23343,14 @@ void MarshalStdVideoEncodeH265ReferenceInfo::read(BoxedVulkanInfo* pBoxedInfo, K
     s->TemporalId = (uint8_t)memory->readb(address);address+=1;
 }
 void MarshalStdVideoEncodeH265ReferenceInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265ReferenceInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->pic_type);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 pic_typeBits;
+    static_assert(sizeof(s->pic_type) == sizeof(pic_typeBits));
+    memcpy(&pic_typeBits, &s->pic_type, sizeof(pic_typeBits));
+    memory->writed(address, pic_typeBits);address+=4;
     memory->writed(address, s->PicOrderCntVal);address+=4;
     memory->writeb(address, s->TemporalId);address+=1;
 }
@@ -23234,7 +23372,10 @@ void MarshalVkVideoEncodeH265SessionCreateInfoKHR::write(BoxedVulkanInfo* pBoxed
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
     memory->writed(address, s->useMaxLevelIdc);address+=4;
-    memory->writed(address, *(U32*)&s->maxLevelIdc);address+=4;
+    U32 maxLevelIdcBits;
+    static_assert(sizeof(s->maxLevelIdc) == sizeof(maxLevelIdcBits));
+    memcpy(&maxLevelIdcBits, &s->maxLevelIdc, sizeof(maxLevelIdcBits));
+    memory->writed(address, maxLevelIdcBits);address+=4;
 }
 MarshalVkVideoEncodeH265SessionCreateInfoKHR::~MarshalVkVideoEncodeH265SessionCreateInfoKHR() {
     vulkanDeleteNextPtr(s.pNext);
@@ -23638,7 +23779,10 @@ void MarshalVkVideoEncodeH265ProfileInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, 
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->stdProfileIdc);address+=4;
+    U32 stdProfileIdcBits;
+    static_assert(sizeof(s->stdProfileIdc) == sizeof(stdProfileIdcBits));
+    memcpy(&stdProfileIdcBits, &s->stdProfileIdc, sizeof(stdProfileIdcBits));
+    memory->writed(address, stdProfileIdcBits);address+=4;
 }
 MarshalVkVideoEncodeH265ProfileInfoKHR::~MarshalVkVideoEncodeH265ProfileInfoKHR() {
     vulkanDeleteNextPtr(s.pNext);
@@ -23718,7 +23862,10 @@ void MarshalVkVideoEncodeAV1CapabilitiesKHR::write(BoxedVulkanInfo* pBoxedInfo, 
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
     memory->writed(address, s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->maxLevel);address+=4;
+    U32 maxLevelBits;
+    static_assert(sizeof(s->maxLevel) == sizeof(maxLevelBits));
+    memcpy(&maxLevelBits, &s->maxLevel, sizeof(maxLevelBits));
+    memory->writed(address, maxLevelBits);address+=4;
     MarshalVkExtent2D::write(pBoxedInfo, memory, address, &s->codedPictureAlignment); address+=8;
     MarshalVkExtent2D::write(pBoxedInfo, memory, address, &s->maxTiles); address+=8;
     MarshalVkExtent2D::write(pBoxedInfo, memory, address, &s->minTileSize); address+=8;
@@ -23826,7 +23973,10 @@ void MarshalStdVideoEncodeAV1OperatingPointInfo::read(BoxedVulkanInfo* pBoxedInf
     s->initial_display_delay_minus_1 = (uint8_t)memory->readb(address);address+=1;
 }
 void MarshalStdVideoEncodeAV1OperatingPointInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeAV1OperatingPointInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writew(address, s->operating_point_idc);address+=2;
     memory->writeb(address, s->seq_level_idx);address+=1;
     memory->writeb(address, s->seq_tier);address+=1;
@@ -23925,8 +24075,14 @@ void MarshalStdVideoEncodeAV1PictureInfo::read(BoxedVulkanInfo* pBoxedInfo, KMem
     }
 }
 void MarshalStdVideoEncodeAV1PictureInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeAV1PictureInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->frame_type);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 frame_typeBits;
+    static_assert(sizeof(s->frame_type) == sizeof(frame_typeBits));
+    memcpy(&frame_typeBits, &s->frame_type, sizeof(frame_typeBits));
+    memory->writed(address, frame_typeBits);address+=4;
     memory->writed(address, s->frame_presentation_time);address+=4;
     memory->writed(address, s->current_frame_id);address+=4;
     memory->writeb(address, s->order_hint);address+=1;
@@ -23935,8 +24091,14 @@ void MarshalStdVideoEncodeAV1PictureInfo::write(BoxedVulkanInfo* pBoxedInfo, KMe
     memory->writeb(address, s->coded_denom);address+=1;
     memory->writew(address, s->render_width_minus_1);address+=2;
     memory->writew(address, s->render_height_minus_1);address+=2;
-    memory->writed(address, *(U32*)&s->interpolation_filter);address+=4;
-    memory->writed(address, *(U32*)&s->TxMode);address+=4;
+    U32 interpolation_filterBits;
+    static_assert(sizeof(s->interpolation_filter) == sizeof(interpolation_filterBits));
+    memcpy(&interpolation_filterBits, &s->interpolation_filter, sizeof(interpolation_filterBits));
+    memory->writed(address, interpolation_filterBits);address+=4;
+    U32 TxModeBits;
+    static_assert(sizeof(s->TxMode) == sizeof(TxModeBits));
+    memcpy(&TxModeBits, &s->TxMode, sizeof(TxModeBits));
+    memory->writed(address, TxModeBits);address+=4;
     memory->writeb(address, s->delta_q_res);address+=1;
     memory->writeb(address, s->delta_lf_res);address+=1;
     memory->memcpy(address, s->ref_order_hint, 8); address+=8;
@@ -24031,9 +24193,15 @@ void MarshalStdVideoEncodeAV1ReferenceInfo::read(BoxedVulkanInfo* pBoxedInfo, KM
     }
 }
 void MarshalStdVideoEncodeAV1ReferenceInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeAV1ReferenceInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writed(address, s->RefFrameId);address+=4;
-    memory->writed(address, *(U32*)&s->frame_type);address+=4;
+    U32 frame_typeBits;
+    static_assert(sizeof(s->frame_type) == sizeof(frame_typeBits));
+    memcpy(&frame_typeBits, &s->frame_type, sizeof(frame_typeBits));
+    memory->writed(address, frame_typeBits);address+=4;
     memory->writeb(address, s->OrderHint);address+=1;
     memory->memcpy(address, s->reserved1, 3); address+=3;
     U32 paramAddress = memory->readd(address);address+=4;
@@ -24086,7 +24254,10 @@ void MarshalVkVideoEncodeAV1SessionCreateInfoKHR::write(BoxedVulkanInfo* pBoxedI
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
     memory->writed(address, s->useMaxLevel);address+=4;
-    memory->writed(address, *(U32*)&s->maxLevel);address+=4;
+    U32 maxLevelBits;
+    static_assert(sizeof(s->maxLevel) == sizeof(maxLevelBits));
+    memcpy(&maxLevelBits, &s->maxLevel, sizeof(maxLevelBits));
+    memory->writed(address, maxLevelBits);address+=4;
 }
 MarshalVkVideoEncodeAV1SessionCreateInfoKHR::~MarshalVkVideoEncodeAV1SessionCreateInfoKHR() {
     vulkanDeleteNextPtr(s.pNext);
@@ -24262,7 +24433,10 @@ void MarshalVkVideoEncodeAV1ProfileInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, K
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->writed(address, *(U32*)&s->stdProfile);address+=4;
+    U32 stdProfileBits;
+    static_assert(sizeof(s->stdProfile) == sizeof(stdProfileBits));
+    memcpy(&stdProfileBits, &s->stdProfile, sizeof(stdProfileBits));
+    memory->writed(address, stdProfileBits);address+=4;
 }
 MarshalVkVideoEncodeAV1ProfileInfoKHR::~MarshalVkVideoEncodeAV1ProfileInfoKHR() {
     vulkanDeleteNextPtr(s.pNext);
@@ -31706,7 +31880,10 @@ void MarshalStdVideoH265HrdParameters::read(BoxedVulkanInfo* pBoxedInfo, KMemory
     }
 }
 void MarshalStdVideoH265HrdParameters::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265HrdParameters* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->tick_divisor_minus2);address+=1;
     memory->writeb(address, s->du_cpb_removal_delay_increment_length_minus1);address+=1;
     memory->writeb(address, s->dpb_output_delay_du_length_minus1);address+=1;
@@ -31744,9 +31921,18 @@ void MarshalStdVideoH265ProfileTierLevel::read(BoxedVulkanInfo* pBoxedInfo, KMem
     s->general_level_idc = (StdVideoH265LevelIdc)memory->readd(address);address+=4;
 }
 void MarshalStdVideoH265ProfileTierLevel::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265ProfileTierLevel* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->general_profile_idc);address+=4;
-    memory->writed(address, *(U32*)&s->general_level_idc);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 general_profile_idcBits;
+    static_assert(sizeof(s->general_profile_idc) == sizeof(general_profile_idcBits));
+    memcpy(&general_profile_idcBits, &s->general_profile_idc, sizeof(general_profile_idcBits));
+    memory->writed(address, general_profile_idcBits);address+=4;
+    U32 general_level_idcBits;
+    static_assert(sizeof(s->general_level_idc) == sizeof(general_level_idcBits));
+    memcpy(&general_level_idcBits, &s->general_level_idc, sizeof(general_level_idcBits));
+    memory->writed(address, general_level_idcBits);address+=4;
 }
 void MarshalStdVideoH265ScalingLists::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265ScalingLists* s) {
     memory->memcpy(&s->ScalingList4x4, address, 96);address+=96;
@@ -31782,7 +31968,10 @@ void MarshalStdVideoH265ShortTermRefPicSet::read(BoxedVulkanInfo* pBoxedInfo, KM
     memory->memcpy(&s->delta_poc_s1_minus1, address, 32);address+=32;
 }
 void MarshalStdVideoH265ShortTermRefPicSet::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265ShortTermRefPicSet* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writed(address, s->delta_idx_minus1);address+=4;
     memory->writew(address, s->use_delta_flag);address+=2;
     memory->writew(address, s->abs_delta_rps_minus1);address+=2;
@@ -31847,8 +32036,14 @@ void MarshalStdVideoH265SequenceParameterSetVui::read(BoxedVulkanInfo* pBoxedInf
     }
 }
 void MarshalStdVideoH265SequenceParameterSetVui::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265SequenceParameterSetVui* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->aspect_ratio_idc);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 aspect_ratio_idcBits;
+    static_assert(sizeof(s->aspect_ratio_idc) == sizeof(aspect_ratio_idcBits));
+    memcpy(&aspect_ratio_idcBits, &s->aspect_ratio_idc, sizeof(aspect_ratio_idcBits));
+    memory->writed(address, aspect_ratio_idcBits);address+=4;
     memory->writew(address, s->sar_width);address+=2;
     memory->writew(address, s->sar_height);address+=2;
     memory->writeb(address, s->video_format);address+=1;
@@ -31931,7 +32126,10 @@ void MarshalStdVideoEncodeH265ReferenceListsInfo::read(BoxedVulkanInfo* pBoxedIn
     memory->memcpy(&s->list_entry_l1, address, 15);address+=15;
 }
 void MarshalStdVideoEncodeH265ReferenceListsInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265ReferenceListsInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->num_ref_idx_l0_active_minus1);address+=1;
     memory->writeb(address, s->num_ref_idx_l1_active_minus1);address+=1;
     memory->memcpy(address, s->RefPicList0, 15); address+=15;
@@ -32021,8 +32219,14 @@ void MarshalStdVideoH264SequenceParameterSetVui::read(BoxedVulkanInfo* pBoxedInf
     }
 }
 void MarshalStdVideoH264SequenceParameterSetVui::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH264SequenceParameterSetVui* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
-    memory->writed(address, *(U32*)&s->aspect_ratio_idc);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
+    U32 aspect_ratio_idcBits;
+    static_assert(sizeof(s->aspect_ratio_idc) == sizeof(aspect_ratio_idcBits));
+    memcpy(&aspect_ratio_idcBits, &s->aspect_ratio_idc, sizeof(aspect_ratio_idcBits));
+    memory->writed(address, aspect_ratio_idcBits);address+=4;
     memory->writew(address, s->sar_width);address+=2;
     memory->writew(address, s->sar_height);address+=2;
     memory->writeb(address, s->video_format);address+=1;
@@ -32053,7 +32257,10 @@ void MarshalStdVideoEncodeH264RefListModEntry::read(BoxedVulkanInfo* pBoxedInfo,
     s->long_term_pic_num = (uint16_t)memory->readw(address);address+=2;
 }
 void MarshalStdVideoEncodeH264RefListModEntry::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264RefListModEntry* s) {
-    memory->writed(address, *(U32*)&s->modification_of_pic_nums_idc);address+=4;
+    U32 modification_of_pic_nums_idcBits;
+    static_assert(sizeof(s->modification_of_pic_nums_idc) == sizeof(modification_of_pic_nums_idcBits));
+    memcpy(&modification_of_pic_nums_idcBits, &s->modification_of_pic_nums_idc, sizeof(modification_of_pic_nums_idcBits));
+    memory->writed(address, modification_of_pic_nums_idcBits);address+=4;
     memory->writew(address, s->abs_diff_pic_num_minus1);address+=2;
     memory->writew(address, s->long_term_pic_num);address+=2;
 }
@@ -32065,7 +32272,10 @@ void MarshalStdVideoEncodeH264RefPicMarkingEntry::read(BoxedVulkanInfo* pBoxedIn
     s->max_long_term_frame_idx_plus1 = (uint16_t)memory->readw(address);address+=2;
 }
 void MarshalStdVideoEncodeH264RefPicMarkingEntry::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264RefPicMarkingEntry* s) {
-    memory->writed(address, *(U32*)&s->memory_management_control_operation);address+=4;
+    U32 memory_management_control_operationBits;
+    static_assert(sizeof(s->memory_management_control_operation) == sizeof(memory_management_control_operationBits));
+    memcpy(&memory_management_control_operationBits, &s->memory_management_control_operation, sizeof(memory_management_control_operationBits));
+    memory->writed(address, memory_management_control_operationBits);address+=4;
     memory->writew(address, s->difference_of_pic_nums_minus1);address+=2;
     memory->writew(address, s->long_term_pic_num);address+=2;
     memory->writew(address, s->long_term_frame_idx);address+=2;
@@ -32107,7 +32317,10 @@ void MarshalStdVideoEncodeH264ReferenceListsInfo::read(BoxedVulkanInfo* pBoxedIn
     }
 }
 void MarshalStdVideoEncodeH264ReferenceListsInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264ReferenceListsInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->num_ref_idx_l0_active_minus1);address+=1;
     memory->writeb(address, s->num_ref_idx_l1_active_minus1);address+=1;
     memory->memcpy(address, s->RefPicList0, 32); address+=32;
@@ -32156,7 +32369,10 @@ void MarshalStdVideoAV1Quantization::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
     s->qm_v = (uint8_t)memory->readb(address);address+=1;
 }
 void MarshalStdVideoAV1Quantization::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1Quantization* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->base_q_idx);address+=1;
     memory->writeb(address, s->DeltaQYDc);address+=1;
     memory->writeb(address, s->DeltaQUDc);address+=1;
@@ -32201,7 +32417,10 @@ void MarshalStdVideoAV1TileInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memo
     }
 }
 void MarshalStdVideoAV1TileInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1TileInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->TileCols);address+=1;
     memory->writeb(address, s->TileRows);address+=1;
     memory->writew(address, s->context_update_tile_id);address+=2;
@@ -32234,7 +32453,10 @@ void MarshalStdVideoAV1LoopFilter::read(BoxedVulkanInfo* pBoxedInfo, KMemory* me
     memory->memcpy(&s->loop_filter_mode_deltas, address, 2);address+=2;
 }
 void MarshalStdVideoAV1LoopFilter::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1LoopFilter* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->memcpy(address, s->loop_filter_level, 4); address+=4;
     memory->writeb(address, s->loop_filter_sharpness);address+=1;
     memory->writeb(address, s->update_ref_delta);address+=1;
@@ -32291,7 +32513,10 @@ void MarshalStdVideoAV1TimingInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* me
     s->num_ticks_per_picture_minus_1 = (uint32_t)memory->readd(address);address+=4;
 }
 void MarshalStdVideoAV1TimingInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1TimingInfo* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writed(address, s->num_units_in_display_tick);address+=4;
     memory->writed(address, s->time_scale);address+=4;
     memory->writed(address, s->num_ticks_per_picture_minus_1);address+=4;
@@ -32308,15 +32533,30 @@ void MarshalStdVideoAV1ColorConfig::read(BoxedVulkanInfo* pBoxedInfo, KMemory* m
     s->chroma_sample_position = (StdVideoAV1ChromaSamplePosition)memory->readd(address);address+=4;
 }
 void MarshalStdVideoAV1ColorConfig::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1ColorConfig* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->BitDepth);address+=1;
     memory->writeb(address, s->subsampling_x);address+=1;
     memory->writeb(address, s->subsampling_y);address+=1;
     memory->writeb(address, s->reserved1);address+=1;
-    memory->writed(address, *(U32*)&s->color_primaries);address+=4;
-    memory->writed(address, *(U32*)&s->transfer_characteristics);address+=4;
-    memory->writed(address, *(U32*)&s->matrix_coefficients);address+=4;
-    memory->writed(address, *(U32*)&s->chroma_sample_position);address+=4;
+    U32 color_primariesBits;
+    static_assert(sizeof(s->color_primaries) == sizeof(color_primariesBits));
+    memcpy(&color_primariesBits, &s->color_primaries, sizeof(color_primariesBits));
+    memory->writed(address, color_primariesBits);address+=4;
+    U32 transfer_characteristicsBits;
+    static_assert(sizeof(s->transfer_characteristics) == sizeof(transfer_characteristicsBits));
+    memcpy(&transfer_characteristicsBits, &s->transfer_characteristics, sizeof(transfer_characteristicsBits));
+    memory->writed(address, transfer_characteristicsBits);address+=4;
+    U32 matrix_coefficientsBits;
+    static_assert(sizeof(s->matrix_coefficients) == sizeof(matrix_coefficientsBits));
+    memcpy(&matrix_coefficientsBits, &s->matrix_coefficients, sizeof(matrix_coefficientsBits));
+    memory->writed(address, matrix_coefficientsBits);address+=4;
+    U32 chroma_sample_positionBits;
+    static_assert(sizeof(s->chroma_sample_position) == sizeof(chroma_sample_positionBits));
+    memcpy(&chroma_sample_positionBits, &s->chroma_sample_position, sizeof(chroma_sample_positionBits));
+    memory->writed(address, chroma_sample_positionBits);address+=4;
 }
 void MarshalStdVideoAV1FilmGrain::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1FilmGrain* s) {
     s->flags = (StdVideoAV1FilmGrainFlags)memory->readd(address);address+=4;
@@ -32346,7 +32586,10 @@ void MarshalStdVideoAV1FilmGrain::read(BoxedVulkanInfo* pBoxedInfo, KMemory* mem
     s->cr_offset = (uint16_t)memory->readw(address);address+=2;
 }
 void MarshalStdVideoAV1FilmGrain::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1FilmGrain* s) {
-    memory->writed(address, *(U32*)&s->flags);address+=4;
+    U32 flagsBits;
+    static_assert(sizeof(s->flags) == sizeof(flagsBits));
+    memcpy(&flagsBits, &s->flags, sizeof(flagsBits));
+    memory->writed(address, flagsBits);address+=4;
     memory->writeb(address, s->grain_scaling_minus_8);address+=1;
     memory->writeb(address, s->ar_coeff_lag);address+=1;
     memory->writeb(address, s->ar_coeff_shift_minus_6);address+=1;

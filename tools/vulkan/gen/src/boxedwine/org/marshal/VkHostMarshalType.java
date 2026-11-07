@@ -1033,6 +1033,15 @@ public class VkHostMarshalType {
                 out.append("Float.i);address+=4;\n");
                 return;
             }
+            // Registry-external video enums/bitfields have a 32-bit object
+            // representation. Copy it without violating C++ strict aliasing.
+            if (width == 4 && param.paramType.getCategory().isEmpty() && !param.paramType.name.equals("void")) {
+                out.append("    U32 " + param.name + "Bits;\n");
+                out.append("    static_assert(sizeof(s->" + param.name + ") == sizeof(" + param.name + "Bits));\n");
+                out.append("    memcpy(&" + param.name + "Bits, &s->" + param.name + ", sizeof(" + param.name + "Bits));\n");
+                out.append("    memory->writed(address, " + param.name + "Bits);address+=4;\n");
+                return;
+            }
             out.append("    memory->write");
             if (width == 8) {
                 boolean skipName = false;
@@ -1060,7 +1069,7 @@ public class VkHostMarshalType {
                 if (param.paramType.name.equals("size_t") || param.paramType.name.equals("void") || param.paramType.getCategory().isEmpty()) {
                     // size_t is 32-bit on win32, but host might be 64-bit, this will remove the warning
                     if (param.paramType.getCategory().isEmpty()) {
-                        out.append("d(address, *(U32*)&s->");
+                        out.append("d(address, (U32)(uintptr_t)s->");
                     } else {
                         out.append("d(address, (U32)s->");
                     }

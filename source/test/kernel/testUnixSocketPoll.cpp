@@ -35,13 +35,15 @@ void testUnixSocketPollOutClearsPeerCondition() {
     first->connection = second;
     second->connection = first;
 
-    first->waitForEvents(pollCond, K_POLLOUT);
+    // Exercise the concrete implementation; GCC 16 otherwise speculates on the
+    // test subclass below and diagnoses accesses beyond this base object.
+    first->KUnixSocketObject::waitForEvents(pollCond, K_POLLOUT);
     if (second->lockCond->parentsCount() != 1) {
         testFail("POLLOUT registration was not added to peer socket condition");
         return;
     }
 
-    first->waitForEvents(pollCond, 0);
+    first->KUnixSocketObject::waitForEvents(pollCond, 0);
     if (second->lockCond->parentsCount() != 0) {
         testFail("POLLOUT cleanup left poll condition registered on peer socket");
     }

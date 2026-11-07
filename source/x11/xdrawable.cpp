@@ -306,7 +306,7 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 }
 
 int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height) {
-	U32 bits = visual->bits_per_rgb;
+	S32 bits = visual->bits_per_rgb;
 	if (bits != 1 && bits != 8 && bits != 16 && bits != 32) return BadMatch;
 	S32 style = gc->values.fill_style;
 	if (style < FillSolid || style > FillOpaqueStippled) return BadValue;

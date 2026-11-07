@@ -881,7 +881,7 @@ void glcommon_glArrayElement(CPU* cpu) {
 void glcommon_glPopClientAttrib(CPU* cpu) {
     GL_FUNC(pglPopClientAttrib)();
     syncClientActiveTextureFromHost(cpu);
-    GL_LOG("glPopClientAttrib");
+    GL_LOG_NO_FMT("glPopClientAttrib");
 }
 
 void printOpenGLInfo() {
