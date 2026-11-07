@@ -394,6 +394,24 @@ runner packages the three libraries in `lib` beside the executable; use
 The selected source and bundled-library hashes appear in `egl-audit.json`.
 
 
+## RGB565 readback control
+
+Run the production readback helpers in an isolated Chrome WebGL2 context:
+
+```sh
+node tools/openglTest/runRGB565ReadbackTest.mjs CHROME PLAYWRIGHT_MODULE OUTPUT
+```
+
+This checks all 65,536 RGB565 colors against direct `readPixels`, with both
+ordinary and shared heaps and both client-memory and temporary-buffer paths.
+It also checks pack skips/padding, restored GL state, invalid reads, multisample
+fallback, and the direct path for RGB10_A2. The target backend must expose
+RGB565 as its preferred read format, as Chrome/ANGLE D3D11 does.
+An optional fourth argument selects an older `glcommon.cpp` as a failing
+control. Results and 640x480/1280x720 readback timings are written to
+`OUTPUT/readpixels-result.json`. Run without concurrent graphics workloads;
+these are helper timings, not full Wine/game frame-rate measurements.
+
 ## Fullscreen compositor control
 
 The standalone fullscreen layer control runs with:

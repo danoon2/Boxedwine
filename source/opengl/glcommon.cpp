@@ -368,29 +368,58 @@ EM_JS(void, boxedwine_read_pixels_client, (int x, int y, int width, int height, 
     GLctx.readPixels(x, y, width, height, format, type, view);
 });
 
-// Chrome reads some framebuffers, such as WineD3D's RGB565 render targets,
-// back as RGBA8 through a slow path: about 7 ms for 640x480, where a GPU
-// blit to an RGBA8 framebuffer followed by its readback takes about 1 ms.
-// For large RGBA8 reads from a framebuffer whose preferred read format is
-// something else, blit to a cached RGBA8 framebuffer and leave it bound for
-// reading at 0,0. Returns 1 if it did; boxedwine_read_pixels_blit_end() then
-// restores the bindings.
-EM_JS(int, boxedwine_read_pixels_blit_begin, (int x, int y, int width, int height, int format, int type), {
+// Chrome's RGB565-to-RGBA8 readPixels conversion is slow. A GPU blit to
+// RGBA8 followed by readback is faster, but can round the expanded channels
+// differently. All 5/6 source bits survive that blit: the end helper recovers
+// them and applies readPixels' normalized-integer conversion. Restrict this
+// path to RGB565; RGBA8 cannot preserve every bit of higher-precision sources.
+// Returns 1 with the scratch framebuffer bound for reading at 0,0; the end
+// helper then restores the binding and corrects only the written pixels.
+EM_JS(int, boxedwine_read_pixels_blit_begin, (int x, int y, int width, int height, int format, int type, int byteLength), {
     var gl = GLctx;
     if (!gl || typeof WebGL2RenderingContext === 'undefined' || !(gl instanceof WebGL2RenderingContext)
             || format != 0x1908 /* GL_RGBA */ || type != 0x1401 /* GL_UNSIGNED_BYTE */
-            || x < 0 || y < 0 || width * height < 256 * 256
+            || x < 0 || y < 0 || width <= 0 || height <= 0 || width * height < 256 * 256
             || gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING)) {
         return 0;
     }
     var readFbo = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING);
-    if (!readFbo || (gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT) == gl.RGBA
-            && gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE) == gl.UNSIGNED_BYTE)) {
+    if (!readFbo || gl.getParameter(gl.READ_BUFFER) == gl.NONE
+            || gl.checkFramebufferStatus(gl.READ_FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE
+            || gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT) != gl.RGB
+            || gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE) != gl.UNSIGNED_SHORT_5_6_5) {
+        return 0;
+    }
+    // Do not turn an invalid read into a successful read of the scratch FBO,
+    // or correct destination bytes that readPixels would leave untouched.
+    var readBuffer = gl.getParameter(gl.READ_BUFFER);
+    if (gl.getFramebufferAttachmentParameter(gl.READ_FRAMEBUFFER, readBuffer,
+            gl.FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE) == gl.RENDERBUFFER) {
+        var renderbuffer = gl.getParameter(gl.RENDERBUFFER_BINDING);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, gl.getFramebufferAttachmentParameter(
+            gl.READ_FRAMEBUFFER, readBuffer, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME));
+        var samples = gl.getRenderbufferParameter(gl.RENDERBUFFER, gl.RENDERBUFFER_SAMPLES);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+        if (samples) return 0;
+    }
+    var rowLength = gl.getParameter(gl.PACK_ROW_LENGTH) || width;
+    var skipPixels = gl.getParameter(gl.PACK_SKIP_PIXELS);
+    var skipRows = gl.getParameter(gl.PACK_SKIP_ROWS);
+    var alignment = gl.getParameter(gl.PACK_ALIGNMENT);
+    var stride = Math.ceil(rowLength * 4 / alignment) * alignment;
+    var offset = skipRows * stride + skipPixels * 4;
+    if (skipPixels + width > rowLength || offset + (height - 1) * stride + width * 4 > (byteLength >>> 0)) {
         return 0;
     }
     var state = Module['boxedwineReadPixelsBlit'];
     if (!state || state.gl !== gl) {
         state = Module['boxedwineReadPixelsBlit'] = { gl: gl, fbo: gl.createFramebuffer(), texture: null, width: 0, height: 0 };
+        state.expand5 = new Uint8Array(256);
+        state.expand6 = new Uint8Array(256);
+        for (var i = 0; i < 256; ++i) {
+            state.expand5[i] = Math.round((i >> 3) * 255 / 31);
+            state.expand6[i] = Math.round((i >> 2) * 255 / 63);
+        }
     }
     var drawFbo = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);
     if (state.width < width || state.height < height) {
@@ -410,6 +439,11 @@ EM_JS(int, boxedwine_read_pixels_blit_begin, (int x, int y, int width, int heigh
         gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, state.fbo);
         gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, state.texture, 0);
     }
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, state.fbo);
+    if (gl.checkFramebufferStatus(gl.DRAW_FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE) {
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, drawFbo);
+        return 0;
+    }
     // The blit honours the scissor test and, conservatively, the colour mask
     // and rasterizer discard; readPixels honours none of them.
     var scissor = gl.isEnabled(gl.SCISSOR_TEST);
@@ -426,13 +460,28 @@ EM_JS(int, boxedwine_read_pixels_blit_begin, (int x, int y, int width, int heigh
     gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, drawFbo);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, state.fbo);
     state.readFbo = readFbo;
+    state.readWidth = width;
+    state.readHeight = height;
+    state.offset = offset;
+    state.stride = stride;
     return 1;
 });
 
-EM_JS(void, boxedwine_read_pixels_blit_end, (), {
+EM_JS(void, boxedwine_read_pixels_blit_end, (int pixels), {
     var state = Module['boxedwineReadPixelsBlit'];
     state.gl.bindFramebuffer(state.gl.READ_FRAMEBUFFER, state.readFbo);
     state.readFbo = null;
+    if (state.gl.isContextLost()) return;
+    var row = (pixels >>> 0) + state.offset;
+    var expand5 = state.expand5, expand6 = state.expand6;
+    for (var y = 0; y < state.readHeight; ++y, row += state.stride) {
+        var end = row + state.readWidth * 4;
+        for (var p = row; p < end; p += 4) {
+            HEAPU8[p] = expand5[HEAPU8[p]];
+            HEAPU8[p + 1] = expand6[HEAPU8[p + 1]];
+            HEAPU8[p + 2] = expand5[HEAPU8[p + 2]];
+        }
+    }
 });
 #endif
 
@@ -1318,7 +1367,7 @@ void glcommon_glReadPixels(CPU* cpu) {
     GLint x = ARG1;
     GLint y = ARG2;
 #ifdef __EMSCRIPTEN__
-    bool blit = !pixels.isPacked() && boxedwine_read_pixels_blit_begin(x, y, width, height, format, type);
+    bool blit = !pixels.isPacked() && boxedwine_read_pixels_blit_begin(x, y, width, height, format, type, pixels.getByteLength());
     if (blit) {
         x = 0;
         y = 0;
@@ -1340,7 +1389,7 @@ void glcommon_glReadPixels(CPU* cpu) {
     }
 #ifdef __EMSCRIPTEN__
     if (blit) {
-        boxedwine_read_pixels_blit_end();
+        boxedwine_read_pixels_blit_end((int)(uintptr_t)ptr);
     }
 #endif
 }
