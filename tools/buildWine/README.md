@@ -70,29 +70,29 @@ The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned b
 [`webgl_filesystems_v26.json`](webgl_filesystems_v26.json) and the
 [v50 patch manifest](../wineTests/webgl-test-divergences-v50.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v26 WebGL configuration pins DLLs and source patches. Its `full-v26` and
-`web-v26` archive sizes/hashes are placeholders (size 1 and an all-zero SHA-256)
-until both variants are rebuilt with revision 25's DirectSound changes and
-revision 26's v50 WebGL series. Replace these placeholders with the final archive
-identities before profile validation or publication. The complete filesystem is
-assembled by `filesystem_wine11.json`.
+The v26 WebGL configuration pins the rebuilt DLLs, source patches, and final
+archives in its `full-v26` and `web-v26` profiles. The complete filesystem is
+assembled by `filesystem_wine11.json`. See [RELEASE-v26.md](RELEASE-v26.md) for
+artifact identities, validation results, and upload instructions.
 The v26 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
 Revision 26 adds constant-upload deduplication, fewer vertex-array disables,
 and a smaller streaming vertex buffer to reduce per-draw WebGL overhead.
-It retains revision 25's DirectSound backport. UI, Jenkins, native automation,
-and demo-site download pins remain on the staged revision 25 artifacts until
-the revision 26 archives have been built, validated, and published.
+It retains revision 25's DirectSound backport. All eight WebGL DLLs were rebuilt
+from the v50 source series; only WineD3D differs from the v25 DLLs. The verified
+regular Wine binaries were retained, with fresh packaging and prefix setup.
+The ZIP writer gives Wine directories explicit executable permissions.
+UI, Jenkins, native automation, and demo-site pins select the staged v26 archives.
 
-Revision 25 is staged locally for `/v2/25/`; it has not been published. Publish
+Revision 26 is staged locally for `/v2/26/`; it has not been published. Publish
 and verify both archives before deploying the new UI/Jenkins pins. The staged
 legacy catalog must be deployed separately to `/v2/26R2/filesV2.xml`, and the
 `/v2/latest/` aliases must be refreshed from the same final archives.
-Revision 25 retains the v49 WebGL series introduced in revision 24. Direct GLSL
+Revision 26 retains the earlier WebGL fixes from revisions 24 and 25. Direct GLSL
 generation for fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8
-normal-map textures enable 3DMark2001 SE Nature. Both variants retain the same
-`C:/webgl/wined3d.dll`; revision 25 changes DirectSound in regular Wine.
+normal-map textures enable 3DMark2001 SE Nature. Both variants package the
+same newly rebuilt `C:/webgl/wined3d.dll` with the v50 performance patches.
 
 Revision 23 added native-compatible Win16 `CopyRect` fault recovery for invalid
 source and destination rectangle pointers. This lets the original Robot City

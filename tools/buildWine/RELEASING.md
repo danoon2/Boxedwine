@@ -8,22 +8,16 @@ The [builder guide](README.md) explains the build internals and prerequisites.
 Review the release plan before starting builds. Commands below are for the later
 execution steps, run from the repository root in WSL unless noted otherwise.
 
-The current build profile targets filesystem 26 with the v50 WebGL performance
-patches and revision 25's DirectSound backport. The v26 manifest retains this
-branch's WebGL DLL pins, but both final archives need rebuilding: `full-v26` and
-`web-v26` use size 1 and an all-zero SHA-256 until their final identities are
-available. UI, Jenkins, native automation, and demo-site pins remain on revision
-25's artifacts; advance those together only after validating and publishing v26.
+The inventory was reviewed for filesystem 26 on November 7, 2026. Revision 26
+packages a clean rebuild of the v50 WebGL DLLs and retains revision 25's
+DirectSound backport. Regular Wine binary inputs were verified unchanged;
+packaging and prefixes were regenerated, including explicit Wine directory modes.
+See [RELEASE-v26.md](RELEASE-v26.md) for the artifact receipt and validation.
 
-The inventory was reviewed for filesystem 25 on November 7, 2026. Revision 25
-backports upstream DirectSound FIR and SSE resampling optimizations. Both Wine
-variants are rebuilt; the separate v49 WebGL DLL identities are unchanged.
-The release receipt and remaining upload steps are in [RELEASE-v25.md](RELEASE-v25.md).
-The release is staged locally, with repository consumers pinned to `/v2/25/`;
-publication is intentionally deferred. Upload and verify both final archives,
-refresh `/v2/latest/`, and deploy the staged `/v2/26R2/filesV2.xml` before
-activating those consumers. Earlier versioned archives and manifests retain
-their original identities.
+The release is staged locally, with repository consumers pinned to `/v2/26/`.
+Upload and verify both archives, refresh `/v2/latest/`, and deploy the staged
+`/v2/26R2/filesV2.xml` before activating those consumers. Earlier versioned
+archives, manifests and release receipts retain their original identities.
 
 ## 1. Agree on the release scope
 
@@ -273,7 +267,7 @@ or historical evidence; do not perform a global version/hash replacement:
 
 ```bash
 git grep -n -F -e '<old-main-sha256>' -e '<old-web-sha256>' \
-  -e 'v2/24/' -e 'webgl_filesystems_v24.json'
+  -e 'v2/25/' -e 'webgl_filesystems_v25.json'
 git grep -n -E 'automation[0-9]+\.zip|FILESYSTEM_URL|FILESYSTEM_CACHE_NAME|BOXEDWINE_AUTO_|ABIWORD_AUTO_|DEMO_ROOT_CONFIG'
 git diff --check
 ```

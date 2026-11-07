@@ -13,8 +13,10 @@ only the test patch named by the selected manifest.
 Patches 71 to 73 reduce per-draw WebGL overhead in WineD3D; the other DLLs
 are unchanged. Filesystem revision 26 selects them, pinned by
 [`webgl_filesystems_v26.json`](../buildWine/webgl_filesystems_v26.json). Both
-v26 archives still need rebuilding with revision 25's DirectSound backport;
-their archive sizes/hashes are placeholders. These patches were first measured
+v26 archives now contain a clean rebuild of all eight WebGL DLLs plus revision
+25's DirectSound backport. The final local DLL and archive hashes are pinned;
+[the release receipt](../buildWine/RELEASE-v26.md) records validation and upload steps.
+These patches were first measured
 as binary patches of the v47 `wined3d.dll`, then retested with this branch's
 November 2 candidate (then numbered v25) and the single-threaded Jit build. Each A/B test
 changed only `wined3d.dll`: the v50 DLL against the same source built without
@@ -64,11 +66,10 @@ Signed texture sampling and filtering are core
 [WebGL 2 capabilities](https://www.khronos.org/files/webgl20-reference-guide.pdf);
 render-target, sRGB and automatic mipmap capabilities remain disabled.
 The change is confined to WebGL WineD3D; other formats and native Wine keep
-their existing behavior. Filesystem revision 25 retains the v49 DLLs from
-revision 24 and adds the DirectSound SSE backport to regular Wine in both
-variants. Revision 25 is staged locally for upload to `/v2/25/`.
-Their DLL and archive identities are pinned by
-[`webgl_filesystems_v25.json`](../buildWine/webgl_filesystems_v25.json).
+their existing behavior. Filesystem revision 26 retains this normal-map fix
+and the DirectSound SSE backport while adding the v50 performance patches.
+Both variants are staged for `/v2/26/`, with final DLL and archive identities in
+[`webgl_filesystems_v26.json`](../buildWine/webgl_filesystems_v26.json).
 
 The [signed-texture probe](../wineTests/tests/d3d9_q8w8v8u8_probe.c) checks
 all four channels across the signed-byte range, partial rectangle updates,
