@@ -1,3 +1,5 @@
+v25 Nov 07, 2026 Include upstream DirectSound FIR and SSE resampling optimizations, reducing guest audio CPU use and improving Halo Trial audio continuity and performance. Runs inside Wine using existing Boxedwine SIMD support. The separate WebGL DLLs retain their v24 identities.
+
 v24 Oct 30, 2026 Reduce fixed-function shader compilation stalls with direct GLSL generation and support the signed Q8W8V8U8 normal maps required by 3DMark2001 SE Nature. Includes the v49 WebGL patch series.
 
 v23 Oct 25, 2026 Include native-compatible Win16 CopyRect fault recovery, fixing Robot City shutdown without modifying the game executable. The separate WebGL DLLs retain their v20 identities.

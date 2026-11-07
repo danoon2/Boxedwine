@@ -18,10 +18,11 @@ Signed texture sampling and filtering are core
 [WebGL 2 capabilities](https://www.khronos.org/files/webgl20-reference-guide.pdf);
 render-target, sRGB and automatic mipmap capabilities remain disabled.
 The change is confined to WebGL WineD3D; other formats and native Wine keep
-their existing behavior. Filesystem revision 24 packages the v49 source series
-in both full and web variants, staged locally for upload to `/v2/24/`.
+their existing behavior. Filesystem revision 25 retains the v49 DLLs from
+revision 24 and adds the DirectSound SSE backport to regular Wine in both
+variants. Revision 25 is staged locally for upload to `/v2/25/`.
 Their DLL and archive identities are pinned by
-[`webgl_filesystems_v24.json`](../buildWine/webgl_filesystems_v24.json).
+[`webgl_filesystems_v25.json`](../buildWine/webgl_filesystems_v25.json).
 
 The [signed-texture probe](../wineTests/tests/d3d9_q8w8v8u8_probe.c) checks
 all four channels across the signed-byte range, partial rectangle updates,

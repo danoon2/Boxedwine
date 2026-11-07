@@ -1,3 +1,5 @@
+v25 Nov 07, 2026 Backport upstream DirectSound FIR and SSE resampling optimizations to reduce guest audio CPU use. Improves Halo Trial audio continuity and performance. Includes the prerequisite filter and arithmetic changes; the separate WebGL DLLs retain their v24 identities.
+
 v24 Oct 30, 2026 Update the bundled WebGL WineD3D to generate fixed-function GLSL directly, reducing shader compilation stalls in 3DMark2001 SE. Add signed Q8W8V8U8 normal-map textures so the Nature benchmark can run. Regular Wine graphics behavior is unchanged.
 
 v23 Oct 25, 2026 Match native Win16 CopyRect fault recovery for invalid rectangle pointers, allowing the original Robot City executable to exit without crashing or launching WineDbg.

@@ -22,9 +22,9 @@ The tested backport improved Halo Trial's opening-beach sample from 5.21 to
 6.67/6.72 frames per second, with normal audio reported in both enabled runs.
 These were manual scene starts, not a deterministic timedemo. The patch changes
 the FIR filter as well as its implementation, so output is not bit-identical to
-Wine 11.0. Existing filesystem archives are unchanged; rebuild Wine before
-assembling a filesystem to include it (`--phase assemble` alone can reuse old
-Wine binaries).
+Wine 11.0. Filesystem revision 25 rebuilds both Wine variants with this patch. When
+changing a Wine patch, rebuild Wine before assembling a filesystem;
+`--phase assemble` alone can reuse old Wine binaries.
 
 `build_filesystem.py` builds Wine, initializes a new prefix in Boxedwine, installs
 Wine Gecko, and adds the graphics components. It does not read an existing full
@@ -51,7 +51,7 @@ v49 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapsh
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 24. Its `changes.txt` comes from
+The filesystem revision is 25. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -67,23 +67,23 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v24.json`](webgl_filesystems_v24.json) and the
+[`webgl_filesystems_v25.json`](webgl_filesystems_v25.json) and the
 [v49 patch manifest](../wineTests/webgl-test-divergences-v49.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v24 WebGL configuration pins DLLs, source patches, and the filesystem
-ZIP in its `full-v24` and `web-v24` profiles for Jenkins demo validation. The complete filesystem
+The v25 WebGL configuration pins DLLs, source patches, and the filesystem
+ZIP in its `full-v25` and `web-v25` profiles for Jenkins demo validation. The complete filesystem
 is assembled by `filesystem_wine11.json`.
-The v24 prefix leaves the renderer registry values unset. The profile records
+The v25 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
-Revision 24 is staged locally for `/v2/24/`; it has not been published. Publish
+Revision 25 is staged locally for `/v2/25/`; it has not been published. Publish
 and verify both archives before deploying the new UI/Jenkins pins. The staged
 legacy catalog must be deployed separately to `/v2/26R2/filesV2.xml`, and the
 `/v2/latest/` aliases must be refreshed from the same final archives.
-Revision 24 includes the v49 WebGL series: direct GLSL generation for
-fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8
-normal-map textures enable 3DMark2001 SE Nature. Both variants carry the new
-`C:/webgl/wined3d.dll`; regular Wine graphics behavior is unchanged.
+Revision 25 retains the v49 WebGL series introduced in revision 24. Direct GLSL
+generation for fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8
+normal-map textures enable 3DMark2001 SE Nature. Both variants retain the same
+`C:/webgl/wined3d.dll`; revision 25 changes DirectSound in regular Wine.
 
 Revision 23 added native-compatible Win16 `CopyRect` fault recovery for invalid
 source and destination rectangle pointers. This lets the original Robot City
@@ -252,7 +252,7 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
   --variant web --work-dir "$HOME/boxedwine-wine11-web" --jobs 12
 ```
 
-This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 24.
+This produces `TinyCore15Wine11.0-web.zip`, with filesystem revision 25.
 Use `--variant web` again when retrying individual phases. The assembler checks
 the Wine configuration stamp and the addon manifest to prevent mixing variants.
 
@@ -296,7 +296,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
-Build and validate with `--config tools/buildWine/webgl_filesystems_v24.json`.
+Build and validate with `--config tools/buildWine/webgl_filesystems_v25.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises
@@ -439,7 +439,7 @@ python3 tools/buildWine/webgl_filesystem.py validate \
 
 The following v3/v10 commands and manifest remain available for historical
 filesystem reproduction and validation. Normal commands now default to
-`webgl_filesystems_v24.json`; pass the historical config explicitly below.
+`webgl_filesystems_v25.json`; pass the historical config explicitly below.
 The dedicated `validate-set` command retains its v3/v10 default.
 
 `webgl_filesystem.py` is the pinned build, packaging, and validation command
