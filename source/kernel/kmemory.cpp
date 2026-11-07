@@ -2035,15 +2035,13 @@ NativeContinuousMemory::~NativeContinuousMemory() {
 }
 
 U64 KMemory::readq(U32 address) {
-#if !defined(UNALIGNED_MEMORY)
     if ((address & 0xFFF) < 0xFF9) {
         int index = address >> 12;
         MMU& mmu = data->mmu[index];
         if (mmu.canReadRam) {
-            return *(U64*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
+            return hostLoadUnaligned<U64>(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
         }
     }
-#endif
     return readd(address) | ((U64)readd(address + 4) << 32);
 }
 
@@ -2075,12 +2073,10 @@ U32 KMemory::readd(U32 address) {
 U16 KMemory::readw(U32 address) {
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY)
         MMU& mmu = data->mmu[index];
         if (mmu.canReadRam) {
-            return *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
+            return hostLoadUnaligned<U16>(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
         }
-#endif
         return data->mmu[index].getPage()->readw(&data->mmu[index], address);
     }
     return readb(address) | (readb(address + 1) << 8);
@@ -2096,17 +2092,15 @@ U8 KMemory::readb(U32 address) {
 }
 
 void KMemory::writeq(U32 address, U64 value) {
-#if !defined(UNALIGNED_MEMORY)
     if ((address & 0xFFF) < 0xFF9) {
         int index = address >> 12;
         MMU& mmu = data->mmu[index];
         if (mmu.canWriteRam) {
-            *(U64*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
+            hostStoreUnaligned<U64>(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]), value);
             checkDebugTrapOnMemoryWrite(address, 8);
             return;
         }
     }
-#endif
     if ((address & K_PAGE_MASK) > K_PAGE_SIZE - 8) {
         preflightWrite(address, 8);
     }
@@ -2120,12 +2114,10 @@ void KMemory::writed(U32 address, U32 value) {
 void KMemory::writew(U32 address, U16 value) {
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY)
         MMU& mmu = data->mmu[index];
-        if (mmu.canWriteRam)
-            *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
-        else
-#endif
+        if (mmu.canWriteRam) {
+            hostStoreUnaligned<U16>(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]), value);
+        } else
             data->mmu[index].getPage()->writew(&data->mmu[index], address, value);
         checkDebugTrapOnMemoryWrite(address, 2);
     } else {

@@ -25,6 +25,24 @@ class DecodedOp;
 #include "codePageData.h"
 #include "soft_mmu.h"
 #include "../../source/util/bnativeheap.h"
+#include <string.h>
+
+// Guest addresses are arbitrary, so host-side loads/stores of guest RAM may be
+// misaligned. Dereferencing a misaligned U16*/U32*/U64* is undefined behaviour
+// and lets the compiler assume natural alignment (wasm align=2/4/8, which
+// wasm2js turns into HEAP32[addr >> 2]; a plain ldr on ARM built with
+// -mno-unaligned-access). UBSan -fsanitize=alignment reports it.
+// memcpy expresses an alignment-free, aliasing-safe access and compiles to a
+// single load/store (wasm align=1, x86 mov, ARM ldr).
+template <typename T> inline T hostLoadUnaligned(const U8* p) {
+    T value;
+    memcpy(&value, p, sizeof(T));
+    return value;
+}
+
+template <typename T> inline void hostStoreUnaligned(U8* p, T value) {
+    memcpy(p, &value, sizeof(T));
+}
 
 class JitData {
 public:
@@ -105,11 +123,9 @@ inline U32 KMemory::readdInline(U32 address) {
     if ((address & 0xFFF) < 0xFFD) {
         U32 index = address >> 12;
         MMU& mmu = data->mmu[index];
-#if !defined(UNALIGNED_MEMORY)
         if (mmu.canReadRam) {
-            return *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
+            return hostLoadUnaligned<U32>(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
         }
-#endif
         return mmu.getPage()->readd(&mmu, address);
     }
     return readb(address) | (readb(address + 1) << 8) | (readb(address + 2) << 16) | (readb(address + 3) << 24);
@@ -119,13 +135,11 @@ inline void KMemory::writedInline(U32 address, U32 value) {
     if ((address & 0xFFF) < 0xFFD) {
         U32 index = address >> 12;
         MMU& mmu = data->mmu[index];
-#if !defined(UNALIGNED_MEMORY)
         if (mmu.canWriteRam) {
-            *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
+            hostStoreUnaligned<U32>(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]), value);
             checkDebugTrapOnMemoryWrite(address, 4);
             return;
         }
-#endif
         mmu.getPage()->writed(&mmu, address, value);
         checkDebugTrapOnMemoryWrite(address, 4);
     } else {

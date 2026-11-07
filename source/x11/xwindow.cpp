@@ -70,11 +70,11 @@ XSetWindowAttributes* XSetWindowAttributes::get(KMemory* memory, U32 address, XS
 	if (!address) {
 		return nullptr;
 	}
-#ifndef UNALIGNED_MEMORY
-	if ((address & K_PAGE_MASK) + sizeof(XSetWindowAttributes) < K_PAGE_SIZE) {
+	// Only alias guest RAM when the struct is naturally aligned; a misaligned
+	// host struct pointer is undefined behaviour (and wrong under wasm2js).
+	if ((address & (alignof(XSetWindowAttributes) - 1)) == 0 && (address & K_PAGE_MASK) + sizeof(XSetWindowAttributes) < K_PAGE_SIZE) {
 		return (XSetWindowAttributes*)memory->getRamPtr(address, sizeof(XSetWindowAttributes), true);
 	}
-#endif
 	tmp->read(memory, address);
 	return tmp;
 }
