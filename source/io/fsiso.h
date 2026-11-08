@@ -24,8 +24,9 @@
 #define ISO_SECTOR_SIZE 2048
 
 class DiscImage;
+class FsUdf;
 
-// The ISO 9660 filesystem on a disc image (an ISO, or a CUE sheet with its BIN files),
+// The ISO 9660/Joliet or UDF filesystem on a disc image (an ISO, or a CUE sheet),
 // mounted as virtual nodes
 class FsIso : public std::enable_shared_from_this<FsIso> {
 public:
@@ -40,12 +41,14 @@ public:
     bool readRaw(U32 sector, U32 count, U8* buf);
     // true for the mount point itself and everything below it
     bool containsPath(const BString& path) const;
+    U32 filesystemType() const { return udf ? 0x15013346 : 0x9660; }
 
-    U64 totalSectors = 0; // size of the ISO 9660 filesystem
+    U64 totalSectors = 0; // mounted filesystem/disc size in 2048-byte sectors
     BOXEDWINE_MUTEX readMutex;
     std::shared_ptr<DiscImage> image;
 
 private:
+    std::shared_ptr<FsUdf> udf;
     bool joliet = false;
     BString mountPath;
 

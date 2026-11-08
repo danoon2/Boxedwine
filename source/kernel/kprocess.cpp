@@ -2191,12 +2191,12 @@ struct StatfsValues {
 };
 
 // Wine decides a drive is a CD-ROM from f_type (ntdll get_device_info) and sizes it
-// from f_frsize/f_blocks, so the mounted ISO reports what Linux's isofs does: a full,
-// read-only iso9660 volume of 2048 byte sectors. Everything else is ext3.
+// from f_frsize/f_blocks. Disc filesystems report their Linux ISO/UDF type and
+// a full, read-only volume of 2048 byte sectors. Everything else is ext3.
 static StatfsValues getStatfsValues(const std::shared_ptr<FsNode>& node) {
     std::shared_ptr<FsIso> iso = node ? getCdromForPath(node->path) : nullptr;
     if (iso) {
-        return { 0x9660, ISO_SECTOR_SIZE, iso->totalSectors, 0, 0, 0, 1 | 4096 }; // ST_RDONLY | ST_RELATIME
+        return { iso->filesystemType(), ISO_SECTOR_SIZE, iso->totalSectors, 0, 0, 0, 1 | 4096 }; // ST_RDONLY | ST_RELATIME
     }
     return { 0xEF53, FS_BLOCK_SIZE, FS_SIZE / FS_BLOCK_SIZE, FS_FREE_SIZE / FS_BLOCK_SIZE, 1024 * 1024, 1024 * 1024, 4096 }; // ST_RELATIME
 }

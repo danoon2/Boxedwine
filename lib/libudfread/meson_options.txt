@@ -1,0 +1,13 @@
+# Copyright (C) 2025 Rob Hall
+# SPDX-License-Identifier: MIT
+
+option('enable_examples',
+    type: 'boolean',
+    value: false,
+    description: 'Build libudfread examples')
+
+option('embed_udfread',
+    type: 'boolean',
+    value: false,
+    yield: true,
+    description: 'Build libudfread as static library with no install')

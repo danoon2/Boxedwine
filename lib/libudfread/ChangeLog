@@ -1,0 +1,19 @@
+2025-08-18:  Version 1.2.0
+- Add Meson build system support.
+- Use visibility attributes for exported symbols.
+- Fix leak
+
+2021-04-05:  Version 1.1.2
+- Fix handling of non-ASCII .iso filenames in Windows.
+
+2020-06-30:  Version 1.1.1
+- Fix pkg-config file to be named libudfread.pc instead of udfread.pc
+
+2020-06-30:  Version 1.1.0
+- Add functions to open directories/files from already open directory.
+- Fix possible memory corruption with inline files.
+- Improve error resilience and stability.
+- Add support for Volume Descriptor Pointer.
+
+2017-06-07: Version 1.0.0
+

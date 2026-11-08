@@ -108,6 +108,9 @@ void testZipRandomAccess();
 void testZipEntryTimes();
 void testDiscImageLayouts();
 void testIsoFilesAndDiscChanges();
+void testUdfFilesAndDiscChanges();
+void testUdfAllocationAndLargeFiles();
+void testMalformedUdfImages();
 void testMalformedIsoDirectories();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testHostFolderSyncUpdatesLoadedChildren();
@@ -1293,6 +1296,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testZipEntryTimes, "Test ZIP entry times are UTC", TEST_ENTRY_SERIAL},
     {testDiscImageLayouts, "Test disc image layouts and CUE sheets beside BINs", TEST_ENTRY_SERIAL},
     {testIsoFilesAndDiscChanges, "Test ISO file types, seeks and disc changes", TEST_ENTRY_SERIAL},
+    {testUdfFilesAndDiscChanges, "Test UDF mounts, Unicode and disc changes", TEST_ENTRY_SERIAL},
+    {testUdfAllocationAndLargeFiles, "Test UDF fragmented, inline and large files", TEST_ENTRY_SERIAL},
+    {testMalformedUdfImages, "Test malformed UDF image rejection", TEST_ENTRY_SERIAL},
     {testMalformedIsoDirectories, "Test malformed ISO directory rejection", TEST_ENTRY_SERIAL},
     {testStatxEmptyPathUsesOpenFile, "Test statx empty path uses open file identity", TEST_ENTRY_SERIAL},
     {testXInputValuatorLayout, "Test XInput valuator guest ABI layout"},

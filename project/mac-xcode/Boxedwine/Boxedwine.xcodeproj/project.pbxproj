@@ -269,6 +269,12 @@
 		7F40DDE09A1C456F9B942CC1 /* Runtime AppIcon in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		BC0262000000000000000001 = {isa = PBXBuildFile; fileRef = BC0262000000000000000002; };
 		BC0262000000000000000003 = {isa = PBXBuildFile; fileRef = BC0262000000000000000004; };
+		D315C5F9655F6AD6A0DBFFD9 /* udfread.c in Sources */ = {isa = PBXBuildFile; fileRef = 3D7AB8D336E29A240945CB36 /* udfread.c */; settings = {COMPILER_FLAGS = "-DUDFREAD_BLOCK_INPUT_ONLY"; }; };
+		02381A6611C043A2FC849534 /* udfread.c in Sources */ = {isa = PBXBuildFile; fileRef = 3D7AB8D336E29A240945CB36 /* udfread.c */; settings = {COMPILER_FLAGS = "-DUDFREAD_BLOCK_INPUT_ONLY"; }; };
+		616449B7ABED3B18334B5C10 /* udfread.c in Sources */ = {isa = PBXBuildFile; fileRef = 3D7AB8D336E29A240945CB36 /* udfread.c */; settings = {COMPILER_FLAGS = "-DUDFREAD_BLOCK_INPUT_ONLY"; }; };
+		D932A08A9D88B64BA9098ED5 /* ecma167.c in Sources */ = {isa = PBXBuildFile; fileRef = 67F20E32B8B037620C721E55 /* ecma167.c */; settings = {COMPILER_FLAGS = "-DUDFREAD_BLOCK_INPUT_ONLY"; }; };
+		65CC35BA2F8F0C36E361094E /* ecma167.c in Sources */ = {isa = PBXBuildFile; fileRef = 67F20E32B8B037620C721E55 /* ecma167.c */; settings = {COMPILER_FLAGS = "-DUDFREAD_BLOCK_INPUT_ONLY"; }; };
+		9CD03CD264735DCCD8561E53 /* ecma167.c in Sources */ = {isa = PBXBuildFile; fileRef = 67F20E32B8B037620C721E55 /* ecma167.c */; settings = {COMPILER_FLAGS = "-DUDFREAD_BLOCK_INPUT_ONLY"; }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -530,6 +536,8 @@
 		B70915130000000000000005 = { isa = PBXFileReference; path = "Tests/Fixtures/BoxedwineTips.storekit"; lastKnownFileType = text; sourceTree = "<group>"; };
 		BC0262000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = macLaunch.mm; path = ../../../platform/mac/macLaunch.mm; sourceTree = "<group>"; };
 		BC0262000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Core/EngineProcess.swift"; sourceTree = "<group>"; };
+		3D7AB8D336E29A240945CB36 /* udfread.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ../../../lib/libudfread/src/udfread.c; sourceTree = SOURCE_ROOT; };
+		67F20E32B8B037620C721E55 /* ecma167.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ../../../lib/libudfread/src/ecma167.c; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -1206,6 +1214,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D932A08A9D88B64BA9098ED5 /* ecma167.c in Sources */,
+				D315C5F9655F6AD6A0DBFFD9 /* udfread.c in Sources */,
 				1A80F0DC276EBF170032A70A /* kdspaudio.cpp in Sources */,
 				1A55D64E2A08428F002B7021 /* deflate.c in Sources */,
 				1A80F0F6276EBF170032A70A /* imgui_draw.cpp in Sources */,
@@ -1343,6 +1353,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				65CC35BA2F8F0C36E361094E /* ecma167.c in Sources */,
+				02381A6611C043A2FC849534 /* udfread.c in Sources */,
 				7135DC12264EBCD0005D6AA6 /* MacPlatform.m in Sources */,
 				7135DC13264EBCD0005D6AA6 /* platformThreads.cpp in Sources */,
 				714097512D4AA57300D10110 /* glew.cpp in Sources */,
@@ -2439,6 +2451,8 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = "2147483647";
 			"files" = (
+				9CD03CD264735DCCD8561E53 /* ecma167.c in Sources */,
+				616449B7ABED3B18334B5C10 /* udfread.c in Sources */,
 				"7499518CCE71528704D1DD3C",
 				"8034BFEF8484DE30EF72D3F8",
 				"840CE3B9D1B26264A0FDE7A2",

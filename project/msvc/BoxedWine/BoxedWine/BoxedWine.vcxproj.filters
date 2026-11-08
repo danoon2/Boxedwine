@@ -127,6 +127,9 @@
     <ClCompile Include="..\..\..\..\source\io\fsiso.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\io\fsudf.cpp">
+      <Filter>source\io</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\io\fsisoopennode.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
@@ -1407,6 +1410,9 @@
       <Filter>source\io</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\io\fsiso.h">
+      <Filter>source\io</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\io\fsudf.h">
       <Filter>source\io</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\io\fsisoopennode.h">

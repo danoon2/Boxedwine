@@ -20,6 +20,7 @@
 #include "fsiso.h"
 #include "discimage.h"
 #include "fsisoopennode.h"
+#include "fsudf.h"
 #include "fsfilenode.h"
 #include "fsvirtualnode.h"
 #include "fs.h"
@@ -225,6 +226,23 @@ bool FsIso::init(const BString& imagePath, const BString& mountPath, std::shared
     // ISO 9660 sector numbers count from the start of the disc, the volume descriptors
     // from the start of the data track
     U64 base = dataTrack->start;
+
+    // Hybrid discs may expose more complete names/files through UDF. Once
+    // identified, validate UDF fully rather than falling back to a partial ISO.
+    if (FsUdf::probe(*image, dataTrack->start)) {
+        udf = std::make_shared<FsUdf>(*this);
+        if (!udf->mount(mountPath, mountNode)) {
+            std::vector<std::shared_ptr<FsNode>> children;
+            mountNode->getAllChildren(children);
+            for (const auto& child : children) child->removeNodeFromParent();
+            klog_fmt("FsIso: invalid or unsupported UDF filesystem: %s", imagePath.c_str());
+            return false;
+        }
+        totalSectors = image->leadOut;
+        if (preparedRoot) *preparedRoot = mountNode;
+        else parent->addChild(mountNode);
+        return true;
+    }
 
     U8 sector[ISO_SECTOR_SIZE];
 

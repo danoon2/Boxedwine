@@ -130,6 +130,7 @@ SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/ioapi.c
 SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
 SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
 SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
+SOURCES += $(PROJDIR)/lib/libudfread/src/udfread.c $(PROJDIR)/lib/libudfread/src/ecma167.c
 
 SOFT_SOURCES = $(wildcard $(PROJDIR)/lib/softfloat/source/*.c)
 SOFT_SOURCES += $(wildcard $(PROJDIR)/lib/softfloat/source/8086-SSE/*.c)
@@ -155,6 +156,7 @@ TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/ioapi.c
 TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
 TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
 TEST_SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
+TEST_SOURCES += $(PROJDIR)/lib/libudfread/src/udfread.c $(PROJDIR)/lib/libudfread/src/ecma167.c
 
 ifeq ($(BUILD_DIR),Build/Test$(AUTOMATION_SUFFIX))
 SRCS := $(TEST_SOURCES)
@@ -179,6 +181,8 @@ SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LIBS = $(shell sdl2-config --libs)
 CPPFLAGS ?= -std=c++20 -O2 $(EXTRA_CPP_FLAGS) $(GCC_EXTRA_FLAGS) -Werror=switch -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS)
 CFLAGS ?= -O2 $(INCLUDES)
+$(filter %/lib/libudfread/src/udfread.c.o,$(OBJS)): CFLAGS += -DUDFREAD_BLOCK_INPUT_ONLY
+$(filter %/lib/libudfread/src/udfread.c.o %/lib/libudfread/src/ecma167.c.o,$(OBJS)): CFLAGS += -MMD -MP
 LDFLAGS = -L./linux_build/lib -lcurl -lssl -lcrypto -lpthread -lm -lz -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
 # Unit tests compile out the status bar and do not need Wayland development
 # libraries. Keep the dependency on release/native builds that use the surface.

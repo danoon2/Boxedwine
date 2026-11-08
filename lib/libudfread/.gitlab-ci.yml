@@ -1,0 +1,60 @@
+stages:
+    - build
+
+variables:
+    GIT_SUBMODULE_STRATEGY: normal
+
+build-debian:
+    image: registry.videolan.org/dav1d-debian-unstable:20250207200301
+    stage: build
+    tags:
+        - docker
+        - amd64
+    script:
+        - meson setup build -Dbuildtype=release
+                            -Denable_examples=true
+        - meson compile -C build
+
+build-macos:
+    stage: build
+    tags:
+        - amd64
+        - macos
+    script:
+        - meson setup build -Dbuildtype=release
+                            -Denable_examples=true
+        - meson compile -C build
+
+build-win:
+    image: registry.videolan.org/dav1d-debian-unstable:20250207200301
+    stage: build
+    except:
+        - schedules
+    tags:
+        - docker
+        - amd64
+    script:
+        - meson setup build --cross-file package/crossfiles/${CROSSFILE}.meson
+                            -Dbuildtype=release
+                            -Denable_examples=true
+        - meson compile -C build
+    parallel:
+      matrix:
+        - CROSSFILE: [i686-w64-mingw32, x86_64-w64-mingw32]
+
+build-win-arm:
+    image: registry.videolan.org/vlc-debian-llvm-msvcrt:20250305204125
+    stage: build
+    except:
+        - schedules
+    tags:
+        - docker
+        - amd64
+    script:
+        - meson setup build --cross-file package/crossfiles/${CROSSFILE}.meson
+                            -Dbuildtype=release
+                            -Denable_examples=true
+        - meson compile -C build
+    parallel:
+      matrix:
+        - CROSSFILE: [armv7-w64-mingw32, aarch64-w64-mingw32]

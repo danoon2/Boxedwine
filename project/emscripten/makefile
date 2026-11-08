@@ -204,6 +204,8 @@ else
 SRCS := $(SOURCES)
 endif
 
+SRCS += $(PROJDIR)/lib/libudfread/src/udfread.c $(PROJDIR)/lib/libudfread/src/ecma167.c
+
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 SOFT_OBJS := $(SOFT_SOURCES:%=$(BUILD_DIR)/%.o)
 ALL := $(OBJS)
@@ -214,6 +216,7 @@ COMMON_INCLUDES := -I../../lib/asmjit -I../../include -I../../lib/simde -I../../
 SOFTFLOAT_INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
 $(OBJS): INCLUDES := $(COMMON_INCLUDES)
 $(SOFT_OBJS): INCLUDES := $(SOFTFLOAT_INCLUDES)
+$(filter %/lib/libudfread/src/udfread.c.o,$(OBJS)): CPPFLAGS += -DUDFREAD_BLOCK_INPUT_ONLY
 
 CXXFLAGS ?= -std=c++20
 OPTIMIZATION_FLAGS ?= -O2
