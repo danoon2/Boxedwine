@@ -432,7 +432,7 @@ static U32 syscall_process_vm_readv(CPU* cpu, U32 eipCount) {
         return -K_EINVAL;
     }
     if (!ARG3 || !ARG5) {
-        SYS_LOG(SYSCALL_MEMORY, cpu, " result=0(0x0)\n");
+        SYS_LOG(SYSCALL_MEMORY, cpu, "%s", " result=0(0x0)\n");
         return 0;
     }
     if (ARG3 > BOXEDWINE_PROCESS_VM_IOV_MAX || ARG5 > BOXEDWINE_PROCESS_VM_IOV_MAX) {
@@ -519,7 +519,7 @@ static U32 syscall_process_vm_writev(CPU* cpu, U32 eipCount) {
         return -K_EINVAL;
     }
     if (!ARG3 || !ARG5) {
-        SYS_LOG(SYSCALL_MEMORY, cpu, " result=0(0x0)\n");
+        SYS_LOG(SYSCALL_MEMORY, cpu, "%s", " result=0(0x0)\n");
         return 0;
     }
     if (ARG3 > BOXEDWINE_PROCESS_VM_IOV_MAX || ARG5 > BOXEDWINE_PROCESS_VM_IOV_MAX) {
@@ -1876,7 +1876,7 @@ static U32 syscall_fadvise64(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_FILE, cpu, "inotify_init:");
+    SYS_LOG1(SYSCALL_FILE, cpu, "%s", "inotify_init:");
     U32 result = KInotifyObject::create(cpu->thread, 0);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;

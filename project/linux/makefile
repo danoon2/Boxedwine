@@ -49,7 +49,7 @@ test: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -D__TEST
 native-runtime test-native-input test-cdrom-statusbar: export BUILD_DIR := Build/Native$(AUTOMATION_SUFFIX)
 native-runtime test-native-input test-cdrom-statusbar: export EXTRA_CPP_FLAGS := $(BOXED_FLAGS) -DBOXEDWINE_DISABLE_UI -DBOXEDWINE_NATIVE_RUNTIME
 native-runtime:
-	@$(MAKE) -j$(or $(JOBS),8) TARGET_EXEC=boxedwine-engine
+	@$(MAKE) TARGET_EXEC=boxedwine-engine
 
 automation:
 	@$(MAKE) release AUTOMATION=1
@@ -86,17 +86,22 @@ deb: release native-runtime
 test-ui:
 	python3 -m unittest discover -s ui/tests -v
 
-cpus  := $(shell grep -c ^processor /proc/cpuinfo)
-ifeq ($(cpus), 0)
-else ifeq ($(cpus), 1)
-else ifeq ($(cpus), 2)
-else
-cpus := $(shell echo $$(($(cpus)-1)))
-export MAKEFLAGS := -j $(cpus)
-$(info MAKEFLAGS is $(MAKEFLAGS))
+cpus := $(shell getconf _NPROCESSORS_ONLN)
+default_jobs := $(shell n=$(cpus); if [ $$n -gt 2 ]; then expr $$n - 1; else echo $$n; fi)
+ifneq ($(filter native-runtime native-ui deb test-native-input test-cdrom-statusbar,$(MAKECMDGOALS)),)
+default_jobs := 8
+endif
+# Set the job count once, then share make's jobserver with recursive targets.
+# Passing -j again to a submake discards the inherited jobserver and warns.
+ifeq ($(MAKELEVEL),0)
+ifneq ($(JOBS),)
+MAKEFLAGS += -j$(JOBS)
+else ifeq ($(filter -j%,$(MAKEFLAGS)),)
+MAKEFLAGS += -j$(default_jobs)
+endif
 endif
 release test:
-	@$(MAKE) $(if $(JOBS),-j$(JOBS))
+	@$(MAKE)
 
 clean:
 	$(RM) -r Build

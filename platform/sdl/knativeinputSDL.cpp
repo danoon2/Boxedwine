@@ -1227,7 +1227,7 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
     };
     // Consume both halves and repeats without making the user click to resume.
     bool suspendedFullscreenCapture = false;
-    if (sdlStatusBarFullscreenShortcut(*e, [this, &suspendedFullscreenCapture]() {
+    if (sdlStatusBarFullscreenShortcut(*e, [&]() {
 #ifdef __APPLE__
         if (!sdlStatusBarIsFullscreen() && !mouseCaptureReleased && wantsMouseCapture()) {
             // An active Cocoa grab can retain the old window bounds as well.
