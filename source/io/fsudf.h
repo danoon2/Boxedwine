@@ -18,7 +18,7 @@ public:
     explicit FsUdf(FsIso& disc);
     ~FsUdf();
     static bool probe(DiscImage& image, U32 start);
-    bool mount(const BString& path, const std::shared_ptr<FsNode>& root);
+    bool mount(const BString& path, const std::shared_ptr<FsNode>& root, U32 sessionStart);
 
 private:
     struct Input : udfread_block_input {

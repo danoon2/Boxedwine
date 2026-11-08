@@ -86,10 +86,10 @@ bool FsUdf::probe(DiscImage& image, U32 start) {
     return false;
 }
 
-bool FsUdf::mount(const BString& path, const std::shared_ptr<FsNode>& root) {
+bool FsUdf::mount(const BString& path, const std::shared_ptr<FsNode>& root, U32 sessionStart) {
     input.remainingReads = 1000000;
     reader = udfread_init();
-    if (!reader || udfread_open_input(reader, &input) < 0) return false;
+    if (!reader || udfread_open_input_at(reader, &input, sessionStart) < 0) return false;
     std::unique_ptr<UDFDIR, decltype(&udfread_closedir)> directory(
         udfread_opendir(reader, "/"), udfread_closedir);
     if (!directory || !scanDirectory(directory.get(), path, B(""), root, 0)) return false;

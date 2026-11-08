@@ -21,6 +21,10 @@ Local changes:
 - Validate regular-file sizes, partition references and allocation ranges before
   exposing them through the mounted filesystem. Sparse extents remain supported.
 - Make narrowing conversions explicit after the corresponding size validation.
+- Add `udfread_open_input_at()` for nonzero data-session starts. Volume
+  recognition and the primary anchor use that offset; descriptor addresses and
+  end-of-disc backup anchors retain absolute disc LBAs. The upstream
+  `udfread_open_input()` API still opens session zero.
 
 `source/io/fsudf.cpp` supplies the sector adapter and read-only filesystem nodes.
 All library operations on a mounted disc use the disc's recursive read mutex.
@@ -32,6 +36,8 @@ the upstream public API does not expose timestamps.
 The filesystem regression tests are in `source/test/fs/testCdrom.cpp`. Their
 embedded UDF fixture is generated independently by
 `tools/input/generate_udf_fixture.py` using `genisoimage -udf -J`.
+The same script generates a second fixture with `-C 0,450`, for a data session
+following an audio track; `--session-only` regenerates just that fixture.
 
 ## Mounting and scope
 
@@ -46,9 +52,13 @@ Native Windows verification included Wine directory/volume queries and matching
 file hashes at image offsets above 15 GB. It does not establish game installation
 or playback compatibility, or browser support for uploading such large images.
 
-The three UDF tests cover UDF-only/hybrid mounts, UTF-8 names, empty files, seeks,
+The four UDF tests cover UDF-only/hybrid mounts, UTF-8 names, empty files, seeks,
 fragmented/inline/sparse allocation, file lengths over 4 GiB, read-only access,
-disc replacement/ejection, and rejection of malformed or cyclic descriptors.
+disc replacement/ejection, rejection of malformed or cyclic descriptors, and
+nonzero data-session starts with both primary and backup anchors.
+The CUE startup regression also covers parent-directory lookup before the
+filesystem initializes. The Windows native engine mounts the nonzero-session
+hybrid CUE and reads its file contents after these fixes.
 The existing ISO/CUE regressions run alongside them. File timestamps and
 fragmented directory streams are the limitations described above; UDF writing
 and encrypted-disc handling are outside this integration.

@@ -135,6 +135,24 @@ qualification. See [the Sims 2 investigation](../../docs/sims2-wined3d.md).
 Run fullscreen probes separately from an active game, since display changes
 can interfere with the game under observation.
 
+The SWVP probe also checks high-register-only updates, writes spanning the
+255/256 and 1023/1024 boundaries, cached shader switches with different local
+constants, fixed-function transitions, and state blocks applied after drawing.
+The expanded probe passes 482 checks with the A8 override on native OpenGL.
+
+`tests/d3d9_swvp_context_probe.c` is a Wine-specific GL cleanup regression:
+
+```sh
+i686-w64-mingw32-gcc -O2 -Wall -Wextra -Werror \
+  tools/wineTests/tests/d3d9_swvp_context_probe.c \
+  -ld3d9 -lopengl32 -lgdi32 -o swvp-context.exe
+```
+
+Run it inside Boxedwine with `WINE_D3D_CONFIG=csmt=0`. It creates an SWVP
+constant buffer, then protects the same buffer name in an unrelated WGL
+context while releasing the D3D device. The first argument optionally names
+a Windows results file. All 17 checks pass with context-owned buffer cleanup.
+
 `tests/d3d9_a8_shadow_probe.c` compares ordinary A8 sampling, A8 render-target
 clears, fixed-function and pixel-shader writes, and the multiplicative blend
 used by Sims 2's shadow draw. Build with the command in its header; the optional

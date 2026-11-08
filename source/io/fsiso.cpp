@@ -231,7 +231,7 @@ bool FsIso::init(const BString& imagePath, const BString& mountPath, std::shared
     // identified, validate UDF fully rather than falling back to a partial ISO.
     if (FsUdf::probe(*image, dataTrack->start)) {
         udf = std::make_shared<FsUdf>(*this);
-        if (!udf->mount(mountPath, mountNode)) {
+        if (!udf->mount(mountPath, mountNode, dataTrack->start)) {
             std::vector<std::shared_ptr<FsNode>> children;
             mountNode->getAllChildren(children);
             for (const auto& child : children) child->removeNodeFromParent();

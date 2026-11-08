@@ -15,9 +15,28 @@ Boxedwine, RTX 4070 SUPER, Sims2SP4.exe 1.8.0.80.
 `tools/buildWine/patches/wine11_d3d9_swvp_float_constants.patch` addresses the
 third issue. Software and mixed devices retain 8,192 floating-point constants;
 hardware devices retain their original limit. State blocks include the larger
-bank. The legacy GLSL backend reads it through eight 16 KiB uniform blocks,
-including relative addressing and shader-local `def` overrides. Hardware
-uniform caches and upload buffer sizes remain unchanged.
+bank. The legacy GLSL backend retains Wine's sparse uniform path for low
+registers and reads extended registers through eight 16 KiB uniform blocks.
+The low-register count reserves space for integer/boolean constants, clip
+planes, and fixup uniforms. Relative reads resolve shader-local `def` values
+in the shader, so switching programs does not alter application constants.
+Hardware-device uniform caches and upload buffer sizes remain unchanged.
+
+The review follow-up bounds state-block bitmap scans to the highest changed
+register and tracks extended dirty ranges separately for each GL context.
+The buffer is allocated once; subsequent draws upload only changed extended
+registers. Vertex-stage buffer rebinding invalidates the cached SWVP bindings.
+Buffer deletion runs in GL context cleanup after the owning context is current.
+
+The expanded constant/state-block/readback probe passes 482 checks with the A8
+override, including high-only updates, uniform/UBO boundaries, shader-local
+constants, fixed-function transitions, and state-block application after draws.
+The separate GL cleanup probe passes 17 checks with `csmt=0`; it protects a
+buffer with the same name in an unrelated WGL share group during device release.
+A fresh 20,000-draw low-register comparison measured warm-loop medians of
+0.065740 seconds for the original Wine build and 0.066520 seconds for the fixed
+build. These are microbenchmark timings, not Sims 2 frame-rate measurements.
+Review logs and reproducers are under `tmp/sims2-review-20261108`.
 
 This implements extended float constants using the host GPU. It is **not** a
 CPU vertex-shader interpreter or complete D3D9 software vertex processing.

@@ -56,16 +56,21 @@ static void check_pixel(IDirect3DDevice9 *device, DWORD expected)
     IDirect3DSurface9_Release(target);
 }
 
-static void draw(IDirect3DDevice9 *device, unsigned int index, DWORD color)
+static void draw_current(IDirect3DDevice9 *device, DWORD color)
 {
     const float quad[4][3] = {{-1,-1,0}, {-1,1,0}, {1,-1,0}, {1,1,0}};
-    float address[4] = {(float)index,0,0,0};
-    HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 0, address, 1));
     HR(IDirect3DDevice9_Clear(device, 0, NULL, D3DCLEAR_TARGET, 0, 1, 0));
     HR(IDirect3DDevice9_BeginScene(device));
     HR(IDirect3DDevice9_DrawPrimitiveUP(device, D3DPT_TRIANGLESTRIP, 2, quad, sizeof(quad[0])));
     HR(IDirect3DDevice9_EndScene(device));
-    check_pixel(device, color);
+    if (color != 0xffffffff) check_pixel(device, color);
+}
+
+static void draw(IDirect3DDevice9 *device, unsigned int index, DWORD color)
+{
+    float address[4] = {(float)index,0,0,0};
+    HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 0, address, 1));
+    draw_current(device, color);
 }
 
 static void test_device(IDirect3D9 *d3d, HWND window, DWORD flags)
@@ -147,7 +152,57 @@ static void test_device(IDirect3D9 *d3d, HWND window, DWORD flags)
         draw(device, 256, 0x00ff00);
         draw(device, 1023, 0xff0000);
         draw(device, 8191, 0x00ff00);
+        /* Only the high register changes; no low constant can trigger upload. */
+        HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 8191, red, 1));
+        draw_current(device, 0xff0000);
+        HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 8191, green, 1));
+        draw_current(device, 0x00ff00);
+        HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 1024, green, 1));
+        draw(device, 1024, 0x00ff00);
+        {
+            const float pair[2][4] = {{0,1,0,1}, {1,0,0,1}};
+            HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 255, pair[0], 2));
+            draw(device, 255, 0x00ff00);
+            draw(device, 256, 0xff0000);
+            HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 1023, pair[0], 2));
+            draw(device, 1023, 0x00ff00);
+            draw(device, 1024, 0xff0000);
+        }
         draw(device, 1, 0xffffff); /* Shader-local def overrides the uploaded value. */
+        {
+            IDirect3DVertexShader9 *plain = NULL;
+            DWORD plain_code[sizeof(shader_code) / sizeof(*shader_code) - 6];
+            /* Remove def c1 and switch both ways between cached programs. */
+            memcpy(plain_code, shader_code, 4 * sizeof(DWORD));
+            memcpy(plain_code + 4, shader_code + 10, sizeof(shader_code) - 10 * sizeof(DWORD));
+            HR(IDirect3DDevice9_CreateVertexShader(device, plain_code, &plain));
+            HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 1, red, 1));
+            draw_current(device, 0xffffff);
+            if (plain)
+            {
+                HR(IDirect3DDevice9_SetVertexShader(device, plain));
+                draw_current(device, 0xff0000);
+                HR(IDirect3DDevice9_SetVertexShader(device, shader));
+                draw_current(device, 0xffffff);
+                IDirect3DVertexShader9_Release(plain);
+            }
+            check_value(device, 1, red);
+        }
+        HR(IDirect3DDevice9_SetVertexShader(device, NULL));
+        draw_current(device, 0xffffffff); /* Exercise a fixed-function program switch. */
+        HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 8191, red, 1));
+        HR(IDirect3DDevice9_SetVertexShader(device, shader));
+        draw(device, 8191, 0xff0000);
+        block = NULL;
+        HR(IDirect3DDevice9_BeginStateBlock(device));
+        HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 8191, green, 1));
+        HR(IDirect3DDevice9_EndStateBlock(device, &block));
+        if (block)
+        {
+            HR(IDirect3DStateBlock9_Apply(block));
+            draw_current(device, 0x00ff00);
+            IDirect3DStateBlock9_Release(block); block = NULL;
+        }
         IDirect3DVertexShader9_Release(shader);
     }
 done:

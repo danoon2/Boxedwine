@@ -78,6 +78,11 @@ UDF_PUBLIC udfread *udfread_init (void);
  */
 UDF_PUBLIC int udfread_open_input (udfread *, struct udfread_block_input *input);
 
+/** Boxedwine: open a session whose volume recognition sequence and first
+ * anchor start at session_start + 16 and session_start + 256. Allocation
+ * descriptors and the input callbacks continue to use absolute disc LBAs. */
+UDF_PUBLIC int udfread_open_input_at (udfread *, struct udfread_block_input *input, uint32_t session_start);
+
 /**
  *  Open UDF image
  *

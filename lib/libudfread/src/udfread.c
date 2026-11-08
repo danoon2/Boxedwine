@@ -260,7 +260,7 @@ static int _read_descriptor_block(udfread_block_input *input, uint32_t lba, uint
  * Disc probing
  */
 
-static int _probe_volume(udfread_block_input *input)
+static int _probe_volume(udfread_block_input *input, uint32_t session_start)
 {
     /* Volume Recognition (ECMA 167 2/8, UDF 2.60 2.1.7) */
 
@@ -274,7 +274,7 @@ static int _probe_volume(udfread_block_input *input)
     uint32_t lba;
     int      bea_seen = 0;
 
-    for (lba = 16; lba < 256; lba++) {
+    for (lba = session_start + 16; lba < session_start + 256; lba++) {
         if (_read_blocks(input, lba, buf, 1, 0) == 1) {
 
             /* Terminating Extended Area Descriptor */
@@ -307,15 +307,15 @@ static int _probe_volume(udfread_block_input *input)
     return -1;
 }
 
-static int _read_avdp(udfread_block_input *input, struct anchor_volume_descriptor *avdp)
+static int _read_avdp(udfread_block_input *input, struct anchor_volume_descriptor *avdp, uint32_t session_start)
 {
     uint8_t  buf[UDF_BLOCK_SIZE];
     int      tag_id;
-    uint32_t lba = 256;
+    uint32_t lba = session_start + 256;
 
     /*
      * Find Anchor Volume Descriptor Pointer.
-     * It is in block 256, last block or (last block - 256)
+     * It is in session block 256, last disc block or (last disc block - 256)
      * (UDF 2.60, 2.2.3)
      */
 
@@ -442,12 +442,12 @@ next_extent:
 }
 
 static int _read_vds(udfread_block_input *input, int part_number,
-                     struct volume_descriptor_set *vds)
+                     struct volume_descriptor_set *vds, uint32_t session_start)
 {
     struct anchor_volume_descriptor avdp;
 
     /* Find Anchor Volume Descriptor */
-    if (_read_avdp(input, &avdp) < 0) {
+    if (_read_avdp(input, &avdp, session_start) < 0) {
         return -1;
     }
 
@@ -1214,19 +1214,24 @@ error:
 
 int udfread_open_input(udfread *udf, udfread_block_input *input/*, int partition*/)
 {
+    return udfread_open_input_at(udf, input, 0);
+}
+
+int udfread_open_input_at(udfread *udf, udfread_block_input *input, uint32_t session_start)
+{
     struct volume_descriptor_set vds;
     struct long_ad fsd_location;
 
-    if (!udf || !input || !input->read) {
+    if (!udf || !input || !input->read || session_start > UINT32_MAX - 256) {
         return -1;
     }
 
-    if (_probe_volume(input) < 0) {
+    if (_probe_volume(input, session_start) < 0) {
         return -1;
     }
 
     /* read Volume Descriptor Sequence */
-    if (_read_vds(input, 0, &vds) < 0) {
+    if (_read_vds(input, 0, &vds, session_start) < 0) {
         return -1;
     }
 

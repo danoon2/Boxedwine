@@ -13,6 +13,17 @@
 #include "../cpu/testCPU.h"
 #include "../../sdl/startupArgs.h"
 
+void testStartupArgsCueBeforeFsInit() {
+    BString savedSeparator = Fs::nativePathSeperator;
+    Fs::nativePathSeperator = BString();
+    StartUpArgs startup;
+    const char* argv[] = {"boxedwine", "-cdrom", "images/disc.cue", "e", "/bin/true"};
+    bool parsed = startup.parseStartupArgs(5, argv);
+    Fs::nativePathSeperator = savedSeparator;
+    if (!parsed || startup.cdromPaths.size() != 1 || startup.cdromPaths[0] != "images/disc.cue")
+        testFail("CUE command line could not be parsed before filesystem initialization");
+}
+
 void testStartupArgsAutomationAvailability() {
     StartUpArgs startup;
     const char* argv[] = {"boxedwine", "-localServer", "8123"};

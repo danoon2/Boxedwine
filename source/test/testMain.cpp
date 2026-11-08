@@ -111,6 +111,7 @@ void testIsoFilesAndDiscChanges();
 void testUdfFilesAndDiscChanges();
 void testUdfAllocationAndLargeFiles();
 void testMalformedUdfImages();
+void testUdfSessionOffsets();
 void testMalformedIsoDirectories();
 void testFileCacheIdentitySurvivesRenameAndHardLink();
 void testHostFolderSyncUpdatesLoadedChildren();
@@ -206,6 +207,7 @@ void testStartupArgsLinearMemoryOption();
 void testStartupArgsMouseSensitivity();
 void testStartupArgsSafeMemoryOption();
 void testStartupArgsAutomationAvailability();
+void testStartupArgsCueBeforeFsInit();
 #ifdef BOXEDWINE_LOCAL_SERVER
 void testServerEncodings();
 void testServerPngRoundTrip();
@@ -1299,7 +1301,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testUdfFilesAndDiscChanges, "Test UDF mounts, Unicode and disc changes", TEST_ENTRY_SERIAL},
     {testUdfAllocationAndLargeFiles, "Test UDF fragmented, inline and large files", TEST_ENTRY_SERIAL},
     {testMalformedUdfImages, "Test malformed UDF image rejection", TEST_ENTRY_SERIAL},
+    {testUdfSessionOffsets, "Test UDF data-session offsets and backup anchors", TEST_ENTRY_SERIAL},
     {testMalformedIsoDirectories, "Test malformed ISO directory rejection", TEST_ENTRY_SERIAL},
+    {testStartupArgsCueBeforeFsInit, "Test CUE command line before filesystem initialization", TEST_ENTRY_SERIAL},
     {testStatxEmptyPathUsesOpenFile, "Test statx empty path uses open file identity", TEST_ENTRY_SERIAL},
     {testXInputValuatorLayout, "Test XInput valuator guest ABI layout"},
 };

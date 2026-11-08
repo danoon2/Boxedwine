@@ -384,7 +384,8 @@ BString Fs::getParentPath(const BString& path) {
 }
 
 BString Fs::getNativeParentPath(const BString& path) {
-    int pos = path.lastIndexOf(Fs::nativePathSeperator);
+    // Command-line CUE access checks run before initFileSystem().
+    int pos = path.lastIndexOf((char)std::filesystem::path::preferred_separator);
     if (pos != -1) {
         return path.substr(0, pos);
     }

@@ -14,6 +14,7 @@
 
 namespace {
 #include "testUdfFixture.h"
+#include "testUdfSessionFixture.h"
 constexpr U32 SECTOR = 2048;
 constexpr U32 ROOT = 20 * SECTOR;
 
@@ -167,6 +168,42 @@ void testUdfFilesAndDiscChanges() {
         expectDiscContents(reopened.get(), node, "HELLO");
         cdromEject();
         expectDiscContents(file.get(), node, "HELLO");
+    }
+}
+
+void testUdfSessionOffsets() {
+    DiscFixture fixture;
+    fixture.write("audio.bin", std::vector<U8>(UDF_SESSION_FIXTURE_START * 2352));
+    const char cue[] = "FILE \"audio.bin\" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n"
+        "FILE \"session.iso\" BINARY\n  TRACK 02 MODE1/2048\n    INDEX 01 00:00:00\n";
+    BString path = fixture.write("session.cue", std::vector<U8>(cue, cue + sizeof(cue) - 1));
+    for (U32 variant = 0; variant < 3; ++variant) {
+        std::vector<U8> image(UDF_SESSION_FIXTURE_SIZE);
+        uLongf length = image.size();
+        if (uncompress(image.data(), &length, udfSessionFixtureCompressed,
+                sizeof(udfSessionFixtureCompressed)) != Z_OK || length != image.size()) {
+            testFail("could not decompress UDF session fixture"); return;
+        }
+        if (variant == 1) {
+            // The primary anchor is relative to the data session.
+            image[256 * SECTOR + 4] ^= 1;
+        } else if (variant == 2) {
+            // Backup anchors are relative to the absolute end of the disc.
+            image[image.size() - SECTOR + 4] ^= 1;
+            image[image.size() - 257 * SECTOR + 4] ^= 1;
+        }
+        fixture.write("session.iso", image);
+        cdromInit({path}, B("/mnt/cdrom"), B(""));
+        if (!cdromInsert(0)) { testFail("UDF session variant %u did not mount", variant); return; }
+        auto disc = getCdromForPath(B("/mnt/cdrom"));
+        if (!disc || disc->filesystemType() != 0x15013346)
+            testFail("session image fell back to ISO instead of mounting UDF");
+        auto node = Fs::getNodeFromLocalPath(B(""), B("/mnt/cdrom/FILE.TXT"), true);
+        std::unique_ptr<FsOpenNode> file(node ? node->open(K_O_RDONLY) : nullptr);
+        U8 bytes[8];
+        if (!file || file->seek(2046) != 2046 || file->readNative(bytes, 4) != 4 || memcmp(bytes, "AABB", 4))
+            testFail("UDF session data addresses were not absolute disc LBAs");
+        cdromEject();
     }
 }
 
