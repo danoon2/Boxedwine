@@ -98,6 +98,74 @@ input configuration are documented in the existing
 
 ## Focused probes and game checks
 
+`tests/d3d9_display_modes_probe.c` checks Boxedwine's virtual display modes on
+high-refresh hosts. Compile it with:
+
+```sh
+i686-w64-mingw32-gcc -O2 -Wall -Wextra -Werror \
+  tools/wineTests/tests/d3d9_display_modes_probe.c -ld3d9 -lgdi32 \
+  -o d3d9-display-modes.exe
+```
+
+Run with the normal Wine D3D9 renderer in a disposable Boxedwine root. Keep a
+native UI engine's stdin open until it exits. The probe requires exactly one
+60 Hz and one current-refresh entry for 640x480, 800x600, and 1024x768 in both
+16-bit and 32-bit color, checks repeated enumeration, and creates, clears, and
+presents a fullscreen 60 Hz device. These are virtual-display requirements,
+not requirements for physical monitors. On the Windows 240 Hz host, the original
+engine failed six missing-mode checks; the corrected engine passed all 80
+checks. Counts depend on the desktop's available resolutions and refresh rates.
+
+`tests/d3d9_swvp_constants_probe.c` checks D3D9 hardware/software/mixed-device
+float-constant limits, state blocks, and pixel readback using relative
+addresses at registers 256, 1023, and 8191. Compile it with:
+
+```sh
+i686-w64-mingw32-gcc -O2 -Wall \
+  tools/wineTests/tests/d3d9_swvp_constants_probe.c -ld3d9 -lgdi32 -o swvp.exe
+```
+
+The first optional argument writes results to a Windows path. The second,
+`disable-a8`, checks that A8 render targets are hidden while ordinary A8
+textures remain available; configure `WINE_D3D_CONFIG=DisableA8=1` externally
+or select XP or earlier with no explicit override. Native Windows passed
+207 checks; the original Wine 11 filesystem failed 64; patched WineD3D with
+the A8 override passed all 210. These are native OpenGL results, not WebGL
+qualification. See [the Sims 2 investigation](../../docs/sims2-wined3d.md).
+Run fullscreen probes separately from an active game, since display changes
+can interfere with the game under observation.
+
+`tests/d3d9_a8_shadow_probe.c` compares ordinary A8 sampling, A8 render-target
+clears, fixed-function and pixel-shader writes, and the multiplicative blend
+used by Sims 2's shadow draw. Build with the command in its header; the optional
+first argument is a Windows output filename. Set `WINE_D3D_CONFIG=DisableA8=0`
+for coverage regardless of the emulated Windows version.
+Unsupported render targets are reported and skipped. Native Windows passes
+180 checks; the original Wine 11 OpenGL package fails five readback comparisons
+because clears and fixed-function writes store red instead of alpha. These
+known failures are diagnostic, not a passing release gate. The final shadow
+draw produces black RGB on both implementations; see the investigation above.
+
+`tests/d3d9_a8_caps_probe.c` checks the emulated Windows version, ordinary A8
+texture/filtering support, A8 render-target texture/surface/blending support,
+and the RGBA render-target fallback. Compile using the command in its header,
+then run `a8-caps.exe output.txt enabled|disabled expected-major expected-minor`.
+Configure the prefix externally before each new process. On a host supporting
+A8 render targets, check these cases:
+
+- No override: 98, Me, 2000, XP and Server 2003 disable A8 targets; Vista, 7
+  and 10 retain support.
+- Explicit global `DisableA8=0` on XP and `1` on Vista reverse those defaults.
+- Per-application values override the opposite global values; environment
+  values override the opposite per-application/global values.
+- Per-application Windows versions override the prefix's Windows version.
+
+This is a capability-policy test, separate from the known-failing A8 rendering
+diagnostic. It never changes registry values itself. The 16 configuration cases
+above passed 160 checks on the native OpenGL test host; the updated SWVP probe
+also passed all 210 checks. See the investigation for the Windows 10 version
+query correction and the recorded results.
+
 The v41 regressions use `--probe index-boundaries` and
 `--probe ddraw-rgb10-masks`. Compile their sources with the MinGW commands in
 [`d3d9_index_boundaries_probe.c`](tests/d3d9_index_boundaries_probe.c) and

@@ -81,6 +81,7 @@ public partial class MainWindow
         Button("Run Another Program…", "another", CanChange(app));
         form.Body.Children.Add(FormWindow.Heading("Display and compatibility"));
         form.Body.Children.Add(FormWindow.Paragraph("Try another window size or Windows version in App Settings. GDI rendering can help older 2D apps. In Advanced, try another OpenGL implementation or Wine's GLX/EGL interface if graphics fail to start or draw correctly."));
+        form.Body.Children.Add(FormWindow.Paragraph("For games released before 2007, try Windows XP in App Settings. Wine packages with Boxedwine’s A8 compatibility patch disable A8 shadow render targets by default in XP and earlier, helping games such as The Sims 2 avoid black square shadows."));
         Button("App Settings…", "edit", CanChange(app));
         if (HasWineChoices)
         {

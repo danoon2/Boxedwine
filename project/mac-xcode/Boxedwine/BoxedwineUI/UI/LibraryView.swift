@@ -916,6 +916,10 @@ struct AppTroubleshootingView: View {
                                 }
                             }
                             Divider()
+                            topic("Older games or black square shadows") {
+                                Text("For games released before 2007, try Windows XP in App Settings. Wine packages with Boxedwine’s A8 compatibility patch disable A8 shadow render targets by default in XP and earlier, helping games such as The Sims 2 avoid black square shadows.")
+                            }
+                            Divider()
                             topic("Slow gameplay") {
                                 Text("Lower the resolution and graphics detail in the game’s own settings. Match Boxedwine’s Window size to the game’s resolution. Close other demanding Mac apps while testing.")
                                 Text("Boxedwine emulates an x86 PC, which adds work even on a fast Mac. Some games will remain too demanding or have compatibility problems; a different display setting cannot fix every issue.")

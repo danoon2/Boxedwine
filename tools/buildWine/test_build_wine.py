@@ -1072,6 +1072,38 @@ class FakeRunner:
 
 
 class OrchestrationTests(unittest.TestCase):
+    def test_video_memory_default_preserves_app_overrides_and_other_settings(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            home = Path(temp_dir)
+            registry = home / "user.reg"
+            for global_section in ("", '[Software\\\\Wine\\\\Direct3D] 123\n#time=abc\n"renderer"="gl"\n\n'):
+                with self.subTest(global_section=global_section):
+                    original = (
+                        'WINE REGISTRY Version 2\n\n' + global_section
+                        + '[Software\\\\Wine\\\\AppDefaults\\\\Sims2SP4.exe\\\\Direct3D]\n'
+                        + '"VideoMemorySize"="256"\n\n[Software\\\\Other]\n"Keep"="value"\n'
+                    )
+                    registry.write_text(original, encoding="utf-8")
+                    build_wine.apply_video_memory_default(home)
+                    result = registry.read_text(encoding="utf-8")
+                    self.assertEqual(result.count('[Software\\\\Wine\\\\Direct3D]'), 1)
+                    self.assertEqual(result.count('"VideoMemorySize"="512"'), 1)
+                    self.assertIn('[Software\\\\Wine\\\\AppDefaults\\\\Sims2SP4.exe\\\\Direct3D]\n"VideoMemorySize"="256"', result)
+                    self.assertIn('[Software\\\\Other]\n"Keep"="value"', result)
+                    if global_section:
+                        self.assertIn('"renderer"="gl"', result)
+                    build_wine.apply_video_memory_default(home)
+                    self.assertEqual(registry.read_text(encoding="utf-8"), result)
+
+    def test_video_memory_default_preserves_explicit_global_value(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            home = Path(temp_dir)
+            registry = home / "user.reg"
+            original = 'WINE REGISTRY Version 2\n\n[Software\\\\Wine\\\\Direct3D]\n"VideoMemorySize"="1024"\n'
+            registry.write_text(original, encoding="utf-8")
+            build_wine.apply_video_memory_default(home)
+            self.assertEqual(registry.read_text(encoding="utf-8"), original)
+
     def test_apply_window_manager_registry_updates_existing_user_reg_section(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             wine_home = Path(temp_dir) / ".wine"
@@ -1301,6 +1333,7 @@ class OrchestrationTests(unittest.TestCase):
                 user_reg = zf.read("home/username/.wine/user.reg").decode("utf-8")
                 self.assertIn('"Decorated"="N"', user_reg)
                 self.assertIn('"Managed"="N"', user_reg)
+                self.assertIn('[Software\\\\Wine\\\\Direct3D]\n"VideoMemorySize"="512"', user_reg)
                 self.assertEqual(zf.read("home/username/.wine/drive_c/users.txt"), b"fake users")
 
     def test_initialize_wine_home_accepts_wineboot_exit_1_when_wine_home_exists(self):

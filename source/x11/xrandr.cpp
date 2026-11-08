@@ -45,12 +45,23 @@ U32 XrrRates(KThread* thread, const DisplayDataPtr& displayData, U32 screen, U32
     KMemory* memory = thread->memory;
     XrrData* data = displayData->xrrData;
 
-    memory->writed(rateCountAddress, 1);
-    if (data->ratesAddress) {
-        return data->ratesAddress;
+    if (!data) {
+        XrrGetSizes(thread, displayData, screen, 0);
+        data = displayData->xrrData;
     }
-    data->ratesAddress = thread->process->alloc(thread, 2);
-    memory->writew(data->ratesAddress, XrrConfigCurrentRate());
+    if (!data->ratesAddress) {
+        // Guest modes resize a virtual desktop, not the host monitor. Always
+        // offer 60 Hz: older games such as The Sims 2 request it explicitly
+        // and reject every adapter when only a high host refresh is listed.
+        U32 hostRate = XrrConfigCurrentRate();
+        data->ratesCount = hostRate && hostRate != 60 ? 2 : 1;
+        data->ratesAddress = thread->process->alloc(thread, data->ratesCount * 2);
+        memory->writew(data->ratesAddress, 60);
+        if (data->ratesCount == 2) {
+            memory->writew(data->ratesAddress + 2, hostRate);
+        }
+    }
+    memory->writed(rateCountAddress, data->ratesCount);
     return data->ratesAddress;
 }
 

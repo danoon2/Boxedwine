@@ -206,8 +206,9 @@ class FilesystemAssemblyTests(unittest.TestCase):
                 return mock.Mock(returncode=1)  # Boxedwine's normal Linux shutdown status.
             with mock.patch.object(fs.subprocess, 'run', side_effect=guest_run), \
                     mock.patch.object(fs, 'download', return_value=installer):
-                home = fs.initialize_prefix({'gecko': {'version': '2.47.4'}}, work, Path('/boxedwine'), work / 'runtime.zip')
+                home = fs.initialize_prefix({'gecko': {'version': '2.47.4'}, 'video_memory_size_mb': 768}, work, Path('/boxedwine'), work / 'runtime.zip')
             self.assertIn('"Managed"="N"', (home / 'user.reg').read_text())
+            self.assertIn('"VideoMemorySize"="768"', (home / 'user.reg').read_text())
             self.assertIn('GeckoPath', (home / 'system.reg').read_text())
             self.assertFalse((home / 'drive_c/windows/Installer/random-name.msi').exists())
             self.assertEqual((home / 'drive_c/windows/Installer/unrelated.msi').read_bytes(), b'other package')

@@ -1106,6 +1106,7 @@ def remove_zip_prefix(zip_path: Path, archive_root: str) -> None:
 
 
 WINDOW_MANAGER_REGISTRY_GUEST_PATH = "/home/username/boxedwine-window-manager.reg"
+DEFAULT_VIDEO_MEMORY_MB = 512
 WINDOW_MANAGER_REGISTRY_TEXT = (
     "REGEDIT4\r\n"
     "\r\n"
@@ -1177,6 +1178,37 @@ def apply_window_manager_registry(wine_home: Path) -> None:
     verify_window_manager_registry(wine_home)
 
 
+def apply_video_memory_default(wine_home: Path, memory_mb: int = DEFAULT_VIDEO_MEMORY_MB) -> None:
+    """Seed a conservative WineD3D budget in the generated 32-bit prefix.
+
+    Host GPUs can have far more VRAM than the guest can address. In particular,
+    older games may allocate textures until failure to measure that budget.
+    Preserve explicit global values and all AppDefaults overrides.
+    """
+    if type(memory_mb) is not int or not 0 < memory_mb <= 0x7fffffff:
+        raise BuildError("video_memory_size_mb must be a positive signed 32-bit integer")
+    user_reg = wine_home / "user.reg"
+    if not user_reg.is_file():
+        raise BuildError(f"wineboot did not create Wine user registry: {user_reg}")
+    lines = user_reg.read_text(encoding="utf-8", errors="replace").splitlines()
+    header = "[Software\\\\Wine\\\\Direct3D]"
+    section = re.compile(r"^" + re.escape(header) + r"(?:\s|$)", re.IGNORECASE)
+    start = next((i for i, line in enumerate(lines) if section.match(line)), None)
+    if start is None:
+        if lines and lines[-1]:
+            lines.append("")
+        lines.extend([header, f'"VideoMemorySize"="{memory_mb}"'])
+    else:
+        end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("[")), len(lines))
+        if any(re.match(r'^\s*"VideoMemorySize"\s*=', line, re.IGNORECASE) for line in lines[start + 1:end]):
+            return
+        insert_at = start + 1
+        while insert_at < end and lines[insert_at].startswith("#"):
+            insert_at += 1
+        lines.insert(insert_at, f'"VideoMemorySize"="{memory_mb}"')
+    user_reg.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def initialize_wine_home(work_dir: Path, output_zip: Path, runner: CommandRunner) -> List[List[str]]:
     tmp_root = work_dir / "tmp_root"
     prepare_wineboot_root(tmp_root)
@@ -1211,6 +1243,7 @@ def initialize_wine_home(work_dir: Path, output_zip: Path, runner: CommandRunner
         raise BuildError(f"wineboot did not create Wine home: {wine_home}")
     write_window_manager_registry_file(tmp_root)
     apply_window_manager_registry(wine_home)
+    apply_video_memory_default(wine_home)
     merge_directory_into_zip(output_zip, wine_home, "home/username/.wine")
     return [build_command, wineboot_command]
 

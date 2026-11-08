@@ -387,6 +387,7 @@ def troubleshoot(owner, app):
         ('A black screen or the wrong window size', 'Try windowed mode and 1024x768 in App Settings. Older games may require their own display mode in the game’s options.'),
         ('Missing 2D graphics, broken menus, or wrong colors', 'Try the GDI Wine renderer. Games that require hardware graphics may work better with OpenGL.'),
         ('OpenGL errors or missing 3D graphics', 'Use your distribution’s graphics drivers. Try changing Wine’s display interface between GLX and EGL in Advanced settings.'),
+        ('Older games or black square shadows', 'For games released before 2007, try Windows XP in App Settings. Wine packages with Boxedwine’s A8 compatibility patch disable A8 shadow render targets by default in XP and earlier, helping games such as The Sims 2 avoid black square shadows.'),
         ('Slow gameplay', 'Lower the game’s resolution and graphics detail. Boxedwine emulates an x86 computer; some programs are too demanding.')]:
         expander = Adw.ExpanderRow(title=title, use_markup=False)
         expander.add_row(Adw.ActionRow(title=text, title_lines=0, use_markup=False)); tips.add(expander)

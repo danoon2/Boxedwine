@@ -77,6 +77,17 @@ artifact identities, validation results, and upload instructions.
 The v26 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
+Development builds now seed `HKCU\Software\Wine\Direct3D\VideoMemorySize`
+as the string `512` in newly generated prefixes. Both regular and web variants
+use `video_memory_size_mb` from `filesystem_wine11.json`; the standalone Wine
+builder uses the same 512 MiB default. This bounds WineD3D's texture-memory
+budget for the 32-bit guest instead of using a modern GPU's multi-gigabyte
+capacity. It is a compatibility default, not a limit inherent to 32-bit D3D.
+Explicit global values and `AppDefaults\<exe>\Direct3D` overrides are preserved.
+DXVK has its own memory settings and does not use this WineD3D registry value.
+Existing application prefixes and the staged v26 ZIPs are unchanged. Package
+the change in the next filesystem release using [RELEASING.md](RELEASING.md).
+
 Revision 26 adds constant-upload deduplication, fewer vertex-array disables,
 and a smaller streaming vertex buffer to reduce per-draw WebGL overhead.
 It retains revision 25's DirectSound backport. All eight WebGL DLLs were rebuilt

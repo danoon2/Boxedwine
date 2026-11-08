@@ -280,6 +280,16 @@
       "reason": "Preserve the active device palette in 8-bit cursor save/restore bitmaps, retain reserved color mappings, and honor SYSPAL_NOSTATIC so Robot City's software cursor does not corrupt the background"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_d3d9_swvp_float_constants.patch",
+      "reason": "Store the extended software/mixed vertex float constants and render them through OpenGL uniform buffers, allowing The Sims 2 to initialize WineD3D"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_wined3d_disable_a8.patch",
+      "reason": "Hide A8 render-target support by default before Windows Vista, with explicit overrides, so games such as The Sims 2 select compatible shadow formats"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

@@ -67,6 +67,12 @@ The two final ZIP hashes are output identities, not substitutes for checking
 the source patches and individual DLLs. Do not change unrelated expected hashes
 just to make validation pass.
 
+For the pending video-memory default change, inspect both generated prefixes
+for the global `Direct3D\VideoMemorySize` string selected by the profile
+(`video_memory_size_mb`, currently 512). Retain per-app overrides and the
+native automation runner's explicit 256 MiB preset. Existing v26 receipts and
+archive hashes describe the previous prefixes; use new release identities.
+
 ## 3. Build and validate both candidates
 
 After updating the profile to the agreed new revision, choose dedicated

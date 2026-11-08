@@ -1,0 +1,429 @@
+Subject: [PATCH] d3d9/wined3d: Support extended software vertex float constants with GLSL.
+
+Keep hardware constants at 256 and preserve 8192 constants for software/mixed
+devices, including stateblocks. Use eight 16 KiB uniform blocks for GLSL
+relative addressing without exceeding the minimum uniform block size.
+This addresses The Sims 2 Double Deluxe startup and drawing on OpenGL.
+It does not implement CPU ProcessVertices shaders or extended int/bool registers.
+The UBO approach was informed by Paul Gofman's historical Wine 3.18 Sims 2 patch:
+https://github.com/lah7/sims2-wine-patches/blob/master/patches/sims2_wine3.18_comment164.diff
+
+diff --git a/include/wine/wined3d.h b/include/wine/wined3d.h
+--- a/include/wine/wined3d.h
++++ b/include/wine/wined3d.h
+@@ -1622,6 +1622,7 @@
+ #define WINED3D_MAX_CONSTS_B                                    16
+ #define WINED3D_MAX_CONSTS_I                                    16
+ #define WINED3D_MAX_VS_CONSTS_F                                 256
++#define WINED3D_MAX_VS_CONSTS_F_SWVP                            8192
+ #define WINED3D_MAX_PS_CONSTS_F                                 224
+ #define WINED3D_MAX_RENDER_TARGETS                              8
+ #define WINED3D_MAX_CONSTANT_BUFFER_SIZE                        4096
+@@ -2203,7 +2204,7 @@
+     int base_vertex_index;
+ 
+     struct wined3d_shader *vs;
+-    struct wined3d_vec4 vs_consts_f[WINED3D_MAX_VS_CONSTS_F];
++    struct wined3d_vec4 vs_consts_f[WINED3D_MAX_VS_CONSTS_F_SWVP];
+     struct wined3d_ivec4 vs_consts_i[WINED3D_MAX_CONSTS_I];
+     BOOL vs_consts_b[WINED3D_MAX_CONSTS_B];
+ 
+diff --git a/dlls/d3d9/device.c b/dlls/d3d9/device.c
+--- a/dlls/d3d9/device.c
++++ b/dlls/d3d9/device.c
+@@ -842,6 +842,12 @@
+     wined3d_mutex_unlock();
+ 
+     d3d9_caps_from_wined3dcaps(device->d3d_parent, device->adapter_ordinal, caps, &wined3d_caps);
++    {
++        struct wined3d_device_creation_parameters parameters;
++        wined3d_device_get_creation_parameters(device->wined3d_device, &parameters);
++        if (parameters.flags & WINED3DCREATE_SOFTWARE_VERTEXPROCESSING)
++            caps->MaxVertexShaderConst = WINED3D_MAX_VS_CONSTS_F_SWVP;
++    }
+ 
+     return hr;
+ }
+@@ -3754,10 +3760,10 @@
+ 
+     TRACE("iface %p, reg_idx %u, data %p, count %u.\n", iface, reg_idx, data, count);
+ 
+-    if (reg_idx + count > D3D9_MAX_VERTEX_SHADER_CONSTANTF)
++    if (reg_idx > device->vs_uniform_count || count > device->vs_uniform_count - reg_idx)
+     {
+         WARN("Trying to access %u constants, but d3d9 only supports %u\n",
+-             reg_idx + count, D3D9_MAX_VERTEX_SHADER_CONSTANTF);
++             reg_idx + count, device->vs_uniform_count);
+         return D3DERR_INVALIDCALL;
+     }
+ 
+@@ -4765,7 +4771,8 @@
+     wined3d_get_device_caps(wined3d_adapter, wined3d_device_type_from_d3d(device_type), &wined3d_caps);
+     d3d9_caps_from_wined3dcaps(parent, adapter, &caps, &wined3d_caps);
+     device->max_user_clip_planes = caps.MaxUserClipPlanes;
+-    device->vs_uniform_count = caps.MaxVertexShaderConst;
++    device->vs_uniform_count = flags & (D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_MIXED_VERTEXPROCESSING)
++            ? WINED3D_MAX_VS_CONSTS_F_SWVP : caps.MaxVertexShaderConst;
+     if (flags & D3DCREATE_ADAPTERGROUP_DEVICE)
+         count = caps.NumberOfAdaptersInGroup;
+ 
+diff --git a/dlls/wined3d/wined3d_private.h b/dlls/wined3d/wined3d_private.h
+--- a/dlls/wined3d/wined3d_private.h
++++ b/dlls/wined3d/wined3d_private.h
+@@ -3106,6 +3106,12 @@
+     CRITICAL_SECTION bo_map_lock;
+ };
+ 
++static inline unsigned int wined3d_device_get_vs_uniform_count(const struct wined3d_device *device)
++{
++    return device->create_parms.flags & (WINED3DCREATE_SOFTWARE_VERTEXPROCESSING | WINED3DCREATE_MIXED_VERTEXPROCESSING)
++            ? WINED3D_MAX_VS_CONSTS_F_SWVP : device->adapter->d3d_info.limits.vs_uniform_count;
++}
++
+ void wined3d_device_cleanup(struct wined3d_device *device);
+ BOOL device_context_add(struct wined3d_device *device, struct wined3d_context *context);
+ void device_context_remove(struct wined3d_device *device, struct wined3d_context *context);
+diff --git a/dlls/wined3d/stateblock.c b/dlls/wined3d/stateblock.c
+--- a/dlls/wined3d/stateblock.c
++++ b/dlls/wined3d/stateblock.c
+@@ -32,7 +32,7 @@
+ {
+     struct list changed_lights;
+ 
+-    uint32_t vs_consts_f[WINED3D_BITMAP_SIZE(WINED3D_MAX_VS_CONSTS_F)];
++    uint32_t vs_consts_f[WINED3D_BITMAP_SIZE(WINED3D_MAX_VS_CONSTS_F_SWVP)];
+     uint16_t vertexShaderConstantsI;                        /* WINED3D_MAX_CONSTS_I, 16 */
+     uint16_t vertexShaderConstantsB;                        /* WINED3D_MAX_CONSTS_B, 16 */
+     uint32_t ps_consts_f[WINED3D_BITMAP_SIZE(WINED3D_MAX_PS_CONSTS_F)];
+@@ -315,7 +315,8 @@
+     states->vertexShaderConstantsI = 0xffff;
+ 
+     memset(states->ps_consts_f, 0xffu, sizeof(states->ps_consts_f));
+-    memset(states->vs_consts_f, 0xffu, sizeof(states->vs_consts_f));
++    memset(states->vs_consts_f, 0, sizeof(states->vs_consts_f));
++    stateblock_set_all_bits(states->vs_consts_f, vs_consts);
+ }
+ 
+ void CDECL wined3d_stateblock_primary_dirtify_all_states(struct wined3d_device *device, struct wined3d_stateblock *stateblock)
+@@ -326,7 +327,7 @@
+     struct wined3d_light_info *light;
+ 
+     stateblock->projection_constants_valid = false;
+-    stateblock_savedstates_set_all(states, d3d_info->limits.vs_uniform_count, d3d_info->limits.ps_uniform_count);
++    stateblock_savedstates_set_all(states, wined3d_device_get_vs_uniform_count(device), d3d_info->limits.ps_uniform_count);
+     states->ffp_ps_constants = 1;
+     states->texture_matrices = 1;
+     states->modelview_matrices = 1;
+@@ -401,7 +402,8 @@
+     states->vertexShaderConstantsB = 0xffff;
+     states->vertexShaderConstantsI = 0xffff;
+ 
+-    memset(states->vs_consts_f, 0xffu, sizeof(states->vs_consts_f));
++    memset(states->vs_consts_f, 0, sizeof(states->vs_consts_f));
++    stateblock_set_all_bits(states->vs_consts_f, num_constants);
+ }
+ 
+ void CDECL wined3d_stateblock_init_contained_states(struct wined3d_stateblock *stateblock)
+@@ -927,7 +929,7 @@
+ 
+     for (start = 0; ; start = range.offset + range.size)
+     {
+-        if (!wined3d_bitmap_get_range(stateblock->changed.vs_consts_f, WINED3D_MAX_VS_CONSTS_F, start, &range))
++        if (!wined3d_bitmap_get_range(stateblock->changed.vs_consts_f, WINED3D_MAX_VS_CONSTS_F_SWVP, start, &range))
+             break;
+ 
+         memcpy(&stateblock->stateblock_state.vs_consts_f[range.offset], &state->vs_consts_f[range.offset],
+@@ -1184,7 +1186,7 @@
+ 
+     for (start = 0; ; start = range.offset + range.size)
+     {
+-        if (!wined3d_bitmap_get_range(stateblock->changed.vs_consts_f, WINED3D_MAX_VS_CONSTS_F, start, &range))
++        if (!wined3d_bitmap_get_range(stateblock->changed.vs_consts_f, WINED3D_MAX_VS_CONSTS_F_SWVP, start, &range))
+             break;
+         wined3d_stateblock_set_vs_consts_f(device_state, range.offset, range.size, &state->vs_consts_f[range.offset]);
+     }
+@@ -1378,12 +1380,12 @@
+ HRESULT CDECL wined3d_stateblock_set_vs_consts_f(struct wined3d_stateblock *stateblock,
+         unsigned int start_idx, unsigned int count, const struct wined3d_vec4 *constants)
+ {
+-    const struct wined3d_d3d_info *d3d_info = &stateblock->device->adapter->d3d_info;
++    unsigned int limit = wined3d_device_get_vs_uniform_count(stateblock->device);
+ 
+     TRACE("stateblock %p, start_idx %u, count %u, constants %p.\n",
+             stateblock, start_idx, count, constants);
+ 
+-    if (!constants || !wined3d_bound_range(start_idx, count, d3d_info->limits.vs_uniform_count))
++    if (!constants || !wined3d_bound_range(start_idx, count, limit))
+         return WINED3DERR_INVALIDCALL;
+ 
+     memcpy(&stateblock->stateblock_state.vs_consts_f[start_idx], constants, count * sizeof(*constants));
+@@ -1434,11 +1436,11 @@
+ HRESULT CDECL wined3d_stateblock_get_vs_consts_f(struct wined3d_stateblock *stateblock,
+         unsigned int start_idx, unsigned int count, struct wined3d_vec4 *constants)
+ {
+-    const struct wined3d_d3d_info *d3d_info = &stateblock->device->adapter->d3d_info;
++    unsigned int limit = wined3d_device_get_vs_uniform_count(stateblock->device);
+ 
+     TRACE("stateblock %p, start_idx %u, count %u, constants %p.\n", stateblock, start_idx, count, constants);
+ 
+-    if (!constants || !wined3d_bound_range(start_idx, count, d3d_info->limits.vs_uniform_count))
++    if (!constants || !wined3d_bound_range(start_idx, count, limit))
+         return WINED3DERR_INVALIDCALL;
+ 
+     memcpy(constants, &stateblock->stateblock_state.vs_consts_f[start_idx], count * sizeof(*constants));
+@@ -2576,7 +2578,7 @@
+         case WINED3D_SBT_ALL:
+             stateblock_init_lights(stateblock, &device_state->stateblock_state.light_state->lights_tree);
+             stateblock_savedstates_set_all(&stateblock->changed,
+-                    d3d_info->limits.vs_uniform_count, d3d_info->limits.ps_uniform_count);
++                    wined3d_device_get_vs_uniform_count(device), d3d_info->limits.ps_uniform_count);
+             break;
+ 
+         case WINED3D_SBT_PIXEL_STATE:
+@@ -2587,7 +2589,7 @@
+         case WINED3D_SBT_VERTEX_STATE:
+             stateblock_init_lights(stateblock, &device_state->stateblock_state.light_state->lights_tree);
+             stateblock_savedstates_set_vertex(&stateblock->changed,
+-                    d3d_info->limits.vs_uniform_count);
++                    wined3d_device_get_vs_uniform_count(device));
+             break;
+ 
+         default:
+@@ -3160,7 +3162,7 @@
+ 
+     for (start = 0; ; start = range.offset + range.size)
+     {
+-        if (!wined3d_bitmap_get_range(changed->vs_consts_f, WINED3D_MAX_VS_CONSTS_F, start, &range))
++        if (!wined3d_bitmap_get_range(changed->vs_consts_f, WINED3D_MAX_VS_CONSTS_F_SWVP, start, &range))
+             break;
+ 
+         wined3d_device_set_vs_consts_f(device, range.offset, range.size, &state->vs_consts_f[range.offset]);
+diff --git a/dlls/wined3d/cs.c b/dlls/wined3d/cs.c
+--- a/dlls/wined3d/cs.c
++++ b/dlls/wined3d/cs.c
+@@ -2155,7 +2155,7 @@
+ }
+ wined3d_cs_push_constant_info[] =
+ {
+-    [WINED3D_PUSH_CONSTANTS_VS_F]       = {sizeof(struct wined3d_vec4),  WINED3D_MAX_VS_CONSTS_F, WINED3D_SHADER_TYPE_VERTEX},
++    [WINED3D_PUSH_CONSTANTS_VS_F]       = {sizeof(struct wined3d_vec4),  WINED3D_MAX_VS_CONSTS_F_SWVP, WINED3D_SHADER_TYPE_VERTEX},
+     [WINED3D_PUSH_CONSTANTS_PS_F]       = {sizeof(struct wined3d_vec4),  WINED3D_MAX_PS_CONSTS_F, WINED3D_SHADER_TYPE_PIXEL},
+     [WINED3D_PUSH_CONSTANTS_VS_I]       = {sizeof(struct wined3d_ivec4), WINED3D_MAX_CONSTS_I,    WINED3D_SHADER_TYPE_VERTEX},
+     [WINED3D_PUSH_CONSTANTS_PS_I]       = {sizeof(struct wined3d_ivec4), WINED3D_MAX_CONSTS_I,    WINED3D_SHADER_TYPE_PIXEL},
+@@ -2174,7 +2174,8 @@
+ 
+     struct wined3d_buffer_desc desc =
+     {
+-        .byte_width = info->max_count * info->size,
++        .byte_width = (type == WINED3D_PUSH_CONSTANTS_VS_F
++                ? wined3d_device_get_vs_uniform_count(device) : info->max_count) * info->size,
+         .bind_flags = 0,
+         .access = WINED3D_RESOURCE_ACCESS_CPU | WINED3D_RESOURCE_ACCESS_MAP_R | WINED3D_RESOURCE_ACCESS_MAP_W,
+     };
+diff --git a/dlls/wined3d/shader.c b/dlls/wined3d/shader.c
+--- a/dlls/wined3d/shader.c
++++ b/dlls/wined3d/shader.c
+@@ -585,6 +585,13 @@
+         {WINED3D_SHADER_VERSION(4, 1), WINED3D_SHADER_VERSION(5, 0), {16,  0,   0,  0, 32,  0}},
+         {0}
+     },
++    vs_limits_swvp[] =
++    {
++        {WINED3D_SHADER_VERSION(1, 0), WINED3D_SHADER_VERSION(1, 1), {0, 0, 8192, 0, 12, 0}},
++        {WINED3D_SHADER_VERSION(2, 0), WINED3D_SHADER_VERSION(2, 1), {0, 16, 8192, 16, 12, 0}},
++        {WINED3D_SHADER_VERSION(3, 0), WINED3D_SHADER_VERSION(3, 0), {4, 16, 8192, 16, 12, 0}},
++        {0}
++    },
+     hs_limits[] =
+     {
+         /* min_version, max_version, sampler, constant_int, constant_float, constant_bool, packed_output, packet_input */
+@@ -629,7 +636,9 @@
+             FIXME("Unexpected shader type %u found.\n", shader->reg_maps.shader_version.type);
+             /* Fall-through. */
+         case WINED3D_SHADER_TYPE_VERTEX:
+-            limits_array = vs_limits;
++            limits_array = shader->reg_maps.shader_version.major < 4 && !shader->is_ffp_vs
++                    && wined3d_device_get_vs_uniform_count(shader->device) > WINED3D_MAX_VS_CONSTS_F
++                    ? vs_limits_swvp : vs_limits;
+             break;
+         case WINED3D_SHADER_TYPE_HULL:
+             limits_array = hs_limits;
+@@ -2800,7 +2809,7 @@
+     shader_init(shader, device, parent, parent_ops);
+ 
+     if (FAILED(hr = shader_set_function(shader, desc,
+-            WINED3D_SHADER_TYPE_VERTEX, NULL, device->adapter->d3d_info.limits.vs_uniform_count)))
++            WINED3D_SHADER_TYPE_VERTEX, NULL, wined3d_device_get_vs_uniform_count(device))))
+     {
+         shader_cleanup(shader);
+         return hr;
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -280,6 +280,7 @@
+     struct glsl_shader_prog_link *glsl_program;
+     GLenum vertex_color_clamp;
+     BOOL rasterization_disabled;
++    GLuint swvp_constants;
+ };
+ 
+ struct glsl_ps_compiled_shader
+@@ -1372,12 +1373,55 @@
+ }
+ 
+ /* Context activation is done by the caller. */
++/* Eight 16 KiB blocks fit the minimum OpenGL 3.1 uniform block size and expose
++ * all 8192 D3D9 software vertex constants, including relative addressing. */
++static bool shader_glsl_uses_swvp_constants(const struct wined3d_shader *shader, const struct wined3d_gl_info *gl_info)
++{
++    return gl_info->supported[ARB_UNIFORM_BUFFER_OBJECT]
++            && gl_info->limits.uniform_blocks[WINED3D_SHADER_TYPE_VERTEX] >= 8
++            && shader->reg_maps.shader_version.type == WINED3D_SHADER_TYPE_VERTEX
++            && shader->limits->constant_float == WINED3D_MAX_VS_CONSTS_F_SWVP;
++}
++
++static void shader_glsl_load_swvp_constants(const struct wined3d_shader *shader,
++        struct wined3d_context_gl *context_gl, struct wined3d_buffer *constant_buffer)
++{
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    struct glsl_context_data *data = context_gl->c.shader_backend_data;
++    const struct wined3d_shader_lconst *lconst;
++    const void *constants = constant_buffer ? wined3d_buffer_load_sysmem(constant_buffer, &context_gl->c) : NULL;
++    unsigned int base, count, i;
++
++    if (!data->swvp_constants)
++        GL_EXTCALL(glGenBuffers(1, &data->swvp_constants));
++    GL_EXTCALL(glBindBuffer(GL_UNIFORM_BUFFER, data->swvp_constants));
++    GL_EXTCALL(glBufferData(GL_UNIFORM_BUFFER, WINED3D_MAX_VS_CONSTS_F_SWVP * sizeof(struct wined3d_vec4),
++            constants, GL_STREAM_DRAW));
++    if (shader->load_local_constsF)
++    {
++        LIST_FOR_EACH_ENTRY(lconst, &shader->constantsF, struct wined3d_shader_lconst, entry)
++            GL_EXTCALL(glBufferSubData(GL_UNIFORM_BUFFER, lconst->idx * sizeof(struct wined3d_vec4),
++                    sizeof(struct wined3d_vec4), lconst->value));
++    }
++    wined3d_gl_limits_get_uniform_block_range(&gl_info->limits, WINED3D_SHADER_TYPE_VERTEX, &base, &count);
++    for (i = 0; i < 8; ++i)
++        GL_EXTCALL(glBindBufferRange(GL_UNIFORM_BUFFER, base + i, data->swvp_constants,
++                i * 16384, 16384));
++    checkGLcall("software vertex constants");
++}
++
+ static void shader_glsl_load_constants_f(const struct wined3d_shader *shader, struct wined3d_context_gl *context_gl,
+         struct wined3d_buffer *constant_buffer, const GLint *constant_locations, const struct constant_heap *heap,
+         unsigned char *stack, unsigned int version)
+ {
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+     const struct wined3d_shader_lconst *lconst;
++
++    if (shader_glsl_uses_swvp_constants(shader, gl_info))
++    {
++        shader_glsl_load_swvp_constants(shader, context_gl, constant_buffer);
++        return;
++    }
+ 
+     if (constant_buffer)
+     {
+@@ -1400,7 +1444,9 @@
+     /* Immediate constants are clamped to [-1;1] at shader creation time if needed */
+     LIST_FOR_EACH_ENTRY(lconst, &shader->constantsF, struct wined3d_shader_lconst, entry)
+     {
+-        GL_EXTCALL(glUniform4fv(constant_locations[lconst->idx], 1, (const GLfloat *)lconst->value));
++        if (lconst->idx < (shader->reg_maps.shader_version.type == WINED3D_SHADER_TYPE_VERTEX
++                ? WINED3D_MAX_VS_CONSTS_F : WINED3D_MAX_PS_CONSTS_F))
++            GL_EXTCALL(glUniform4fv(constant_locations[lconst->idx], 1, (const GLfloat *)lconst->value));
+     }
+     checkGLcall("glUniform4fv()");
+ }
+@@ -2071,7 +2117,7 @@
+     struct constant_heap *heap = &priv->vconst_heap;
+     UINT i;
+ 
+-    for (i = start; i < count + start; ++i)
++    for (i = start; i < min(count + start, WINED3D_MAX_VS_CONSTS_F); ++i)
+     {
+         update_heap_entry(heap, i, priv->next_constant_version);
+     }
+@@ -2421,8 +2467,19 @@
+             shader_addline(buffer, "invariant gl_Position;\n");
+     }
+ 
+-    /* Declare the constants (aka uniforms) */
+-    if (shader->limits->constant_float > 0)
++    /* Declare the constants (aka uniforms). Legacy shaders do not otherwise
++     * use the vertex stage's uniform-buffer binding range. */
++    if (shader_glsl_uses_swvp_constants(shader, gl_info))
++    {
++        for (i = 0; i < 8; ++i)
++            shader_addline(buffer, "layout(std140) uniform swvp_block%u { vec4 swvp_c%u[1024]; };\n", i, i);
++        shader_addline(buffer, "vec4 swvp_read(int index) {\n");
++        shader_addline(buffer, "if (index < 0 || index >= 8192) return vec4(0.0);\n");
++        for (i = 0; i < 8; ++i)
++            shader_addline(buffer, "if (index < %u) return swvp_c%u[index %% 1024];\n", (i + 1) * 1024, i);
++        shader_addline(buffer, "return vec4(0.0); }\n");
++    }
++    else if (shader->limits->constant_float > 0)
+     {
+         unsigned max_constantsF;
+ 
+@@ -3008,6 +3065,16 @@
+ 
+         case WINED3DSPR_CONST:
+             {
++                if (shader_glsl_uses_swvp_constants(shader, gl_info)
++                        && (reg->idx[0].rel_addr || !shader_constant_is_local(shader, reg->idx[0].offset)))
++                {
++                    if (reg->idx[0].rel_addr)
++                        string_buffer_sprintf(register_name, "swvp_read(%s + %u)",
++                                rel_param0.param_str, reg->idx[0].offset);
++                    else
++                        string_buffer_sprintf(register_name, "swvp_read(%u)", reg->idx[0].offset);
++                    break;
++                }
+                 /* Relative addressing */
+                 if (reg->idx[0].rel_addr)
+                 {
+@@ -10119,6 +10186,11 @@
+     unsigned int i;
+     struct wined3d_string_buffer *name = string_buffer_get(&priv->string_buffers);
+ 
++    /* Extended constants use blocks, not individual uniform locations. */
++    if (vs_c_count > WINED3D_MAX_VS_CONSTS_F && gl_info->supported[ARB_UNIFORM_BUFFER_OBJECT]
++            && gl_info->limits.uniform_blocks[WINED3D_SHADER_TYPE_VERTEX] >= 8)
++        vs_c_count = 0;
++    vs_c_count = min(vs_c_count, WINED3D_MAX_VS_CONSTS_F);
+     for (i = 0; i < vs_c_count; ++i)
+     {
+         string_buffer_sprintf(name, "vs_c[%u]", i);
+@@ -10136,6 +10208,20 @@
+     {
+         string_buffer_sprintf(name, "vs_b[%u]", i);
+         vs->uniform_b_locations[i] = GL_EXTCALL(glGetUniformLocation(program_id, name->buffer));
++    }
++
++    if (gl_info->supported[ARB_UNIFORM_BUFFER_OBJECT])
++    {
++        unsigned int base, count;
++        GLuint block;
++        wined3d_gl_limits_get_uniform_block_range(&gl_info->limits, WINED3D_SHADER_TYPE_VERTEX, &base, &count);
++        for (i = 0; i < 8; ++i)
++        {
++            string_buffer_sprintf(name, "swvp_block%u", i);
++            block = GL_EXTCALL(glGetUniformBlockIndex(program_id, name->buffer));
++            if (block != GL_INVALID_INDEX)
++                GL_EXTCALL(glUniformBlockBinding(program_id, block, base + i));
++        }
+     }
+ 
+     vs->pos_fixup_location = GL_EXTCALL(glGetUniformLocation(program_id, "pos_fixup"));
+@@ -11321,6 +11407,10 @@
+ 
+ static void shader_glsl_free_context_data(struct wined3d_context *context)
+ {
++    const struct wined3d_gl_info *gl_info = wined3d_context_gl(context)->gl_info;
++    struct glsl_context_data *data = context->shader_backend_data;
++    if (data->swvp_constants)
++        GL_EXTCALL(glDeleteBuffers(1, &data->swvp_constants));
+     free(context->shader_backend_data);
+ }
+ 

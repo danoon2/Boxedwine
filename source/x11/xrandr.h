@@ -98,6 +98,7 @@ public:
     U32 sizesAddress = 0; // XRRScreenSize*
     U32 sizesCount = 0;
     U32 ratesAddress = 0;
+    U32 ratesCount = 0;
 };
 
 #define RRSetConfigSuccess		0

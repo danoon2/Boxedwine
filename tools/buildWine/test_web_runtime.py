@@ -93,6 +93,7 @@ class WebRuntimeTests(unittest.TestCase):
                 fs.initialize_prefix(self.profile(), root, root / 'runner', root / 'runtime.zip')
             download.assert_not_called()
             self.assertEqual(run.call_count, 1)
+            self.assertIn('"VideoMemorySize"="512"', (root / 'prefix-root' / fs.PREFIX / 'user.reg').read_text())
             self.assertFalse((root / 'prefix-root/home/username/install-gecko.sh').exists())
             script = (root / 'prefix-root/home/username/initialize-prefix.sh').read_text()
             self.assertIn('wineboot.exe -r', script)

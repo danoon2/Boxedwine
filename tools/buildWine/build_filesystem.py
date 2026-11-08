@@ -436,6 +436,7 @@ def initialize_prefix(profile, work, boxedwine, runtime_zip):
             or list((home / 'drive_c/windows/system32').glob('dll*.tmp'))):
         raise build_wine.BuildError('Wine prefix still has pending DLL replacements; see prefix-finalize.txt')
     build_wine.apply_window_manager_registry(home)
+    build_wine.apply_video_memory_default(home, profile.get('video_memory_size_mb', build_wine.DEFAULT_VIDEO_MEMORY_MB))
     if not profile.get('gecko'):
         return home
     installer = download(profile['gecko'], work / 'downloads')

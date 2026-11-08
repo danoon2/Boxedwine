@@ -1,0 +1,69 @@
+Subject: [PATCH] wined3d: Default to A8 render-target fallbacks before Vista.
+
+DisableA8 (DWORD) in Wine\Direct3D or an application-specific Direct3D key
+hides only A8 render-target support, preserving ordinary A8 textures.
+When unset, it defaults to 1 for emulated Windows versions before Vista
+and 0 for Vista or later. Explicit 0/1 values retain the existing
+environment > per-application > global registry precedence.
+This is a Boxedwine compatibility policy, not a historical hardware claim.
+The Sims 2 renders black shadow rectangles with its A8 path;
+this follows the compatibility approach used by D9VK:
+https://github.com/misyltoad/d9vk/commit/58daddb31ccbcadb6a878104545e42526609ad77
+
+diff --git a/dlls/wined3d/wined3d_private.h b/dlls/wined3d/wined3d_private.h
+--- a/dlls/wined3d/wined3d_private.h
++++ b/dlls/wined3d/wined3d_private.h
+@@ -480,6 +480,7 @@
+     unsigned int multisample_textures;
+     unsigned int sample_count;
+     unsigned int strict_shader_math;
++    unsigned int disable_a8;
+     unsigned int max_sm_vs;
+     unsigned int max_sm_hs;
+     unsigned int max_sm_ds;
+diff --git a/dlls/wined3d/wined3d_main.c b/dlls/wined3d/wined3d_main.c
+--- a/dlls/wined3d/wined3d_main.c
++++ b/dlls/wined3d/wined3d_main.c
+@@ -272,6 +272,7 @@
+ 
+ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
+ {
++    OSVERSIONINFOW os_version = {sizeof(os_version)};
+     DWORD wined3d_context_tls_idx;
+     char buffer[MAX_PATH+10];
+     DWORD size = sizeof(buffer);
+@@ -317,6 +318,10 @@
+ 
+     DisableThreadLibraryCalls(hInstDLL);
+ 
++    /* Boxedwine compatibility policy: pre-Vista applications default to the
++     * fallback render-target formats. Explicit configuration below wins. */
++    wined3d_settings.disable_a8 = GetVersionExW(&os_version) && os_version.dwMajorVersion < 6;
++
+     /* @@ Wine registry key: HKCU\Software\Wine\Direct3D */
+     if ( RegOpenKeyA( HKEY_CURRENT_USER, "Software\\Wine\\Direct3D", &hkey ) ) hkey = 0;
+ 
+@@ -393,6 +398,7 @@
+                 wined3d_settings.pci_vendor_id = pci_vendor_id;
+             }
+         }
++        get_config_key_dword(hkey, appkey, env, "DisableA8", &wined3d_settings.disable_a8);
+         if (!get_config_key(hkey, appkey, env, "VideoMemorySize", buffer, size))
+         {
+             int TmpVideoMemorySize = atoi(buffer);
+diff --git a/dlls/wined3d/directx.c b/dlls/wined3d/directx.c
+--- a/dlls/wined3d/directx.c
++++ b/dlls/wined3d/directx.c
+@@ -1990,6 +1990,12 @@
+             debug_d3dusage(usage), wined3d_debug_bind_flags(bind_flags),
+             debug_d3dresourcetype(resource_type), debug_d3dformat(check_format_id));
+ 
++    /* The Sims 2 can select an A8 shadow path that renders black rectangles.
++     * Hide render-target support only; ordinary A8 textures remain available. */
++    if (wined3d_settings.disable_a8 && check_format_id == WINED3DFMT_A8_UNORM
++            && (bind_flags & WINED3D_BIND_RENDER_TARGET))
++        return WINED3DERR_NOTAVAILABLE;
++
+     adapter_format = wined3d_get_format(adapter, adapter_format_id, WINED3D_BIND_RENDER_TARGET);
+     format = wined3d_get_format(adapter, check_format_id, bind_flags);
+ 
