@@ -21,6 +21,13 @@ incremental builds, since the executable embeds `__DATE__` and `__TIME__`.
 
 ## Browser Requirements
 
+Filesystem v27's extended software vertex constants require a web engine that
+advertises `GL_ARB_uniform_buffer_object`. Uniform buffers are core WebGL 2
+features, but Wine needs that capability name because Boxedwine reports a
+desktop-style OpenGL 3.0 version. Rebuild and deploy all browser modes from this
+branch when adopting v27; replacing the filesystem ZIP alone does not update
+an already deployed engine.
+
 All targets use native Wasm exception handling in the standardized (exnref)
 encoding (`WASM_EXCEPTIONS_FLAG` in the makefile). Browsers need exnref
 support: Chrome/Edge 137+, Firefox 131+, or Safari 18.4+. Older browsers fail

@@ -8,13 +8,12 @@ The [builder guide](README.md) explains the build internals and prerequisites.
 Review the release plan before starting builds. Commands below are for the later
 execution steps, run from the repository root in WSL unless noted otherwise.
 
-The inventory was reviewed for filesystem 26 on November 7, 2026. Revision 26
-packages a clean rebuild of the v50 WebGL DLLs and retains revision 25's
-DirectSound backport. Regular Wine binary inputs were verified unchanged;
-packaging and prefixes were regenerated, including explicit Wine directory modes.
-See [RELEASE-v26.md](RELEASE-v26.md) for the artifact receipt and validation.
+The inventory was reviewed for filesystem 27 on November 8, 2026. Revision 27
+rebuilds both Wine variants and the v51 WebGL DLLs with the Sims 2 extended
+vertex-constant and A8 compatibility patches, and seeds 512 MiB video memory.
+See [RELEASE-v27.md](RELEASE-v27.md) for the artifact receipt and validation.
 
-The release is staged locally, with repository consumers pinned to `/v2/26/`.
+The release is staged locally, with repository consumers pinned to `/v2/27/`.
 Upload and verify both archives, refresh `/v2/latest/`, and deploy the staged
 `/v2/26R2/filesV2.xml` before activating those consumers. Earlier versioned
 archives, manifests and release receipts retain their original identities.
@@ -49,7 +48,7 @@ is a local workaround; release testing must use the candidate ZIP in a fresh roo
 | [`filesystem_wine11.json`](filesystem_wine11.json) | Set `filesystem_version` and select the release's `webgl_config`. Change `wine_tag`/`wine_commit` only when changing upstream Wine. |
 | [`changes_wine11.txt`](changes_wine11.txt) | Add the release entry; its first line must start with the configured `vN`. Preserve previous entries. |
 | [`changes_wine11_web.txt`](changes_wine11_web.txt) | Update the web release entry to the same `vN`. It is prepended to the full history. Update size-savings claims only from new measurements. |
-| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v26.json`](webgl_filesystems_v26.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
+| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v27.json`](webgl_filesystems_v27.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
 | [`webgl_filesystem.py`](webgl_filesystem.py), `DEFAULT_CONFIG` | Advance the build/validation default to the same manifest as the filesystem profile. Preserve the explicitly historical `validate-set` default and historical examples. |
 | [`README.md`](README.md) and this checklist | Update current revision, manifest links, publication status, and release examples; retain clearly labeled historical instructions. |
 
@@ -67,7 +66,7 @@ The two final ZIP hashes are output identities, not substitutes for checking
 the source patches and individual DLLs. Do not change unrelated expected hashes
 just to make validation pass.
 
-For the pending video-memory default change, inspect both generated prefixes
+For the video-memory default, inspect both generated prefixes
 for the global `Direct3D\VideoMemorySize` string selected by the profile
 (`video_memory_size_mb`, currently 512). Retain per-app overrides and the
 native automation runner's explicit 256 MiB preset. Existing v26 receipts and

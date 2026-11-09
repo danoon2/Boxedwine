@@ -168,6 +168,17 @@ static void test_device(IDirect3D9 *d3d, HWND window, DWORD flags)
             draw(device, 1023, 0x00ff00);
             draw(device, 1024, 0xff0000);
         }
+        {
+            const float pair[2][4] = {{1,0,0,1}, {0,1,0,1}};
+            /* Prime WebGL's deduplication cache, overwrite across the old
+             * 256-register boundary, then restore the previously cached value. */
+            HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 255, green, 1));
+            draw(device, 255, 0x00ff00);
+            HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 255, pair[0], 2));
+            draw_current(device, 0xff0000);
+            HR(IDirect3DDevice9_SetVertexShaderConstantF(device, 255, green, 1));
+            draw_current(device, 0x00ff00);
+        }
         draw(device, 1, 0xffffff); /* Shader-local def overrides the uploaded value. */
         {
             IDirect3DVertexShader9 *plain = NULL;

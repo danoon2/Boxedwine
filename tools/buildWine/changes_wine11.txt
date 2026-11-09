@@ -1,3 +1,5 @@
+v27 Nov 08, 2026 Support extended software/mixed vertex float constants for The Sims 2, with sparse updates and safe OpenGL context cleanup. Hide A8 shadow render targets by default when emulating Windows XP and earlier, with explicit overrides. Seed new prefixes with a 512 MiB video-memory default.
+
 v26 Nov 07, 2026 Reduce per-draw overhead in the bundled WebGL WineD3D: skip constant uploads and vertex-array disables that change nothing, and shrink the streaming vertex buffer, which made the MechWarrior 3 demo several times faster in the browser. Regular Wine graphics behavior is unchanged.
 
 v25 Nov 07, 2026 Backport upstream DirectSound FIR and SSE resampling optimizations to reduce guest audio CPU use. Improves Halo Trial audio continuity and performance. Includes the prerequisite filter and arithmetic changes; the separate WebGL DLLs retain their v24 identities.

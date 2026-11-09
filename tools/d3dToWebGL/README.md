@@ -1,17 +1,31 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current source series is pinned by
-[`webgl-test-divergences-v50.json`](../wineTests/webgl-test-divergences-v50.json).
-It contains 73 production patches and one separate, complete Wine graphics-test
-adaptation. The [v50 inventory](../wineTests/webgl-patch-inventory-v50.json)
+[`webgl-test-divergences-v51.json`](../wineTests/webgl-test-divergences-v51.json).
+It contains 75 production patches and one separate, complete Wine graphics-test
+adaptation. The [v51 inventory](../wineTests/webgl-patch-inventory-v51.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 49 retain earlier build and test selections for reproducing historical
+Versions 2 through 50 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 
+Filesystem revision 27 adds extended software/mixed vertex float constants and
+the pre-Vista A8 render-target fallback used by The Sims 2. Patch 74 adapts the
+native SWVP implementation to WebGL and sizes the constant deduplication cache
+for the full register bank; patch 75 shares the native A8 policy. The expanded
+SWVP probe covers restoring a low constant after an update spanning the old
+256-register boundary. Wine test expectations are unchanged. Both packages
+include rebuilt dependent DLLs, pinned by
+[`webgl_filesystems_v27.json`](../buildWine/webgl_filesystems_v27.json).
+See [the v27 receipt](../buildWine/RELEASE-v27.md) for validation and upload status.
+The web engine must also advertise the core WebGL 2 uniform-buffer capability
+as `GL_ARB_uniform_buffer_object`. This branch adds that name; older deployed
+engines report desktop OpenGL 3.0 without it and cannot execute the extended
+constant path. Deploy rebuilt browser modes alongside the new filesystem.
+
 Patches 71 to 73 reduce per-draw WebGL overhead in WineD3D; the other DLLs
-are unchanged. Filesystem revision 26 selects them, pinned by
+were unchanged in that update. Filesystem revision 26 selected them, pinned by
 [`webgl_filesystems_v26.json`](../buildWine/webgl_filesystems_v26.json). Both
 v26 archives now contain a clean rebuild of all eight WebGL DLLs plus revision
 25's DirectSound backport. The final local DLL and archive hashes are pinned;
@@ -68,7 +82,7 @@ render-target, sRGB and automatic mipmap capabilities remain disabled.
 The change is confined to WebGL WineD3D; other formats and native Wine keep
 their existing behavior. Filesystem revision 26 retains this normal-map fix
 and the DirectSound SSE backport while adding the v50 performance patches.
-Both variants are staged for `/v2/26/`, with final DLL and archive identities in
+Revision 26's archive and DLL identities are retained in
 [`webgl_filesystems_v26.json`](../buildWine/webgl_filesystems_v26.json).
 
 The [signed-texture probe](../wineTests/tests/d3d9_q8w8v8u8_probe.c) checks

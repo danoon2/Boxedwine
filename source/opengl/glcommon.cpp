@@ -738,6 +738,9 @@ static const char* addedExt[] = {
     // WebGL supplies sample lists; our wrapper also supplies their length.
     // Wine's WGL dispatch requires this extension before exposing the query.
     "GL_ARB_internalformat_query",
+    // Uniform buffers are core in WebGL 2. Our desktop-style version is 3.0,
+    // so Wine needs the extension name to expose the OpenGL 3.1 entry points.
+    "GL_ARB_uniform_buffer_object",
 #endif
     "WGL_ARB_create_context_Invalid"
 };
