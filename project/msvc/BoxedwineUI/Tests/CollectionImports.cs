@@ -8,6 +8,26 @@ sealed partial class TestSuite
     private async Task CollectionImports()
     {
         var original = CollectionSnapshot.Load(Path.Combine(AppContext.BaseDirectory, "collection-example.json"));
+        await Test("Large installer collections preserve 64-bit sizes and reject packages above 4 GiB", async () =>
+        {
+            using var repository = Repository("collection-large-installer"); var store = new CollectionStore(repository.DirectoryPath);
+            var value = DataFormat.Clone(original);
+            value.Apps[0]["InstallType"] = "Installer";
+            value.Apps[0]["InstallExe"] = "TheMoviesSetup.exe";
+            foreach (long size in new long[] { 2326286344, 4294967296 })
+            {
+                value.Apps[0]["FileSizeBytes"] = size.ToString();
+                store.Merge(value, value.Folder);
+                Check(store.Recipes(value.Folder, [])[0].Bytes == size);
+            }
+            string path = Path.Combine(repository.DirectoryPath, "collections.json"), saved = File.ReadAllText(path);
+            foreach (long size in new long[] { 0, 4294967297 })
+            {
+                value.Apps[0]["FileSizeBytes"] = size.ToString();
+                await Throws(() => Task.Run(() => store.Merge(value, value.Folder)), "invalid package size");
+                Check(File.ReadAllText(path) == saved);
+            }
+        });
         await Test("Missing Wine version selects highest current catalog version without persisting a pin", async () =>
         {
             using var repository = Repository("collection-automatic-wine"); var store = new CollectionStore(repository.DirectoryPath);

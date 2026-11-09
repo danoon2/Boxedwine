@@ -254,7 +254,7 @@ public static class Packages
             if (name.Length == 0) continue;
             string target = SafeFiles.Beneath(destination, name);
             int mode = (entry.ExternalAttributes >> 16) & 0xf000;
-            if (mode is not (0 or 0x8000 or 0x4000) || !names.Add(name) || (expanded += entry.Length) > 8L * 1024 * 1024 * 1024 || entry.Length > 2L * 1024 * 1024 * 1024) throw new InvalidDataException("The archive has linked, duplicate or oversized files.");
+            if (mode is not (0 or 0x8000 or 0x4000) || !names.Add(name) || (expanded += entry.Length) > 8L * 1024 * 1024 * 1024 || entry.Length > Demos.MaximumPackageBytes) throw new InvalidDataException("The archive has linked, duplicate or oversized files.");
             if (entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\')) { Directory.CreateDirectory(target); continue; }
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             await using var input = entry.Open();

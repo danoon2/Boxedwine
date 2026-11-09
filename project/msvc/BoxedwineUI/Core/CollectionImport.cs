@@ -305,7 +305,7 @@ public sealed class PreparedAppSource : IDisposable
                 if (!new[] { ".zip", ".exe", ".msi", ".json" }.Contains(extension)) throw new InvalidDataException("Use a direct link to a ZIP, EXE, MSI, or collection JSON file.");
                 result.Source = Path.Combine(result.temporary, "Download" + extension);
                 result.Name = Path.GetFileNameWithoutExtension(uri.LocalPath);
-                await Download(source, result.Source, collectionOnly ? 1024 * 1024 : 1024L * 1024 * 1024, cancellation, progress);
+                await Download(source, result.Source, collectionOnly ? 1024 * 1024 : Demos.MaximumPackageBytes, cancellation, progress);
             }
             else { SafeFiles.NoLinks(source); result.Source = source; result.Name = Path.GetFileNameWithoutExtension(source); }
             if (!result.IsDirectory && Path.GetExtension(result.Source).Equals(".json", StringComparison.OrdinalIgnoreCase)) result.Collection = CollectionSnapshot.Load(result.Source);

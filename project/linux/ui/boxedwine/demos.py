@@ -5,7 +5,7 @@ from pathlib import Path
 import urllib.parse
 import xml.etree.ElementTree as ET
 import zipfile
-from .files import beneath, delete_tree, extract_zip, validate_relative
+from .files import MAX_APP_PACKAGE_BYTES, beneath, delete_tree, extract_zip, validate_relative
 from .library import DRIVE_C, new_app, preference, resolution, check_installer
 from .packages import download, trusted_url
 from .cdrom import archive_paths
@@ -34,7 +34,7 @@ def load_catalog(data, allow_external=False):
         shortcut = field('ShortcutExe')
         url, size, checksum = field('FileURL'), int(field('FileSizeBytes')), field('FileSHA256')
         if (not re.fullmatch('[a-z0-9][a-z0-9-]{0,63}', identifier) or identifier in ids or not 0 < len(field('Name')) <= 256 or
-                not (valid_url(url) if allow_external else trusted_url(url)) or not 0 < size <= 1024**3 or not re.fullmatch('[a-f0-9]{64}', checksum) or
+                not (valid_url(url) if allow_external else trusted_url(url)) or not 0 < size <= MAX_APP_PACKAGE_BYTES or not re.fullmatch('[a-f0-9]{64}', checksum) or
                 not shortcut.lower().endswith('.exe') or '/' in shortcut or
                 field('InstallType') not in (('Zip', 'Installer', 'Disc') if allow_external else ('Zip', 'Installer'))):
             raise ValueError('Invalid demo identity or package.')

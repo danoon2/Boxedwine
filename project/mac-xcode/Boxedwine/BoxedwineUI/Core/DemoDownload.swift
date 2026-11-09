@@ -19,7 +19,7 @@ struct DemoDownloader: DemoDownloading, @unchecked Sendable {
 
 struct PackageDownloader: @unchecked Sendable {
     var configuration: URLSessionConfiguration = .ephemeral
-    func fetch(_ url: URL, bytes: Int64, to destination: URL, control: ImportControl, allowExternal: Bool = false, maximumBytes: Int64 = 1024 * 1024 * 1024, timeout: TimeInterval = 15 * 60) async throws {
+    func fetch(_ url: URL, bytes: Int64, to destination: URL, control: ImportControl, allowExternal: Bool = false, maximumBytes: Int64 = DemoCatalog.maximumPackageBytes, timeout: TimeInterval = 15 * 60) async throws {
         try control.checkCancellation()
         guard (allowExternal ? PreparedAppSource.validURL(url) : DemoCatalog.validDownloadURL(url)), bytes > 0 || allowExternal else { throw DemoError.download("Unsupported download URL.") }
         let operation = PackageDownloadOperation(url: url, bytes: bytes, destination: destination, control: control, allowExternal: allowExternal, maximumBytes: bytes > 0 ? bytes : maximumBytes)

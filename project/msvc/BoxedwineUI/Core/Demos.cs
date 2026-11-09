@@ -21,6 +21,8 @@ public sealed record DemoRecipe(DemoOrigin Origin, string Name, string Summary, 
 }
 public static class Demos
 {
+    public const long MaximumPackageBytes = 4L * 1024 * 1024 * 1024;
+
     public static List<DemoRecipe> Load(string path)
     {
         SafeFiles.NoLinks(path);
@@ -43,7 +45,7 @@ public static class Demos
             string id = Field("ID"), name = Field("Name"), hash = Field("FileSHA256"), shortcut = Field("ShortcutExe"), url = Field("FileURL");
             if (!Regex.IsMatch(id, "^[a-z0-9][a-z0-9-]{0,63}$") || !ids.Add(id) || name.Length is 0 or > 256 || !Regex.IsMatch(hash, "^[a-f0-9]{64}$") ||
                 shortcut.Contains('/') || !shortcut.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !Uri.TryCreate(url, UriKind.Absolute, out var address) || !(allowExternal ? PreparedAppSource.ValidUrl(address) : Packages.TrustedUrl(address)) ||
-                !long.TryParse(Field("FileSizeBytes"), out long bytes) || bytes is <= 0 or > 1073741824 || !(Field("InstallType") is "Zip" or "Installer" || allowExternal && Field("InstallType") == "Disc")) throw new InvalidDataException("Invalid demo identity, package, or install recipe.");
+                !long.TryParse(Field("FileSizeBytes"), out long bytes) || bytes is <= 0 or > MaximumPackageBytes || !(Field("InstallType") is "Zip" or "Installer" || allowExternal && Field("InstallType") == "Disc")) throw new InvalidDataException("Invalid demo identity, package, or install recipe.");
             _ = SafeFiles.Beneath(directory, shortcut);
             if (Field("Icon").Length > 0 && !(allowExternal && CollectionIcons.IsRemote(Field("Icon")))) _ = SafeFiles.Beneath(directory, Field("Icon"));
             foreach (var unsupported in new[] { "Options", "InstallOptions", "Options_Mac", "InstallOptions_Mac" }) if (Field(unsupported).Length > 0) throw new InvalidDataException("Unsupported legacy options in demo " + name);

@@ -85,6 +85,8 @@ struct Demo: Identifiable, Equatable, Sendable {
 }
 
 struct DemoCatalog: Sendable {
+    static let maximumPackageBytes: Int64 = 4 * 1024 * 1024 * 1024
+
     let release: String
     let demos: [Demo]
 
@@ -191,7 +193,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
               shortcut.lowercased().hasSuffix(".exe"),
               (icon.isEmpty || (allowExternal && CollectionIconCache.remoteURL(icon) != nil) || (DemoCatalog.validRelativePath(icon) && !icon.contains("/") && icon.hasSuffix(".png"))),
               let url = URL(string: field("FileURL")), (allowExternal ? PreparedAppSource.validURL(url) : DemoCatalog.validDownloadURL(url)),
-              let bytes = Int64(field("FileSizeBytes")), bytes > 0, bytes <= 1024 * 1024 * 1024,
+              let bytes = Int64(field("FileSizeBytes")), bytes > 0, bytes <= DemoCatalog.maximumPackageBytes,
               let type = Demo.InstallType(rawValue: field("InstallType")),
               wineVersion.map({ !$0.isEmpty && $0.utf8.count <= 128 }) ?? allowExternal else {
             throw DemoError.catalog("Invalid ID, size, URL, checksum, icon, Wine version, or program in \(name).")

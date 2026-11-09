@@ -288,7 +288,7 @@ final class PreparedAppSource: @unchecked Sendable {
                 #endif
                 guard validURL(url), ["zip", "exe", "msi", "json"].contains(url.pathExtension.lowercased()) else { throw DemoError.download("Use a direct HTTP or HTTPS link to a ZIP, EXE, MSI, or collection JSON file.") }
                 source = temporary.appendingPathComponent("Download." + url.pathExtension.lowercased())
-                try await PackageDownloader(configuration: configuration).fetch(url, bytes: 0, to: source, control: control, allowExternal: true, maximumBytes: collectionOnly ? 1024 * 1024 : 1024 * 1024 * 1024)
+                try await PackageDownloader(configuration: configuration).fetch(url, bytes: 0, to: source, control: control, allowExternal: true, maximumBytes: collectionOnly ? 1024 * 1024 : DemoCatalog.maximumPackageBytes)
             }
             let name = url.deletingPathExtension().lastPathComponent
             var collection: CollectionSnapshot?

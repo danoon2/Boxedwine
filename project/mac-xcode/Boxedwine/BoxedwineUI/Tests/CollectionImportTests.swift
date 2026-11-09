@@ -3,6 +3,26 @@ import Testing
 @testable import BoxedwineLibrary
 
 struct CollectionImportTests {
+    @Test func largeInstallerSizesSurviveCollectionRoundTrip() throws {
+        let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
+        let store = CollectionStore(directory: directory)
+        var value = try snapshot()
+        value.apps[0]["InstallType"] = "Installer"
+        value.apps[0]["InstallExe"] = "TheMoviesSetup.exe"
+        for size: Int64 in [2326286344, 4294967296] {
+            value.apps[0]["FileSizeBytes"] = String(size)
+            try store.merge(value, destination: value.folder)
+            #expect(try store.recipes(in: value.folder, defaults: [])[0].bytes == size)
+        }
+        let file = directory.appendingPathComponent("collections.json")
+        let saved = try Data(contentsOf: file)
+        for size: Int64 in [0, 4294967297] {
+            value.apps[0]["FileSizeBytes"] = String(size)
+            #expect(throws: (any Error).self) { try store.merge(value, destination: value.folder) }
+            #expect(try Data(contentsOf: file) == saved)
+        }
+    }
+
     @Test func discCollectionsValidateOrderedISOPathsAndPreserveSavedData() throws {
         let directory = try directory(); defer { try? FileManager.default.removeItem(at: directory) }
         let store = CollectionStore(directory: directory)

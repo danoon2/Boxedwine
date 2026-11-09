@@ -11,6 +11,8 @@ import threading
 import uuid
 import zipfile
 
+MAX_APP_PACKAGE_BYTES = 4 * 1024**3
+
 class Cancelled(Exception):
     pass
 
@@ -197,7 +199,7 @@ def extract_zip(source, target, work):
             kind = (entry.external_attr >> 16) & 0xf000
             expanded += entry.file_size
             if (entry.orig_filename != entry.filename or name.casefold() in seen or
-                    kind not in (0, stat.S_IFREG, stat.S_IFDIR) or expanded > 8 * 1024**3 or entry.file_size > 2 * 1024**3):
+                    kind not in (0, stat.S_IFREG, stat.S_IFDIR) or expanded > 8 * 1024**3 or entry.file_size > MAX_APP_PACKAGE_BYTES):
                 raise ValueError('Linked, duplicate, or oversized archive entry.')
             seen.add(name.casefold())
             work.report('Extracting ' + name, i, len(archive.infolist()))

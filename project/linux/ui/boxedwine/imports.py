@@ -15,10 +15,10 @@ import time
 import struct
 import uuid
 import xml.etree.ElementTree as ET
-from .files import Work, atomic_json, beneath, extract_zip, no_links, read_json, walk
+from .files import MAX_APP_PACKAGE_BYTES, Work, atomic_json, beneath, extract_zip, no_links, read_json, walk
 from .packages import NoRedirect
 
-MAX_DOWNLOAD = 1024**3
+MAX_DOWNLOAD = MAX_APP_PACKAGE_BYTES
 FIELDS = set(('ID Name Summary Help Icon FileURL FileSizeBytes FileSHA256 InstallType InstallExe ShortcutExe WineVersion '
               'WindowsVersion GDIRenderer Resolution InstallResolution BitsPerPixel CPUCount NativeOpenGL UseEGL CNCDDraw '
               'DisableHideCursor ForceRelativeMouse Glide CNCDDrawRenderer CNCDDrawUncapped CNCDDrawFakeMode WineDllOverrides AppArguments CDROMImages').split())

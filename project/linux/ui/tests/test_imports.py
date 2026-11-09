@@ -24,6 +24,19 @@ class ImportTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_large_installer_sizes_survive_collection_round_trip(self):
+        entry = self.snapshot['apps'][0]
+        entry.update(InstallType='Installer', InstallExe='TheMoviesSetup.exe')
+        for size in (2326286344, 4294967296):
+            entry['FileSizeBytes'] = str(size)
+            self.store.add(self.snapshot, 'Classic Games')
+            self.assertEqual(self.store.recipes('Classic Games')[0]['bytes'], size)
+        saved = self.store.path.read_bytes()
+        for size in (0, 4294967297):
+            entry['FileSizeBytes'] = str(size)
+            with self.assertRaises(ValueError): self.store.add(self.snapshot, 'Classic Games')
+            self.assertEqual(self.store.path.read_bytes(), saved)
+
     def test_disc_collections_validate_order_and_keep_invalid_updates_out(self):
         entry = self.snapshot['apps'][0]
         entry.update(InstallType='Disc', CDROMImages='Disc 1.iso\r\nMedia/Disc 2.ISO')
