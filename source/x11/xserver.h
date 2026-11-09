@@ -233,6 +233,7 @@ private:
 	void setAtom(const BString& name, U32 key);
 	VisualPtr addVisual(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 bitsPerPixel, U32 pixelFormatIndex);
 	U32 createScreen(KThread* thread, U32 displayAddress);
+	void destroyDisplayWindows(U32 displayId);
 
 	void pointerMoved(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode);
 	void pointerMovedBetweenSiblings(const XWindowPtr& from, const XWindowPtr& to, const XWindowPtr& commonAncestor, S32 x, S32 y, U32 mode);

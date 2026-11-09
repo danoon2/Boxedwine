@@ -644,6 +644,42 @@ void testX11DialogFocusRevert() {
     server->destroyWindow(owner->id);
 }
 
+void testX11DisplayWindowCleanup() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    x11_init();
+    testNewInstruction(0);
+    initPaletteTestServer();
+    auto server = XServer::getServer();
+    auto& context = testContext();
+    auto first = server->getDisplayDataByAddressOfDisplay(context.memory, server->openDisplay(context.thread));
+    auto second = server->getDisplayDataByAddressOfDisplay(context.memory, server->openDisplay(context.thread));
+    auto visual = std::make_shared<Visual>();
+    visual->bits_per_rgb = 8;
+    auto root = server->getRoot();
+    auto owner = server->createNewWindow(first->displayId, root, 8, 8, 8, 0, 0, InputOutput, 0, visual);
+    auto child = server->createNewWindow(second->displayId, owner, 2, 2, 8, 1, 1, InputOutput, 0, visual);
+    auto survivor = server->createNewWindow(second->displayId, root, 4, 4, 8, 20, 20, InputOutput, 0, visual);
+    owner->mapWindow(); child->mapWindow(); survivor->mapWindow();
+    server->setInputFocus(nullptr, child->id, RevertToParent, 0);
+
+    server->closeDisplay(context.thread, first);
+    if (server->getWindow(owner->id) || server->getWindow(child->id) || owner->mapped() || child->mapped())
+        testFail("Closing a display retained its window or another client's inferior");
+    if (server->getInputFocusWindow() != root)
+        testFail("Closing a display retained focus on its destroyed window");
+    if (!server->getWindow(survivor->id) || !survivor->mapped() || !server->getDisplayDataById(second->displayId))
+        testFail("Closing a display destroyed an unrelated window or connection");
+
+    server->processExit(context.process->id);
+    if (server->getDisplayDataById(second->displayId) || server->getWindow(survivor->id) || survivor->mapped())
+        testFail("Process exit left a ghost window or display connection");
+    if (server->getWindow(root->id) != root)
+        testFail("Display cleanup destroyed the server root");
+    // Keep the shared test server usable if a regression fails above.
+    server->setInputFocus(nullptr, PointerRoot, RevertToPointerRoot, 0);
+    server->destroyWindow(child->id); server->destroyWindow(owner->id); server->destroyWindow(survivor->id);
+}
+
 void testX11PaletteInvalidation() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
     x11_init();

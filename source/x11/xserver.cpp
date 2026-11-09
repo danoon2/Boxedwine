@@ -680,6 +680,14 @@ int XServer::destroyWindow(U32 window) {
 	// DestroyWindow unmaps first, including focus reversion for descendants.
 	// Do not hold windowsMutex across native window updates during unmap.
 	w->unmapWindow();
+	// XDestroyWindow also destroys all inferiors, including another client's.
+	// Snapshot the children before callbacks modify the parent's child table.
+	std::vector<U32> children;
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(w->childrenMutex);
+		for (auto& child : w->children) children.push_back(child.key);
+	}
+	for (U32 child : children) destroyWindow(child);
 	if (pointerWindow) {
 		XWindowPtr current = pointerWindow;
 		while (current) {
@@ -896,12 +904,13 @@ U32 XServer::createScreen(KThread* thread, U32 displayAddress) {
 }
 
 int XServer::closeDisplay(KThread* thread, const DisplayDataPtr& data) {
-	if (grabbedDisplayId == data->displayId) {
-		// ungrabPointer locks the grab state itself, then waits for native cursor
-		// updates. The UI thread must be able to read that state while it runs.
-		ungrabPointer(0);
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+		displays.remove(data->displayId);
 	}
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+	// Do not hold displayMutex while destruction notifies surviving clients
+	// or waits for the native UI thread to update its windows and cursor.
+	destroyDisplayWindows(data->displayId);
 	
 	KMemory* memory = thread->memory;
 	U32 vendor = X11_READD(Display, data->displayAddress, vendor);
@@ -910,7 +919,6 @@ int XServer::closeDisplay(KThread* thread, const DisplayDataPtr& data) {
 	U32 screen = X11_READD(Display, data->displayAddress, screens);
 	thread->process->free(screen);
 	thread->process->free(data->displayAddress);
-	displays.remove(data->displayId);	
 	return Success;
 }
 
@@ -976,17 +984,29 @@ void XServer::changeScreen(U32 width, U32 height) {
 }
 
 void XServer::processExit(U32 pid) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
-	std::vector<DisplayDataPtr> processDisplays;
+	std::vector<U32> processDisplays;
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+		for (auto& display : displays) {
+			if (display.value->processId == pid) processDisplays.push_back(display.key);
+		}
+		// Remove every dead connection before destruction can deliver events:
+		// the exiting process has already released its guest memory and sockets.
+		for (U32 display : processDisplays) displays.remove(display);
+	}
+	for (U32 display : processDisplays) destroyDisplayWindows(display);
+}
 
-	for (auto& display : displays) {
-		if (display.value->processId == pid) {
-			processDisplays.push_back(display.value);
+void XServer::destroyDisplayWindows(U32 displayId) {
+	if (grabbedDisplayId == displayId) ungrabPointer(0);
+	std::vector<U32> ownedWindows;
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
+		for (auto& window : windows) {
+			if (window.value != root && window.value->displayId == displayId) ownedWindows.push_back(window.key);
 		}
 	}
-	for (auto& display : processDisplays) {
-		displays.remove(display->displayId);
-	}
+	for (U32 window : ownedWindows) destroyWindow(window);
 }
 
 DisplayDataPtr XServer::getDisplayDataByAddressOfDisplay(KMemory* memory, U32 address) {
