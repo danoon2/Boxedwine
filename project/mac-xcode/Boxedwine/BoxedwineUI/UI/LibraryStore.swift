@@ -851,10 +851,10 @@ final class LibraryStore: ObservableObject {
             panel.message = "Choose the folder containing the app and its supporting files. Boxedwine will copy it."
         case .installerFile:
             panel.title = "Add a Windows Installer"
-            panel.message = "Choose a self-contained .exe or .msi installer. Boxedwine will copy it and open it if Windows support is available."
+            panel.message = "Choose an .exe or .msi installer. Boxedwine mounts its containing folder without copying the setup files. Keep the folder available to run setup again."
         case .installerFolder:
             panel.title = "Choose an Installer Folder"
-            panel.message = "Choose the folder containing the installer and all its data files. The entire folder will be copied, including subfolders. Next, choose the installer to run."
+            panel.message = "Choose the folder containing the installer and all its data files. Boxedwine mounts it without copying. Next, choose the installer to run."
         }
         panel.canChooseFiles = !folder
         panel.canChooseDirectories = folder
@@ -875,7 +875,7 @@ final class LibraryStore: ObservableObject {
         } else if kind == .installerFolder {
             let selection = NSOpenPanel()
             selection.title = "Choose the Installer"
-            selection.message = "Choose an .exe or .msi inside “\(source.lastPathComponent)”. Boxedwine will copy that entire folder and open the selected installer if Windows support is available."
+            selection.message = "Choose an .exe or .msi inside “\(source.lastPathComponent)”. Boxedwine mounts this folder without copying and opens the selected installer."
             selection.prompt = "Add Installer"
             selection.directoryURL = source
             selection.allowsMultipleSelection = false
@@ -892,10 +892,33 @@ final class LibraryStore: ObservableObject {
             }
             installer = chosen
         } else { installer = nil }
+        let copyInstaller = prepared?.requiresCopy ?? false
+        var installerFolder = kind == .installerFile ? source.deletingLastPathComponent() : source
+        #if BOXEDWINE_APP_STORE
+        if kind == .installerFile && !copyInstaller {
+            let panel = NSOpenPanel()
+            panel.title = "Allow Access to the Installer’s Folder"
+            panel.message = "Choose “\(installerFolder.lastPathComponent)” so setup can read its supporting files. The folder will be mounted without copying."
+            panel.directoryURL = installerFolder
+            panel.canChooseFiles = false; panel.canChooseDirectories = true
+            panel.canCreateDirectories = false; panel.allowsMultipleSelection = false
+            guard panel.runModal() == .OK, let selected = panel.url else {
+                if scoped { source.stopAccessingSecurityScopedResource() }; return
+            }
+            guard selected.resolvingSymlinksInPath().standardizedFileURL == installerFolder.resolvingSymlinksInPath().standardizedFileURL else {
+                if scoped { source.stopAccessingSecurityScopedResource() }
+                reportAddAppError("Choose the folder containing the selected installer."); return
+            }
+            installerFolder = selected
+        }
+        #endif
+        let installerFolderScope = !copyInstaller && kind != .appFolder && installerFolder.startAccessingSecurityScopedResource()
+        let mountedFolder = installerFolder
         // Native panels run a nested event loop; another window or callback may
         // have started an operation while the user was choosing a file.
         guard canEdit, !importing else {
             if scoped { source.stopAccessingSecurityScopedResource() }
+            if installerFolderScope { mountedFolder.stopAccessingSecurityScopedResource() }
             return
         }
         let name = proposedName ?? (folder ? source.lastPathComponent : source.deletingPathExtension().lastPathComponent)
@@ -911,6 +934,7 @@ final class LibraryStore: ObservableObject {
         Task {
             defer {
                 if scoped { source.stopAccessingSecurityScopedResource() }
+                if installerFolderScope { mountedFolder.stopAccessingSecurityScopedResource() }
                 withExtendedLifetime(droppedSource) {}
                 withExtendedLifetime(prepared) {}
             }
@@ -921,8 +945,10 @@ final class LibraryStore: ObservableObject {
                     return try await Task.detached {
                         switch kind {
                         case .appFolder: return try repository.importFolder(source, name: name, windowsVersion: windowsVersion, program: selectedProgram, wine: selection, control: control)
-                        case .installerFile: return try repository.importInstaller(source, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
-                        case .installerFolder: return try repository.importInstallerFolder(source, installer: installer!, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
+                        case .installerFile:
+                            if !copyInstaller { return try repository.importInstallerFolder(mountedFolder, installer: source, name: name, windowsVersion: windowsVersion, wine: selection, control: control, copySource: false) }
+                            return try repository.importInstaller(source, name: name, windowsVersion: windowsVersion, wine: selection, control: control)
+                        case .installerFolder: return try repository.importInstallerFolder(source, installer: installer!, name: name, windowsVersion: windowsVersion, wine: selection, control: control, copySource: copyInstaller)
                         }
                     }.value
                 }
@@ -1574,19 +1600,21 @@ final class LibraryStore: ObservableObject {
         guard !importing, canLaunch(app), apps.contains(app), let repository else { return }
         do {
             let cdromAccess = try CdromImageAccess(app: app, appDirectory: repository.appDirectory(app))
+            let installerAccess = try installing && app.installerSource != nil ? InstallerSourceAccess(app: app) : nil
             let request = LaunchRequest(app: app, repository: repository, wineZip: zip, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram)
             let arguments = try request.arguments()
             let executable = try RuntimeSession.executable()
             try repository.prepare(app)
             let session = RuntimeSession()
-            try session.start(executable: executable, arguments: arguments, log: logURL(app), dockIcon: dockIcon, programFolderBookmark: externalProgram?.folderBookmark, cdromAccess: cdromAccess, access: [repository.appDirectory(app), zip], onWindowShown: { [weak self, weak session] in
+            try session.start(executable: executable, arguments: arguments, log: logURL(app), dockIcon: dockIcon, programFolderBookmark: externalProgram?.folderBookmark ?? installerAccess?.runtimeBookmark, cdromAccess: cdromAccess, access: [repository.appDirectory(app), zip], onWindowShown: { [weak self, weak session] in
                 guard let self, let session, self.sessions[app.id] === session,
                       !self.stopping.contains(app.id), self.launching.remove(app.id) != nil else { return }
                 self.activity[app.id] = (externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Running \($0)" } ?? (installing ? "Installer running" : "Running")
-            }) { [weak self, externalProgram] result in
+            }) { [weak self, externalProgram, installerAccess] result in
                 // The grant also survives early returns and is released after the
                 // entire emulator session exits, including emulated child apps.
                 defer { withExtendedLifetime(externalProgram) {} }
+                defer { withExtendedLifetime(installerAccess) {} }
                 guard let self else { return }
                 self.sessions.removeValue(forKey: app.id)
                 self.stopping.remove(app.id)

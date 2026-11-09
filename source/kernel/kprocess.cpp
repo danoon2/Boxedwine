@@ -2500,6 +2500,13 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
         KThread* newThread = this->createThread();
         struct user_desc desc;
 
+        // Linux threads inherit the creator's floating-point environment.
+        // In particular, GStreamer workers need its exception masks and rounding
+        // modes before invoking libavcodec/libm, without a Wine thread startup.
+        newThread->cpu->fpu = thread->cpu->fpu;
+        newThread->cpu->setMxcsr(thread->cpu->mxcsr);
+        memcpy(newThread->cpu->xmm, thread->cpu->xmm, sizeof(thread->cpu->xmm));
+
         memory->memcpy(&desc, tls, sizeof(struct user_desc));
 
         if (desc.base_addr!=0 && desc.entry_number!=0) {

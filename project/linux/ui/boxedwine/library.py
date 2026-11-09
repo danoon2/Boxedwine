@@ -147,6 +147,13 @@ class Library:
             beneath(self.root(app), executable)
         if app.get('installer'):
             beneath(self.path(app), app['installer'])
+        if app.get('installerSource') is not None:
+            from pathlib import PureWindowsPath
+            source = app['installerSource']
+            if (not isinstance(source, str) or not source or len(source) > 8192 or any(ord(c) < 32 for c in source) or
+                    not (Path(source).is_absolute() or PureWindowsPath(source).is_absolute()) or
+                    not (app.get('installer') or '').startswith('Installer/')):
+                raise ValueError('Invalid installer source folder.')
         if app.get('winePackage'):
             validate_reference(app['winePackage'])
             if app['winePackage']['wineVersion'] != app.get('savedWineVersion'):
@@ -308,7 +315,7 @@ class Library:
                 delete_tree(self.path(operation['app']), self.directory / 'Applications')
         self.operation_path(operation).unlink(missing_ok=True)
 
-    def import_app(self, source, kind, wine, work, windows='wineDefault', installer=None, name=None, program=None):
+    def import_app(self, source, kind, wine, work, windows='wineDefault', installer=None, name=None, program=None, copy_installer=True):
         source = no_links(source)
         if source == self.directory or within(source, self.directory) or within(self.directory, source):
             raise ValueError('Choose a source outside the Boxedwine library.')
@@ -338,11 +345,17 @@ class Library:
                 if not within(installer, source):
                     raise ValueError('Choose an installer inside the selected folder.')
                 app['installer'] = 'Installer/' + installer.relative_to(source).as_posix()
-                copy_tree(source, beneath(self.path(app), 'Installer'), work)
+                if copy_installer:
+                    copy_tree(source, beneath(self.path(app), 'Installer'), work)
+                else:
+                    app['installerSource'] = str(source)
             elif kind == 'installer':
                 check_installer(source)
                 app['installer'] = 'Installer/' + source.name
-                copy_file(source, beneath(self.path(app), app['installer']), work)
+                if copy_installer:
+                    copy_file(source, beneath(self.path(app), app['installer']), work)
+                else:
+                    app['installerSource'] = str(source.parent)
             else:
                 raise ValueError('Unknown import type.')
             self.commit(operation, work)

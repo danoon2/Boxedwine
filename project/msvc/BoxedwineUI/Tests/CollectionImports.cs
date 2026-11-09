@@ -263,6 +263,7 @@ sealed partial class TestSuite
                 using (var prepared = await PreparedAppSource.Prepare($"http://127.0.0.1:{port}/game.zip", true, false, timeout.Token, null))
                 {
                     staging = prepared.Source;
+                    Check(prepared.RequiresCopy);
                     Check(prepared.SuggestedAction == "app" && prepared.Programs.SequenceEqual(new[] { "Game.exe" }));
                 }
                 Check(!Directory.Exists(staging));

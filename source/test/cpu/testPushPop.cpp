@@ -1793,7 +1793,7 @@ void runX87FwaitWithoutUnmaskedException(bool maskedException) {
     }
 }
 
-void runHardwareBreakpointTrap() {
+void runHardwareBreakpointTrap(bool initiallyNonExecutable = false) {
     constexpr U32 HANDLER_OFFSET = 1;
 
     newInstruction(0);
@@ -1804,7 +1804,15 @@ void runHardwareBreakpointTrap() {
     action.flags = 0;
     testContext().thread->debugRegs[0] = TEST_CODE_ADDRESS;
     testContext().thread->debugRegs[7] = 3;
+    if (initiallyNonExecutable) {
+        memory->mprotect(testContext().thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+    }
     testContext().thread->updateDebugTrapActive();
+    if (initiallyNonExecutable) {
+        if (cpu->debugTrapActive) failed("non-executable breakpoint forced interpretation");
+        memory->mprotect(testContext().thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC);
+        // Do not explicitly refresh: dispatch must observe the permission change.
+    }
 
     emitByte(0x90); // nop, should not execute before the #DB
     runTestCPU();
@@ -2237,6 +2245,7 @@ void testX87FwaitRaisesPendingException() {
 
 void testHardwareBreakpointRaisesTrap() {
     runHardwareBreakpointTrap();
+    runHardwareBreakpointTrap(true);
 }
 
 void testHardwareBreakpointIgnoresNonExecutableAddress() {

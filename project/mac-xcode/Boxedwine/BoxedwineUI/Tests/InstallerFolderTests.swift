@@ -48,6 +48,49 @@ struct InstallerFolderTests {
         #expect(try f.repository.load() == [app])
     }
 
+    @Test(arguments: [false, true]) func localSetupMountsOriginalMediaAndBackupKeepsOnlyReference(folder: Bool) async throws {
+        let f = try fixture()
+        defer { try? FileManager.default.removeItem(at: f.base) }
+        let prepared = try await PreparedAppSource.prepare(folder ? f.source : f.setup, control: ImportControl())
+        #expect(!prepared.requiresCopy)
+        let app = try folder
+            ? f.repository.importInstallerFolder(prepared.source, installer: f.setup, name: "Mounted", copySource: prepared.requiresCopy)
+            : f.repository.importInstaller(prepared.source, name: "Mounted", copySource: prepared.requiresCopy)
+        let expectedFolder = folder ? f.source : f.setup.deletingLastPathComponent()
+        #expect(app.installerSource == expectedFolder.path)
+        #expect(app.installerBookmark != nil)
+        #expect(!FileManager.default.fileExists(atPath: f.repository.appDirectory(app).appendingPathComponent("Installer").path))
+        try f.repository.save([app])
+        #expect(try f.repository.load() == [app])
+        let runtime = f.base.appendingPathComponent("wine.zip")
+        try ZipFixture.package().write(to: runtime)
+        let access = try InstallerSourceAccess(app: app)
+        #expect(access.folder.path == expectedFolder.path && !access.runtimeBookmark.isEmpty)
+        let args = try LaunchRequest(app: app, repository: f.repository, wineZip: runtime, installing: true).arguments()
+        let mount = try #require(args.firstIndex(of: "-mount"))
+        #expect(args[mount + 1] == expectedFolder.path)
+        #expect(args.last == (folder ? "/mnt/installer/Setup Files/setup.exe" : "/mnt/installer/setup.exe"))
+        let backup = f.base.appendingPathComponent("mounted.boxedwinebackup")
+        try AppBackup.export(app, repository: f.repository, runtime: runtime, to: backup, control: ImportControl())
+        let other = LibraryRepository(directory: f.base.appendingPathComponent("other"))
+        let restored = try AppBackup.restore(backup, repository: other, control: ImportControl())
+        #expect(restored.installerSource == app.installerSource && restored.installerBookmark == app.installerBookmark)
+        #expect(!FileManager.default.fileExists(atPath: other.appDirectory(restored).appendingPathComponent("Installer").path))
+        try FileManager.default.removeItem(at: f.setup)
+        #expect(throws: (any Error).self) { try LaunchRequest(app: restored, repository: other, wineZip: runtime, installing: true).arguments() }
+        #expect(try f.repository.load() == [app]) // A missing source must not make the library unreadable.
+        withExtendedLifetime(access) {}
+    }
+
+    @Test func mountedSetupCancellationLeavesSourceUntouched() throws {
+        let f = try fixture()
+        defer { try? FileManager.default.removeItem(at: f.base) }
+        let control = ImportControl(); control.cancel()
+        #expect(throws: (any Error).self) { try f.repository.importInstallerFolder(f.source, installer: f.setup, name: "Cancelled", control: control, copySource: false) }
+        #expect(FileManager.default.fileExists(atPath: f.setup.path))
+        try expectNoImport(f)
+    }
+
     @Test(arguments: ["exe", "MSI"]) func launchMountsWholeMediaTreeWithSelectedWorkingDirectory(ext: String) throws {
         let f = try fixture()
         defer { try? FileManager.default.removeItem(at: f.base) }

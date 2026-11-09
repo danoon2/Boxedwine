@@ -1,9 +1,9 @@
 {
   "base_filesystem": {
-    "url": "https://boxedwine.org/v2/11/TinyCore15WineBase.zip",
+    "url": "https://boxedwine.org/v2/28/TinyCore15WineBase.zip",
     "filename": "TinyCore15WineBase.zip",
-    "size": 70212286,
-    "sha256": "84b623a3d4fb303728915e871ed2af95ce2ba10203c68b2dd3e596534e61108a"
+    "size": 72005312,
+    "sha256": "bb7bf1807721deafaf98dff10091f27b21e5471d357c7b07330b84cc299aee83"
   },
   "wine": {
     "repo": "https://github.com/wine-mirror/wine.git",
@@ -42,7 +42,7 @@
     ],
     "cc": "gcc -m32",
     "cxx": "g++ -m32",
-    "cflags": "-DNDEBUG -O2 -msse2 -march=pentium4 -mfpmath=sse",
+    "cflags": "-DNDEBUG -O2 -msse2 -march=pentium4 -mfpmath=sse -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_78 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_78",
     "ld": "ld -m elf_i386",
     "targetflags": "-m32",
     "ldflags": "-s"
@@ -288,6 +288,31 @@
       "when": { "min": "11.0", "max": "11.0" },
       "apply_patch": "wine11_wined3d_disable_a8.patch",
       "reason": "Hide A8 render-target support by default before Windows Vista, with explicit overrides, so games such as The Sims 2 select compatible shadow formats"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_qasf_writer_creation.patch",
+      "reason": "Allow WM ASF Writer availability checks and graph setup while explicitly rejecting unsupported movie encoding"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_qasf_seek_unconnected_pins.patch",
+      "reason": "Backport Wine e33a8cc4: avoid dereferencing unconnected ASF output pins during seeking"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_qasf_destroy_reader_first.patch",
+      "reason": "Backport Wine bbbd1d8a: stop and release WMReader before destroying ASF pins"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_qasf_seek_stopped_stream.patch",
+      "reason": "Backport Wine a0a82c47: seeking must not start a stopped WMReader"
+    },
+    {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_qasf_reader_delivery_after_upstream.patch",
+      "reason": "Deliver blocking ASF outputs independently, flush all outputs, and retain seek timestamps on top of the upstream reader fixes"
     },
     {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",

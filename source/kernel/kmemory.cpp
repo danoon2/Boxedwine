@@ -1392,6 +1392,7 @@ DecodedOp* KMemory::getDecodedOp(U32 address) {
 void KMemory::threadCleanup(U32 threadId) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (data) {
+        data->removeDebugExecutionBreakpoints(threadId);
         data->opCache.threadCleanup(threadId);
     }
 }
@@ -2045,6 +2046,10 @@ U64 KMemory::readq(U32 address) {
     }
 #endif
     return readd(address) | ((U64)readd(address + 4) << 32);
+}
+
+void KMemory::updateDebugExecutionBreakpoints(KThread* thread) {
+    data->updateDebugExecutionBreakpoints(thread);
 }
 
 void KMemory::updateDebugMemoryWriteTrapActive() {

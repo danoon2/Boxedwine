@@ -54,6 +54,8 @@ public:
     bool isPageNative(U32 page);
     void execvReset();    
     void onPageChanged(U32 page);
+    void updateDebugExecutionBreakpoints(KThread* thread);
+    void removeDebugExecutionBreakpoints(U32 threadId);
     bool allocLinearMemoryBlock(U32 page);
     bool materializeLinearMemoryCopyOnWriteBlock(U32 page);
     bool getLinearMemoryGuestAddress(U64 hostAddress, U32& guestAddress);
@@ -92,6 +94,17 @@ public:
 
     DecodedOpCache opCache;
     BNativeHeap codeMemory;
+
+private:
+    // Lives with the shared address space, including CLONE_VM wrappers.
+    // The mutex also protects CPU lifetime against threadCleanup().
+    BOXEDWINE_MUTEX debugExecutionBreakpointsMutex;
+    std::map<U32, std::map<U32, CPU*>> debugExecutionBreakpoints;
+    std::atomic<bool> hasDebugExecutionBreakpoints { false };
+    void debugExecutionPageChanged(U32 page);
+    void removeDebugExecutionBreakpointsLocked(U32 threadId);
+
+public:
 
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
     bool findOpFromJitAddress(U8* jitAddress, U32& eipOfOp);

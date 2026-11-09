@@ -208,6 +208,7 @@ struct CollectionImportTests {
         let zip = directory.appendingPathComponent("game.zip")
         try ZipFixture.archive([.init("game/Game.exe", "MZgame"), .init("game/data.bin", "support"), .init("setup.exe", "MZsetup")]).write(to: zip)
         let source = try await PreparedAppSource.prepare(zip, control: ImportControl())
+        #expect(source.requiresCopy)
         #expect(source.suggestedAction.isEmpty)
         #expect(Set(source.programs) == ["game/Game.exe", "setup.exe"])
         #expect(try String(contentsOf: source.source.appendingPathComponent("game/data.bin"), encoding: .utf8) == "support")

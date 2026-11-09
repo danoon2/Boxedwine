@@ -1765,7 +1765,8 @@ void JitCodeGen::jumpToEipIfCached(RegPtr eipReg) {
 }
 
 static DYN_PTR_SIZE jitNextBlockAfterHostCall(CPU* cpu) {
-    if (cpu->yield || cpu->thread->terminating || cpu->debugTrapActive) {
+    if (cpu->yield || cpu->thread->terminating || cpu->debugTrapActive ||
+        cpu->debugTrapRefreshPending.load(std::memory_order_acquire)) {
         return 0;
     }
 #ifdef BOXEDWINE_MULTI_THREADED

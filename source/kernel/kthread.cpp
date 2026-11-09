@@ -879,6 +879,11 @@ bool KThread::hasMemoryWriteBreakpointEnabled() const {
 }
 
 void KThread::updateDebugTrapActive() {
+    if (this->memory) {
+        // Register first so a concurrent mapping change cannot be missed
+        // between checking permissions and starting to watch the target pages.
+        this->memory->updateDebugExecutionBreakpoints(this);
+    }
     if (this->cpu) {
         this->cpu->updateDebugTrapActive();
     }
@@ -928,6 +933,18 @@ bool KThread::hasHardwareBreakpointAt(U32 address) const {
         U32 enabled = (dr7 >> (i * 2)) & 3;
         U32 type = (dr7 >> (16 + i * 4)) & 3;
         if (enabled && type == 0 && this->debugRegs[i] == address) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool KThread::hasExecutableBreakpointEnabled() const {
+    U32 dr7 = this->debugRegs[7];
+    for (U32 i = 0; i < 4 && (dr7 & 0xff); ++i) {
+        U32 enabled = (dr7 >> (i * 2)) & 3;
+        U32 type = (dr7 >> (16 + i * 4)) & 3;
+        if (enabled && type == 0 && this->memory->canExec(this->debugRegs[i] >> K_PAGE_SHIFT)) {
             return true;
         }
     }

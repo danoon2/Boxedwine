@@ -311,8 +311,9 @@ def review_import(owner, prepared):
                 if len(setup) == 1: program_row.set_selected(setup[0])
             program_row.set_title('Installer' if action() == 'installer' else 'Program to open')
         action_row_widget.connect('notify::selected', update); update()
+        folder_hint = None
         if not prepared.source.is_dir():
-            action_row(owner, section, 'Ready-to-run apps may need nearby files', 'Choose the containing folder to include those files.', 'Choose Folder…',
+            folder_hint = action_row(owner, section, 'Ready-to-run apps may need nearby files', 'Choose the containing folder to include those files.', 'Choose Folder…',
                        lambda: choose_file(owner, 'Choose App Folder', lambda path: (dialog.close(), add_app(owner, path)), folder=True))
         options = Adw.ExpanderRow(title='Compatibility options'); section.add(options)
         windows_row = Adw.ComboRow(title='Windows version', model=Gtk.StringList.new(list(WINDOWS.values()))); options.add_row(windows_row)
@@ -332,14 +333,20 @@ def review_import(owner, prepared):
             def imported(work, wine):
                 try:
                     return owner.library.import_app(prepared.source, kind, wine, work, windows, installer, title,
-                                                    selected_program if kind == 'folder' else None)
+                                                    selected_program if kind == 'folder' else None, copy_installer=prepared.requires_copy)
                 finally:
                     prepared.close()
             owner.with_wine(lambda wine: owner.perform('Adding ' + title, lambda work: imported(work, wine), owner.app_added))
         final = action_row(owner, section, 'Copy files into your library', 'Your original files stay in place.', 'Add App', start, 'suggested-action')
+        final.set_subtitle_lines(0)
         # The final button describes the action; no program runs while inspecting.
         def action_changed(*_):
             final.get_activatable_widget().set_label('Run Installer' if action() == 'installer' else 'Add App')
+            mounted = action() == 'installer' and not prepared.requires_copy
+            if folder_hint is not None: folder_hint.set_visible(action() == 'app')
+            final.set_title('Use installer files in their current location' if mounted else 'Copy files into your library')
+            folder = prepared.source if prepared.source.is_dir() else prepared.source.parent
+            final.set_subtitle('Mount ' + str(folder) + ' without copying. Keep this folder available to run setup again. Backups include the installed app, not these source files.' if mounted else 'Your original files stay in place.')
         action_row_widget.connect('notify::selected', action_changed); action_changed()
     action_row(owner, section, 'Choose another source', '', 'Back', lambda: (dialog.close(), add_app(owner)))
     dialog.present(owner)

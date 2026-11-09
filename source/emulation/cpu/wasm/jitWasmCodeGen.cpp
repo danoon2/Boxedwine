@@ -4159,6 +4159,7 @@ void OPCALL wasmStartJITOp(CPU* cpu, DecodedOp* op) {
         if (++chainedBlocks >= WASM_JIT_CHAIN_BLOCK_LIMIT || cpu->yield ||
                 cpu->thread->terminating || cpu->thread->process->terminated ||
                 cpu->debugTrapActive ||
+                cpu->debugTrapRefreshPending.load(std::memory_order_acquire) ||
                 cpu->thread->ptraceStopped.load(std::memory_order_acquire) ||
                 cpu->jitSignalPending.load(std::memory_order_acquire) ||
                 cpu->thread->pendingSignals || !cpu->nextOp) {

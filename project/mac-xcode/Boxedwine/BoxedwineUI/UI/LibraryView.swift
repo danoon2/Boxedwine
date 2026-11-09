@@ -537,6 +537,8 @@ struct AddAppView: View {
                     }
                     if action == "app" && !prepared.isDirectory {
                         Text("Choose the app’s containing folder so its supporting files are included.").font(.callout).foregroundStyle(.secondary)
+                    } else if action == "installer" && !prepared.requiresCopy {
+                        Text("Mount the installer folder without copying: \(prepared.isDirectory ? prepared.source.path : prepared.source.deletingLastPathComponent().path)\nKeep it available to run setup again. Backups include the installed app, not these source files.").font(.callout).foregroundStyle(.secondary)
                     } else {
                         Text(action == "installer" ? "Copy the setup files into your library, then open the selected installer." : "Copy the app and supporting files into your library.").font(.callout).foregroundStyle(.secondary)
                     }

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "base_sha256": "84b623a3d4fb303728915e871ed2af95ce2ba10203c68b2dd3e596534e61108a",
+  "base_sha256": "bb7bf1807721deafaf98dff10091f27b21e5471d357c7b07330b84cc299aee83",
   "max_bytes": 100000000,
   "provenance": "Paths audited against the pinned TinyCore 15 base. Package ownership was cross-checked with http://tinycorelinux.net/15.x/x86/tcz/*.tcz.list on 2026-09-30; no live package lists are needed to build.",
   "remove_packages": [

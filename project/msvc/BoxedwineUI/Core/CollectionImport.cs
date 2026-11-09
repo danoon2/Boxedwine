@@ -241,6 +241,7 @@ public sealed class PreparedAppSource : IDisposable
     public string Source { get; private set; } = "";
     public string Name { get; private set; } = "";
     public bool IsDirectory => Directory.Exists(Source);
+    public bool RequiresCopy => SafeFiles.IsWithin(Source, temporary);
     public List<string>? DiscImages { get; private set; }
     public List<string> Programs { get; } = [];
     public CollectionSnapshot? Collection { get; private set; }

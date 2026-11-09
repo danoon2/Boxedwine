@@ -55,6 +55,63 @@ class CoreTests(unittest.TestCase):
         (source / 'save.dat').write_bytes(b'saved progress')
         return self.library.import_app(source, 'folder', self.wine, Work())
 
+    def test_local_installer_sources_are_mounted_and_never_copied_or_deleted(self):
+        from boxedwine.imports import PreparedSource
+        for extension in ('.exe', '.MSI'):
+            for folder in (False, True):
+                source = self.directory / ('Setup media ' + extension + str(folder))
+                program_dir = source / 'Setup Files' if folder else source
+                program_dir.mkdir(parents=True)
+                setup = program_dir / ('TheMoviesSetup' + extension)
+                setup.write_bytes(b'MZsetup')
+                (source / 'TheMoviesSetup.split.bin').write_bytes(b'payload')
+                prepared = PreparedSource(source if folder else setup, Work())
+                try:
+                    self.assertFalse(prepared.requires_copy)
+                    app = self.library.import_app(prepared.source, 'installerFolder' if folder else 'installer', self.wine, Work(),
+                                                  installer=setup if folder else None, copy_installer=prepared.requires_copy)
+                finally:
+                    prepared.close()
+                self.assertEqual(app['installerSource'], str(source))
+                self.assertFalse((self.library.path(app) / 'Installer').exists())
+                launch = build_arguments(self.library, app, self.wine_source, installing=True)
+                self.assertEqual(launch[launch.index('-mount') + 1], str(source))
+                self.assertEqual(launch[launch.index('-w') + 1], '/mnt/installer/Setup Files' if folder else '/mnt/installer')
+                self.assertEqual('/unix' in launch, extension == '.MSI')
+                installed = self.library.root(app) / DRIVE_C / 'Game/game.exe'
+                installed.parent.mkdir(parents=True); installed.write_bytes(b'game')
+                app['executable'] = DRIVE_C + '/Game/game.exe'
+                moved = source.with_name(source.name + ' moved'); source.rename(moved)
+                self.assertNotIn('-mount', build_arguments(self.library, app, self.wine_source))
+                with self.assertRaisesRegex(ValueError, 'Installer source folder is unavailable'):
+                    build_arguments(self.library, app, self.wine_source, installing=True)
+                backup = self.directory / (source.name + '.boxedwinebackup')
+                self.library.backup(app, backup, Work())
+                restored = self.library.restore_backup(backup, Work())
+                self.assertEqual(restored['installerSource'], str(source))
+                self.assertFalse((self.library.path(restored) / 'Installer').exists())
+                moved.rename(source)
+                self.assertIn(str(source), build_arguments(self.library, restored, self.wine_source, installing=True))
+                self.library.remove(restored); self.library.delete(restored)
+                self.assertEqual(setup.read_bytes(), b'MZsetup')
+                self.assertEqual((source / 'TheMoviesSetup.split.bin').read_bytes(), b'payload')
+
+    def test_extracted_setup_keeps_managed_files_after_preparation_closes(self):
+        from boxedwine.imports import PreparedSource
+        archive = self.directory / 'setup.zip'
+        with zipfile.ZipFile(archive, 'w') as output:
+            output.writestr('Setup/setup.exe', b'MZsetup'); output.writestr('data.bin', b'payload')
+        prepared = PreparedSource(archive, Work())
+        try:
+            self.assertTrue(prepared.requires_copy)
+            app = self.library.import_app(prepared.source, 'installerFolder', self.wine, Work(),
+                                          installer=prepared.source / 'Setup/setup.exe', copy_installer=prepared.requires_copy)
+        finally:
+            prepared.close()
+        self.assertNotIn('installerSource', app)
+        self.assertEqual((self.library.path(app) / 'Installer/data.bin').read_bytes(), b'payload')
+        self.assertIn(str(self.library.path(app) / 'Installer'), build_arguments(self.library, app, self.wine_source, installing=True))
+
     def test_disc_collection_installs_and_backup_resolves_owned_images(self):
         from boxedwine.imports import CollectionStore
         from boxedwine.cdrom import has_installer

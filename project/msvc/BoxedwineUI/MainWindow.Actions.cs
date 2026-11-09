@@ -94,7 +94,7 @@ public partial class MainWindow
                 {
                     var wine = await EnsureWine(review.Wine, token, progress);
                     return await repository.Import(prepared.Source, review.Kind, review.Windows, wine, token, progress,
-                        review.Kind == "installerFolder" ? SafeFiles.Beneath(prepared.Source, review.Program) : null, review.Name, review.Kind == "folder" ? review.Program : null, prepared.DiscImages);
+                        review.Kind == "installerFolder" ? SafeFiles.Beneath(prepared.Source, review.Program) : null, review.Name, review.Kind == "folder" ? review.Program : null, prepared.DiscImages, copyInstaller: prepared.RequiresCopy);
                 }
             }, app => { Navigate("All Apps", app.Id.ToString()); if (app.HasInstaller) Open(app, installing: true, browseDisc: review.BrowseDisc); else if (app.Executable == null) ChooseMain(app); });
         }

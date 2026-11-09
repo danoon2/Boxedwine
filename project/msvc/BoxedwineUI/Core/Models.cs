@@ -32,6 +32,7 @@ public sealed class LibraryApp
     [JsonRequired] public string Name { get; set; } = "New app";
     public string? Executable { get; set; }
     public string? Installer { get; set; }
+    public string? InstallerSource { get; set; }
     [JsonRequired] public double CreatedAt { get; set; } = DataFormat.Now;
     public double? LastOpened { get; set; }
     public string Resolution { get; set; } = "1024x768";

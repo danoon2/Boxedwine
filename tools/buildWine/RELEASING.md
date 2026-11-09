@@ -8,15 +8,15 @@ The [builder guide](README.md) explains the build internals and prerequisites.
 Review the release plan before starting builds. Commands below are for the later
 execution steps, run from the repository root in WSL unless noted otherwise.
 
-The inventory was reviewed for filesystem 27 on November 8, 2026. Revision 27
-rebuilds both Wine variants and the v51 WebGL DLLs with the Sims 2 extended
-vertex-constant and A8 compatibility patches, and seeds 512 MiB video memory.
-See [RELEASE-v27.md](RELEASE-v27.md) for the artifact receipt and validation.
+The inventory was reviewed for filesystem 29 on November 8, 2026. Revision 29
+backports three upstream ASF reader fixes and retains independent delivery for
+blocking renderers. It reuses the v28 media base and sources and the v51 WebGL
+DLLs. See [RELEASE-v29.md](RELEASE-v29.md) for artifact identities and validation.
 
-The release is staged locally, with repository consumers pinned to `/v2/27/`.
-Upload and verify both archives, refresh `/v2/latest/`, and deploy the staged
-`/v2/26R2/filesV2.xml` before activating those consumers. Earlier versioned
-archives, manifests and release receipts retain their original identities.
+The release is staged locally, with repository consumers pinned to `/v2/29/`.
+Upload and verify both Wine archives, refresh `/v2/latest/`, and deploy the staged
+`/v2/26R2/filesV2.xml` before activating those consumers. Base and media source
+URLs remain under `/v2/28/`. Earlier archives and receipts retain their identities.
 
 ## 1. Agree on the release scope
 
@@ -48,7 +48,7 @@ is a local workaround; release testing must use the candidate ZIP in a fresh roo
 | [`filesystem_wine11.json`](filesystem_wine11.json) | Set `filesystem_version` and select the release's `webgl_config`. Change `wine_tag`/`wine_commit` only when changing upstream Wine. |
 | [`changes_wine11.txt`](changes_wine11.txt) | Add the release entry; its first line must start with the configured `vN`. Preserve previous entries. |
 | [`changes_wine11_web.txt`](changes_wine11_web.txt) | Update the web release entry to the same `vN`. It is prepended to the full history. Update size-savings claims only from new measurements. |
-| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v27.json`](webgl_filesystems_v27.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
+| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v29.json`](webgl_filesystems_v29.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
 | [`webgl_filesystem.py`](webgl_filesystem.py), `DEFAULT_CONFIG` | Advance the build/validation default to the same manifest as the filesystem profile. Preserve the explicitly historical `validate-set` default and historical examples. |
 | [`README.md`](README.md) and this checklist | Update current revision, manifest links, publication status, and release examples; retain clearly labeled historical instructions. |
 

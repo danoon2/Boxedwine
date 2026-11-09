@@ -2,6 +2,8 @@
 import hashlib
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import zipfile
 
 import build_wine
@@ -51,6 +53,34 @@ def write_metadata(overlay, base_zip):
         'gecko': False, 'dxvk': False, 'vulkan': False,
         'independent_prefix_files': True,
     }, indent=2) + '\n', encoding='utf-8')
+
+
+def optimize_archive(path):
+    """Use stronger lossless Deflate when added runtime libraries exceed the cap.
+
+    Keep every member and its Unix permissions, including empty directories and
+    independent writable prefix files. advzip changes only ZIP compression.
+    """
+    limit = load_policy()['max_bytes']
+    if path.stat().st_size < limit:
+        return
+    tool = shutil.which('advzip')
+    if not tool:
+        raise build_wine.BuildError('Install advancecomp (advzip) to compress the web filesystem below its size limit')
+    def inventory():
+        with zipfile.ZipFile(path) as archive:
+            if archive.testzip():
+                raise build_wine.BuildError('ZIP CRC failure during web compression')
+            return {i.filename: (i.CRC, i.file_size, i.external_attr, hashlib.sha256(archive.read(i)).hexdigest())
+                    for i in archive.infolist()}
+    before = inventory()
+    for level in ('-3', '-4'):
+        subprocess.run([tool, '-z', level, '-i', '3', str(path)], check=True)
+        if inventory() != before:
+            raise build_wine.BuildError('Web compression changed archive contents or permissions')
+        if path.stat().st_size < limit:
+            return
+    raise build_wine.BuildError('Web archive still exceeds the size limit after lossless compression')
 
 
 def validate_archive(path):

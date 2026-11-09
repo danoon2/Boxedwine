@@ -126,13 +126,18 @@ public static class LaunchArguments
         else if (installing)
         {
             if (app.Installer == null) throw new InvalidOperationException("This app has no saved installer.");
-            string source = SafeFiles.Beneath(repository.AppDirectory(app), app.Installer);
-            LibraryRepository.CheckInstaller(source);
             bool staged = app.Installer.StartsWith("Installer/");
+            string mount = app.InstallerSource ?? (staged ? SafeFiles.Beneath(repository.AppDirectory(app), "Installer") : Path.GetDirectoryName(SafeFiles.Beneath(repository.AppDirectory(app), app.Installer))!);
+            if (app.InstallerSource != null && (!Path.IsPathFullyQualified(mount) || !Directory.Exists(mount)))
+                throw new IOException("Installer source folder is unavailable: " + mount + "\nRestore the folder to this location, or use Run Another Program to select the installer again.");
+            string source = app.InstallerSource != null ? SafeFiles.Beneath(mount, app.Installer[10..]) : SafeFiles.Beneath(repository.AppDirectory(app), app.Installer);
+            if (app.InstallerSource != null && !File.Exists(source))
+                throw new IOException("Installer is unavailable: " + source + "\nRestore the source files, or use Run Another Program to select the installer again.");
+            LibraryRepository.CheckInstaller(source);
             guest = "/mnt/installer/" + (staged ? app.Installer[10..] : Path.GetFileName(source));
             cwd = guest[..guest.LastIndexOf('/')];
             result.AddRange(overrides);
-            result.AddRange(["-mount", staged ? SafeFiles.Beneath(repository.AppDirectory(app), "Installer") : Path.GetDirectoryName(source)!, "/mnt/installer"]);
+            result.AddRange(["-mount", mount, "/mnt/installer"]);
         }
         else
         {

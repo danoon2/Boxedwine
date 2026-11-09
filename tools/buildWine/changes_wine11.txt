@@ -1,3 +1,7 @@
+v29 Nov 08, 2026 Backport upstream ASF reader seek and destruction fixes. Retain independent delivery only for blocking outputs, with safe flush/seek/shutdown handling. Reuse the v28 media base and the v51 WebGL DLLs. Movie encoding remains unsupported.
+
+v28 Nov 08, 2026 Target GLib 2.78, include PCRE2 and ASF/WMV/WMA playback dependencies, fix ASF reader seeking/preroll deadlocks, and provide a minimal WM ASF Writer filter for application startup. Movie encoding remains unsupported.
+
 v27 Nov 08, 2026 Support extended software/mixed vertex float constants for The Sims 2, with sparse updates and safe OpenGL context cleanup. Hide A8 shadow render targets by default when emulating Windows XP and earlier, with explicit overrides. Seed new prefixes with a 512 MiB video-memory default.
 
 v26 Nov 07, 2026 Reduce per-draw overhead in the bundled WebGL WineD3D: skip constant uploads and vertex-array disables that change nothing, and shrink the streaming vertex buffer, which made the MechWarrior 3 demo several times faster in the browser. Regular Wine graphics behavior is unchanged.

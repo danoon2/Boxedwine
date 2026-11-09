@@ -5934,6 +5934,132 @@ void testSignalReturnDiscardsHandlerLazyFlags() {
     }
 }
 
+void testDormantExecutionBreakpointsKeepBlockExecution() {
+    auto& ctx = testContext();
+    testNewInstruction(0);
+    CPU* cpu = ctx.cpu;
+    const U32 targets[] = {0x90, 0xa4, 0xff, 0x0f};
+    for (U32 i = 0; i < 4; ++i) ctx.thread->debugRegs[i] = targets[i];
+    ctx.thread->debugRegs[7] = 0x155; // The Movies' enabled execution breakpoints.
+    ctx.thread->updateDebugTrapActive();
+    if (cpu->debugTrapActive) testFail("dormant execution breakpoints must not force interpretation");
+    cpu->big = true;
+    for (int i = 0; i < 8; ++i) testPushCode8(0x40); // inc eax
+    testPushCode8(0xcd); testPushCode8(0x97);
+    cpu->reg[0].u32 = 0;
+    cpu->nextOp = cpu->getNextOp();
+#if defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
+    startNewJIT(cpu, TEST_CODE_ADDRESS, cpu->nextOp);
+    if (!cpu->nextOp->pfnJitCode) testFail("dormant breakpoint test did not compile its block");
+#endif
+    cpu->run();
+    if (cpu->reg[0].u32 != 8) testFail("dormant breakpoints fell back to one instruction per dispatch");
+    for (U32 i = 0; i < 4; ++i) {
+        if (ctx.thread->debugRegs[i] != targets[i]) testFail("dormant breakpoint register was discarded");
+    }
+    // The page filter applies only to execution breakpoints, not single-step
+    // state, pending traps, or data watchpoints on ordinary data pages.
+    cpu->flags |= TF;
+    cpu->updateDebugTrapActive();
+    if (!cpu->debugTrapActive) testFail("dormant breakpoint suppressed single stepping");
+    cpu->flags &= ~TF;
+    cpu->pendingDebugTrap = true;
+    cpu->updateDebugTrapActive();
+    if (!cpu->debugTrapActive) testFail("dormant breakpoint suppressed pending trap");
+    cpu->pendingDebugTrap = false;
+    ctx.thread->debugRegs[0] = TEST_HEAP_ADDRESS;
+    ctx.thread->debugRegs[7] = 1 | (1u << 16);
+    ctx.thread->updateDebugTrapActive();
+    if (!cpu->debugTrapActive) testFail("non-executable data watchpoint was disabled");
+    testNewInstruction(0);
+}
+
+void testExecutionBreakpointMappingChanges() {
+    auto& ctx = testContext();
+    testNewInstruction(0);
+    constexpr U32 target = 0x24000000;
+    constexpr U32 rw = K_PROT_READ | K_PROT_WRITE;
+    constexpr U32 rx = K_PROT_READ | K_PROT_EXEC;
+    constexpr U32 fixed = K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS;
+    testPushCode8(0x90); testPushCode8(0xcd); testPushCode8(0x97);
+    ctx.thread->debugRegs[2] = target + 0x80;
+    ctx.thread->debugRegs[7] = 1u << 4;
+    ctx.thread->updateDebugTrapActive();
+    auto dispatch = [&](bool active, const char* operation) {
+        ctx.cpu->eip.u32 = 0; ctx.cpu->nextOp = nullptr;
+        ctx.cpu->run();
+        if (ctx.cpu->debugTrapActive != active) testFail("execution breakpoint state after %s", operation);
+    };
+    dispatch(false, "unmapped target");
+    if (ctx.memory->mmap(ctx.thread, target, K_PAGE_SIZE, rw, fixed, -1, 0) != target) testFail("map breakpoint data page");
+    dispatch(false, "RW mmap");
+    ctx.memory->mprotect(ctx.thread, target, K_PAGE_SIZE, rx);
+    dispatch(true, "RX mprotect");
+    ctx.memory->mprotect(ctx.thread, target, K_PAGE_SIZE, rw);
+    dispatch(false, "RW mprotect");
+    ctx.memory->mmap(ctx.thread, target, K_PAGE_SIZE, rx, fixed, -1, 0);
+    dispatch(true, "executable MAP_FIXED replacement");
+    ctx.memory->unmap(target, K_PAGE_SIZE);
+    dispatch(false, "unmap");
+    ctx.memory->mmap(ctx.thread, target, K_PAGE_SIZE, rx, fixed, -1, 0);
+    dispatch(true, "executable remap");
+    ctx.thread->debugRegs[7] = 0;
+    ctx.thread->updateDebugTrapActive();
+    dispatch(false, "disabled register");
+    ctx.memory->mprotect(ctx.thread, target, K_PAGE_SIZE, rw);
+    if (ctx.cpu->debugTrapRefreshPending.load()) testFail("disabled breakpoint retained a page watcher");
+    ctx.memory->unmap(target, K_PAGE_SIZE);
+    testNewInstruction(0);
+}
+
+void testExecutionBreakpointSharedAddressSpace() {
+    auto& ctx = testContext();
+    testNewInstruction(0);
+    constexpr U32 target = 0x25000000;
+    constexpr U32 rw = K_PROT_READ | K_PROT_WRITE;
+    constexpr U32 rwx = rw | K_PROT_EXEC;
+    ctx.memory->mmap(ctx.thread, target, K_PAGE_SIZE, rw, K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+    testPushCode8(0x90); testPushCode8(0xcd); testPushCode8(0x97);
+    ctx.thread->debugRegs[0] = target;
+    ctx.thread->debugRegs[7] = 1;
+    ctx.thread->updateDebugTrapActive();
+    KProcessPtr child = KProcess::create();
+    child->memory = KMemory::create(child.get());
+    child->memory->clone(ctx.memory, true);
+    KThread* childThread = child->createThread();
+    // A different KMemory wrapper and host thread must notify the original CPU.
+    auto changePermissions = [&]() {
+        ChangeThread current(childThread);
+        child->memory->mprotect(childThread, target, K_PAGE_SIZE, rwx);
+    };
+#ifdef BOXEDWINE_MULTI_THREADED
+    std::thread mapper(changePermissions);
+    mapper.join();
+#else
+    changePermissions();
+#endif
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    if (!ctx.cpu->jitSignalPending.load()) testFail("mapping change did not request a JIT poll exit");
+#endif
+    ctx.cpu->run();
+    if (!ctx.cpu->debugTrapActive) testFail("shared mapping change did not reactivate breakpoint at dispatch");
+    childThread->debugRegs[0] = target;
+    childThread->debugRegs[7] = 1;
+    childThread->updateDebugTrapActive();
+    {
+        ChangeThread current(childThread);
+        child->memory->execvReset(true);
+        childThread->reset();
+    }
+    childThread->cpu->debugTrapRefreshPending.store(false);
+    ctx.memory->mprotect(ctx.thread, target, K_PAGE_SIZE, rw);
+    if (childThread->cpu->debugTrapRefreshPending.load()) testFail("exec-detached CPU retained a watcher in old address space");
+    child->deleteThread(childThread);
+    KSystem::eraseProcess(child->id);
+    ctx.memory->unmap(target, K_PAGE_SIZE);
+    testNewInstruction(0);
+}
+
 void testSignalHandlerClearsTraceFlagUntilReturn() {
     constexpr U32 SIGNAL_STACK_TOP = 0x70000000;
     constexpr U32 SIGNAL_HANDLER = 0x12345000;

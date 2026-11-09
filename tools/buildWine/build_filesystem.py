@@ -550,6 +550,7 @@ def assemble(profile, work, boxedwine, compare_to=None):
     candidate = output.with_suffix('.candidate.zip')
     combine_zip(runtime_zip, complete, candidate, exclude=exclude, compresslevel=9 if is_web(profile) else None)
     if is_web(profile):
+        web_runtime.optimize_archive(candidate)
         report = web_runtime.validate_archive(candidate)
         write_json(work / 'web-runtime-validation.json', report)
     inventory = zip_inventory(candidate)  # Read every member, including CRC validation.

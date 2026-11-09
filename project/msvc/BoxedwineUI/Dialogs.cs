@@ -237,8 +237,8 @@ internal static class Dialogs
         var name = FormWindow.Text(source.Name); form.Field("App name", name);
         var action = FormWindow.Choices(new() { [""] = "Choose how to add these files", ["app"] = "Ready-to-run app", ["installer"] = "Run an installer" }, source.SuggestedAction); form.Field("Add as", action);
         var programs = new ComboBox { MinHeight = 34 }; form.Field("Program", programs);
-        if (!source.IsDirectory) form.Body.Children.Add(FormWindow.Paragraph("For a ready-to-run app, choose its containing folder so supporting files are included."));
-        else form.Body.Children.Add(FormWindow.Paragraph("Boxedwine copies these files into your library. Your original files stay in place."));
+        var folderHint = FormWindow.Paragraph("For a ready-to-run app, choose its containing folder so supporting files are included."); form.Body.Children.Add(folderHint);
+        var storage = FormWindow.Paragraph(""); form.Body.Children.Add(storage);
         var options = new StackPanel(); form.Body.Children.Add(new Expander { Header = "Compatibility options", Content = options });
         var wine = new ComboBox { ItemsSource = wines, SelectedItem = wines.FirstOrDefault(w => w.Sha256 == current?.Sha256) ?? wines.FirstOrDefault(), MinHeight = 34 };
         if (wines.Count > 1) { options.Children.Add(new Label { Content = "Wine version", Target = wine }); options.Children.Add(wine); }
@@ -259,6 +259,10 @@ internal static class Dialogs
             var preferred = candidates.Where(p => kind == "app" ? !new ProgramCandidate(p).IsMaintenance : p.EndsWith(".msi", StringComparison.OrdinalIgnoreCase) || System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(p), "^(setup|install)", System.Text.RegularExpressions.RegexOptions.IgnoreCase)).ToList();
             programs.SelectedItem = preferred.Count == 1 ? preferred[0] : candidates.Count == 1 ? candidates[0] : null;
             add.Content = kind == "installer" ? "Run Installer" : "Add App";
+            folderHint.Visibility = kind == "app" && !source.IsDirectory ? Visibility.Visible : Visibility.Collapsed;
+            storage.Text = kind == "installer" && !source.RequiresCopy
+                ? "Boxedwine mounts this installer folder without copying its files:\n" + (source.IsDirectory ? source.Source : Path.GetDirectoryName(Path.GetFullPath(source.Source))) + "\nKeep it available to run setup again. Backups include the installed app, but not these source files."
+                : "Boxedwine copies these files into your library. Your original files stay in place.";
         }
         action.SelectionChanged += (_, _) => Changed(); Changed(); form.ShowDialog(); return result;
     }

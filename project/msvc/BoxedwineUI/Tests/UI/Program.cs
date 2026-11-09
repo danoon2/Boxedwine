@@ -28,6 +28,7 @@ internal static partial class Program
             if (args.Contains("--cdrom-settings")) { CheckCdromSettings(destination); return 0; }
             if (args.Contains("--advanced-settings")) { CheckAdvancedSettings(destination); return 0; }
             if (args.Contains("--source-errors")) { CheckSourceImports(destination); return 0; }
+            if (args.Contains("--installer-sources")) { CheckInstallerSources(destination); return 0; }
             if (args.Contains("--storage")) { CheckStorage(destination); return 0; }
             CheckRuntimeIcons(destination, args);
             var catalog = Packages.Catalog(Path.Combine(AppContext.BaseDirectory, "Resources"));

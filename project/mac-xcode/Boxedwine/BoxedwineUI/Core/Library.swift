@@ -16,6 +16,8 @@ struct LibraryApp: Codable, Identifiable, Equatable, Sendable {
     var name: String
     var executable: String?
     var installer: String?
+    var installerSource: String?
+    var installerBookmark: Data?
     var installFromDisc: Bool?
     var hasInstaller: Bool { installer != nil || installFromDisc == true }
     var createdAt = Date()
@@ -196,6 +198,7 @@ struct LibraryRepository: Sendable {
             guard !app.hasBoxedwineArguments || document.version >= 9 else { throw BoxedwineArgumentError.invalid("These settings require library format 9.") }
             if let executable = app.executable { _ = try confinedURL(executable, beneath: root(for: app)) }
             if let installer = app.installer { _ = try confinedURL(installer, beneath: appDirectory(app)) }
+            try InstallerSourceAccess.validate(app)
             if let reference = app.winePackage {
                 try reference.validate()
                 guard document.version >= 7, reference.wineVersion == app.savedWineVersion else { throw SharedWineError.invalidReference }
@@ -287,8 +290,12 @@ struct LibraryRepository: Sendable {
     }
 
     func importInstaller(_ source: URL, name: String, windowsVersion: WindowsVersion = .wineDefault,
-                         wine: WineImportSelection? = nil, control: ImportControl = ImportControl()) throws -> LibraryApp {
+                         wine: WineImportSelection? = nil, control: ImportControl = ImportControl(), copySource: Bool = true) throws -> LibraryApp {
         guard ["exe", "msi"].contains(source.pathExtension.lowercased()) else { throw LibraryError.invalidInstaller }
+        if !copySource {
+            return try importInstallerFolder(source.deletingLastPathComponent(), installer: source, name: name,
+                                             windowsVersion: windowsVersion, wine: wine, control: control, copySource: false)
+        }
         var app = LibraryApp(name: name)
         app.chooseWindowsVersion(windowsVersion)
         app.installer = "Installer/" + source.lastPathComponent
@@ -309,10 +316,11 @@ struct LibraryRepository: Sendable {
         }
     }
 
-    /// Copy the selected media tree as a unit; the runtime mounts only this private copy.
+    /// Temporary downloads/archives are retained; local media can stay in place.
     func importInstallerFolder(_ folder: URL, installer: URL, name: String,
                                windowsVersion: WindowsVersion = .wineDefault, wine: WineImportSelection? = nil,
-                               control: ImportControl = ImportControl()) throws -> LibraryApp {
+                               control: ImportControl = ImportControl(), copySource: Bool = true) throws -> LibraryApp {
+        let sourceBookmark: Data? = try copySource ? nil : CdromImages.bookmark(for: folder)
         let relative = try installerPath(installer, in: folder)
         let folder = folder.resolvingSymlinksInPath().standardizedFileURL
         // Selecting the library (or one of its ancestors) would recursively copy our destination.
@@ -321,12 +329,16 @@ struct LibraryRepository: Sendable {
         var app = LibraryApp(name: name)
         app.chooseWindowsVersion(windowsVersion)
         app.installer = "Installer/" + relative
+        if !copySource { app.installerSource = folder.path; app.installerBookmark = sourceBookmark }
         _ = try beginOperation(kind: .installer, name: name, id: app.id)
         do {
             try prepare(app)
-            let destination = appDirectory(app).appendingPathComponent("Installer", isDirectory: true)
-            try ImportCopier.copy(folder, to: destination, directory: true, control: control)
-            _ = try installerPath(destination.appendingPathComponent(relative), in: destination)
+            if copySource {
+                let destination = appDirectory(app).appendingPathComponent("Installer", isDirectory: true)
+                try ImportCopier.copy(folder, to: destination, directory: true, control: control)
+                _ = try installerPath(destination.appendingPathComponent(relative), in: destination)
+            }
+            try control.checkCancellation()
             try saveImportWine(wine, for: &app, control: control)
             try markAppCopyReady(app, control: control)
             return app
@@ -608,12 +620,22 @@ struct LaunchRequest: Sendable {
         }
         if installing {
             guard let installer = app.installer else { throw LibraryError.invalidInstaller }
-            let source = try repository.confinedURL(installer, beneath: repository.appDirectory(app))
+            try InstallerSourceAccess.validate(app)
+            let usesStaging = installer.hasPrefix("Installer/")
+            let source: URL
+            let mount: URL
+            if let path = app.installerSource {
+                guard path.hasPrefix("/"), FileManager.default.isReadableFile(atPath: path) else { throw InstallerSourceError.unavailable(path) }
+                mount = URL(fileURLWithPath: path)
+                source = try repository.confinedURL(String(installer.dropFirst("Installer/".count)), beneath: mount)
+                guard FileManager.default.fileExists(atPath: source.path) else { throw InstallerSourceError.unavailable(path) }
+            } else {
+                source = try repository.confinedURL(installer, beneath: repository.appDirectory(app))
+                mount = usesStaging ? try repository.confinedURL("Installer", beneath: repository.appDirectory(app)) : source.deletingLastPathComponent()
+            }
             guard try source.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true else { throw LibraryError.invalidInstaller }
             // Nested setup programs may read sibling/parent payload folders. Preserve
-            // the full staged Installer tree and use the selected program's own cwd.
-            let usesStaging = installer.hasPrefix("Installer/")
-            let mount = usesStaging ? try repository.confinedURL("Installer", beneath: repository.appDirectory(app)) : source.deletingLastPathComponent()
+            // the selected source tree and use the setup program's own cwd.
             let relative = usesStaging ? String(installer.dropFirst("Installer/".count)) : source.lastPathComponent
             let guest = "/mnt/installer/" + relative
             result += overrides + ["-mount", mount.path, "/mnt/installer", "-w", (guest as NSString).deletingLastPathComponent, "/bin/wine"]
@@ -632,6 +654,56 @@ struct LaunchRequest: Sendable {
         result += overrides
         return result + ["-w", (guest as NSString).deletingLastPathComponent, "/bin/wine", guest] + (alternateExecutable == nil ? app.arguments : [])
     }
+}
+
+enum InstallerSourceError: LocalizedError {
+    case unavailable(String), invalid
+    var errorDescription: String? {
+        switch self {
+        case .unavailable(let path): "Installer source folder is unavailable: \(path)\nRestore it to this location, or use Run Another Program to select the installer again."
+        case .invalid: "Invalid installer source folder or access bookmark."
+        }
+    }
+}
+
+/// Retains a saved folder grant for setup and transfers it to the sandboxed engine.
+final class InstallerSourceAccess {
+    let folder: URL
+    let runtimeBookmark: Data
+    private let scoped: Bool
+
+    static func validate(_ app: LibraryApp) throws {
+        if let path = app.installerSource {
+            guard !path.hasPrefix("Discs/"), app.installer?.hasPrefix("Installer/") == true else { throw InstallerSourceError.invalid }
+            try CdromImages.validate([path])
+        }
+        if let bookmark = app.installerBookmark {
+            guard app.installerSource != nil, !bookmark.isEmpty, bookmark.count <= 48 * 1024 else { throw InstallerSourceError.invalid }
+        }
+    }
+
+    init(app: LibraryApp) throws {
+        try Self.validate(app)
+        guard let path = app.installerSource, path.hasPrefix("/") else { throw InstallerSourceError.invalid }
+        var folder = URL(fileURLWithPath: path)
+        if let data = app.installerBookmark {
+            var stale = false
+            folder = try URL(resolvingBookmarkData: data, options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale)
+        }
+        let scoped = folder.startAccessingSecurityScopedResource()
+        do {
+            guard folder.resolvingSymlinksInPath().standardizedFileURL.path == path,
+                  try folder.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true else { throw InstallerSourceError.unavailable(path) }
+            let bookmark = try folder.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
+            guard bookmark.count <= 48 * 1024 else { throw InstallerSourceError.invalid }
+            self.folder = folder; self.scoped = scoped; self.runtimeBookmark = bookmark
+        } catch {
+            if scoped { folder.stopAccessingSecurityScopedResource() }
+            throw InstallerSourceError.unavailable(path)
+        }
+    }
+
+    deinit { if scoped { folder.stopAccessingSecurityScopedResource() } }
 }
 
 enum InstallerFolderError: LocalizedError {

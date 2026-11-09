@@ -300,6 +300,7 @@ public:
     bool debugTrapOnNextInstruction = false;
     bool pendingDebugTrap = false;
     bool debugTrapActive = false;
+    std::atomic<bool> debugTrapRefreshPending { false };
     U32 pendingDebugTrapCode = 0;
     U32 pendingDebugTrapDr6 = 0;
     DecodedOp*** opCache = nullptr;
@@ -350,6 +351,8 @@ public:
     void setFlags(U32 flags, U32 mask);
     void setMxcsr(U32 value);
     void updateDebugTrapActive();
+    void requestDebugTrapRefresh();
+    void refreshDebugTrapIfNeeded();
     bool startDebugInstruction();
     bool finishDebugInstruction();
 

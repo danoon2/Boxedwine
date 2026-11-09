@@ -242,7 +242,7 @@ struct NativeHelpView: View {
                     Text("Use Compatibility options during review if the app requires a particular Windows or Wine version. The choice takes effect before the installer or app first opens.")
                     explanation("Add App", "For an app that runs without installation. Choose its program and include its supporting files in the folder or ZIP.")
                     explanation("Run Installer", "For an .exe or .msi setup program. Choose a folder or ZIP when setup needs nearby data files.")
-                    Text("Boxedwine copies those files into your library. After an installer closes, choose the program you want to open and save it to the library. If setup did not finish, open Troubleshooting and use Run Installer Again.")
+                    Text("Local installers mount their source folder without copying. Keep it available to run setup again; backups do not include the original setup files. Apps, downloads and extracted ZIP contents are copied into your library. After an installer closes, choose the installed program you want to open. If setup did not finish, open Troubleshooting and use Run Installer Again.")
                 }
                 topic("Add or update a collection", symbol: "folder.badge.plus") {
                     Text("Choose Add to Library → Collection, then a JSON file or URL. Review the destination folder and the new, updated, and unchanged counts. Reimporting into the same folder matches stable app IDs, so it updates listings without duplicates. URL imports remember their sources: use Refresh to check for changes, then Apply Changes. Local files can be reimported.")

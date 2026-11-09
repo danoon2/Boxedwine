@@ -4,7 +4,25 @@ The native Mac, Windows, and Linux launchers use **Add to Library**:
 
 1. Choose **App or installer**, **Collection**, or **Restore a backup**.
 2. Choose a file, folder, or direct download URL. Collections accept local or downloaded JSON. Restore uses an existing `.boxedwinebackup` package/folder.
-3. Review the destination and action. A ZIP is extracted into temporary storage before review. Choose the app program or installer; supporting files are copied together. Compatibility settings are optional. Nothing runs during inspection.
+3. Review the destination and action. A ZIP is extracted into temporary storage before review. Choose the app program or installer. Compatibility settings are optional. Nothing runs during inspection.
+
+Local installers stay in their original location on Windows, macOS, and Linux.
+Choosing or dropping an EXE/MSI mounts its containing directory so setup can
+read nearby BIN/CAB files. Choosing an installer folder mounts the whole selected
+folder, preserving subfolders and the selected installer's working directory.
+The launcher does not copy the setup EXE or its payload into the library.
+Keep the source folder available to use **Run Installer Again**. The installed
+app lives in the library and can run without that source, unless the app itself
+requires the installation media. On sandboxed macOS, selecting a single installer
+also asks for access to its containing folder; that folder grant is saved for reruns.
+
+Downloaded installers and setup files extracted from ZIPs are retained in the
+library before temporary storage is removed. Ready-to-run apps still copy their
+selected folder or extracted ZIP contents. Existing imports with copied setup
+files continue to use those copies. Backups and Wine trial copies preserve local
+installer source references without copying the external media; removing an app
+does not remove its original installer folder. If a source is moved or unavailable,
+restore it to the saved location or select setup through **Run Another Program**.
 
 App downloads support direct ZIP, EXE, and MSI links, up to 1 GiB. Collection JSON is limited to 1 MiB. Redirects cannot switch from HTTPS to HTTP. Downloads and extraction can be cancelled; failed or cancelled preparation removes temporary files. The Mac App Store build supports collection imports from files and URLs, remote icons, refresh, and installing apps from imported listings using its included Wine. It does not bundle a demo catalog or download additional Wine packages; direct app/installer URL imports remain unavailable there.
 

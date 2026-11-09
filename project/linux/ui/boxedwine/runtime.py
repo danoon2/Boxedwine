@@ -177,11 +177,16 @@ def build_arguments(library, app, wine, installing=False, alternate=None, extern
     elif installing:
         if not app.get('installer'):
             raise ValueError('This app has no saved installer.')
-        source = check_installer(beneath(library.path(app), app['installer']))
         staged = app['installer'].startswith('Installer/')
+        mount = Path(app['installerSource']) if app.get('installerSource') else beneath(library.path(app), 'Installer') if staged else beneath(library.path(app), app['installer']).parent
+        if app.get('installerSource') and (not mount.is_absolute() or not mount.is_dir()):
+            raise ValueError('Installer source folder is unavailable: ' + str(mount) + '\nRestore the folder to this location, or use Run Another Program to select the installer again.')
+        source = beneath(mount, app['installer'][10:]) if app.get('installerSource') else beneath(library.path(app), app['installer'])
+        if app.get('installerSource') and not source.is_file():
+            raise ValueError('Installer is unavailable: ' + str(source) + '\nRestore the source files, or use Run Another Program to select the installer again.')
+        source = check_installer(source)
         guest = '/mnt/installer/' + (app['installer'][10:] if staged else source.name)
         cwd = guest.rsplit('/', 1)[0]
-        mount = beneath(library.path(app), 'Installer') if staged else source.parent
         result += extra + ['-mount', str(mount), '/mnt/installer']
     else:
         executable = alternate or app.get('executable')

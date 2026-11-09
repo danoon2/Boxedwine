@@ -121,6 +121,7 @@ public:
     void checkDebugTrapOnMemoryWrite(U32 address, U32 len) { if (debugMemoryWriteTrapActive.load(std::memory_order_relaxed)) checkDebugTrapOnMemoryWriteSlow(address, len); }
     void checkDebugTrapOnMemoryWriteSlow(U32 address, U32 len);
     void updateDebugMemoryWriteTrapActive();
+    void updateDebugExecutionBreakpoints(KThread* thread);
     U16 readw(U32 address);
     U8  readb(U32 address);
     void writeq(U32 address, U64 value);

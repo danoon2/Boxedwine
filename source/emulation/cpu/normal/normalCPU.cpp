@@ -533,6 +533,7 @@ void NormalCPU::run() {
         return;
     }
 #endif
+    refreshDebugTrapIfNeeded();
     if (debugTrapActive) {
         runNextSingleOp();
         return;

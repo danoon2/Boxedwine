@@ -135,6 +135,9 @@ bool KMemoryData::isPageValid(U32 page) {
 }
 
 void KMemoryData::onPageChanged(U32 index) {
+    if (hasDebugExecutionBreakpoints.load(std::memory_order_acquire)) {
+        debugExecutionPageChanged(index);
+    }
 #ifdef BOXEDWINE_MEM_CACHE
     if (mmu[index].canReadRam) {
         readCache[index] = (U8*)((mmu[index].ramIndex << K_PAGE_SHIFT) - (index << K_PAGE_SHIFT));
@@ -179,6 +182,49 @@ void KMemoryData::onPageChanged(U32 index) {
             std::fill(linearMemoryMappings.begin() + groupFirstPage, linearMemoryMappings.begin() + groupFirstPage + pageCount, newMapping);
         };
         updateGroup(firstPage);
+    }
+}
+
+void KMemoryData::removeDebugExecutionBreakpointsLocked(U32 threadId) {
+    for (auto page = debugExecutionBreakpoints.begin(); page != debugExecutionBreakpoints.end();) {
+        page->second.erase(threadId);
+        if (page->second.empty()) {
+            page = debugExecutionBreakpoints.erase(page);
+        } else {
+            ++page;
+        }
+    }
+}
+
+void KMemoryData::removeDebugExecutionBreakpoints(U32 threadId) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(debugExecutionBreakpointsMutex);
+    removeDebugExecutionBreakpointsLocked(threadId);
+    hasDebugExecutionBreakpoints.store(!debugExecutionBreakpoints.empty(), std::memory_order_release);
+}
+
+void KMemoryData::updateDebugExecutionBreakpoints(KThread* thread) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(debugExecutionBreakpointsMutex);
+    removeDebugExecutionBreakpointsLocked(thread->id);
+    U32 dr7 = thread->debugRegs[7];
+    if (thread->cpu) {
+        for (U32 i = 0; i < 4 && (dr7 & 0xff); ++i) {
+            U32 enabled = (dr7 >> (i * 2)) & 3;
+            U32 type = (dr7 >> (16 + i * 4)) & 3;
+            if (enabled && type == 0) {
+                debugExecutionBreakpoints[thread->debugRegs[i] >> K_PAGE_SHIFT][thread->id] = thread->cpu;
+            }
+        }
+    }
+    hasDebugExecutionBreakpoints.store(!debugExecutionBreakpoints.empty(), std::memory_order_release);
+}
+
+void KMemoryData::debugExecutionPageChanged(U32 page) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(debugExecutionBreakpointsMutex);
+    auto watchers = debugExecutionBreakpoints.find(page);
+    if (watchers != debugExecutionBreakpoints.end()) {
+        for (const auto& watcher : watchers->second) {
+            watcher.second->requestDebugTrapRefresh();
+        }
     }
 }
 

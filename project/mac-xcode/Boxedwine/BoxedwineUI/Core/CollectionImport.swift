@@ -270,6 +270,7 @@ final class PreparedAppSource: @unchecked Sendable {
     let collection: CollectionSnapshot?
     private let temporary: URL
     private let scoped: Bool
+    var requiresCopy: Bool { source.standardizedFileURL.path.hasPrefix(temporary.standardizedFileURL.path + "/") }
     static func validURL(_ url: URL) -> Bool {
         ["http", "https"].contains(url.scheme?.lowercased() ?? "") && !(url.host ?? "").isEmpty && url.user == nil && url.password == nil && url.fragment == nil && url.port != 0
     }

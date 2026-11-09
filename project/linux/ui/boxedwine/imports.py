@@ -178,6 +178,10 @@ class PreparedSource:
             raise
 
     @property
+    def requires_copy(self):
+        return self.source.is_relative_to(self.directory)
+
+    @property
     def suggested_action(self):
         setups = [p for p in self.programs if Path(p).suffix.lower() == '.msi' or re.match(r'^(setup|install)', Path(p).stem, re.I)]
         apps = [p for p in self.programs if Path(p).suffix.lower() == '.exe' and not re.match(r'^(setup|install|unins|unwise|update|crash)', Path(p).stem, re.I)]

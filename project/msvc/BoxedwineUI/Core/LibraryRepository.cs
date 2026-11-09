@@ -85,6 +85,10 @@ public sealed class LibraryRepository : IDisposable
             _ = SafeFiles.Beneath(Root(app), app.Executable);
         }
         if (app.Installer != null) _ = SafeFiles.Beneath(AppDirectory(app), app.Installer);
+        if (app.InstallerSource is { } source && (source.Length is 0 or > 8192 || source.Any(char.IsControl) ||
+            !(Path.IsPathFullyQualified(source) || source.StartsWith('/')) ||
+            app.Installer?.StartsWith("Installer/", StringComparison.Ordinal) != true))
+            throw new InvalidDataException("Invalid installer source folder.");
         if (app.WinePackage is { } wine) { ValidateReference(wine); if (wine.WineVersion != app.SavedWineVersion) throw new InvalidDataException("The saved Wine version does not match its package."); }
         if (!LaunchArguments.WindowsVersions.ContainsKey(app.PreferredWindows) || !new[] { "wineDefault", "glx", "egl" }.Contains(app.PreferredBackend) || !new[] { "wineDefault", "openGL", "gdi" }.Contains(app.PreferredRenderer)) throw new InvalidDataException("Unknown Wine configuration setting.");
         if (app.WindowsVersionPending == true && app.WindowsVersion == null || app.OpenGLBackendPending == true && app.OpenGLBackend == null || app.WineRendererPending == true && app.WineRenderer == null) throw new InvalidDataException("A pending Wine setting has no requested value.");
@@ -218,7 +222,7 @@ public sealed class LibraryRepository : IDisposable
         }
         return result.OrderBy(p => p.CreatedAt).ToList();
     }
-    public async Task<LibraryApp> Import(string source, string kind, string windows, WineReference wine, CancellationToken cancellation, IProgress<OperationProgress>? progress = null, string? installer = null, string? name = null, string? program = null, IReadOnlyList<string>? discImages = null)
+    public async Task<LibraryApp> Import(string source, string kind, string windows, WineReference wine, CancellationToken cancellation, IProgress<OperationProgress>? progress = null, string? installer = null, string? name = null, string? program = null, IReadOnlyList<string>? discImages = null, bool copyInstaller = true)
     {
         source = Path.GetFullPath(source);
         if (SafeFiles.IsWithin(DirectoryPath, source) || SafeFiles.IsWithin(source, DirectoryPath) || source.Equals(DirectoryPath, StringComparison.OrdinalIgnoreCase)) throw new IOException("Choose a folder outside the Boxedwine library.");
@@ -251,13 +255,15 @@ public sealed class LibraryRepository : IDisposable
                 if (installer == null || !SafeFiles.IsWithin(installer, source)) throw new IOException("Choose an installer inside the selected folder.");
                 CheckInstaller(installer);
                 app.Installer = "Installer/" + Path.GetRelativePath(source, installer).Replace('\\', '/');
-                await SafeFiles.CopyTree(source, SafeFiles.Beneath(AppDirectory(app), "Installer"), cancellation, progress);
+                if (copyInstaller) await SafeFiles.CopyTree(source, SafeFiles.Beneath(AppDirectory(app), "Installer"), cancellation, progress);
+                else app.InstallerSource = source;
             }
             else
             {
                 CheckInstaller(source);
                 app.Installer = "Installer/" + Path.GetFileName(source);
-                await SafeFiles.CopyFile(source, SafeFiles.Beneath(AppDirectory(app), app.Installer), cancellation, progress);
+                if (copyInstaller) await SafeFiles.CopyFile(source, SafeFiles.Beneath(AppDirectory(app), app.Installer), cancellation, progress);
+                else app.InstallerSource = Path.GetDirectoryName(source)!;
             }
             cancellation.ThrowIfCancellationRequested();
             Commit(operation);

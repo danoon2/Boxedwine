@@ -1,0 +1,120 @@
+diff --git a/dlls/qasf/Makefile.in b/dlls/qasf/Makefile.in
+index 7b3767d7b0c..b7813005b1e 100644
+--- a/dlls/qasf/Makefile.in
++++ b/dlls/qasf/Makefile.in
+@@ -3,6 +3,7 @@ IMPORTS   = strmbase dmoguids strmiids uuid ole32 oleaut32 wmvcore msvcrt
+ 
+ SOURCES = \
+ 	asfreader.c \
++	asfwriter.c \
+ 	dmowrapper.c \
+ 	qasf_classes.idl \
+ 	qasf_main.c \
+diff --git a/dlls/qasf/asfwriter.c b/dlls/qasf/asfwriter.c
+new file mode 100644
+index 00000000000..eea49ca3ec0
+--- /dev/null
++++ b/dlls/qasf/asfwriter.c
+@@ -0,0 +1,54 @@
++/*
++ * Minimal ASF writer filter for applications that check media availability.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ */
++
++#include "qasf_private.h"
++
++WINE_DEFAULT_DEBUG_CHANNEL(quartz);
++
++static struct strmbase_pin *asf_writer_get_pin(struct strmbase_filter *filter, unsigned int index)
++{
++    return NULL;
++}
++
++static void asf_writer_destroy(struct strmbase_filter *filter)
++{
++    strmbase_filter_cleanup(filter);
++    free(filter);
++}
++
++static HRESULT asf_writer_init_stream(struct strmbase_filter *filter)
++{
++    FIXME("ASF encoding is not implemented.\n");
++    return E_NOTIMPL;
++}
++
++static const struct strmbase_filter_ops asf_writer_ops =
++{
++    .filter_get_pin = asf_writer_get_pin,
++    .filter_destroy = asf_writer_destroy,
++    .filter_init_stream = asf_writer_init_stream,
++};
++
++HRESULT asf_writer_create(IUnknown *outer, IUnknown **out)
++{
++    struct strmbase_filter *filter;
++
++    if (!(filter = calloc(1, sizeof(*filter))))
++        return E_OUTOFMEMORY;
++
++    strmbase_filter_init(filter, outer, &CLSID_WMAsfWriter, &asf_writer_ops);
++    *out = &filter->IUnknown_inner;
++    TRACE("Created WM ASF writer %p.\n", filter);
++    return S_OK;
++}
+diff --git a/dlls/qasf/qasf_classes.idl b/dlls/qasf/qasf_classes.idl
+index b6f6c58fedc..7cf36ea48b1 100644
+--- a/dlls/qasf/qasf_classes.idl
++++ b/dlls/qasf/qasf_classes.idl
+@@ -32,3 +32,10 @@ coclass DMOWrapperFilter {}
+     uuid(187463a0-5bb7-11d3-acbe-0080c75e246e),
+ ]
+ coclass WMAsfReader {}
++
++[
++    helpstring("WM ASF Writer"),
++    threading(both),
++    uuid(7c23220e-55bb-11d3-8b16-00c04fb6bd3d),
++]
++coclass WMAsfWriter {}
+diff --git a/dlls/qasf/qasf_main.c b/dlls/qasf/qasf_main.c
+index d32a9da12b5..e8a1c1530d1 100644
+--- a/dlls/qasf/qasf_main.c
++++ b/dlls/qasf/qasf_main.c
+@@ -96,6 +96,7 @@ static const IClassFactoryVtbl class_factory_vtbl =
+     class_factory_LockServer,
+ };
+ 
++static struct class_factory asf_writer_cf = {{&class_factory_vtbl}, asf_writer_create};
+ static struct class_factory asf_reader_cf = {{&class_factory_vtbl}, asf_reader_create};
+ static struct class_factory dmo_wrapper_cf = {{&class_factory_vtbl}, dmo_wrapper_create};
+ 
+@@ -118,6 +119,8 @@ HRESULT WINAPI DllGetClassObject(REFCLSID clsid, REFIID iid, void **out)
+ 
+     if (IsEqualGUID(clsid, &CLSID_DMOWrapperFilter))
+         return IClassFactory_QueryInterface(&dmo_wrapper_cf.IClassFactory_iface, iid, out);
++    if (IsEqualGUID(clsid, &CLSID_WMAsfWriter))
++        return IClassFactory_QueryInterface(&asf_writer_cf.IClassFactory_iface, iid, out);
+     if (IsEqualGUID(clsid, &CLSID_WMAsfReader))
+         return IClassFactory_QueryInterface(&asf_reader_cf.IClassFactory_iface, iid, out);
+ 
+diff --git a/dlls/qasf/qasf_private.h b/dlls/qasf/qasf_private.h
+index 7b00ddf0c6b..55954b05ee5 100644
+--- a/dlls/qasf/qasf_private.h
++++ b/dlls/qasf/qasf_private.h
+@@ -29,6 +29,7 @@
+ #include "wine/debug.h"
+ #include "wine/strmbase.h"
+ 
++HRESULT asf_writer_create(IUnknown *outer, IUnknown **out);
+ HRESULT asf_reader_create(IUnknown *outer, IUnknown **out);
+ HRESULT dmo_wrapper_create(IUnknown *outer, IUnknown **out);
+ 

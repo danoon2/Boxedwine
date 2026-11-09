@@ -71,8 +71,8 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     this->reg8[7] = &this->reg[3].h8;  
     this->reg8[8] = &this->reg[8].u8;  
 
-    this->reset();
     this->fpu.reset();
+    this->reset();
 
 #ifdef BOXEDWINE_JIT_ARMV8
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[0] = 2147483648.0;
@@ -218,6 +218,7 @@ void CPU::reset() {
     this->debugTrapOnNextInstruction = false;
     this->pendingDebugTrap = false;
     this->debugTrapActive = false;
+    this->debugTrapRefreshPending.store(false, std::memory_order_release);
     this->pendingDebugTrapCode = 0;
     this->pendingDebugTrapDr6 = 0;
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -1122,7 +1123,25 @@ void CPU::setFlags(U32 flags, U32 mask) {
 }
 
 void CPU::updateDebugTrapActive() {
-    this->debugTrapActive = this->debugTrapOnNextInstruction || this->pendingDebugTrap || (this->flags & TF) || (this->thread && !this->thread->inSignal && (this->thread->debugRegs[7] & 0xff));
+    this->debugTrapActive = this->debugTrapOnNextInstruction || this->pendingDebugTrap || (this->flags & TF) ||
+        (this->thread && !this->thread->inSignal &&
+            (this->thread->hasMemoryWriteBreakpointEnabled() || this->thread->hasExecutableBreakpointEnabled()));
+}
+
+void CPU::requestDebugTrapRefresh() {
+    // Mapping changes can come from another host thread. Only the owning CPU
+    // updates its execution state; the existing JIT poll brings it back here.
+    this->debugTrapRefreshPending.store(true, std::memory_order_release);
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_MULTI_THREADED)
+    this->jitSignalPending.store(1, std::memory_order_release);
+#endif
+}
+
+void CPU::refreshDebugTrapIfNeeded() {
+    if (this->debugTrapRefreshPending.load(std::memory_order_acquire) &&
+        this->debugTrapRefreshPending.exchange(false, std::memory_order_acq_rel)) {
+        this->updateDebugTrapActive();
+    }
 }
 
 bool CPU::startDebugInstruction() {

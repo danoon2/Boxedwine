@@ -88,6 +88,7 @@ public:
     void signalDebugTrap(U32 code, U32 dr6);
     bool debugTrapBeforeInstruction();
     bool hasHardwareBreakpointAt(U32 address) const;
+    bool hasExecutableBreakpointEnabled() const;
     bool hasMemoryWriteBreakpointEnabled() const;
     void updateDebugTrapActive();
     void checkDebugTrapOnMemoryWrite(U32 address, U32 len);

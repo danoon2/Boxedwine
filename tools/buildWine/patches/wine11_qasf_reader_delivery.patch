@@ -1,0 +1,303 @@
+diff --git a/dlls/qasf/asfreader.c b/dlls/qasf/asfreader.c
+index ec7a0310e0a..06db0721d6b 100644
+--- a/dlls/qasf/asfreader.c
++++ b/dlls/qasf/asfreader.c
+@@ -161,6 +161,12 @@ struct asf_stream
+     struct strmbase_source source;
+     struct SourceSeeking seek;
+     DWORD index;
++
++    CRITICAL_SECTION delivery_cs;
++    CONDITION_VARIABLE delivery_cv;
++    HANDLE delivery_thread;
++    IMediaSample *pending_sample;
++    BOOL delivery_busy, delivery_stop, flushing, eos;
+ };
+ 
+ struct asf_reader
+@@ -178,6 +184,7 @@ struct asf_reader
+     IWMReaderCallback *callback;
+     IWMReader *reader;
+ 
++    LONGLONG start;
+     UINT stream_count;
+     struct asf_stream streams[16];
+ };
+@@ -192,6 +199,102 @@ static inline struct asf_reader *asf_reader_from_asf_stream(struct asf_stream *s
+     return CONTAINING_RECORD(stream, struct asf_reader, streams[stream->index]);
+ }
+ 
++/* A renderer may block Receive while paused. Deliver each output separately,
++ * so that video preroll cannot prevent the audio renderer from receiving data. */
++static DWORD WINAPI asf_stream_deliver(void *arg)
++{
++    struct asf_stream *stream = arg;
++    IMediaSample *sample;
++
++    EnterCriticalSection(&stream->delivery_cs);
++    while (!stream->delivery_stop)
++    {
++        if (!stream->pending_sample && !stream->eos)
++        {
++            SleepConditionVariableCS(&stream->delivery_cv, &stream->delivery_cs, INFINITE);
++            continue;
++        }
++        sample = stream->pending_sample;
++        stream->pending_sample = NULL;
++        stream->delivery_busy = TRUE;
++        if (!sample) stream->eos = FALSE;
++        WakeAllConditionVariable(&stream->delivery_cv);
++        LeaveCriticalSection(&stream->delivery_cs);
++
++        if (sample)
++        {
++            IMemInputPin_Receive(stream->source.pMemInputPin, sample);
++            IMediaSample_Release(sample);
++        }
++        else
++            IPin_EndOfStream(stream->source.pin.peer);
++
++        EnterCriticalSection(&stream->delivery_cs);
++        stream->delivery_busy = FALSE;
++        WakeAllConditionVariable(&stream->delivery_cv);
++    }
++    LeaveCriticalSection(&stream->delivery_cs);
++    return 0;
++}
++
++static void asf_reader_begin_flush(struct asf_reader *filter)
++{
++    UINT i;
++
++    for (i = 0; i < filter->stream_count; ++i)
++    {
++        struct asf_stream *stream = filter->streams + i;
++        EnterCriticalSection(&stream->delivery_cs);
++        stream->flushing = TRUE;
++        stream->eos = FALSE;
++        if (stream->pending_sample) IMediaSample_Release(stream->pending_sample);
++        stream->pending_sample = NULL;
++        WakeAllConditionVariable(&stream->delivery_cv);
++        LeaveCriticalSection(&stream->delivery_cs);
++        if (stream->source.pin.peer) IPin_BeginFlush(stream->source.pin.peer);
++    }
++    for (i = 0; i < filter->stream_count; ++i)
++    {
++        struct asf_stream *stream = filter->streams + i;
++        EnterCriticalSection(&stream->delivery_cs);
++        while (stream->delivery_busy)
++            SleepConditionVariableCS(&stream->delivery_cv, &stream->delivery_cs, INFINITE);
++        LeaveCriticalSection(&stream->delivery_cs);
++    }
++}
++
++static void asf_reader_end_flush(struct asf_reader *filter)
++{
++    UINT i;
++
++    for (i = 0; i < filter->stream_count; ++i)
++    {
++        struct asf_stream *stream = filter->streams + i;
++        if (stream->source.pin.peer) IPin_EndFlush(stream->source.pin.peer);
++        EnterCriticalSection(&stream->delivery_cs);
++        stream->flushing = FALSE;
++        LeaveCriticalSection(&stream->delivery_cs);
++    }
++}
++
++static void asf_reader_stop_delivery(struct asf_reader *filter)
++{
++    UINT i;
++
++    for (i = 0; i < filter->stream_count; ++i)
++    {
++        struct asf_stream *stream = filter->streams + i;
++        if (!stream->delivery_thread) continue;
++        EnterCriticalSection(&stream->delivery_cs);
++        stream->delivery_stop = TRUE;
++        WakeAllConditionVariable(&stream->delivery_cv);
++        LeaveCriticalSection(&stream->delivery_cs);
++        WaitForSingleObject(stream->delivery_thread, INFINITE);
++        CloseHandle(stream->delivery_thread);
++        stream->delivery_thread = NULL;
++    }
++}
++
+ static HRESULT asf_stream_query_accept(struct strmbase_pin *iface, const AM_MEDIA_TYPE *media_type)
+ {
+     struct asf_stream *stream = impl_from_strmbase_pin(iface);
+@@ -327,32 +430,27 @@ static HRESULT WINAPI media_seeking_ChangeCurrent(IMediaSeeking *iface)
+     struct asf_stream *stream = impl_from_IMediaSeeking(iface);
+     struct asf_reader *filter = asf_reader_from_asf_stream(stream);
+     struct SourceSeeking *seek = &stream->seek;
+-    HRESULT hr;
++    HRESULT hr = S_OK;
+     UINT i;
+ 
+     TRACE("iface %p.\n", iface);
+-
+-    /* Send begin flush commands downstream. */
+-    for (i = 0; i < filter->stream_count; ++i)
+-    {
+-        if (FAILED(IPin_BeginFlush(stream->source.pin.peer)))
+-            WARN("Failed to BeginFlush for stream %u.\n", i);
+-    }
+-
+-    /* Stop the reader. */
+-    hr = asf_reader_stop_stream(filter);
+-
+-    /* Send end flush commands downstream. */
+-    for (i = 0; i < filter->stream_count; ++i)
++    EnterCriticalSection(&filter->filter.filter_cs);
++    filter->start = seek->llCurrent;
++    /* Stopped seeks only set the position. Starting before allocator setup can
++     * strand a callback in a paused renderer and deadlock the next Start. */
++    if (filter->filter.state != State_Stopped)
+     {
+-        if (FAILED(IPin_EndFlush(stream->source.pin.peer)))
+-            WARN("Failed to EndFlush for stream %u.\n", i);
++        asf_reader_begin_flush(filter);
++        hr = asf_reader_stop_stream(filter);
++        asf_reader_end_flush(filter);
++        for (i = 0; i < filter->stream_count; ++i)
++            if (filter->streams[i].source.pin.peer)
++                IPin_NewSegment(filter->streams[i].source.pin.peer,
++                        filter->start, seek->llStop, seek->dRate);
++        if (SUCCEEDED(hr))
++            hr = asf_reader_start_stream(filter, filter->start, 0, seek->dRate);
+     }
+-
+-    /* Start the reader. */
+-    if (hr == S_OK)
+-        hr = asf_reader_start_stream(filter, seek->llCurrent, seek->llDuration, seek->dRate);
+-
++    LeaveCriticalSection(&filter->filter.filter_cs);
+     return hr;
+ }
+ 
+@@ -452,6 +550,9 @@ static void asf_reader_destroy(struct strmbase_filter *iface)
+         strmbase_source_cleanup(source);
+     }
+ 
++    for (UINT i = 0; i < ARRAY_SIZE(filter->streams); ++i)
++        DeleteCriticalSection(&filter->streams[i].delivery_cs);
++
+     free(filter->file_name);
+     IWMReaderCallback_Release(filter->callback);
+     IWMReader_Release(filter->reader);
+@@ -531,7 +632,7 @@ static HRESULT asf_reader_init_stream(struct strmbase_filter *iface)
+             break;
+         }
+ 
+-        if (FAILED(hr = IPin_NewSegment(stream->source.pin.peer, 0, 0, 1)))
++        if (FAILED(hr = IPin_NewSegment(stream->source.pin.peer, filter->start, stream->seek.llStop, 1)))
+         {
+             WARN("Failed to start stream %u new segment, hr %#lx\n", i, hr);
+             break;
+@@ -549,9 +650,27 @@ static HRESULT asf_reader_init_stream(struct strmbase_filter *iface)
+     if (FAILED(hr))
+         return hr;
+ 
+-    if (FAILED(hr = asf_reader_start_stream(filter, 0, 0, 1.0)))
+-        WARN("Failed to start WMReader %p, hr %#lx\n", filter->reader, hr);
+-
++    for (i = 0; i < filter->stream_count; ++i)
++    {
++        struct asf_stream *stream = filter->streams + i;
++        if (!stream->source.pin.peer) continue;
++        stream->delivery_stop = stream->flushing = stream->eos = FALSE;
++        if (!(stream->delivery_thread = CreateThread(NULL, 0, asf_stream_deliver, stream, 0, NULL)))
++        {
++            hr = HRESULT_FROM_WIN32(GetLastError());
++            break;
++        }
++    }
++    if (SUCCEEDED(hr)) hr = asf_reader_start_stream(filter, filter->start, 0, 1.0);
++    if (FAILED(hr))
++    {
++        asf_reader_begin_flush(filter);
++        asf_reader_stop_delivery(filter);
++        asf_reader_end_flush(filter);
++        for (i = 0; i < filter->stream_count; ++i)
++            if (filter->streams[i].source.pin.peer)
++                IMemAllocator_Decommit(filter->streams[i].source.pAllocator);
++    }
+     return hr;
+ }
+ 
+@@ -563,8 +682,11 @@ static HRESULT asf_reader_cleanup_stream(struct strmbase_filter *iface)
+ 
+     TRACE("iface %p\n", iface);
+ 
++    asf_reader_begin_flush(filter);
+     if (FAILED(hr = asf_reader_stop_stream(filter)))
+         WARN("Failed to stop WMReader %p, hr %#lx\n", filter->reader, hr);
++    asf_reader_stop_delivery(filter);
++    asf_reader_end_flush(filter);
+ 
+     for (i = 0; i < filter->stream_count; ++i)
+     {
+@@ -614,7 +736,7 @@ static HRESULT WINAPI asf_reader_DecideBufferSize(struct strmbase_source *iface,
+         buffer_size = format->nAvgBytesPerSec;
+     }
+ 
+-    req_props->cBuffers = max(req_props->cBuffers, 1);
++    req_props->cBuffers = max(req_props->cBuffers, 2);
+     req_props->cbBuffer = max(req_props->cbBuffer, buffer_size);
+     req_props->cbAlign = max(req_props->cbAlign, 1);
+     return IMemAllocator_SetProperties(allocator, req_props, &ret_props);
+@@ -869,7 +991,10 @@ static HRESULT WINAPI reader_callback_OnStatus(IWMReaderCallback *iface, WMT_STA
+                 if (!stream->source.pin.peer)
+                     continue;
+ 
+-                IPin_EndOfStream(stream->source.pin.peer);
++                EnterCriticalSection(&stream->delivery_cs);
++                if (!stream->flushing) stream->eos = TRUE;
++                WakeAllConditionVariable(&stream->delivery_cv);
++                LeaveCriticalSection(&stream->delivery_cs);
+             }
+             break;
+ 
+@@ -901,7 +1026,7 @@ static HRESULT WINAPI reader_callback_OnSample(IWMReaderCallback *iface, DWORD o
+         QWORD duration, DWORD flags, INSSBuffer *sample, void *context)
+ {
+     struct asf_reader *filter = impl_from_IWMReaderCallback(iface)->filter;
+-    REFERENCE_TIME start_time = time, end_time = time + duration;
++    REFERENCE_TIME start_time = time - filter->start, end_time = start_time + duration;
+     struct asf_stream *stream = filter->streams + output;
+     struct buffer *buffer;
+     HRESULT hr = S_OK;
+@@ -923,9 +1048,16 @@ static HRESULT WINAPI reader_callback_OnSample(IWMReaderCallback *iface, DWORD o
+         IMediaSample_SetDiscontinuity(buffer->sample, !!(flags & WM_SF_DISCONTINUITY));
+         IMediaSample_SetSyncPoint(buffer->sample, !!(flags & WM_SF_CLEANPOINT));
+ 
+-        hr = IMemInputPin_Receive(stream->source.pMemInputPin, buffer->sample);
+-
+-        TRACE("Receive returned hr %#lx.\n", hr);
++        EnterCriticalSection(&stream->delivery_cs);
++        while (stream->pending_sample && !stream->flushing && !stream->delivery_stop)
++            SleepConditionVariableCS(&stream->delivery_cv, &stream->delivery_cs, INFINITE);
++        if (!stream->flushing && !stream->delivery_stop)
++        {
++            IMediaSample_AddRef(buffer->sample);
++            stream->pending_sample = buffer->sample;
++            WakeAllConditionVariable(&stream->delivery_cv);
++        }
++        LeaveCriticalSection(&stream->delivery_cs);
+     }
+ 
+     return hr;
+@@ -1080,7 +1212,12 @@ HRESULT asf_reader_create(IUnknown *outer, IUnknown **out)
+         return hr;
+     }
+ 
+-    for (i = 0; i < ARRAY_SIZE(object->streams); ++i) object->streams[i].index = i;
++    for (i = 0; i < ARRAY_SIZE(object->streams); ++i)
++    {
++        object->streams[i].index = i;
++        InitializeCriticalSection(&object->streams[i].delivery_cs);
++        InitializeConditionVariable(&object->streams[i].delivery_cv);
++    }
+     strmbase_filter_init(&object->filter, outer, &CLSID_WMAsfReader, &filter_ops);
+     object->IFileSourceFilter_iface.lpVtbl = &file_source_vtbl;
+ 
