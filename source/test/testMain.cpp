@@ -1086,6 +1086,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testSelfModifyingBack, "Test Self Modifying Code Same Block(Next)"},
     {testCodePageCopyOnWriteReferences, "Test code-page copy-on-write references"},
     {testLinearMemoryAliasAndFaults, "Test linear-memory alias and fault handling", TEST_ENTRY_SERIAL},
+    {testLinearMemoryMmuFallbackBoundaries, "Test linear-memory fallback across unrelated backing pages", TEST_ENTRY_SERIAL},
     {testLinearMemoryFileFirstTouches, "Test linear-memory file and COW first touches", TEST_ENTRY_SERIAL},
     {testLinearMemoryWraparound, "Test linear-memory wraparound loads and stores", TEST_ENTRY_SERIAL},
     {testJitMemoryReadOperands, "Test JIT memory operand fault recovery", TEST_ENTRY_SERIAL},

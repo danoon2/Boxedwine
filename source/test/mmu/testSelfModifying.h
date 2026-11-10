@@ -16,6 +16,7 @@ void testSelfModifyingFront();
 void testSelfModifyingBack();
 void testCodePageCopyOnWriteReferences();
 void testLinearMemoryAliasAndFaults();
+void testLinearMemoryMmuFallbackBoundaries();
 void testLinearMemoryFileFirstTouches();
 void testLinearMemoryWraparound();
 void testJitMemoryReadOperands();

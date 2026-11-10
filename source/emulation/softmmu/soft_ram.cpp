@@ -266,11 +266,11 @@ using VirtualAlloc2Function = PVOID(WINAPI*)(HANDLE, PVOID, SIZE_T, ULONG, ULONG
 using MapViewOfFile3Function = PVOID(WINAPI*)(HANDLE, HANDLE, PVOID, ULONG64, SIZE_T, ULONG, ULONG, MEM_EXTENDED_PARAMETER*, ULONG);
 using UnmapViewOfFile2Function = BOOL(WINAPI*)(HANDLE, PVOID, ULONG);
 
-static constexpr U64 WINDOWS_LINEAR_MEMORY_SLOT_SIZE = 64 * 1024;
 static VirtualAlloc2Function linearMemoryVirtualAlloc2;
 static MapViewOfFile3Function linearMemoryMapViewOfFile3;
 static UnmapViewOfFile2Function linearMemoryUnmapViewOfFile2;
 static HANDLE windowsLinearRamFile;
+static U8* windowsLinearRam;
 static U32 windowsLinearRamSlotCount;
 static bool windowsLinearRamInitializationAttempted;
 
@@ -294,10 +294,21 @@ static bool initializeWindowsLinearMemory() {
         kwarn("linear memory: Windows placeholder APIs are unavailable");
         return false;
     }
-    U64 size = (U64)K_NUMBER_OF_PAGES * WINDOWS_LINEAR_MEMORY_SLOT_SIZE;
+    U64 size = (U64)K_NUMBER_OF_PAGES << K_PAGE_SHIFT;
     windowsLinearRamFile = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE | SEC_RESERVE, (DWORD)(size >> 32), (DWORD)size, nullptr);
     if (!windowsLinearRamFile) {
         kwarn_fmt("linear memory: Windows RAM section creation failed: %u", GetLastError());
+        return false;
+    }
+    // Keep one contiguous backing view, as on POSIX. SEC_RESERVE leaves its
+    // pages uncommitted until ramPageAlloc needs them. MMU fallback accesses
+    // explicitly check page spans instead of relying on per-page guards.
+    windowsLinearRam = (U8*)MapViewOfFile(windowsLinearRamFile, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, (SIZE_T)size);
+    if (!windowsLinearRam) {
+        DWORD error = GetLastError();
+        CloseHandle(windowsLinearRamFile);
+        windowsLinearRamFile = nullptr;
+        kwarn_fmt("linear memory: Windows RAM pool mapping failed: %u", error);
         return false;
     }
     return true;
@@ -307,7 +318,7 @@ static U8* reserveWindowsLinearMemory(U64 size) {
     return (U8*)linearMemoryVirtualAlloc2(GetCurrentProcess(), nullptr, (SIZE_T)size, MEM_RESERVE | MEM_RESERVE_PLACEHOLDER, PAGE_NOACCESS, nullptr, 0);
 }
 
-static void mapWindowsLinearMemoryPage(U8* target, U32 slot, bool commit, DWORD protection) {
+static void mapWindowsLinearMemoryPage(U8* target, U32 slot, DWORD protection) {
     DWORD splitError = ERROR_SUCCESS;
     if (!VirtualFree(target, K_PAGE_SIZE, MEM_RELEASE | MEM_PRESERVE_PLACEHOLDER)) {
         // A page which was mapped before is already an exact placeholder after
@@ -315,13 +326,12 @@ static void mapWindowsLinearMemoryPage(U8* target, U32 slot, bool commit, DWORD 
         // split error if replacement also fails.
         splitError = GetLastError();
     }
-    void* result = linearMemoryMapViewOfFile3(windowsLinearRamFile, GetCurrentProcess(), target, (U64)slot * WINDOWS_LINEAR_MEMORY_SLOT_SIZE, K_PAGE_SIZE, MEM_REPLACE_PLACEHOLDER, protection, nullptr, 0);
+    // MEM_REPLACE_PLACEHOLDER permits page-aligned offsets; the usual 64K
+    // file-view alignment does not apply to these guest aliases.
+    void* result = linearMemoryMapViewOfFile3(windowsLinearRamFile, GetCurrentProcess(), target, (U64)slot << K_PAGE_SHIFT, K_PAGE_SIZE, MEM_REPLACE_PLACEHOLDER, protection, nullptr, 0);
     if (result != target) {
         DWORD mappingError = GetLastError();
         kpanic_fmt("linear memory: Windows page split/map failed: %u/%u", splitError, mappingError);
-    }
-    if (commit && VirtualAlloc(target, K_PAGE_SIZE, MEM_COMMIT, protection) != target) {
-        kpanic_fmt("linear memory: Windows RAM page commit failed: %u", GetLastError());
     }
 }
 
@@ -675,7 +685,7 @@ U32 ramPageUpdateLinearMemory(U8* address, U32 guestPage, const RamPage* pages, 
         // Guest threads do not take memory->mutex for direct accesses. Never
         // expose a writable alias while installing a read-only/COW/code page.
         DWORD protection = canWrite ? PAGE_READWRITE : PAGE_READONLY;
-        mapWindowsLinearMemoryPage(target, slot - 1, false, protection);
+        mapWindowsLinearMemoryPage(target, slot - 1, protection);
     }
     return newMapping;
 #else
@@ -823,17 +833,32 @@ RamPage ramPageAlloc() {
         }
     }
 #endif
-    if (KSystem::canJitUse4KPage) {
-        U8* chunk;
 #ifdef BOXEDWINE_WINDOWS_LINEAR_MEMORY
-        bool useWindowsLinearMemory = ramPageUseLinearMemory();
-        chunk = useWindowsLinearMemory ? reserveWindowsLinearMemory(CHUNK_SIZE_4K * 64 * 1024) : (U8*)Platform::reserveNativeMemory64k(CHUNK_SIZE_4K);
-        if (!chunk) {
-            kpanic_fmt("linear memory: Windows guarded RAM reservation failed: %u", GetLastError());
+    if (ramPageUseLinearMemory()) {
+        if (windowsLinearRamSlotCount >= K_NUMBER_OF_PAGES) {
+            kpanic("linear memory: Windows RAM section exhausted");
         }
-#else
-        chunk = (U8*)Platform::reserveNativeMemory64k(CHUNK_SIZE_4K);
+        U32 slot = windowsLinearRamSlotCount;
+        U8* result = windowsLinearRam + ((U64)slot << K_PAGE_SHIFT);
+        if (VirtualAlloc(result, K_PAGE_SIZE, MEM_COMMIT, PAGE_READWRITE) != result) {
+            kpanic_fmt("linear memory: Windows RAM page commit failed: %u", GetLastError());
+        }
+        windowsLinearRamSlotCount++;
+        RamPage found;
+        found.value = (RAM_TYPE)result >> K_PAGE_SHIFT;
+        RamInfo& info = refCounts[found.value];
+        info.linearMemorySlot = slot + 1;
+        info.refCount = 1;
+        memset(result, 0, K_PAGE_SIZE);
+        allocatedRamPages++;
+        return found;
+    }
 #endif
+    if (KSystem::canJitUse4KPage) {
+        U8* chunk = (U8*)Platform::reserveNativeMemory64k(CHUNK_SIZE_4K);
+        if (!chunk) {
+            kpanic("Failed to reserve guarded RAM");
+        }
         allocatedPages4kChunk.push_back(chunk);
         allocatedPages4k.push_back(chunk);
 
@@ -842,21 +867,7 @@ RamPage ramPageAlloc() {
         U32 count = (CHUNK_SIZE_4K * 16 / 2) - 1; // -1 so that there is an uncommitted page at the end
         for (U32 i = 0; i < count; i++) {
             pages += K_PAGE_SIZE; // keep uncommitted page between each committed so that if a read/write crosses a page boundry it will generate an exception
-#ifdef BOXEDWINE_WINDOWS_LINEAR_MEMORY
-            if (useWindowsLinearMemory) {
-                if (windowsLinearRamSlotCount >= K_NUMBER_OF_PAGES) {
-                    kpanic("linear memory: Windows RAM section exhausted");
-                }
-                U32 slot = windowsLinearRamSlotCount++;
-                mapWindowsLinearMemoryPage(pages, slot, true, PAGE_READWRITE);
-                RAM_TYPE index = ((RAM_TYPE)pages) >> K_PAGE_SHIFT;
-                refCounts[index].linearMemorySlot = slot + 1;
-            } else {
-                Platform::commitNativeMemoryPage(pages);
-            }
-#else
             Platform::commitNativeMemoryPage(pages);
-#endif
             if (i == 0) {
                 result = pages;
             } else {
@@ -926,15 +937,7 @@ void shutdownRam() {
     linearMemoryPageCount = 1;
     if (KSystem::canJitUse4KPage) {
         for (U8* p : allocatedPages4kChunk) {
-#ifdef BOXEDWINE_WINDOWS_LINEAR_MEMORY
-            if (windowsLinearRamFile) {
-                releaseWindowsLinearMemory(p, CHUNK_SIZE_4K * 64 * 1024);
-            } else {
-                Platform::releaseNativeMemory(p, CHUNK_SIZE_4K * 64 * 1024);
-            }
-#else
             Platform::releaseNativeMemory(p, CHUNK_SIZE_4K * 64 * 1024);
-#endif
         }
         allocatedPages4kChunk.clear();
         allocatedPages4k.clear();
@@ -945,6 +948,10 @@ void shutdownRam() {
         allocatedPages.clear();
     }
 #ifdef BOXEDWINE_WINDOWS_LINEAR_MEMORY
+    if (windowsLinearRam) {
+        UnmapViewOfFile(windowsLinearRam);
+        windowsLinearRam = nullptr;
+    }
     if (windowsLinearRamFile) {
         CloseHandle(windowsLinearRamFile);
         windowsLinearRamFile = nullptr;

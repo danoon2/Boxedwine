@@ -90,15 +90,9 @@ bool jitMustCheckPageSpan(DecodedOp* op) {
 }
 
 bool jitCanSkipMemoryCachePageSpanCheck() {
-    // Windows retains guard pages in the backing allocator, even when the
-    // separate guest aperture is contiguous. MMU cache accesses use that backing.
-#ifdef _WIN32
-    return KSystem::canJitUse4KPage;
-#else
-    // The POSIX linear pool has adjacent backing pages, so a cached access
+    // Linear pools have adjacent backing pages, so a cached access
     // that spans a guest-page boundary can reach unrelated RAM.
     return KSystem::canJitUse4KPage && !ramPageUseLinearMemory();
-#endif
 }
 }
 #endif

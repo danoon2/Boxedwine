@@ -483,6 +483,68 @@ void testCodePageCopyOnWriteReferences() {
     verifyReg32(0, 4, "copy-on-write patched code eax");
 }
 
+void testLinearMemoryMmuFallbackBoundaries() {
+#ifdef BOXEDWINE_HOST_EXCEPTIONS
+    if (!ramPageUseLinearMemory()) {
+        return;
+    }
+    constexpr U32 base = TEST_HEAP_ADDRESS + 0x20000;
+    constexpr U32 offset = base - TEST_HEAP_ADDRESS + K_PAGE_SIZE - 1;
+    constexpr U32 initial = 0x11223344;
+    constexpr U32 operand = 0x01020304;
+    std::vector<U8> storage(K_PAGE_SIZE * 4);
+    U8* backing = (U8*)(((uintptr_t)storage.data() + K_PAGE_MASK) & ~(uintptr_t)K_PAGE_MASK);
+
+    for (U32 width : {2u, 4u}) {
+        for (bool absolute : {false, true}) {
+            for (U32 operation = 0; operation < 3; operation++) {
+                newInstruction(0);
+                memset(backing, 0xaa, K_PAGE_SIZE * 3);
+                // Guest neighbors deliberately skip a readable/writable host
+                // page. An unchecked backing access sees or overwrites poison
+                // instead of faulting as it would with the old RAM guards.
+                RamPage pages[] = {ramPageAllocNative(backing), ramPageAllocNative(backing + K_PAGE_SIZE * 2)};
+                getMemData(testMemory)->allocPages(testContext().thread, base >> K_PAGE_SHIFT, 2,
+                    K_PROT_READ | K_PROT_WRITE, -1, 0, nullptr, pages);
+                for (RamPage page : pages) ramPageRelease(page);
+                testMemory->writed(base + K_PAGE_SIZE - 1, initial);
+                cpu->reg[0].u32 = operand;
+                cpu->reg[3].u32 = offset;
+                if (width == 2) pushCode8(0x66);
+                if (operation == 0) { // mov ax/eax, [address]
+                    pushCode8(absolute ? 0xa1 : 0x8b);
+                    if (!absolute) pushCode8(0x03);
+                } else if (operation == 1) { // mov [address], ax/eax
+                    pushCode8(absolute ? 0xa3 : 0x89);
+                    if (!absolute) pushCode8(0x03);
+                } else { // add [address], ax/eax
+                    pushCode8(0x01);
+                    pushCode8(absolute ? 0x05 : 0x03);
+                }
+                if (absolute) testPushCode32(offset);
+                cpu->getNextOp()->exceptionCount = LINEAR_MEMORY_RECOMPILE_FAULTS;
+                runTestCPU();
+
+                U32 mask = width == 2 ? 0xffff : 0xffffffff;
+                U32 actual = operation == 0 ? cpu->reg[0].u32 : testMemory->readd(base + K_PAGE_SIZE - 1);
+                U32 expected = operation == 0 ? initial : operation == 1 ? operand : initial + operand;
+                if ((actual & mask) != (expected & mask)) {
+                    failed("linear MMU fallback width %u absolute %u operation %u crossed into unrelated RAM: %x",
+                        width, (U32)absolute, operation, actual);
+                }
+                for (U32 i = 0; i < K_PAGE_SIZE; i++) {
+                    if (backing[K_PAGE_SIZE + i] != 0xaa) {
+                        failed("linear MMU fallback modified unrelated backing RAM");
+                        break;
+                    }
+                }
+                testMemory->unmap(base, K_PAGE_SIZE * 2);
+            }
+        }
+    }
+#endif
+}
+
 void testLinearMemoryAliasAndFaults() {
     if (!ramPageUseLinearMemory()) {
         return;
