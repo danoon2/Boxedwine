@@ -3,6 +3,34 @@
 #include <dshow.h>
 #include <stdio.h>
 
+static void drain_events(IMediaEvent *event)
+{
+    LONG code;
+    LONG_PTR param1, param2;
+    while (IMediaEvent_GetEvent(event, &code, &param1, &param2, 0) == S_OK)
+        IMediaEvent_FreeEventParams(event, code, param1, param2);
+}
+
+static HRESULT wait_for_completion(IMediaEvent *event, DWORD timeout, LONG *code)
+{
+    DWORD start = GetTickCount();
+    LONG_PTR param1, param2;
+    HRESULT hr;
+
+    /* Wine's WaitForCompletion can retain its signaled event across Stop/Run.
+     * Consume a newly queued completion instead of accepting the previous run. */
+    while (GetTickCount() - start < timeout)
+    {
+        hr = IMediaEvent_GetEvent(event, code, &param1, &param2, 100);
+        if (hr == E_ABORT) continue;
+        if (FAILED(hr)) return hr;
+        IMediaEvent_FreeEventParams(event, *code, param1, param2);
+        if (*code == EC_COMPLETE) return S_OK;
+        if (*code == EC_ERRORABORT || *code == EC_USERABORT) return E_FAIL;
+    }
+    return E_ABORT;
+}
+
 static DWORD WINAPI watchdog(void *unused)
 {
     Sleep(60000);
@@ -58,6 +86,7 @@ int wmain(int argc, WCHAR **argv)
         OAFilterState state;
         printf("Stopped seek/start pass %d\n", pass);
         REQUIRE(IMediaSeeking_SetPositions(seeking, &current, AM_SEEKING_AbsolutePositioning, NULL, AM_SEEKING_NoPositioning));
+        drain_events(event);
         REQUIRE(IMediaControl_Pause(control));
         REQUIRE(IMediaControl_GetState(control, 5000, &state));
         if (hr != S_OK || state != State_Paused) { puts("FAIL: graph never finished preroll"); ++failures; goto done; }
@@ -67,8 +96,13 @@ int wmain(int argc, WCHAR **argv)
             Sleep(750);
             current = 0;
             REQUIRE(IMediaSeeking_SetPositions(seeking, &current, AM_SEEKING_AbsolutePositioning, NULL, AM_SEEKING_NoPositioning));
+            REQUIRE(IMediaControl_Pause(control));
+            REQUIRE(IMediaControl_GetState(control, 5000, &state));
+            if (hr != S_OK || state != State_Paused) { puts("FAIL: active seek never finished preroll"); ++failures; goto done; }
+            Sleep(100);
+            REQUIRE(IMediaControl_Run(control));
         }
-        REQUIRE(IMediaEvent_WaitForCompletion(event, 20000, &code));
+        REQUIRE(wait_for_completion(event, 20000, &code));
         printf("Completion event: %ld\n", code);
         if (code != EC_COMPLETE) ++failures;
         REQUIRE(IMediaControl_Stop(control));

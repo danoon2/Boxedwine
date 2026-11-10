@@ -315,6 +315,11 @@
       "reason": "Deliver blocking ASF outputs independently, flush all outputs, and retain seek timestamps on top of the upstream reader fixes"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_qasf_renderer_clock.patch",
+      "reason": "Let DirectShow renderers schedule presentation instead of holding interleaved ASF samples behind WMReader's independent clock"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },

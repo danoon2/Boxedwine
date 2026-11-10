@@ -1,0 +1,125 @@
+From: Boxedwine maintainers
+Subject: [PATCH] qasf: Let downstream renderers schedule sample presentation.
+
+Apply after the upstream reader fixes and the bounded delivery-queue patch.
+An interleaved ASF stream can yield audio ahead of still-pending video. Waiting
+for that audio PTS on WMReader's shared callback thread stalls video delivery
+even when the renderer could present it. Request read-ahead with WMReader's
+user-provided clock; retain downstream graph-clock pacing and bounded buffers.
+
+Test both blocking and nonblocking sinks without a graph clock: samples beyond
+1.5 seconds must arrive within a one-second wait instead of being delayed by
+WMReader's independent real-time clock.
+
+diff --git a/dlls/qasf/asfreader.c b/dlls/qasf/asfreader.c
+--- a/dlls/qasf/asfreader.c
++++ b/dlls/qasf/asfreader.c
+@@ -653,6 +653,13 @@
+             filter->stream_count, stream_numbers, selections)))
+         WARN("Failed to set reader %p stream selection, hr %#lx\n", filter->reader, hr);
+ 
++    /* The graph's renderers schedule presentation. WMReader's independent clock
++     * can hold an audio sample while earlier video samples are still waiting
++     * to be read, causing periodic stalls with interleaved ASF files. Allow
++     * read-ahead; the output allocators and delivery queues provide backpressure. */
++    if (SUCCEEDED(hr)) hr = IWMReaderAdvanced_SetUserProvidedClock(reader_advanced, TRUE);
++    if (SUCCEEDED(hr)) hr = IWMReaderAdvanced_DeliverTime(reader_advanced, ~(QWORD)0);
++
+     IWMReaderAdvanced_Release(reader_advanced);
+ 
+     if (FAILED(hr))
+@@ -1124,8 +1131,8 @@
+ static HRESULT WINAPI reader_callback_advanced_OnTime(IWMReaderCallbackAdvanced *iface,
+         QWORD time, void *context)
+ {
+-    FIXME("iface %p stub!\n", iface);
+-    return E_NOTIMPL;
++    TRACE("iface %p, time %I64u, context %p.\n", iface, time, context);
++    return S_OK;
+ }
+ 
+ static HRESULT WINAPI reader_callback_advanced_OnStreamSelection(IWMReaderCallbackAdvanced *iface,
+diff --git a/dlls/qasf/tests/asfreader.c b/dlls/qasf/tests/asfreader.c
+--- a/dlls/qasf/tests/asfreader.c
++++ b/dlls/qasf/tests/asfreader.c
+@@ -740,6 +740,7 @@
+ 
+     DWORD receive_tid;
+     HANDLE receive_event;
++    HANDLE ahead_event;
+     BOOL receive_can_block;
+     IMemAllocator *allocator;
+ };
+@@ -792,13 +793,22 @@
+     return S_OK;
+ }
+ 
++static void test_sink_receive_sample(struct test_sink *pin, IMediaSample *sample)
++{
++    REFERENCE_TIME start, stop;
++
++    pin->receive_tid = GetCurrentThreadId();
++    SetEvent(pin->receive_event);
++    if (SUCCEEDED(IMediaSample_GetTime(sample, &start, &stop)) && start >= 15000000)
++        SetEvent(pin->ahead_event);
++}
++
+ static HRESULT WINAPI test_mem_input_pin_Receive(IMemInputPin *iface,
+         IMediaSample *sample)
+ {
+     struct test_sink *pin = impl_from_IMemInputPin(iface);
+ 
+-    pin->receive_tid = GetCurrentThreadId();
+-    SetEvent(pin->receive_event);
++    test_sink_receive_sample(pin, sample);
+ 
+     todo_wine
+     ok(0, "Unexpected call.\n");
+@@ -811,8 +821,10 @@
+ {
+     struct test_sink *pin = impl_from_IMemInputPin(iface);
+ 
+-    pin->receive_tid = GetCurrentThreadId();
+-    SetEvent(pin->receive_event);
++    LONG i;
++
++    for (i = 0; i < count; ++i)
++        test_sink_receive_sample(pin, samples[i]);
+ 
+     *processed = count;
+     return S_OK;
+@@ -1021,6 +1033,10 @@
+     test_sink.audio.receive_event = CreateEventW(NULL, FALSE, FALSE, NULL);
+     ok(!!test_sink.audio.receive_event, "CreateEventW failed, error %lu\n", GetLastError());
+ 
++    test_sink.video.ahead_event = CreateEventW(NULL, TRUE, FALSE, NULL);
++    test_sink.audio.ahead_event = CreateEventW(NULL, TRUE, FALSE, NULL);
++    ok(!!test_sink.video.ahead_event && !!test_sink.audio.ahead_event, "Failed to create read-ahead events.\n");
++
+     test_sink.video.receive_can_block = receive_can_block;
+     test_sink.audio.receive_can_block = receive_can_block;
+ 
+@@ -1079,6 +1095,14 @@
+     else
+         ok(test_sink.audio.receive_tid == test_sink.video.receive_tid, "got wrong thread\n");
+ 
++    /* There is no graph clock and neither sink waits for presentation. The
++     * reader must deliver future samples without pacing itself in real time. */
++    {
++        HANDLE events[] = {test_sink.video.ahead_event, test_sink.audio.ahead_event};
++        ret = WaitForMultipleObjects(ARRAY_SIZE(events), events, TRUE, 1000);
++        ok(ret == WAIT_OBJECT_0, "Reader did not read ahead of presentation time, ret %lu.\n", ret);
++    }
++
+     hr = IBaseFilter_Stop(filter);
+     ok(hr == S_OK, "Got hr %#lx.\n", hr);
+     hr = IBaseFilter_GetState(filter, 0, &state);
+@@ -1098,6 +1122,8 @@
+     if (test_sink.audio.allocator)
+         IMemAllocator_Release(test_sink.audio.allocator);
+ 
++    CloseHandle(test_sink.video.ahead_event);
++    CloseHandle(test_sink.audio.ahead_event);
+     CloseHandle(test_sink.video.receive_event);
+     CloseHandle(test_sink.audio.receive_event);
+ 

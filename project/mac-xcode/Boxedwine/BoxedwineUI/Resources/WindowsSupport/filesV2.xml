@@ -1,9 +1,9 @@
 <XML>
   <Wine>
     <Name>Wine 11.0</Name>
-    <FileVersion>29</FileVersion>
+    <FileVersion>30</FileVersion>
     <WineVersion>11.0</WineVersion>
-    <FileURL>https://boxedwine.org/v2/29/TinyCore15Wine11.0.zip</FileURL>
+    <FileURL>https://boxedwine.org/v2/30/TinyCore15Wine11.0.zip</FileURL>
     <FileSizeMB>208</FileSizeMB>
   </Wine>
   <Demo>

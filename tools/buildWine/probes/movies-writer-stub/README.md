@@ -22,6 +22,9 @@ fixes, but the upstream-only graph still fails preroll. The remaining delivery
 patch gives blocking outputs a bounded queue and delivery thread, leaves
 nonblocking outputs on the callback thread, flushes connected outputs during seeks,
 and retains the stopped seek position for the next start.
+The graph probe consumes a newly queued completion event for each playback;
+Wine's `WaitForCompletion` can retain its signaled event across Stop/Run.
+The second pass also pauses and resumes after seeking during playback.
 `pthread-fenv.c` reproduces the Boxedwine Linux-thread floating-point inheritance
 bug found during this work: all three rounding-mode cases fail with the old
 engine and pass after preserving the parent's x87/SSE state. The CPU constructor
@@ -34,6 +37,41 @@ for the exact artifacts and completed game checks. The original
 builds use `wine11_qasf_reader_delivery_after_upstream.patch` after the three
 upstream backports. Wine's ASF-reader suite also verifies the native blocking
 and nonblocking delivery-thread expectations (272 checks, zero failures).
+
+## Renderer pacing fix (2026-11-09)
+
+`../../patches/wine11_qasf_renderer_clock.patch` follows the delivery patch in
+`wine_builds.json` for both Wine 11.0 variants. The reader uses WMReader's
+user-provided clock to request samples ahead of time; downstream renderers keep
+their normal graph-clock scheduling, and the existing allocators and queues
+bound buffering. This prevents an audio sample with a future timestamp from
+holding up earlier video samples on the shared reader callback thread.
+The `OnTime` notification is acknowledged without treating it as an error.
+
+The patch extends Wine's ASF-reader tests to require read-ahead with both
+blocking and nonblocking sinks when there is no graph clock. Both cases fail
+with the v29 reader and pass with the fix. A native Windows reference graph
+also delivers the two-second fixture immediately when its clock is disabled.
+
+The Movies intro comparison replays all 309 video frames twice in the same
+process, preserving the JIT cache. The warm baseline has nine frame gaps over
+80 ms (worst 220 ms); the experimental reader has none over 50 ms (worst 37 ms).
+The user also confirmed improved playback through the Windows UI.
+
+Build and regression evidence is under
+`C:\Boxedwine2\tmp\movies-pacing-20261109`. Main and web reader DLLs were rebuilt
+from their configured Wine trees; the recorded patch series reproduces both
+reader and test sources from pristine Wine 11.0. Filesystem revision 30 packages
+this fix in both variants; see [the release receipt](../../RELEASE-v30.md) for
+the final ZIP identities and packaged regression results. Artifacts are staged
+in `C:\Boxedwine2\tmp\filesystem-v30-release`; upload is pending.
+
+Both rebuilt readers pass 314 ASF-reader checks (63 known todos, zero failures
+or skips), the writer contract, all 429 intro decode samples, and both graph
+playbacks with stopped/active seeking, pause/resume, and clean shutdown.
+The initial 103 builder tests and 31 web tooling tests pass. These initial runs
+use the v29 archives plus the rebuilt reader in isolated roots on the Windows
+native engine. The revision 30 receipt separately records final-ZIP validation.
 
 ## Original diagnostic observations on 2026-11-08
 

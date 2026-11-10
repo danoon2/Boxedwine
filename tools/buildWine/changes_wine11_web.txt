@@ -1,3 +1,5 @@
+v30 Nov 09, 2026 Fix periodic WMV playback pauses by letting DirectShow renderers schedule presentation instead of waiting on WMReader's independent clock. Retain bounded ASF delivery, seeking, and writer availability support. Reuse the v28 media base and v51 WebGL DLLs. Movie encoding remains unsupported.
+
 v29 Nov 08, 2026 Backport upstream ASF reader seek and destruction fixes. Retain independent delivery only for blocking outputs, with safe flush/seek/shutdown handling. Reuse the v28 media base and the v51 WebGL DLLs. Movie encoding remains unsupported.
 
 v28 Nov 08, 2026 Target GLib 2.78, include PCRE2 and ASF/WMV/WMA playback dependencies, and provide a minimal WM ASF Writer filter for application startup. Movie encoding remains unsupported.
