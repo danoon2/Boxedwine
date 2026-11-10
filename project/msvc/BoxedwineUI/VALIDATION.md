@@ -1,5 +1,26 @@
 # Validation — 2026-10-04
 
+## Wine Tools — 2026-11-09
+
+- Windows and macOS now expose the same seven Wine tools as Linux through
+  Run Another Program. Search matches names, commands and descriptions; tools
+  are also available when no installed executable has been selected.
+- Windows Release UI build passed with no warnings or errors. All 54 offline
+  core checks passed. The WPF harness passed in Light and Dark, covering tool
+  discovery, search, selection, filtered selection clearing, cancellation and
+  exclusion from the main program picker. Rendered dialogs were inspected.
+- All seven tools opened windows and stopped using the real x64 engine and
+  Wine 11 V30 in an isolated test library. This checks launch and lifecycle,
+  not every feature inside each Wine utility.
+- Swift regression coverage was added for argument isolation, launch modes and
+  disc inheritance. Mac compilation and execution remain unverified: no local
+  Swift toolchain is available and the documented Mac host rejected SSH login.
+- The running Windows launcher locks the normal build output. A separate usable
+  build, including its engine, is under `tmp/wine-tools-build/bin/BoxedwineUI/release`
+  at the repository root. The running instance was left open.
+- Native App Settings still shows saved launcher choices after external Wine
+  edits. This change does not port Linux's automatic configuration readback.
+
 ## Running app icons and taskbar identity
 
 - The launcher uses the same icon selection as the library, including custom

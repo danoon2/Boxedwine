@@ -586,9 +586,11 @@ struct LaunchRequest: Sendable {
     /// A one-time Windows utility launch; never written into the library entry.
     var alternateExecutable: String?
     var externalProgram: ExternalProgram?
+    var tool: WineTool?
 
     func arguments() throws -> [String] {
         guard !app.hasPendingWineSettings else { throw WindowsCompatibilityError.pending }
+        guard [installing, alternateExecutable != nil, externalProgram != nil, tool != nil].filter({ $0 }).count <= 1 else { throw LibraryError.invalidPath }
         if let externalProgram {
             guard !installing, alternateExecutable == nil else { throw LibraryError.invalidPath }
             try externalProgram.validate()
@@ -601,9 +603,10 @@ struct LaunchRequest: Sendable {
         let overrides = try BoxedwineArguments.forLaunch(app.boxedwineArguments ?? [])
         let resolution = installing && app.demoSettings != nil ? app.demoSettings?.installResolution ?? "1024x768" : app.resolution
         var result = ["-root", repository.root(for: app).path, "-zip", wineZip.path,
-                      "-title", app.name, "-resolution", resolution]
+                      "-title", tool.map { $0.title + " · " + app.name } ?? app.name, "-resolution", resolution]
         if app.fullScreen { result.append("-fullscreenAspect") }
         result += try CdromImages.launchArguments(app.cdromImages ?? [], root: repository.root(for: app))
+        if let tool { return result + overrides + ["-w", "/home/username", "/bin/wine"] + tool.arguments }
         if installing, app.installFromDisc == true {
             guard !(app.cdromImages ?? []).isEmpty else { throw CdromImageError.invalid }
             return result + overrides + ["-cdromInstall"]

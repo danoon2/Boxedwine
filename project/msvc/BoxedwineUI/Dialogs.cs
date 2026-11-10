@@ -287,14 +287,49 @@ internal static class Dialogs
         form.Field("Wine version", choice); form.Cancel(); form.Button("Use Wine", () => form.DialogResult = true, true);
         return form.ShowDialog() == true ? choice.SelectedItem as CatalogWine : null;
     }
-    public sealed record ProgramChoice(string? Path, string? External);
+    public sealed record ProgramChoice(string? Path, string? External, WineTool? Tool = null);
     public static ProgramChoice? Program(Window owner, LibraryRepository repository, LibraryApp app, bool external = false)
     {
         var form = new FormWindow(owner, external ? "Run another program" : "Choose the program to open", external ? "Use this app's Windows files and settings. Your usual program stays selected." : "Select the app itself rather than its setup program or uninstaller.", 650, 650);
         var programs = repository.Programs(app); var search = FormWindow.Text(""); form.Field("Search programs", search);
-        var list = new ListBox { ItemsSource = programs, Height = 290, SelectedItem = programs.FirstOrDefault(p => p.Path == app.Executable) ?? programs.FirstOrDefault() };
-        form.Field("Programs", list); search.TextChanged += (_, _) => list.ItemsSource = programs.Where(p => p.WindowsPath.Contains(search.Text, StringComparison.CurrentCultureIgnoreCase)).ToList();
+        var list = new ListBox { ItemsSource = programs, MaxHeight = external ? 160 : 290, SelectedItem = external ? null : programs.FirstOrDefault(p => p.Path == app.Executable) ?? programs.FirstOrDefault() };
+        ListBox? tools = null;
+        if (external)
+        {
+            tools = new ListBox { MaxHeight = 240, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+            ScrollViewer.SetHorizontalScrollBarVisibility(tools, ScrollBarVisibility.Disabled);
+            foreach (var tool in WineTools.All)
+            {
+                var text = new StackPanel { Margin = new Thickness(4) };
+                text.Children.Add(new TextBlock { Text = tool.Name, FontWeight = FontWeights.SemiBold });
+                text.Children.Add(new TextBlock { Text = tool.Description, TextWrapping = TextWrapping.Wrap });
+                var item = new ListBoxItem { Content = text, Tag = tool, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+                AutomationProperties.SetName(item, tool.Name + ". " + tool.Description);
+                tools.Items.Add(item);
+            }
+            form.Field("Wine Tools", tools, "Use this app’s Windows environment and registry.");
+            tools.SelectionChanged += (_, _) => { if (tools.SelectedItem != null) list.SelectedItem = null; };
+            list.SelectionChanged += (_, _) => { if (list.SelectedItem != null) tools.SelectedItem = null; };
+        }
+        form.Field(external ? "Installed Programs" : "Programs", list);
+        search.TextChanged += (_, _) =>
+        {
+            list.ItemsSource = programs.Where(p => p.WindowsPath.Contains(search.Text, StringComparison.CurrentCultureIgnoreCase)).ToList();
+            if (tools != null) foreach (ListBoxItem item in tools.Items)
+            {
+                bool matches = ((WineToolInfo)item.Tag).Matches(search.Text);
+                if (!matches && item.IsSelected) item.IsSelected = false;
+                item.Visibility = matches ? Visibility.Visible : Visibility.Collapsed;
+            }
+        };
         ProgramChoice? result = null;
+        void Choose()
+        {
+            if (tools?.SelectedItem is ListBoxItem { Tag: WineToolInfo tool }) result = new(null, null, tool.Tool);
+            else if (list.SelectedItem is ProgramCandidate selected) result = new(selected.Path, null);
+            else return;
+            form.DialogResult = true;
+        }
         if (external) form.Button("Choose File…", () =>
         {
             string? path = File(form, "Choose a program or installer", "Windows programs|*.exe;*.msi");
@@ -302,8 +337,12 @@ internal static class Dialogs
             if (!Confirm(form, "Run a file from this PC?", "The program can use and modify files in its containing folder:\n\n" + Path.GetDirectoryName(path), "Run")) return;
             result = new(null, path); form.DialogResult = true;
         });
-        form.Cancel(); form.Button(external ? "Run" : "Use This Program", () => { if (list.SelectedItem is ProgramCandidate selected) { result = new(selected.Path, null); form.DialogResult = true; } }, true);
-        list.MouseDoubleClick += (_, _) => { if (list.SelectedItem is ProgramCandidate selected) { result = new(selected.Path, null); form.DialogResult = true; } };
+        form.Cancel(); var run = form.Button(external ? "Run" : "Use This Program", Choose, true);
+        void UpdateRun() => run.IsEnabled = list.SelectedItem != null || tools?.SelectedItem != null;
+        list.SelectionChanged += (_, _) => UpdateRun();
+        if (tools != null) { tools.SelectionChanged += (_, _) => UpdateRun(); tools.MouseDoubleClick += (_, _) => Choose(); }
+        UpdateRun();
+        list.MouseDoubleClick += (_, _) => Choose();
         form.ShowDialog(); return result;
     }
     public static LibraryApp? Edit(Window owner, LibraryRepository repository, LibraryApp original, System.Runtime.InteropServices.Architecture architecture, Func<LibraryApp, ImageSource?> resolveIcon)

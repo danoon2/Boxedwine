@@ -280,7 +280,7 @@ struct LibraryView: View {
         }
         .sheet(item: $store.choosingAnotherProgram, onDismiss: store.presentNextProgramChoice) { app in
             if let repository = store.repository {
-                ProgramChooserView(repository: repository, app: app, runOnce: true, onSave: store.runAnotherProgram, onChooseFile: store.chooseExternalProgram)
+                ProgramChooserView(repository: repository, app: app, runOnce: true, onSave: store.runAnotherProgram, onChooseFile: store.chooseExternalProgram, onWineTool: store.runWineTool)
             }
         }
         .sheet(item: $store.recoveryCleanupCandidate, onDismiss: store.presentNextProgramChoice) { item in
@@ -850,11 +850,11 @@ struct AppSettingsView: View {
         .onChange(of: selectedTab) { transferSensitivity() }
         .sheet(isPresented: $showProgramChooser) {
             if let repository = store.repository {
-                ProgramChooserView(repository: repository, app: app, saveTitle: "Use This Program") { chosen in
+                ProgramChooserView(repository: repository, app: app, saveTitle: "Use This Program", onSave: { chosen in
                     app.name = chosen.name
                     app.executable = chosen.executable
                     showProgramChooser = false
-                }
+                })
             }
         }
     }

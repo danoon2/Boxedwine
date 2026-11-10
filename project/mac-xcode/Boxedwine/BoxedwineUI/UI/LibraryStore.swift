@@ -1415,6 +1415,12 @@ final class LibraryStore: ObservableObject {
         launch(original, alternateExecutable: executable)
     }
 
+    func runWineTool(_ tool: WineTool) {
+        guard let app = choosingAnotherProgram, apps.contains(app), canModify(app), canLaunch(app) else { return }
+        choosingAnotherProgram = nil
+        launch(app, tool: tool)
+    }
+
     func chooseExternalProgram() {
         guard let app = choosingAnotherProgram, apps.contains(app), canModify(app), canLaunch(app) else { return }
         let panel = NSOpenPanel()
@@ -1512,9 +1518,9 @@ final class LibraryStore: ObservableObject {
         _ = try? repository.pruneUnusedWine()
     }
 
-    func launch(_ app: LibraryApp, installing: Bool = false, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil) {
+    func launch(_ app: LibraryApp, installing: Bool = false, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil, tool: WineTool? = nil) {
         guard canLaunch(app), apps.contains(app), let repository else { return }
-        if !app.isBuiltIn && !installing && alternateExecutable == nil && externalProgram == nil,
+        if !app.isBuiltIn && !installing && alternateExecutable == nil && externalProgram == nil && tool == nil,
            let executable = app.executable, (executable as NSString).pathExtension.lowercased() != "exe" {
             reportLaunchFailure(app, error: LibraryError.missingExecutable)
             return
@@ -1522,7 +1528,7 @@ final class LibraryStore: ObservableObject {
         if app.savedWineVersion != nil {
             if let url = try? repository.savedRuntimeURL(for: app), let cached = savedPackages[url], cached.isCurrent,
                cached.info.wineVersion == app.savedWineVersion, app.winePackage?.matches(cached) ?? true {
-                launchSession(app, zip: cached.url, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram)
+                launchSession(app, zip: cached.url, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram, tool: tool)
                 return
             }
             guard !importing else { return }
@@ -1536,19 +1542,19 @@ final class LibraryStore: ObservableObject {
                     try control.beginFinishing()
                     savedPackages[package.url] = package
                     finishImport()
-                    if canEdit { launchSession(app, zip: package.url, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram) }
+                    if canEdit { launchSession(app, zip: package.url, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram, tool: tool) }
                 } catch {
                     finishImport()
                     if !(error is CancellationError) { reportLaunchFailure(app, error: error) }
                 }
             }
         } else {
-            do { launchSession(app, zip: try wineZip(), installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram) }
+            do { launchSession(app, zip: try wineZip(), installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram, tool: tool) }
             catch { reportLaunchFailure(app, error: error) }
         }
     }
 
-    private func launchSession(_ app: LibraryApp, zip: URL, installing: Bool, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil) {
+    private func launchSession(_ app: LibraryApp, zip: URL, installing: Bool, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil, tool: WineTool? = nil) {
         guard canLaunch(app), apps.contains(app), let repository else { return }
         if app.hasPendingWineSettings {
             guard !importing else { return }
@@ -1564,7 +1570,7 @@ final class LibraryStore: ObservableObject {
                     let ready = try await Task.detached { try repository.applyPendingWineSettings(app, runtime: zip, configuration: configuration, control: control) }.value
                     apps = apps.map { $0.id == app.id ? ready : $0 }
                     finishImport()
-                    if canEdit { launchSession(ready, zip: zip, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram) }
+                    if canEdit { launchSession(ready, zip: zip, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram, tool: tool) }
                 } catch {
                     finishImport()
                     if !(error is CancellationError) { reportLaunchFailure(app, error: error) }
@@ -1574,7 +1580,7 @@ final class LibraryStore: ObservableObject {
         }
         launching.insert(app.id)
         launchProblems[app.id] = nil
-        activity[app.id] = (externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Launching \($0)…" } ?? (installing ? "Launching installer…" : "Launching…")
+        activity[app.id] = (tool?.title ?? externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Launching \($0)…" } ?? (installing ? "Launching installer…" : "Launching…")
         let demoImage = defaultIconURL(for: app)
         launchPreparations[app.id] = Task { [weak self] in
             let path = installing ? app.installer : alternateExecutable ?? app.executable
@@ -1590,18 +1596,18 @@ final class LibraryStore: ObservableObject {
                         self.activity[app.id] = "Stopped"
                         return
                     }
-                    self.startRuntimeSession(app, zip: zip, installing: installing, dockIcon: icon, alternateExecutable: alternateExecutable, externalProgram: externalProgram)
+                    self.startRuntimeSession(app, zip: zip, installing: installing, dockIcon: icon, alternateExecutable: alternateExecutable, externalProgram: externalProgram, tool: tool)
                 }
             } catch { /* Stop / shutdown already removed this preparation. */ }
         }
     }
 
-    private func startRuntimeSession(_ app: LibraryApp, zip: URL, installing: Bool, dockIcon: Data?, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil) {
+    private func startRuntimeSession(_ app: LibraryApp, zip: URL, installing: Bool, dockIcon: Data?, alternateExecutable: String? = nil, externalProgram: ExternalProgram? = nil, tool: WineTool? = nil) {
         guard !importing, canLaunch(app), apps.contains(app), let repository else { return }
         do {
             let cdromAccess = try CdromImageAccess(app: app, appDirectory: repository.appDirectory(app))
             let installerAccess = try installing && app.installerSource != nil ? InstallerSourceAccess(app: app) : nil
-            let request = LaunchRequest(app: app, repository: repository, wineZip: zip, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram)
+            let request = LaunchRequest(app: app, repository: repository, wineZip: zip, installing: installing, alternateExecutable: alternateExecutable, externalProgram: externalProgram, tool: tool)
             let arguments = try request.arguments()
             let executable = try RuntimeSession.executable()
             try repository.prepare(app)
@@ -1609,7 +1615,7 @@ final class LibraryStore: ObservableObject {
             try session.start(executable: executable, arguments: arguments, log: logURL(app), dockIcon: dockIcon, programFolderBookmark: externalProgram?.folderBookmark ?? installerAccess?.runtimeBookmark, cdromAccess: cdromAccess, access: [repository.appDirectory(app), zip], onWindowShown: { [weak self, weak session] in
                 guard let self, let session, self.sessions[app.id] === session,
                       !self.stopping.contains(app.id), self.launching.remove(app.id) != nil else { return }
-                self.activity[app.id] = (externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Running \($0)" } ?? (installing ? "Installer running" : "Running")
+                self.activity[app.id] = (tool?.title ?? externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Running \($0)" } ?? (installing ? "Installer running" : "Running")
             }) { [weak self, externalProgram, installerAccess] result in
                 // The grant also survives early returns and is released after the
                 // entire emulator session exits, including emulated child apps.
@@ -1624,7 +1630,7 @@ final class LibraryStore: ObservableObject {
                     self.activity[app.id] = "Closed unexpectedly — see log"
                     self.launchProblems[app.id] = "Boxedwine closed unexpectedly. Check the launch log before retrying." + (self.hasWineChoices ? " If this keeps happening, try a separate copy with another Wine version." : "")
                 } else {
-                    self.activity[app.id] = (externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "\($0) closed" } ?? (installing ? "Installer closed — choose the installed app" : "App closed")
+                    self.activity[app.id] = (tool?.title ?? externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "\($0) closed" } ?? (installing ? "Installer closed — choose the installed app" : "App closed")
                 }
                 if let problem = result.logProblem {
                     self.launchProblems[app.id] = [self.launchProblems[app.id], problem].compactMap { $0 }.joined(separator: "\n\n")
@@ -1634,7 +1640,7 @@ final class LibraryStore: ObservableObject {
             sessions[app.id] = session
             launching.insert(app.id)
             launchProblems[app.id] = nil
-            activity[app.id] = (externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Launching \($0)…" } ?? (installing ? "Launching installer…" : "Launching…")
+            activity[app.id] = (tool?.title ?? externalProgram?.file.lastPathComponent ?? alternateExecutable.map { ($0 as NSString).lastPathComponent }).map { "Launching \($0)…" } ?? (installing ? "Launching installer…" : "Launching…")
             var updated = app
             updated.lastOpened = Date()
             do { try commit(apps.map { $0.id == app.id ? updated : $0 }) }

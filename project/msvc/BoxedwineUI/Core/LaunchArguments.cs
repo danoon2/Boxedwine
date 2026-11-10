@@ -90,16 +90,24 @@ public static class LaunchArguments
         }
         return result;
     }
-    public static List<string> Build(LibraryRepository repository, LibraryApp app, string wine, bool installing = false, string? alternate = null, string? external = null, bool browseDisc = false)
+    public static List<string> Build(LibraryRepository repository, LibraryApp app, string wine, bool installing = false, string? alternate = null, string? external = null, bool browseDisc = false, WineTool? tool = null)
     {
         repository.ValidateApp(app);
         if (app.HasPendingSettings) throw new InvalidOperationException("Wine settings must be prepared before launching this app.");
-        if (new[] { installing, alternate != null, external != null }.Count(x => x) > 1) throw new InvalidOperationException("Choose one launch mode.");
+        if (new[] { installing, alternate != null, external != null, tool != null }.Count(x => x) > 1) throw new InvalidOperationException("Choose one launch mode.");
         if (browseDisc && (!installing || app.InstallFromDisc != true)) throw new InvalidOperationException("Choose a disc installation to browse.");
-        List<string> result = ["-root", repository.Root(app), "-zip", wine, "-title", app.Name, "-resolution", installing && app.DemoSettings != null ? app.DemoSettings.InstallResolution ?? "1024x768" : app.Resolution];
+        var wineTool = tool is { } selectedTool ? WineTools.Get(selectedTool) : null;
+        List<string> result = ["-root", repository.Root(app), "-zip", wine, "-title", wineTool == null ? app.Name : wineTool.Name + " · " + app.Name, "-resolution", installing && app.DemoSettings != null ? app.DemoSettings.InstallResolution ?? "1024x768" : app.Resolution];
         if (app.FullScreen) result.Add("-fullscreenAspect");
         result.AddRange(CdromImages.LaunchOptions(app.CdromImages ?? [], repository.Root(app)));
         var overrides = Overrides(app.BoxedwineArguments ?? []);
+        if (wineTool != null)
+        {
+            result.AddRange(overrides);
+            result.AddRange(["-w", "/home/username", "/bin/wine"]);
+            result.AddRange(wineTool.Arguments);
+            return result;
+        }
         if (installing && app.InstallFromDisc == true)
         {
             if (app.CdromImages is not { Count: > 0 }) throw new InvalidOperationException("Add an installation disc in App Settings → General.");

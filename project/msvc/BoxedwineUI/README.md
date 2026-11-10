@@ -198,7 +198,7 @@ File Explorer, or the selected library folder when an override is used.
 | Demos | Same pinned catalog, icons, 34 recipes, Wine versions, typed display/compatibility options |
 | Notepad and Minesweeper | Sidebar and Help menu; each has a private Windows environment |
 | App settings | Name, program, window size, full screen, Windows version, custom icon, renderer/backend and arguments |
-| Run another program | Installed executable or external EXE/MSI; external folder is mounted directly after confirmation |
+| Run another program | Wine Tools, installed executable or external EXE/MSI; external folder is mounted directly after confirmation |
 | Wine versions | Download/import/verify default support; package pinned per app; independent trial copies |
 | Backup and restore | `.boxedwinebackup` folders with manifest, file hashes, app settings and embedded Wine snapshot |
 | Remove/restore/delete | Removed Apps, permanent deletion, delete all, optional immediate deletion policy |
@@ -208,6 +208,17 @@ File Explorer, or the selected library folder when an override is used.
 
 The Mac App Store tip/purchase interface is platform-specific and is not included.
 Keyboard shortcuts follow Windows conventions and are listed in Help and menus.
+
+Select an app → **Run Another Program… → Wine Tools** for Wine Configuration,
+Registry Editor, Command Prompt, File Manager, Add/Remove Programs, Wine Internet
+Explorer, or Notepad. Search accepts both display names and commands such as
+`winecfg` and `regedit`. Tools use the selected app’s Wine package and Windows
+environment, including its saved Boxedwine options and discs. They are available
+even before a main executable is selected and do not change that selection or
+receive its app arguments or demo-specific launch options.
+Wine edits persist in that environment. The native App Settings controls still
+show saved launcher choices; automatic readback after a tool exits is currently
+implemented only by the Linux UI.
 
 ## Data and process behavior
 
@@ -262,6 +273,7 @@ dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore 
 dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\app-settings-checks --app-settings
 dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\storage-checks --storage
 dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\source-import-checks --source-errors
+dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore -- C:\Boxedwine\tmp\wine-tool-checks --wine-tools
 ```
 
 Native runtime icon checks (from the repository root):

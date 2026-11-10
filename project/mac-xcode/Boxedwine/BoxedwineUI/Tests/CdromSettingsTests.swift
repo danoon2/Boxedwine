@@ -43,7 +43,8 @@ struct CdromSettingsTests {
         let requests = [LaunchRequest(app: app, repository: repository, wineZip: base),
                         LaunchRequest(app: app, repository: repository, wineZip: base, installing: true),
                         LaunchRequest(app: app, repository: repository, wineZip: base, alternateExecutable: app.executable),
-                        LaunchRequest(app: app, repository: repository, wineZip: base, externalProgram: external)]
+                        LaunchRequest(app: app, repository: repository, wineZip: base, externalProgram: external),
+                        LaunchRequest(app: app, repository: repository, wineZip: base, tool: .winecfg)]
         for request in requests {
             let arguments = try request.arguments()
             let index = try #require(arguments.firstIndex(of: "-cdrom"))

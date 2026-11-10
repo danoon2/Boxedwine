@@ -62,6 +62,8 @@ sealed partial class TestSuite
         work = Path.Combine(Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith('-')) ?? "../../../../../../tmp/native-ui-tests"), Guid.NewGuid().ToString("N")); Directory.CreateDirectory(work);
         Console.WriteLine("Test workspace: " + work);
         fixture = WineFixture("wine.zip"); wine = await Packages.ValidateWine(fixture, default);
+        await WineToolTests(args);
+        if (args.Contains("--wine-tools-only")) { Console.WriteLine($"{passes} passed, {Failures} failed."); return; }
         await InstallerSourceTests();
         if (args.Contains("--installer-sources-only")) return;
         await DiscInstallTests();

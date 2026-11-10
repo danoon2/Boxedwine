@@ -53,7 +53,8 @@ sealed partial class TestSuite
                 LaunchArguments.Build(repository, app, fixture),
                 LaunchArguments.Build(repository, app, fixture, installing: true),
                 LaunchArguments.Build(repository, app, fixture, alternate: alternate),
-                LaunchArguments.Build(repository, app, fixture, external: installer) })
+                LaunchArguments.Build(repository, app, fixture, external: installer),
+                LaunchArguments.Build(repository, app, fixture, tool: WineTool.Winecfg) })
             {
                 Check(launch[launch.IndexOf("-cdrom") + 1] == disc);
                 Check(launch.IndexOf("-cdrom") < launch.IndexOf("/bin/wine"));

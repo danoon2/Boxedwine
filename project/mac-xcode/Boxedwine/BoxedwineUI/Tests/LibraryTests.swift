@@ -144,6 +144,46 @@ struct LibraryTests {
         #expect(!arguments.contains("/bin/sh"))
     }
 
+    @Test func wineToolsUseTheAppEnvironmentWithoutChangingItsProgramOrPassingGameArguments() throws {
+        let temporary = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let repository = LibraryRepository(directory: temporary)
+        var app = LibraryApp(name: "Tool test 日本語")
+        app.arguments = ["game-only argument"]
+        app.boxedwineArguments = ["-nosound"]
+        app.demoSettings = DemoSettings(bitsPerPixel: 16)
+        try repository.save([app])
+        let wine = temporary.appendingPathComponent("Pinned Wine.zip")
+        let commands: [(WineTool, [String])] = [
+            (.winecfg, ["winecfg"]), (.regedit, ["regedit"]), (.cmd, ["wineconsole", "cmd"]),
+            (.winefile, ["winefile"]), (.uninstaller, ["uninstaller"]),
+            (.iexplore, ["iexplore", "about:blank"]), (.notepad, ["notepad"])
+        ]
+        for (tool, command) in commands {
+            let args = try LaunchRequest(app: app, repository: repository, wineZip: wine, tool: tool).arguments()
+            #expect(Array(args.prefix(4)) == ["-root", repository.root(for: app).path, "-zip", wine.path])
+            #expect(Array(args.suffix(command.count + 3)) == ["-w", "/home/username", "/bin/wine"] + command)
+            #expect(args.contains(tool.title + " · " + app.name))
+            #expect(args.contains("-nosound") && !args.contains("game-only argument") && !args.contains("-bpp"))
+            #expect(!args.contains("-mount") && !args.contains("/bin/sh"))
+        }
+        #expect(try repository.load() == [app])
+        #expect(WineTool.allCases.count == commands.count)
+        #expect(WineTool.allCases.filter { $0.matches("REGEDIT") } == [.regedit])
+        app.executable = LibraryRepository.driveC + "/missing-game.exe"
+        #expect(try LaunchRequest(app: app, repository: repository, wineZip: wine, tool: .regedit).arguments().last == "regedit")
+        app.builtInProgram = .minesweeper
+        #expect(try LaunchRequest(app: app, repository: repository, wineZip: wine, tool: .winecfg).arguments().last == "winecfg")
+        #expect(throws: LibraryError.self) { try LaunchRequest(app: app, repository: repository, wineZip: wine, installing: true, tool: .regedit).arguments() }
+        #expect(throws: LibraryError.self) { try LaunchRequest(app: app, repository: repository, wineZip: wine, alternateExecutable: app.executable, tool: .regedit).arguments() }
+        let file = temporary.appendingPathComponent("setup.exe")
+        try Data("fixture".utf8).write(to: file)
+        let external = try ExternalProgram(file: file, folder: temporary)
+        #expect(throws: LibraryError.self) { try LaunchRequest(app: app, repository: repository, wineZip: wine, externalProgram: external, tool: .regedit).arguments() }
+        app.windowsVersion = .win98; app.windowsVersionPending = true
+        #expect(throws: WindowsCompatibilityError.self) { try LaunchRequest(app: app, repository: repository, wineZip: wine, tool: .regedit).arguments() }
+    }
+
     @Test func installerStagingAndMSILaunch() throws {
         let temporary = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: temporary) }

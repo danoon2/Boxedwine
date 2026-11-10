@@ -160,13 +160,13 @@ public partial class MainWindow
         RunOperation("Installing demo…", async (token, progress) => { var reference = await EnsureWine(wine, token, progress); return await Demos.Install(repository, demo, reference, token, progress); },
             app => { Navigate("All Apps", app.Id.ToString()); if (app.HasInstaller) Open(app, installing: true); });
     }
-    private void Open(LibraryApp app, bool installing = false, string? alternate = null, string? external = null, bool browseDisc = false)
+    private void Open(LibraryApp app, bool installing = false, string? alternate = null, string? external = null, bool browseDisc = false, WineTool? tool = null)
     {
         if (!CanChange(app)) return;
-        if (!installing && alternate == null && external == null && app.BuiltIn == null && app.Executable == null) { ChooseMain(app); return; }
+        if (!installing && alternate == null && external == null && tool == null && app.BuiltIn == null && app.Executable == null) { ChooseMain(app); return; }
         string emulator = Emulator();
         string implementation = OpenGLDrivers.Resolve(app, preferences, OpenGLDrivers.EngineArchitecture(emulator));
-        RunOperation("Preparing " + app.Name + "…", async (token, progress) =>
+        RunOperation("Preparing " + (tool is { } selectedTool ? WineTools.Get(selectedTool).Name : app.Name) + "…", async (token, progress) =>
         {
             string wine = repository.WinePath(app);
             var expected = app.WinePackage ?? (app.SavedWineVersion == null ? repository.DefaultWine : null);
@@ -177,7 +177,7 @@ public partial class MainWindow
             if (File.Exists(latest)) File.Move(latest, SafeFiles.Beneath(repository.AppDirectory(app), "Logs/previous.log"), true);
             var configured = await new WineConfiguration(emulator, openGL).Apply(repository, app, wine, token, progress);
             token.ThrowIfCancellationRequested();
-            var arguments = LaunchArguments.Build(repository, configured, wine, installing, alternate, external, browseDisc);
+            var arguments = LaunchArguments.Build(repository, configured, wine, installing, alternate, external, browseDisc, tool);
             return (App: configured, Wine: wine, Arguments: arguments, OpenGL: openGL);
         }, prepared =>
         {
@@ -265,8 +265,9 @@ public partial class MainWindow
     }
     private void Another(LibraryApp app)
     {
+        if (!CanChange(app)) return;
         var choice = Dialogs.Program(this, repository, app, true);
-        if (choice != null) Open(app, alternate: choice.Path, external: choice.External);
+        if (choice != null) Open(app, alternate: choice.Path, external: choice.External, tool: choice.Tool);
     }
     private void Edit(LibraryApp app)
     {

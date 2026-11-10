@@ -12,8 +12,10 @@ struct ProgramChooserView: View {
     var runOnce = false
     let onSave: (LibraryApp) -> Void
     var onChooseFile: (() -> Void)?
+    var onWineTool: ((WineTool) -> Void)?
     @State private var candidates: [ProgramCandidate] = []
     @State private var selectedPath: String?
+    @State private var selectedTool: WineTool?
     @State private var loading = true
     @State private var loadError: String?
     @State private var showTools = false
@@ -27,6 +29,7 @@ struct ProgramChooserView: View {
         candidates.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.windowsPath.localizedCaseInsensitiveContains(query) }
     }
     private var selected: ProgramCandidate? { candidates.first { $0.path == selectedPath } }
+    private var wineTools: [WineTool] { runOnce && onWineTool != nil ? WineTool.allCases.filter { $0.matches(query) } : [] }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -42,10 +45,19 @@ struct ProgramChooserView: View {
                 .accessibilityLabel("Search programs")
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 8) {
+                    if !wineTools.isEmpty {
+                        Text("Wine Tools").font(.headline)
+                        Text("Use this app’s Windows environment and registry.").font(.caption).foregroundStyle(.secondary)
+                        ForEach(wineTools) { tool in wineToolRow(tool) }
+                        Divider().padding(.vertical, 8)
+                    }
+                    if runOnce { Text("Installed Programs").font(.headline) }
                     if loading {
                         ProgressView("Finding Windows programs…").frame(maxWidth: .infinity, minHeight: 170)
                     } else if let loadError {
                         Text(loadError).foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 170)
+                    } else if candidates.isEmpty && runOnce {
+                        Text("No installed programs found. Use a Wine tool or choose a file from your Mac.").foregroundStyle(.secondary)
                     } else if candidates.isEmpty {
                         VStack(spacing: 10) {
                             Image(systemName: "app.dashed").font(.largeTitle).foregroundStyle(.secondary)
@@ -64,7 +76,7 @@ struct ProgramChooserView: View {
                         }
                     }
                 }.padding(4)
-            }.frame(height: 245)
+            }.frame(height: runOnce ? 350 : 245)
             Divider()
             if !runOnce {
                 VStack(alignment: .leading, spacing: 6) {
@@ -89,10 +101,10 @@ struct ProgramChooserView: View {
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button(runOnce ? "Run" : saveTitle) {
-                    app.executable = selectedPath
-                    onSave(app)
+                    if let selectedTool, runOnce, let onWineTool { onWineTool(selectedTool) }
+                    else { app.executable = selectedPath; onSave(app) }
                 }.keyboardShortcut(.defaultAction)
-                    .disabled(loading || selected == nil || app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled((selectedTool == nil && (loading || selected == nil)) || app.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }.padding(26).frame(width: 590)
         .task {
@@ -128,12 +140,30 @@ struct ProgramChooserView: View {
             }
         }
         .onChange(of: query) { _, value in
+            if let selectedTool, !selectedTool.matches(value) { self.selectedTool = nil }
+            if let selectedPath, !matches.contains(where: { $0.path == selectedPath }) { self.selectedPath = nil }
             if !value.isEmpty && programs.isEmpty && !tools.isEmpty { showTools = true }
         }
     }
 
+    private func wineToolRow(_ tool: WineTool) -> some View {
+        Button { selectedTool = tool; selectedPath = nil } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tool.title).fontWeight(.medium).foregroundStyle(.primary)
+                    Text(tool.description).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: selectedTool == tool ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(selectedTool == tool ? Color.accentColor : Color.secondary)
+            }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                .background(selectedTool == tool ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 9))
+                .contentShape(Rectangle())
+        }.buttonStyle(.plain).accessibilityIdentifier("wine-tool-" + tool.rawValue)
+    }
+
     private func programRow(_ candidate: ProgramCandidate) -> some View {
-        Button { selectedPath = candidate.path } label: {
+        Button { selectedTool = nil; selectedPath = candidate.path } label: {
             HStack(spacing: 12) {
                 ExecutableIcon(url: try? repository.confinedURL(candidate.path, beneath: repository.root(for: app)), size: 40)
                 VStack(alignment: .leading, spacing: 4) {
