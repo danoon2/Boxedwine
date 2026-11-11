@@ -1,0 +1,129 @@
+From: Boxedwine project
+Subject: [PATCH] ntdll: Remember alternate paths that reuse a builtin module.
+
+Sims3Launcher loads the VC80 .42 C runtime through .NET, then the .762
+C++ runtime through TSLHost.dll. LoadLibrary reuses Wine's builtin C runtime
+for both assembly paths, but GetModuleHandle under the latter activation
+context cannot find it. msvcp80 consequently initializes null C++ function
+pointers and fails its process attach with an access violation.
+
+Record only paths actually accepted when reusing a builtin image, consult
+them during full-name lookup, and retire them with the module. Preserve
+GetModuleFileName and do not conflate unrequested paths by basename.
+Native images retain the existing lookup behavior.
+
+Regression: tools/buildWine/probes/builtin-dll-alias.c in Boxedwine.
+---
+--- a/dlls/ntdll/loader.c
++++ b/dlls/ntdll/loader.c
+@@ -133,6 +133,12 @@
+ #define HASH_MAP_SIZE 32
+ static LIST_ENTRY hash_table[HASH_MAP_SIZE];
+ 
++struct module_alias
++{
++    struct module_alias *next;
++    UNICODE_STRING name;
++};
++
+ /* internal representation of loaded modules */
+ typedef struct _wine_modref
+ {
+@@ -140,6 +146,7 @@
+     struct file_id        id;
+     ULONG                 CheckSum;
+     BOOL                  system;
++    struct module_alias  *aliases;
+ } WINE_MODREF;
+ 
+ static UINT tls_module_count = 32;     /* number of modules with TLS directory */
+@@ -641,6 +648,11 @@
+     for (entry = mark->Flink; entry != mark; entry = entry->Flink)
+     {
+         LDR_DATA_TABLE_ENTRY *mod = CONTAINING_RECORD(entry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
++        WINE_MODREF *wm = CONTAINING_RECORD(mod, WINE_MODREF, ldr);
++        struct module_alias *alias;
++
++        for (alias = wm->aliases; alias; alias = alias->next)
++            if (RtlEqualUnicodeString( nt_name, &alias->name, TRUE )) return cached_modref = wm;
+         if (RtlEqualUnicodeString( &name, &mod->FullDllName, TRUE ))
+         {
+             cached_modref = CONTAINING_RECORD(mod, WINE_MODREF, ldr);
+@@ -2796,6 +2808,34 @@
+ }
+ 
+ 
++/* Builtin images can be shared by distinct WinSxS paths. Keep the paths
++ * accepted by LoadLibrary so GetModuleHandle can find that same module.
++ * Do not make unrequested paths (or unrelated DLLs with the same basename)
++ * visible, and keep the original name returned by GetModuleFileName.
++ * The loader_section must be locked while calling this function.
++ */
++static NTSTATUS remember_module_alias( WINE_MODREF *wm, const UNICODE_STRING *nt_name )
++{
++    struct module_alias *alias;
++    UNICODE_STRING name = *nt_name;
++
++    if (!(wm->ldr.Flags & LDR_WINE_INTERNAL)) return STATUS_SUCCESS;
++    if (name.Length < 4 * sizeof(WCHAR)) return STATUS_SUCCESS;
++    name.Buffer += 4;
++    name.Length -= 4 * sizeof(WCHAR);
++    if (RtlEqualUnicodeString( &name, &wm->ldr.FullDllName, TRUE )) return STATUS_SUCCESS;
++    for (alias = wm->aliases; alias; alias = alias->next)
++        if (RtlEqualUnicodeString( nt_name, &alias->name, TRUE )) return STATUS_SUCCESS;
++    if (!(alias = RtlAllocateHeap( GetProcessHeap(), 0, sizeof(*alias) + nt_name->Length )))
++        return STATUS_NO_MEMORY;
++    alias->name.Buffer = (WCHAR *)(alias + 1);
++    alias->name.Length = alias->name.MaximumLength = nt_name->Length;
++    memcpy( alias->name.Buffer, nt_name->Buffer, nt_name->Length );
++    alias->next = wm->aliases;
++    wm->aliases = alias;
++    return STATUS_SUCCESS;
++}
++
+ /******************************************************************************
+  *	load_native_dll  (internal)
+  */
+@@ -2812,11 +2852,13 @@
+ 
+     if ((*pwm = find_existing_module( module )))  /* already loaded */
+     {
++        status = remember_module_alias( *pwm, nt_name );
++        if (module != (*pwm)->ldr.DllBase) NtUnmapViewOfSection( NtCurrentProcess(), module );
++        if (status) return status;
+         if ((*pwm)->ldr.LoadCount != -1) (*pwm)->ldr.LoadCount++;
+         TRACE( "found %s for %s at %p, count=%d\n",
+                debugstr_us(&(*pwm)->ldr.FullDllName), debugstr_us(nt_name),
+                (*pwm)->ldr.DllBase, (*pwm)->ldr.LoadCount);
+-        if (module != (*pwm)->ldr.DllBase) NtUnmapViewOfSection( NtCurrentProcess(), module );
+         return STATUS_SUCCESS;
+     }
+ #ifdef _WIN64
+@@ -2851,6 +2893,7 @@
+ 
+     if ((wm = get_modref( module )))  /* already loaded */
+     {
++        if ((status = remember_module_alias( wm, nt_name ))) return status;
+         TRACE( "Found %s at %p for builtin %s\n",
+                debugstr_w(wm->ldr.FullDllName.Buffer), wm->ldr.DllBase, debugstr_us(nt_name) );
+         if (wm->ldr.LoadCount != -1) wm->ldr.LoadCount++;
+@@ -3982,6 +4025,7 @@
+  */
+ static void free_modref( WINE_MODREF *wm )
+ {
++    struct module_alias *alias;
+     SINGLE_LIST_ENTRY *entry;
+     LDR_DEPENDENCY *dep;
+ 
+@@ -4021,6 +4065,11 @@
+     NtUnmapViewOfSection( NtCurrentProcess(), wm->ldr.DllBase );
+     if (cached_modref == wm) cached_modref = NULL;
+     RtlFreeUnicodeString( &wm->ldr.FullDllName );
++    while ((alias = wm->aliases))
++    {
++        wm->aliases = alias->next;
++        RtlFreeHeap( GetProcessHeap(), 0, alias );
++    }
+     RtlFreeHeap( GetProcessHeap(), 0, wm );
+ }
+ 

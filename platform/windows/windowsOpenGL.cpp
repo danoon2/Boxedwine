@@ -6,8 +6,23 @@
 #include "windowsOpenGL.h"
 #include <mutex>
 #include <atomic>
+#include <array>
+#include "windowsOpenGLGamma.h"
 
 namespace {
+struct GammaState {
+    std::array<Uint16, 768> ramp;
+    Uint64 revision = 1;
+    Uint32 owner = 0;
+    bool identity = true;
+    GammaState() { for (int c = 0; c < 3; ++c) for (int i = 0; i < 256; ++i) ramp[c * 256 + i] = i * 257; }
+};
+std::mutex gammaMutex;
+GammaState gammaState;
+GammaState gammaSnapshot() {
+    std::lock_guard<std::mutex> lock(gammaMutex);
+    return gammaState;
+}
 constexpr const char* presentationKey = "Boxedwine.OpenGL.Fullscreen";
 constexpr int pbufferLost = 0x2036;
 using CreatePbuffer = HANDLE (WINAPI*)(HDC, int, int, int, const int*);
@@ -69,6 +84,7 @@ struct Presentation {
     bool srgb = false;
     bool doubleBuffered = true;
     bool warned = false;
+    WindowsGammaPresenter gamma;
 
     Presentation(int width, int height, bool aspect) : width(width), height(height), aspect(aspect) {}
     ~Presentation() { release(); }
@@ -150,6 +166,27 @@ struct Presentation {
         SDL_GL_GetDrawableSize(window, &hostWidth, &hostHeight);
         auto viewport = OpenGLViewport::fit(hostWidth, hostHeight, backingWidth, backingHeight, aspect);
         if (!viewport.valid()) return false;
+
+        auto ramp = gammaSnapshot();
+        if (!ramp.identity) {
+            // Flush the producer before another context reads its drawable.
+            // The private context owns all LUT/shader/texture state.
+            gl.glFlush();
+            bool displayed = gamma.create(windowDC) && makeCurrent(windowDC, backingDC, gamma.context);
+            if (displayed) {
+                if (SDL_GL_GetSwapInterval() != interval) SDL_GL_SetSwapInterval(interval);
+                displayed = gamma.draw(backingWidth, backingHeight, hostWidth, hostHeight, viewport,
+                    doubleBuffered && swap ? GL_BACK : GL_FRONT, doubleBuffered ? GL_BACK : GL_FRONT,
+                    ramp.ramp.data(), ramp.revision);
+                if (displayed) {
+                    if (doubleBuffered) displayed = gl.wglSwapLayerBuffers(windowDC, WGL_SWAP_MAIN_PLANE) != FALSE;
+                    else gl.glFlush();
+                }
+            }
+            bool restored = makeCurrent(backingDC, backingDC, context) != FALSE;
+            if (restored && doubleBuffered && swap) displayed = gl.wglSwapLayerBuffers(backingDC, WGL_SWAP_MAIN_PLANE) != FALSE && displayed;
+            return restored && bind(context) && displayed;
+        }
 
         // The game keeps a real, guest-sized default framebuffer (including
         // front/back, depth, stencil and readback). WGL lets the same context
@@ -255,6 +292,7 @@ bool windowsOpenGLMakeCurrent(SDL_Window* window, SDL_GLContext context) {
         if (SDL_GL_MakeCurrent(window, context) != 0) return false;
     }
     auto p = presentation(window);
+    if (p && !gammaSnapshot().identity) p->enabled = true;
     if (!p || !p->enabled) return true;
     std::lock_guard<std::mutex> lock(p->mutex);
     return p->initialize(window) && p->bind(context);
@@ -262,6 +300,7 @@ bool windowsOpenGLMakeCurrent(SDL_Window* window, SDL_GLContext context) {
 
 bool windowsOpenGLSwapBuffers(SDL_Window* window, bool swap) {
     auto p = presentation(window);
+    if (p && !gammaSnapshot().identity) p->enabled = true;
     if (!p || !p->enabled) {
         if (!swap) return false;
         // SDL2's Windows backend calls GDI SwapBuffers, which dispatches through
@@ -292,4 +331,30 @@ bool windowsOpenGLSwapBuffers(SDL_Window* window, bool swap) {
 
 void windowsOpenGLDestroyWindow(SDL_Window* window) {
     delete (Presentation*)SDL_SetWindowData(window, presentationKey, nullptr);
+}
+
+void windowsOpenGLGetGammaRamp(Uint16* ramp) {
+    auto state = gammaSnapshot();
+    std::copy(state.ramp.begin(), state.ramp.end(), ramp);
+}
+
+void windowsOpenGLSetGammaRamp(Uint32 owner, const Uint16* ramp) {
+    std::lock_guard<std::mutex> lock(gammaMutex);
+    std::copy(ramp, ramp + 768, gammaState.ramp.begin());
+    gammaState.identity = true;
+    for (int c = 0; c < 3; ++c) for (int i = 0; i < 256; ++i)
+        if (ramp[c * 256 + i] != i * 257) gammaState.identity = false;
+    gammaState.owner = owner;
+    ++gammaState.revision;
+    if (SDL_getenv("BOXEDWINE_TRACE_GAMMA")) SDL_Log("Gamma ramp pid=%u red=[%u,%u,%u,%u,%u] identity=%d",
+        owner, ramp[0], ramp[64], ramp[128], ramp[192], ramp[255], gammaState.identity);
+}
+
+void windowsOpenGLResetGammaRamp(Uint32 owner) {
+    std::lock_guard<std::mutex> lock(gammaMutex);
+    if (!owner || gammaState.owner == owner) {
+        Uint64 revision = gammaState.revision + 1;
+        gammaState = GammaState();
+        gammaState.revision = revision;
+    }
 }

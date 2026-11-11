@@ -77,6 +77,11 @@ public:
     void warpMouse(int x, int y) override;
     U32 getLastUpdateTime() override;
     void hideCurrentWindow() override;
+#ifdef BOXEDWINE_MSVC
+    bool getGammaRamp(U16* ramp) override;
+    bool setGammaRamp(U32 owner, const U16* ramp) override;
+    void resetGammaRamp(U32 owner) override;
+#endif
 
     std::weak_ptr<SDLGlWindow> currentWindow;
     U32 lastUpdateTime = 0;

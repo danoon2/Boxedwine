@@ -583,6 +583,9 @@ BOXEDWINE_MUTEX KOpenGLSdl::pbufferMutex;
 BHashTable<U32, void*> KOpenGLSdl::pbuffersById;
 
 KOpenGLSdl::~KOpenGLSdl() {
+#ifdef BOXEDWINE_MSVC
+    windowsOpenGLResetGammaRamp(0);
+#endif
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
         for (auto& context : contextsById) {
@@ -614,6 +617,22 @@ KOpenGLSdl::~KOpenGLSdl() {
     windows.clear();
     shownGlWindows = 0;
 }
+
+#ifdef BOXEDWINE_MSVC
+bool KOpenGLSdl::getGammaRamp(U16* ramp) {
+    windowsOpenGLGetGammaRamp(ramp);
+    return true;
+}
+
+bool KOpenGLSdl::setGammaRamp(U32 owner, const U16* ramp) {
+    windowsOpenGLSetGammaRamp(owner, ramp);
+    return true;
+}
+
+void KOpenGLSdl::resetGammaRamp(U32 owner) {
+    windowsOpenGLResetGammaRamp(owner);
+}
+#endif
 
 void SDLGlWindow::showWindow(bool show) {
     if (XServer::getServer(true)) {

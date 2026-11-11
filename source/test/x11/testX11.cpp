@@ -185,6 +185,99 @@ void testX11ImageIncludeInferiors() {
 	for (auto it = children.rbegin(); it != children.rend(); ++it) (*it)->removeFromParent();
 }
 
+void testX11ClearArea() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    x11_init();
+    testNewInstruction(0);
+    initPaletteTestServer();
+    auto server = XServer::getServer();
+    auto& context = testContext();
+    auto display = server->getDisplayDataByAddressOfDisplay(context.memory, server->openDisplay(context.thread));
+    auto visual = std::make_shared<Visual>();
+    visual->bits_per_rgb = 8;
+    auto window = server->createNewWindow(display->displayId, server->getRoot(), 8, 6, 8, 0, 0, InputOutput, 0, visual);
+    auto child = server->createNewWindow(display->displayId, window, 2, 1, 8, 1, 1, InputOutput, 1, visual);
+    auto input = server->createNewWindow(display->displayId, window, 2, 2, 8, 6, 0, InputOnly, 0, visual);
+    window->mapWindow(); child->mapWindow(); input->mapWindow();
+    display->setEventMask(window->id, ExposureMask);
+    display->setEventMask(child->id, ExposureMask);
+    auto clear = [&](U32 id, S32 x, S32 y, U32 w, U32 h, U32 exposures) {
+        CPU* cpu = context.cpu;
+        U32 args[] = {display->displayAddress, id, (U32)x, (U32)y, w, h, exposures};
+        for (U32 i = 0; i < 7; ++i) context.memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + (i + 1) * 4, args[i]);
+        callX11(cpu, X11_CLEAR_AREA);
+        return EAX;
+    };
+    auto pixel = [](const XDrawablePtr& drawable, U32 x, U32 y) {
+        return drawable->getData()[y * drawable->getBytesPerLine() + x];
+    };
+    memset(window->getData(), 9, window->getDataSize());
+    if (clear(window->id, 0, 0, 0, 0, False) != Success || pixel(window, 0, 0) != 9)
+        testFail("XClearArea default background None changed pixels");
+    XSetWindowAttributes attributes;
+    attributes.background_pixel = 42;
+    if (window->setAttributes(nullptr, &attributes, CWBackPixel) != Success) testFail("Set background pixel failed");
+    if (clear(window->id, -2, -1, 0, 0, True) != Success) testFail("XClearArea failed");
+    for (U32 y = 0; y < 6; ++y) for (U32 x = 0; x < 8; ++x) {
+        U8 expected = x >= 1 && x < 5 && y >= 1 && y < 4 ? 9 : 42;
+        if (pixel(window, x, y) != expected) testFail("XClearArea child/border clipping mismatch at %u,%u", x, y);
+    }
+    if (pixel(child, 0, 0)) testFail("XClearArea changed child backing store");
+    XEvent event;
+    U32 exposedPixels = 0, eventCount = 0;
+    S32 remaining = -1;
+    while (display->findAndRemoveEvent(window->id, Expose, event)) {
+        if (eventCount && event.xexpose.count != remaining - 1) testFail("XClearArea exposure count mismatch");
+        remaining = event.xexpose.count;
+        ++eventCount;
+        for (S32 y = event.xexpose.y; y < event.xexpose.y + event.xexpose.height; ++y)
+            for (S32 x = event.xexpose.x; x < event.xexpose.x + event.xexpose.width; ++x)
+                if (x < 0 || x >= 8 || y < 0 || y >= 6 || (x >= 1 && x < 5 && y >= 1 && y < 4))
+                    testFail("XClearArea exposed outside the clear region");
+        exposedPixels += event.xexpose.width * event.xexpose.height;
+    }
+    if (!eventCount || remaining || exposedPixels != 36 || display->findAndRemoveEvent(child->id, Expose, event))
+        testFail("XClearArea exposure coverage or child isolation failed");
+
+    attributes.background_pixmap = 0;
+    window->setAttributes(nullptr, &attributes, CWBackPixmap);
+    clear(window->id, 5, 4, 1, 1, True);
+    if (pixel(window, 5, 4) != 42 || !display->findAndRemoveEvent(window->id, Expose, event) ||
+        event.xexpose.x != 5 || event.xexpose.y != 4 || event.xexpose.width != 1 || event.xexpose.height != 1)
+        testFail("XClearArea background None did not preserve pixels and expose");
+    attributes.background_pixel = 0;
+    window->setAttributes(nullptr, &attributes, CWBackPixel);
+    clear(window->id, 5, 4, 0, 0, False);
+    if (pixel(window, 5, 4) || pixel(window, 7, 5) || pixel(window, 0, 0) != 42 ||
+        display->findAndRemoveEvent(window->id, Expose, event)) testFail("XClearArea zero extents or solid black failed");
+    clear(window->id, 8, 6, 0, 0, True);
+    clear(window->id, INT32_MIN, INT32_MIN, 1, 1, True);
+    if (display->findAndRemoveEvent(window->id, Expose, event)) testFail("XClearArea empty region exposed");
+
+    auto tile = server->createNewPixmap(3, 2, 8, visual);
+    for (U32 y = 0; y < 2; ++y) for (U32 x = 0; x < 3; ++x) tile->getData()[y * tile->getBytesPerLine() + x] = (U8)(1 + y * 3 + x);
+    attributes.background_pixmap = tile->id;
+    window->setAttributes(nullptr, &attributes, CWBackPixmap);
+    server->removePixmap(tile->id); // The background retains this resource.
+    clear(window->id, 0, 0, UINT32_MAX, UINT32_MAX, False);
+    if (pixel(window, 7, 5) != 5 || pixel(window, 0, 0) != 1) testFail("XClearArea tiled background or extent overflow failed");
+    attributes.background_pixmap = 1; // ParentRelative, includes child border offset.
+    child->setAttributes(nullptr, &attributes, CWBackPixmap);
+    clear(child->id, 0, 0, 0, 0, False);
+    if (pixel(child, 0, 0) != 3 || pixel(child, 1, 0) != 1) testFail("XClearArea ParentRelative tile alignment failed");
+    attributes.background_pixel = 17;
+    window->setAttributes(nullptr, &attributes, CWBackPixel);
+    clear(child->id, 0, 0, 0, 0, False);
+    if (pixel(child, 0, 0) != 17) testFail("XClearArea ParentRelative did not follow changed parent background");
+    child->unmapWindow();
+    clear(window->id, 1, 1, 1, 1, False);
+    if (pixel(window, 1, 1) != 17) testFail("XClearArea clipped an unmapped child");
+    if (clear(0xffffffff, 0, 0, 1, 1, False) != BadWindow ||
+        clear(input->id, 0, 0, 1, 1, False) != BadMatch || clear(window->id, 0, 0, 1, 1, 2) != BadValue)
+        testFail("XClearArea did not reject invalid arguments");
+    server->closeDisplay(context.thread, display);
+}
+
 void testX11ImageScanlinePadding() {
     x11_init();
     testNewInstruction(0);

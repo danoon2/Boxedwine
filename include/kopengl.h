@@ -46,6 +46,11 @@ public:
     virtual void warpMouse(int x, int y) = 0;
     virtual U32 getLastUpdateTime() = 0;
     virtual void hideCurrentWindow() = 0;
+    // Display ramps contain 256 unsigned 16-bit entries for each RGB channel.
+    // Unsupported backends must not advertise XF86VidMode gamma control.
+    virtual bool getGammaRamp(U16* ramp) { return false; }
+    virtual bool setGammaRamp(U32 owner, const U16* ramp) { return false; }
+    virtual void resetGammaRamp(U32 owner) {}
 };
 
 typedef std::shared_ptr<KOpenGL> KOpenGLPtr;

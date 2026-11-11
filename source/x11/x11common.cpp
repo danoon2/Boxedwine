@@ -90,8 +90,10 @@ static void x11_InitThread(CPU* cpu) {
     EAX = 1;
 }
 
+// int XClearArea(Display*, Window, int x, int y, unsigned width, unsigned height, Bool exposures)
 static void x11_ClearArea(CPU* cpu) {
-    kpanic("x11_ClearArea");
+    XWindowPtr window = XServer::getServer()->getWindow(ARG2);
+    EAX = window ? window->clearArea(cpu->thread, (S32)ARG3, (S32)ARG4, ARG5, ARG6, ARG7) : BadWindow;
 }
 
 // int XSync(Display* display, Bool discard)
@@ -2609,9 +2611,50 @@ static void x11_QueryExtension(CPU* cpu) {
         cpu->memory->writed(ARG3, XServer::getServer()->getExtensionGLX());
         cpu->memory->writed(ARG4, 0);
         cpu->memory->writed(ARG5, 0);
-    }  else {
+    } else if (name == "XFree86-VidModeExtension") {
+        U16 ramp[3 * 256];
+        auto gl = KNativeSystem::getOpenGL();
+        EAX = gl && gl->getGammaRamp(ramp);
+        if (EAX) {
+            cpu->memory->writed(ARG3, XServer::getServer()->internAtom(name, false));
+            cpu->memory->writed(ARG4, 0);
+            cpu->memory->writed(ARG5, 0);
+        }
+    } else {
         EAX = False;
     }
+}
+
+static void x11_VMQueryVersion(CPU* cpu) {
+    U16 ramp[3 * 256];
+    auto gl = KNativeSystem::getOpenGL();
+    EAX = gl && gl->getGammaRamp(ramp);
+    if (EAX) {
+        cpu->memory->writed(ARG2, 2);
+        cpu->memory->writed(ARG3, 1);
+    }
+}
+
+static void x11_VMGetGammaRamp(CPU* cpu) {
+    U16 ramp[3 * 256];
+    auto gl = KNativeSystem::getOpenGL();
+    EAX = False;
+    if (ARG2 || ARG3 != 256 || !ARG4 || !ARG5 || !ARG6 || !gl || !gl->getGammaRamp(ramp)) return;
+    const U32 channels[] = {ARG4, ARG5, ARG6};
+    for (U32 c = 0; c < 3; ++c)
+        for (U32 i = 0; i < 256; ++i) cpu->memory->writew(channels[c] + i * 2, ramp[c * 256 + i]);
+    EAX = True;
+}
+
+static void x11_VMSetGammaRamp(CPU* cpu) {
+    U16 ramp[3 * 256];
+    auto gl = KNativeSystem::getOpenGL();
+    EAX = False;
+    if (ARG2 || ARG3 != 256 || !ARG4 || !ARG5 || !ARG6 || !gl) return;
+    const U32 channels[] = {ARG4, ARG5, ARG6};
+    for (U32 c = 0; c < 3; ++c)
+        for (U32 i = 0; i < 256; ++i) ramp[c * 256 + i] = cpu->memory->readw(channels[c] + i * 2);
+    EAX = gl->setGammaRamp(cpu->thread->process->id, ramp);
 }
 
 static void x11_ShapeCombineMask(CPU* cpu) {
@@ -3325,6 +3368,9 @@ static void initializeX11() {
     int9BCallback[X11_PUT_BACK_EVENT] = x11_PutBackEvent;
     int9BCallback[X11_GET_WM_NORMAL_HINTS] = x11_GetWMNormalHints;
     int9BCallback[X11_GET_WM_HINTS] = x11_GetWMHints;
+    int9BCallback[X11_VM_QUERY_VERSION] = x11_VMQueryVersion;
+    int9BCallback[X11_VM_GET_GAMMA_RAMP] = x11_VMGetGammaRamp;
+    int9BCallback[X11_VM_SET_GAMMA_RAMP] = x11_VMSetGammaRamp;
 }
 
 void x11_init() {

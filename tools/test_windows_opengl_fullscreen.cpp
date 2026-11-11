@@ -59,10 +59,10 @@ struct GLFunctions {
 };
 static GLFunctions api;
 
-static void pixel(int x, int y, int red, int green) {
+static void pixel(int x, int y, int red, int green, int blue = -1) {
     unsigned char color[4] = {};
     api.glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, color);
-    if (color[0] != red || color[1] != green) {
+    if (color[0] != red || color[1] != green || (blue >= 0 && color[2] != blue)) {
         std::fprintf(stderr, "Pixel (%d,%d) expected %d,%d; got %d,%d; GL error %x\n", x, y, red, green, color[0], color[1], api.glGetError());
         std::abort();
     }
@@ -224,6 +224,44 @@ int main(int argc, char** argv) {
                 assert(api.glGetError() == GL_NO_ERROR);
             }
             deleteFramebuffers(2, fbo);
+            // Gamma is an output operation: guest front/back readback and GL
+            // state stay intact, including for a core-profile guest context.
+            Uint16 ramp[768], savedRamp[768];
+            for (int i = 0; i < 256; ++i) {
+                ramp[i] = (i < 128 ? i * 2 : 255) * 257;
+                ramp[256 + i] = (i / 2) * 257;
+                ramp[512 + i] = (255 - i) * 257;
+            }
+            windowsOpenGLSetGammaRamp(42, ramp);
+            windowsOpenGLResetGammaRamp(43); // Other clients cannot reset the owner.
+            windowsOpenGLGetGammaRamp(savedRamp);
+            for (int i = 0; i < 768; ++i) assert(savedRamp[i] == ramp[i]);
+            for (bool corrected : {true, false, true}) {
+                if (corrected) windowsOpenGLSetGammaRamp(42, ramp);
+                else windowsOpenGLResetGammaRamp(42);
+                api.glDisable(GL_SCISSOR_TEST);
+                api.glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+                api.glClearColor(64.0f / 255, 64.0f / 255, 64.0f / 255, 1);
+                api.glClear(GL_COLOR_BUFFER_BIT);
+                api.glEnable(GL_SCISSOR_TEST);
+                api.glViewport(3, 4, 123, 234);
+                assert(windowsOpenGLSwapBuffers(window));
+                assert(api.glIsEnabled(GL_SCISSOR_TEST));
+                GLint view[4]; api.glGetIntegerv(GL_VIEWPORT, view);
+                assert(view[0] == 3 && view[1] == 4 && view[2] == 123 && view[3] == 234);
+                api.glReadBuffer(GL_FRONT);
+                pixel(100, 100, 64, 64, 64);
+                assert(SDL_GL_MakeCurrent(nullptr, nullptr) == 0);
+                assert(SDL_GL_MakeCurrent(window, context) == 0);
+                api.glReadBuffer(GL_FRONT);
+                auto fit = windowsOpenGLGetViewport(window);
+                pixel(fit.x + fit.width / 2, fit.y + fit.height / 2,
+                    corrected ? 128 : 64, corrected ? 32 : 64, corrected ? 191 : 64);
+                api.glReadBuffer(GL_BACK);
+                assert(windowsOpenGLMakeCurrent(window, context));
+                assert(api.glGetError() == GL_NO_ERROR);
+            }
+            windowsOpenGLResetGammaRamp(42);
             // Resize must also take effect when a game leaves its context bound.
             assert(windowsOpenGLResizeFullscreen(window, 2048, 1536));
             assert(windowsOpenGLSwapBuffers(window));

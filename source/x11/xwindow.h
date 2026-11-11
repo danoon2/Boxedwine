@@ -160,6 +160,7 @@ public:
 	void onDestroy();
 
 	int setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
+	int clearArea(KThread* thread, S32 x, S32 y, U32 width, U32 height, Bool exposures);
 	void setTransient(U32 w);
 	void iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients = false);
 	void iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients = false);
@@ -231,6 +232,8 @@ private:
 	S32 top;	
 	U32 border_width;
 	XSetWindowAttributes attributes;
+	bool backgroundIsPixel = false;
+	XDrawablePtr backgroundPixmap; // Retain the pixmap after XFreePixmap.
 	bool isMapped = false;	
 	bool isFullScreen = false;
 	std::weak_ptr<XWindow> transientCached;

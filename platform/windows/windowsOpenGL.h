@@ -13,3 +13,8 @@ OpenGLViewport windowsOpenGLGetViewport(SDL_Window* window);
 bool windowsOpenGLMakeCurrent(SDL_Window* window, SDL_GLContext context);
 bool windowsOpenGLSwapBuffers(SDL_Window* window, bool swap = true);
 void windowsOpenGLDestroyWindow(SDL_Window* window);
+
+// Virtual display gamma: never changes the host monitor's hardware ramp.
+void windowsOpenGLGetGammaRamp(Uint16* ramp);
+void windowsOpenGLSetGammaRamp(Uint32 owner, const Uint16* ramp);
+void windowsOpenGLResetGammaRamp(Uint32 owner); // zero resets all owners

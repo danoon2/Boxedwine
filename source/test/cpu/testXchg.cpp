@@ -1884,6 +1884,79 @@ void testPlainReadAgainstLockedWrite() { runPlainReadAgainstLockedWriteCase("pla
 void testLockedAdditionalFamilies() { runLockedFamilyCoverageCase(); }
 void testLockedCmpXchg8bAgainstPlainStore() { runLockedCmpXchg8bAgainstPlainStoreCase("locked cmpxchg8b against plain store"); }
 void testLockedPageBoundaryNoPartialWrite() { runLockedPageBoundaryNoPartialWriteCase("locked page-boundary no partial write"); }
+void testLockedMemoryFaults() {
+    // Include the interpreter fallback used after a JIT memory exception.
+    for (bool singleOp : {false, true})
+    for (U32 protection : {0u, (U32)K_PROT_READ, (U32)(K_PROT_READ | K_PROT_EXEC)})
+    for (int width : {8, 16, 32, 64})
+    for (U32 kind = 0; kind < (width == 64 ? 1u : 6u); ++kind) {
+        newInstruction(0);
+        auto& context = testContext();
+        CPU* targetCpu = cpu;
+        KMemory* targetMemory = memory;
+        constexpr U32 offset = 0x2000;
+        const U32 address = targetCpu->seg[DS].address + offset;
+        constexpr U64 initial = 0x1122334455667788ull;
+        targetMemory->writeq(address, initial);
+        targetCpu->reg[R_AX].u32 = 0x55667788;
+        targetCpu->reg[R_DX].u32 = 0x11223344;
+        targetCpu->reg[R_BX].u32 = 0x98765432;
+        // A pending ADD makes overwriting lazy-flag operands before the
+        // fault visible in the saved signal context.
+        targetCpu->dst.u32 = 0xffffffff;
+        targetCpu->src.u32 = 1;
+        targetCpu->result.u32 = 0;
+        targetCpu->lazyFlagType = FLAGS_ADD32;
+        asmjit::CodeHolder code;
+        initCode(code);
+        asmjit::x86::Assembler a(&code);
+        if (width == 64) {
+            a.lock();
+            expectAsmOk(a.cmpxchg8b(asmjit::x86::qword_ptr(offset)), "fault cmpxchg8b");
+        } else {
+            auto operand = targetMem(offset, width);
+            if (kind != 3) a.lock(); // XCHG has an implicit lock.
+            switch (kind) {
+            case 0: expectAsmOk(a.add(operand, 1), "fault add immediate"); break;
+            case 1: expectAsmOk(a.add(operand, bxForWidth(width)), "fault add register"); break;
+            case 2: expectAsmOk(a.xadd(operand, bxForWidth(width)), "fault xadd"); break;
+            case 3: expectAsmOk(a.xchg(operand, bxForWidth(width)), "fault xchg"); break;
+            case 4: expectAsmOk(a.cmpxchg(operand, bxForWidth(width)), "fault cmpxchg"); break;
+            case 5: expectAsmOk(a.inc(operand), "fault inc"); break;
+            }
+        }
+        pushGeneratedCode(code);
+        const U32 handler = context.codeIp;
+        pushCode8(0xcd); pushCode8(0x97);
+        auto oldAction = context.process->sigActions[K_SIGSEGV];
+        auto& action = context.process->sigActions[K_SIGSEGV];
+        action.reset(); action.flags = K_SA_SIGINFO; action.handlerAndSigAction = handler;
+        // A zero protection case exercises an unmapped page; the other two
+        // reproduce write faults on mapped data and executable pages.
+        if (!protection) targetMemory->unmap(address, K_PAGE_SIZE);
+        else if (targetMemory->mprotect(context.thread, address, K_PAGE_SIZE, protection))
+            failed("locked fault protection setup");
+        if (singleOp) targetCpu->runNextSingleOp();
+        else runTestCPU();
+        const U32 uc = action.sigInfo[0] == K_SIGSEGV ? targetCpu->reg[R_DX].u32 : 0;
+        if (!uc || action.sigInfo[2] != (protection ? 2u : 1u) || action.sigInfo[3] != address ||
+                targetMemory->readd(uc + 0x4c) != 0 || !(targetMemory->readd(uc + 0x48) & 2) ||
+                targetMemory->readd(uc + 0x40) != 0x55667788 ||
+                targetMemory->readd(uc + 0x38) != 0x11223344 ||
+                targetMemory->readd(uc + 0x34) != 0x98765432 ||
+                (targetMemory->readd(uc + 0x54) & (CF | PF | AF | ZF | SF | OF)) != (CF | PF | AF | ZF)) {
+            failed("locked fault state single=%u protection=%u width=%d kind=%u", (U32)singleOp, protection, width, kind);
+        }
+        if (protection) {
+            targetMemory->mprotect(context.thread, address, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);
+            if (targetMemory->readq(address) != initial) failed("locked fault modified protected memory");
+        } else {
+            targetMemory->mmap(context.thread, address, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE,
+                K_MAP_FIXED | K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+        }
+        context.process->sigActions[K_SIGSEGV] = oldAction;
+    }
+}
 void testImplicitLockedXchgSelfModifyingCode() { runImplicitXchgSelfModifyingCodeCase("implicit locked xchg self-modifying code"); }
 void testPlainMemoryOrdering() { runPlainOrderingCase("plain x86 memory ordering"); }
 void testLockedWidthsAndAlignmentAgainstPlainStore() {

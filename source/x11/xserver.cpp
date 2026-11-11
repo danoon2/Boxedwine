@@ -984,6 +984,7 @@ void XServer::changeScreen(U32 width, U32 height) {
 }
 
 void XServer::processExit(U32 pid) {
+    if (auto gl = KNativeSystem::getOpenGL(true)) gl->resetGammaRamp(pid);
 	std::vector<U32> processDisplays;
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);

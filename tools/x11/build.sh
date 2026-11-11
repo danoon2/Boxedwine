@@ -19,3 +19,6 @@ gcc -Wl,-soname,libXi.so.6.1.0 -shared -m32 -o libXi.so.6.1.0 Xinput2.o
 
 gcc -c -Wall -Werror -Wno-return-type -fpic -m32 -march=i586 Xcursor.c
 gcc -Wl,-soname,libXcursor.so.1 -shared -m32 -o libXcursor.so.1 Xcursor.o
+
+gcc -c -Wall -Werror -Wno-return-type -fpic -m32 -march=i586 Xxf86vm.c
+gcc -Wl,-soname,libXxf86vm.so.1 -shared -m32 -o libXxf86vm.so.1 Xxf86vm.o -lX11

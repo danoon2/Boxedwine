@@ -292,6 +292,19 @@ void XWindow::setTransient(U32 w) {
 }
 
 int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask) {	
+	XDrawablePtr newBackground;
+	if (valueMask & (CWBackPixmap | CWBackPixel)) {
+		if (c_class == InputOnly) return BadMatch;
+		if ((valueMask & CWBackPixmap) && !(valueMask & CWBackPixel)) {
+			if (attributes->background_pixmap == 1) { // ParentRelative
+				if (parent && parent->getDepth() != getDepth()) return BadMatch;
+			} else if (attributes->background_pixmap) {
+				newBackground = XServer::getServer()->getPixmap(attributes->background_pixmap);
+				if (!newBackground) return BadPixmap;
+				if (newBackground->getDepth() != getDepth()) return BadMatch;
+			}
+		}
+	}
 	if (valueMask & CWEventMask) {
 		// per spec
 		// https://tronche.com/gui/x/xlib/window/XChangeWindowAttributes.html
@@ -316,6 +329,86 @@ int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* att
 		setDirty();
 	}
 	this->attributes.copyWithMask(attributes, valueMask);
+	if (valueMask & (CWBackPixmap | CWBackPixel)) {
+		backgroundIsPixel = (valueMask & CWBackPixel) != 0;
+		backgroundPixmap = newBackground;
+	}
+	return Success;
+}
+
+int XWindow::clearArea(KThread* thread, S32 x, S32 y, U32 w, U32 h, Bool exposures) {
+	if (c_class == InputOnly) return BadMatch;
+	if (exposures != False && exposures != True) return BadValue;
+	// Zero extents reach the window edge; clip before converting to unsigned.
+	struct Rect { S64 left, top, right, bottom; };
+	Rect area = {std::max<S64>(0, x), std::max<S64>(0, y),
+		w ? std::min<S64>(width(), (S64)x + w) : width(),
+		h ? std::min<S64>(height(), (S64)y + h) : height()};
+	if (area.left >= area.right || area.top >= area.bottom) return Success;
+	std::vector<Rect> regions = {area};
+	// XClearArea always uses ClipByChildren, including child borders.
+	iterateMappedChildrenBackToFront([&](const XWindowPtr& child) {
+		if (child->c_class == InputOnly) return true;
+		std::vector<Rect> remaining;
+		for (const auto& rect : regions) {
+			Rect overlap = {std::max<S64>(rect.left, child->left), std::max<S64>(rect.top, child->top),
+				std::min<S64>(rect.right, (S64)child->left + child->width() + 2LL * child->border_width),
+				std::min<S64>(rect.bottom, (S64)child->top + child->height() + 2LL * child->border_width)};
+			if (overlap.left >= overlap.right || overlap.top >= overlap.bottom) {
+				remaining.push_back(rect);
+				continue;
+			}
+			if (rect.top < overlap.top) remaining.push_back({rect.left, rect.top, rect.right, overlap.top});
+			if (overlap.bottom < rect.bottom) remaining.push_back({rect.left, overlap.bottom, rect.right, rect.bottom});
+			if (rect.left < overlap.left) remaining.push_back({rect.left, overlap.top, overlap.left, overlap.bottom});
+			if (overlap.right < rect.right) remaining.push_back({overlap.right, overlap.top, rect.right, overlap.bottom});
+		}
+		regions.swap(remaining);
+		return !regions.empty();
+	});
+
+	auto background = shared_from_this();
+	S64 offsetX = 0, offsetY = 0;
+	while (!background->backgroundIsPixel && background->attributes.background_pixmap == 1 && background->parent) {
+		offsetX += (S64)background->left + background->border_width;
+		offsetY += (S64)background->top + background->border_width;
+		background = background->parent;
+	}
+	if (background->backgroundIsPixel || background->backgroundPixmap) {
+		auto gc = std::make_shared<XGC>(shared_from_this());
+		gc->values.foreground = background->attributes.background_pixel;
+		if (!background->backgroundIsPixel) {
+			gc->tile = background->backgroundPixmap;
+			gc->values.fill_style = FillTiled;
+			gc->values.ts_x_origin = (S32)(-offsetX % gc->tile->width());
+			gc->values.ts_y_origin = (S32)(-offsetY % gc->tile->height());
+		}
+		for (const auto& rect : regions) {
+			int result = fillRectangle(thread, gc, (S32)rect.left, (S32)rect.top,
+				(U32)(rect.right - rect.left), (U32)(rect.bottom - rect.top));
+			if (result != Success) return result;
+		}
+	}
+	// Background None still generates exposures. Do not use exposeNofity,
+	// which also recursively exposes children (not part of XClearArea).
+	if (exposures && isThisAndAncestorsMapped()) {
+		XServer::getServer()->iterateEventMask(id, ExposureMask, [&](const DisplayDataPtr& data) {
+			for (size_t i = 0; i < regions.size(); ++i) {
+				const auto& rect = regions[i];
+				XEvent event = {};
+				event.xexpose.type = Expose;
+				event.xexpose.display = data->displayAddress;
+				event.xexpose.window = id;
+				event.xexpose.serial = data->getNextEventSerial();
+				event.xexpose.x = (S32)rect.left;
+				event.xexpose.y = (S32)rect.top;
+				event.xexpose.width = (S32)(rect.right - rect.left);
+				event.xexpose.height = (S32)(rect.bottom - rect.top);
+				event.xexpose.count = (S32)(regions.size() - i - 1);
+				data->putEvent(event);
+			}
+		});
+	}
 	return Success;
 }
 

@@ -77,6 +77,7 @@ void testWasmJitFpuFaultState();
 void testWaitPid();
 void testX11ConcurrentInitialization();
 void testX11ImageIncludeInferiors();
+void testX11ClearArea();
 void testX11ImageScanlinePadding();
 void testX11GetImageBounds();
 void testX11ImageReadback();
@@ -1117,6 +1118,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testLockedAdditionalFamilies, "Test Multi-threaded additional locked operation families"},
     {testLockedCmpXchg8bAgainstPlainStore, "Test Multi-threaded locked cmpxchg8b against plain store"},
     {testLockedPageBoundaryNoPartialWrite, "Test locked page-boundary write has no partial update"},
+    {testLockedMemoryFaults, "Test locked memory faults preserve guest state"},
     {testImplicitLockedXchgSelfModifyingCode, "Test implicit locked xchg invalidates self-modifying code"},
     {testPlainMemoryOrdering, "Test Multi-threaded plain x86 memory ordering"},
     {testLockedWidthsAndAlignmentAgainstPlainStore, "Test Multi-threaded locked widths and alignment against plain store"},
@@ -1124,6 +1126,7 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
     {testWaitPid, "Test waitpid child selection"},
     {testX11ImageIncludeInferiors, "Test X11 image IncludeInferiors and child coordinates"},
+    {testX11ClearArea, "Test X11 ClearArea backgrounds, clipping and exposures"},
     {testX11ImageScanlinePadding, "Test X11 image scanline padding"},
     {testX11GetImageBounds, "Test X11 image capture bounds and padding"},
     {testX11ImageReadback, "Test X11 window readback and cursor save/restore"},

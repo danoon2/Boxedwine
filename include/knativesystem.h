@@ -49,7 +49,7 @@ public:
 
 	static KNativeInputPtr getCurrentInput();
 	static KNativeScreenPtr getScreen();
-	static KOpenGLPtr getOpenGL();
+	static KOpenGLPtr getOpenGL(bool existingOnly = false);
 	static KVulkanPtr getVulkan();
 	static void showScreen(bool show);
 	static void tick();

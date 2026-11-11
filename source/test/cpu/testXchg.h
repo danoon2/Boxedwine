@@ -51,6 +51,7 @@ void testPlainReadAgainstLockedWrite();
 void testLockedAdditionalFamilies();
 void testLockedCmpXchg8bAgainstPlainStore();
 void testLockedPageBoundaryNoPartialWrite();
+void testLockedMemoryFaults();
 void testImplicitLockedXchgSelfModifyingCode();
 void testPlainMemoryOrdering();
 void testLockedWidthsAndAlignmentAgainstPlainStore();

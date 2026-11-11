@@ -22,6 +22,11 @@
  // for unaligned cases, this won't be 100% guaranteed accurate if another aligned lock access references the same memory (hopefully that would be rare to have overlapped lock instructions of different memory size)
 BOXEDWINE_MUTEX lockMutex;
 
+// Check write access before changing registers or lazy-flag operands. The
+// aligned paths use getRamPtr(), which returns nullptr for protected/unmapped
+// pages instead of raising a guest fault. This also checks the entire operand
+// before an unaligned operation can partially update memory.
+
 /*
     U64 value1 = ((U64)EDX) << 32 | EAX;
     U64 value2 = cpu->memory->readq(address);
@@ -37,6 +42,7 @@ BOXEDWINE_MUTEX lockMutex;
     }
 */
 void common_cmpxchg8b_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 8);
     U64 expected = ((U64)EDX) << 32 | EAX;
     if (address & 7) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -82,6 +88,7 @@ void common_cmpxchg8b_lock(CPU* cpu, U32 address) {
     }
 */
 void common_cmpxchge32r32_lock(CPU* cpu, U32 address, U32 srcReg) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->dst.u32 = EAX;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -121,6 +128,7 @@ void common_cmpxchge32r32_lock(CPU* cpu, U32 address, U32 srcReg) {
     }
 */
 void common_cmpxchge16r16_lock(CPU* cpu, U32 address, U32 srcReg) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->dst.u16 = AX;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -159,6 +167,7 @@ void common_cmpxchge16r16_lock(CPU* cpu, U32 address, U32 srcReg) {
     }
 */
 void common_cmpxchge8r8_lock(CPU* cpu, U32 address, U32 srcReg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     U8 expected = AL;
@@ -180,6 +189,7 @@ void common_cmpxchge8r8_lock(CPU* cpu, U32 address, U32 srcReg) {
     cpu->reg[op->reg].u32 = tmp;
 */
 void common_xchge32r32_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 4);
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
 
@@ -200,6 +210,7 @@ void common_xchge32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->reg[op->reg].u16 = tmp;
 */
 void common_xchge16r16_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 2);
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
 
@@ -220,6 +231,7 @@ void common_xchge16r16_lock(CPU* cpu, U32 address, U32 reg) {
     *cpu->reg8[op->reg] = tmp;
 */
 void common_xchge8r8_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     *cpu->reg8[reg] = mem.exchange(*cpu->reg8[reg]);
@@ -235,6 +247,7 @@ void common_xchge8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writed(address, cpu->result.u32);
 */
 void common_xaddr32e32_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = cpu->reg[reg].u32;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -262,6 +275,7 @@ void common_xaddr32e32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writew(address, cpu->result.u16);
 */
 void common_xaddr16e16_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = cpu->reg[reg].u16;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -289,6 +303,7 @@ void common_xaddr16e16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writeb(address, cpu->result.u8);
 */
 void common_xaddr8e8_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = *cpu->reg8[reg];
@@ -307,6 +322,7 @@ void common_xaddr8e8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_adde32r32_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = cpu->reg[reg].u32;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -332,6 +348,7 @@ void common_adde32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_adde16r16_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = cpu->reg[reg].u16;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -357,6 +374,7 @@ void common_adde16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_adde8r8_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = *cpu->reg8[reg];
@@ -374,6 +392,7 @@ void common_adde8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_add32_mem_lock(CPU* cpu, U32 address, U32 value) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = value;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -399,6 +418,7 @@ void common_add32_mem_lock(CPU* cpu, U32 address, U32 value) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_add16_mem_lock(CPU* cpu, U32 address, U32 value) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = value;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -424,6 +444,7 @@ void common_add16_mem_lock(CPU* cpu, U32 address, U32 value) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_add8_mem_lock(CPU* cpu, U32 address, U32 value) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = value;
@@ -441,6 +462,7 @@ void common_add8_mem_lock(CPU* cpu, U32 address, U32 value) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_sube32r32_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = cpu->reg[reg].u32;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -466,6 +488,7 @@ void common_sube32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_sube16r16_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = cpu->reg[reg].u16;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -491,6 +514,7 @@ void common_sube16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_sube8r8_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = *cpu->reg8[reg];
@@ -508,6 +532,7 @@ void common_sube8r8_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_sub32_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = imm;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -533,6 +558,7 @@ void common_sub32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_sub16_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = imm;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -558,6 +584,7 @@ void common_sub16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_sub8_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = imm;
@@ -575,6 +602,7 @@ void common_sub8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_ore32r32_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = cpu->reg[reg].u32;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -600,6 +628,7 @@ void common_ore32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_ore16r16_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = cpu->reg[reg].u16;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -625,6 +654,7 @@ void common_ore16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_ore8r8_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = *cpu->reg8[reg];
@@ -643,6 +673,7 @@ void common_ore8r8_lock(CPU* cpu, U32 address, U32 reg) {
 */
 
 void common_or32_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = imm;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -668,6 +699,7 @@ void common_or32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_or16_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = imm;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -693,6 +725,7 @@ void common_or16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_or8_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = imm;
@@ -710,6 +743,7 @@ void common_or8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_ande32r32_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = cpu->reg[reg].u32;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -735,6 +769,7 @@ void common_ande32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_ande16r16_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = cpu->reg[reg].u16;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -760,6 +795,7 @@ void common_ande16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_ande8r8_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = *cpu->reg8[reg];
@@ -778,6 +814,7 @@ void common_ande8r8_lock(CPU* cpu, U32 address, U32 reg) {
 */
 
 void common_and32_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = imm;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -803,6 +840,7 @@ void common_and32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_and16_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = imm;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -828,6 +866,7 @@ void common_and16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_and8_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = imm;
@@ -845,6 +884,7 @@ void common_and8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_xore32r32_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = cpu->reg[reg].u32;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -870,6 +910,7 @@ void common_xore32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_xore16r16_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = cpu->reg[reg].u16;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -895,6 +936,7 @@ void common_xore16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_xore8r8_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = *cpu->reg8[reg];
@@ -913,6 +955,7 @@ void common_xore8r8_lock(CPU* cpu, U32 address, U32 reg) {
 */
 
 void common_xor32_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->src.u32 = imm;
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -938,6 +981,7 @@ void common_xor32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_xor16_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->src.u16 = imm;
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
@@ -963,6 +1007,7 @@ void common_xor16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_xor8_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->src.u8 = imm;
@@ -981,6 +1026,7 @@ void common_xor8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_adce32r32_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->oldCF = cpu->getCF();
     cpu->src.u32 = cpu->reg[reg].u32;
     if (address & 3) {
@@ -1008,6 +1054,7 @@ void common_adce32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_adce16r16_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->oldCF = cpu->getCF();
     cpu->src.u16 = cpu->reg[reg].u16;
     if (address & 1) {
@@ -1035,6 +1082,7 @@ void common_adce16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_adce8r8_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->oldCF = cpu->getCF();
@@ -1055,6 +1103,7 @@ void common_adce8r8_lock(CPU* cpu, U32 address, U32 reg) {
 */
 
 void common_adc32_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->oldCF = cpu->getCF();
     cpu->src.u32 = imm;
     if (address & 3) {
@@ -1082,6 +1131,7 @@ void common_adc32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_adc16_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->oldCF = cpu->getCF();
     cpu->src.u16 = imm;
     if (address & 1) {
@@ -1109,6 +1159,7 @@ void common_adc16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_adc8_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->oldCF = cpu->getCF();
@@ -1128,6 +1179,7 @@ void common_adc8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_sbbe32r32_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->oldCF = cpu->getCF();
     cpu->src.u32 = cpu->reg[reg].u32;
     if (address & 3) {
@@ -1155,6 +1207,7 @@ void common_sbbe32r32_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_sbbe16r16_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->oldCF = cpu->getCF();
     cpu->src.u16 = cpu->reg[reg].u16;
     if (address & 1) {
@@ -1182,6 +1235,7 @@ void common_sbbe16r16_lock(CPU* cpu, U32 address, U32 reg) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_sbbe8r8_lock(CPU* cpu, U32 address, U32 reg) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->oldCF = cpu->getCF();
@@ -1202,6 +1256,7 @@ void common_sbbe8r8_lock(CPU* cpu, U32 address, U32 reg) {
 */
 
 void common_sbb32_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->oldCF = cpu->getCF();
     cpu->src.u32 = imm;
     if (address & 3) {
@@ -1229,6 +1284,7 @@ void common_sbb32_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_sbb16_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->oldCF = cpu->getCF();
     cpu->src.u16 = imm;
     if (address & 1) {
@@ -1256,6 +1312,7 @@ void common_sbb16_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_sbb8_mem_lock(CPU* cpu, U32 address, U32 imm) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->oldCF = cpu->getCF();
@@ -1274,6 +1331,7 @@ void common_sbb8_mem_lock(CPU* cpu, U32 address, U32 imm) {
     cpu->memory->writed(eaa, cpu->result.u32);
 */
 void common_inc32_mem32_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->oldCF = cpu->getCF();
 
     if (address & 3) {
@@ -1299,6 +1357,7 @@ void common_inc32_mem32_lock(CPU* cpu, U32 address) {
     cpu->memory->writew(eaa, cpu->result.u16);
 */
 void common_inc16_mem16_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->oldCF = cpu->getCF();
 
     if (address & 1) {
@@ -1324,6 +1383,7 @@ void common_inc16_mem16_lock(CPU* cpu, U32 address) {
     cpu->memory->writeb(eaa, cpu->result.u8);
 */
 void common_inc8_mem8_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->oldCF = cpu->getCF();
@@ -1341,6 +1401,7 @@ void common_inc8_mem8_lock(CPU* cpu, U32 address) {
     cpu->memory->writed(eaa, cpu->result.u32);
 */
 void common_dec32_mem32_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->oldCF = cpu->getCF();
 
     if (address & 3) {
@@ -1366,6 +1427,7 @@ void common_dec32_mem32_lock(CPU* cpu, U32 address) {
     cpu->memory->writew(eaa, cpu->result.u16);
 */
 void common_dec16_mem16_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->oldCF = cpu->getCF();
 
     if (address & 1) {
@@ -1392,6 +1454,7 @@ void common_dec16_mem16_lock(CPU* cpu, U32 address) {
     cpu->memory->writeb(eaa, cpu->result.u8);
 */
 void common_dec8_mem8_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     cpu->oldCF = cpu->getCF();
@@ -1405,6 +1468,7 @@ void common_dec8_mem8_lock(CPU* cpu, U32 address) {
     cpu->memory->writed(eaa, ~cpu->memory->readd(eaa));
 */
 void common_note32_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 4);
     if (address & 3) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
         cpu->memory->writed(address, ~cpu->memory->readd(address));
@@ -1427,6 +1491,7 @@ void common_note32_lock(CPU* cpu, U32 address) {
     cpu->memory->writew(eaa, ~cpu->memory->readw(eaa));
 */
 void common_note16_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 2);
     if (address & 1) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockMutex); // hope for the best
         cpu->memory->writew(address, ~cpu->memory->readw(address));
@@ -1449,6 +1514,7 @@ void common_note16_lock(CPU* cpu, U32 address) {
     cpu->memory->writeb(eaa, ~cpu->memory->readb(eaa));
 */
 void common_note8_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
 
@@ -1470,6 +1536,7 @@ void common_note8_lock(CPU* cpu, U32 address) {
     cpu->memory->writed(eaa,  cpu->result.u32);
 */
 void common_nege32_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 4);
     cpu->dst.u32 = 0;
 
     if (address & 3) {
@@ -1503,6 +1570,7 @@ void common_nege32_lock(CPU* cpu, U32 address) {
     cpu->memory->writew(eaa,  cpu->result.u16);
 */
 void common_nege16_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 2);
     cpu->dst.u16 = 0;
 
     if (address & 1) {
@@ -1537,6 +1605,7 @@ void common_nege16_lock(CPU* cpu, U32 address) {
     cpu->memory->writeb(eaa,  cpu->result.u8);
 */
 void common_nege8_lock(CPU* cpu, U32 address) {
+    cpu->memory->preflightWrite(address, 1);
     LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
 
@@ -1560,6 +1629,7 @@ void common_nege8_lock(CPU* cpu, U32 address) {
     cpu->memory->writed(address, value | mask);
 */
 void common_btse32_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 4);
     U32 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1584,6 +1654,7 @@ void common_btse32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writew(address, value | mask);
 */
 void common_btse16_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 2);
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1609,6 +1680,7 @@ void common_btse16_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writed(address, value | mask);
 */
 void common_btse32r32_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 4);
     U32 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1634,6 +1706,7 @@ void common_btse32r32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writew(address, value | mask);
 */
 void common_btse16r16_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 2);
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1658,6 +1731,7 @@ void common_btse16r16_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writed(address, value & ~mask);
 */
 void common_btre32_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 4);
     U32 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1681,6 +1755,7 @@ void common_btre32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writew(address, value & ~mask);
 */
 void common_btre16_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 2);
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1706,6 +1781,7 @@ void common_btre16_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writed(address, value & ~mask);
 */
 void common_btre32r32_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 4);
     U32 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1731,6 +1807,7 @@ void common_btre32r32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writew(address, value & ~mask);
 */
 void common_btre16r16_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 2);
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1754,6 +1831,7 @@ void common_btre16r16_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writed(address, value ^ mask);
 */
 void common_btce32_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 4);
     U32 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1777,6 +1855,7 @@ void common_btce32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writew(address, value ^ mask);
 */
 void common_btce16_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 2);
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1802,6 +1881,7 @@ void common_btce16_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writed(address, value ^ mask);
 */
 void common_btce32r32_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 4);
     U32 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1827,6 +1907,7 @@ void common_btce32r32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->memory->writew(address, value ^ mask);
 */
 void common_btce16r16_lock(CPU* cpu, U32 address, U32 mask) {
+    cpu->memory->preflightWrite(address, 2);
     U16 oldValue;
 
     cpu->fillFlagsNoCF();

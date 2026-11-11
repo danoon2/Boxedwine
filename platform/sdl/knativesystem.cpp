@@ -158,7 +158,8 @@ void KNativeSystem::warpMouse(S32 x, S32 y) {
     }    
 }
 
-KOpenGLPtr KNativeSystem::getOpenGL() {
+KOpenGLPtr KNativeSystem::getOpenGL(bool existingOnly) {
+    if (existingOnly && !opengl) return nullptr;
     if (!opengl) {
 #ifdef BOXEDWINE_OPENGL_OSMESA
         if (KSystem::openglLib == "osmesa") {

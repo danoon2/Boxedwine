@@ -307,3 +307,44 @@ None focus then discarded its player-name input. AbiWord reverted focus to
 the explicit root after closing a window, and key delivery failed to start
 at the pointer descendant. Initialize focus to PointerRoot as Xvfb does and
 honor the focus subtree when routing keys; keep rejecting hidden windows.
+
+## Display gamma ramps on Windows OpenGL
+
+`../Xxf86vm.c` exposes 256-entry, 16-bit RGB ramps through Boxedwine's X11
+bridge. The Windows OpenGL presenter applies the ramp in a private GL context,
+leaving guest framebuffer pixels and the host monitor gamma unchanged. Other
+backends report the extension as unavailable. XRandR still owns display modes;
+this library implements ramp control, not scalar gamma or VidMode mode changes.
+
+Build with `../build.sh`, or build only the new library:
+
+```sh
+gcc -Wall -Werror -Wno-return-type -fPIC -m32 -march=i586 -shared \
+  -Wl,-soname,libXxf86vm.so.1 ../Xxf86vm.c -o libXxf86vm.so.1 -lX11
+```
+
+Ship it in the guest filesystem at `/usr/lib/libXxf86vm.so.1`. Merely adding it
+under `/usr/local/lib` to an existing filesystem does not update `ld.so.cache`,
+so Wine may not find it. For a local application test, put it at the same path
+inside the application's root overlay. The library probes the existing
+`XQueryExtension` ABI before calling new callbacks, so older engines report no
+support instead of receiving unknown callback numbers.
+
+Run `tools/test_windows_opengl_fullscreen.ps1` on Windows. Its checks include
+independent RGB curves, identity restoration, owner isolation, legacy/core GL,
+guest readback and GL state, and host presentation pixels.
+
+Compile `tools/buildWine/probes/display-gamma.c` with
+`i686-w64-mingw32-gcc -O2 -Wall display-gamma.c -lgdi32 -o display-gamma.exe`
+and run it in Wine inside the updated engine and filesystem. It checks the
+initial identity ramp, nonlinear round trip, explicit restore, and restoration
+after a child exits without resetting its ramp. Wine can signal its Windows
+process handle before Unix teardown; that final check polls with a two-second
+limit. Expected: `PASS exiting gamma owner restored identity` and
+`DISPLAY_GAMMA_PASS failures=0`. It refuses native Windows execution so it
+cannot change the real desktop's gamma.
+
+`BOXEDWINE_TRACE_GAMMA=1` on the host logs ramp sample values. Sims 3 World
+Adventures requests a nonlinear fullscreen ramp that Wine estimates at exponent
+0.396, and restores identity on focus loss. Verify the focused fullscreen game
+against native Windows, including the town and the welcome bubble's gradients.

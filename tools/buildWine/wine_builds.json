@@ -320,6 +320,11 @@
       "reason": "Let DirectShow renderers schedule presentation instead of holding interleaved ASF samples behind WMReader's independent clock"
     },
     {
+      "when": { "min": "11.0", "max": "11.0" },
+      "apply_patch": "wine11_builtin_module_alias.patch",
+      "reason": "Preserve GetModuleHandle lookup for builtin modules reused through different WinSxS assembly paths"
+    },
+    {
       "apply_patch": "FAudio_opentdd_mac_crash.patch",
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },
