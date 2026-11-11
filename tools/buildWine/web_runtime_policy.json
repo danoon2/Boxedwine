@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "base_sha256": "bb7bf1807721deafaf98dff10091f27b21e5471d357c7b07330b84cc299aee83",
+  "base_sha256": "e64a97dffa5962f3278ac43f3160382636ca95585dcf13d3f39fb63236d11fe7",
   "max_bytes": 100000000,
-  "provenance": "Paths audited against the pinned TinyCore 15 base. Package ownership was cross-checked with http://tinycorelinux.net/15.x/x86/tcz/*.tcz.list on 2026-09-30; no live package lists are needed to build.",
+  "provenance": "Paths audited against the pinned TinyCore 15 base. Package ownership was cross-checked with http://tinycorelinux.net/15.x/x86/tcz/*.tcz.list on 2026-09-30; no live package lists are needed to build. Revision 31 preserves all v28 members except the loader cache and reconstruction instructions, and adds the Boxedwine XF86VidMode bridge and its source/license metadata; the removal list remains unchanged. The final v31 base was manually trimmed under usr/local/share/doc/; all surviving bytes and permissions match the validated build, and no runtime removal rule changed.",
   "remove_packages": [
     "binutils.tcz",
     "coreutils.tcz",

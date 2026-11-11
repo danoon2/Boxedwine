@@ -323,10 +323,13 @@ gcc -Wall -Werror -Wno-return-type -fPIC -m32 -march=i586 -shared \
   -Wl,-soname,libXxf86vm.so.1 ../Xxf86vm.c -o libXxf86vm.so.1 -lX11
 ```
 
-Ship it in the guest filesystem at `/usr/lib/libXxf86vm.so.1`. Merely adding it
-under `/usr/local/lib` to an existing filesystem does not update `ld.so.cache`,
-so Wine may not find it. For a local application test, put it at the same path
-inside the application's root overlay. The library probes the existing
+For a loose application test, put it at `/usr/lib/libXxf86vm.so.1` inside the
+application's root overlay. Merely adding it under `/usr/local/lib` to an
+existing filesystem does not update `ld.so.cache`, so Wine may not find it.
+Starting with filesystem 31,
+`tools/buildWine/build_x11_base.py` installs it in the base at
+`/usr/local/lib/libXxf86vm.so.1` and rebuilds the guest loader cache. Both Wine
+variants inherit it, including its source, license and build identity. The library probes the existing
 `XQueryExtension` ABI before calling new callbacks, so older engines report no
 support instead of receiving unknown callback numbers.
 

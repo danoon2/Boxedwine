@@ -1,9 +1,9 @@
 {
   "base_filesystem": {
-    "url": "https://boxedwine.org/v2/28/TinyCore15WineBase.zip",
+    "url": "https://boxedwine.org/v2/31/TinyCore15WineBase.zip",
     "filename": "TinyCore15WineBase.zip",
-    "size": 72005312,
-    "sha256": "bb7bf1807721deafaf98dff10091f27b21e5471d357c7b07330b84cc299aee83"
+    "size": 71943620,
+    "sha256": "e64a97dffa5962f3278ac43f3160382636ca95585dcf13d3f39fb63236d11fe7"
   },
   "wine": {
     "repo": "https://github.com/wine-mirror/wine.git",
