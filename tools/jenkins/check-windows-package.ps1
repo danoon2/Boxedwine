@@ -19,6 +19,10 @@ function Check-Executable([string]$relative, [int]$subsystem = 0) {
         $offset = $reader.ReadInt32()
         $reader.BaseStream.Position = $offset
         if ($reader.ReadUInt32() -ne 0x4550 -or $reader.ReadUInt16() -ne $expectedMachine) { throw "Wrong executable architecture for ${Platform}: $relative" }
+        $reader.BaseStream.Position = $offset + 22
+        if ($Platform -eq 'Win32' -and ($reader.ReadUInt16() -band 0x20) -eq 0) {
+            throw "Win32 executable must be large-address-aware: $relative"
+        }
         $reader.BaseStream.Position = $offset + 24 + 68
         if ($subsystem -ne 0 -and $reader.ReadUInt16() -ne $subsystem) { throw "Wrong executable subsystem: $relative" }
     } finally { $reader.Dispose() }

@@ -879,6 +879,13 @@
       <EnableDpiAwareness>false</EnableDpiAwareness>
     </Manifest>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='Win32'">
+    <Link>
+      <!-- Cinebench can exhaust the default 2 GB host address space.
+           Allow the 32-bit host to use 4 GB on 64-bit Windows. -->
+      <LargeAddressAware>true</LargeAddressAware>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(WholeProgramOptimization)'=='true'">
     <Link>
       <!-- Incremental LTCG reused an old inlined FsFileNode allocation size after
