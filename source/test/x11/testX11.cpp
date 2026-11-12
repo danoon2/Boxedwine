@@ -76,6 +76,25 @@ void testX11ConcurrentInitialization() {
 }
 
 void testCapturedMouseSensitivity() {
+    WarpMouseCapture capture;
+    capture.warp(400, 300, 0);
+    if (capture.isCaptured()) testFail("A single warp must not capture the mouse");
+    capture.warp(401, 300, 10);
+    if (capture.isCaptured()) testFail("Different warp destinations must not capture the mouse");
+    capture.warp(401, 300, 511);
+    if (capture.isCaptured()) testFail("Unrelated warps must not capture the mouse");
+    capture.warp(401, 300, 527);
+    if (!capture.isCaptured()) testFail("Repeated recentering must capture the mouse");
+    capture.warp(401, 300, 10000);
+    if (!capture.isCaptured()) testFail("Idle mouse look must retain capture");
+    capture.reset();
+    capture.warp(401, 300, 10001);
+    if (capture.isCaptured()) testFail("Reset must discard previous recentering evidence");
+    capture.reset();
+    capture.warp(400, 300, UINT32_MAX - 10);
+    capture.warp(400, 300, 5);
+    if (!capture.isCaptured()) testFail("Warp capture must handle timer wraparound");
+
     CapturedMouse mouse;
     auto position = [&](int rawX, int rawY, int expectedX, int expectedY) {
         int x = rawX, y = rawY;

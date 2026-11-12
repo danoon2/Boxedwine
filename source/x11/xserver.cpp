@@ -324,6 +324,7 @@ void XServer::changeInputFocus(const XWindowPtr& window, bool pointerRoot, const
 	// Publish the complete new state before waking clients with focus events.
 	inputFocus = window;
 	inputFocusIsPointerRoot = pointerRoot;
+	++mouseFocusGeneration;
 
 	// 'stop' is excluded. FocusOut travels up; FocusIn travels down.
 	auto notify = [this](const XWindowPtr& w, bool in, S32 detail) {
@@ -772,8 +773,16 @@ XCursorPtr XServer::getCursor(U32 id) {
 }
 
 void XServer::updateCursor(const XWindowPtr& wnd) {
-	if (pointerWindow == wnd) {
-		KNativeSystem::getScreen()->setCursor(wnd->getCursor());
+	XWindowPtr pointer = pointerWindow;
+	// Cursor=None inherits from the nearest ancestor with a cursor. Wine can
+	// define the menu/gameplay cursor on the parent of its rendering surface,
+	// so refresh it without requiring the pointer to leave that surface.
+	for (XWindowPtr current = pointer; current; current = current->getParent()) {
+		if (current == wnd) {
+			KNativeSystem::getScreen()->setCursor(pointer->getCursor());
+			return;
+		}
+		if (current->cursor) return; // This descendant overrides the changed ancestor.
 	}
 }
 
@@ -1173,6 +1182,8 @@ void XServer::pointerMovedBetweenSiblings(const XWindowPtr& from, const XWindowP
 }
 
 void XServer::pointerMoved(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode) {
+	// A temporary grab changes event routing, not the window being played.
+	if (from != to && mode == NotifyNormal) ++mouseFocusGeneration;
 	const XWindowPtr& commonAncestor = from->getLeastCommonAncestor(to);
 
 	if (commonAncestor->id == from->id) {
@@ -1254,11 +1265,55 @@ bool XServer::wantsRelativeMouse() {
 
 bool XServer::wantsMouseConfinement() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+    updateWarpMouseCapture();
     // Warp-based mouse look can grab a hidden cursor without confine_to.
-    return isGrabbed && (grabbedConfinedId || !mouseCursorVisible);
+    return (isGrabbed && (grabbedConfinedId || !mouseCursorVisible)) || warpMouseCapture.isCaptured();
+}
+
+void XServer::updateWarpMouseCapture() {
+    U32 generation = mouseFocusGeneration;
+    XWindowPtr owner = warpMouseOwner.lock();
+    if (mouseCursorVisible || !mouseFocused || generation != warpMouseFocusGeneration ||
+            !owner || !owner->isThisAndAncestorsMapped()) {
+        warpMouseCapture.reset();
+        warpMouseOwner.reset();
+    }
+    warpMouseFocusGeneration = generation;
+}
+
+void XServer::noteMouseWarp(U32 displayId, S32 x, S32 y) {
+    // Only guest XWarpPointer requests count. Host warps used for clipping,
+    // resize, or recapture must not infer a new gameplay capture. Query focus
+    // before taking grabbedMutex to preserve the focus/grab lock order.
+    XWindowPtr pointer = getPointerWindowForFocus();
+    XWindowPtr focus;
+    U32 generation;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(inputFocusMutex);
+        // PointerRoot is the normal no-window-manager focus mode. In particular,
+        // Portal 2 can leave it active throughout gameplay.
+        focus = inputFocusIsPointerRoot ? pointer : inputFocus;
+        if (!focus || focus == root || !focus->isThisAndAncestorsMapped()) return;
+        generation = mouseFocusGeneration;
+    }
+    if (focus->displayId != displayId) {
+        // Wine may warp through a thread's display connection rather than the
+        // connection that created the window. Both must belong to the same app.
+        DisplayDataPtr source = getDisplayDataById(displayId);
+        DisplayDataPtr owner = getDisplayDataById(focus->displayId);
+        if (!source || !owner || !source->processId || source->processId != owner->processId) return;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+    updateWarpMouseCapture();
+    if (generation == warpMouseFocusGeneration && !mouseCursorVisible && mouseFocused && !KSystem::forceRelativeMouse) {
+        if (warpMouseOwner.lock() != focus) warpMouseCapture.reset();
+        warpMouseOwner = focus;
+        warpMouseCapture.warp(x, y, KSystem::getMilliesSinceStart());
+    }
 }
 
 void XServer::configureCapturedMouse() {
+    updateWarpMouseCapture();
     capturedMouse.configure(isGrabbed && !KSystem::forceRelativeMouse,
         mouseCursorVisible, mouseFocused, KSystem::relativeMouseSensitivity);
 }
@@ -1277,6 +1332,8 @@ void XServer::warpCapturedMouse(S32 x, S32 y, const CapturedMouse::HostPosition*
 
 void XServer::resetCapturedMouse() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+    warpMouseCapture.reset();
+    warpMouseOwner.reset();
     capturedMouse.reset();
 }
 
@@ -1425,7 +1482,7 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 	if (!time) {
 		time = KSystem::getMilliesSinceStart();
 	}
-	bool updateCursor = false;
+	XWindowPtr cursorWindow;
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 
@@ -1444,14 +1501,18 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 			S32 x = 0;
 			S32 y = 0;
 			KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
+			XWindowPtr underPointer = root->getWindowFromPoint(x, y);
+			// XGrabPointer with cursor=None keeps the normal cursor inside the
+			// grabbed subtree. In particular, Wine's temporary root grab around
+			// SetCursorPos must not reveal the root cursor during mouse look.
+			cursorWindow = focusAncestor(grabbed, underPointer) ? underPointer : grabbed;
 			pointerMoved(pointerWindow, grabbed, x, y, NotifyGrab);
 			pointerWindow = grabbed;
-			updateCursor = true;
 		}
 	}
-	if (updateCursor) {
+	if (cursorWindow) {
 		// don't call this with grabbedMutex locked
-		KNativeSystem::getScreen()->setCursor(pointerWindow->getCursor());
+		KNativeSystem::getScreen()->setCursor(cursorWindow->getCursor());
 	}
 	KNativeSystem::getCurrentInput()->setMouseConfinement(confined != nullptr);
 	return GrabSuccess;

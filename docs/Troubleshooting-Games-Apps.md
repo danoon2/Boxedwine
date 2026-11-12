@@ -12,6 +12,20 @@ shadow-format default. This behavior is pending the next Wine filesystem
 release; changing the Windows version in an existing v26 package does not
 enable the new workaround by itself.
 
+### Mouse capture
+
+Native desktop builds capture games that repeatedly recenter a hidden cursor,
+including Portal 2 with raw input disabled, even when Wine only grabs the X11
+pointer briefly around each recenter. Detection also handles PointerRoot focus
+and Wine's separate display connections for windows and input.
+A single cursor reposition or a visible menu cursor does not trigger capture.
+Showing the cursor, changing focus, or closing the game window clears detection.
+Menu/gameplay cursor changes also refresh when Wine sets the cursor on a parent
+window, so the menu pointer reappears without needing to leave the game surface.
+
+Press Ctrl+Alt+G (Ctrl+Option+G on macOS) to release a captured pointer, then click
+inside the game to resume. The status bar shows the current capture state.
+
 ###  Graphical Issues
 Some older DirectDraw games, like Diablo and Starcraft, might not draw Windows common controls correctly or perhaps not at all. Checking the box on the container options for "DD GDI Renderer" could help. This option will have no affect on Direct3D and OpenGL games.
 

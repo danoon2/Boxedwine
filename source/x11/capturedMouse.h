@@ -6,6 +6,27 @@
 #include <cstdint>
 #include <limits>
 
+// Some games (including Portal 2 with raw input off) recenter a hidden cursor
+// without keeping it grabbed. Require repeated warps to the same point, rather than
+// treating a single cursor reposition as a request to capture the host mouse.
+class WarpMouseCapture {
+public:
+    void warp(int x, int y, uint32_t now) {
+        if (pending && x == lastX && y == lastY && uint32_t(now - lastTime) <= 500) captured = true;
+        pending = true;
+        lastX = x;
+        lastY = y;
+        lastTime = now;
+    }
+    bool isCaptured() const { return captured; }
+    void reset() { pending = captured = false; }
+
+private:
+    bool pending = false, captured = false;
+    int lastX = 0, lastY = 0;
+    uint32_t lastTime = 0;
+};
+
 // A game can implement relative input by polling/moving a hidden, captured
 // cursor and warping it back. Map positions about that warp, not the desktop
 // origin. Reading the same position through events and queries is idempotent.

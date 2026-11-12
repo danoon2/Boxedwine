@@ -37,6 +37,7 @@ public:
 	void mouseMove(S32 x, S32 y, bool relative, const CapturedMouse::HostPosition* host = nullptr);
 	bool wantsRelativeMouse();
     bool wantsMouseConfinement();
+    void noteMouseWarp(U32 displayId, S32 x, S32 y);
 	void clampPointerToGrab(S32& x, S32& y);
     void mapCapturedMouse(S32& x, S32& y, const CapturedMouse::HostPosition* host = nullptr);
     void warpCapturedMouse(S32 x, S32 y, const CapturedMouse::HostPosition* host = nullptr);
@@ -182,9 +183,14 @@ private:
 	U32 grabbedMask;
 	U32 grabbedTime;
     CapturedMouse capturedMouse;
+    WarpMouseCapture warpMouseCapture;
+    std::weak_ptr<XWindow> warpMouseOwner;
+    std::atomic<U32> mouseFocusGeneration{0}; // Updated without taking grabbedMutex under inputFocusMutex.
+    U32 warpMouseFocusGeneration = 0;
     bool mouseCursorVisible = true;
     bool mouseFocused = true;
     void configureCapturedMouse(); // Caller holds grabbedMutex.
+    void updateWarpMouseCapture(); // Caller holds grabbedMutex.
 
 	U32 extensionXinput2;
 	U32 extensionGLX;

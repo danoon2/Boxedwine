@@ -29,6 +29,8 @@ extern "C" void SDL_SetWindowTitle(SDL_Window* w, const char* title) { titles[ui
 extern "C" int SDL_ShowCursor(int toggle) { if (toggle >= 0) cursorShown = toggle; return cursorShown; }
 extern "C" void SDL_SetCursor(SDL_Cursor* cursor) { currentCursor = cursor; }
 extern "C" SDL_Cursor* SDL_GetDefaultCursor() { return reinterpret_cast<SDL_Cursor*>(1); }
+extern "C" SDL_Cursor* SDL_CreateSystemCursor(SDL_SystemCursor) { return SDL_GetDefaultCursor(); }
+extern "C" void SDL_FreeCursor(SDL_Cursor*) {}
 extern "C" int SDL_SetRelativeMouseMode(SDL_bool enabled) { relativeMode = enabled; return 0; }
 extern "C" SDL_bool SDL_GetRelativeMouseMode() { return relativeMode; }
 extern "C" Uint32 SDL_GetMouseState(int* x, int* y) { if (x) *x = physicalX; if (y) *y = physicalY; return physicalButtons; }
@@ -166,6 +168,207 @@ static void testMouseLookScaling(KNativeInputSDL& input) {
     KSystem::relativeMouseSensitivity = sensitivity;
     KSystem::forceRelativeMouse = forceRelative;
     puts("Mouse look is independent of software/GL scale; recentering, polling, buttons, sensitivity and absolute menus passed");
+}
+
+static void testUngrabbedMouseLook(KNativeInputSDL& input) {
+    auto server = XServer::getServer();
+    auto root = server->getRoot();
+    auto game = server->createNewWindow(44, root, 800, 600, 32, 0, 0, InputOutput, 0, server->visual);
+    auto menu = server->createNewWindow(44, root, 800, 600, 32, 0, 0, InputOutput, 0, server->visual);
+    U32 serial = 0;
+    for (U32 id : {44u, 45u, 46u}) {
+        auto display = std::make_shared<DisplayData>();
+        display->displayId = id;
+        display->processId = id == 45 ? 2 : 1;
+        display->pCurrentRequest = &serial;
+        server->displays.set(id, display);
+    }
+    game->isMapped = menu->isMapped = true;
+    assert(server->setInputFocus(nullptr, game->id, RevertToParent, 0) == Success);
+    server->isGrabbed = false;
+    server->setMouseFocused(true);
+    auto warp = [&](U32 display = 44) {
+        server->noteMouseWarp(display, 400, 300);
+        input.setMousePos(400, 300);
+        input.processEvents();
+    };
+    // Visible cursor movement and warps from another client cannot capture.
+    server->setMouseCursorVisible(true);
+    warp(); warp();
+    assert(!grabbed);
+    server->setMouseCursorVisible(false);
+    input.setCursor(nullptr);
+    warp(45); warp(45);
+    assert(!grabbed);
+    // Host-generated cursor positioning is not evidence of guest mouse look.
+    input.setMousePos(400, 300); input.setMousePos(400, 300);
+    input.processEvents();
+    assert(!grabbed);
+    warp();
+    assert(!grabbed);
+    warp();
+    assert(grabbed == focused && !server->isGrabbed && relativeMode == SDL_FALSE);
+    // Preserve the existing release shortcut even while the game recenters.
+    SDL_Event shortcut = {};
+    shortcut.type = SDL_KEYDOWN;
+    shortcut.key.keysym.sym = SDLK_g;
+    shortcut.key.keysym.mod = KMOD_LCTRL | KMOD_LALT;
+    assert(input.handleMouseCaptureEvent(&shortcut));
+    shortcut.type = SDL_KEYUP;
+    assert(input.handleMouseCaptureEvent(&shortcut));
+    warp(); warp();
+    assert(!grabbed && input.isMouseCaptureReleased());
+    SDL_Event click = {};
+    click.type = SDL_MOUSEBUTTONDOWN;
+    click.button.windowID = SDL_GetWindowID(focused);
+    click.button.button = SDL_BUTTON_LEFT;
+    assert(input.handleMouseCaptureEvent(&click));
+    assert(grabbed == focused && !input.isMouseCaptureReleased());
+    click.type = SDL_MOUSEBUTTONUP;
+    assert(input.handleMouseCaptureEvent(&click));
+    // Menus release immediately, and a new gameplay interval needs new evidence.
+    server->setMouseCursorVisible(true);
+    input.processEvents();
+    assert(!grabbed);
+    server->setMouseCursorVisible(false);
+    warp(); assert(!grabbed);
+    warp(); assert(grabbed == focused);
+    // A different guest window must not inherit capture, even in the same client.
+    assert(server->setInputFocus(nullptr, menu->id, RevertToParent, 0) == Success);
+    input.processEvents(); assert(!grabbed);
+    assert(server->setInputFocus(nullptr, game->id, RevertToParent, 0) == Success);
+    warp(); assert(!grabbed);
+    warp(); assert(grabbed == focused);
+    // Background warps cannot acquire capture, nor survive loss of host focus.
+    SDL_Window* previousFocus = focused;
+    focused = nullptr;
+    focus(input, SDL_GetWindowID(previousFocus), false);
+    warp(); warp(); assert(!grabbed);
+    focused = previousFocus;
+    focus(input, SDL_GetWindowID(focused), true);
+    assert(!grabbed);
+    warp(); assert(!grabbed);
+    warp(); assert(grabbed == focused);
+    server->resetCapturedMouse(); // Resize or replacement of the presented window.
+    input.processEvents(); assert(!grabbed);
+    warp(); assert(!grabbed);
+    warp(); assert(grabbed == focused);
+    // Closing/unmapping the game's focused window releases inferred capture.
+    game->isMapped = false;
+    server->revertInputFocus(game);
+    input.processEvents(); assert(!grabbed);
+    // Portal 2 leaves focus on PointerRoot: the window under the cursor is
+    // eligible even though no client called XSetInputFocus or XGrabPointer.
+    game->isMapped = true;
+    menu->isMapped = false;
+    physicalX = 400; physicalY = 300;
+    assert(server->setInputFocus(nullptr, PointerRoot, RevertToPointerRoot, 0) == Success);
+    warp(45); warp(45); assert(!grabbed);
+    warp(); assert(!grabbed);
+    warp(); assert(grabbed == focused);
+    game->isMapped = false;
+    input.processEvents(); assert(!grabbed);
+    game->isMapped = true;
+    warp(); assert(!grabbed);
+    warp(); assert(grabbed == focused);
+    server->pointerMoved(game, root, 400, 300, NotifyNormal);
+    input.processEvents(); assert(!grabbed);
+    // Wine SetCursorPos uses a temporary root grab on the thread's display.
+    // Preserve the game's hidden cursor and repeated-warp evidence across it.
+    KSystem::videoOption = VIDEO_NORMAL; // Exercise native cursor visibility with fake SDL cursors.
+    game->cursor = std::make_shared<XCursor>(0);
+    server->pointerWindow = game;
+    auto wineWarp = [&]() {
+        assert(server->grabPointer(server->getDisplayDataById(46), root, nullptr,
+            PointerMotionMask | ButtonPressMask | ButtonReleaseMask, 0) == GrabSuccess);
+        assert(!server->mouseCursorVisible);
+        server->noteMouseWarp(46, 400, 300);
+        input.setMousePos(400, 300);
+        assert(server->ungrabPointer(0) == GrabSuccess);
+        input.processEvents();
+    };
+    wineWarp(); assert(!grabbed);
+    wineWarp(); assert(grabbed == focused && !server->isGrabbed);
+    wineWarp(); assert(grabbed == focused);
+    game->cursor = root->cursor;
+    KNativeSystem::getScreen()->setCursor(game->getCursor());
+    input.processEvents(); assert(!grabbed);
+    KSystem::videoOption = VIDEO_NO_WINDOW;
+    server->displays.remove(44);
+    server->displays.remove(45);
+    server->displays.remove(46);
+    server->setMouseCursorVisible(true);
+    input.setCursor(SDL_GetDefaultCursor());
+    menu->isMapped = false;
+    puts("Ungrabbed mouse look capture, menus, focus, release/recapture and window lifetime passed");
+}
+
+static void testInheritedCursorVisibility(KNativeInputSDL& input) {
+    auto server = XServer::getServer();
+    auto root = server->getRoot();
+    auto parent = server->createNewWindow(47, root, 800, 600, 32, 0, 0, InputOutput, 0, server->visual);
+    auto surface = server->createNewWindow(47, parent, 800, 600, 32, 0, 0, InputOutput, 0, server->visual);
+    auto child = server->createNewWindow(47, surface, 800, 600, 32, 0, 0, InputOutput, 0, server->visual);
+    auto sibling = server->createNewWindow(47, parent, 50, 50, 32, 0, 0, InputOutput, 0, server->visual);
+    parent->isMapped = surface->isMapped = child->isMapped = true;
+    server->pointerWindow = child;
+    server->isGrabbed = false;
+    server->setMouseFocused(true);
+    assert(server->setInputFocus(nullptr, child->id, RevertToParent, 0) == Success);
+    KSystem::videoOption = VIDEO_NORMAL;
+    auto hidden = std::make_shared<XCursor>(0);
+    auto visible = std::make_shared<XCursor>(68);
+    parent->cursor = hidden;
+    KNativeSystem::getScreen()->setCursor(child->getCursor());
+    auto checkVisibility = [&](bool shown) {
+        assert(server->mouseCursorVisible == shown);
+        assert(input.guestCursorVisible == shown);
+        assert(cursorShown == (shown ? SDL_ENABLE : SDL_DISABLE));
+    };
+    auto capture = [&]() {
+        server->noteMouseWarp(47, 400, 300);
+        server->noteMouseWarp(47, 400, 300);
+        input.processEvents();
+        assert(grabbed == focused);
+    };
+    checkVisibility(false);
+    capture();
+    // The pointer stays over Wine's rendering child while its parent switches
+    // to the menu arrow. Show it and release capture without any mouse motion.
+    parent->cursor = visible;
+    server->updateCursor(parent);
+    checkVisibility(true);
+    input.processEvents(); assert(!grabbed);
+    parent->cursor = hidden;
+    server->updateCursor(parent);
+    checkVisibility(false);
+    capture();
+    // Explicit descendant cursors override ancestors, including hidden cursors.
+    surface->cursor = hidden;
+    server->updateCursor(surface);
+    parent->cursor = visible;
+    server->updateCursor(parent);
+    checkVisibility(false);
+    surface->cursor = visible;
+    server->updateCursor(surface);
+    parent->cursor = hidden;
+    server->updateCursor(parent);
+    checkVisibility(true);
+    sibling->cursor = hidden;
+    server->updateCursor(sibling);
+    checkVisibility(true);
+    // Undefining the override restores inheritance immediately.
+    surface->cursor.reset();
+    server->updateCursor(surface);
+    checkVisibility(false);
+    parent->cursor = visible;
+    server->updateCursor(parent);
+    checkVisibility(true);
+    input.processEvents(); assert(!grabbed);
+    parent->isMapped = false;
+    server->pointerWindow = root;
+    KSystem::videoOption = VIDEO_NO_WINDOW;
+    puts("Inherited menu/gameplay cursor visibility, capture release and descendant overrides passed");
 }
 
 static void testMappedWindowFocus() {
@@ -505,6 +708,8 @@ int main() {
     physicalX = 400; physicalY = 300;
     testMappedWindowFocus();
     testMouseLookScaling(input);
+    testUngrabbedMouseLook(input);
+    testInheritedCursorVisibility(input);
     screen.window = nullptr; // Do not destroy the fake host window.
     SDL_Quit();
     puts("Mouse confinement lifecycle checks passed");
