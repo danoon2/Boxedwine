@@ -6,14 +6,14 @@ import Foundation
 /// Wine provides these commands inside the selected app's environment, even
 /// when no executable has been installed or chosen for that library entry.
 enum WineTool: String, CaseIterable, Identifiable, Sendable {
-    case winecfg, regedit, cmd, winefile, uninstaller, iexplore, notepad
+    case winecfg, regedit, cmd, explorer, uninstaller, iexplore, notepad
     var id: String { rawValue }
     var title: String {
         switch self {
         case .winecfg: "Wine Configuration"
         case .regedit: "Registry Editor"
         case .cmd: "Command Prompt"
-        case .winefile: "File Manager"
+        case .explorer: "Wine Explorer"
         case .uninstaller: "Add/Remove Programs"
         case .iexplore: "Wine Internet Explorer"
         case .notepad: "Notepad"
@@ -24,7 +24,7 @@ enum WineTool: String, CaseIterable, Identifiable, Sendable {
         case .winecfg: "Windows version, DLL overrides, graphics, audio, and drives"
         case .regedit: "Edit this app’s Windows registry"
         case .cmd: "Run Windows commands and batch files"
-        case .winefile: "Browse this app’s Windows drives and files"
+        case .explorer: "Browse this app’s Windows drives and files"
         case .uninstaller: "Manage installed programs and components"
         case .iexplore: "Open Wine’s browser in this environment"
         case .notepad: "Edit text files in this app’s environment"
@@ -33,6 +33,7 @@ enum WineTool: String, CaseIterable, Identifiable, Sendable {
     var arguments: [String] {
         switch self {
         case .cmd: ["wineconsole", "cmd"]
+        case .explorer: ["explorer.exe", "C:\\"]
         case .iexplore: ["iexplore", "about:blank"]
         default: [rawValue]
         }

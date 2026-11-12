@@ -28,6 +28,32 @@ App downloads support direct ZIP, EXE, and MSI links, up to 1 GiB. Collection JS
 
 Invalid links, failed downloads, and invalid source files show an error inside the source form. The entered URL stays available to edit and retry; editing the URL or starting another attempt clears the previous error. Cancelling a download also returns to the source form without discarding the URL.
 
+## Shared Files for an installed app
+
+Each app has its own **Shared Files** folder, mounted as writable **Y:** on every
+launch, including installers and Wine tools. Drop one or more files or folders
+onto an installed app's library card to copy them there. A drop onto empty library
+space still adds a new app. Folder contents are preserved; duplicate top-level
+names get a numbered copy. Dropping never runs a program automatically.
+
+Use **Shared Files… → Show Folder** to open this folder in the host file manager.
+The same files are visible in Wine Explorer on **Y:**. While an app is running,
+the engine refreshes visited shared directories every half second and notifies
+Wine of additions, removals and modifications. Completed launcher copies are
+published only after copying; no restart is needed. Engines started before this
+feature was installed need to be restarted once.
+
+When the app is stopped, **Shared Files… → Run…** selects an EXE or MSI from that
+folder and runs it in the app's existing Windows environment. Its usual program
+and arguments stay selected. This is useful for applying a separately downloaded
+patch after installing a game from an ISO. Shared Files remains available while
+running, but Run is disabled until the app stops.
+
+Storage is under the app's root at home/username/Shared, so files travel with
+existing app backups and Wine trial copies. Each app's Y: is separate. This
+reserves Y: for Shared Files; a conflicting custom Wine drive mapping must be
+removed before launch.
+
 ## Collection JSON
 
 See [the example](../resources/examples/collection.json). The example URL, size, and checksum are placeholders; replace them with an actual package before importing for installation.

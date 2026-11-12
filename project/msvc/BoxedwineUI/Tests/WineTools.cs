@@ -20,7 +20,7 @@ sealed partial class TestSuite
             var commands = new Dictionary<WineTool, string[]>
             {
                 [WineTool.Winecfg] = ["winecfg"], [WineTool.Regedit] = ["regedit"], [WineTool.Cmd] = ["wineconsole", "cmd"],
-                [WineTool.Winefile] = ["winefile"], [WineTool.Uninstaller] = ["uninstaller"],
+                [WineTool.Explorer] = ["explorer.exe", "C:\\"], [WineTool.Uninstaller] = ["uninstaller"],
                 [WineTool.IExplore] = ["iexplore", "about:blank"], [WineTool.Notepad] = ["notepad"]
             };
             foreach (var (tool, command) in commands)

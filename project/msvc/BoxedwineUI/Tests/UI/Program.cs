@@ -25,6 +25,7 @@ internal static partial class Program
             app.ThemeMode = ThemeMode.System;
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/{typeof(MainWindow).Assembly.GetName().Name};component/Styles.xaml", UriKind.Relative) });
             if (args.Contains("--wine-tools")) { CheckWineTools(destination); return 0; }
+            if (args.Contains("--shared-files")) { CheckSharedFiles(destination); return 0; }
             if (args.Contains("--disc-install")) { CheckDiscInstall(destination); return 0; }
             if (args.Contains("--cdrom-settings")) { CheckCdromSettings(destination); return 0; }
             if (args.Contains("--advanced-settings")) { CheckAdvancedSettings(destination); return 0; }

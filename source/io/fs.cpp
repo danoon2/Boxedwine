@@ -38,11 +38,33 @@ std::atomic_int Fs::nextNodeId=1;
 
 std::shared_ptr<FsFileNode> Fs::rootNode;
 BString Fs::nativePathSeperator;
+static std::weak_ptr<FsNode> sharedFolder;
+static U64 nextSharedFolderRefresh = 0;
+
+void Fs::watchSharedFolder(const std::shared_ptr<FsNode>& node) {
+    sharedFolder = node;
+    nextSharedFolderRefresh = 0;
+}
+
+bool Fs::hasSharedFolder() {
+    return !sharedFolder.expired();
+}
+
+void Fs::refreshSharedFolder(bool force) {
+    auto node = sharedFolder.lock();
+    if (!node) return;
+    U64 now = KSystem::getMicroCounter();
+    if (!force && now < nextSharedFolderRefresh) return;
+    nextSharedFolderRefresh = now + 500000;
+    node->refreshLoadedHostTree();
+}
 
 void Fs::shutDown() {
+    sharedFolder.reset();
 	rootNode = nullptr;
 }
 bool Fs::initFileSystem(const BString& rootPath) {
+    sharedFolder.reset();
     Fs::nextNodeId = 1;
     BString path;
     Fs::nativePathSeperator = (char)std::filesystem::path::preferred_separator;

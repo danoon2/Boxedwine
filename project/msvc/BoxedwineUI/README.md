@@ -210,7 +210,7 @@ The Mac App Store tip/purchase interface is platform-specific and is not include
 Keyboard shortcuts follow Windows conventions and are listed in Help and menus.
 
 Select an app → **Run Another Program… → Wine Tools** for Wine Configuration,
-Registry Editor, Command Prompt, File Manager, Add/Remove Programs, Wine Internet
+Registry Editor, Command Prompt, Wine Explorer, Add/Remove Programs, Wine Internet
 Explorer, or Notepad. Search accepts both display names and commands such as
 `winecfg` and `regedit`. Tools use the selected app’s Wine package and Windows
 environment, including its saved Boxedwine options and discs. They are available
@@ -260,6 +260,22 @@ See [architecture and sharing assessment](ARCHITECTURE.md) for the core boundary
 and a proposed route to sharing actual implementation with macOS.
 
 ## Verification
+
+Installed app cards accept files and folders for **Shared Files (Y:)**, including
+while the app is running. **Shared Files…** opens the host folder or, when stopped,
+runs a copied EXE/MSI in the same app environment. See
+[Shared Files](../../../docs/App-Imports-and-Collections.md#shared-files-for-an-installed-app)
+for copy, refresh and backup behavior. Rebuild the native engine as well as the UI.
+
+Focused checks:
+
+    dotnet run --project Tests/Boxedwine.Tests.csproj -c Release -- C:\Boxedwine2\tmp\shared-files-tests --shared-files-only
+    dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release -- C:\Boxedwine2\tmp\shared-files-ui-checks --shared-files
+
+The live Windows probe is tools/wineTests/tests/shared_files_live.c. Compile it
+with i686-w64-mingw32-gcc and run tools/test_shared_files_live.ps1 from the repository
+root with -Wine and -Probe. It uses a fresh test prefix and checks host changes,
+Wine notifications and guest writes through Y:.
 
 The dependency-free tests exercise metadata, package structure/hash/CRC, paths,
 ZIP extraction, import/cancellation, MSI and launch argument boundaries, backups,

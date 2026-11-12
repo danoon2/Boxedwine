@@ -27,6 +27,7 @@ from .files import Work, Cancelled, beneath, no_links, storage_size
 from .library import Library, DRIVE_C, WINDOWS, built_in, now, preference
 from .packages import Resources, WineChecks, catalog_files, ensure_wine, ensure_current_wine, import_wine
 from .runtime import Session, WINE_TOOLS, apply_configuration, build_arguments, default_emulator, refresh_configuration
+from . import shared_files
 
 
 def idle(callback, *args):
@@ -653,6 +654,23 @@ class Window(Adw.ApplicationWindow):
             state = self.demo_state(item) if demo else ('Running' if identifier in self.sessions else 'Removed' if self.view == 'Removed Apps' else 'Choose program' if not item.get('executable') and not built_in(item) else 'Ready to open')
             subtitle = Gtk.Label(label=state, ellipsize=3); subtitle.add_css_class('caption'); subtitle.add_css_class('dim-label'); box.append(subtitle)
             card.set_child(box)
+            if not demo and self.view != 'Removed Apps':
+                drop = Gtk.DropTarget.new(Gio.File, Gdk.DragAction.COPY)
+                drop.set_gtypes([Gio.File, Gdk.FileList])
+                def enter_shared(target, x, y, c=card, a=item):
+                    if self.busy:
+                        return Gdk.DragAction(0)
+                    c.add_css_class('selected-app')
+                    c.set_tooltip_text('Copy to ' + a['name'] + '’s Shared Files (Y:)')
+                    return Gdk.DragAction.COPY
+                def leave_shared(target, c=card):
+                    c.set_tooltip_text(None)
+                    c.remove_css_class('selected-app')
+                    self.update_card_selection()
+                drop.connect('enter', enter_shared)
+                drop.connect('leave', leave_shared)
+                drop.connect('drop', dialogs.guarded(self, lambda target, value, x, y, a=item: self.drop_shared_files(a, value)))
+                card.add_controller(drop)
             self.cards[identifier] = card
             card.connect('clicked', dialogs.guarded(self, lambda _, a=item, d=demo: self.select_card(a, d)))
             context = Gtk.GestureClick.new()
@@ -721,6 +739,7 @@ class Window(Adw.ApplicationWindow):
                 if running:
                     add('stop', 'Stopping…' if identifier in self.stopping else 'Stop App', lambda: self.stop(item), identifier not in self.stopping)
                 add('another', 'Run Another Program…', lambda: self.run_another(item), editable)
+                add('shared', 'Shared Files…', lambda: self.show_shared_files(item), not self.busy)
                 add('settings', 'App Settings…', lambda: dialogs.app_settings(self, item), editable)
                 add('troubleshoot', 'Troubleshooting…', lambda: dialogs.troubleshoot(self, item), not self.busy and not running)
                 add('logs', 'View Launch Logs…', lambda: self.show_logs(item))
@@ -869,6 +888,9 @@ class Window(Adw.ApplicationWindow):
         box.append(info)
         actions = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         actions.append(dialogs.button(self, 'Run Another Program…', lambda: self.run_another(app)))
+        shared = dialogs.button(self, 'Shared Files…', lambda: self.show_shared_files(app))
+        shared.set_sensitive(not self.busy)
+        box.append(shared)
         actions.append(dialogs.button(self, 'App Settings', lambda: dialogs.app_settings(self, app)))
         actions.append(dialogs.button(self, 'Troubleshooting', lambda: dialogs.troubleshoot(self, app)))
         actions.set_sensitive(session is None and not self.busy); box.append(actions)
@@ -1054,6 +1076,48 @@ class Window(Adw.ApplicationWindow):
             updated = copy.deepcopy(current); updated['executable'] = path; self.library.update(updated)
             self.refresh(); self.reveal_app(updated); self.toast('Program selected')
         dialogs.program_picker(self, app, save)
+
+    def drop_shared_files(self, app, value):
+        if self.busy or not self.find_app(app['id']):
+            return True  # An app-card drop must never become an import of a new app.
+        files = value.get_files() if isinstance(value, Gdk.FileList) else [value]
+        paths = [file.get_path() for file in files]
+        if not paths or not all(paths):
+            raise ValueError('Choose local files or folders.')
+        self.perform('Copying to ' + app['name'] + '’s Shared Files',
+                     lambda work: shared_files.add(self.library, app, paths, work),
+                     lambda added: self.show_shared_files(app, f'{len(added)} item(s) added to Y:\\.'))
+        return True
+
+    def show_shared_files(self, app, notice=None):
+        if self.busy:
+            return
+        directory = shared_files.directory(self.library, app)
+        body = ((notice + '\n\n') if notice else '') + (
+            'Files in this folder are available as Y:\\ in this app. Drop files or folders onto its library card to copy them here. Changes appear while it is running.')
+        running = app['id'] in self.sessions
+        if running:
+            body += '\n\nStop the app before running a patch or another program.'
+        dialog = Adw.AlertDialog(heading=app['name'] + ' — Shared Files', body=body)
+        dialog.add_response('folder', 'Show Folder')
+        dialog.add_response('run', 'Run…')
+        dialog.set_response_enabled('run', not running and app['id'] not in self.syncing)
+        dialog.add_response('done', 'Done')
+        dialog.set_close_response('done')
+        def response(_, choice):
+            if choice == 'folder':
+                Gio.AppInfo.launch_default_for_uri(directory.as_uri(), None)
+            elif choice == 'run':
+                def selected(path):
+                    from .files import within
+                    if not within(path, directory):
+                        raise ValueError('Choose a program inside this app’s Shared Files folder.')
+                    if self.can_modify(app):
+                        self.launch(app, external=no_links(path))
+                dialogs.choose_file(self, 'Run a program from Shared Files', selected,
+                                    patterns=['*.exe', '*.EXE', '*.msi', '*.MSI'], initial=directory)
+        dialog.connect('response', dialogs.guarded(self, response))
+        dialog.present(self)
 
     def run_another(self, app):
         if self.can_modify(app):
@@ -1299,6 +1363,7 @@ class Window(Adw.ApplicationWindow):
         dialogs.text_dialog(self, 'Boxedwine Help',
             'Add a Windows app\n\nChoose Add to Library → App or installer, then a file, folder, or direct download URL. ZIP files are unpacked for review. Choose Add App for a ready-to-run program, or Run Installer for setup. Local installers mount their source folder without copying; keep it available to run setup again. Apps, downloads and extracted ZIP contents are copied into the library. Compatibility options are available during review. Nothing runs until you confirm. You can also drop a source onto this window.\n\n'
             'Add or update a collection\n\nChoose Add to Library → Collection, then a JSON file or URL. Review the destination and new, updated, and unchanged counts. Reimporting into the same folder matches stable app IDs without duplicates. Collections remain available after relaunch. URL imports remember their sources: use Refresh to check for changes, then Apply Changes. Local files can be reimported. Delete a custom collection or Reset Demos to restore the defaults; installed apps and saves are kept.\n\n'
+            'Shared Files and patches\n\nDrop files or folders onto an installed app’s card to copy them into its Shared Files drive, Y:. Use Shared Files → Show Folder to access the same files from your computer. Copies appear while the app is running. When it is stopped, Shared Files → Run launches a patch EXE or MSI in that app’s environment. Duplicate names get a numbered copy. Drop onto empty library space to add a new app.\n\n'
             'Each app has its own Windows environment\n\nSaved files stay with that app. Use Run Another Program to launch a configuration utility in the same environment. An external program gets access to its containing host folder after confirmation.\n\n'
             'Demos and Windows support\n\nThe demo catalog and downloads are checked against release checksums. Wine is shared on disk, while each app keeps a specific package. Offline Windows support can be imported from the matching ZIP in Settings.\n\n'
             'Backups and removal\n\nExport Backup creates a .boxedwinebackup folder containing the app, its Wine package, and a verified manifest. Restore Backup creates a separate app. Keep the entire backup folder together. Removed Apps retains files until permanent deletion unless immediate deletion is enabled. Interrupted file operations appear in Recovery.\n\n'

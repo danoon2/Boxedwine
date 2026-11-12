@@ -380,6 +380,10 @@ std::vector<BString> StartUpArgs::buildArgs() {
         args.push_back(B("-log"));
         args.push_back(logPath);
     }
+    if (!sharedFolder.isEmpty()) {
+        args.push_back(B("-shared_folder"));
+        args.push_back(sharedFolder);
+    }
     for (auto& m : mountInfo) {
         if (m.wine) {
             args.push_back(B("-mount_drive"));
@@ -819,6 +823,25 @@ bool StartUpArgs::apply() {
     }
 #endif
 
+    if (!sharedFolder.isEmpty()) {
+        const BString path = B("/home/username/Shared");
+        Fs::makeLocalDirs(path);
+        auto parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(path), true);
+        auto devices = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
+        if (!parent || !devices || !Fs::isNativePathDirectory(sharedFolder)) {
+            klog("The app's Shared Files folder is unavailable.");
+            return false;
+        }
+        auto existing = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices/y:"), false);
+        if (existing && existing->getLink() != path) {
+            klog("Y: is already assigned. Remove its custom Wine drive mapping to use Shared Files.");
+            return false;
+        }
+        auto shared = Fs::addRootDirectoryNode(path, sharedFolder, parent);
+        Fs::addFileNode(B("/home/username/.wine/dosdevices/y:"), path, B(""), false, devices);
+        Fs::watchSharedFolder(shared);
+    }
+
     bool configureCdrom = !this->cdromPaths.empty();
 #if !defined(__EMSCRIPTEN__) && !defined(__TEST) && !defined(__ANDROID__)
     // Reserve an empty drive before Wine's mountmgr starts, so a user can
@@ -1217,6 +1240,12 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 return false;
             }
             this->rel_mouse_sensitivity = value;
+        } else if (!strcmp(argv[i], "-shared_folder")) {
+            if (i + 1 >= argc || !argv[i + 1][0]) {
+                klog("-shared_folder expects the app's host Shared Files directory");
+                return false;
+            }
+            sharedFolder = nativeCommandLinePath(BString::copy(argv[++i]));
         } else if (!strcmp(argv[i], "-mount_drive")) {
             if (strlen(argv[i+2])!=1) {
                 klog("-mount_drive expects 2 parameters: <host directory to mount> <drive letter to use for wine>");

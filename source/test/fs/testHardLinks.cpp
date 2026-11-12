@@ -891,7 +891,16 @@ void testHostFolderSyncUpdatesLoadedChildren() {
             testFail("loaded child lookup missed a child after the directory loaded");
         }
     }
+    Fs::watchSharedFolder(dir);
+    Fs::refreshSharedFolder(true);
+    writeNativeFile(nativePath("newdir") / "live");
+    std::filesystem::remove(nativePath("kept"), error);
+    Fs::refreshSharedFolder(true);
+    if (dir->getChildByName(B("kept")) || !newDir || !newDir->getChildByName(B("live"))) {
+        testFail("shared-folder polling missed a nested host addition or deletion");
+    }
     cleanupRoot(root);
+    if (Fs::hasSharedFolder()) testFail("shared-folder watch survived filesystem shutdown");
 }
 
 void testHardLinksShareIdentityDataAndXattrs() {

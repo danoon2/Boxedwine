@@ -275,7 +275,7 @@ frames before closing, and finishes closing before the launch callback runs.
 - Choose an installed program after setup; run another program in the same
   Windows environment, including an external EXE/MSI after folder-access consent.
   Run Another Program includes Wine Configuration, Registry Editor, Command
-  Prompt, File Manager, Add/Remove Programs, Wine Internet Explorer (blank page),
+  Prompt, Wine Explorer, Add/Remove Programs, Wine Internet Explorer (blank page),
   and Notepad. These tools use the selected app’s root and pinned Wine package;
   they never replace its saved executable or inherit its program arguments.
 - App Settings uses the same ordering and wording as the Windows launcher.
@@ -331,6 +331,22 @@ Windows software. External programs receive writable access to the selected
 host directory. Downloads are restricted to checksum-pinned boxedwine.org URLs.
 
 ## Validation
+
+Installed app cards accept files and folders for **Shared Files (Y:)**, including
+while running. **Shared Files…** opens the host folder or runs a copied EXE/MSI
+when the app is stopped. See
+[Shared Files](../../../docs/App-Imports-and-Collections.md#shared-files-for-an-installed-app).
+The feature requires an engine rebuilt with the UI.
+
+Focused checks:
+
+    python3 ui/tests/test_shared_files.py
+    GDK_BACKEND=x11 xvfb-run -a python3 ui/tests/shared_files_ui_smoke.py
+
+For a real Wine check, compile tools/wineTests/tests/shared_files_live.c with
+i686-w64-mingw32-gcc. From the repository root, run
+tools/wineTests/run_shared_files_live.py with --engine, --wine and --probe.
+Use xvfb-run when testing without a display.
 
 ```sh
 make test-ui

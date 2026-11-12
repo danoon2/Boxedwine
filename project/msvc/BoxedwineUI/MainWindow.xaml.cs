@@ -174,7 +174,7 @@ public partial class MainWindow : Window
         refreshing = true; Cards.ItemsSource = rows; Cards.SelectedItem = rows.FirstOrDefault(r => r.Key == previous); refreshing = false;
         PageTitle.Text = section == "All Apps" ? "Your Windows apps" : section;
         PageSubtitle.Text = section switch { "Demos" => "Discover a classic. Every demo gets its own Windows environment.", "Removed Apps" => "Your files and saves stay here until you restore or delete them.", "Recently Opened" => "Pick up where you left off.", "Unfinished Work" => "Review interrupted file operations.", _ => "A home for old favorites." };
-        CountLabel.Text = $"{rows.Count} {(section == "Unfinished Work" ? "operations" : "apps")}" + (section == "All Apps" ? "   ·   Drop an app folder, installer, or disc image here" : "");
+        CountLabel.Text = $"{rows.Count} {(section == "Unfinished Work" ? "operations" : "apps")}" + (section == "All Apps" ? "   ·   Drop onto an app to share files; empty space to add an app" : "");
         EmptyState.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyTitle.Text = Search.Text.Length > 0 ? "No matches" : section switch { "Demos" => "Explore Windows classics", "Recently Opened" => "Your recent apps appear here", "Removed Apps" => "No removed apps", "Unfinished Work" => "Everything is up to date", _ => "Make room for your favorites" };
         EmptyDescription.Text = Search.Text.Length > 0 ? "Try another name or clear the search." : section switch { "Demos" => catalogError ?? "The catalog is empty.", "Recently Opened" => "Open an app from All Apps to get started.", "Removed Apps" => "Removing an app from the library keeps its files here.", "Unfinished Work" => "There are no interrupted copies to review.", _ => "Add an app folder or installer, browse a demo, or try Wine's Minesweeper to get started." };
@@ -275,6 +275,7 @@ public partial class MainWindow : Window
         DetailAction(Running(app) ? "■   Stop App" : "▶   Open App", () => { if (Running(app)) Stop(app); else Open(app); }, (!busy || Running(app)) && !stopping.Contains(app.Id));
         DetailInformation(app);
         DetailAction("Run Another Program…", () => Another(app), CanChange(app));
+        DetailAction("Shared Files…", () => ShowSharedFiles(app), !busy);
         DetailAction("App Settings…", () => Edit(app), CanChange(app));
         DetailAction("Troubleshooting…", () => Troubleshoot(app), !busy);
         DetailAction("Back Up App…", () => Backup(app), CanChange(app));
@@ -305,10 +306,29 @@ public partial class MainWindow : Window
         if (row.Demo is { } demo) { e.Handled = true; Safe(() => ActivateDemo(demo)); }
         else if (row.App is { } app && row.Removed == null && CanChange(app)) { e.Handled = true; Safe(() => Open(app)); }
     }
-    private void FilesDragOver(object sender, DragEventArgs e) { e.Effects = !busy && e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; }
+    private void FilesDragOver(object sender, DragEventArgs e)
+    {
+        ClearSharedDrop();
+        e.Effects = !busy && !shuttingDown && e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        if (e.Effects == DragDropEffects.Copy && SharedDropApp(e.OriginalSource as DependencyObject) is { } app)
+        {
+            sharedDropTarget = ItemsControl.ContainerFromElement(Cards, (DependencyObject)e.OriginalSource) as ListBoxItem;
+            sharedDropTarget?.SetCurrentValue(OpacityProperty, 0.65);
+            sharedDropStatus = Status.Text;
+            Status.Text = "Copy to " + app.Name + "’s Shared Files (Y:)";
+        }
+        e.Handled = true;
+    }
     private void FilesDropped(object sender, DragEventArgs e)
     {
+        ClearSharedDrop();
         if (busy || e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
+        if (SharedDropApp(e.OriginalSource as DependencyObject) is { } app)
+        {
+            e.Handled = true;
+            Safe(() => AddSharedFiles(app, paths));
+            return;
+        }
         if (paths.Length > 0 && paths.All(CdromImages.IsImage))
         {
             e.Handled = true;
@@ -347,12 +367,12 @@ public partial class MainWindow : Window
     private void ContextOpened(object sender, RoutedEventArgs e) => EnableMenu(((ContextMenu)sender).Items);
     private void EnableMenu(ItemCollection items)
     {
-        foreach (var item in items.OfType<MenuItem>()) item.IsEnabled = Selected?.App is { } app && Selected.Removed == null && ((string)item.Tag == "log" || ((string)item.Tag == "stop" ? Running(app) : CanChange(app)));
+        foreach (var item in items.OfType<MenuItem>()) item.IsEnabled = Selected?.App is { } app && Selected.Removed == null && ((string)item.Tag == "log" || ((string)item.Tag == "shared" && !busy) || ((string)item.Tag == "stop" ? Running(app) : CanChange(app)));
     }
     private void AppActionClick(object sender, RoutedEventArgs e)
     {
         if (Selected?.App is not { } app || Selected.Removed != null) return;
-        Safe(() => { switch ((string)((MenuItem)sender).Tag) { case "open": if (CanChange(app)) Open(app); break; case "stop": Stop(app); break; case "another": if (CanChange(app)) Another(app); break; case "edit": if (CanChange(app)) Edit(app); break; case "backup": if (CanChange(app)) Backup(app); break; case "trouble": Troubleshoot(app); break; case "log": ShowLog(app); break; case "remove": if (CanChange(app)) Remove(app); break; } });
+        Safe(() => { switch ((string)((MenuItem)sender).Tag) { case "open": if (CanChange(app)) Open(app); break; case "stop": Stop(app); break; case "another": if (CanChange(app)) Another(app); break; case "shared": ShowSharedFiles(app); break; case "edit": if (CanChange(app)) Edit(app); break; case "backup": if (CanChange(app)) Backup(app); break; case "trouble": Troubleshoot(app); break; case "log": ShowLog(app); break; case "remove": if (CanChange(app)) Remove(app); break; } });
     }
     private static void Reveal(string path)
     {

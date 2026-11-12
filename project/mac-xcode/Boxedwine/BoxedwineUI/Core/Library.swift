@@ -605,6 +605,7 @@ struct LaunchRequest: Sendable {
         var result = ["-root", repository.root(for: app).path, "-zip", wineZip.path,
                       "-title", tool.map { $0.title + " · " + app.name } ?? app.name, "-resolution", resolution]
         if app.fullScreen { result.append("-fullscreenAspect") }
+        result += ["-shared_folder", try SharedFiles.directory(repository, app: app).path]
         result += try CdromImages.launchArguments(app.cdromImages ?? [], root: repository.root(for: app))
         if let tool { return result + overrides + ["-w", "/home/username", "/bin/wine"] + tool.arguments }
         if installing, app.installFromDisc == true {

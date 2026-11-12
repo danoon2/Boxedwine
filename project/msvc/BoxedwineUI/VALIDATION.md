@@ -1,5 +1,30 @@
 # Validation — 2026-10-04
 
+## Shared Files — 2026-11-11
+
+- Windows, macOS and Linux launch arguments mount each app's
+  root/home/username/Shared folder as writable Y:. Copies use staging outside
+  the mounted folder, preserve directories, and keep duplicate names separately.
+- Installed app cards accept drops while running. Shared Files offers host
+  folder access and a Run picker for EXE/MSI files when the app is stopped.
+  Empty-space drops retain the new-app import flow.
+- The shared engine refreshes loaded directories every 500 ms, including while
+  idle, and emits Wine filesystem notifications. A live Wine probe passed on
+  Windows and Linux for additions, nested modifications, renames, deletion,
+  change notifications and guest writes back to the host.
+- Windows Release UI and clean x64 engine builds passed. The normal UI output
+  includes the tested engine. All 55 Windows core checks passed. WPF checks
+  passed in Light and Dark for app-card routing and stopped/running controls;
+  the rendered dialogs were inspected.
+- Linux native engine build passed; 39 existing core tests and three Shared Files
+  tests passed, including failure without publishing when a subfolder cannot be
+  read. GTK Shared Files checks passed in both themes, including actual
+  copy dispatch from card drop controllers and stopped Run dispatch. The existing
+  context-menu pointer/keyboard smoke test also passed.
+- macOS implementation, Xcode source registration, and regression tests are
+  updated. Compilation and execution remain unverified without a Mac toolchain.
+- Restart older app sessions once with the updated engine to mount Y:.
+
 ## Wine Tools — 2026-11-09
 
 - Windows and macOS now expose the same seven Wine tools as Linux through

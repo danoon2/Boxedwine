@@ -116,6 +116,7 @@ public:
     BString runAutomation;
 
     BString ddrawOverridePath;
+    BString sharedFolder; // Per-app writable Y: drive, refreshed while running.
     std::vector<BString> cdromPaths; // disc images for the CD-ROM drive, swapped while running
     BString cdromDrive; // wine drive letter for the CD-ROM drive, without the colon
     bool cdromInstall = false; // Explicit autorun-or-Explorer startup, not disc-change autoplay.

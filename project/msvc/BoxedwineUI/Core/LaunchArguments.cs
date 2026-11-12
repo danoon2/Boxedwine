@@ -99,6 +99,7 @@ public static class LaunchArguments
         var wineTool = tool is { } selectedTool ? WineTools.Get(selectedTool) : null;
         List<string> result = ["-root", repository.Root(app), "-zip", wine, "-title", wineTool == null ? app.Name : wineTool.Name + " · " + app.Name, "-resolution", installing && app.DemoSettings != null ? app.DemoSettings.InstallResolution ?? "1024x768" : app.Resolution];
         if (app.FullScreen) result.Add("-fullscreenAspect");
+        result.AddRange(["-shared_folder", SharedFiles.DirectoryPath(repository, app)]);
         result.AddRange(CdromImages.LaunchOptions(app.CdromImages ?? [], repository.Root(app)));
         var overrides = Overrides(app.BoxedwineArguments ?? []);
         if (wineTool != null)

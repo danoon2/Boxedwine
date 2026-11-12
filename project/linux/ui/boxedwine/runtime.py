@@ -15,6 +15,7 @@ import uuid
 from .files import beneath, delete_tree, no_links
 from .library import DRIVE_C, WINDOWS, built_in, check_installer, preference
 from .cdrom import launch_options
+from .shared_files import directory as shared_directory
 
 MOUSE_SENSITIVITY = '-rel_mouse_sensitivity'
 FLAGS = {'-nosound', '-p2', '-p3', '-dpiAware', '-disableHideCursor', '-forceRelativeMouse', '-cacheReads', '-disableLinearMemory'}
@@ -138,7 +139,7 @@ WINE_TOOLS = {
     'winecfg': ('Wine Configuration', 'Windows version, DLL overrides, graphics, audio, and drives', ('winecfg',)),
     'regedit': ('Registry Editor', 'Edit this app’s Windows registry', ('regedit',)),
     'cmd': ('Command Prompt', 'Run Windows commands and batch files', ('wineconsole', 'cmd')),
-    'winefile': ('File Manager', 'Browse this app’s Windows drives and files', ('winefile',)),
+    'explorer': ('Wine Explorer', 'Browse this app’s Windows drives and files', ('explorer.exe', 'C:\\')),
     'uninstaller': ('Add/Remove Programs', 'Manage installed programs and components', ('uninstaller',)),
     'iexplore': ('Wine Internet Explorer', 'Open Wine’s browser in this environment', ('iexplore', 'about:blank')),
     'notepad': ('Notepad', 'Edit text files in this app’s environment', ('notepad',)),
@@ -156,6 +157,7 @@ def build_arguments(library, app, wine, installing=False, alternate=None, extern
     size = (app.get('demoSettings') or {}).get('installResolution', '1024x768') if installing else app.get('resolution', '1024x768')
     title = WINE_TOOLS[tool][0] + ' · ' + app['name'] if tool else app['name']
     result = ['-root', str(library.root(app)), '-zip', str(wine), '-title', title, '-resolution', size]
+    result += ['-shared_folder', str(shared_directory(library, app))]
     if app.get('fullScreen'):
         result.append('-fullscreenAspect')
     result += launch_options(app.get('cdromImages') or [], library.root(app))
