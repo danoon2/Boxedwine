@@ -879,6 +879,15 @@
       <EnableDpiAwareness>false</EnableDpiAwareness>
     </Manifest>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(WholeProgramOptimization)'=='true'">
+    <Link>
+      <!-- Incremental LTCG reused an old inlined FsFileNode allocation size after
+           FsNode grew, causing Win64 heap corruption. /INCREMENTAL:NO alone does
+           not disable that cache; regenerate optimized code on every link. -->
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGenerationObjectFile />
+    </Link>
+  </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(BoxedwineAutomation)'=='true'">
     <BoxedwineAutomationSuffix Condition="'$(Configuration)'!='Automation'">-Automation</BoxedwineAutomationSuffix>
     <OutDir>$(ProjectDir)..\$(Platform)\$(Configuration)$(BoxedwineAutomationSuffix)\</OutDir>
