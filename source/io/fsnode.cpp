@@ -20,6 +20,7 @@
 
 #include "fsfilenode.h"
 #include "kstat.h"
+#include "kinotify.h"
 
 FsNode::FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, std::shared_ptr<FsNode> parent) :
     path(path),
@@ -311,7 +312,7 @@ std::shared_ptr<FsNode> FsNode::getLoadedChildByNativePath(const BString& childN
     return nullptr;
 }
 
-void FsNode::syncLoadedChildrenWithFileSystem() {
+void FsNode::syncLoadedChildrenWithFileSystem(bool notify) {
 #ifdef BOXEDWINE_MULTI_THREADED
     std::unique_lock<std::recursive_mutex> visibilityLock;
     BOXEDWINE_MUTEX* visibilityMutex =
@@ -324,6 +325,9 @@ void FsNode::syncLoadedChildrenWithFileSystem() {
     if (!this->hasLoadedChildrenFromFileSystem || !this->nativePath.length()) {
         return;
     }
+#ifdef BOXEDWINE_MULTI_THREADED
+    const std::unique_lock<std::recursive_mutex> childrenLock(this->childrenByNameMutex);
+#endif
     std::vector<Platform::ListNodeResult> results;
     Platform::listNodes(this->nativePath, results);
     std::shared_ptr<FsNode> self = shared_from_this();
@@ -345,8 +349,10 @@ void FsNode::syncLoadedChildrenWithFileSystem() {
                 continue;
             }
             this->removeChildByName(childName);
+            if (notify) KInotifyObject::notifyPath(existing->path, K_IN_DELETE | (existing->isDirectory() ? K_IN_ISDIR : 0));
         }
         addChildFromNativeEntry(self, kind, n, localPath, remotePath);
+        if (notify) KInotifyObject::notifyPath(localPath, K_IN_CREATE | (n.isDirectory ? K_IN_ISDIR : 0));
     }
     std::vector<std::shared_ptr<FsNode> > children;
     this->getAllChildren(children);
@@ -358,6 +364,39 @@ void FsNode::syncLoadedChildrenWithFileSystem() {
         }
         if (!listedNames.contains(child->name)) {
             this->removeChildByName(child->name);
+            if (notify) KInotifyObject::notifyPath(child->path, K_IN_DELETE | (child->isDirectory() ? K_IN_ISDIR : 0));
+        }
+    }
+    if (notify) {
+        std::map<BString, std::pair<U64, U64>> current;
+        for (auto& entry : this->childrenByName) {
+            auto child = entry.value;
+            if (child->isDirectory() || child->isLink()) continue;
+            auto stamp = std::make_pair(child->lastModified(), child->length());
+            auto old = hostFileState.find(child->name);
+            if (old != hostFileState.end() && old->second != stamp) {
+                KInotifyObject::notifyPath(child->path, K_IN_MODIFY | K_IN_CLOSE_WRITE);
+            }
+            current[child->name] = stamp;
+        }
+        hostFileState.swap(current);
+    }
+}
+
+void FsNode::refreshLoadedHostTree(U32 depth) {
+    // Only scan directories already visited by the guest. Never walk links or
+    // another mount, and never recursively preload a large host folder.
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(loadChildrenMutex());
+        if (depth > 64 || !hasLoadedChildrenFromFileSystem || nativePath.isEmpty()) return;
+    }
+    syncLoadedChildrenWithFileSystem(true);
+    std::vector<std::shared_ptr<FsNode>> children;
+    getAllChildren(children);
+    for (auto& child : children) {
+        if (child->isDirectory() && !child->isLink() &&
+            Fs::getNativeParentPath(child->nativePath) == nativePath) {
+            child->refreshLoadedHostTree(depth + 1);
         }
     }
 }

@@ -101,8 +101,10 @@ def text_editor(parent, title, text, description):
     return editor, value
 
 
-def choose_file(owner, title, callback, folder=False, save=False, name=None, patterns=None):
+def choose_file(owner, title, callback, folder=False, save=False, name=None, patterns=None, initial=None):
     chooser = Gtk.FileDialog(title=title, modal=True)
+    if initial is not None:
+        chooser.set_initial_folder(Gio.File.new_for_path(str(initial)))
     if name:
         chooser.set_initial_name(name)
     if patterns:

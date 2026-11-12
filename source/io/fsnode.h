@@ -21,6 +21,7 @@
 
 #include "platformBoxedwine.h"
 #include "kfilelock.h"
+#include <map>
 
 // on windows one.txt and One.txt are the same file but on Linux they are different
 #define EXT_MIXED ".mixed"
@@ -118,7 +119,8 @@ public:
     // Host folder refresh support. Neither call loads children that were never
     // loaded, so such directories pick up host changes when first listed.
     std::shared_ptr<FsNode> getLoadedChildByNativePath(const BString& childNativePath);
-    void syncLoadedChildrenWithFileSystem();
+    void syncLoadedChildrenWithFileSystem(bool notify = false);
+    void refreshLoadedHostTree(U32 depth = 0);
     void setChildrenVisibilityMutex(BOXEDWINE_MUTEX* mutex);
 #ifdef __TEST
     bool trySetChildrenVisibilityMutexForTest(BOXEDWINE_MUTEX* mutex);
@@ -143,6 +145,7 @@ protected:
 private:
     const bool isDir;
     bool hasLoadedChildrenFromFileSystem;    
+    std::map<BString, std::pair<U64, U64>> hostFileState;
 
     BHashTable<BString, std::shared_ptr<FsNode> > childrenByName;
     BOXEDWINE_MUTEX childrenByNameMutex;

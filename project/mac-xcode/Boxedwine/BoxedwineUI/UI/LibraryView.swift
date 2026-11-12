@@ -184,7 +184,7 @@ struct LibraryView: View {
                         .padding(26).frame(minWidth: 350, maxWidth: .infinity, maxHeight: .infinity)
                         .contentShape(Rectangle())
                         .overlay {
-                            if appDropTargeted && store.canDropApp {
+                            if appDropTargeted && store.canDropApp && store.sharedDropAppID == nil {
                                 RoundedRectangle(cornerRadius: 12)
                                     .fill(Color.accentColor.opacity(0.08))
                                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.accentColor, lineWidth: 2))
@@ -237,6 +237,7 @@ struct LibraryView: View {
                                             .disabled(!store.canModify(app) || !store.canLaunch(app))
                                             .help("Run a configuration tool or another program for this app.")
                                     }
+                                    Button("Shared Files…") { store.showSharedFiles(app) }.disabled(!store.canShareFiles(app))
                                     Button("App Settings…") { store.editingApp = app }.disabled(!store.canModify(app))
                                     Button("Troubleshooting…") { store.troubleshootingApp = app }
                                     Divider()
@@ -350,6 +351,7 @@ private struct LibraryAppsGrid: View {
 private struct LibraryAppCard: View {
     @ObservedObject var store: LibraryStore
     let app: LibraryApp
+    @State private var sharedDropTarget = false
     private var status: String { store.activity[app.id] ?? (app.executable != nil || app.isBuiltIn ? "Ready to open" : "Choose a program") }
     var body: some View {
         Button { store.selectedID = app.id } label: {
@@ -358,18 +360,27 @@ private struct LibraryAppCard: View {
                     .id("\(app.id)-\(app.executable ?? "")-\(store.activity[app.id] ?? "")")
                 VStack(alignment: .leading, spacing: 4) {
                     Text(app.name).fontWeight(.medium).lineLimit(2)
-                    Text(status)
+                    Text(sharedDropTarget ? "Copy to Shared Files (Y:)" : status)
                         .font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, minHeight: 116, alignment: .topLeading).padding(14)
-            .background(store.selectedID == app.id ? Color.accentColor.opacity(0.13) : Color.clear,
+            .background(sharedDropTarget || store.selectedID == app.id ? Color.accentColor.opacity(0.13) : Color.clear,
                         in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(store.selectedID == app.id ? Color.accentColor.opacity(0.6) : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .dropDestination(for: URL.self) { urls, _ in
+            store.sharedDropAppID = nil
+            store.addSharedFiles(urls, to: app)
+            return true
+        } isTargeted: {
+            sharedDropTarget = $0 && store.canShareFiles(app)
+            if $0 { store.sharedDropAppID = app.id }
+            else if store.sharedDropAppID == app.id { store.sharedDropAppID = nil }
+        }
         .simultaneousGesture(TapGesture(count: 2).onEnded {
             store.selectedID = app.id
             let needsProgram = app.executable == nil && !app.isBuiltIn
@@ -387,6 +398,7 @@ private struct LibraryAppCard: View {
                 Button("Run Another Program…") { store.chooseAnotherProgram(app) }
                     .disabled(!store.canModify(app) || !store.canLaunch(app))
             }
+            Button("Shared Files…") { store.showSharedFiles(app) }.disabled(!store.canShareFiles(app))
             Button("App Settings…") { store.editingApp = app }.disabled(!store.canModify(app))
             Button("Troubleshooting…") { store.troubleshootingApp = app }
             Button("Back Up App…") { store.exportBackup(app) }

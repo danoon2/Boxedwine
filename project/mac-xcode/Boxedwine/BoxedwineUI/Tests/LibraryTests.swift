@@ -12,6 +12,32 @@ struct LibraryTests {
         return url
     }
 
+    @Test func sharedFilesPreserveFoldersAndDoNotOverwriteOrChangeTheSelectedProgram() throws {
+        let temporary = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let repository = LibraryRepository(directory: temporary.appendingPathComponent("Library"))
+        var app = LibraryApp(name: "Game")
+        app.arguments = ["game-only"]
+        try repository.save([app])
+        let source = temporary.appendingPathComponent("Patch Media")
+        try FileManager.default.createDirectory(at: source.appendingPathComponent("Payload"), withIntermediateDirectories: true)
+        try Data("patch".utf8).write(to: source.appendingPathComponent("patch.exe"))
+        try Data("payload".utf8).write(to: source.appendingPathComponent("Payload/data.bin"))
+        let added = try SharedFiles.add([source], repository: repository, app: app, control: ImportControl())
+        #expect(try String(contentsOf: added[0].appendingPathComponent("Payload/data.bin"), encoding: .utf8) == "payload")
+        let duplicate = try SharedFiles.add([source], repository: repository, app: app, control: ImportControl())
+        #expect(duplicate[0].lastPathComponent == "Patch Media (2)")
+        let args = try LaunchRequest(app: app, repository: repository, wineZip: temporary.appendingPathComponent("wine.zip"), tool: .explorer).arguments()
+        #expect(try args[args.firstIndex(of: "-shared_folder")! + 1] == SharedFiles.directory(repository, app: app).path)
+        #expect(!args.contains("game-only"))
+        #expect(try repository.load() == [app])
+        let control = ImportControl()
+        control.cancel()
+        #expect(throws: CancellationError.self) { try SharedFiles.add([source], repository: repository, app: app, control: control) }
+        #expect(throws: LibraryError.self) { try SharedFiles.add([repository.appDirectory(app)], repository: repository, app: app, control: ImportControl()) }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: SharedFiles.directory(repository, app: app).path).count == 2)
+    }
+
     @Test func importsFolderAndPersistsWithoutChangingSource() throws {
         let temporary = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: temporary) }
@@ -156,7 +182,7 @@ struct LibraryTests {
         let wine = temporary.appendingPathComponent("Pinned Wine.zip")
         let commands: [(WineTool, [String])] = [
             (.winecfg, ["winecfg"]), (.regedit, ["regedit"]), (.cmd, ["wineconsole", "cmd"]),
-            (.winefile, ["winefile"]), (.uninstaller, ["uninstaller"]),
+            (.explorer, ["explorer.exe", "C:\\"]), (.uninstaller, ["uninstaller"]),
             (.iexplore, ["iexplore", "about:blank"]), (.notepad, ["notepad"])
         ]
         for (tool, command) in commands {

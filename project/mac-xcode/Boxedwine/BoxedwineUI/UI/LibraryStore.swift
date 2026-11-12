@@ -97,6 +97,7 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var storageRevision = 0
     var hasUnfinishedDeletions: Bool { removedApps.contains { $0.deletionStartedAt != nil } }
     @Published var selectedID: UUID?
+    @Published var sharedDropAppID: UUID?
     @Published private(set) var appIDToReveal: UUID?
     @Published var query = ""
     @Published var recentOnly = false
@@ -1400,6 +1401,64 @@ final class LibraryStore: ObservableObject {
         guard canEdit, backingUpID != app.id, !isRunning(app), !selectingDemoPrograms.contains(app.id), choosingProgram?.id != app.id else { return }
         if !pendingProgramChoices.contains(app.id) { pendingProgramChoices.append(app.id) }
         presentNextProgramChoice()
+    }
+
+    func canShareFiles(_ app: LibraryApp) -> Bool {
+        canEdit && !importing && apps.contains(where: { $0.id == app.id }) && !presentingLibrarySheet
+    }
+
+    func addSharedFiles(_ urls: [URL], to app: LibraryApp) {
+        guard canShareFiles(app), let repository, !urls.isEmpty else { return }
+        guard urls.allSatisfy(\.isFileURL) else { errorMessage = "Choose local files or folders."; return }
+        let scoped = urls.filter { $0.startAccessingSecurityScopedResource() }
+        let control = beginImport(name: app.name + " — Shared Files")
+        Task {
+            let result = await Task.detached {
+                Result { try SharedFiles.add(urls, repository: repository, app: app, control: control) }
+            }.value
+            scoped.forEach { $0.stopAccessingSecurityScopedResource() }
+            finishImport()
+            do {
+                let added = try result.get()
+                showSharedFiles(app, notice: "\(added.count) item(s) added to Y:\\.")
+            } catch is CancellationError { }
+            catch { errorMessage = error.localizedDescription }
+        }
+    }
+
+    func showSharedFiles(_ app: LibraryApp, notice: String? = nil) {
+        guard canShareFiles(app), let repository else { return }
+        do {
+            let directory = try SharedFiles.directory(repository, app: app)
+            let alert = NSAlert()
+            alert.messageText = app.name + " — Shared Files"
+            alert.informativeText = (notice.map { $0 + "\n\n" } ?? "") +
+                "Files in this folder are available as Y:\\ in this app. Drop files or folders onto its library card to copy them here. Changes appear while it is running."
+            alert.addButton(withTitle: "Done")
+            alert.addButton(withTitle: "Show Folder")
+            alert.addButton(withTitle: "Run…").isEnabled = canModify(app) && canLaunch(app)
+            if isRunning(app) { alert.informativeText += "\n\nStop the app before running a patch or another program." }
+            switch alert.runModal() {
+            case .alertSecondButtonReturn:
+                NSWorkspace.shared.open(directory)
+            case .alertThirdButtonReturn:
+                guard canModify(app), canLaunch(app) else { return }
+                let panel = NSOpenPanel()
+                panel.title = "Run a Program from Shared Files"
+                panel.prompt = "Run"
+                panel.directoryURL = directory
+                panel.canChooseDirectories = false
+                panel.allowsMultipleSelection = false
+                panel.allowedContentTypes = [UTType(filenameExtension: "exe") ?? .data, UTType(filenameExtension: "msi") ?? .data]
+                guard panel.runModal() == .OK, let file = panel.url else { return }
+                guard file.resolvingSymlinksInPath().path.hasPrefix(directory.resolvingSymlinksInPath().path + "/") else {
+                    throw LibraryError.invalidPath
+                }
+                guard canModify(app), canLaunch(app) else { return }
+                launch(app, externalProgram: try ExternalProgram(file: file, folder: file.deletingLastPathComponent()))
+            default: break
+            }
+        } catch { errorMessage = error.localizedDescription }
     }
 
     func chooseAnotherProgram(_ app: LibraryApp) {

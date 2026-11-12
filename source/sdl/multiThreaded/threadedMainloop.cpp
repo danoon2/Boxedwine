@@ -101,6 +101,9 @@ bool doMainLoop() {
         if (KSystem::logFile.isOpen() && timeout > 1000) {
             timeout = 1000;
         }
+        // Shared Files must also refresh while a guest waits with no windows or
+        // input events (for example, a program waiting for a patch to arrive).
+        if (Fs::hasSharedFolder() && timeout > 500) timeout = 500;
         KNativeSystem::tick();
 #ifdef BOXEDWINE_RECORDER
         if (Player::instance || Recorder::instance) {

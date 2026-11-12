@@ -95,6 +95,9 @@ struct FsPathResult {
 class Fs {
 public:
     static bool initFileSystem(const BString& rootPath);
+    static void watchSharedFolder(const std::shared_ptr<FsNode>& node);
+    static bool hasSharedFolder();
+    static void refreshSharedFolder(bool force = false);
     static FsPathResult resolvePath(const BString& currentDirectory, const BString& path,
         const FsPathLookupOptions& options = {});
     static std::shared_ptr<FsNode> getNodeFromLocalPath(const BString& currentDirectory, const BString& path, bool followLink, bool* isLink=nullptr);

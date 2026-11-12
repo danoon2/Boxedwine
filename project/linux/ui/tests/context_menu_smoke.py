@@ -62,7 +62,7 @@ def main():
         pointer.point_at(card); pointer.click(3); yield 500
         assert window.selected == target and not calls, 'Right-click selects its target without launching it'
         choices = entries(card)
-        assert set(choices) == {'Open App', 'Run Another Program…', 'App Settings…', 'Troubleshooting…',
+        assert set(choices) == {'Open App', 'Run Another Program…', 'Shared Files…', 'App Settings…', 'Troubleshooting…',
                                 'View Launch Logs…', 'Export Backup…', 'Remove from Library…'}, choices
         labels = [w.get_text() for w in widgets(window.details_toolbar) if isinstance(w, Gtk.Label)]
         assert 'Storage' in labels and GLib.format_size(size) in labels, labels
