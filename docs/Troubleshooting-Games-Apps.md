@@ -29,6 +29,20 @@ inside the game to resume. The status bar shows the current capture state.
 ###  Graphical Issues
 Some older DirectDraw games, like Diablo and Starcraft, might not draw Windows common controls correctly or perhaps not at all. Checking the box on the container options for "DD GDI Renderer" could help. This option will have no affect on Direct3D and OpenGL games.
 
+### RalliSport Challenge
+
+A visible cursor with an unresponsive main menu after the intro can be caused
+by a missing GStreamer WAV parser. In the tested Wine 11 v31 filesystem,
+DirectShow could not play the game's PCM WAV menu music, leaving the main thread
+looping through failed playback. Installing `libgstwavparse.so` restored menu
+input and allowed a race to run. CPU affinity and Windows XP mode did not fix
+this case; DirectPlay was not needed for the menu fix.
+
+Filesystem v33 includes the parser in the base, full and web archives. It is
+staged locally; see the [release receipt](../tools/buildWine/RELEASE-v33.md) for
+package identities and publication status. Existing application package pins
+are preserved, so the application must select the new package to receive it.
+
 ### The Sims 2 Double Deluxe
 
 New filesystem builds default WineD3D's reported video-memory budget to

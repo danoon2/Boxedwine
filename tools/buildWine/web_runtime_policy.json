@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "base_sha256": "e64a97dffa5962f3278ac43f3160382636ca95585dcf13d3f39fb63236d11fe7",
+  "base_sha256": "ce55a695a5addbf8abab82d98e5c46d5787b517c570e6ac49deae1643cdf20bd",
   "max_bytes": 100000000,
-  "provenance": "Paths audited against the pinned TinyCore 15 base. Package ownership was cross-checked with http://tinycorelinux.net/15.x/x86/tcz/*.tcz.list on 2026-09-30; no live package lists are needed to build. Revision 31 preserves all v28 members except the loader cache and reconstruction instructions, and adds the Boxedwine XF86VidMode bridge and its source/license metadata; the removal list remains unchanged. The final v31 base was manually trimmed under usr/local/share/doc/; all surviving bytes and permissions match the validated build, and no runtime removal rule changed.",
+  "provenance": "Paths audited against the pinned TinyCore 15 base. Package ownership was cross-checked with http://tinycorelinux.net/15.x/x86/tcz/*.tcz.list on 2026-09-30; no live package lists are needed to build. Revision 31 preserves all v28 members except the loader cache and reconstruction instructions, and adds the Boxedwine XF86VidMode bridge and its source/license metadata; the removal list remains unchanged. The final v31 base was manually trimmed under usr/local/share/doc/; all surviving bytes and permissions match the validated build, and no runtime removal rule changed. Revision 33 retains every v31 runtime member byte-for-byte and adds the WAV parser plus its notices/provenance; only reconstruction instructions change. The removal list is unchanged and retains the new parser and all its dependencies.",
   "remove_packages": [
     "binutils.tcz",
     "coreutils.tcz",
