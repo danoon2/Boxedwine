@@ -2,10 +2,13 @@
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include <SDL_opengl.h>
+#include <SDL_syswm.h>
 #include "../platform/windows/windowsOpenGL.h"
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+#include <atomic>
+#include <thread>
 
 // Test rendering must use the driver that owns the selected context.
 struct GLFunctions {
@@ -84,9 +87,107 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "Could not load OpenGL library: %s\n", SDL_GetError());
         return 1;
     }
+    // SDL caches the native DC for the window's entire lifetime. Borrowing
+    // and releasing a DC on other threads must not replace/invalidate it.
+    // A common DC (the old SDL_RegisterApp default) violates that contract.
+    {
+        auto window = SDL_CreateWindow("Native drawing handle", 0, 0, 100, 100, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        assert(window);
+        SDL_SysWMinfo info = {};
+        SDL_VERSION(&info.version);
+        assert(SDL_GetWindowWMInfo(window, &info));
+        auto context = SDL_GL_CreateContext(window);
+        assert(context);
+        assert(SDL_GL_MakeCurrent(nullptr, nullptr) == 0);
+        for (int i = 0; i < 3; ++i) {
+            std::thread borrower([&] {
+                auto dc = GetDC(info.info.win.window);
+                assert(dc);
+                ReleaseDC(info.info.win.window, dc);
+            });
+            borrower.join();
+            auto dc = GetDC(info.info.win.window);
+            assert(dc == info.info.win.hdc);
+            ReleaseDC(info.info.win.window, dc);
+            assert(GetObjectType(info.info.win.hdc) == OBJ_DC);
+            assert(WindowFromDC(info.info.win.hdc) == info.info.win.window);
+        }
+        SDL_GL_DeleteContext(context);
+        SDL_DestroyWindow(window);
+        std::puts("Native drawing handle survives borrowing and thread teardown.");
+    }
+    // Wine can resize/rebind a drawable on one thread while its rendering
+    // thread keeps another context current to the previous backing surface.
+    for (int doubleBuffer : {0, 1}) {
+        SDL_GL_ResetAttributes();
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, doubleBuffer);
+        auto window = SDL_CreateWindow("Threaded fullscreen resize", 80, 90, 640, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        assert(window);
+        windowsOpenGLPrepareWindow(window, 640, 480);
+        auto resizeContext = SDL_GL_CreateContext(window);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        auto renderContext = SDL_GL_CreateContext(window);
+        assert(resizeContext && renderContext);
+        api.load();
+        assert(SDL_GL_MakeCurrent(nullptr, nullptr) == 0);
+        for (bool full : {true, false}) {
+            assert(SDL_SetWindowFullscreen(window, full ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) == 0);
+            windowsOpenGLEnableFullscreen(window);
+            for (auto size : {SDL_Point{1280, 720}, SDL_Point{640, 480}}) {
+                std::atomic<int> phase{0};
+                std::thread renderer([&] {
+                    assert(windowsOpenGLMakeCurrent(window, renderContext));
+                    phase = 1;
+                    while (phase == 1) SDL_Delay(1);
+                    // The first swap may adopt the resized backing. Following
+                    // frames must reach the host even without MakeCurrent.
+                    assert(windowsOpenGLSwapBuffers(window));
+                    api.glClearColor(0, 1, 0, 1);
+                    api.glClear(GL_COLOR_BUFFER_BIT);
+                    assert(windowsOpenGLSwapBuffers(window));
+                    assert(api.glGetError() == GL_NO_ERROR);
+                    assert(SDL_GL_MakeCurrent(nullptr, nullptr) == 0);
+                    phase = 3;
+                });
+                auto wait = [&](int value) {
+                    Uint32 started = SDL_GetTicks();
+                    while (phase < value && SDL_GetTicks() - started < 10000) {
+                        SDL_PumpEvents();
+                        SDL_Delay(1);
+                    }
+                    assert(phase >= value);
+                };
+                wait(1);
+                assert(windowsOpenGLResizeFullscreen(window, size.x, size.y) == full);
+                if (!full) SDL_SetWindowSize(window, size.x, size.y);
+                assert(windowsOpenGLMakeCurrent(window, resizeContext));
+                api.glClearColor(1, 0, 0, 1);
+                api.glClear(GL_COLOR_BUFFER_BIT);
+                assert(windowsOpenGLSwapBuffers(window));
+                assert(SDL_GL_MakeCurrent(nullptr, nullptr) == 0);
+                phase = 2;
+                wait(3);
+                renderer.join();
+                assert(SDL_GL_MakeCurrent(window, resizeContext) == 0);
+                auto fit = windowsOpenGLGetViewport(window);
+                api.glReadBuffer(GL_FRONT);
+                pixel(fit.x + fit.width / 2, fit.y + fit.height / 2, 0, 255);
+                api.glReadBuffer(doubleBuffer ? GL_BACK : GL_FRONT);
+                assert(SDL_GL_MakeCurrent(nullptr, nullptr) == 0);
+            }
+        }
+        SDL_GL_DeleteContext(renderContext);
+        SDL_GL_DeleteContext(resizeContext);
+        windowsOpenGLDestroyWindow(window);
+        SDL_DestroyWindow(window);
+        std::puts("Threaded resolution changes survive fullscreen and returning to windowed mode.");
+    }
     // Start windowed and toggle without another guest MakeCurrent. Guest
     // readback, context state and host presentation must survive both ways.
     {
+        SDL_GL_ResetAttributes();
         auto window = SDL_CreateWindow("Runtime fullscreen", 80, 90, 640, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
         assert(window);
         windowsOpenGLPrepareWindow(window, 640, 480);
@@ -96,12 +197,24 @@ int main(int argc, char** argv) {
         assert(!windowsOpenGLGetViewport(window).valid());
         assert(!windowsOpenGLResizeFullscreen(window, 640, 480));
         api.glViewport(2, 3, 630, 470);
+        auto genFramebuffers = (PFNGLGENFRAMEBUFFERSPROC)SDL_GL_GetProcAddress("glGenFramebuffers");
+        auto bindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC)SDL_GL_GetProcAddress("glBindFramebuffer");
+        auto deleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC)SDL_GL_GetProcAddress("glDeleteFramebuffers");
+        GLuint fbo = 0;
+        genFramebuffers(1, &fbo);
         for (bool full : {true, false, true, false}) {
             assert(SDL_SetWindowFullscreen(window, full ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) == 0);
             if (!full) SDL_SetWindowSize(window, 640, 480);
             windowsOpenGLEnableFullscreen(window);
             assert(windowsOpenGLResizeFullscreen(window, 640, 480) == full);
+            // Wine may still have an FBO bound when fullscreen is enabled.
+            // GL_DOUBLEBUFFER then describes the FBO, not the native window.
+            bindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
             assert(windowsOpenGLSwapBuffers(window));
+            GLint binding = 0;
+            api.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &binding);
+            assert(binding == (GLint)fbo);
+            bindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
             api.glDisable(GL_SCISSOR_TEST);
             api.glClearColor(0, 1, 0, 1);
             api.glClear(GL_COLOR_BUFFER_BIT);
@@ -120,6 +233,7 @@ int main(int argc, char** argv) {
             assert(windowsOpenGLMakeCurrent(window, context));
             assert(api.glGetError() == GL_NO_ERROR);
         }
+        deleteFramebuffers(1, &fbo);
         SDL_GL_MakeCurrent(nullptr, nullptr);
         SDL_GL_DeleteContext(context);
         windowsOpenGLDestroyWindow(window);

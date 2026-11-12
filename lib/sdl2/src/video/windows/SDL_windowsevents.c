@@ -1232,7 +1232,8 @@ SDL_RegisterApp(char *name, Uint32 style, void *hInst)
     if (!name && !SDL_Appname) {
         name = "SDL_app";
 #if defined(CS_BYTEALIGNCLIENT) || defined(CS_OWNDC)
-        SDL_Appstyle = (CS_BYTEALIGNCLIENT | CS_OWNDC);
+        /* Preserve the default private DC when SDL_Appstyle is assigned below. */
+        style = (CS_BYTEALIGNCLIENT | CS_OWNDC);
 #endif
         SDL_Instance = hInst ? hInst : GetModuleHandle(NULL);
     }

@@ -121,8 +121,14 @@ struct Presentation {
         windowDC = info.info.win.hdc;
         colorMaskIndexed = (PFNGLCOLORMASKIPROC)SDL_GL_GetProcAddress("glColorMaski");
         srgb = SDL_GL_ExtensionSupported("GL_ARB_framebuffer_sRGB") || SDL_GL_ExtensionSupported("GL_EXT_framebuffer_sRGB");
+        // GL_DOUBLEBUFFER describes the bound draw framebuffer. Wine can
+        // leave an FBO bound when fullscreen starts; query the window instead.
+        GLint drawFbo = 0;
+        gl.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+        bindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         GLboolean doubleBuffer = GL_FALSE;
         gl.glGetBooleanv(GL_DOUBLEBUFFER, &doubleBuffer);
+        bindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFbo);
         doubleBuffered = doubleBuffer != GL_FALSE;
         create = createProc;
         return true;
@@ -316,11 +322,14 @@ bool windowsOpenGLSwapBuffers(SDL_Window* window, bool swap) {
         return true;
     }
     std::lock_guard<std::mutex> lock(p->mutex);
-    // A running context may not call MakeCurrent again after Alt+Enter. Bind
-    // its backing on this rendering thread, without touching GL from the UI.
-    if (!p->backing) {
-        auto context = SDL_GL_GetCurrentContext();
-        if (context && p->initialize(window) && p->bind(context)) return true;
+    // A running context may not call MakeCurrent again after Alt+Enter, or
+    // after another thread replaces the backing during a resolution change.
+    // Rebind on the rendering thread, but never steal another drawable's
+    // current context. The old frame is unavailable; the next uses the new size.
+    auto context = SDL_GL_GetCurrentContext();
+    if (context && SDL_GL_GetCurrentWindow() == window &&
+            (!p->backing || p->gl.wglGetCurrentDC() != p->backingDC)) {
+        if (p->initialize(window) && p->bind(context)) return true;
     }
     if (!p->present(window, swap) && !p->warned) {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not present the fullscreen OpenGL buffer: %s (Windows error %lu)", SDL_GetError(), GetLastError());
