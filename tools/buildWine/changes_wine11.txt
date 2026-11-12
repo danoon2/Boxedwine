@@ -1,3 +1,5 @@
+v33 Nov 11, 2026 Add the GStreamer WAV parser to the base, full and web filesystems. Fix RalliSport Challenge freezing at the main menu when its PCM WAV music cannot load. Retain the v31 Wine binaries, gamma bridge and v51 WebGL DLLs.
+
 v31 Nov 10, 2026 Fix builtin DLL lookup through multiple WinSxS paths so the Sims 3 launcher can use Wine VC80 without native overrides. Add the Boxedwine XF86VidMode gamma-ramp library; fullscreen gamma correction requires a supporting Windows OpenGL engine. Update the base filesystem with the gamma library and loader cache; retain the existing media libraries and v51 WebGL DLLs.
 
 v30 Nov 09, 2026 Fix periodic WMV playback pauses by letting DirectShow renderers schedule presentation instead of waiting on WMReader's independent clock. Retain bounded ASF delivery, seeking, and writer availability support. Reuse the v28 media base and v51 WebGL DLLs. Movie encoding remains unsupported.
