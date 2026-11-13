@@ -51,11 +51,11 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
 loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the
-v51 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+v52 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 33. Its `changes.txt` comes from
+The filesystem revision is 34. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -71,14 +71,14 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v33.json`](webgl_filesystems_v33.json) and the
-[v51 patch manifest](../wineTests/webgl-test-divergences-v51.json). To test that
+[`webgl_filesystems_v34.json`](webgl_filesystems_v34.json) and the
+[v52 patch manifest](../wineTests/webgl-test-divergences-v52.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v33 WebGL configuration pins the DLLs, source patches, and final
-archives in its `full-v33` and `web-v33` profiles. The complete filesystem is
-assembled by `filesystem_wine11.json`. See [RELEASE-v33.md](RELEASE-v33.md) for
+The v34 WebGL configuration pins the DLLs, source patches, and final
+archives in its `full-v34` and `web-v34` profiles. The complete filesystem is
+assembled by `filesystem_wine11.json`. See [RELEASE-v34.md](RELEASE-v34.md) for
 artifact identities, validation results, and upload instructions.
-The v33 prefix leaves the renderer registry values unset. The profile records
+The v34 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
 Revision 27 seeds `HKCU\Software\Wine\Direct3D\VideoMemorySize`
@@ -133,11 +133,17 @@ license, provenance and upstream source bundle. Pin its resulting size/hash in
 `wine_builds.json` and `web_runtime_policy.json` before assembling both variants.
 [`probes/wav-playback.c`](probes/wav-playback.c) checks DirectShow loading,
 duration and playback completion using a generated PCM WAV.
-The new base and both Wine filesystems need uploads. The packages are staged locally for `/v2/33/`; upload and verification are pending.
+Revision 34 updates the separate WebGL WineD3D to use the emulated display's
+32-bit mode list. The matching engine supplies 640x480, 800x600, 1024x768 and the
+starting resolution without duplicates. Both variants contain the v52 DLLs; the
+v33 base and main Wine binaries are unchanged. The Wine packages are staged
+locally for `/v2/34/`; upload and verification are pending. The base remains
+pinned to `/v2/33/` and must also be available there.
 The staged legacy catalog targets `/v2/26R2/filesV2.xml`, and `/v2/latest/` should
-receive the same final ZIP bytes. The [release receipt](RELEASE-v33.md) records
+receive the same final ZIP bytes. The [release receipt](RELEASE-v34.md) records
 the checks actually run and the remaining platform qualification.
-Browser deployments also need this branch's engine update advertising WebGL 2
+Browser deployments need this branch's XRandR mode-list update as well as the
+engine update advertising WebGL 2
 uniform buffers to Wine; rebuilding the filesystem alone cannot update a
 deployed engine. Revision 28 media playback also needs the CPU FPU-reset and
 pthread floating-point inheritance fixes from this branch. See the
@@ -149,7 +155,7 @@ It retains revision 25's DirectSound backport. All eight WebGL DLLs were rebuilt
 from the v50 source series; only WineD3D differs from the v25 DLLs. The verified
 regular Wine binaries were retained, with fresh packaging and prefix setup.
 The ZIP writer gives Wine directories explicit executable permissions.
-UI, Jenkins, native automation, and demo-site pins now select the staged v33 archives.
+UI, Jenkins, native automation, and demo-site pins now select the staged v34 archives.
 Publish and verify both archives before deploying the new UI/Jenkins pins.
 Revision 26 retains the earlier WebGL fixes from revisions 24 and 25. Direct GLSL
 generation for fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8
@@ -363,7 +369,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
-Build and validate with `--config tools/buildWine/webgl_filesystems_v33.json`.
+Build and validate with `--config tools/buildWine/webgl_filesystems_v34.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises
@@ -506,7 +512,7 @@ python3 tools/buildWine/webgl_filesystem.py validate \
 
 The following v3/v10 commands and manifest remain available for historical
 filesystem reproduction and validation. Normal commands now default to
-`webgl_filesystems_v33.json`; pass the historical config explicitly below.
+`webgl_filesystems_v34.json`; pass the historical config explicitly below.
 The dedicated `validate-set` command retains its v3/v10 default.
 
 `webgl_filesystem.py` is the pinned build, packaging, and validation command

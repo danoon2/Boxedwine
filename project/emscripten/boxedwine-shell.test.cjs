@@ -599,13 +599,14 @@ test('memory and regression launches do not mount persistent storage', () => {
 });
 
 const gdiCommands = [
+    'set', 'WINE_D3D_CONFIG=webgl=0,webgl_glsl_es=0', '&&',
     'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
     'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'renderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
 ];
 
-test('registry presets launch the same command as hand-written reg add args', () => {
+test('GDI presets disable the WebGL profile before launching the game', () => {
     const preset = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=PERF_W95.EXE&bpp=8&resolution=640x480&registry=[gdi]');
-    const manual = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=cmd&bpp=8&resolution=640x480&args=/c%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20DirectDrawRenderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20renderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20%22PERF_W95.EXE%22');
+    const manual = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=cmd&bpp=8&resolution=640x480&args=/c%20set%20WINE_D3D_CONFIG=webgl=0,webgl_glsl_es=0%20%26%26%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20DirectDrawRenderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20renderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20%22PERF_W95.EXE%22');
     assert.deepEqual(preset.params, manual.params);
 });
 
@@ -644,6 +645,7 @@ test('registry renderer and mouse warp presets match the native UI settings', ()
     };
     assert.deepEqual(wine('registry=gl'), [
         'cmd', '/c',
+        'set', 'WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1', '&&',
         'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'opengl', '/f', '&&',
         'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'renderer', '/t', 'REG_SZ', '/d', 'gl', '/f', '&&',
         'GAME.EXE',

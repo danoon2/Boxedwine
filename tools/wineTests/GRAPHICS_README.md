@@ -6,6 +6,12 @@ D3DX9 and D3DXOF groups in an isolated Chrome profile with in-memory storage.
 Select the runtime mode and inputs explicitly; the CLI defaults retain the
 earlier published baseline and single-threaded non-JIT build.
 
+The current filesystem selection is [revision 34](../buildWine/RELEASE-v34.md)
+with the [v52 source series](webgl-test-divergences-v52.json). Its focused
+display-mode and release checks are recorded there. The frozen full-suite
+qualifications below retain their original input hashes; they do not qualify
+the new filesystem automatically.
+
 The latest full graphics qualification uses [the v39 patch manifest](webgl-test-divergences-v39.json)
 and [reviewed v39 counts](graphics-baseline-v39-candidate.json). Its SSE DLLs
 pass all 56 ST JIT / MT JIT groups with the original v38 test executables. The
@@ -20,7 +26,7 @@ three performance patches and retained the same Wine test policy. Its exact
 DLLs passed 5,132 targeted depth/stencil checks; the full v39 matrix above has
 not been rerun against v40.
 
-The [current v41 upload](../buildWine/webgl_filesystems_v11.json) adds the
+The [September 19 v41 upload](../buildWine/webgl_filesystems_v11.json) adds the
 indexed-draw and DirectDraw RGB10 corrections from the branch review. The
 [validation record](graphics-review-fixes-20260919.json) identifies its
 7,156 passing browser checks across all four runtime modes, before/after

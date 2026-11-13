@@ -35,10 +35,14 @@
             // draws through GDI, which helps a few games such as Diablo and StarCraft.
             // gl, OpenGL, is Wine's default.
             gdi: [
+                // Emscripten enables this profile by default. Its single-mode display list
+                // also affects GDI, preventing paletted games such as AoE from starting.
+                'set WINE_D3D_CONFIG=webgl=0,webgl_glsl_es=0',
                 'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f',
                 'reg add "HKCU\\Software\\Wine\\Direct3D" /v renderer /t REG_SZ /d gdi /f'
             ],
             gl: [
+                'set WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1',
                 'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d opengl /f',
                 'reg add "HKCU\\Software\\Wine\\Direct3D" /v renderer /t REG_SZ /d gl /f'
             ]

@@ -1,3 +1,5 @@
+v34 Nov 12, 2026 Update the bundled WebGL WineD3D to enumerate 32-bit display modes from Boxedwine instead of advertising only the current mode. With the updated browser engine, offer 640x480, 800x600, 1024x768 and the starting resolution without duplicates. Retain the v33 base and main Wine binaries.
+
 v33 Nov 11, 2026 Add the GStreamer WAV parser to the base, full and web filesystems. Fix RalliSport Challenge freezing at the main menu when its PCM WAV music cannot load. Retain the v31 Wine binaries, gamma bridge and v51 WebGL DLLs.
 
 v31 Nov 10, 2026 Fix builtin DLL lookup through multiple WinSxS paths so the Sims 3 launcher can use Wine VC80 without native overrides. Add the Boxedwine XF86VidMode gamma-ramp library; fullscreen gamma correction requires a supporting Windows OpenGL engine. Update the base filesystem with the gamma library and loader cache; retain the existing media libraries and v51 WebGL DLLs.

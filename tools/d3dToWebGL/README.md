@@ -1,12 +1,18 @@
 # Wine 11 DirectX-to-WebGL patch series
 
-The current source series is pinned by
-[`webgl-test-divergences-v51.json`](../wineTests/webgl-test-divergences-v51.json).
-It contains 75 production patches and one separate, complete Wine graphics-test
-adaptation. The [v51 inventory](../wineTests/webgl-patch-inventory-v51.json)
+The filesystem release source series is pinned by
+[`webgl-test-divergences-v52.json`](../wineTests/webgl-test-divergences-v52.json).
+It contains 76 production patches and one separate, complete Wine graphics-test
+adaptation. The [v52 inventory](../wineTests/webgl-patch-inventory-v52.json)
 records every affected file, patch order, category and SHA-256 hash.
 
-Versions 2 through 50 retain earlier build and test selections for reproducing historical
+Filesystem revision 34 selects [v52](../wineTests/webgl-test-divergences-v52.json), which adds
+one patch to enumerate the emulated display's 32-bit modes instead of returning
+only its current mode. Resolution selection stays in Boxedwine's XRandR layer.
+It needs both the updated engine and rebuilt WebGL WineD3D. See [the mode-switch probe and results](../wineTests/tests/webgl_display_modes_probe.md)
+and [release DLL pins](../buildWine/webgl_filesystems_v34.json).
+
+Versions 2 through 51 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 

@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "manifest_id": "wine11-webgl-display-modes-candidate-20261112",
+  "wine_version": "11.0",
+  "build_date": "2026-11-12",
+  "source_date_epoch": 1768319767,
+  "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
+  "patch_manifest": {
+    "path": "tools/wineTests/webgl-test-divergences-v52.json",
+    "sha256": "9e9f86c5c512bc71f97bdbbc054e8ea7c220b8d0435f7acb81168d7003396d80"
+  },
+  "webgl_directory": "home/username/.wine/drive_c/webgl",
+  "dlls": {
+    "d3d8.dll": {
+      "size": 250089,
+      "sha256": "fabc2ab601e4f14c90202c0c1059f114cae3b0026db098f3341d7de44fec5b9c",
+      "required_imports": [
+        "wined3d.dll"
+      ]
+    },
+    "d3d9.dll": {
+      "size": 330154,
+      "sha256": "c914ae05d32036b54f83e127ab900e3c5bffd5404fae0342f026fd39c517a6df",
+      "required_imports": [
+        "wined3d.dll"
+      ]
+    },
+    "d3dx9_36.dll": {
+      "size": 868652,
+      "sha256": "b9518020a4446b43679af7738cd7b14cccd38facbe37ab8de5f2fe6e2461d88a",
+      "required_imports": [
+        "d3dxof.dll",
+        "wined3d.dll"
+      ]
+    },
+    "d3dx9_43.dll": {
+      "size": 867027,
+      "sha256": "f9e98b0752620b682cbdfa9dbe45ef6fbfc1a43d0caeb325ad3906ae42b43206",
+      "required_imports": [
+        "d3dxof.dll"
+      ]
+    },
+    "d3dxof.dll": {
+      "size": 393035,
+      "sha256": "4614b6e0c7c6b10d6f639a5b716f25b7308c36a658c1dd3bc5402323bc6132b8",
+      "required_imports": [
+        "kernel32.dll"
+      ]
+    },
+    "ddraw.dll": {
+      "size": 855284,
+      "sha256": "858cc6195ba812d94cd89f5ff2ccc111f4894d823fbe3ec0d9bcbaeb3fc6ce5d",
+      "required_imports": [
+        "wined3d.dll"
+      ]
+    },
+    "dxgi.dll": {
+      "size": 483035,
+      "sha256": "8623bb35b4ae743f92d23badc1a64509105ce083293c71ce72912f0ca6be5531",
+      "required_imports": [
+        "wined3d.dll"
+      ]
+    },
+    "wined3d.dll": {
+      "size": 3995520,
+      "sha256": "f06e4456908735c6374a1356c37d5961e8717beecc5fc635b0ec75ad6144179b",
+      "required_imports": [
+        "opengl32.dll"
+      ]
+    }
+  },
+  "gl_files": {
+    "lib/libGL.so.1": {
+      "size": 398636,
+      "sha256": "86789e96c9808351390615dfd9dbf8b25e8618c93864d9a0c4ad1f7e088f2042"
+    },
+    "lib/libEGL.so.1": {
+      "size": 31540,
+      "sha256": "77bd700810be70af752a56c1d5745f1d73fe2aa7ca8ca8f98692223e137f93ca"
+    },
+    "lib/libGLESv2.so.2": {
+      "size": 398636,
+      "sha256": "86490aea022aa3d3cd38b46968e5bac7a31893028b470aa81b58873b74f4aa02"
+    },
+    "etc/ld.so.cache": {
+      "size": 18005,
+      "sha256": "c88188df861b4f8928717d7261b1d37ecdd0bedadabf118221248f56013645dd"
+    },
+    "usr/local/lib/libXxf86vm.so.1": {
+      "size": 15160,
+      "sha256": "3eeee9f7566a082f5915b38d28fbb103782e783417faa45e1200f33d2ad6211a"
+    },
+    "usr/local/lib/gstreamer-1.0/libgstwavparse.so": {
+      "size": 46972,
+      "sha256": "11b7bcda096572abdae48f31d0f7aeff5d9d64c0a409a17beb7e969afaa27e0d"
+    }
+  },
+  "gl_links": {
+    "lib/libEGL.so.link": "libEGL.so.1",
+    "lib/libgles.so.link": "libGLESv2.so.2",
+    "lib/libGLESv1_CM.so.1.link": "libGLESv2.so.2",
+    "lib/libGLESv1_CM.so.link": "libGLESv2.so.2",
+    "lib/libGLESv2.so.link": "libGLESv2.so.2"
+  },
+  "ld_cache": {
+    "libGL.so.1": "/lib/libGL.so.1",
+    "libEGL.so.1": "/lib/libEGL.so.1",
+    "libEGL.so": "/lib/libEGL.so",
+    "libgles.so": "/lib/libgles.so",
+    "libGLESv1_CM.so.1": "/lib/libGLESv1_CM.so.1",
+    "libGLESv2.so.2": "/lib/libGLESv2.so.2",
+    "libpcre2-8.so.0": "/usr/local/lib/libpcre2-8.so.0",
+    "libavcodec.so.58": "/usr/local/lib/libavcodec.so.58",
+    "libXxf86vm.so.1": "/usr/local/lib/libXxf86vm.so.1"
+  },
+  "profiles": {}
+}

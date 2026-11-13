@@ -8,17 +8,17 @@ The [builder guide](README.md) explains the build internals and prerequisites.
 Review the release plan before starting builds. Commands below are for the later
 execution steps, run from the repository root in WSL unless noted otherwise.
 
-The inventory was reviewed for filesystem 33 on November 11, 2026. Revision 33
-adds GStreamer's WAV parser to the base, full and web filesystems to fix
-RalliSport Challenge's main-menu stall. It preserves v31's Wine runtime, gamma
-bridge, media libraries and v51 WebGL DLLs. See [RELEASE-v33.md](RELEASE-v33.md)
-for artifact identities and validation.
+The inventory was reviewed for filesystem 34 on November 12, 2026. Revision 34
+updates WebGL WineD3D to enumerate the emulated display's 32-bit modes. It needs
+the matching engine XRandR change. The v33 base and main Wine runtime are
+unchanged. See [RELEASE-v34.md](RELEASE-v34.md) for artifact identities and validation.
 
-The release is staged locally, with repository consumers pinned to `/v2/33/`.
-Upload and verify the new base, both Wine archives and WAV source bundle, refresh
-`/v2/latest/`, and deploy the staged `/v2/26R2/filesV2.xml` before activating those
-consumers. The existing media source URL remains under `/v2/28/`. Earlier
-archives and receipts retain their identities.
+The release is staged locally, with repository consumers pinned to `/v2/34/`.
+Upload and verify both Wine archives, refresh `/v2/latest/`, and deploy the staged
+`/v2/26R2/filesV2.xml` before activating those consumers. Publish the rebuilt web
+engine and refresh the CORS-enabled demo root together. The unchanged base and
+WAV source bundle remain under `/v2/33/`; media sources remain under `/v2/28/`.
+Earlier archives and receipts retain their identities.
 
 ## 1. Agree on the release scope
 
@@ -50,7 +50,7 @@ is a local workaround; release testing must use the candidate ZIP in a fresh roo
 | [`filesystem_wine11.json`](filesystem_wine11.json) | Set `filesystem_version` and select the release's `webgl_config`. Change `wine_tag`/`wine_commit` only when changing upstream Wine. |
 | [`changes_wine11.txt`](changes_wine11.txt) | Add the release entry; its first line must start with the configured `vN`. Preserve previous entries. |
 | [`changes_wine11_web.txt`](changes_wine11_web.txt) | Update the web release entry to the same `vN`. It is prepended to the full history. Update size-savings claims only from new measurements. |
-| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v33.json`](webgl_filesystems_v33.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
+| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v34.json`](webgl_filesystems_v34.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
 | [`webgl_filesystem.py`](webgl_filesystem.py), `DEFAULT_CONFIG` | Advance the build/validation default to the same manifest as the filesystem profile. Preserve the explicitly historical `validate-set` default and historical examples. |
 | [`README.md`](README.md) and this checklist | Update current revision, manifest links, publication status, and release examples; retain clearly labeled historical instructions. |
 
