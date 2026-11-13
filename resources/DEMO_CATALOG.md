@@ -8,9 +8,9 @@ URL. An unchanged pin makes no network request when its verified ZIP is cached.
 
 The package contains `catalog.xml` and its referenced PNGs in one flat directory.
 The XML's `release` matches the lock's `version`; `schemaVersion` describes the
-recipe format separately. The current pin, `26R2-catalog-13`, contains 40 recipes and icons,
+recipe format separately. The current pin, `26R2-catalog-14`, contains 41 recipes and icons,
 including 3DMark2001 SE, 3DMark03 (2003), 3DMark05 (2004),
-3DMark06 (2006), 3DMark Vantage (2008), and Sim Tower Demo (1994).
+3DMark06 (2006), 3DMark Vantage (2008), Sim Tower Demo (1994), and Max Payne Demo (2001).
 The 3DMark03, 3DMark05, 3DMark06, and Vantage details include their full-version
 unlock keys. The new entries use application icons and select `3DMark06.exe`,
 `3DMarkVantage.exe`, or `SIMTDEMO.EXE` after installation. SimTower uses the demo
@@ -33,9 +33,20 @@ the Need for Speed recipe's `<AppArguments>+nomovie</AppArguments>` field using
 schema 9, removing the game-specific defaults from all three launchers.
 CPU affinity 1 can help but does not reliably prevent the crash. Existing
 installations retain their saved arguments.
-Catalog 13 is published at the pinned URL. A fresh download was verified against
-the lock: 118,421 bytes, SHA-256
-`7001da2fbd37684263a5f65f25bd6899754e5ab84f6ed3ccf9998046e386f8c2`.
+Catalog 14 adds Max Payne as a portable ZIP with its original executable icon,
+Wine 11.0, and a 1024x768 32-bit desktop. It launches `MaxPayneDemo.exe`; choose
+**Play** in the game's settings window. Its payload is the supplied
+`MaxPayneDemo.zip`, unchanged: 136,027,034 bytes, SHA-256
+`1b5ac32661c3c061a93ce34874bf54569ac35e6056e9406d9ed891374d4f7461`.
+The same hosted ZIP serves the Jenkins demos and local homepage prototype.
+The legacy hosted and bundled UI catalogues also contain the new demo.
+
+Catalog 14 is published at the pinned URL. A fresh download was verified against
+the lock: 119,265 bytes, SHA-256
+`ba2efc75e04851e5ca32d83d513035a476f2072b15fa18317a6d54d44559ccc1`.
+The Windows and Linux parsers accepted all 41 recipes. Browser ST JIT testing
+reached the tutorial and verified movement; native gameplay on each platform
+has not been tested as part of this catalogue update.
 
 The native launchers initialize newly installed Alice demos (ID `alice`) with
 200% mouse sensitivity. This is saved as an editable per-app Boxedwine argument;

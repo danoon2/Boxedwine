@@ -420,4 +420,14 @@
         <InstallOptions></InstallOptions>
         <Options></Options>
     </Component>
+  <Demo>
+    <Name>Max Payne Demo (2001)</Name>
+    <InstallType>Zip</InstallType>
+    <IconURL>https://boxedwine.org/demos/MaxPayneDemo.png</IconURL>
+    <FileSizeMB>130</FileSizeMB>
+    <FileURL>https://boxedwine.org/builds/demos/apps/MaxPayneDemo.zip</FileURL>
+    <ShortcutExe>MaxPayneDemo.exe</ShortcutExe>
+    <Help>Direct3D 8. Choose Play in the settings window to start the demo.</Help>
+    <Options></Options>
+  </Demo>
 </XML>

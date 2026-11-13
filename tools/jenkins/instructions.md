@@ -391,6 +391,69 @@ creates a deterministic ZIP containing explicitly selected regular files under
 a directory. Both output paths must be new. The report records source and member
 hashes and omitted paths. Packaging does not validate the application's startup.
 
+### Age of Empires Trial
+
+`prepare_aoe_demo.py` repackages the public trial from
+`https://www.boxedwine.org/boxedwine/apps/aoe.zip`. It checks the source SHA-256
+before packaging, retains all 128 game files, and adds only a launcher and the
+trial's installation/DirectPlay registry entries. It does not copy a user's
+Wine registry, settings, or saves. Both output paths must be new.
+
+```bash
+mkdir -p tmp/aoe-demo
+wget -O tmp/aoe-demo/source.zip https://www.boxedwine.org/boxedwine/apps/aoe.zip
+python3 tools/jenkins/prepare_aoe_demo.py tmp/aoe-demo/source.zip \
+    tmp/aoe-demo/aoe-overlay.zip --report tmp/aoe-demo/package.json
+python3 -m unittest discover -s tools/jenkins -p test_prepare_aoe_demo.py
+```
+
+Copy `aoe-overlay.zip` into `demos/apps/` and merge its entry from
+`demos.example.json` into `demos/apps/demos.json`. Add a gameplay thumbnail at
+`demos/apps/images/aoe-overlay.png`. Use the same files for the local site and
+the configured `BUILD_SITE_REMOTE`; the next local refresh picks up the published
+assets, and the next successful Jenkins publish includes all four runtime modes.
+Updating the example manifest alone does not deploy assets.
+
+Keep `registry=gdi,winxp`, `resolution=1024x768`, and `bpp=32`. The shared GDI
+preset also disables the WebGL WineD3D profile, which AoE's paletted DirectDraw
+surfaces need. The desktop remains 32-bit. The overlay launcher imports the
+game's registry entries and sets its installed C: working directory before
+starting `empires.exe`; launching the bare public ZIP from D: omits that setup.
+Use the web v34 filesystem and a runtime containing the shared GDI preset fix.
+
+The 2026-11-13 smoke test used the published `james/web_gdi` build 3 ST JIT
+runtime and v34 web filesystem with fresh in-memory storage. It reached the
+main menu, campaign selection, and a rendered **Bronze Age Art of War** scenario.
+All four generated mode links and their published archives were checked; the
+interactive gameplay check covered ST JIT.
+The exit check did not observe the Wine process finishing within 25 seconds
+after leaving the scenario; the test browser was closed explicitly. This smoke
+test verifies startup and rendered gameplay, not clean application shutdown.
+
+### Max Payne Demo
+
+`MaxPayneDemo.zip` is a ready-to-run application archive. Use the supplied ZIP
+unchanged (136,027,034 bytes, SHA-256
+`1b5ac32661c3c061a93ce34874bf54569ac35e6056e9406d9ed891374d4f7461`).
+It includes `MaxPayneDemo.exe`, the game's data archives, and its runtime DLLs.
+It needs neither an installation overlay nor the GDI preset.
+
+Place it at `demos/apps/MaxPayneDemo.zip`, merge the matching entry from
+`demos.example.json` into `demos/apps/demos.json`, and place its gameplay
+thumbnail at `demos/apps/images/MaxPayneDemo.png`. Use the same assets for local
+generation and Jenkins publication. Launch with `app=MaxPayneDemo.zip`,
+`p=MaxPayneDemo.exe`, `resolution=1024x768`, and `bpp=32`, using the v34 web
+filesystem. The game first opens its settings window; choose **Play**.
+
+The native UI catalogues use the same ZIP with `InstallType=Zip` and
+`ShortcutExe=MaxPayneDemo.exe`. Their source URL is
+`https://boxedwine.org/builds/demos/apps/MaxPayneDemo.zip`.
+
+The 2026-11-13 ST JIT smoke test with published `james/web_gdi` build 3 and
+the v34 web filesystem reached the tutorial and accepted movement input.
+All four published mode links resolve to the verified archive. Interactive
+gameplay testing covered ST JIT.
+
 ### 3DMark2001 SE
 
 Install the cached `3DMark2001SE.exe` (SE build 330) through native Boxedwine into

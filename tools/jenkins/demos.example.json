@@ -14,6 +14,16 @@
       "exe": "ABIWORD.EXE",
       "description": "A lightweight word processor demo."
     },
+    "aoe-overlay.zip": {
+      "title": "Age of Empires Trial (1997 DirectDraw)",
+      "exe": "c:/aoe.bat",
+      "urlParams": {
+        "registry": "gdi,winxp",
+        "resolution": "1024x768",
+        "bpp": "32"
+      },
+      "description": "Gather resources and build a civilization in the original Age of Empires trial."
+    },
     "c3.zip": {
       "title": "Caesar III Demo (1998 DirectDraw)",
       "exe": "c:/c3.bat",
@@ -35,6 +45,15 @@
         "args": "-Dsun.java2d.d3d=false -jar JavaSolitaire.jar"
       },
       "description": "Java 1.8 demo from https://sourceforge.net/projects/javaklondike/"
+    },
+    "MaxPayneDemo.zip": {
+      "title": "Max Payne Demo (2001 D3D 8)",
+      "exe": "MaxPayneDemo.exe",
+      "urlParams": {
+        "resolution": "1024x768",
+        "bpp": "32"
+      },
+      "description": "Try Max Payne's third-person action and Bullet Time. Choose Play in the game launcher."
     },
     "mdkperf.zip": {
       "title": "MDK Performance Test (1999 DirectDraw)",
