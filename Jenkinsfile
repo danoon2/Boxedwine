@@ -1,7 +1,7 @@
 // Notes:
 // Windows workers: Visual Studio C++ tools for their targets and wget/unzip/java
-// in PATH. Packaging bootstraps a pinned .NET 10 SDK in the workspace and restores
-// apphost packs from NuGet.org.
+// in PATH. Packaging reuses the pinned .NET 10 SDK on the worker, downloading it
+// into the workspace only when missing, and restores apphost packs from NuGet.org.
 // Linux x64 needs Python 3, dpkg-dev, binutils and xz-utils on Debian/Ubuntu.
 // Linux ARM64 (Fedora Asahi) needs Python 3 and Podman or Docker usable by the
 // Jenkins account. Its executables and .deb are built in Ubuntu 24.04.

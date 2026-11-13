@@ -131,12 +131,19 @@ Wine is downloaded on demand. The Win32 frontend and console builds do not need
 
 The `windows` and `windowsARM64` workers need Visual Studio C++ tools for their
 targets and access to Microsoft's .NET downloads and NuGet.org. Before compiling
-the native UI targets, the packaging helper installs .NET SDK 10.0.302 with
-Microsoft's `dotnet-install.ps1` into `.tools/dotnet/10.0.302/<worker-architecture>`
-at the repository root. Later builds reuse that SDK. It sets `PATH` and `DOTNET_ROOT`
-only for the build process, requires no administrator rights or preinstalled .NET,
-and keeps the SDK out of the release ZIP. Win32 packaging does not need the SDK.
+the native UI targets, the packaging helper checks PATH, `DOTNET_ROOT` settings,
+and standard installation directories for .NET SDK 10.0.302 matching the worker's
+architecture. It also checks the workspace cache. If none qualifies, it uses
+Microsoft's `dotnet-install.ps1` to download that SDK into
+`.tools/dotnet/10.0.302/<worker-architecture>` at the repository root.
+The UI's `global.json` pins the SDK used by builds, including on workers with
+newer SDKs installed alongside it. The helper sets `PATH` and `DOTNET_ROOT`
+to the selected installation only for the build process, requires no administrator
+rights, and keeps the SDK out of the release ZIP. Win32 packaging does not need it.
 NuGet.org supplies architecture-specific apphost packs.
+Run the SDK discovery regression checks without downloads using
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/jenkins/test-ensure-dotnet.ps1`
+from the repository root.
 MSBuild/editbin are discovered from `PATH` or Visual Studio;
 the packaging helper also accepts explicit `-MSBuildPath` and `-EditbinPath`.
 
