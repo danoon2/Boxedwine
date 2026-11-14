@@ -1,0 +1,16 @@
+diff --git a/dlls/wined3d/directx.c b/dlls/wined3d/directx.c
+--- a/dlls/wined3d/directx.c
++++ b/dlls/wined3d/directx.c
+@@ -1301,8 +1301,9 @@
+     for (i = 0; EnumDisplaySettingsExW(output->device_name, i, &mode, 0); ++i)
+     {
+-        /* The emulated display owns the resolution list, including the starting
+-         * desktop size. WebGL presents 32-bit modes without changing the host display. */
+-        if (wined3d_settings.webgl && mode.dmBitsPerPel != 32)
++        /* Wine adds color-depth variants to the emulated XRandR resolutions.
++         * WebGL supports 16- and 32-bit presentation; keep paletted modes out of
++         * this renderer's list without restricting GDI or changing desktop depth. */
++        if (wined3d_settings.webgl && mode.dmBitsPerPel != 32 && mode.dmBitsPerPel != 16)
+             continue;
+ 
+         if (!wined3d_array_reserve((void **)&output->modes, &output->modes_size,

@@ -1,9 +1,9 @@
 <XML>
   <Wine>
     <Name>Wine 11.0</Name>
-    <FileVersion>34</FileVersion>
+    <FileVersion>35</FileVersion>
     <WineVersion>11.0</WineVersion>
-    <FileURL>https://boxedwine.org/v2/34/TinyCore15Wine11.0.zip</FileURL>
+    <FileURL>https://boxedwine.org/v2/35/TinyCore15Wine11.0.zip</FileURL>
     <FileSizeMB>207</FileSizeMB>
   </Wine>
   <Demo>
@@ -429,5 +429,35 @@
     <ShortcutExe>MaxPayneDemo.exe</ShortcutExe>
     <Help>Direct3D 8. Choose Play in the settings window to start the demo.</Help>
     <Options></Options>
+  </Demo>
+  <Demo>
+    <Name>SimCity 3000 Demo (1999)</Name>
+    <InstallType>Zip</InstallType>
+    <IconURL>https://boxedwine.org/demos/Simcity3000Demo.png</IconURL>
+    <FileSizeMB>119</FileSizeMB>
+    <FileURL>https://boxedwine.org/builds/demos/apps/Simcity3000Demo.zip</FileURL>
+    <ShortcutExe>sc3demo.exe</ShortcutExe>
+    <Help>DirectDraw. Follow the interactive tutorial or close it to explore the demonstration city. Use the Run Simulation arrow to start or pause.</Help>
+    <Options>GDI</Options>
+  </Demo>
+  <Demo>
+    <Name>System Shock 2 Demo (1999)</Name>
+    <InstallType>Zip</InstallType>
+    <IconURL>https://boxedwine.org/demos/SystemShock2Demo.png</IconURL>
+    <FileSizeMB>70</FileSizeMB>
+    <FileURL>https://boxedwine.org/builds/demos/apps/SystemShock2Demo.zip</FileURL>
+    <ShortcutExe>shock2.exe</ShortcutExe>
+    <Help>Choose New Game and a difficulty, then continue through the introduction to enter training. Use a 32-bit desktop. WebGL requires Wine 11.0 filesystem revision 35 or later.</Help>
+  </Demo>
+  <Demo>
+    <Name>SimTower Demo (1994)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/sim-tower.png</IconURL>
+    <FileSizeMB>2</FileSizeMB>
+    <FileURL>https://www.boxedwine.org/demos/towerdmo.zip</FileURL>
+    <InstallExe>SIMTOWER/Setup.exe</InstallExe>
+    <ShortcutExe>SIMTDEMO.EXE</ShortcutExe>
+    <Help>Install to the default C:\SIMTDEMO folder. Setup also installs the WinG and sound DLLs. Follow the on-screen instructions to build a tower in this time-limited interactive tour.</Help>
+    <Options>resolution=800x600</Options>
   </Demo>
 </XML>

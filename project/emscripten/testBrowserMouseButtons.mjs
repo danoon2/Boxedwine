@@ -17,9 +17,11 @@ function browser(threaded) {
     const windowHandlers = new Map();
     const documentHandlers = new Map();
     const events = [];
+    const moves = [];
+    const rect = {left: 100, top: 50, right: 740, bottom: 530, width: 640, height: 480};
     const canvas = {
         width: 640, height: 480, focus() {}, addEventListener() {},
-        getBoundingClientRect: () => ({left: 100, top: 50, right: 740, bottom: 530, width: 640, height: 480})
+        getBoundingClientRect: () => rect
     };
     const document = {
         pointerLockElement: null,
@@ -28,15 +30,15 @@ function browser(threaded) {
     };
     const context = vm.createContext({canvas, document,
         window: {addEventListener: (type, callback) => windowHandlers.set(type, callback)},
-        _boxedwineEmscriptenMouseButton: (down, button, x, y) => events.push({down, button, x, y}),
-        _boxedwineEmscriptenMouseMove() {}, _boxedwineEmscriptenPointerLock() {},
+        _boxedwineEmscriptenMouseButton: (down, button, x, y, relative) => events.push({down, button, x, y, ...(relative ? {relative} : {})}),
+        _boxedwineEmscriptenMouseMove: (x, y, relative) => moves.push({x, y, relative}),
         _boxedwineEmscriptenKey() {}
     });
     vm.runInContext(code, context);
-    return {events, context,
-        send(type, button = 0, clientX = 300, clientY = 250) {
+    return {events, moves, rect, context,
+        send(type, button = 0, clientX = 300, clientY = 250, movementX = 0, movementY = 0) {
             let stopped = false;
-            windowHandlers.get(type)({button, clientX, clientY,
+            windowHandlers.get(type)({button, clientX, clientY, movementX, movementY,
                 preventDefault() {}, stopImmediatePropagation() {stopped = true;}});
             return stopped;
         },
@@ -98,17 +100,53 @@ for (const threaded of [false, true]) {
         assert.equal(b.send('mouseup'), false);
     });
 
-    test(`${mode}: pointer lock releases absolute capture and passes input to SDL`, () => {
+    test(`${mode}: captured movement and clicks work without SDL browser callbacks`, () => {
         const b = browser(threaded);
         b.send('mousedown');
         b.lock(true);
         assert.deepEqual(b.events.map(e => e.down), [1, 0]);
-        assert.equal(b.send('mousedown'), false);
-        assert.equal(b.send('mousemove'), false);
-        assert.equal(b.send('mouseup'), false);
+        assert.equal(b.send('mousedown'), true);
+        assert.equal(b.send('mousemove', 0, 300, 250, 20, -10), true);
+        assert.deepEqual(b.moves, [{x: 20, y: -10, relative: 1}]);
+        assert.equal(b.send('mouseup'), true);
+        assert.deepEqual(b.events.slice(2), [
+            {down: 1, button: 0, x: 0, y: 0, relative: 1},
+            {down: 0, button: 0, x: 0, y: 0, relative: 1}
+        ]);
         b.lock(false);
         b.send('mousedown');
         b.send('mouseup');
-        assert.deepEqual(b.events.map(e => e.down), [1, 0, 1, 0]);
+        assert.deepEqual(b.events.map(e => e.down), [1, 0, 1, 0, 1, 0]);
+    });
+
+    test(`${mode}: captured movement retains subpixels with CSS scaling`, () => {
+        const b = browser(threaded);
+        b.rect.width *= 4;
+        b.rect.height *= 2;
+        b.lock(true);
+        for (let i = 0; i < 8; i++) b.send('mousemove', 0, 300, 250, 1, -1);
+        assert.equal(b.moves.reduce((total, m) => total + m.x, 0), 2);
+        assert.equal(b.moves.reduce((total, m) => total + m.y, 0), -4);
+        b.send('mousemove', 0, 300, 250, 1, 0);
+        b.lock(false);
+        b.lock(true);
+        const previous = b.moves.length;
+        b.send('mousemove', 0, 300, 250, 3, 0);
+        assert.equal(b.moves.length, previous, 'Recapture clears the old fractional delta');
+        b.send('mousemove', 0, 300, 250, 1, 0);
+        assert.equal(b.moves.at(-1).x, 1);
+    });
+
+    for (const end of ['blur', 'unlock']) test(`${mode}: ${end} releases held captured buttons at the virtual cursor`, () => {
+        const b = browser(threaded);
+        b.lock(true);
+        b.send('mousedown', 0);
+        b.send('mousedown', 2);
+        if (end === 'blur') b.send('blur'); else b.lock(false);
+        assert.deepEqual(b.events.slice(2), [
+            {down: 0, button: 0, x: 0, y: 0, relative: 1},
+            {down: 0, button: 1, x: 0, y: 0, relative: 1}
+        ]);
+        assert.equal(b.send('mouseup'), false);
     });
 }

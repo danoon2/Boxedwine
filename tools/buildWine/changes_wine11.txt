@@ -1,3 +1,5 @@
+v35 Nov 13, 2026 Expose 16-bit RGB565 display modes alongside 32-bit modes in the WebGL WineD3D renderer, allowing System Shock 2 to detect its supported video modes. Keep the desktop at 32-bit. Retain the v33 base and regular Wine runtime.
+
 v34 Nov 12, 2026 Update the bundled WebGL WineD3D to enumerate 32-bit display modes from Boxedwine instead of advertising only the current mode. With the updated browser engine, offer 640x480, 800x600, 1024x768 and the starting resolution without duplicates. Retain the v33 base and main Wine binaries.
 
 v33 Nov 11, 2026 Add the GStreamer WAV parser to the base, full and web filesystems. Fix RalliSport Challenge freezing at the main menu when its PCM WAV music cannot load. Retain the v31 Wine binaries, gamma bridge and v51 WebGL DLLs.

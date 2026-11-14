@@ -12,10 +12,7 @@ const rect = {left: 185, top: 37, width: 880, height: 660, right: 1065, bottom: 
 const input = {width: 800, height: 600};
 const displayed = {width: 640, height: 480, getBoundingClientRect: () => rect};
 const document = {pointerLockElement: null};
-let relativeMode = null;
 const context = vm.createContext({canvas: input, document, capturingMouse: false,
-    _boxedwineEmscriptenPointerLock: enabled => {relativeMode = enabled;},
-    releaseCapturedMouseButtons: () => {context.capturingMouse = false;},
     activeCanvasRect: () => displayed});
 vm.runInContext(code, context);
 const point = (x, y, outside = false) => JSON.parse(JSON.stringify(context.canvasPoint(
@@ -27,16 +24,12 @@ assert.equal(point(1, 0.5), null);
 assert.deepEqual(point(1.2, -0.2, true), {x: 639, y: 0});
 
 // Locked events have fixed client coordinates, even as movementX/Y change.
-// Leave them to SDL, which maintains the virtual cursor and guest warps.
+// Buttons must use the C++ virtual cursor rather than these coordinates.
 document.pointerLockElement = input;
-context.capturingMouse = true;
-assert.equal(point(0.5, 0.5), null, 'Locked motion must not become an absolute event');
-assert.equal(point(0.5, 0.5, true), null, 'Locked button release must reach SDL');
-assert.equal(context.capturingMouse, false, 'Discard obsolete absolute capture state');
-assert.equal(relativeMode, 1, 'SDL relative mode follows browser pointer lock');
+assert.deepEqual(point(0.5, 0.5), {x: 0, y: 0, relative: 1});
+assert.deepEqual(point(0.5, 0.5, true), {x: 0, y: 0, relative: 1});
 document.pointerLockElement = null;
 assert.deepEqual(point(0.5, 0.5), {x: 320, y: 240}, 'Absolute input resumes after unlock');
-assert.equal(relativeMode, 0, 'SDL relative mode ends after browser unlock');
 displayed.width = 1024; displayed.height = 768;
 assert.deepEqual(point(0.5, 0.5), {x: 512, y: 384});
 displayed.width = 0;

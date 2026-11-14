@@ -28,13 +28,13 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - The web v34 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/34/TinyCore15Wine11.0-web.zip`.
+   - The web v35 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/35/TinyCore15Wine11.0-web.zip`.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
-   - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v34 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
+   - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v35 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
    - A demo can set an app-specific Wine compatibility version with `"windowsVersion": "win98"`. The generated launcher sets that version before starting the executable, without changing other demos.
 3. Validates every filesystem root referenced by `demos.json` against
-   `tools/buildWine/webgl_filesystems_v34.json`.
+   `tools/buildWine/webgl_filesystems_v35.json`.
    - The patch series, declared filename, archive size and SHA-256, full ZIP CRC, PE32 DLLs and
      imports, GL SONAME links, `ld.so.cache`, and renderer registry settings must all match.
    - Validation runs before the four Emscripten builds, so a missing, stale, or damaged public
@@ -222,7 +222,7 @@ wsl python3 tools/jenkins/build_site.py `
 ```
 
 This command requires each referenced root filename to have an exact profile in
-`tools/buildWine/webgl_filesystems_v34.json`. If the public downloads are older than the pinned
+`tools/buildWine/webgl_filesystems_v35.json`. If the public downloads are older than the pinned
 profiles, upload the current roots first; do not bypass the validation.
 
 ## Stopping The Local Server
@@ -278,7 +278,7 @@ network connections and does not start a Jenkins build.
 Both scripts download the same filesystem:
 
 ```text
-https://boxedwine.org/v2/34/TinyCore15Wine11.0-web.zip
+https://boxedwine.org/v2/35/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:
@@ -293,7 +293,7 @@ be published through this script.
 
 `BOXEDWINE_ZIP_URL` can override the download source for local validation before
 uploading a release. `BUILD_SITE_DEMO_ROOT_CONFIG` selects a different manifest.
-The GDI ZIP download is no longer needed. Upload the exact validated web v34 archive
+The GDI ZIP download is no longer needed. Upload the exact validated web v35 archive
 before running either script against the default URL.
 
 Newly generated demo builds retain `graphics-builds.json` beside their build
@@ -454,6 +454,36 @@ the v34 web filesystem reached the tutorial and accepted movement input.
 All four published mode links resolve to the verified archive. Interactive
 gameplay testing covered ST JIT.
 
+### SimCity 3000 Demo
+
+`Simcity3000Demo.zip` is the supplied ready-to-run archive, unchanged:
+123,939,643 bytes, SHA-256
+`3d8f1e949a171487b4827d18c723c5ab37b7084cda81cd33f886a7b1496928be`.
+It contains the demo and its DLLs/data under `SC3/`; no installer or installation
+registry overlay is added.
+
+Place it at `demos/apps/Simcity3000Demo.zip`, merge its entry from
+`demos.example.json` into `demos/apps/demos.json`, and copy the gameplay thumbnail
+to `demos/apps/images/Simcity3000Demo.png`. The same files serve local generation
+and Jenkins publication. Use `app=Simcity3000Demo.zip`, `p=SC3/sc3demo.exe`,
+`registry=gdi`, `resolution=1024x768`, and `bpp=32` with the v34 web filesystem.
+The shared GDI preset disables the WebGL WineD3D profile. The game selects
+800x600 when opening its interactive tutorial, demonstrating a mode switch
+from the initial desktop. Close the tutorial and use the Run Simulation arrow
+to explore the demonstration city.
+
+The 2026-11-13 ST JIT check used published `james/web_gdi` build 3 with fresh
+in-memory storage. It verified the tutorial, mouse controls, advancing dates,
+population growth, and rendered city development. Exit and Wine cleanup both
+returned zero; cleanup exceeded the first 30-second observation window and was
+confirmed by a subsequent observation. Other browser modes and native gameplay
+on each platform were not exercised by this smoke test.
+
+Native UI catalogue 15 uses the same archive with `InstallType=Zip`,
+`ShortcutExe=sc3demo.exe`, Wine 11.0, and GDI rendering. The launchers locate the
+executable inside `SC3/`. The hosted legacy catalogue and homepage demo catalogue
+also reference this archive.
+
 ### 3DMark2001 SE
 
 Install the cached `3DMark2001SE.exe` (SE build 330) through native Boxedwine into
@@ -501,3 +531,49 @@ runtime reached the main menu without importing registry hives. The cinematic
 **Demo** reported that render-to-texture support was unavailable. **Benchmark**
 reached the Car Chase loading screen, then remained black during the smoke test;
 a rendered scene and complete benchmark run have not been validated.
+
+## System Shock 2 demo
+
+`SystemShock2Demo.zip` is a portable archive of the 37 original game files from
+the supplied `SHOCK2.EXE` demo's `shock/` directory. It launches `shock2.exe` at
+`resolution=640x480&bpp=32`, with the normal WebGL renderer and no GDI preset or
+registry overlay. The game chooses a 16-bit mode; keep the desktop at 32-bit.
+Use filesystem 35 or newer for WebGL's 16-bit mode enumeration. Choose New Game,
+a difficulty, and continue through the introduction to enter training.
+
+The local and published filesystem-35 snapshots retain the existing four
+browser runtimes from `james/web_gdi/5`. Each has a new graphics identity pinned
+to the final v35 web ZIP. Older build pages retain their original root ZIPs.
+The homepage uses the same filesystem and ST JIT only. Catalog 16 adds the same
+portable payload and the original game's icon to the native UIs.
+
+
+## SimTower demo
+
+Use the original `towerdmo.zip` demo installer (SHA-256
+`409b3c1bb7614216a2708c687f9664f75539107419ba0b5c5654d70e7d410bb2`).
+Install to its default `C:\SIMTDEMO` directory in a fresh Wine root, then package
+only the demo and the WinG/sound support files installed into Windows:
+
+```sh
+python3 tools/jenkins/prepare_simtower_demo.py /path/to/installed/root \
+  /path/to/demos/simtower-demo-overlay.zip --source /path/to/towerdmo.zip \
+  --report /path/to/simtower-package.json
+```
+
+The packer pins every original file, uses deterministic ZIP metadata, and omits
+Wine's global registries, caches, shortcuts, and saved towers. The browser entry
+launches `c:/simtower-demo.bat` at 800x600 with a 32-bit desktop. The overlay is
+needed for the WinG and sound DLLs under `windows/system`; no shared filesystem
+update is needed. Follow the on-screen instructions to build a lobby and rooms.
+This is a time-limited interactive tour, not the full game.
+
+Native UI catalogues use the original installer so it can install those DLLs
+in the application's Wine prefix. Keep the existing `sim-tower` catalogue ID.
+
+Wasm JIT builds need the Win16 fixes for narrow immediate values and signal
+delivery from interpreter-backed segment instructions. The November 13, 2026
+`simtower__demo/20261113` snapshot includes them. Verified the ST JIT demo by
+placing and expanding a lobby, building offices, advancing the tutorial, and
+exiting through File > Exit with Wine cleanup observed. The installer also
+completed and the interactive tour ran with the native Linux engine.

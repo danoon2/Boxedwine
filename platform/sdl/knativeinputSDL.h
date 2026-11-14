@@ -70,7 +70,7 @@ public:
 
 #ifdef __EMSCRIPTEN__
     void setEmscriptenMousePosition(int x, int y);
-    void clearEmscriptenMousePosition();
+    void getEmscriptenMousePosition(int* x, int* y);
 #endif
 
 private:

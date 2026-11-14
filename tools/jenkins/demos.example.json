@@ -75,6 +75,16 @@
       "exe": "DEMO.EXE",
       "description": "Full Tilt! Pinball is a 1995 arcade-style pinball game featuring fast physics and detailed themed tables."
     },
+    "Simcity3000Demo.zip": {
+      "title": "SimCity 3000 Demo (1999 DirectDraw)",
+      "exe": "SC3/sc3demo.exe",
+      "urlParams": {
+        "registry": "gdi",
+        "resolution": "1024x768",
+        "bpp": "32"
+      },
+      "description": "Build and manage a city in the interactive SimCity 3000 demo. Follow the tutorial or explore on your own."
+    },
     "TombRaider3.zip": {
       "title": "Tomb Raider III Demo (1998 D3D 6)",
       "exe": "tomb3.exe",
@@ -86,6 +96,24 @@
       "exe": "onedd.exe",
       "directDrawRenderer": "gdi",
       "description": "Benchmark measures graphics speeds via DirectDraw functions."
+    },
+    "simtower-demo-overlay.zip": {
+      "title": "SimTower Demo (1994 WinG)",
+      "exe": "c:/simtower-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Build a tower in the interactive SimTower demo. Follow the on-screen tutorial; this is a time-limited tour."
+    },
+    "SystemShock2Demo.zip": {
+      "title": "System Shock 2 Demo (1999 D3D 6)",
+      "exe": "shock2.exe",
+      "urlParams": {
+        "resolution": "640x480",
+        "bpp": "32"
+      },
+      "description": "Explore the starship Von Braun in this science-fiction action RPG. Choose New Game to enter training."
     }
   }
 }

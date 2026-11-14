@@ -820,6 +820,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testDataHardwareBreakpointRaisesTrap, "Test data hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testDefaultUserSegmentsUseGdtSelectors, "Test default user segments use GDT selectors", TEST_ENTRY_SERIAL},
     {testSignalHandlerSegmentsUseGdtSelectors, "Test signal handler segments use GDT selectors", TEST_ENTRY_SERIAL},
+    {testWasmWin16PointerArithmetic, "Test Win16 pointer arithmetic", TEST_ENTRY_SERIAL},
+    {testJitSegmentFaultLeavesCompiledBlock, "Test segment fault leaves compiled block", TEST_ENTRY_SERIAL},
     {testSignalReturnRefreshesCodeSegmentSize, "Test signal return refreshes code segment size", TEST_ENTRY_SERIAL},
     {testSignalAlternateStackDeliverySemantics, "Test alternate signal stack delivery semantics", TEST_ENTRY_SERIAL},
     {testSignalOnStackWithoutConfiguredAlternateStack, "Test SA_ONSTACK without an alternate stack", TEST_ENTRY_SERIAL},

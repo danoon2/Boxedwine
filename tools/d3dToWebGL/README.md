@@ -1,18 +1,25 @@
 # Wine 11 DirectX-to-WebGL patch series
 
-The filesystem release source series is pinned by
-[`webgl-test-divergences-v52.json`](../wineTests/webgl-test-divergences-v52.json).
-It contains 76 production patches and one separate, complete Wine graphics-test
-adaptation. The [v52 inventory](../wineTests/webgl-patch-inventory-v52.json)
-records every affected file, patch order, category and SHA-256 hash.
+The current filesystem release source series is pinned by
+[`webgl-test-divergences-v53.json`](../wineTests/webgl-test-divergences-v53.json).
+It contains 77 production patches and one separate Wine graphics-test adaptation.
+The [v53 inventory](../wineTests/webgl-patch-inventory-v53.json) records the ordered
+patches and hashes. Existing Wine test expectations are unchanged.
 
-Filesystem revision 34 selects [v52](../wineTests/webgl-test-divergences-v52.json), which adds
-one patch to enumerate the emulated display's 32-bit modes instead of returning
-only its current mode. Resolution selection stays in Boxedwine's XRandR layer.
-It needs both the updated engine and rebuilt WebGL WineD3D. See [the mode-switch probe and results](../wineTests/tests/webgl_display_modes_probe.md)
-and [release DLL pins](../buildWine/webgl_filesystems_v34.json).
+Filesystem revision 35 adds 16-bit RGB565 modes to the WebGL renderer's existing
+32-bit list. Boxedwine's XRandR emulation owns the resolutions; Wine's X11 driver
+adds color-depth variants. The WebGL WineD3D filter accepts 16 and 32 bits while
+retaining its exclusion of paletted modes. GDI is unchanged. The desktop still
+starts at 32-bit, and a 16-bit backbuffer does not change its depth.
+See [the mode-switch probe](../wineTests/tests/webgl_display_modes_probe.md),
+[release DLL pins](../buildWine/webgl_filesystems_v35.json), and
+[release validation](../buildWine/RELEASE-v35.md).
 
-Versions 2 through 51 retain earlier build and test selections for reproducing historical
+Revision 34 introduced enumeration of the XRandR resolution list and required a
+matching engine update. Revision 35 uses that existing engine; only the separate
+WebGL WineD3D DLL is rebuilt. Historical configurations and hashes are retained.
+
+Versions 2 through 52 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
 

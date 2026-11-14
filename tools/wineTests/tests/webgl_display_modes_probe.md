@@ -13,7 +13,25 @@ The existing logical mode-switch implementation remains unchanged; it resizes
 the virtual display without switching the host monitor's mode. GDI and native
 WineD3D enumeration are not filtered by this patch.
 
-## Build and run
+## Current v53 / filesystem 35 probe
+
+The current probe checks both `D3DFMT_X8R8G8B8` and `D3DFMT_R5G6B5`. It alternates
+16- and 32-bit backbuffers across two passes through all required resolutions,
+checks the actual backbuffer format and four exact pixel values using the correct
+32-bit or RGB565 packing, and verifies enumeration after each switch. Both the
+device's display mode and adapter mode keep the 32-bit desktop depth. Returning
+to windowed rendering and releasing the device must restore the original size
+and depth. This distinction avoids mistaking a 16-bit render target for a change
+to the X11 desktop depth.
+
+The v53 patch retains the paletted-mode filter and adds 16-bit entries to the
+WebGL renderer's list. Wine's X11 driver creates the color-depth variants from
+the XRandR sizes; GDI and native WineD3D enumeration remain unchanged.
+Use `webgl_filesystems_v35.json` to validate the released archives. See
+[the release receipt](../../buildWine/RELEASE-v35.md) for final-package results.
+The build commands and results below describe the earlier v52 experiment.
+
+## Historical v52 build and run
 
 This is a local candidate, not a filesystem release. The candidate configuration
 pins all 76 production patches and all eight DLL identities:

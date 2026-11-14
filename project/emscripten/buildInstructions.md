@@ -58,6 +58,18 @@ node testBrowserMouseCoordinates.mjs
 node testBrowserMouseButtons.mjs
 ```
 
+Browser mouse movement and buttons use Boxedwine's own DOM handlers in both
+absolute and pointer-lock modes. SDL's Emscripten backend unregisters its canvas
+callbacks when a temporary OpenGL window is destroyed, so captured input must
+not depend on those callbacks. Locked movement updates the same virtual cursor
+as guest warps and polling; CSS-scaled fractional movement is retained.
+
+For an end-to-end regression check, start the System Shock 2 demo, enable mouse
+capture, and use its menus. Enter training, then verify horizontal and vertical
+mouse-look, release/reacquire capture, and click through the pause menu. Test
+after the transition to 3D: working menus alone do not cover the GL window
+destruction that previously broke captured input.
+
 
 ## Running Multi-Threaded Build
 - runs using Emscripten -pthread -sPROXY_TO_PTHREAD=1

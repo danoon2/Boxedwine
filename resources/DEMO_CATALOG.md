@@ -8,9 +8,10 @@ URL. An unchanged pin makes no network request when its verified ZIP is cached.
 
 The package contains `catalog.xml` and its referenced PNGs in one flat directory.
 The XML's `release` matches the lock's `version`; `schemaVersion` describes the
-recipe format separately. The current pin, `26R2-catalog-14`, contains 41 recipes and icons,
+recipe format separately. The current pin, `26R2-catalog-17`, contains 43 recipes and icons,
 including 3DMark2001 SE, 3DMark03 (2003), 3DMark05 (2004),
-3DMark06 (2006), 3DMark Vantage (2008), Sim Tower Demo (1994), and Max Payne Demo (2001).
+3DMark06 (2006), 3DMark Vantage (2008), SimTower Demo (1994), Max Payne Demo (2001),
+SimCity 3000 Demo (1999), and System Shock 2 Demo (1999).
 The 3DMark03, 3DMark05, 3DMark06, and Vantage details include their full-version
 unlock keys. The new entries use application icons and select `3DMark06.exe`,
 `3DMarkVantage.exe`, or `SIMTDEMO.EXE` after installation. SimTower uses the demo
@@ -47,6 +48,33 @@ the lock: 119,265 bytes, SHA-256
 The Windows and Linux parsers accepted all 41 recipes. Browser ST JIT testing
 reached the tutorial and verified movement; native gameplay on each platform
 has not been tested as part of this catalogue update.
+
+Catalog 15 adds SimCity 3000 as a portable ZIP, preserving all 41 existing recipes.
+It uses the executable's icon, Wine 11.0, GDI rendering, and a 1024x768 32-bit
+desktop. The launchers select `sc3demo.exe` inside the archive's `SC3/` folder.
+The supplied `Simcity3000Demo.zip` is unchanged: 123,939,643 bytes, SHA-256
+`3d8f1e949a171487b4827d18c723c5ab37b7084cda81cd33f886a7b1496928be`.
+The same public payload serves Jenkins, the local demo site, and boxedwine.org/test/.
+The hosted and bundled legacy catalogues also include it.
+
+Catalog 15 is 120,394 bytes, SHA-256
+`700c59d2a53304029a9b7fa03e5c82bc0fda97ca02eb6a98fe9efd17ea5cd24d`.
+Windows catalogue tests and the Linux parser accepted all 42 recipes. Browser
+ST JIT testing reached the interactive tutorial, verified simulation and mouse
+input, and observed successful application exit and Wine cleanup. Native gameplay
+on each platform has not been tested as part of this catalogue update.
+
+Catalog 16 adds System Shock 2, preserving all 42 previous recipes. It uses the
+original game icon and a portable ZIP of 37 unmodified game files extracted from
+the supplied `SHOCK2.EXE`: 72,624,183 bytes, SHA-256
+`9239da1d6a6dde26090789fee72fd306c8b492b3dead4c98fa1f05478ae26818`. It launches `shock2.exe` with Wine 11.0 and a 640x480 32-bit
+desktop. The game selects 16-bit rendering; WebGL needs filesystem 35 or later.
+No GDI preset, registry overlay, or modified game configuration is required.
+
+Catalog 16 is 122,003 bytes, SHA-256
+`1b0c4e52ad5f1f81a5ba94373fcda7bd66dd3f22f25a19641a44513556ea5742`. The same payload serves the Jenkins demos and homepage.
+The hosted and bundled legacy catalogues also include it. Browser validation
+and publication evidence are recorded in the [filesystem-35 receipt](../tools/buildWine/RELEASE-v35.md).
 
 The native launchers initialize newly installed Alice demos (ID `alice`) with
 200% mouse sensitivity. This is saved as an editable per-app Boxedwine argument;
@@ -188,3 +216,10 @@ Swift unit suite uses synthetic recipe fixtures and works on a fresh offline
 checkout. Setting `BOXEDWINE_TEST_DEMO_CATALOG` additionally checks the staged
 release's recipes against the Wine catalog and decodes every icon. Supplying a
 bad path fails those checks rather than silently skipping them.
+
+
+Catalog 17 retains all 43 recipes. It updates the existing `sim-tower` entry's
+name and instructions, and sets setup and the game to 800x600. Native UIs keep
+using the verified `towerdmo.zip` installer, which installs WinG and sound DLLs;
+the browser demo uses a separate installed overlay. The legacy `filesV2.xml`
+catalogue now includes the same installer and `SIMTDEMO.EXE` shortcut.

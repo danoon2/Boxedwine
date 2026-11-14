@@ -5699,6 +5699,59 @@ void testSignalReturnRefreshesCodeSegmentSize() {
     }
 }
 
+void testWasmWin16PointerArithmetic() {
+    testNewInstruction(0);
+    auto& context = testContext();
+    auto* cpu = context.cpu;
+    cpu->big = false;
+    cpu->reg[0].u32 = 0x640;
+    cpu->reg[1].u32 = 0xc;
+    cpu->reg[2].u32 = 0x0b1f0000;
+    context.memory->writew(TEST_HEAP_ADDRESS + 0xc064, 0);
+    context.memory->writew(TEST_HEAP_ADDRESS + 0xc066, 0x0b27);
+    // Win16 far-pointer arithmetic: the decoder sign-extends absolute disp16,
+    // but the effective address must wrap to 16 bits before adding DS.
+    const U8 bytes[] = {
+        0x03,0x06,0x64,0xc0, // add ax,[c064]
+        0x83,0xd2,0x00,      // adc dx,0
+        0xb9,0x03,0x00,      // mov cx,3
+        0xd3,0xe2,           // shl dx,cl
+        0x03,0x16,0x66,0xc0, // add dx,[c066]
+        0x8b,0xd8            // mov bx,ax
+    };
+    for (U8 byte : bytes) testPushCode8(byte);
+    testRunCPU();
+    if (cpu->reg[0].u32 != 0x640 || cpu->reg[3].u16 != 0x640 || cpu->reg[2].u32 != 0x0b1f0b27) {
+        testFail("Win16 pointer arithmetic eax=%x edx=%x ebx=%x", cpu->reg[0].u32, cpu->reg[2].u32, cpu->reg[3].u32);
+    }
+}
+
+void testJitSegmentFaultLeavesCompiledBlock() {
+    constexpr U32 BAD_SELECTOR = 0x757;
+    testNewInstruction(0);
+    auto& context = testContext();
+    auto* cpu = context.cpu;
+    context.thread->getLDT(BAD_SELECTOR >> 3)->seg_not_present = 1;
+    cpu->reg[0].u32 = BAD_SELECTOR;
+    KSigAction& action = context.process->sigActions[K_SIGSEGV];
+    action.reset();
+    action.handlerAndSigAction = TEST_CODE_ADDRESS + 7;
+    testPushCode8(0x50); // push eax
+    testPushCode8(0x07); // pop es: raises #NP without a C++ exception
+    testPushCode8(0xbb); // stale fallthrough must not execute mov ebx,12345678
+    testPushCode32(0x12345678);
+    testPushCode8(0x41); // signal handler: inc ecx
+    testRunCPU();
+    if (cpu->reg[3].u32 || cpu->reg[1].u32 != 1 || context.thread->inSignal != 1) {
+        testFail("segment fault continued in stale compiled block");
+    }
+    U32 frame = context.memory->readd(cpu->reg[4].u32 + 12);
+    if (context.memory->readd(frame + 0x44) != 11 || context.memory->readd(frame + 0x4c) != 1) {
+        testFail("segment fault lost trap number or faulting EIP");
+    }
+    action.reset();
+}
+
 void testSignalAlternateStackDeliverySemantics() {
     constexpr U32 ALT_STACK_BASE = 0x70000000;
     constexpr U32 ALT_STACK_SIZE = 0x10000;
