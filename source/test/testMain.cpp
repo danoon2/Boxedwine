@@ -80,6 +80,7 @@ void testX11ImageIncludeInferiors();
 void testX11ClearArea();
 void testX11ImageScanlinePadding();
 void testX11GetImageBounds();
+void testX11MonochromeCopy();
 void testX11ImageReadback();
 void testX11PalettedDrawing();
 void testX11PatternFills();
@@ -1131,6 +1132,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testX11ClearArea, "Test X11 ClearArea backgrounds, clipping and exposures"},
     {testX11ImageScanlinePadding, "Test X11 image scanline padding"},
     {testX11GetImageBounds, "Test X11 image capture bounds and padding"},
+    {testX11MonochromeCopy, "Test X11 monochrome copy bit offsets, bounds and overlap"},
     {testX11ImageReadback, "Test X11 window readback and cursor save/restore"},
     {testX11PalettedDrawing, "Test X11 paletted drawing and clipping"},
     {testX11PatternFills, "Test X11 tiled and stippled rectangle fills"},

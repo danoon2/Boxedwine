@@ -180,6 +180,42 @@ int XDrawable::copy(KThread* thread, const std::shared_ptr<XGC>& gc, const std::
 	if (gc && (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin)) {
 		//klog("XDrawable::copyImageData clipping not implemented");
 	}
+	if (visual->bits_per_rgb == 1) {
+		// Pixel offsets in a bitmap are bit offsets, not rounded-up byte
+		// offsets. In particular, a 31x31 copy to (1,1) in a 32x32 cursor
+		// must not copy four bytes starting at the second byte of each row.
+		S64 left = std::max<S64>(0, std::max(-(S64)srcX, -(S64)dstX));
+		S64 top = std::max<S64>(0, std::max(-(S64)srcY, -(S64)dstY));
+		S64 right = std::min<S64>(width, std::min((S64)srcDrawable->w - srcX, (S64)w - dstX));
+		S64 bottom = std::min<S64>(height, std::min((S64)srcDrawable->h - srcY, (S64)h - dstY));
+		if (!srcDrawable->data || left >= right || top >= bottom) return Success;
+		width = (U32)(right - left);
+		height = (U32)(bottom - top);
+		srcX = (S32)((S64)srcX + left);
+		srcY = (S32)((S64)srcY + top);
+		dstX = (S32)((S64)dstX + left);
+		dstY = (S32)((S64)dstY + top);
+
+		// Snapshot before writing so overlapping copies work in either
+		// direction, without holding two drawable locks at once.
+		U32 pitch = (width + 7) / 8;
+		std::vector<U8> pixels((size_t)pitch * height, 0);
+		srcDrawable->readImage(pixels.data(), pitch, srcX, srcY, width, height, 0, 0);
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+		if (!data) return Success;
+		for (U32 y = 0; y < height && (U64)dstY + y < h; ++y) {
+			const U8* src = pixels.data() + y * pitch;
+			U8* dst = data + ((U64)dstY + y) * bytes_per_line;
+			for (U32 x = 0; x < width && (U64)dstX + x < w; ++x) {
+				U32 target = dstX + x;
+				U8 mask = (U8)(1 << (target & 7));
+				dst[target / 8] = (dst[target / 8] & ~mask) |
+					(((src[x / 8] >> (x & 7)) & 1) << (target & 7));
+			}
+		}
+		setDirty();
+		return Success;
+	}
 	U8* src = srcDrawable->data + srcDrawable->bytes_per_line * srcY + (srcDrawable->visual->bits_per_rgb * srcX + 7) / 8;
 	U8* dst = this->data + this->bytes_per_line * dstY + (this->visual->bits_per_rgb * dstX + 7) / 8;
 
