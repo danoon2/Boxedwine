@@ -8,12 +8,12 @@ The [builder guide](README.md) explains the build internals and prerequisites.
 Review the release plan before starting builds. Commands below are for the later
 execution steps, run from the repository root in WSL unless noted otherwise.
 
-The inventory was reviewed for filesystem 35 on November 13, 2026. Revision 35
-exposes 16-bit RGB565 modes alongside 32-bit modes in the separate WebGL WineD3D.
-The desktop starts at 32-bit. It uses the existing revision-34-compatible engine;
-the v33 base and regular Wine runtime are unchanged. See
-[RELEASE-v35.md](RELEASE-v35.md) for artifact identities, publication and checks.
-Current consumers select `/v2/35/`; older URLs and receipts retain their identities.
+The inventory was reviewed for filesystem 36 on November 14, 2026. Revision 36
+fixes DirectPlay startup used by MechCommander 2 and multisample texture uploads
+used by Z: Steel Soldiers. It retains revision 35's WebGL DLLs and 16/32-bit
+display modes, and uses the existing engine. See
+[RELEASE-v36.md](RELEASE-v36.md) for artifact identities, publication and checks.
+Current consumers select `/v2/36/`; older URLs and receipts retain their identities.
 The unchanged base and WAV sources remain under `/v2/33/`, media sources under
 `/v2/28/`. Publish versioned binaries before activating catalogs or demo pages.
 
@@ -47,7 +47,7 @@ is a local workaround; release testing must use the candidate ZIP in a fresh roo
 | [`filesystem_wine11.json`](filesystem_wine11.json) | Set `filesystem_version` and select the release's `webgl_config`. Change `wine_tag`/`wine_commit` only when changing upstream Wine. |
 | [`changes_wine11.txt`](changes_wine11.txt) | Add the release entry; its first line must start with the configured `vN`. Preserve previous entries. |
 | [`changes_wine11_web.txt`](changes_wine11_web.txt) | Update the web release entry to the same `vN`. It is prepended to the full history. Update size-savings claims only from new measurements. |
-| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v35.json`](webgl_filesystems_v35.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
+| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v36.json`](webgl_filesystems_v36.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
 | [`webgl_filesystem.py`](webgl_filesystem.py), `DEFAULT_CONFIG` | Advance the build/validation default to the same manifest as the filesystem profile. Preserve the explicitly historical `validate-set` default and historical examples. |
 | [`README.md`](README.md) and this checklist | Update current revision, manifest links, publication status, and release examples; retain clearly labeled historical instructions. |
 

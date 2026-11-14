@@ -1,7 +1,8 @@
 /* Copyright (C) 2026 The BoxedWine Team. GPL-2.0-or-later.
  * Run under Wayland or X11: make -C project/linux test-cdrom-statusbar
  * Also works with xvfb-run -a for the display/GL lifecycle checks.
- * STATUSBAR_TEST_ARGS=--native-fullscreen checks real X11 clicks and keys. */
+ * STATUSBAR_TEST_ARGS=--native-fullscreen checks real X11 clicks and keys.
+ * STATUSBAR_TEST_ARGS=--window-position checks GDI/GL mode-change placement. */
 #include "boxedwine.h"
 #include <SDL.h>
 #include <SDL_opengl.h>
@@ -685,6 +686,72 @@ static void testCaptureWindowReplacement() {
     puts("Fullscreen window replacement preserves capture and explicit release; hidden host input is ignored");
 }
 
+static void testWindowPositionHandoff() {
+    sdlStatusBarConfigure(true);
+    SDL_Window* desktop = SDL_CreateWindow("Position handoff", 180, 140, 640, 480, SDL_WINDOW_HIDDEN);
+    SDL_Window* game = SDL_CreateWindow("Position handoff game", 0, 0, 800, 600, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
+    assert(desktop && game);
+    sdlStatusBarShowWindow(desktop, true);
+    settleStatusBar();
+    SDL_Window* host = nullptr;
+    for (U32 id = 1; id < 256; ++id) {
+        SDL_Window* candidate = SDL_GetWindowFromID(id);
+        if (candidate && sdlStatusBarOwns(candidate) && !strcmp(SDL_GetWindowTitle(candidate), "Position handoff")) host = candidate;
+    }
+    assert(host && host != desktop);
+    SDL_SetWindowPosition(host, 180, 140);
+    settleStatusBar();
+    int expectedX, expectedY;
+    SDL_GetWindowPosition(host, &expectedX, &expectedY);
+    auto assertPosition = [&]() {
+        settleStatusBar();
+        int x, y;
+        SDL_GetWindowPosition(host, &x, &y);
+        if (x != expectedX || y != expectedY)
+            fprintf(stderr, "Window handoff moved host: expected %d,%d; got %d,%d\n", expectedX, expectedY, x, y);
+        assert(x == expectedX && y == expectedY);
+    };
+    for (int pass = 0; pass < 2; ++pass) {
+        sdlStatusBarShowWindow(desktop, false);
+        sdlStatusBarShowWindow(game, true);
+        assertPosition();
+        sdlStatusBarSetWindowSize(game, 1024, 768);
+        assertPosition();
+        // A user move while playing must also survive the return to GDI.
+        SDL_SetWindowPosition(host, 240, 160);
+        settleStatusBar();
+        SDL_GetWindowPosition(host, &expectedX, &expectedY);
+        sdlStatusBarShowWindow(game, false);
+        sdlStatusBarShowWindow(desktop, true);
+        assertPosition();
+    }
+    // Destroying the displayed drawable before creating its replacement is
+    // another common mode-change path. It must retain the same host position.
+    sdlStatusBarWindowDestroyed(desktop);
+    SDL_DestroyWindow(desktop);
+    desktop = SDL_CreateWindow("Position replacement", 0, 0, 640, 480, SDL_WINDOW_HIDDEN);
+    assert(desktop);
+    sdlStatusBarShowWindow(desktop, true);
+    assertPosition();
+    assert(sdlStatusBarToggleFullscreen());
+    settleStatusBar();
+    sdlStatusBarWindowDestroyed(desktop);
+    SDL_DestroyWindow(desktop);
+    desktop = SDL_CreateWindow("Fullscreen position replacement", 0, 0, 640, 480, SDL_WINDOW_HIDDEN);
+    assert(desktop);
+    sdlStatusBarShowWindow(desktop, true);
+    settleStatusBar();
+    assert(SDL_GetWindowFlags(desktop) & SDL_WINDOW_FULLSCREEN);
+    assert(sdlStatusBarToggleFullscreen());
+    assertPosition();
+    sdlStatusBarWindowDestroyed(desktop);
+    SDL_DestroyWindow(desktop);
+    sdlStatusBarWindowDestroyed(game);
+    SDL_DestroyWindow(game);
+    sdlStatusBarConfigure(true);
+    puts("GDI/GL handoff, resizing, user moves and fullscreen replacement preserve host position");
+}
+
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
     SDL_SetMainReady();
@@ -703,6 +770,13 @@ int main(int argc, char** argv) {
     Fs::makeLocalDirs(B("/mnt"));
     cdromInit({}, B("/mnt/cdrom"), B(""));
     sdlStatusBarConfigure(true);
+    if (argc > 1 && !strcmp(argv[1], "--window-position")) {
+        testWindowPositionHandoff();
+        sdlStatusBarConfigure(false);
+        Fs::shutDown();
+        SDL_Quit();
+        return 0;
+    }
 #if defined(__linux__) && defined(SDL_VIDEO_DRIVER_WAYLAND)
     if (!strcmp(SDL_GetCurrentVideoDriver(), "wayland")) return testWaylandStatusBar(argc > 1 && !strcmp(argv[1], "--native-picker"));
 #endif
@@ -959,6 +1033,7 @@ int main(int argc, char** argv) {
 #endif
     testCaptureWindowReplacement();
     testSoftwareFullscreenScale();
+    testWindowPositionHandoff();
     sdlStatusBarConfigure(false);
     Fs::shutDown();
     SDL_Quit();

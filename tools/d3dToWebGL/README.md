@@ -12,7 +12,7 @@ adds color-depth variants. The WebGL WineD3D filter accepts 16 and 32 bits while
 retaining its exclusion of paletted modes. GDI is unchanged. The desktop still
 starts at 32-bit, and a 16-bit backbuffer does not change its depth.
 See [the mode-switch probe](../wineTests/tests/webgl_display_modes_probe.md),
-[release DLL pins](../buildWine/webgl_filesystems_v35.json), and
+[release DLL pins](../buildWine/webgl_filesystems_v36.json), and
 [release validation](../buildWine/RELEASE-v35.md).
 
 Revision 34 introduced enumeration of the XRandR resolution list and required a

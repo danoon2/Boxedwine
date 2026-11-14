@@ -926,20 +926,55 @@ void KNativeScreenSDL::buildCursor(KThread* thread, const std::shared_ptr<XCurso
     cursors.set(cursor->id, sdlCursor);
 }
 
+static SDL_Cursor* createPixmapCursor(const XCursor& cursor) {
+    const auto& source = cursor.pixmap;
+    const auto& mask = cursor.mask;
+    const U32 width = source->width(), height = source->height();
+    if (source->getDepth() != 1 || !width || !height || cursor.x >= width || cursor.y >= height ||
+        (mask && (mask->getDepth() != 1 || mask->width() != width || mask->height() != height))) return nullptr;
+
+    std::vector<U32> pixels(width * height);
+    bool visible = false;
+    source->lockData();
+    if (mask && mask != source) mask->lockData();
+    for (U32 y = 0; y < height; ++y) {
+        for (U32 x = 0; x < width; ++x) {
+            if (mask && !(mask->getData()[y * mask->getBytesPerLine() + x / 8] & (1 << (x % 8)))) continue;
+            const XColor& color = (source->getData()[y * source->getBytesPerLine() + x / 8] & (1 << (x % 8))) ? cursor.fg : cursor.bg;
+            pixels[y * width + x] = 0xff000000 | ((color.red >> 8) << 16) | ((color.green >> 8) << 8) | (color.blue >> 8);
+            visible = true;
+        }
+    }
+    if (mask && mask != source) mask->unlockData();
+    source->unlockData();
+    // Visibility comes from the mask, not the colors: an all-black cursor
+    // can still be visible. A missing mask makes every source pixel opaque.
+    if (!visible) return KSystem::disableHideCursor ? SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW) : nullptr;
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(pixels.data(), width, height, 32, width * 4,
+        0xff0000, 0xff00, 0xff, 0xff000000);
+    SDL_Cursor* result = SDL_CreateColorCursor(surface, cursor.x, cursor.y);
+    SDL_FreeSurface(surface);
+    return result;
+}
+
 void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
     if (KSystem::videoOption == VIDEO_NO_WINDOW) {
         return;
     }
     SDL_Cursor* sdlCursor;
+    bool cached;
 
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cursorsMutex);
         sdlCursor = cursors.get(cursor->id);
+        cached = cursors.contains(cursor->id);
     }
-    if (!sdlCursor) {
+    if (!cached) {
         switch (cursor->shape) {
         case 0:
-            if (!KSystem::disableHideCursor && cursor->fg.red == 0 && cursor->fg.blue == 0 && cursor->fg.green == 0 && cursor->bg.red == 0 && cursor->bg.green == 0 && cursor->bg.blue == 0) {
+            if (cursor->pixmap) {
+                sdlCursor = createPixmapCursor(*cursor);
+            } else if (!KSystem::disableHideCursor && cursor->fg.red == 0 && cursor->fg.blue == 0 && cursor->fg.green == 0 && cursor->bg.red == 0 && cursor->bg.green == 0 && cursor->bg.blue == 0) {
                 sdlCursor = nullptr;
             } else {
                 sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);

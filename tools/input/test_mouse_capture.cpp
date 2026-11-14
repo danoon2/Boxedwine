@@ -19,6 +19,18 @@ static SDL_Window* grabbed;
 static std::string titles[4] = {"", "Alice", "OpenGL Window", "Alice Gameplay"};
 static int cursorShown = SDL_ENABLE;
 static SDL_Cursor* currentCursor;
+static std::vector<U32> cursorPixels;
+static int cursorHotX, cursorHotY, colorCursorCount;
+extern "C" SDL_Cursor* SDL_CreateColorCursor(SDL_Surface* surface, int hotX, int hotY) {
+    assert(surface && surface->format->format == SDL_PIXELFORMAT_ARGB8888);
+    cursorPixels.clear();
+    for (int y = 0; y < surface->h; ++y) {
+        const U32* row = reinterpret_cast<const U32*>(static_cast<const U8*>(surface->pixels) + y * surface->pitch);
+        cursorPixels.insert(cursorPixels.end(), row, row + surface->w);
+    }
+    cursorHotX = hotX; cursorHotY = hotY; ++colorCursorCount;
+    return reinterpret_cast<SDL_Cursor*>(900);
+}
 static SDL_bool relativeMode = SDL_FALSE;
 static U32 physicalButtons;
 static int warpCount;
@@ -439,6 +451,54 @@ static void testMappedWindowFocus() {
     server->displays.remove(42);
 }
 
+static void testPixmapCursors(KNativeScreenSDL& screen) {
+    KSystem::videoOption = VIDEO_NORMAL;
+    auto server = XServer::getServer();
+    auto visual = std::make_shared<Visual>(*server->visual);
+    visual->bits_per_rgb = 1;
+    auto source = server->createNewPixmap(9, 2, 1, visual);
+    auto mask = server->createNewPixmap(9, 2, 1, visual);
+    assert(source->getBytesPerLine() == 4);
+    source->getData()[0] = 0x81; source->getData()[1] = 0x01;
+    source->getData()[4] = 0x02;
+    mask->getData()[0] = 0x83; mask->getData()[1] = 0x01;
+    mask->getData()[4] = 0x02;
+    XColor fg{}, bg{};
+    fg.red = 0xffff; fg.green = 0x8080;
+    bg.blue = 0xffff;
+    auto cursor = std::make_shared<XCursor>(source, mask, fg, bg, 8, 1);
+    // Freeing the client's pixmap IDs must not discard the cursor image.
+    server->removePixmap(source->id); server->removePixmap(mask->id);
+    screen.setCursor(cursor);
+    assert(cursorShown && currentCursor == reinterpret_cast<SDL_Cursor*>(900));
+    assert(cursorHotX == 8 && cursorHotY == 1 && cursorPixels.size() == 18);
+    for (unsigned i = 0; i < 18; ++i) {
+        U32 expected = i == 1 ? 0xff0000ff : (i == 0 || i == 7 || i == 8 || i == 10) ? 0xffff8000 : 0;
+        assert(cursorPixels[i] == expected);
+    }
+    int created = colorCursorCount;
+    screen.setCursor(cursor);
+    assert(colorCursorCount == created); // cached, including the hotspot
+    fg = {}; bg = {};
+    screen.setCursor(std::make_shared<XCursor>(source, nullptr, fg, bg, 0, 0));
+    for (U32 pixel : cursorPixels) assert(pixel == 0xff000000); // black is visible, None mask is opaque
+    assert(cursorShown);
+    screen.setCursor(std::make_shared<XCursor>(source, source, fg, bg, 0, 0)); // no double lock
+    assert(cursorPixels[0] == 0xff000000 && cursorPixels[1] == 0);
+    memset(mask->getData(), 0, mask->getDataSize());
+    auto empty = std::make_shared<XCursor>(source, mask, fg, bg, 0, 0);
+    screen.setCursor(empty);
+    assert(!cursorShown);
+    screen.setCursor(empty);
+    assert(!cursorShown);
+    KSystem::disableHideCursor = true;
+    screen.setCursor(std::make_shared<XCursor>(source, mask, fg, bg, 0, 0));
+    assert(cursorShown && currentCursor == SDL_GetDefaultCursor());
+    KSystem::disableHideCursor = false;
+    KSystem::videoOption = VIDEO_NO_WINDOW;
+    puts("Monochrome cursor colors, transparency, hotspot, padding and caching passed");
+}
+
 int main() {
     assert(SDL_Init(SDL_INIT_EVENTS) == 0);
 #if defined(__linux__) && defined(BOXEDWINE_NATIVE_RUNTIME)
@@ -710,6 +770,7 @@ int main() {
     testMouseLookScaling(input);
     testUngrabbedMouseLook(input);
     testInheritedCursorVisibility(input);
+    testPixmapCursors(screen);
     screen.window = nullptr; // Do not destroy the fake host window.
     SDL_Quit();
     puts("Mouse confinement lifecycle checks passed");

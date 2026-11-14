@@ -75,6 +75,16 @@
       "exe": "DEMO.EXE",
       "description": "Full Tilt! Pinball is a 1995 arcade-style pinball game featuring fast physics and detailed themed tables."
     },
+    "pharaoh-demo-overlay.zip": {
+      "title": "Pharaoh Demo (1999 DirectDraw)",
+      "exe": "c:/pharaoh-demo.bat",
+      "urlParams": {
+        "registry": "gdi,win98",
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Build a city in ancient Egypt across three demo missions. Choose Play Demo, then Pre-dynastic Period to start the tutorial."
+    },
     "Simcity3000Demo.zip": {
       "title": "SimCity 3000 Demo (1999 DirectDraw)",
       "exe": "SC3/sc3demo.exe",
@@ -114,6 +124,97 @@
         "bpp": "32"
       },
       "description": "Explore the starship Von Braun in this science-fiction action RPG. Choose New Game to enter training."
+    },
+    "EvenMoreContraptionsDemo.zip": {
+      "title": "The Incredible Machine: Even More Contraptions Demo (2001 DirectDraw)",
+      "exe": "EvenMore Demo.exe",
+      "urlParams": {
+        "registry": "gdi",
+        "resolution": "800x600",
+        "bpp": "16"
+      },
+      "description": "Build playful machines and solve puzzles. Click through the opening demo screens, then choose Play Contraptions."
+    },
+    "force-commander-demo-overlay.zip": {
+      "title": "Star Wars: Force Commander Demo (2000 Direct3D)",
+      "exe": "c:/force-commander-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Command Imperial troops and vehicles in a 3D Star Wars real-time strategy game. Choose Single Player to begin."
+    },
+    "steel-soldiers-demo-overlay.zip": {
+      "title": "Z: Steel Soldiers Demo (2001 Direct3D)",
+      "exe": "c:/steel-soldiers-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Command robot infantry and armored vehicles in a 3D strategy game. Choose Single Player, then A Surprise Party, to begin."
+    },
+    "world-of-goo-demo-overlay.zip": {
+      "title": "World of Goo Demo (2008 Direct3D)",
+      "exe": "c:/world-of-goo-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Build bridges and towers from living goo balls in the first chapter of this physics puzzle game."
+    },
+    "settlers4-demo-overlay.zip": {
+      "title": "The Settlers IV Demo (2001 Direct3D)",
+      "exe": "c:/settlers4-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Build a settlement and manage its resources. Choose Tutorial, then Tutorial 1, to learn the basics."
+    },
+    "the-movies-demo-overlay.zip": {
+      "title": "The Movies Demo (2006 Direct3D)",
+      "exe": "c:/the-movies-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Build and run a Hollywood studio. Choose Game, then Tutorial. Capture the mouse to use the game controls."
+    },
+    "mechcommander2-demo-overlay.zip": {
+      "title": "MechCommander 2 Demo (2001 Direct3D)",
+      "exe": "c:/mechcommander2-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Command a mercenary company of BattleMechs in real-time tactical combat."
+    },
+    "tropico-demo-overlay.zip": {
+      "title": "Tropico Demo (2001)",
+      "exe": "c:/tropico-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Build and govern a Caribbean island. Choose Tutorial to learn the basics, then continue ruling for up to 50 years."
+    },
+    "monkey-island-demo-overlay.zip": {
+      "title": "Escape from Monkey Island Demo (2000 Direct3D)",
+      "exe": "c:/monkey-island-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Join Guybrush Threepwood for a comic pirate adventure on Melee Island."
+    },
+    "links2003-demo-overlay.zip": {
+      "title": "Links 2003 Demo (2002 Direct3D)",
+      "exe": "c:/links2003-demo.bat",
+      "urlParams": {
+        "resolution": "800x600",
+        "bpp": "32"
+      },
+      "description": "Play nine holes at Skeleton Coast with Sergio Garcia."
     }
   }
 }

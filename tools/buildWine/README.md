@@ -10,6 +10,18 @@ bundles, validation, and publication order. Review it before starting builds.
 
 ## Complete Wine 11 filesystem from WSL
 
+The next Wine 11 rebuild also applies
+[`wine11_wined3d_msaa_upload.patch`](patches/wine11_wined3d_msaa_upload.patch).
+It supports CPU image uploads to multisampled OpenGL textures through a temporary
+single-sample texture and a framebuffer blit. This fixes Z: Steel Soldiers demo's
+splash screens while retaining its requested antialiasing. The patch is shared
+WineD3D code and does not require an application setting. The Windows comparison,
+regression probe and validation results are in
+[`probes/d3d8-msaa-upload.md`](probes/d3d8-msaa-upload.md).
+Filesystem 36 includes this fix; published v35 archives remain unchanged.
+The same release includes the shared DirectPlay startup fixes described in
+[`probes/dpnet-startup.md`](probes/dpnet-startup.md).
+
 New Wine 11.0 builds apply
 [`wine11_dsound_sse_resampler.patch`](patches/wine11_dsound_sse_resampler.patch)
 to both the main and web variants. This backports 32 upstream DirectSound
@@ -55,7 +67,7 @@ v53 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapsh
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 34. Its `changes.txt` comes from
+The filesystem revision is 36. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -71,14 +83,14 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v35.json`](webgl_filesystems_v35.json) and the
+[`webgl_filesystems_v36.json`](webgl_filesystems_v36.json) and the
 [v53 patch manifest](../wineTests/webgl-test-divergences-v53.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v35 WebGL configuration pins the DLLs, source patches, and final
-archives in its `full-v35` and `web-v35` profiles. The complete filesystem is
-assembled by `filesystem_wine11.json`. See [RELEASE-v35.md](RELEASE-v35.md) for
+The v36 WebGL configuration pins the DLLs, source patches, and final
+archives in its `full-v36` and `web-v36` profiles. The complete filesystem is
+assembled by `filesystem_wine11.json`. See [RELEASE-v36.md](RELEASE-v36.md) for
 artifact identities, validation results, and upload instructions.
-The v35 prefix leaves the renderer registry values unset. The profile records
+The v36 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
 Revision 27 seeds `HKCU\Software\Wine\Direct3D\VideoMemorySize`
@@ -154,7 +166,7 @@ It retains revision 25's DirectSound backport. All eight WebGL DLLs were rebuilt
 from the v50 source series; only WineD3D differs from the v25 DLLs. The verified
 regular Wine binaries were retained, with fresh packaging and prefix setup.
 The ZIP writer gives Wine directories explicit executable permissions.
-UI, Jenkins, native automation, and demo-site pins now select the v35 archives.
+UI, Jenkins, native automation, and demo-site pins now select the v36 archives.
 Publish and verify both archives before deploying the new UI/Jenkins pins.
 Revision 26 retains the earlier WebGL fixes from revisions 24 and 25. Direct GLSL
 generation for fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8
@@ -368,7 +380,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
-Build and validate with `--config tools/buildWine/webgl_filesystems_v35.json`.
+Build and validate with `--config tools/buildWine/webgl_filesystems_v36.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises
@@ -511,7 +523,7 @@ python3 tools/buildWine/webgl_filesystem.py validate \
 
 The following v3/v10 commands and manifest remain available for historical
 filesystem reproduction and validation. Normal commands now default to
-`webgl_filesystems_v35.json`; pass the historical config explicitly below.
+`webgl_filesystems_v36.json`; pass the historical config explicitly below.
 The dedicated `validate-set` command retains its v3/v10 default.
 
 `webgl_filesystem.py` is the pinned build, packaging, and validation command

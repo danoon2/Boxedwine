@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import html
 import json
 import os
@@ -28,7 +29,7 @@ FULL_DEMO_ROOT_ZIP = "TinyCore15Wine11.0.zip"
 LEGACY_DEMO_ROOT_ZIP = "boxedwine.zip"
 PREVIOUS_DEMO_ROOT_ZIP = "boxedwine.3.zip"
 PREVIOUS_GDI_ROOT_ZIP = "boxedwine.gdi.3.zip"
-DEFAULT_DEMO_ROOT_CONFIG = BUILD_WINE_DIR / "webgl_filesystems_v35.json"
+DEFAULT_DEMO_ROOT_CONFIG = BUILD_WINE_DIR / "webgl_filesystems_v36.json"
 DEMO_RUNNER_SPECS = (
     ("st", "Single Threaded", "single_threaded_dir"),
     ("mt", "Multi Threaded", "multi_threaded_dir"),
@@ -843,7 +844,10 @@ def render_build_demo_html(build_dir, branch, build_number, demos, runners):
 def render_demo_cards(demos, url_builder, image_prefix, runners):
     cards = []
     for demo in demos:
-        image = html.escape(f"{image_prefix}/{demo['stem']}.png")
+        image_url = f"{image_prefix}/{demo['stem']}.png"
+        if demo.get("imageVersion"):
+            image_url += "?v=" + demo["imageVersion"]
+        image = html.escape(image_url)
         title = html.escape(demo["title"])
         zip_name = html.escape(demo["zip"])
         program = html.escape(demo["program"] or "Select executable")
@@ -1136,10 +1140,13 @@ def discover_demos(demo_source):
             if renderer is None and root.lower().startswith("boxedwine.gdi."):
                 renderer = "gdi"
             root = default_root
+        image_path = demo_source / "images" / f"{zip_path.stem}.png"
+        image_version = hashlib.sha256(image_path.read_bytes()).hexdigest()[:12] if image_path.is_file() else None
         demos.append(
             {
                 "zip": zip_path.name,
                 "stem": zip_path.stem,
+                "imageVersion": image_version,
                 "title": manifest_entry.get("title") or title_from_zip(zip_path),
                 "description": manifest_entry.get("description", ""),
                 "program": normalize_demo_program(program),

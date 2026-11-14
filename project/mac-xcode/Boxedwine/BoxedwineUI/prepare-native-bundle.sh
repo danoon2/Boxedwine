@@ -52,6 +52,7 @@ if [ "$variant" = BOXEDWINE_DIRECT ]; then
 fi
 package_check --wine-catalog "$resource_dir/WindowsSupport"
 /usr/bin/ditto "$SRCROOT/BoxedwineUI/Resources/AppIcons" "$resource_dir/AppIcons"
+/usr/bin/ditto "$SRCROOT/BoxedwineUI/Resources/troubleshooting.json" "$resource_dir/troubleshooting.json"
 
 # Declared as a build-phase output so Xcode re-signs the containing app after
 # either the nested framework signature or the optional Wine package changes.

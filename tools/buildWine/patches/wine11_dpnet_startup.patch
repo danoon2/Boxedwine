@@ -1,0 +1,122 @@
+Subject: [PATCH] dpnet: Implement peer capabilities and initialize absent lobby connections.
+
+Match native Windows capability defaults, validation and updates. Reset peer
+capabilities on initialization and mark the peer uninitialized on close.
+A directly launched application has no lobby connection; initialize its output
+handle to zero and reject requests for nonexistent connection settings.
+
+These fixes let the MechCommander 2 demo start without a game-specific bypass.
+Verified with tools/buildWine/probes/dpnet-startup.c on native Windows and Wine.
+This does not implement DirectPlay multiplayer transport.
+
+--- a/dlls/dpnet/peer.c
++++ b/dlls/dpnet/peer.c
+@@ -51,6 +51,7 @@
+     DWORD datasize;
+ 
+     DPN_SP_CAPS spcaps;
++    DPN_CAPS_EX caps;
+ } IDirectPlay8PeerImpl;
+ 
+ static inline IDirectPlay8PeerImpl *impl_from_IDirectPlay8Peer(IDirectPlay8Peer *iface)
+@@ -116,6 +117,9 @@
+     This->usercontext = pvUserContext;
+     This->msghandler = pfn;
+     This->flags = dwFlags;
++
++    This->caps = (DPN_CAPS_EX){sizeof(DPN_CAPS_EX), 0, 200, 14, 25000,
++            ~0u, 10, 5000, 7, 25, 3, 500};
+ 
+     init_winsock();
+ 
+@@ -441,8 +445,11 @@
+ 
+ static HRESULT WINAPI IDirectPlay8PeerImpl_Close(IDirectPlay8Peer *iface, const DWORD dwFlags)
+ {
++    IDirectPlay8PeerImpl *This = impl_from_IDirectPlay8Peer(iface);
++
+     FIXME("(%p)->(%lx): stub\n", iface, dwFlags);
+ 
++    This->msghandler = NULL;
+     return DPN_OK;
+ }
+ 
+@@ -502,20 +509,45 @@
+     return DPNERR_GENERIC;
+ }
+ 
+-static HRESULT WINAPI IDirectPlay8PeerImpl_GetCaps(IDirectPlay8Peer *iface, DPN_CAPS * const pdpCaps,
+-        const DWORD dwFlags)
+-{
+-    FIXME("(%p)->(%p,%lx): stub\n", iface, pdpCaps, dwFlags);
+-
+-    return DPNERR_GENERIC;
+-}
+-
+-static HRESULT WINAPI IDirectPlay8PeerImpl_SetCaps(IDirectPlay8Peer *iface, const DPN_CAPS * const pdpCaps,
+-        const DWORD dwFlags)
+-{
+-    FIXME("(%p)->(%p,%lx): stub\n", iface, pdpCaps, dwFlags);
+-
+-    return DPNERR_GENERIC;
++static HRESULT WINAPI IDirectPlay8PeerImpl_GetCaps(IDirectPlay8Peer *iface, DPN_CAPS * const caps,
++        const DWORD flags)
++{
++    IDirectPlay8PeerImpl *This = impl_from_IDirectPlay8Peer(iface);
++    DWORD size;
++
++    TRACE("(%p)->(%p,%lx)\n", iface, caps, flags);
++
++    if (!caps) return DPNERR_INVALIDPOINTER;
++    if (flags) return DPNERR_INVALIDFLAGS;
++    if (caps->dwSize != sizeof(DPN_CAPS) && caps->dwSize != sizeof(DPN_CAPS_EX))
++        return DPNERR_INVALIDPARAM;
++    if (!This->msghandler) return DPNERR_UNINITIALIZED;
++
++    size = caps->dwSize;
++    memcpy(caps, &This->caps, size);
++    caps->dwSize = size;
++    return DPN_OK;
++}
++
++static HRESULT WINAPI IDirectPlay8PeerImpl_SetCaps(IDirectPlay8Peer *iface, const DPN_CAPS * const caps,
++        const DWORD flags)
++{
++    IDirectPlay8PeerImpl *This = impl_from_IDirectPlay8Peer(iface);
++
++    TRACE("(%p)->(%p,%lx)\n", iface, caps, flags);
++
++    if (!caps) return DPNERR_INVALIDPOINTER;
++    if (flags) return DPNERR_INVALIDFLAGS;
++    if (caps->dwSize != sizeof(DPN_CAPS) && caps->dwSize != sizeof(DPN_CAPS_EX))
++        return DPNERR_INVALIDPARAM;
++    if (!This->msghandler) return DPNERR_UNINITIALIZED;
++
++    memcpy(&This->caps, caps, caps->dwSize);
++    This->caps.dwSize = sizeof(This->caps);
++    This->caps.dwFlags = 0;
++    /* Peers accept messages of any size. */
++    This->caps.dwMaxRecvMsgSize = ~0u;
++    return DPN_OK;
+ }
+ 
+ static HRESULT WINAPI IDirectPlay8PeerImpl_SetSPCaps(IDirectPlay8Peer *iface, const GUID * const pguidSP,
+--- a/dlls/dpnet/lobbiedapp.c
++++ b/dlls/dpnet/lobbiedapp.c
+@@ -94,6 +94,7 @@
+     This->flags = dwFlags;
+     This->usercontext = pvUserContext;
+     This->connection = pdpnhConnection;
++    if (pdpnhConnection) *pdpnhConnection = 0;
+ 
+     init_winsock();
+ 
+@@ -155,7 +156,7 @@
+ {
+   IDirectPlay8LobbiedApplicationImpl *This = impl_from_IDirectPlay8LobbiedApplication(iface);
+   FIXME("(%p): stub\n", This);
+-  return DPN_OK;
++  return DPNERR_INVALIDHANDLE;
+ }
+ 
+ static HRESULT WINAPI IDirectPlay8LobbiedApplicationImpl_SetConnectionSettings(IDirectPlay8LobbiedApplication *iface,

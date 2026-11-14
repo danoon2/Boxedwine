@@ -91,6 +91,32 @@ indices, argument slots, return values, extension wrappers, 64-bit timeouts,
 float arguments, and EGL/GLX proc-address lookup. Expected result:
 `PASS EGL/GLES calling convention (20 callbacks)`.
 
+## Initial drawable state
+
+`WGLInitialDrawableStateTest.c` checks that a context's first binding sets its
+viewport and scissor rectangle to the guest window dimensions. It also draws
+into the far corner without setting either rectangle, then verifies that
+rebinding, changing drawables and switching contexts preserve explicit state.
+This catches the small lower-left intro/menu rendering in Alone in the Dark:
+The New Nightmare when a host bootstrap window's 120x100 state leaks through.
+The initial state follows the first-drawable rule in the
+[GLX specification](https://registry.khronos.org/OpenGL/specs/gl/glx1.3.pdf).
+
+Build a 32-bit Windows executable from WSL:
+
+```sh
+i686-w64-mingw32-gcc -Wall -Wextra -Werror -O2 \
+    tools/openglTest/WGLInitialDrawableStateTest.c -lopengl32 -lgdi32 \
+    -o InitialDrawableStateTest.exe
+```
+
+Run it on Windows as a control, then through `/bin/wine` in Boxedwine with the
+same executable and an 800x600 or larger desktop so both decorated windows fit.
+The optional first argument is a log path (default:
+`initial-drawable-state.log`). Require the final `PASS initial drawable state
+(0 failures)` line; the emulator's process exit code alone is not the oracle.
+No visible window or screenshot capture is needed.
+
 ## Run
 
 ```powershell

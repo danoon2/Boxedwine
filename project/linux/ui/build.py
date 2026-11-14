@@ -44,6 +44,7 @@ def main():
     (resources / 'WindowsSupport').mkdir(parents=True)
     shutil.copy2(shared / 'WindowsSupport/packages.json', resources / 'WindowsSupport/packages.json')
     shutil.copytree(shared / 'AppIcons', resources / 'AppIcons')
+    shutil.copy2(shared / 'troubleshooting.json', resources)
     shutil.copy2(REPO / 'resources/demo-catalog.lock.json', resources)
     shutil.copy2(REPO / 'tools/demo_catalog.py', resources)
     shutil.copy2(REPO / 'license.txt', resources / 'LICENSE')

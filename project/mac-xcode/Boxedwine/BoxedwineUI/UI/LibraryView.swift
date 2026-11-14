@@ -873,6 +873,20 @@ struct AppSettingsView: View {
 }
 
 struct AppTroubleshootingView: View {
+    private struct Tip: Decodable, Identifiable {
+        let id: String
+        let title: String
+        let advice: String
+        let knownGames: [String]
+    }
+    private static let tips: [Tip] = {
+        guard let url = Bundle.main.url(forResource: "troubleshooting", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let tips = try? JSONDecoder().decode([Tip].self, from: data) else {
+            return [Tip(id: "unavailable", title: "Compatibility tips unavailable", advice: "Reinstall Boxedwine to restore its help files.", knownGames: [])]
+        }
+        return tips
+    }()
     @ObservedObject var store: LibraryStore
     let app: LibraryApp
     @State private var showLaunchLog = false
@@ -934,6 +948,15 @@ struct AppTroubleshootingView: View {
                                 Text("For games released before 2007, try Windows XP in App Settings. Wine packages with Boxedwine’s A8 compatibility patch disable A8 shadow render targets by default in XP and earlier, helping games such as The Sims 2 avoid black square shadows.")
                             }
                             Divider()
+                            ForEach(Self.tips) { tip in
+                                topic(tip.title) {
+                                    Text(tip.advice)
+                                    if !tip.knownGames.isEmpty {
+                                        Text("Known games affected: " + tip.knownGames.joined(separator: ", "))
+                                    }
+                                }
+                                Divider()
+                            }
                             topic("Slow gameplay") {
                                 Text("Lower the resolution and graphics detail in the game’s own settings. Match Boxedwine’s Window size to the game’s resolution. Close other demanding Mac apps while testing.")
                                 Text("Boxedwine emulates an x86 PC, which adds work even on a fast Mac. Some games will remain too demanding or have compatibility problems; a different display setting cannot fix every issue.")

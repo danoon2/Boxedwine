@@ -28,13 +28,13 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - The web v35 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/35/TinyCore15Wine11.0-web.zip`.
+   - The web v35 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/36/TinyCore15Wine11.0-web.zip`.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
    - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v35 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
    - A demo can set an app-specific Wine compatibility version with `"windowsVersion": "win98"`. The generated launcher sets that version before starting the executable, without changing other demos.
 3. Validates every filesystem root referenced by `demos.json` against
-   `tools/buildWine/webgl_filesystems_v35.json`.
+   `tools/buildWine/webgl_filesystems_v36.json`.
    - The patch series, declared filename, archive size and SHA-256, full ZIP CRC, PE32 DLLs and
      imports, GL SONAME links, `ld.so.cache`, and renderer registry settings must all match.
    - Validation runs before the four Emscripten builds, so a missing, stale, or damaged public
@@ -222,7 +222,7 @@ wsl python3 tools/jenkins/build_site.py `
 ```
 
 This command requires each referenced root filename to have an exact profile in
-`tools/buildWine/webgl_filesystems_v35.json`. If the public downloads are older than the pinned
+`tools/buildWine/webgl_filesystems_v36.json`. If the public downloads are older than the pinned
 profiles, upload the current roots first; do not bypass the validation.
 
 ## Stopping The Local Server
@@ -278,7 +278,7 @@ network connections and does not start a Jenkins build.
 Both scripts download the same filesystem:
 
 ```text
-https://boxedwine.org/v2/35/TinyCore15Wine11.0-web.zip
+https://boxedwine.org/v2/36/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:
@@ -577,3 +577,337 @@ delivery from interpreter-backed segment instructions. The November 13, 2026
 placing and expanding a lobby, building offices, advancing the tutorial, and
 exiting through File > Exit with Wine cleanup observed. The installer also
 completed and the interactive tour ran with the native Linux engine.
+
+## Even More Contraptions demo
+
+The Incredible Machine: Even More Contraptions Demo (2001) is distributed as
+`EvenMoreContraptionsDemoSetup.zip` for the native UI catalogues. This ZIP retains
+all 11 original installer files from the supplied `Downloads/demo/Contraptions`
+directory. Its SHA-256 is
+`b9a1d7ce1c873252934128ded1a6aaaad8a1cd96138101bb82bf17468f30fbd5`
+and its size is 19,234,536 bytes. Run `Setup.exe`, keep the default destination,
+and select `EvenMore Demo.exe` after setup. The catalogue uses the original
+executable icon, Wine 11.0, GDI rendering and an 800x600, 16-bit desktop.
+
+The preparation tool used for this release verifies both the original installer and the complete installed game
+tree. It packages seven unchanged files, including the empty original INI, with
+deterministic ZIP metadata. No Wine registry, system DLLs, installer cache or
+user saves are included; no overlay or registry launcher is needed. The browser
+ZIP is 17,452,540 bytes, SHA-256
+`98a0d1876db90453b0c3f9f17effad605384ac5edc7e7d890da25068596b26ac`.
+
+The browser entry launches `EvenMore Demo.exe` with `registry=gdi`,
+`resolution=800x600` and `bpp=16`. Click through the opening demo screens and
+choose **Play Contraptions**. A 32-bit starting desktop produced a blank screen
+in this test; the 16-bit preset displayed correctly. ST JIT testing reached the
+Mice & Cheese tutorial, placed cheese, ran/stopped the simulation, returned to
+the menu and observed a running audio context with nonzero stereo samples.
+Clean application exit was not confirmed during that smoke test.
+
+The local and published `contraptions__demo/20261113` snapshots retain the
+existing SimTower-tested runtime bytes, filesystem 35 and graphics provenance.
+Other engine modes retain their links but were not retested for this demo.
+The homepage uses the same package with ST JIT and an actual gameplay thumbnail.
+All 48 new or changed published files were downloaded and SHA-256 verified.
+
+## Force Commander demo
+
+The supplied `ForceCom/FocomDemo.exe` is the original 2000 demo self-extractor,
+SHA-256 `18a90e3856e907d570174e95727dc2894a2c09057dfac86c299d5bf010fd2b56`.
+Its original 16-bit InstallShield launcher stalled at 100% in the tested native
+Windows and Linux environments. The bundled 32-bit setup engine, unpacked by
+setup as `_INS0432._MP`, completed installation when copied unchanged to
+`INSTALL/SETUP32.EXE` beside the original installer files. Its SHA-256 is
+`12a2929a615924e212490f4ef3a1cbb36ecebddafea0f358991a0fc57b7cab84`.
+The native UI installer ZIP preserves all 68 extracted files plus that engine.
+It installs normally; native UIs do not receive a preinstalled game.
+
+Install into an isolated prefix and retain the 62 pristine installed files under
+`C:\Program Files\LucasArts\Force Commander Demo`, excluding `Install/DeIsL1.isu`.
+Keep the original `Resource/Options/FoCom.opt`; exclude user settings and saves.
+The preparation tool used for this release checks the self-extractor, all original installer file hashes, the
+32-bit setup engine and the complete pristine game tree. Both ZIPs have
+deterministic metadata. The native `ForceCommanderDemoInstaller.zip` is
+81,610,386 bytes, SHA-256
+`21dd032e4e6663dacfa0f5d55d747271aaa82496ba94fecf29400280d296c803`.
+The browser `force-commander-demo-overlay.zip` is 80,798,787 bytes, SHA-256
+`3954b25c518d36d9e8bd9987ae7c8ca256b231a85169f505ee8b388285b955c1`.
+It contains the 62 game files and a launcher importing only Force Commander's
+installation registry entries. No global Wine registries, system DLLs, installer
+caches or user saves are included.
+
+The browser runs `c:/force-commander-demo.bat` with an 800x600, 32-bit desktop and
+normal Direct3D rendering. Choose **Single Player**, then **Proceed** after the
+briefing; Escape skips the briefing and dismisses mission objectives. The game
+uses relative mouse input; use the player's **Capture mouse** control when needed.
+ST JIT testing reached Assault on Ruul, moved the camera and selected units.
+Native Windows testing reached the briefing and produced stereo PCM audio.
+A complete mission and the other browser engine modes were not tested.
+
+The local and published `force_commander__demo/20261113` snapshots retain the
+SimTower-tested runtime bytes, filesystem 35 and graphics provenance. Jenkins
+mirrors the published `demos/apps` payload and manifest on subsequent builds.
+The homepage uses ST JIT, the same overlay and an actual battlefield thumbnail.
+No engine or filesystem change is required for this demo.
+All 53 new or changed public files were downloaded and SHA-256 verified after
+publication. The generated homepage grid and all three theme previews include
+the new entry; both Jenkins/local indexes have the four expected runtime links.
+
+## Steel Soldiers demo
+
+The native `SteelSoldiersDemoSetup.zip` preserves the original files from the
+supplied `SteelSoldiers` installer directory. It is 58,434,428 bytes, SHA-256
+`4a0668a43002cbf3c6fd559fdbca1d0e1b4c418db44f287206ab41a6dffa6de6`.
+Run `Setup.exe` in a fresh Wine 11.0 prefix. Native catalogues use this installer
+and select `Demo/demo.exe` after installation, without a preinstalled prefix.
+
+The preparation tool used for this release verifies the installer hash and all 1,344 installed files, rejects
+modified game data and user saves, and adds a working-directory launcher. No
+global Wine registry, system DLLs, installer cache or game-specific registry
+entries are needed. The deterministic browser overlay is 55,945,555 bytes,
+SHA-256 `ef0a9be2e576733c3dd63cdb6c395904c6297c9e891ff5ada07815e1fdfca856`.
+
+The browser runs `c:/steel-soldiers-demo.bat` with an 800x600, 32-bit starting
+desktop. Choose **Single Player**, then **A Surprise Party**. Escape skips the
+opening camera tour; Home centers the camera on your base. The game renders
+with Direct3D. Its separate `zsetup.exe` utility requires the absent MFC42.DLL;
+the game continues with default graphics settings. This limitation is noted in
+the native catalogue description.
+
+Native Windows testing completed setup, reached the mission, selected a unit
+and confirmed nonzero stereo PCM audio. ST JIT testing reached the mission,
+selected units, moved a jeep, issued the scatter command and changed the camera
+zoom. A complete mission and the other browser engine modes were not tested.
+The native renderer emits repeated WineD3D light-state warnings; the browser
+test did not emit those warnings. Retain this distinction when investigating
+native rendering or performance.
+
+The local and published `steel_soldiers__demo/20261113` snapshots retain the
+existing runtimes, filesystem 35 and graphics provenance. Jenkins mirrors the
+published payload and manifest. The homepage uses ST JIT with a gameplay
+thumbnail. No engine or filesystem change is required for this demo.
+
+## World of Goo demo
+
+The native `WorldOfGooDemoSetup.zip` contains the supplied original
+`Demos.WorldOfGoo.exe`, unchanged. The ZIP is 32,801,046 bytes, SHA-256
+`e65bae7079fc7c53abca9e9217b9fad29a137acd6195492b0509b86b270fe2e0`.
+Run the original installer in a fresh Wine 11.0 prefix. Native catalogues use
+this installer and select `WorldOfGoo.exe` after installation.
+
+The preparation tool used for this release verifies the installer and all 1,208 installed game files, rejects
+modified files, and adds a working-directory launcher. The package excludes
+Wine's global registry, installer caches and user-created saves. No additional
+registry entries or system DLLs are required. The deterministic browser overlay
+is 34,025,542 bytes, SHA-256
+`997027fe99a60a28be11994f0113173d255f7dd40118322ee53220eee33f1ae2`.
+
+The browser runs `c:/world-of-goo-demo.bat` with an 800x600, 32-bit desktop.
+Create a profile, select Chapter 1, then drag goo balls into connected structures.
+This original 2008 build uses Direct3D. Native Windows testing completed setup,
+reached interactive puzzles, and confirmed nonzero stereo PCM audio. Browser
+ST JIT testing reached the first puzzle and connected goo balls. A complete
+playthrough, native Mac/Linux gameplay and the other browser modes were not
+tested.
+
+The local and published `world_of_goo__demo/20261113` snapshots retain the existing
+runtimes, filesystem 35 and graphics provenance. Jenkins mirrors the published
+payload and manifest. The homepage uses ST JIT and a gameplay screenshot.
+No engine or filesystem change is required for World of Goo.
+
+## The Settlers IV demo
+
+The native `SettlersIVDemoSetup.zip` contains the supplied `thesettlers4_demo.exe`
+and `readme.txt`, unchanged. It is 99,893,156 bytes, SHA-256
+`753dd49c6fd643c33adc8844401f96f2c2922faae5e4ad70335005dccd268296`.
+The original installer completed in a fresh Wine 11.0 prefix; optional Acrobat
+and Blue Byte Game Channel were skipped. Native catalogues run that installer
+and select `S4.exe` afterward, without a preinstalled game or Wine prefix.
+
+The preparation tool used for this release verifies the source installer hash and all 86 retained game files.
+It excludes generated game settings, runtime logs, user saves and the uninstall
+log. It adds a working-directory launcher and only the game's installation key,
+`HKLM\Software\BlueByte\Settlers4-Demo` (path, program, language and version).
+Wine's global registries are excluded. The deterministic browser overlay is
+86,768,767 bytes, SHA-256
+`5c22061eaf98045bb97e0b3f67c6e1d055dd573d83b2c59a493462f707e84805`.
+
+The browser runs `c:/settlers4-demo.bat` with an 800x600, 32-bit starting desktop.
+The game uses DirectDraw menus and Direct3D landscape rendering with its default
+settings. Click through the two opening screens, then choose **Tutorial** and
+**Tutorial 1**. Space advances the instructions; right-drag moves the camera and
+Home returns to the settlement. No GDI preset or extra DLL override is required.
+
+Native Windows testing reached the first tutorial and produced nonzero stereo
+PCM audio. ST JIT testing verified tutorial loading, animated settlers, keyboard
+input and camera movement. A complete mission, multiplayer, native Mac/Linux
+gameplay and the other browser modes were not tested.
+
+The local and published `settlers4__demo/20261113` snapshots retain the existing
+runtimes, filesystem 35 and graphics provenance. Jenkins mirrors the published
+payload and manifest. The homepage uses ST JIT with a gameplay screenshot.
+No engine or filesystem change is required for this demo.
+
+## The Movies demo
+
+Native UI catalogues use `TheMoviesDemoSetup.zip`, containing the 130 original
+setup-media files extracted from the supplied `The_Movies_Demo.exe`. The outer
+self-extractor fails with `c0000018` in the tested native build; running the
+unchanged extracted `setup.exe` completes installation. The native package is
+299,295,796 bytes, SHA-256
+`b2a49aa41711433b97e668d22e3c84e8e7ce38aa139b2893622253138f0dfe9f`.
+The original EXE is 299,440,640 bytes, SHA-256
+`c3f0e8bf5b369495092be11714b28bace464f8dfa6c9d067f8898771719c7860`.
+Native UIs launch `setup.exe`, then select `MoviesDemo.exe`; they do not receive
+a preinstalled game. The recipe uses Wine 11.0 and an 800x600, 32-bit desktop.
+The game chooses its own resolution after hardware detection.
+
+Native testing reached the studio tutorial, with nonzero stereo PCM audio, and
+the user independently started a game successfully. The application's original
+icon and the supplied demo readme's requirements are included in catalogue 40.
+
+The preparation tool used for this release preserves all 123 original game files and adds a launcher plus only
+the game's installation path, version and language registry values. It excludes
+Wine's global registry and installer files. The reproduced overlay is
+288,652,228 bytes, SHA-256
+`25468f60c20c41f53d5800eb4555ae41ddbefa88e9acd2b369f44f552546a8cb`.
+Browser ST JIT reaches the studio tutorial with filesystem 35. The user verified
+mouse capture in Chrome; gameplay and camera movement were observed there.
+Choose Game, then Tutorial, and capture the mouse for the game controls. The
+in-app browser could render the menu but its mouse capture did not work in this
+test. This was not reproduced in Chrome. Browser audio PCM, a full tutorial, and
+other browser modes have not been tested.
+
+The local and published `the-movies__demo/20261113` snapshots retain the existing
+runtimes, filesystem 35 and graphics provenance. Jenkins mirrors the overlay
+and manifest. The homepage uses ST JIT and a screenshot of the studio tutorial.
+No engine or filesystem change is needed for this demo.
+
+## Tropico demo
+
+Native UI catalogues use `TropicoDemoSetup.zip`, containing the nine supplied
+setup files unchanged (180,848,170 bytes, SHA-256
+`110bc8a7caf63ec4074403e34f429423a9fc75acd2238e1f96cf11d05a1e2fe0`).
+They run `Setup.exe`, then select `TropicoD.EXE`. They do not contain an installed
+game or Wine prefix. The original installer completed in an isolated Wine 11.0
+prefix. The user confirmed gameplay and the corrected native cursor.
+
+The preparation tool used for this release verifies all 499 original game files and adds only a working-directory
+launcher. It does not import Wine's registry or add system DLLs. Changed settings
+or user saves fail its pristine-tree check. The reproducible overlay is
+177,740,335 bytes, SHA-256
+`7ce0cae800790efa15fa7fdcb11a5e42168734740fa932dbd7f9d9d484332e6a`.
+The browser runs `c:/tropico-demo.bat` from an 800x600, 32-bit starting desktop.
+Choose Tutorial after the introduction. The tutorial continues as a 50-year game.
+
+Native gameplay and audio were checked; ST JIT reaches the tutorial with animated
+citizens and working mouse input. Other browser modes and native Mac/Linux
+gameplay have not been tested. The local/published `tropico__demo/20261113`
+snapshots retain the existing runtimes, filesystem 35 and graphics provenance.
+The browser shell uses its existing visible host pointer; it does not yet carry
+the native cursor fix. The homepage adds the ST JIT demo and a gameplay image.
+
+The native missing cursor required a shared engine fix: advertise depth-1 pixmap
+storage to Wine and render monochrome cursor pixels and their transparency mask.
+No Tropico preset or Wine filesystem change is needed. See
+[the cursor regression notes](../x11/tests/README.md#monochrome-cursors).
+
+## MechCommander 2 demo
+
+The native catalogues use the original `MC2Trial.exe` installer and `Readme.rtf`
+from `https://boxedwine.org/demos/MechCommander2DemoSetup.zip` (163,257,393 bytes,
+SHA-256 `40b0b831c88926733231414dc1707a585a3255ddc545fc341cd8693f967245fe`).
+Catalogue 41 selects Wine 11.0, an 800x600 32-bit desktop and the demo's bundled
+`dbghelp` / `imagehlp` DLLs. It installs normally into a new application root.
+
+The browser overlay requires filesystem 36's shared DirectPlay startup fixes.
+The preparation tool used for this release checks the pinned installer and pristine 261-file game tree, preserves
+the original fonts, and adds installation registry entries and a launcher. It
+uses the demo's unmodified `minprefs1.cfg` for both graphics preference files,
+matching the preset selected by the browser hardware detector. This avoids
+rerunning that first-launch benchmark in the preinstalled browser demo. It does
+not include the detector's machine measurements, user saves, global Wine
+registries, accepted-license state or experimental Wine DLLs.
+The reproducible overlay is 168,076,096 bytes, SHA-256
+`b952c7994c92e23c2df5766ac5acab894f510169607cabcfc1b08d3f5ecc69b6`.
+
+The entry runs `c:/mechcommander2-demo.bat`. Native single-player gameplay was
+tested, and the user confirmed the ST JIT browser campaign works in external
+Chrome. Its HUD, unit controls and completed first objective were captured.
+The automated in-app browser stalled during the introduction; that result was
+not treated as proof of a game bug. Multiplayer and native macOS/Linux gameplay
+have not been verified. See the DirectPlay probe notes for the fix's scope.
+
+The `filesystem__36/20261114` local and published snapshots retain all four
+existing SimTower-tested engines with new filesystem/build identities. Jenkins
+mirrors the published overlay and manifest on subsequent builds. The homepage
+uses only ST JIT and keeps the console collapsed.
+
+## Pharaoh demo
+
+The native UI payload `https://boxedwine.org/demos/PharaohDemoSetup.zip` contains
+the original files from the supplied `PHARAOH` demo installer folder, unchanged.
+It is 77,327,746 bytes, SHA-256
+`b3daff52ea8557a29cec2464eaa20c80c9b7b32e0d8edb766129aa7a31172195`.
+Run `SETUP.EXE` in a fresh Wine root and keep the default
+`C:\SIERRA\PharaohDemo` destination. Skip bookmarks and choose to restart later.
+The preparation tool used for this release checks the installer hash and the complete pristine game-file tree.
+It preserves the 307 installed demo files, including the supplied tutorial saves,
+and adds a launcher with only the game-specific installation registry entries.
+It excludes Wine's global registries, installer caches and uninstall log, and
+rejects modified files or added user saves. The deterministic overlay is
+60,649,304 bytes, SHA-256
+`5c6d75f1791922336a31f286001813dd11e393281060f64840c7b0b1b0a62645`.
+
+The browser entry launches `c:/pharaoh-demo.bat` with `registry=gdi,win98` at
+800x600 and a 32-bit desktop. Windows 98 compatibility is required for audio:
+this demo skips sound initialization when Windows reports an NT platform.
+Native PCM capture and the browser AudioWorklet output verified sound with this
+setting. Native catalogue 19 also selects Windows 98.
+The local and published `pharaoh__demo/2026111303` snapshots retain
+the previously tested SimTower runtime and filesystem 35; no engine or filesystem
+change is needed. Jenkins mirrors the published `demos/apps` payload and manifest
+on subsequent builds. Native catalogues use the installer, not this overlay.
+
+Validated setup with the native Linux engine, then the browser ST JIT build by
+entering the first mission, moving around the map, placing houses and observing
+settlers move in. Exit and Wine cleanup completed after clicking through the
+demo's two closing promotional screens. The homepage uses this ST JIT runtime;
+Jenkins exposes the usual four runtime choices.
+
+
+### Escape from Monkey Island demo
+
+`monkey-island-demo-overlay.zip` contains 48 pristine installed game files and a minimal installation registry/launcher. The preparation tool used for this release pins both original installer ZIP and installed tree; it excludes the machine-specific `Install/DeIsL1.isu` uninstaller log, global Wine state, installer caches and filesystem metadata. Do not use a game directory modified during play.
+
+The native package remains the original installer, not the overlay. The browser BAT runs `Monkey4.exe -cd` from its installed directory. A process trace of the original `MnkyDemo.exe` launcher confirmed this argument; omitting it produced a blank blue screen. Direct3D is the default, so no OpenGL override or game-specific Wine replacement is needed. Filesystem 36 is unchanged.
+
+Overlay: 118,724,126 bytes, SHA-256 `085966301623c444a7039a0696693801edfb4e119e31d4328556a576e8686a17`. Native setup completed in a fresh prefix, and the first scene rendered with sound. ST JIT testing reached the same scene, moved Guybrush, opened a conversation and selected a dialogue line. AudioWorklet reported nonzero stereo output. This original demo has no mouse control or save/load support.
+
+
+### Links 2003 demo
+
+`links2003-demo-overlay.zip` contains 110 pristine installed game files, seven
+original player/MOP files from setup, and the installation registry and launcher.
+The package was built from a fresh installation and the original `MOP` and
+`Players` setup directories, with installer, game and support files verified
+by checksum. It excludes global Wine state, installer caches, filesystem
+metadata and player-created saves. `Sergio.PIN` is installed as `Sergio Garcia.PIN`
+with its original bytes. The native UI package remains the original installer,
+not the installed browser overlay.
+
+The browser launcher imports the game registry on first launch and runs
+`LinksMMIII.exe`. Both browser and native recipes disable Wine's `wmvcore` for
+this game. Without that setting, Wine 11.0 filesystem 36 fails during startup in
+the original `WMA.dll` at offset 0x1004 after unsupported media-reader interface
+requests. No game executable or shared Wine filesystem was patched.
+
+Overlay: 176,328,407 bytes, SHA-256
+`ac4c556ceb0d1995241aa6378150245f2a1399332e66b512563764f22ba2178f`.
+Packaging verification reproduced the tested overlay byte for byte. Native
+new-game play and ball-hit sounds were confirmed by the user. A fresh ST JIT
+browser test on filesystem 36 reached the swing tutorial with spoken
+instructions. Other music/commentary, online play, and all nine holes have not
+been comprehensively tested. The website thumbnail shows Sergio Garcia at the
+Skeleton Coast tee, captured from native Boxedwine on 2026-11-14. Jenkins, local
+demos and the homepage use the same gameplay image.

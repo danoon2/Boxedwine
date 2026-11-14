@@ -1,0 +1,8 @@
+[
+  {
+    "id": "no-audio-windows-98",
+    "title": "No audio in an older game",
+    "advice": "If an older game runs but has no music or sound effects, close it and try App Settings → Windows version → Windows 98. Save and reopen the game. If this does not help, restore the previous Windows version.",
+    "knownGames": ["Pharaoh Demo (1999)"]
+  }
+]

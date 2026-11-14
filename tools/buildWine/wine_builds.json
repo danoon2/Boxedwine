@@ -51,25 +51,33 @@
     {
       "checking": "checking for ft2build.h",
       "result": "yes",
-      "apt": ["libfreetype-dev:i386"],
+      "apt": [
+        "libfreetype-dev:i386"
+      ],
       "reason": "Official Debian 11 VM build had FreeType headers"
     },
     {
       "checking": "checking for -lEGL",
       "result": "libEGL.so.1",
-      "apt": ["libegl-dev:i386"],
+      "apt": [
+        "libegl-dev:i386"
+      ],
       "reason": "Required for Boxedwine EGL/OpenGL support"
     },
     {
       "checking": "checking for -lGL",
       "result": "libGL.so.1",
-      "apt": ["libgl-dev:i386"],
+      "apt": [
+        "libgl-dev:i386"
+      ],
       "reason": "Required for Boxedwine OpenGL support"
     },
     {
       "checking": "checking for -lvulkan",
       "result": "libvulkan.so.1",
-      "apt": ["libvulkan-dev:i386"],
+      "apt": [
+        "libvulkan-dev:i386"
+      ],
       "reason": "Required for Boxedwine Vulkan support"
     },
     {
@@ -81,127 +89,202 @@
     {
       "checking": "checking for -lgnutls",
       "result": "libgnutls.so.30",
-      "apt": ["libgnutls28-dev:i386"],
+      "apt": [
+        "libgnutls28-dev:i386"
+      ],
       "reason": "Official Debian 11 VM build had GnuTLS schannel support"
     },
     {
       "checking": "checking for gnutls_cipher_init",
       "result": "yes",
-      "apt": ["libgnutls28-dev:i386"],
+      "apt": [
+        "libgnutls28-dev:i386"
+      ],
       "reason": "Official Debian 11 VM build had GnuTLS cipher support"
     },
     {
       "checking": "checking for gst_pad_new in -lgstreamer-1.0",
       "result": "yes",
-      "apt": ["libgstreamer1.0-dev:i386", "libgstreamer-plugins-base1.0-dev:i386"],
+      "apt": [
+        "libgstreamer1.0-dev:i386",
+        "libgstreamer-plugins-base1.0-dev:i386"
+      ],
       "reason": "Official Debian 11 VM build had GStreamer codec support"
     },
     {
       "checking": "checking for -lSDL2",
       "result": "libSDL2-2.0.so.0",
-      "apt": ["libsdl2-dev:i386"],
+      "apt": [
+        "libsdl2-dev:i386"
+      ],
       "reason": "Official Debian 11 VM build had SDL support"
     },
     {
       "checking": "checking for -lfontconfig",
       "result": "libfontconfig.so.1",
-      "apt": ["libfontconfig-dev:i386"],
+      "apt": [
+        "libfontconfig-dev:i386"
+      ],
       "reason": "Official Debian 11 VM build had fontconfig support"
     }
   ],
   "operations": [
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_dsound_sse_resampler.patch",
       "reason": "Backport upstream DirectSound FIR and SSE resampling optimizations to reduce guest audio CPU cost"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_wined3d_partial_stream_output.patch",
       "reason": "Capture partial stream-output fields alongside rasterizer outputs so GPU cloth simulation in 3DMark Vantage can update its vertex buffers"
     },
     {
-      "when": { "min": "9.3", "max": "10.8" },
+      "when": {
+        "min": "9.3",
+        "max": "10.8"
+      },
       "cherry_pick": "6fee37c2b6eb486ae60d6af4dd6e45549be0b624",
       "reason": "Backport Wine fix used by previous Boxedwine 9.x and 10.x builds"
     },
     {
-      "when": { "min": "9.0", "max": "9.2" },
+      "when": {
+        "min": "9.0",
+        "max": "9.2"
+      },
       "revert": "a6e969560b02ca776f987319db37e6550a1ec",
       "reason": "Avoid regression seen on slower systems"
     },
     {
-      "when": { "min": "9.13", "max": "9.99" },
+      "when": {
+        "min": "9.13",
+        "max": "9.99"
+      },
       "revert": "54ca1ab607d3ff22a1f57a9561430f64c75f0916",
       "reason": "Avoid regression seen on slower systems"
     },
     {
-      "when": { "min": "6.23" },
+      "when": {
+        "min": "6.23"
+      },
       "apply_patch": "fixSetupApiFromCrashingDuringDllDetach.patch",
       "reason": "Avoid setupapi crash during DLL detach"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_explorer_startup_timeout.patch",
       "reason": "Allow Explorer to initialize during cold emulated startup before loading the display driver"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_dinput_foreground_hook_cleanup.patch",
       "reason": "Release DirectInput foreground hooks on explicit Unacquire so repeated game scenes do not exhaust the window hook chain"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_urlmon_localhost_file_uri.patch",
       "reason": "Normalize localhost file URLs as local paths so embedded browser pages such as the Cinebench EULA load correctly"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_wined3d_owndc_sysmem.patch",
       "reason": "Keep persistent GDI surface memory alive across DirectDraw flips, preventing the Daytona USA startup crash"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_wined3d_msaa_upload.patch",
+      "reason": "Upload CPU image data through a single-sample staging texture before blitting to MSAA targets, fixing D3D8 CopyRects and Steel Soldiers exit screens without disabling antialiasing"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_clipcursor_destroyed_popup.patch",
       "reason": "Deliver cursor-release notifications after a popup is destroyed so SimTower floor selection does not leave mouse coordinates clipped"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_surrogate_lifetime.patch",
       "reason": "Retire idle COM surrogates using DLL unload readiness while preserving active objects, factories and server locks"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_hlsl_static_functions.patch",
       "reason": "Backport vkd3d static HLSL function support, fixing 3DMark06 shader compilation while preserving declaration and entry-point checks"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_shader_disassembly_constants.patch",
       "reason": "Fix shader constant disassembly and scientific-notation reassembly for 3DMark06 HDR"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_shader_disassembly_color.patch",
       "reason": "Preserve indexed color declaration semantics during shader disassembly, fixing 3DMark06 Perlin Noise reassembly"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_hlsl_folding_passes.patch",
       "reason": "Separate HLSL folding from branch flattening before loop unrolling"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_hlsl_unroll_loops.patch",
       "reason": "Backport safe loop-unrolling traversal, fixing the 3DMark06 HDR compiler hang"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_hlsl_legacy_pow.patch",
       "reason": "Fold finite legacy HLSL powers before lowering them to logarithms"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_hlsl_texcubelod.patch",
       "reason": "Backport texCUBElod support for 3DMark06 HDR2 Deep Freeze"
     },
@@ -230,97 +313,154 @@
       "reason": "Dispatch immediate single-threaded resource map and unmap callbacks directly after upload-buffer and synchronization handling"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_wined3d_so_overflow_query.patch",
       "reason": "Implement native OpenGL stream-output overflow queries so 3DMark Vantage passes its Direct3D 10 startup check"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_d3d11_cpu_lockable.patch",
       "reason": "Report CPU-mappable resource formats so 3DMark Vantage accepts its staging textures"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_dxgi_fullscreen_activation.patch",
       "reason": "Activate the DXGI output window on entering fullscreen, matching Windows and avoiding 3DMark Vantage's attached-input-queue deadlock"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_ntdll_lfh_header_lock.patch",
       "reason": "Protect LFH backing-block header updates against neighboring allocations and frees; found while investigating 3DMark Vantage's intermittent heap crash"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_getdibits_header_size.patch",
       "reason": "Normalize GetDIBits output headers and palette placement like Windows, preventing 3DMark Vantage font-atlas heap corruption"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_mountmgr_cdrom_media_change.patch",
       "reason": "Re-read a CD-ROM drive's label and serial when its disc is ejected or swapped, report no media while it is empty and broadcast WM_DEVICECHANGE, for Boxedwine's multi-disc -cdrom swapping"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_win16_cdrom_readonly_open.patch",
       "reason": "Let legacy Win16 CD-ROM applications such as Robot City retry existing disc files read-only when they request read/write access, while keeping writes and ordinary disk access protected"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_user_copyrect16_fault_recovery.patch",
       "reason": "Match native Win16 USER's CopyRect fault recovery so invalid rectangle pointers do not crash legacy applications such as Robot City during shutdown"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_x11_paletted_direct_drawing.patch",
       "reason": "Preserve realized palettes in 8-bit X11 windows instead of reducing games such as Robot City to the fixed desktop colors"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_paletted_cursor_save_under.patch",
       "reason": "Preserve the active device palette in 8-bit cursor save/restore bitmaps, retain reserved color mappings, and honor SYSPAL_NOSTATIC so Robot City's software cursor does not corrupt the background"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_d3d9_swvp_float_constants.patch",
       "reason": "Store the extended software/mixed vertex float constants and render them through OpenGL uniform buffers, allowing The Sims 2 to initialize WineD3D"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_wined3d_disable_a8.patch",
       "reason": "Hide A8 render-target support by default before Windows Vista, with explicit overrides, so games such as The Sims 2 select compatible shadow formats"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_qasf_writer_creation.patch",
       "reason": "Allow WM ASF Writer availability checks and graph setup while explicitly rejecting unsupported movie encoding"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_qasf_seek_unconnected_pins.patch",
       "reason": "Backport Wine e33a8cc4: avoid dereferencing unconnected ASF output pins during seeking"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_qasf_destroy_reader_first.patch",
       "reason": "Backport Wine bbbd1d8a: stop and release WMReader before destroying ASF pins"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_qasf_seek_stopped_stream.patch",
       "reason": "Backport Wine a0a82c47: seeking must not start a stopped WMReader"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_qasf_reader_delivery_after_upstream.patch",
       "reason": "Deliver blocking ASF outputs independently, flush all outputs, and retain seek timestamps on top of the upstream reader fixes"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_qasf_renderer_clock.patch",
       "reason": "Let DirectShow renderers schedule presentation instead of holding interleaved ASF samples behind WMReader's independent clock"
     },
     {
-      "when": { "min": "11.0", "max": "11.0" },
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_builtin_module_alias.patch",
       "reason": "Preserve GetModuleHandle lookup for builtin modules reused through different WinSxS assembly paths"
     },
@@ -329,29 +469,51 @@
       "reason": "Keep Boxedwine's FAudio OpenAL threading fix"
     },
     {
-      "when": { "min": "5.21", "max": "6.18" },
+      "when": {
+        "min": "5.21",
+        "max": "6.18"
+      },
       "apply_patch": "wine6_font_race.patch",
       "reason": "Backport Wine font race fix"
     },
     {
-      "when": { "min": "6.19", "max": "6.21" },
+      "when": {
+        "min": "6.19",
+        "max": "6.21"
+      },
       "cherry_pick": "39fea6cd1eb175cddf3cbccc1fd09fec48da881e",
       "reason": "Backport Wine font race fix"
     },
     {
-      "when": { "min": "4.0", "max": "7.18" },
+      "when": {
+        "min": "4.0",
+        "max": "7.18"
+      },
       "apply_patch": "auto_refresh/auto_refresh6.patch",
       "reason": "Keep DirectDraw auto-refresh behavior for older Wine"
     },
     {
-      "when": { "max": "3.99" },
+      "when": {
+        "max": "3.99"
+      },
       "apply_patch": "auto_refresh/auto_refresh3.patch",
       "reason": "Keep DirectDraw auto-refresh behavior for older Wine"
     },
     {
-      "when": { "min": "4.1", "max": "4.1" },
+      "when": {
+        "min": "4.1",
+        "max": "4.1"
+      },
       "apply_patch": "ddraw_waitvblank.patch",
       "reason": "Keep current Boxedwine Wine 4.1 DirectDraw wait-vblank patch"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_dpnet_startup.patch",
+      "reason": "Match Windows peer capabilities and absent lobby connection behavior so MechCommander 2 starts normally"
     }
   ]
 }

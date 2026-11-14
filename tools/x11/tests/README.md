@@ -1,5 +1,35 @@
 # X11 protocol probes
 
+## Monochrome cursors
+
+Tropico's demo creates a monochrome cursor. Wine's X11 driver first looks up
+the depth-1 pixmap format to upload it. Boxedwine previously listed only formats
+with screen visuals, omitting depth 1; Wine therefore returned without defining
+the cursor. `monochrome-cursor.c` exercises that enumeration and the bitmap
+upload/readback with an odd width, padded rows and a nonzero hotspot.
+
+```sh
+gcc -m32 -O2 -Wall -Wextra -Werror monochrome-cursor.c -lX11 -o monochrome-cursor
+xvfb-run -a ./monochrome-cursor
+```
+
+Run the same executable inside Boxedwine with a disposable root, the probe's
+directory mounted at `/mnt/probes`, and `/mnt/probes/monochrome-cursor` as the
+program. `-novideo` suffices for this protocol test. On November 13, 2026, Xvfb
+and the fixed Windows x64 engine reported `MONOCHROME_CURSOR failures=0`; the
+original Windows engine reported one failure, `depth-1 formats=0`.
+
+The SDL backend also now converts source and mask pixels into the actual cursor
+image. Transparency follows the mask, so black cursors remain visible and an
+absent mask is fully opaque, as specified by
+[XCreatePixmapCursor](https://xorg.freedesktop.org/archive/X11R7.5/doc/man/man3/XCreateFontCursor.3.html).
+`make -C project/linux test-native-input` checks the pixels passed to SDL,
+foreground/background colors, partial-byte widths, row padding, hotspot,
+transparent and unmasked cursors, shared source/mask, caching, pixmap lifetime,
+and the existing forced-visible setting. These tests and the existing mouse
+capture tests pass. The user confirmed the corrected cursor during native
+Tropico gameplay. This is an engine change; filesystem 35 remains unchanged.
+
 ## Tiled and stippled rectangle fills
 
 `pattern-fill.c` checks the brush operations used when Robot City exits and Wine
