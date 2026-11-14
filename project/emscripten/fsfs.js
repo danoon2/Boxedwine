@@ -639,7 +639,10 @@
         };
 
         global.FSFS = FSFS;
-        FS.filesystems.FSFS = FSFS;
+        // FS.filesystems was removed in newer Emscripten; register only if present.
+        if (FS.filesystems) {
+            FS.filesystems.FSFS = FSFS;
+        }
         return FSFS;
     }
 
