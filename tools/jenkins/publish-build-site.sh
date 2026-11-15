@@ -8,12 +8,17 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD_RESULT="$(printf '%s' "${BUILD_RESULT:-SUCCESS}" | tr '[:lower:]' '[:upper:]')"
-SITE_DIR="$(mktemp -d)"
-BOXEDWINE_ZIP_URL="${BOXEDWINE_ZIP_URL:-https://boxedwine.org/v2/37/TinyCore15Wine11.0-web.zip}"
+WORK_DIR="$(mktemp -d)"
+SITE_DIR="$WORK_DIR/site"
+STATE_FILE="$WORK_DIR/site-state.json"
+STATE_TOOL="$ROOT_DIR/tools/jenkins/publish_site_state.py"
+mkdir -p "$SITE_DIR"
 DEMO_ROOT_CONFIG="${BUILD_SITE_DEMO_ROOT_CONFIG:-$ROOT_DIR/tools/buildWine/webgl_filesystems.json}"
 REMOTE_LOCK_ACQUIRED=0
 REMOTE_HOST="${BUILD_SITE_REMOTE%%:*}"
 REMOTE_PATH="${BUILD_SITE_REMOTE#*:}"
+# Quote a path as one POSIX-shell argument, including embedded apostrophes.
+REMOTE_SITE_QUOTED="'${REMOTE_PATH//\'/\'\\\'\'}'"
 
 remote_ssh() {
     if [ -n "${BUILD_SITE_SSH_KEY:-}" ]; then
@@ -27,7 +32,7 @@ cleanup() {
     local status=$?
     if [ "$REMOTE_LOCK_ACQUIRED" = "1" ]; then
         for attempt in 1 2 3; do
-            if remote_ssh "if [ -d '$REMOTE_PATH/.publish-lock' ]; then rmdir '$REMOTE_PATH/.publish-lock'; fi"; then
+            if remote_ssh "if [ -d $REMOTE_SITE_QUOTED/.publish-lock ]; then rmdir $REMOTE_SITE_QUOTED/.publish-lock; fi"; then
                 REMOTE_LOCK_ACQUIRED=0
                 break
             fi
@@ -43,7 +48,7 @@ cleanup() {
             fi
         fi
     fi
-    rm -rf "$SITE_DIR" || true
+    rm -rf "$WORK_DIR" || true
     exit "$status"
 }
 trap cleanup EXIT
@@ -56,12 +61,12 @@ if [ -n "${BUILD_SITE_SSH_KEY:-}" ]; then
 fi
 
 if [ "$REMOTE_HOST" != "$BUILD_SITE_REMOTE" ]; then
-    remote_ssh "mkdir -p '$REMOTE_PATH'"
+    remote_ssh "mkdir -p $REMOTE_SITE_QUOTED"
 
     for attempt in $(seq 1 60); do
-        if remote_ssh "if mkdir '$REMOTE_PATH/.publish-lock' 2>/dev/null; then
+        if remote_ssh "if mkdir $REMOTE_SITE_QUOTED/.publish-lock 2>/dev/null; then
             exit 0
-        elif [ -d '$REMOTE_PATH/.publish-lock' ]; then
+        elif [ -d $REMOTE_SITE_QUOTED/.publish-lock ]; then
             exit 75
         else
             echo 'Could not create remote publish lock directory.' >&2
@@ -87,11 +92,6 @@ if [ "$REMOTE_HOST" != "$BUILD_SITE_REMOTE" ]; then
     fi
 fi
 
-# Keep coordination state out of the mirrored site and preserve it during --delete.
-# A failed download must stop publication: uploading a partial mirror could delete
-# existing builds from the server.
-rsync -az --exclude=/.publish-lock "${SSH_ARGS[@]}" "${BUILD_SITE_REMOTE}/" "$SITE_DIR/"
-
 ARTIFACT_ARGS=()
 if [ "$BUILD_RESULT" = SUCCESS ] && [ -n "${BUILD_SITE_ARTIFACT:-}" ] && [ -f "$BUILD_SITE_ARTIFACT" ]; then
     ARTIFACT_ARGS+=(--artifact "$BUILD_SITE_ARTIFACT")
@@ -107,7 +107,7 @@ if [ "$BUILD_RESULT" != SUCCESS ] && [ "${#LOG_ARGS[@]}" = 0 ]; then
 fi
 
 DEMO_ARGS=()
-DEMO_SOURCE="${BUILD_SITE_DEMOS_SOURCE:-$SITE_DIR/demos/apps}"
+SNAPSHOT_ARGS=()
 # Jenkins unstashes the web build into project/linux/Deploy/Web before this
 # script runs. The Emscripten build stage populates these dirs from the
 # release, multiThreaded, jit, and multiThreadedJit targets.
@@ -123,20 +123,31 @@ elif [ -d "$SINGLE_THREADED_DIR" ] &&
     [ -d "$MULTI_THREADED_DIR" ] &&
     [ -d "$SINGLE_THREADED_JIT_DIR" ] &&
     [ -d "$MULTI_THREADED_JIT_DIR" ]; then
-    mkdir -p "$DEMO_SOURCE"
-    wget -O "$DEMO_SOURCE/TinyCore15Wine11.0-web.zip" "$BOXEDWINE_ZIP_URL"
+    SNAPSHOT_ARGS+=(--demos)
     DEMO_ARGS+=(
-        --demo-source "$DEMO_SOURCE"
+        --published-demo-state "$STATE_FILE"
         --demo-root-config "$DEMO_ROOT_CONFIG"
         --single-threaded-dir "$SINGLE_THREADED_DIR"
         --multi-threaded-dir "$MULTI_THREADED_DIR"
         --single-threaded-jit-dir "$SINGLE_THREADED_JIT_DIR"
         --multi-threaded-jit-dir "$MULTI_THREADED_JIT_DIR"
     )
+    if [ -n "${BOXEDWINE_ZIP_URL:-}" ]; then
+        DEMO_ARGS+=(--demo-root-url "$BOXEDWINE_ZIP_URL")
+    fi
 else
     echo "Demo site inputs are not complete; skipping demo page update."
     echo "Expected: $SINGLE_THREADED_DIR, $MULTI_THREADED_DIR, $SINGLE_THREADED_JIT_DIR, and $MULTI_THREADED_JIT_DIR"
 fi
+
+# Read only branch/build JSON and demo inventory. ZIP payloads, old runtimes,
+# artifacts and screenshots stay on the server. The helper runs from stdin.
+if [ "$REMOTE_HOST" != "$BUILD_SITE_REMOTE" ]; then
+    remote_ssh "python3 - snapshot --site $REMOTE_SITE_QUOTED ${SNAPSHOT_ARGS[*]}" < "$STATE_TOOL" > "$STATE_FILE"
+else
+    python3 "$STATE_TOOL" snapshot --site "$BUILD_SITE_REMOTE" "${SNAPSHOT_ARGS[@]}" > "$STATE_FILE"
+fi
+python3 "$STATE_TOOL" prepare --state "$STATE_FILE" --site "$SITE_DIR"
 
 "$ROOT_DIR/tools/jenkins/build_site.py" \
     --site-dir "$SITE_DIR" \
@@ -147,8 +158,17 @@ fi
     --commit "${GIT_COMMIT:-}" \
     --commit-url "${GIT_URL:-}" \
     --build-url "${BUILD_URL:-}" \
+    --keep "${BUILD_SITE_KEEP:-5}" \
     "${ARTIFACT_ARGS[@]}" \
     "${LOG_ARGS[@]}" \
     "${DEMO_ARGS[@]}"
 
-rsync -az --delete --exclude=/.publish-lock "${SSH_ARGS[@]}" "$SITE_DIR/" "$BUILD_SITE_REMOTE/"
+# This is a partial site, so never use rsync --delete. Only directories explicitly
+# retired by the generator are removed, after a successful upload, under the lock.
+RETIRED="$(python3 "$STATE_TOOL" plan --state "$STATE_FILE" --site "$SITE_DIR")"
+rsync -az "${SSH_ARGS[@]}" "$SITE_DIR/" "$BUILD_SITE_REMOTE/"
+if [ "$REMOTE_HOST" != "$BUILD_SITE_REMOTE" ]; then
+    remote_ssh "python3 - prune --site $REMOTE_SITE_QUOTED --paths-base64 '$RETIRED'" < "$STATE_TOOL"
+else
+    python3 "$STATE_TOOL" prune --site "$BUILD_SITE_REMOTE" --paths-base64 "$RETIRED"
+fi

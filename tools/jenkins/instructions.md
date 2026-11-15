@@ -177,12 +177,12 @@ wsl bash -lc 'cd /mnt/c/BoxedwineGPT && tools/jenkins/local-build-site.sh --dry-
 ## Useful Environment Variables
 
 ```text
-BUILD_SITE_REMOTE          rsync source for the existing build site
+BUILD_SITE_REMOTE          remote build site (SSH host:path for publishing)
 BUILD_SITE_SSH_KEY         SSH key used with BUILD_SITE_REMOTE
 BUILD_SITE_MIRROR_URL      fallback public mirror URL
 LOCAL_BUILD_SITE_DIR       local generated site directory
-BUILD_SITE_DEMOS_SOURCE    source directory for demo zips and demos.json
-BOXEDWINE_ZIP_URL          standard demo filesystem URL
+BUILD_SITE_DEMOS_SOURCE    local-build-site.sh source directory for demo ZIPs and demos.json
+BOXEDWINE_ZIP_URL          local filesystem download URL; optional versioned URL override for publishing
 BUILD_SITE_DEMO_ROOT_CONFIG
                            pinned filesystem manifest used to validate demo roots
 BUILD_SITE_SINGLE_THREADED_DIR
@@ -241,7 +241,31 @@ wsl bash -lc 'ps -ef | grep "project/emscripten/server.mjs" | grep -v grep'
 
 ## Jenkins Publish Script
 
-`publish-build-site.sh` is the Jenkins-side publishing workflow. It syncs the remote site down, updates the build/demo pages, and syncs the result back up to `BUILD_SITE_REMOTE`.
+`publish-build-site.sh` is the Jenkins-side publishing workflow. It reads a small
+metadata snapshot from `BUILD_SITE_REMOTE`, generates the new build pages locally,
+and uploads the new runners, artifacts, logs and pages. It does not mirror old
+build payloads or download/copy demo and filesystem ZIPs for each build.
+
+The publishing host needs Python 3 as well as SSH/rsync. The standalone
+`publish_site_state.py` helper runs over SSH stdin, without installing a script
+on the host. It reads branch/build JSON, `demos/apps/demos.json`, ZIP directory
+entries (for app/overlay detection and executable fallback), and screenshot
+hashes. Archive payloads remain on the server. Failed builds skip demo inventory.
+
+New demo launch links use the existing shared `demos/apps/<name>.zip` archives
+and images. The filesystem URL defaults to the version and filename pinned in
+`tools/buildWine/webgl_filesystems.json`, currently
+`https://boxedwine.org/v2/37/TinyCore15Wine11.0-web.zip`. Each build records that
+specific URL; updating the release pin affects subsequent builds only. To keep
+an older demo payload available, publish a changed demo under a new filename
+and update `demos.json`; overwriting a shared filename affects builds linking to it.
+
+Publication uploads a partial site and never uses `rsync --delete`. Under the
+existing publication lock, it records which branch/build directories were
+retired by pruning, uploads successfully, then removes only those directories.
+Shared assets and retained historical builds are preserved. `BUILD_SITE_KEEP`
+defaults to five retained builds per branch. Existing per-build archive copies
+are not migrated; they disappear through normal build retention.
 
 The root `Jenkinsfile` packages artifacts only after a successful build. Its
 `post/always` handler still publishes after an earlier test or compile failure,
@@ -267,6 +291,7 @@ Regression checks (the shell tests require POSIX bash and rsync):
 ```bash
 python3 tools/jenkins/test_build_site.py -v
 python3 tools/jenkins/test_publish_build_site.py -v
+python3 tools/jenkins/test_publish_site_state.py -v
 groovy tools/jenkins/test_publish_pipeline.groovy
 ```
 
@@ -275,7 +300,8 @@ Pipeline steps. It covers early failures, missing stashes, ZIP/archive failures,
 successful builds, and a publishing worker without a checkout. It makes no
 network connections and does not start a Jenkins build.
 
-Both scripts download the same filesystem:
+The local development script still downloads and validates the filesystem for
+offline/local demo testing:
 
 ```text
 https://boxedwine.org/v2/37/TinyCore15Wine11.0-web.zip
@@ -287,14 +313,14 @@ and save it as:
 demos/apps/TinyCore15Wine11.0-web.zip
 ```
 
-The publish workflow passes the same pinned manifest to `build_site.py`. Root validation finishes
-before the generated site is changed and before `rsync` uploads it, so an invalid filesystem cannot
-be published through this script.
+The Jenkins publisher uses the pinned manifest's archive and WineD3D identities,
+without opening or revalidating the released filesystem on each build. Release
+archives must be validated when published and kept unchanged at their versioned
+URLs. Locally supplied runtime files are hashed and their copies are checked.
 
-`BOXEDWINE_ZIP_URL` can override the download source for local validation before
-uploading a release. `BUILD_SITE_DEMO_ROOT_CONFIG` selects a different manifest.
-The GDI ZIP download is no longer needed. Upload the exact validated web v35 archive
-before running either script against the default URL.
+`BOXEDWINE_ZIP_URL` can override the download source for local validation. For
+Jenkins it changes only the launch URL and must retain the pinned version directory
+and filename. `BUILD_SITE_DEMO_ROOT_CONFIG` selects a different manifest.
 
 Newly generated demo builds retain `graphics-builds.json` beside their build
 index. Every launch link includes a `buildid` that identifies the supplied
@@ -303,12 +329,11 @@ WebGL `wined3d.dll`. The full SHA-256 values remain in that JSON file. An
 unknown source commit or dirty state stays unknown; a commit label alone
 does not establish the provenance of an existing runtime binary.
 
-The generator verifies the launch files against those identities. Each new
-build keeps its own root and application ZIPs, and the mode directories link
-to those preserved copies where supported. Updating `demos/apps` for a later
-build therefore cannot change the archives used by an earlier build created
-with this generator. Existing historical sites are not rewritten or assigned
-retroactive identities. The normal `--keep` pruning policy still applies.
+For published demos, `graphics-builds.json` records `filesystemSource.url` and
+`verification: release-manifest` to distinguish the pinned release metadata from
+an archive examined locally. The local development generator continues to
+validate and preserve its own root/application ZIPs. Existing historical sites
+are not rewritten or assigned retroactive identities.
 
 ## Wine graphics CI
 

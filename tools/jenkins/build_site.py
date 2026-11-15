@@ -11,7 +11,9 @@ import sys
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import parse_qsl, quote
+from urllib.parse import parse_qsl, quote, unquote, urlsplit
+
+from publish_site_state import program_from_names
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -152,28 +154,7 @@ def link_or_copy(source, destination):
 def find_demo_program(zip_path):
     with zipfile.ZipFile(zip_path) as archive:
         names = [name for name in archive.namelist() if not name.endswith("/")]
-
-    programs = [name for name in names if name.lower().endswith((".bat", ".exe"))]
-    if not programs:
-        return ""
-
-    bat_files = [name for name in programs if name.lower().endswith(".bat")]
-    if bat_files:
-        return sorted(bat_files, key=lambda name: (name.count("/"), len(name), name.lower()))[0]
-
-    stem = zip_path.stem.lower()
-    exact_stem_matches = [
-        name for name in programs
-        if Path(name).stem.lower() == stem
-    ]
-    if exact_stem_matches:
-        return sorted(exact_stem_matches, key=lambda name: (name.count("/"), len(name), name.lower()))[0]
-
-    top_level = [name for name in programs if "/" not in name]
-    if top_level:
-        return sorted(top_level, key=lambda name: (len(name), name.lower()))[0]
-
-    return sorted(programs, key=lambda name: (name.count("/"), len(name), name.lower()))[0]
+    return program_from_names(names, zip_path.stem)
 
 
 def is_overlay_demo(zip_path):
@@ -268,6 +249,10 @@ def title_from_zip(zip_path):
 
 def load_demo_manifest(demo_source):
     manifest = read_json(Path(demo_source) / "demos.json", {})
+    return demo_manifest_entries(manifest)
+
+
+def demo_manifest_entries(manifest):
     if isinstance(manifest, list):
         return {
             item.get("zip", ""): item
@@ -844,7 +829,7 @@ def render_build_demo_html(build_dir, branch, build_number, demos, runners):
 def render_demo_cards(demos, url_builder, image_prefix, runners):
     cards = []
     for demo in demos:
-        image_url = f"{image_prefix}/{demo['stem']}.png"
+        image_url = demo.get("imageUrl") or f"{image_prefix}/{demo['stem']}.png"
         if demo.get("imageVersion"):
             image_url += "?v=" + demo["imageVersion"]
         image = html.escape(image_url)
@@ -1056,6 +1041,7 @@ def demo_launch_url(branch_slug, build_number, mode, demo):
     if launch_program:
         params.append(("p", launch_program))
     params.extend(url_params)
+    params = published_asset_params(params, demo)
     if mode in demo.get("buildIdentities", {}):
         params = [(key, value) for key, value in params if key != "buildid"]
         params.append(("buildid", demo["buildIdentities"][mode]))
@@ -1077,11 +1063,104 @@ def build_demo_launch_url(mode, demo):
     if launch_program:
         params.append(("p", launch_program))
     params.extend(url_params)
+    params = published_asset_params(params, demo)
     if mode in demo.get("buildIdentities", {}):
         params = [(key, value) for key, value in params if key != "buildid"]
         params.append(("buildid", demo["buildIdentities"][mode]))
     query = "&".join(f"{quote(key, safe='')}={quote(value, safe='/:._-')}" for key, value in params)
     return f"{mode}/boxedwine.html?{query}"
+
+
+def published_asset_params(params, demo):
+    if "archiveBase" not in demo:
+        return params
+    params = [(key, value) for key, value in params
+              if key not in {"rootBase", "appBase", "overlayBase"}]
+    return params + [("rootBase", demo["rootBase"]),
+                     ("appBase", demo["archiveBase"]),
+                     ("overlayBase", demo["archiveBase"])]
+
+
+def published_demo_inputs(state_path, config_path, public_url, runners, *, root_url=None, commit=None):
+    """Use server catalogue metadata and release pins; never open remote ZIPs locally."""
+    state = json.loads(Path(state_path).read_text())
+    if state.get("schemaVersion") != 1 or "archives" not in state:
+        raise ValueError("Published demo inventory is missing")
+    config = webgl_filesystem.load_config(Path(config_path))
+    webgl_filesystem.verify_patch_series(config)
+    profiles = [p for p in config["profiles"].values() if p["filename"] == DEFAULT_DEMO_ROOT_ZIP]
+    if len(profiles) != 1:
+        raise ValueError("Exactly one web filesystem release is required")
+    profile = profiles[0]
+    filename = profile["filename"]
+    version = profile["filesystem_version"]
+    root_url = root_url or f"https://boxedwine.org/v2/{quote(version)}/{quote(filename)}"
+    root_parts, public_parts = urlsplit(root_url), urlsplit(public_url)
+    for parts in (root_parts, public_parts):
+        if parts.scheme not in {"https", "http"} or not parts.netloc or parts.query or parts.fragment:
+            raise ValueError("Published asset locations must be absolute HTTP(S) URLs without queries/fragments")
+    if unquote(root_parts.path).split('/')[-2:] != [version, filename]:
+        raise ValueError("Filesystem URL must name the pinned version directory and ZIP")
+    root_base = root_url.rsplit('/', 1)[0] + '/'
+    public_url = public_url.rstrip('/')
+    manifest = demo_manifest_entries(state["demoManifest"])
+    demos = []
+    for asset in state["archives"]:
+        name = normalize_demo_root(asset["zip"], "")
+        entry = manifest.get(name, {})
+        old_root = normalize_demo_root(entry.get("root", entry.get("rootZip")), filename)
+        if old_root not in {filename, FULL_DEMO_ROOT_ZIP, LEGACY_DEMO_ROOT_ZIP,
+                            PREVIOUS_DEMO_ROOT_ZIP, PREVIOUS_GDI_ROOT_ZIP,
+                            "boxedwine.2.zip", "boxedwine.gdi.2.zip"}:
+            raise ValueError("Demo references an unpinned filesystem: " + old_root)
+        renderer = entry.get("directDrawRenderer")
+        if renderer is None and old_root.startswith('boxedwine.gdi.'):
+            renderer = 'gdi'
+        zip_param = entry.get("zipParam", asset["zipParam"])
+        if zip_param not in {"app", "overlay"}:
+            raise ValueError("Invalid demo ZIP parameter: " + str(zip_param))
+        demos.append({"zip": name, "stem": Path(name).stem,
+            "title": entry.get("title") or title_from_zip(Path(name)),
+            "description": entry.get("description", ""),
+            "program": normalize_demo_program(entry.get("exe") or entry.get("program") or asset["program"]),
+            "root": filename, "rootBase": root_base,
+            "archiveBase": public_url + '/demos/apps/', "zipParam": zip_param,
+            "directDrawRenderer": renderer,
+            "windowsVersion": entry.get("windowsVersion", entry.get("winVersion")),
+            "urlParams": normalize_demo_url_params(entry.get("urlParams", entry.get("extraParams"))),
+            "imageUrl": public_url + '/' + quote(asset.get("imagePath", 'demos/images/' + Path(name).stem + '.png'), safe='/'),
+            "imageVersion": asset.get("imageVersion")})
+    dll = config["dlls"]["wined3d.dll"]
+    filesystem = {"archive": {"bytes": profile["size"], "sha256": profile["sha256"]},
+                  "webgl_wined3d": {"entry": webgl_build_identity.WINE_DLL,
+                                    "bytes": dll["size"], "sha256": dll["sha256"]}}
+    identities = {runner["mode"]: {filename: webgl_build_identity.build_identity(
+        mode=runner["mode"], runtime=webgl_build_identity.runtime_identity(runner["source"]),
+        filesystem=filesystem, commit=commit)} for runner in runners}
+    return demos, identities, root_url
+
+
+def update_published_demos(site_dir, branch, branch_slug, build_number, runners, keep,
+                           demos, identities, root_url):
+    """Publish runners and pages that reference shared archives already on the host."""
+    demos = [{**demo, "buildIdentities": {mode: roots[demo["root"]]["id"]
+              for mode, roots in identities.items()}} for demo in demos]
+    build_dir = site_dir / 'demos/build' / branch_slug / str(build_number)
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+    build_dir.mkdir(parents=True)
+    for runner in runners:
+        target = build_dir / runner["mode"]
+        copy_tree_contents(runner["source"], target, skip_zip=True)
+        actual = webgl_build_identity.runtime_identity(target)
+        if any(identity["runtime"] != actual for identity in identities[runner["mode"]].values()):
+            raise ValueError("Demo runtime changed while copying")
+    write_json(build_dir / 'graphics-builds.json', {"schema_version": 1, "builds": identities,
+        "filesystemSource": {"url": root_url, "verification": "release-manifest"},
+        "demoSource": "shared published archives"})
+    render_build_demo_html(build_dir, branch, build_number, demos, runners)
+    prune_old_demo_builds(site_dir, branch_slug, keep)
+    render_demos_html(site_dir, branch, branch_slug, build_number, demos, runners)
 
 
 def demo_runners_from_args(args):
@@ -1371,6 +1450,9 @@ def main():
     parser.add_argument("--artifact", action="append", default=[])
     parser.add_argument("--log")
     parser.add_argument("--demo-source")
+    parser.add_argument("--published-demo-state", type=Path,
+                        help="server metadata snapshot; reference existing assets without downloading ZIPs")
+    parser.add_argument("--demo-root-url", help="versioned filesystem URL (defaults to the release pin)")
     parser.add_argument("--single-threaded-dir")
     parser.add_argument("--multi-threaded-dir")
     parser.add_argument("--single-threaded-jit-dir")
@@ -1393,6 +1475,17 @@ def main():
     demo_runners = demo_runners_from_args(args) if successful else []
     discovered_demos = None
     build_identities = None
+    if args.demo_source and args.published_demo_state:
+        parser.error("Choose local demo archives or published demo metadata")
+    if args.keep < 1:
+        parser.error("--keep must be positive")
+    if args.published_demo_state and demo_runners:
+        try:
+            discovered_demos, build_identities, root_url = published_demo_inputs(
+                args.published_demo_state, args.demo_root_config, args.public_url, demo_runners,
+                root_url=args.demo_root_url, commit=args.commit)
+        except (OSError, ValueError, webgl_filesystem.ValidationError) as error:
+            parser.exit(1, f"error: published demo metadata failed validation: {error}\n")
     if args.validate_demo_roots_only and not args.demo_source:
         parser.error("--validate-demo-roots-only requires --demo-source")
     if args.demo_source and (demo_runners or args.validate_demo_roots_only):
@@ -1459,7 +1552,10 @@ def main():
         },
     )
 
-    if args.demo_source and demo_runners:
+    if args.published_demo_state and demo_runners:
+        update_published_demos(site_dir, args.branch, branch_slug, args.build_number,
+                              demo_runners, args.keep, discovered_demos, build_identities, root_url)
+    elif args.demo_source and demo_runners:
         update_demos(
             site_dir,
             args.branch,
