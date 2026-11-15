@@ -157,19 +157,6 @@ struct LibraryView: View {
                                 }.font(.callout).padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
                             }
                             if store.importing { ImportProgressView(store: store) }
-                            ForEach(store.launchingApps) { app in
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(alignment: .firstTextBaseline) {
-                                        Text("Launching \(app.name)…").fontWeight(.medium).lineLimit(2)
-                                        Spacer(minLength: 8)
-                                        Button("Stop") { store.stop(app) }.disabled(!store.canEdit)
-                                            .accessibilityLabel("Stop launching \(app.name)")
-                                    }
-                                    ProgressView().progressViewStyle(.linear)
-                                        .accessibilityLabel("Launching \(app.name)")
-                                }
-                                .padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
-                            }
                             if store.visibleApps.isEmpty {
                                 emptyLibrary
                             } else {
@@ -369,6 +356,14 @@ private struct LibraryAppCard: View {
             .background(sharedDropTarget || store.selectedID == app.id ? Color.accentColor.opacity(0.13) : Color.clear,
                         in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(store.selectedID == app.id ? Color.accentColor.opacity(0.6) : .clear))
+            .overlay(alignment: .bottom) {
+                if store.isLaunching(app) {
+                    ProgressView().progressViewStyle(.linear)
+                        .padding(.horizontal, 14).padding(.bottom, 6)
+                        .accessibilityLabel("Launching \(app.name)")
+                        .allowsHitTesting(false)
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -409,6 +404,16 @@ private struct LibraryAppCard: View {
             Button(store.removalActionTitle) { store.requestRemoval(app) }
                 .disabled(!store.canModify(app))
                 .help(store.removalActionHelp)
+        }
+        // Keep this outside the card button and its double-click gesture.
+        // Neither overlay changes the card's layout when launch state changes.
+        .overlay(alignment: .topTrailing) {
+            if store.isLaunching(app) {
+                Button("Stop") { store.stop(app) }
+                    .controlSize(.small).disabled(!store.canEdit)
+                    .accessibilityLabel("Stop launching \(app.name)")
+                    .padding(14)
+            }
         }
     }
 }
