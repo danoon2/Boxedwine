@@ -13,6 +13,7 @@ public sealed record DemoRecipe(DemoOrigin Origin, string Name, string Summary, 
 {
     public List<string> AppArguments { get; init; } = [];
     public List<string> DiscImages { get; init; } = [];
+    public bool LegacyJavaFonts { get; init; }
     public CatalogWine? SelectWine(IEnumerable<CatalogWine> wines) => wines.Where(w => WineVersion == null || w.WineVersion == WineVersion)
         .OrderByDescending(w => Version.Parse(w.WineVersion)).FirstOrDefault();
     public string WineDescription(IEnumerable<CatalogWine> wines) => SelectWine(wines) is CatalogWine selected
@@ -32,7 +33,7 @@ public static class Demos
     internal static List<DemoRecipe> Parse(XDocument xml, string directory, bool allowExternal = false)
     {
         var root = xml.Root ?? throw new InvalidDataException("The demo catalog is empty.");
-        if (root.Name != "XML" || !int.TryParse((string?)root.Attribute("schemaVersion"), out int schema) || schema is < 1 or > 9 || string.IsNullOrEmpty((string?)root.Attribute("release"))) throw new InvalidDataException("Unsupported demo catalog version.");
+        if (root.Name != "XML" || !int.TryParse((string?)root.Attribute("schemaVersion"), out int schema) || schema is < 1 or > 10 || string.IsNullOrEmpty((string?)root.Attribute("release"))) throw new InvalidDataException("Unsupported demo catalog version.");
         string release = (string)root.Attribute("release")!;
         var recipes = new List<DemoRecipe>(); var ids = new HashSet<string>();
         foreach (var item in root.Elements())
@@ -45,7 +46,7 @@ public static class Demos
             string id = Field("ID"), name = Field("Name"), hash = Field("FileSHA256"), shortcut = Field("ShortcutExe"), url = Field("FileURL");
             if (!Regex.IsMatch(id, "^[a-z0-9][a-z0-9-]{0,63}$") || !ids.Add(id) || name.Length is 0 or > 256 || !Regex.IsMatch(hash, "^[a-f0-9]{64}$") ||
                 shortcut.Contains('/') || !shortcut.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !Uri.TryCreate(url, UriKind.Absolute, out var address) || !(allowExternal ? PreparedAppSource.ValidUrl(address) : Packages.TrustedUrl(address)) ||
-                !long.TryParse(Field("FileSizeBytes"), out long bytes) || bytes is <= 0 or > MaximumPackageBytes || !(Field("InstallType") is "Zip" or "Installer" || allowExternal && Field("InstallType") == "Disc")) throw new InvalidDataException("Invalid demo identity, package, or install recipe.");
+                !long.TryParse(Field("FileSizeBytes"), out long bytes) || bytes is <= 0 or > MaximumPackageBytes || !(Field("InstallType") is "Zip" or "Installer" || (allowExternal || schema >= 10) && Field("InstallType") == "Disc")) throw new InvalidDataException("Invalid demo identity, package, or install recipe.");
             _ = SafeFiles.Beneath(directory, shortcut);
             if (Field("Icon").Length > 0 && !(allowExternal && CollectionIcons.IsRemote(Field("Icon")))) _ = SafeFiles.Beneath(directory, Field("Icon"));
             foreach (var unsupported in new[] { "Options", "InstallOptions", "Options_Mac", "InstallOptions_Mac" }) if (Field(unsupported).Length > 0) throw new InvalidDataException("Unsupported legacy options in demo " + name);
@@ -57,10 +58,12 @@ public static class Demos
             // Arguments are literal: preserve whitespace and do not apply Help's escape expansion.
             var appArguments = CollectionSnapshot.ParseAppArguments((string?)item.Element("AppArguments"));
             bool disc = Field("InstallType") == "Disc";
-            if (disc ? !allowExternal || !address.LocalPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || Field("InstallExe").Length > 0
+            if (disc ? !(allowExternal || schema >= 10) || !address.LocalPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || Field("InstallExe").Length > 0
                      : item.Element("CDROMImages") != null)
-                throw new InvalidDataException("CDROMImages requires a Disc collection ZIP without InstallExe.");
+                throw new InvalidDataException("CDROMImages requires a Disc ZIP without InstallExe.");
             var images = disc ? CdromImages.ArchivePaths((string?)item.Element("CDROMImages")) : [];
+            if (item.Element("LegacyJavaFonts") != null && schema < 10) throw new InvalidDataException("LegacyJavaFonts requires schema 10.");
+            bool legacyJavaFonts = Boolean("LegacyJavaFonts") == true;
             if (dllOverrides != null)
             {
                 if (schema < 8 || dllOverrides.Length is 0 or > 1024 || dllOverrides.Any(char.IsControl)) throw new InvalidDataException("WineDllOverrides requires schema 8 and a nonempty single-line value of at most 1024 characters.");
@@ -78,7 +81,7 @@ public static class Demos
             recipes.Add(new(new(id, release, hash, shortcut), name, Field("Summary"), Field("Help").Replace("\\n", "\n").Replace("\\t", "    "), Field("Icon"), url, bytes,
                 Field("InstallType"), Optional("InstallExe"), wineVersion, settings, Optional("Glide"), Optional("CNCDDrawRenderer"), Boolean("CNCDDrawUncapped") == true, Optional("CNCDDrawFakeMode"), dllOverrides, allowExternal)
             {
-                AppArguments = appArguments, DiscImages = images
+                AppArguments = appArguments, DiscImages = images, LegacyJavaFonts = legacyJavaFonts
             });
         }
         return recipes;
@@ -132,6 +135,7 @@ public static class Demos
             }
             using (var zip = ZipFile.OpenRead(repository.PackagePath(wine)))
             {
+                if (demo.LegacyJavaFonts) PrepareLegacyJavaFonts(zip, repository.Root(app));
                 if (demo.Glide != null && (demo.Glide != "psVoodoo" || zip.GetEntry(LibraryRepository.DriveC + "/windows/system32/glide2x.dll") == null)) throw new InvalidDataException("This demo needs a Wine package with built-in Glide support.");
                 if (demo.Settings.CncDDraw == true)
                 {
@@ -147,6 +151,24 @@ public static class Demos
             cancellation.ThrowIfCancellationRequested(); repository.Commit(operation); return app;
         }
         catch { if (!operation.Ready) repository.Discard(operation); throw; }
+    }
+    // Java 1.3 opens these Windows filenames directly, bypassing Wine's font
+    // substitution. Use Wine's own fonts; never copy fonts from the host OS.
+    internal static void PrepareLegacyJavaFonts(ZipArchive wine, string root)
+    {
+        var fonts = new Dictionary<string, string>();
+        foreach (var (family, stem) in new[] { ("Sans", "arial"), ("Mono", "cour"), ("Serif", "times") })
+            foreach (var (style, suffix) in new[] { ("Regular", ""), ("Bold", "bd"), ("Italic", "i"), ("BoldItalic", "bi") })
+                fonts.Add(stem + suffix + ".ttf", "usr/local/share/fonts/liberation/Liberation" + family + "-" + style + ".ttf");
+        foreach (string name in new[] { "symbol.ttf", "wingding.ttf" }) fonts.Add(name, "opt/wine/share/wine/fonts/" + name);
+        foreach (var (name, source) in fonts)
+        {
+            var entry = wine.GetEntry(source) ?? throw new InvalidDataException("Wine package is missing the font: " + source);
+            if (entry.Length is <= 0 or > 2 * 1024 * 1024) throw new InvalidDataException("Invalid Wine font: " + source);
+            string target = SafeFiles.Beneath(root, LibraryRepository.DriveC + "/windows/fonts/" + name);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            using var output = new FileStream(target, FileMode.CreateNew); using var input = entry.Open(); input.CopyTo(output);
+        }
     }
     public static string ConfigureCnc(string ini, DemoRecipe demo)
     {

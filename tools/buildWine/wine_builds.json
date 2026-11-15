@@ -514,6 +514,14 @@
       },
       "apply_patch": "wine11_dpnet_startup.patch",
       "reason": "Match Windows peer capabilities and absent lobby connection behavior so MechCommander 2 starts normally"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_desktop_close_timer.patch",
+      "reason": "Preserve the unused-desktop close timer when explorer starts its own threads, allowing startup cancellation to finish without leaving Wine services running"
     }
   ]
 }

@@ -15,9 +15,10 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
-Revision 37's three filesystem ZIPs are published under `/v2/37/`. Do not upload
+Revision 38's full and web filesystem ZIPs are published under `/v2/38/`.
+The unchanged base remains at `/v2/37/TinyCore15WineBase.zip`. Do not upload
 to boxedwine.org automatically; publication requires an explicit user request.
-Its base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
+The base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
 records inherited from older packages, are kept in separate release bundles,
 not in the runtime filesystems. Historical published ZIPs remain unchanged.
 
@@ -27,6 +28,29 @@ non-documentation parent member and its permissions. `runtime_documents.py`
 defines the shared packaging exclusions. `*-records.zip` contains excluded
 records; `TinyCore15WineBase-avi-sources.zip` contains the parser source and recipe.
 `probes/avi-playback.c` checks demuxing, duration, a decoded frame and completion.
+
+Wine 11 includes
+[`wine11_desktop_close_timer.patch`](patches/wine11_desktop_close_timer.patch)
+in new builds. It preserves the pending desktop-close timer when explorer starts
+its own worker threads after the last application exits. A new application still
+cancels the timer. This fixes cancellation during desktop initialization; it
+does not increase a shutdown timeout or forcibly terminate Wine services.
+Revision 38 includes this patch in both full and web ZIPs; v37 is unchanged.
+
+[`probes/test_desktop_close_timer.py`](probes/test_desktop_close_timer.py)
+executes the actual Wine server timer code with a deterministic timer queue.
+Run it under WSL/Linux with `--wine-source <configured Wine tree>` (and
+`--wine-build <build tree>` for an out-of-tree build). It checks manager threads,
+new application arrival, system threads, and the final `WM_CLOSE`. The native UI's
+`--runtime-only --window-check` tests also require first-frame cancellation to
+return exit code 0 using the candidate filesystem.
+
+Revision 38 qualification found an additional intermittent first-frame
+cancellation hang in the Windows runtime. The timer regression and direct Linux
+Wine comparison pass, as do normal shutdown and multiple Windows repeat runs,
+but some Windows runs still require forced termination. Keep the strict
+integration check; the timer patch does not establish that every startup
+cancellation path is fixed.
 
 Wine 11 includes
 [`wine11_wined3d_msaa_upload.patch`](patches/wine11_wined3d_msaa_upload.patch).
@@ -85,7 +109,7 @@ v53 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapsh
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 36. Its `changes.txt` comes from
+The filesystem revision is 38. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -108,7 +132,7 @@ Keep `webgl_filesystems.json` as the single current manifest and update it in
 place for each release. Older release and experimental manifests are available
 in Git history; paths recorded in old validation reports refer to those historical files.
 The current configuration pins the DLLs, source patches, and final
-archives in its `full-v37` and `web-v37` profiles. The complete filesystem is
+archives in its `full-v38` and `web-v38` profiles. The complete filesystem is
 assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
 covers validation and publication.
 The v37 prefix leaves the renderer registry values unset. The profile records
@@ -187,9 +211,9 @@ It retains revision 25's DirectSound backport. All eight WebGL DLLs were rebuilt
 from the v50 source series; only WineD3D differs from the v25 DLLs. The verified
 regular Wine binaries were retained, with fresh packaging and prefix setup.
 The ZIP writer gives Wine directories explicit executable permissions.
-UI, Jenkins, native automation, and demo-site pins now select the published v37 archives.
+UI, Jenkins, native automation, and demo-site pins now select the published v38 archives.
 The hosted legacy catalog, `/v2/latest/` aliases and demo pages were not updated
-as part of the authorized three-file upload.
+as part of the authorized two-file upload.
 Publish and verify both archives before deploying the new UI/Jenkins pins.
 Revision 26 retains the earlier WebGL fixes from revisions 24 and 25. Direct GLSL
 generation for fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8

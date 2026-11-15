@@ -144,6 +144,7 @@ class DemoRootSelectionTests(unittest.TestCase):
             create_zip(demo_source / "boxedwine.gdi.2.zip")
             create_zip(demo_source / "ddraw.zip", {"ddraw.exe": b""})
             create_zip(demo_source / "d3d.zip", {"d3d.exe": b""})
+            (demo_source / "Lesson Disc.iso").write_bytes(b"original disc fixture")
             (demo_source / "demos.json").write_text(
                 json.dumps(
                     {
@@ -151,6 +152,7 @@ class DemoRootSelectionTests(unittest.TestCase):
                             "ddraw.zip": {
                                 "exe": "ddraw.exe",
                                 "root": "boxedwine.gdi.3.zip",
+                                "urlParams": {"cdrom": "e:Lesson Disc.iso", "cdromBase": "../../../../apps/"},
                             },
                             "d3d.zip": {"exe": "d3d.exe"},
                         }
@@ -177,6 +179,9 @@ class DemoRootSelectionTests(unittest.TestCase):
             self.assertIn("root=boxedwine.3.zip&amp;app=d3d.zip", page)
             self.assertTrue((build_dir / "st" / "boxedwine.3.zip").exists())
             self.assertTrue((build_dir / "st" / "boxedwine.gdi.3.zip").exists())
+            self.assertEqual((site_dir / "demos/apps/Lesson Disc.iso").read_bytes(), b"original disc fixture")
+            self.assertEqual(list(build_dir.rglob("*.iso")), [])
+            self.assertIn("cdrom=e:Lesson%20Disc.iso&amp;cdromBase=../../../../apps/", page)
             self.assertNotIn("Boxedwine.2", page)
             self.assertNotIn("Boxedwine.Gdi.2", page)
 

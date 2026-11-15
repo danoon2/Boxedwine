@@ -1,0 +1,26 @@
+Subject: [PATCH] server: Preserve the desktop close timer for the manager's own threads.
+
+If the last application exits while explorer is still initializing, removing
+its desktop user schedules WM_CLOSE. Explorer then starts its clipboard,
+display-settings or COM threads. Attaching those threads used to cancel the
+timer, leaving explorer and the Wine services alive with no application left.
+
+Only a thread from another process should cancel an already scheduled close.
+The desktop manager's own threads do not add another application using it.
+
+Reproduced in Wine 11.0 directly on Linux and inside Boxedwine by cancelling
+Notepad while explorer initializes. Regression coverage exercises the actual
+server/winstation.c timer code in probes/test_desktop_close_timer.py.
+
+--- a/server/winstation.c
++++ b/server/winstation.c
+@@ -431,7 +431,8 @@ static void add_desktop_thread( struct desktop *desktop, struct thread *thread )
+     if (!thread->process->is_system)
+     {
+         desktop->users++;
+-        if (desktop->close_timeout)
++        /* The manager's own startup threads must not keep an unused desktop alive. */
++        if (desktop->close_timeout && thread->process != get_top_window_owner( desktop ))
+         {
+             remove_timeout_user( desktop->close_timeout );
+             desktop->close_timeout = NULL;

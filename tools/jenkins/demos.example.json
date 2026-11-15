@@ -215,6 +215,16 @@
         "bpp": "32"
       },
       "description": "Play nine holes at Skeleton Coast with Sergio Garcia."
+    },
+    "3dmark03.zip": {
+      "title": "3DMark03 (2003 D3D 9)",
+      "exe": "c:/3dmark03.bat",
+      "urlParams": {
+        "resolution": "1024x768",
+        "bpp": "32",
+        "extract": "1"
+      },
+      "description": "Explore the Wings of Fury, Battle of Proxycon, Troll's Lair and Mother Nature graphics tests."
     }
   }
 }

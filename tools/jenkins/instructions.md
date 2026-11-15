@@ -28,7 +28,7 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - The web v37 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/37/TinyCore15Wine11.0-web.zip`.
+   - The web v38 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/38/TinyCore15Wine11.0-web.zip`.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
    - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v35 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
@@ -255,7 +255,7 @@ hashes. Archive payloads remain on the server. Failed builds skip demo inventory
 New demo launch links use the existing shared `demos/apps/<name>.zip` archives
 and images. The filesystem URL defaults to the version and filename pinned in
 `tools/buildWine/webgl_filesystems.json`, currently
-`https://boxedwine.org/v2/37/TinyCore15Wine11.0-web.zip`. Each build records that
+`https://boxedwine.org/v2/38/TinyCore15Wine11.0-web.zip`. Each build records that
 specific URL; updating the release pin affects subsequent builds only. To keep
 an older demo payload available, publish a changed demo under a new filename
 and update `demos.json`; overwriting a shared filename affects builds linking to it.
@@ -304,7 +304,7 @@ The local development script still downloads and validates the filesystem for
 offline/local demo testing:
 
 ```text
-https://boxedwine.org/v2/37/TinyCore15Wine11.0-web.zip
+https://boxedwine.org/v2/38/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:
@@ -556,6 +556,56 @@ runtime reached the main menu without importing registry hives. The cinematic
 **Demo** reported that render-to-texture support was unavailable. **Benchmark**
 reached the Car Chase loading screen, then remained black during the smoke test;
 a rendered scene and complete benchmark run have not been validated.
+
+### 3DMark03
+
+`3dmark03.zip` contains the 284 original application files and eight original
+SystemInfo files extracted from the UI sample's `3DMark03_v360_1901.exe`.
+The installer SHA-256 is
+`86d7f73747944c553e47e6ab5a74138e8bbca07fab8216ae70a61ac7f9a1c468`.
+The browser package is 179,131,181 bytes, SHA-256
+`bf683016cded343b3dc18243f326a35ffab9e1468348e705ca1f52f29be08c71`.
+It contains no global Wine registry, saves, installer cache, or modified
+application binaries. The native UI sample still uses the original installer.
+
+The launcher `c:/3dmark03.bat` registers the bundled 32-bit `FMSI.dll` and
+`FMSIX.dll` before starting `3DMark03.exe` from its application directory.
+These are the original SystemInfo components supplied separately inside the
+installer; omitting them leaves startup waiting at the splash screen. No
+graphics override, application patch, or filesystem update is required.
+The starting desktop is 1024x768 at 32-bit with the existing v37 web filesystem.
+
+Set `urlParams.extract` to `"1"` for this demo. The shared browser launcher
+extracts the complete application archive before starting Wine and does not
+keep the demo ZIP mounted. The Wine root ZIP stays compressed. In particular,
+this avoids repeatedly inflating the 449 MiB `3DMark03.dat` when Mother Nature
+seeks through it. No change to the distributed demo ZIP is needed.
+
+The shared Jenkins assets are `demos/apps/3dmark03.zip`, its entry in
+`demos/apps/demos.json`, and `demos/apps/images/3dmark03.png`. The publisher picks
+them up on the next successful build, using the shared archive and versioned
+filesystem URLs. Do not copy them into existing published build directories.
+The local demo index exposes all four runtime choices. The homepage catalogue
+adds a Benchmarks entry using ST JIT and the same archive; its four featured
+homepage games are unchanged.
+
+Browser ST JIT testing verified startup, mouse input, animated Wings of Fury
+rendering, returning to the menu after stopping the benchmark, and application
+exit with Wine cleanup. The thumbnail is captured from the browser test.
+With `extract=1`, a fresh local Chrome test verified all 293 extracted members,
+the original DAT checksum, and a complete Mother Nature run returning to the
+results dialog. Its first terrain draw took 67 seconds, compared with 256
+seconds in the earlier compressed-ZIP baseline on the same machine. These
+times exclude download and Wine startup. A full benchmark run, the remaining
+scenes, and the other three browser runtime modes have not been validated.
+
+## Disc demo media
+
+The shared browser shell accepts `cdrom=e:filename.iso` and `cdromBase`.
+For Jenkins demos, `cdromBase=../../../../apps/` resolves the disc from the
+shared `demos/apps/` directory. The local generator copies ISO media into that
+directory when its input directory differs, without making per-build copies.
+Publication uses existing server assets; adding a disc is a separate upload.
 
 ## System Shock 2 demo
 

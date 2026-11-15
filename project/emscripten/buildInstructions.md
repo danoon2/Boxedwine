@@ -341,6 +341,34 @@ helper instead. The test uses a stub WebGL context to verify the destination
 offset and copied bytes; it does not require a browser or GPU.
 
 
+## Extracting browser demo archives
+
+Add `extract=1` to the launcher URL to unpack every member of the `app` and
+`overlay` ZIPs before starting Wine. Empty directories are preserved, nested
+ZIPs remain files, and the compressed demo archives are not kept mounted.
+The separate `root` Wine filesystem ZIP and CD-ROM images are unaffected.
+Without this option, demos keep their existing compressed ZIP mounts.
+
+Existing files are kept so saved games and settings survive. With persistent
+storage, only changed files and deletion records are saved; unchanged extracted
+files are supplied again by the archive on each visit, as with ZIP mounts.
+Earlier overlays retain priority over later ones. Extraction uses more memory
+for application data but avoids repeated decompression during random file
+reads. Invalid archives stop startup and report an error.
+
+Run the launcher regression tests with:
+
+```bash
+node --test project/emscripten/boxedwine-shell.test.cjs
+```
+
+## Hosting CD-ROM media
+
+CD-ROM images can be hosted separately from the runtime with
+`cdrom=e:LessonDisc.iso&cdromBase=../../../../apps/`. `cdromBase` accepts the
+same base URL format as `appBase` and `overlayBase`; without it, disc files
+are resolved beside the runner page.
+
 ## Running The Multi-Threaded OpenGL Bootstrap Regression
 
 This browser-only target verifies that supported WebGL procedures are

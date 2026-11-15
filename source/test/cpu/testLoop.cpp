@@ -217,6 +217,35 @@ void runLoopCases(U8 opcode, bool big, const char* name) {
     if (opcode == 0xe0 || opcode == 0xe1) {
         for (size_t i = 0; i < caseCount(CMP_LOOP_CASES); ++i) {
             runLoopCmpFlagCase(opcode, big, CMP_LOOP_CASES[i], name);
+            for (bool incoming : {false, true}) {
+                const CmpLoopCase& data = CMP_LOOP_CASES[i];
+                U32 countAfter = decrementCount(data.ecx, big);
+                bool taken = loopTaken(opcode, countAfter, data.expectedFlags, big);
+                beginInstruction(data.expectedFlags ^ (ZF | PF), big);
+                cpu->reg[R_AX].u32 = data.eax;
+                cpu->reg[R_BX].u32 = 0;
+                cpu->reg[R_CX].u32 = data.ecx;
+                if (incoming) {
+                    // A block can enter with a rotate's preserved flags from
+                    // a prior block, including stale bits in cpu->flags.
+                    cpu->lazyFlagType = FLAGS_CFOF;
+                    cpu->lazyFlagTypePrev = big ? FLAGS_CMP32 : FLAGS_CMP16;
+                    cpu->dst.u32 = data.eax;
+                    cpu->src.u32 = 0;
+                    cpu->result.u32 = data.eax;
+                } else {
+                    emitCmpAxZero();
+                    pushCode8(0xd1);
+                    pushCode8(0xc3); // rol ebx/bx,1: keep CMP's ZF, clear CF/OF
+                }
+                emitTakenMarkerInstruction(opcode);
+                runTestCPU();
+                if (cpu->reg[R_CX].u32 != countAfter ||
+                    cpu->reg[R_AX].u8 != (taken ? 3 : 2)) {
+                    failed("%s after rotate (incoming=%d) count/branch", name, incoming);
+                }
+                verifyFlags(data.expectedFlags, name);
+            }
         }
     }
 }

@@ -1328,6 +1328,10 @@ def update_demos(
             old_zip.unlink()
         for zip_path in demo_source.glob("*.zip"):
             shutil.copy2(zip_path, apps_dir / zip_path.name)
+        # Disc demos reference this shared directory through cdromBase. Keep the
+        # original media here, without another copy for each build or runner.
+        for iso_path in demo_source.glob("*.iso"):
+            shutil.copy2(iso_path, apps_dir / iso_path.name)
 
     source_images_dir = demo_source / "images"
     if source_images_dir.exists():

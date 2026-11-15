@@ -41,6 +41,9 @@ extension LibraryRepository {
         _ = try beginOperation(kind: demo.type == .portableZip ? .folder : .installer, name: app.name, id: app.id)
         do {
             try prepare(app)
+            if demo.legacyJavaFonts {
+                try DemoRegistry.prepareLegacyJavaFonts(root: root(for: app), wine: runtime, control: control)
+            }
             let staging = destination.appendingPathComponent("Download", isDirectory: true)
             try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: false)
             let download = staging.appendingPathComponent("package." + demo.url.pathExtension.lowercased())
@@ -242,6 +245,26 @@ private struct CachedDemoDownload: DemoDownloading {
 /// Seeds a new demo's graphics settings and checks optional CNC DDraw support.
 /// Windows-version changes go through winecfg before the first guest launch.
 enum DemoRegistry {
+    // Java 1.3 bypasses font substitution and opens Windows filenames directly.
+    // Reuse the open-source fonts from Wine, without depending on host OS fonts.
+    static func prepareLegacyJavaFonts(root: URL, wine: URL, control: ImportControl) throws {
+        var fonts: [String: String] = [:]
+        for (family, stem) in [("Sans", "arial"), ("Mono", "cour"), ("Serif", "times")] {
+            for (style, suffix) in [("Regular", ""), ("Bold", "bd"), ("Italic", "i"), ("BoldItalic", "bi")] {
+                fonts[stem + suffix + ".ttf"] = "usr/local/share/fonts/liberation/Liberation" + family + "-" + style + ".ttf"
+            }
+        }
+        for name in ["symbol.ttf", "wingding.ttf"] { fonts[name] = "opt/wine/share/wine/fonts/" + name }
+        let data = try read(Set(fonts.values), from: wine, control: control,
+                            missing: DemoError.catalog("The Wine package is missing fonts required by this installer."))
+        let directory = root.appendingPathComponent(LibraryRepository.driveC + "/windows/fonts", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for (name, source) in fonts {
+            try control.checkCancellation()
+            try data[source]!.write(to: directory.appendingPathComponent(name), options: .withoutOverwriting)
+        }
+    }
+
     static func prepare(_ settings: DemoSettings, root: URL, wine: URL, control: ImportControl, cncRenderer: Demo.CNCDDrawRenderer? = nil, cncUncapped: Bool = false, cncMode: Demo.CNCDDrawMode? = nil) throws {
         let prefix = "home/username/.wine/"
         var wanted: Set<String> = []

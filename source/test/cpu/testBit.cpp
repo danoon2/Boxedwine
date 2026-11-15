@@ -405,7 +405,7 @@ void runBitCases(BitOp op, int width, const BitCase* cases, size_t count, const 
     }
 }
 
-void runBtsMemRegPreservesLazyZFCase() {
+void runBtsMemRegPreservesLazyZFCase(bool rotate) {
     constexpr U32 baseValue = 0;
     constexpr U32 bit = 3;
     U32 linear = TEST_HEAP_ADDRESS + MEM_BASE;
@@ -414,6 +414,10 @@ void runBtsMemRegPreservesLazyZFCase() {
     cpu->big = true;
     pushCode8(0x08);
     pushCode8(0xc9); // or cl, cl
+    if (rotate) {
+        pushCode8(0xd1);
+        pushCode8(0xc3); // rol ebx,1: preserve OR's ZF through FLAGS_CFOF
+    }
     pushCode8(0x0f);
     pushCode8(0xab);
     pushCode8(0x10); // bts dword ptr [eax], edx
@@ -675,7 +679,8 @@ void testBtE32R32_0x3a3() { runBitCases(BIT_BT, 32, BIT_CASES_32, caseCount(BIT_
 void testBtsE16R16_0x1ab() { runBitCases(BIT_BTS, 16, BIT_CASES_16, caseCount(BIT_CASES_16), "bts e16,r16 1ab"); }
 void testBtsE32R32_0x3ab() {
     runBitCases(BIT_BTS, 32, BIT_CASES_32, caseCount(BIT_CASES_32), "bts e32,r32 3ab");
-    runBtsMemRegPreservesLazyZFCase();
+    runBtsMemRegPreservesLazyZFCase(false);
+    runBtsMemRegPreservesLazyZFCase(true);
 }
 void testBtrE16R16_0x1b3() { runBitCases(BIT_BTR, 16, BIT_CASES_16, caseCount(BIT_CASES_16), "btr e16,r16 1b3"); }
 void testBtrE32R32_0x3b3() { runBitCases(BIT_BTR, 32, BIT_CASES_32, caseCount(BIT_CASES_32), "btr e32,r32 3b3"); }

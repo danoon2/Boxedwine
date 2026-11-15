@@ -27,7 +27,7 @@ sealed partial class TestSuite
             foreach (string value in new[] { "&#0;", "bare&#13;return", new string('é', 4097), string.Join('\n', Enumerable.Repeat("arg", 257)), string.Join('\n', Enumerable.Repeat(new string('x', 8192), 9)) })
                 await Throws(() => { Load(xml.Replace("FIELDS", "<AppArguments>" + value + "</AppArguments>")); return Task.CompletedTask; }, "invalid app arguments");
             await Throws(() => { Load(xml.Replace("FIELDS", fields + fields)); return Task.CompletedTask; }, "duplicate app arguments");
-            await Throws(() => { Load(xml.Replace("FIELDS", "").Replace("schemaVersion=\"9\"", "schemaVersion=\"10\"")); return Task.CompletedTask; }, "unknown schema");
+            await Throws(() => { Load(xml.Replace("FIELDS", "").Replace("schemaVersion=\"9\"", "schemaVersion=\"11\"")); return Task.CompletedTask; }, "unknown schema");
         });
     }
 }

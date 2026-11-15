@@ -397,6 +397,23 @@ Windows builds always copy the extracted catalog into their output and publish
 directories. Catalog ZIPs use fixed timestamps, so copying only newer files can
 leave an older catalog embedded after the pin changes.
 
+## Optional disc and legacy Java support
+
+Schema 10 enables `InstallType=Disc` with `CDROMImages` for pinned catalogues,
+using the existing collection-disc installation, backup and mount paths.
+The ZIP must contain the listed ISO paths; `InstallExe` is omitted so the
+original disc's autorun chooses the installer. Existing collection recipes
+continue to work without changing their schema. Download trust and checksum
+requirements are unchanged.
+
+Schema 10 also supports the installation-only boolean `LegacyJavaFonts`.
+Java 1.3 opens Windows font filenames directly, bypassing Wine's substitutions.
+This option copies the Wine package's Liberation Sans, Mono and Serif families
+to Arial, Courier New and Times New Roman filenames in the new app's Windows
+Fonts directory, together with Wine's Symbol and Wingdings fonts. The font
+bytes are unchanged and no host OS fonts are used. These capabilities do not
+change the current catalogue or add a demo.
+
 ## Building and caching
 
 Xcode's `BoxedwineUI` bundle phase runs the tool automatically. It verifies the

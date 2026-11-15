@@ -27,10 +27,8 @@ JitWidth JitCodeGen::getWidthOfFlags(LazyFlagType flags) {
     if (width == 8) {
         return JitWidth::b8;
     }
-    if (flags == FLAGS_CFOF) {
-        emulateSingleOp();
-        return JitWidth::b32;
-    }
+    // A width query must never replay a partially executed instruction.
+    // Callers must resolve preserved flags before requesting their width.
     kpanic_fmt("getWidthOfCondition: invalid flag width: %d", width);
     return JitWidth::b32;
 }

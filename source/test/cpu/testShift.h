@@ -22,6 +22,8 @@ void testShiftE8Cl_0x0d2();
 void testShiftE8Cl_0x2d2();
 void testShiftE16Cl_0x0d3();
 void testShiftE32Cl_0x2d3();
+void testShiftRotateCarryLoop();
+void testRotatePreservedConditions();
 void testShldE16R16Ib_0x1a4();
 void testShldE32R32Ib_0x3a4();
 void testShldE16R16Cl_0x1a5();

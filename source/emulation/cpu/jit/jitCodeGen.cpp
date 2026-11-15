@@ -2071,7 +2071,7 @@ RegPtr JitCodeGen::getZF() {
     RegPtr result = getTmpReg8();
     RegPtr lazyFlags = getLazyFlagType();
 
-    if (currentLazyFlags != FLAGS_NULL && currentLazyFlags != FLAGS_NONE) {
+    if (currentLazyFlags != FLAGS_NULL && currentLazyFlags != FLAGS_NONE && currentLazyFlags != FLAGS_CFOF) {
         IfEqual(JitWidth::b32, lazyFlags, currentLazyFlags); {
             getFlagResultTmp(result);
             If(getWidthOfFlags(currentLazyFlags), result); {
@@ -3389,6 +3389,12 @@ bool JitCodeGen::protectCmpLazyFlagType() {
 }
 
 RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg) {
+    // Rotates keep ZF/SF/PF in the previous lazy-flag state. That state has
+    // no statically known width. Resolve it without replaying the instruction,
+    // which may already have changed registers (for example, LOOP's counter).
+    if (currentLazyFlags == FLAGS_CFOF) {
+        return callGetCondition(condition, resultReg);
+    }
     if (!resultReg) {
         resultReg = getTmpReg8();
     }
@@ -3664,6 +3670,10 @@ void JitCodeGen::IfCondition(JitConditional condition) {
 }
 
 void JitCodeGen::preIfCondition(JitConditional condition, bool& negative, RegPtr& reg) {
+    if (currentLazyFlags == FLAGS_CFOF) {
+        reg = callGetCondition(condition);
+        return;
+    }
     if (condition == JitConditional::Z || condition == JitConditional::NZ) {
         if (protectKnownLazyFlagType()) {
             reg = getFlagResultReadOnly();
@@ -3699,6 +3709,11 @@ void JitCodeGen::preIfCondition(JitConditional condition, bool& negative, RegPtr
         }
         getFlagResultTmp(result);
         RegPtr flags = getFlagsInTmp();
+        // A block entry may carry a rotate's flags from its predecessor.
+        // ZF still belongs to the earlier arithmetic operation.
+        IfEqual(JitWidth::b32, zfMask, FLAGS_CFOF); {
+            readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagTypePrev), zfMask);
+        } EndIf();
         
         movzx(JitWidth::b32, zfMask, JitWidth::b8, zfMask);
         readCPU(JitWidth::b32, zfMask, 2, offsetof(CPU, flagZeroMask), zfMask);
@@ -3754,6 +3769,10 @@ void JitCodeGen::preIfCondition(JitConditional condition, bool& negative, RegPtr
                 } StartElse();
             }
         }
+        // Like ZF, SF survives a rotate in the previous lazy-flag state.
+        IfEqual(JitWidth::b32, sfMask, FLAGS_CFOF); {
+            readCPU(JitWidth::b8, CPU_OFFSET_OF(lazyFlagTypePrev), sfMask);
+        } EndIf();
         // not so good for branch prediction
         IfNot(JitWidth::b32, sfMask); {
             getFlagsInTmp(result);

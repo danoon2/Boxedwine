@@ -1,3 +1,5 @@
+v38 Nov 15, 2026 Fix Wine desktop shutdown during startup cancellation: explorer worker threads no longer cancel the pending close timer after the last application exits. A newly arriving application still cancels it. Retain the v37 AVI runtime base and existing WebGL DLLs.
+
 v37 Nov 14, 2026 Add the GStreamer AVI parser to the base, full and web filesystems for AVI movie playback. With the updated Boxedwine engine and installed Indeo codec, System Shock 2 movies play. Move build records, source archives, patches and license texts to separate release bundles. Existing Wine and WebGL binaries are unchanged.
 
 v36 Nov 14, 2026 Include the DirectPlay startup fixes for MechCommander 2. Keep the v35 WebGL graphics DLLs and 16/32-bit display modes.

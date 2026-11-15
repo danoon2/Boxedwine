@@ -937,6 +937,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testShiftE8Cl_0x2d2, "Test Shift E8,CL 2d2"},
     {testShiftE16Cl_0x0d3, "Test Shift E16,CL 0d3"},
     {testShiftE32Cl_0x2d3, "Test Shift E32,CL 2d3"},
+    {testShiftRotateCarryLoop, "Test SHR/RCL bit reversal with LOOPNZ"},
+    {testRotatePreservedConditions, "Test rotate preserves lazy ZF/SF across block entries"},
     {testAam_0x0d4, "Test AAM 0d4"},
     {testAad_0x0d5, "Test AAD 0d5"},
     {testSalc_0x0d6, "Test Salc 0d6"},

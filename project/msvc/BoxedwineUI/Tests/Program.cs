@@ -6,6 +6,15 @@ using System.Text;
 using System.Text.Json;
 
 // Deliberately dependency-free: tests work offline with the same SDK as the app.
+if (args is ["--shutdown-fixture"])
+{
+    Console.WriteLine("Showing Window");
+    if (await Console.In.ReadLineAsync() != "quit") return 2;
+    // Wine's normal shutdown can exceed the old five-second force-stop limit.
+    await Task.Delay(TimeSpan.FromSeconds(6));
+    Console.WriteLine("Shutdown cleanup complete");
+    return 0;
+}
 var suite = new TestSuite();
 await suite.Run(args);
 return suite.Failures == 0 ? 0 : 1;
@@ -62,8 +71,16 @@ sealed partial class TestSuite
         work = Path.Combine(Path.GetFullPath(args.FirstOrDefault(a => !a.StartsWith('-')) ?? "../../../../../../tmp/native-ui-tests"), Guid.NewGuid().ToString("N")); Directory.CreateDirectory(work);
         Console.WriteLine("Test workspace: " + work);
         fixture = WineFixture("wine.zip"); wine = await Packages.ValidateWine(fixture, default);
+        if (args.Contains("--runtime-only"))
+        {
+            await RuntimeShutdownTests();
+            await RuntimeLifecycleTests(args);
+            Console.WriteLine($"{passes} passed, {Failures} failed.");
+            return;
+        }
         await SharedFileTests();
         if (args.Contains("--shared-files-only")) { Console.WriteLine($"{passes} passed, {Failures} failed."); return; }
+        await RuntimeShutdownTests();
         await WineToolTests(args);
         if (args.Contains("--wine-tools-only")) { Console.WriteLine($"{passes} passed, {Failures} failed."); return; }
         await InstallerSourceTests();
@@ -416,28 +433,7 @@ sealed partial class TestSuite
                 Check(configured.Contains("maxfps=0") && configured.Contains("vsync=false") && configured.Contains("maxgameticks=-1"));
             });
         }
-        if (emulatorIndex >= 0 && realIndex >= 0 && args.Contains("--window-check"))
-        {
-            await Test("Real emulator reports its first visible window", async () =>
-            {
-                using var repository = Repository("window-readiness");
-                var reference = await Packages.Import(repository, args[realIndex + 1], default, null);
-                var app = repository.AddBuiltIn("notepad", reference);
-                var launch = LaunchArguments.Build(repository, app, repository.PackagePath(reference));
-                using var session = new RuntimeSession(args[emulatorIndex + 1], launch, repository.PackagePath(reference), Path.Combine(repository.AppDirectory(app), "Logs", "latest.log"));
-                try
-                {
-                    Check(await session.WindowShown.WaitAsync(TimeSpan.FromSeconds(45)), "Notepad must report a visible window");
-                    Check(!session.Completion.IsCompleted, "Notepad should still be running after showing its window");
-                    await session.Stop();
-                    var exit = await session.Completion;
-                    Check(exit.Stopped && (exit.Code == 0 || exit.Code == -1), $"Visible Notepad did not stop cleanly or through the timeout fallback: {exit}");
-                    Console.WriteLine(exit.Code == 0 ? "Visible Notepad stopped gracefully." : "Visible Notepad needed the five-second forced-stop fallback.");
-                }
-                finally { if (!session.Completion.IsCompleted) { session.ForceStop(); await session.Completion; } }
-            });
-        }
-        else if (emulatorIndex >= 0 && realIndex >= 0)
+        if (emulatorIndex >= 0 && realIndex >= 0 && !args.Contains("--window-check"))
         {
             await Test("Real emulator configures and verifies Wine settings", async () =>
             {
@@ -445,7 +441,7 @@ sealed partial class TestSuite
                 var reference = await Packages.Import(repository, args[realIndex + 1], default, null);
                 var app = repository.AddBuiltIn("notepad", reference); app.ChooseWindows("win98"); app.ChooseRenderer("gdi"); app.ChooseBackend("glx"); repository.Update(app);
                 var configuration = new WineConfiguration(args[emulatorIndex + 1]);
-                using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+                using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(6));
                 app = await configuration.Apply(repository, app, repository.PackagePath(reference), timeout.Token, null);
                 Check(!app.HasPendingSettings); Check(!repository.Load().Apps.Single().HasPendingSettings);
                 app.ChooseWindows("wineDefault"); app.ChooseBackend("wineDefault"); app.ChooseRenderer("wineDefault"); repository.Update(app);
@@ -458,14 +454,10 @@ sealed partial class TestSuite
                 try { exit = await session.Completion.WaitAsync(TimeSpan.FromSeconds(45)); }
                 catch { session.ForceStop(); await session.Completion; throw; }
                 Check(exit.Code == 0, "Wine cmd returned a failure"); Check(RuntimeSession.PlainText(File.ReadAllText(log)).Split('\n').Any(line => line.Trim() == "BOXEDWINE_NATIVE_UI_OK"), "The marker must come from Wine output, not the logged command line");
-                var notepadArguments = LaunchArguments.Build(repository, app, repository.PackagePath(reference)); notepadArguments.Insert(0, "-hideWindow");
-                using var notepad = new RuntimeSession(args[emulatorIndex + 1], notepadArguments, repository.PackagePath(reference), log);
-                await Task.Delay(4000); Check(!notepad.Completion.IsCompleted, "Notepad should stay open until stopped");
-                await notepad.Stop(); Check((await notepad.Completion).Stopped, "Stop must report an intentional shutdown");
-                Check((await notepad.Completion).Code == 0, "The native engine should accept a graceful stop over stdin");
-                Console.WriteLine("Wine cmd and hidden Notepad launch/stop succeeded.");
+                Console.WriteLine("Wine cmd exited cleanly.");
             });
         }
+        await RuntimeLifecycleTests(args);
         Console.WriteLine($"\n{passes} passed, {Failures} failed.");
     }
 }

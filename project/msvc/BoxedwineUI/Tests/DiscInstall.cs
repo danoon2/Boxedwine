@@ -7,6 +7,16 @@ sealed partial class TestSuite
 {
     private async Task DiscInstallTests()
     {
+        await Test("Pinned disc demos and legacy Java fonts require schema 10", async () =>
+        {
+            string path = Path.Combine(work, "disc-catalog.xml");
+            string xml = $"<XML schemaVersion=\"10\" release=\"test\"><Demo><ID>rosetta</ID><Name>Rosetta</Name><FileSHA256>{new string('a', 64)}</FileSHA256><ShortcutExe>Rosetta Stone DEMO.exe</ShortcutExe><FileURL>https://boxedwine.org/demo.zip</FileURL><FileSizeBytes>5</FileSizeBytes><InstallType>Disc</InstallType><CDROMImages>Rosetta Stone Demo.iso</CDROMImages><WineVersion>11.0</WineVersion><LegacyJavaFonts>true</LegacyJavaFonts></Demo></XML>";
+            DemoRecipe Load(string value) { File.WriteAllText(path, value); return Demos.Load(path).Single(); }
+            var demo = Load(xml);
+            Check(!demo.CustomSource && demo.LegacyJavaFonts && demo.DiscImages.SequenceEqual(["Rosetta Stone Demo.iso"]));
+            foreach (string invalid in new[] { xml.Replace("schemaVersion=\"10\"", "schemaVersion=\"9\""), xml.Replace("Rosetta Stone Demo.iso", "../disc.iso"), xml.Replace("<LegacyJavaFonts>true", "<LegacyJavaFonts>yes"), xml.Replace("https://boxedwine.org", "https://example.com"), xml.Replace("</Demo>", "<InstallExe>setup.exe</InstallExe></Demo>") })
+                await Throws(() => { Load(invalid); return Task.CompletedTask; }, "Invalid pinned disc recipe");
+        });
         await Test("Disc collections validate ordered ISO paths and keep invalid updates out", async () =>
         {
             var value = CollectionSnapshot.Load(Path.Combine(AppContext.BaseDirectory, "collection-example.json"));
