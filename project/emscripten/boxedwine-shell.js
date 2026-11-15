@@ -3265,7 +3265,7 @@ function configureExtractedFileStorage() {
         for (const [path, original] of Config.extractedFiles) {
           if (!path.startsWith(mount.mountpoint + '/')) continue;
           const entry = local.entries[path];
-          if (entry && entry.timestamp.getTime() === original.timestamp && FS.stat(path).size === original.size) {
+          if (entry && original.timestamp !== undefined && entry.timestamp.getTime() === original.timestamp && FS.stat(path).size === original.size) {
             // Like mounted ZIP members, unchanged extracted files are supplied
             // again by the download. Persist only the files the game changes.
             delete local.entries[path];
@@ -3333,7 +3333,7 @@ async function extractDemoArchive(data, destination, archiveName) {
   if (FS.analyzePath(deletionFile).exists) {
     new TextDecoder().decode(FS.readFile(deletionFile)).split(/\r?\n/).forEach(path => deleted.add(path.replace(/^\//, '')));
   }
-  const createdFiles = [], createdDirectories = [];
+  const createdFiles = [], createdDirectories = [], trackedSavedFiles = [];
   function directory(path) {
     const parts = path.split('/').filter(Boolean);
     let current = '';
@@ -3355,8 +3355,19 @@ async function extractDemoArchive(data, destination, archiveName) {
       if (deleted.has(guestPath.replace(/\.link$/, ''))) continue;
       const target = destination + '/' + path.native;
       directory(entry.directory ? target : target.slice(0, target.lastIndexOf('/')));
+      if (entry.directory) continue;
+      const deletion = {deletionFile, guestPath: '/' + guestPath.replace(/\.link$/, '')};
       // Saved files and earlier, higher-priority overlays retain their contents.
-      if (entry.directory || FS.analyzePath(target).exists || FS.analyzePath(target + '.link').exists) continue;
+      const existing = FS.analyzePath(target).exists ? target : FS.analyzePath(target + '.link').exists ? target + '.link' : null;
+      if (existing) {
+        if (!Config.extractedFiles.has(existing)) {
+          // A saved override still needs a tombstone if deleted this session.
+          // Omit the unchanged-file baseline: these bytes must remain saved.
+          Config.extractedFiles.set(existing, deletion);
+          trackedSavedFiles.push(existing);
+        }
+        continue;
+      }
       let bytes = await extractZipEntry(data, entry);
       if (bytes.byteLength !== entry.uncompressedSize || crc32(bytes) !== entry.crc) throw new Error('ZIP checksum mismatch: ' + entry.filename);
       // Stored members share the archive buffer; detach them so it can be freed.
@@ -3367,10 +3378,10 @@ async function extractDemoArchive(data, destination, archiveName) {
       const date = entry.dosTime >>> 16, time = entry.dosTime & 0xffff;
       const mtime = Date.UTC(1980 + (date >>> 9), ((date >>> 5) & 15) - 1, date & 31, time >>> 11, (time >>> 5) & 63, (time & 31) * 2);
       if (date && Number.isFinite(mtime)) FS.utime(target, mtime, mtime);
-      Config.extractedFiles.set(target, {timestamp: FS.stat(target).mtime.getTime(), size: bytes.byteLength,
-        deletionFile, guestPath: '/' + guestPath.replace(/\.link$/, '')});
+      Config.extractedFiles.set(target, {timestamp: FS.stat(target).mtime.getTime(), size: bytes.byteLength, ...deletion});
     }
   } catch (error) {
+    for (const path of trackedSavedFiles) Config.extractedFiles.delete(path);
     for (const path of createdFiles.reverse()) {
       Config.extractedFiles.delete(path);
       if (FS.analyzePath(path).exists) FS.unlink(path);

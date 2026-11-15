@@ -268,6 +268,35 @@ function archiveShell(query = 'extract=1', tree = {}) {
     return { ...shell, tree, root };
 }
 
+// Model a save/reload boundary: only IDBFS's filtered local entries survive.
+async function saveExtractedFiles({ context, root }) {
+    const { FS, IDBFS } = context;
+    if (!IDBFS.getLocalSet) {
+        IDBFS.getLocalSet = (mount, callback) => {
+            const entries = {};
+            function visit(directory) {
+                for (const name of FS.readdir(directory).filter(name => name !== '.' && name !== '..')) {
+                    const file = directory + '/' + name;
+                    entries[file] = { timestamp: FS.stat(file).mtime };
+                    if (FS.isDir(FS.lookupPath(file, { follow: false }).node.mode)) visit(file);
+                }
+            }
+            visit(mount.mountpoint);
+            callback(null, { type: 'local', entries });
+        };
+        context.configureExtractedFileStorage();
+    }
+    const local = await new Promise((resolve, reject) => IDBFS.getLocalSet({ mountpoint: root },
+        (error, set) => error ? reject(error) : resolve(set)));
+    const saved = {};
+    for (const file of Object.keys(local.entries).sort()) {
+        const parts = file.split('/').filter(Boolean);
+        const parent = parts.slice(0, -1).reduce((dir, name) => (dir[name] ||= {}), saved);
+        parent[parts.at(-1)] = FS.isDir(FS.lookupPath(file, { follow: false }).node.mode) ? {} : FS.readFile(file);
+    }
+    return saved;
+}
+
 test('extract=1 expands every member, preserves empty directories and releases stored archive bytes', async () => {
     const { context, root, tree } = archiveShell();
     const archive = new Uint8Array(makeZip({ 'game/data.bin': 'data'.repeat(200), 'game/readme.txt': 'stored', 'game/current/': '',
@@ -338,6 +367,68 @@ test('browser saves exclude unchanged extracted files but retain changes and del
     assert.equal(Buffer.from(restart.tree.root['data.bin']).toString(), 'data');
     assert.equal(restart.tree.root['config.txt'], 'user configuration');
     assert.equal(restart.tree.root['removed.txt'], undefined);
+});
+
+for (const appArchive of [false, true]) {
+    for (const member of ['game/config.txt', 'game/c(_colon_).link']) {
+        test(`saved extracted ${member} stays deleted after another restart (${appArchive ? 'app' : 'overlay'})`, async () => {
+            const query = 'extract=1' + (appArchive ? '&app=demo.zip' : '');
+            const destination = shell => appArchive ? vm.runInContext('Config.extractedAppDir', shell.context) : shell.root;
+            const archive = makeZip({ [member]: 'bundled', 'game/unchanged.txt': 'original' });
+            const first = archiveShell(query);
+            await first.context.prepareDemoArchive('demo.zip', archive, destination(first));
+            first.context.FS.writeFile(destination(first) + '/' + member, Buffer.from('saved user changes'));
+
+            const second = archiveShell(query, await saveExtractedFiles(first));
+            await second.context.prepareDemoArchive('demo.zip', archive, destination(second));
+            const file = destination(second) + '/' + member;
+            assert.equal(Buffer.from(second.context.FS.readFile(file)).toString(), 'saved user changes');
+            const savedAgain = await saveExtractedFiles(second);
+            const check = archiveShell(query, savedAgain);
+            assert.equal(Buffer.from(check.context.FS.readFile(file)).toString(), 'saved user changes',
+                'an unchanged saved override must remain persisted');
+            assert.equal(check.context.FS.analyzePath(destination(check) + '/game/unchanged.txt').exists, false,
+                'unchanged archive bytes must not be persisted');
+
+            second.context.FS.unlink(file);
+            const third = archiveShell(query, await saveExtractedFiles(second));
+            await third.context.prepareDemoArchive('demo.zip', archive, destination(third));
+            assert.equal(third.context.FS.analyzePath(file).exists, false, 'deleted saved file was restored from the archive');
+            assert.equal(Buffer.from(third.context.FS.readFile(destination(third) + '/game/unchanged.txt')).toString(), 'original');
+        });
+    }
+}
+
+test('a saved portable link replacing a bundled file retains deletion tracking', async () => {
+    const shell = archiveShell('extract=1', { root: { 'config.txt.link': '../saved-config' } });
+    const archive = makeZip({ 'config.txt': 'bundled' });
+    await shell.context.prepareDemoArchive('demo.zip', archive, shell.root);
+    shell.context.FS.unlink(shell.root + '/config.txt.link');
+    const restart = archiveShell('extract=1', await saveExtractedFiles(shell));
+    await restart.context.prepareDemoArchive('demo.zip', archive, restart.root);
+    assert.equal(restart.context.FS.analyzePath(restart.root + '/config.txt').exists, false);
+});
+
+test('later archives do not replace an earlier extraction baseline or deletion owner', async () => {
+    const shell = archiveShell();
+    await shell.context.prepareDemoArchive('first.zip', makeZip({ 'shared.txt': 'first' }), shell.root);
+    await shell.context.prepareDemoArchive('second.zip', makeZip({ 'shared.txt': 'second' }), shell.root);
+    assert.equal((await saveExtractedFiles(shell)).root?.['shared.txt'], undefined);
+    shell.context.FS.unlink(shell.root + '/shared.txt');
+    const saved = await saveExtractedFiles(shell);
+    assert.equal(Buffer.from(saved.root['first.zip.deleted']).toString(), '/shared.txt\n');
+    assert.equal(saved.root['second.zip.deleted'], undefined);
+});
+
+test('failed extraction rolls back deletion tracking for preserved saved files', async () => {
+    const shell = archiveShell('extract=1', { root: { 'save.txt': 'saved changes' } });
+    const broken = makeZip({ 'save.txt': 'bundled', 'bad.txt': 'corrupted' });
+    broken[broken.indexOf(Buffer.from('corrupted'))] ^= 1;
+    await assert.rejects(shell.context.prepareDemoArchive('bad.zip', broken, shell.root), /checksum mismatch/);
+    assert.equal(shell.tree.root['save.txt'], 'saved changes');
+    shell.context.FS.unlink(shell.root + '/save.txt');
+    const saved = await saveExtractedFiles(shell);
+    assert.equal(saved.root?.['bad.zip.deleted'], undefined);
 });
 
 test('downloaded overlays extract in order and Wine still mounts its compressed root', async () => {
