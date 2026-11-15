@@ -46,11 +46,11 @@ def main():
     shutil.copytree(shared / 'AppIcons', resources / 'AppIcons')
     shutil.copy2(shared / 'troubleshooting.json', resources)
     shutil.copy2(REPO / 'resources/demo-catalog.lock.json', resources)
-    shutil.copy2(REPO / 'tools/demo_catalog.py', resources)
+    shutil.copy2(REPO / 'project/shared/demo_catalog.py', resources)
     shutil.copy2(REPO / 'license.txt', resources / 'LICENSE')
     icon = REPO / 'project/mac-xcode/Boxedwine/Media.xcassets/AppIcon.appiconset/icon_256x256.png'
     shutil.copy2(icon, resources / 'org.boxedwine.Boxedwine.png')
-    spec = importlib.util.spec_from_file_location('catalog', REPO / 'tools/demo_catalog.py')
+    spec = importlib.util.spec_from_file_location('catalog', REPO / 'project/shared/demo_catalog.py')
     catalog = importlib.util.module_from_spec(spec); spec.loader.exec_module(catalog)
     pin = catalog.read_pin(REPO / 'resources/demo-catalog.lock.json')
     cached = catalog.default_cache() / (pin['sha256'] + '.zip')

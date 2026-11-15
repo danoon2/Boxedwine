@@ -31,8 +31,7 @@ engine and pass after preserving the parent's x87/SSE state. The CPU constructor
 also initializes its FPU before applying the normal reset state.
 
 The final archive tests use fresh roots, the rebuilt Wine and media base, and no
-native Microsoft media DLLs. See [the revision 29 receipt](../../RELEASE-v29.md)
-for the exact artifacts and completed game checks. The original
+native Microsoft media DLLs. The original
 `wine11_qasf_reader_delivery.patch` is retained as v28 historical source; active
 builds use `wine11_qasf_reader_delivery_after_upstream.patch` after the three
 upstream backports. Wine's ASF-reader suite also verifies the native blocking
@@ -62,8 +61,8 @@ Build and regression evidence is under
 `C:\Boxedwine2\tmp\movies-pacing-20261109`. Main and web reader DLLs were rebuilt
 from their configured Wine trees; the recorded patch series reproduces both
 reader and test sources from pristine Wine 11.0. Filesystem revision 30 packages
-this fix in both variants; see [the release receipt](../../RELEASE-v30.md) for
-the final ZIP identities and packaged regression results. Artifacts are staged
+this fix in both variants, as recorded in the
+[filesystem changelog](../../changes_wine11.txt). Artifacts are staged
 in `C:\Boxedwine2\tmp\filesystem-v30-release`; upload is pending.
 
 Both rebuilt readers pass 314 ASF-reader checks (63 known todos, zero failures

@@ -2,11 +2,11 @@
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
 from the apps and scripts in `automation34.zip`. Its URL, size, and SHA-256 are
-pinned in [`../BoxedWineRunner/filesystem.properties`](../BoxedWineRunner/filesystem.properties).
+pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
 writable test root. The downloaded ZIP is unchanged. See the
-[runner instructions](../BoxedWineRunner/README.md#native-filesystem) for local use
+[runner instructions](../automation/BoxedWineRunner/README.md#native-filesystem) for local use
 and the [release checklist](../buildWine/RELEASING.md) for advancing the pin.
 
 Browser AbiWord automation keeps its separate web filesystem URL and SHA-256 in
@@ -28,13 +28,13 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - The web v35 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/36/TinyCore15Wine11.0-web.zip`.
+   - The web v37 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/37/TinyCore15Wine11.0-web.zip`.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
    - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v35 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
    - A demo can set an app-specific Wine compatibility version with `"windowsVersion": "win98"`. The generated launcher sets that version before starting the executable, without changing other demos.
 3. Validates every filesystem root referenced by `demos.json` against
-   `tools/buildWine/webgl_filesystems_v36.json`.
+   `tools/buildWine/webgl_filesystems.json`.
    - The patch series, declared filename, archive size and SHA-256, full ZIP CRC, PE32 DLLs and
      imports, GL SONAME links, `ld.so.cache`, and renderer registry settings must all match.
    - Validation runs before the four Emscripten builds, so a missing, stale, or damaged public
@@ -222,7 +222,7 @@ wsl python3 tools/jenkins/build_site.py `
 ```
 
 This command requires each referenced root filename to have an exact profile in
-`tools/buildWine/webgl_filesystems_v36.json`. If the public downloads are older than the pinned
+`tools/buildWine/webgl_filesystems.json`. If the public downloads are older than the pinned
 profiles, upload the current roots first; do not bypass the validation.
 
 ## Stopping The Local Server
@@ -278,7 +278,7 @@ network connections and does not start a Jenkins build.
 Both scripts download the same filesystem:
 
 ```text
-https://boxedwine.org/v2/36/TinyCore15Wine11.0-web.zip
+https://boxedwine.org/v2/37/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:
@@ -534,7 +534,7 @@ a rendered scene and complete benchmark run have not been validated.
 
 ## System Shock 2 demo
 
-`SystemShock2Demo.zip` is a portable archive of the 37 original game files from
+`SystemShock2Demo-r2.zip` is a portable archive of the 37 original game files from
 the supplied `SHOCK2.EXE` demo's `shock/` directory. It launches `shock2.exe` at
 `resolution=640x480&bpp=32`, with the normal WebGL renderer and no GDI preset or
 registry overlay. The game chooses a 16-bit mode; keep the desktop at 32-bit.
@@ -546,6 +546,28 @@ browser runtimes from `james/web_gdi/5`. Each has a new graphics identity pinned
 to the final v35 web ZIP. Older build pages retain their original root ZIPs.
 The homepage uses the same filesystem and ST JIT only. Catalog 16 adds the same
 portable payload and the original game's icon to the native UIs.
+
+The November 14 correction adds the empty `current/` directory created by the
+original installer. Without it, leaving training crashes at `shock2.exe+0x15b80c`
+when saving `current/CAMPAIGN`. All 37 game files remain byte-for-byte identical
+to the source download. The revised browser ZIP is 72,624,275 bytes, SHA-256
+`53f49d1e8dd746216e8374a38b9dc8f0d37cade594561521aa0cfe564b38b9da`.
+The user confirmed the previously failing transition works with the directory.
+
+Catalog 44 replaces the native portable recipe with the original setup files in
+`SystemShock2DemoSetup.zip`; native UIs launch `setup.exe` with Windows 98 selected
+and select `shock2.exe` after installation. Browser overlays must not be reused
+as native installer packages. See the [source audit](../../docs/demo-installer-audit-20261114.md).
+
+The local and published `system_shock2__demo/20261114` snapshots reuse the runtime
+and filesystem bytes from `links2003__demo/20261114`. Homepage ST JIT and the
+current Jenkins/local demo lists select the revised browser ZIP. Demo discovery
+scans ZIP files in the active source folder; it has no per-entry visibility flag.
+Keep superseded packages outside that folder to avoid duplicate cards. The local
+obsolete ZIP has been moved to test artifacts. The hosted original remains
+unchanged and needs separate cleanup before publishing with the simplified
+discovery code. All previously published files and four runtime ZIP links were
+checked; a new browser playthrough was not repeated for that package correction.
 
 
 ## SimTower demo
@@ -810,7 +832,7 @@ the native cursor fix. The homepage adds the ST JIT demo and a gameplay image.
 The native missing cursor required a shared engine fix: advertise depth-1 pixmap
 storage to Wine and render monochrome cursor pixels and their transparency mask.
 No Tropico preset or Wine filesystem change is needed. See
-[the cursor regression notes](../x11/tests/README.md#monochrome-cursors).
+[the cursor regression notes](../fs_passthrough/x11/tests/README.md#monochrome-cursors).
 
 ## MechCommander 2 demo
 

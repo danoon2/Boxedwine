@@ -774,6 +774,10 @@ bool StartUpArgs::apply() {
             }
         }
     }
+    // Prefer the installed Intel Indeo 5 codec, with Wine's codec as fallback.
+    // Add this after ddraw detection so it does not suppress that default.
+    // Explicit -env DLL choices remain last and take precedence.
+    addWineDllOverrides(envValues, "ir50_32=n,b");
     //envValues.push_back(B("WINEDEBUG=+wgl"));
      
     if (userId==0) {

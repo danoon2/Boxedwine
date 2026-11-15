@@ -1,9 +1,9 @@
 <XML>
   <Wine>
     <Name>Wine 11.0</Name>
-    <FileVersion>36</FileVersion>
+    <FileVersion>37</FileVersion>
     <WineVersion>11.0</WineVersion>
-    <FileURL>https://boxedwine.org/v2/36/TinyCore15Wine11.0.zip</FileURL>
+    <FileURL>https://boxedwine.org/v2/37/TinyCore15Wine11.0.zip</FileURL>
     <FileSizeMB>207</FileSizeMB>
   </Wine>
   <Demo>
@@ -442,10 +442,13 @@
   </Demo>
   <Demo>
     <Name>System Shock 2 Demo (1999)</Name>
-    <InstallType>Zip</InstallType>
+    <InstallType>Installer</InstallType>
+    <InstallExe>setup.exe</InstallExe>
+    <InstallOptions>win98,resolution=800x600</InstallOptions>
+    <Options>win98,resolution=640x480,32bpp</Options>
     <IconURL>https://boxedwine.org/demos/SystemShock2Demo.png</IconURL>
-    <FileSizeMB>70</FileSizeMB>
-    <FileURL>https://boxedwine.org/builds/demos/apps/SystemShock2Demo.zip</FileURL>
+    <FileSizeMB>72</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/SystemShock2DemoSetup.zip</FileURL>
     <ShortcutExe>shock2.exe</ShortcutExe>
     <Help>System Shock 2 is a 1999 science-fiction horror game from Irrational Games and Looking Glass Studios. It combines first-person combat with hacking, character upgrades and psionic powers as you uncover what happened aboard the starship Von Braun.\n\nBuilt on the same Dark Engine as Thief: The Dark Project, it offers several ways to approach problems, from repairing equipment to turning security systems against your enemies.\n\nThis demo includes the training area and the Von Braun's Med/Sci deck, with a pre-generated Navy character.\n\nOriginal full-game requirements (1999):\n• Windows 95\n• Pentium 200 MHz processor\n• 32 MB RAM (64 MB recommended)\n• Direct3D-compatible 3D graphics card with 4 MB video memory\n• DirectX 6 and DirectSound-compatible audio\n• 200 MB disk space (500 MB recommended)\n• 4x CD-ROM drive (8x recommended), keyboard and mouse</Help>
   </Demo>

@@ -17,7 +17,7 @@
  */
 
 #include "boxedwine.h"
-#include "../../tools/x11/X11_def.h"
+#include "../../tools/fs_passthrough/x11/X11_def.h"
 #include "x11.h"
 #include "x11flush.h"
 #include "knativesystem.h"

@@ -58,23 +58,23 @@ native-ui: native-runtime
 	python3 ui/build.py
 
 test-native-input: native-runtime
-	@$(MAKE) -f makefile -f ../../tools/input/mouse_capture_test.mk native-input-test
+	@$(MAKE) -f makefile -f ../../tools/testing/input/mouse_capture_test.mk native-input-test
 
 # Uses a real SDL/OpenGL driver; run in a desktop session. Select the backend
 # with SDL_VIDEODRIVER (and SDL_VIDEO_X11_FORCE_EGL=1 for X11/EGL).
 # GL_TEST_ARGS=--fullscreen also checks a visible fullscreen desktop window.
 test-native-gl:
 	@mkdir -p Build/Native$(AUTOMATION_SUFFIX)
-	$(CXX) -std=c++20 -Wall ../../tools/input/test_linux_gl_fullscreen.cpp ../../platform/linux/linuxOpenGL.cpp $$(sdl2-config --cflags --libs) -lGL -lEGL -Wl,--wrap=SDL_GL_SwapWindow -o Build/Native$(AUTOMATION_SUFFIX)/test-linux-gl-fullscreen
+	$(CXX) -std=c++20 -Wall ../../tools/testing/input/test_linux_gl_fullscreen.cpp ../../platform/linux/linuxOpenGL.cpp $$(sdl2-config --cflags --libs) -lGL -lEGL -Wl,--wrap=SDL_GL_SwapWindow -o Build/Native$(AUTOMATION_SUFFIX)/test-linux-gl-fullscreen
 	Build/Native$(AUTOMATION_SUFFIX)/test-linux-gl-fullscreen $(GL_TEST_ARGS)
 
 test-cdrom-statusbar: native-runtime test-linux-image-picker
-	@$(MAKE) -f makefile -f ../../tools/input/cdrom_statusbar_test.mk cdrom-statusbar-test
+	@$(MAKE) -f makefile -f ../../tools/testing/input/cdrom_statusbar_test.mk cdrom-statusbar-test
 
 .PHONY: test-linux-image-picker
 test-linux-image-picker:
 	@mkdir -p Build/Native$(AUTOMATION_SUFFIX)
-	$(CXX) -std=c++20 -Wall -Wextra -UNDEBUG ../../tools/input/test_linux_image_picker.cpp ../../platform/linux/linuxImagePicker.cpp -o Build/Native$(AUTOMATION_SUFFIX)/test-linux-image-picker
+	$(CXX) -std=c++20 -Wall -Wextra -UNDEBUG ../../tools/testing/input/test_linux_image_picker.cpp ../../platform/linux/linuxImagePicker.cpp -o Build/Native$(AUTOMATION_SUFFIX)/test-linux-image-picker
 	Build/Native$(AUTOMATION_SUFFIX)/test-linux-image-picker
 
 # Build on a Debian/Ubuntu-family host of the desired architecture.

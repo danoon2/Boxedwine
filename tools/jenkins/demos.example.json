@@ -116,7 +116,7 @@
       },
       "description": "Build a tower in the interactive SimTower demo. Follow the on-screen tutorial; this is a time-limited tour."
     },
-    "SystemShock2Demo.zip": {
+    "SystemShock2Demo-r2.zip": {
       "title": "System Shock 2 Demo (1999 D3D 6)",
       "exe": "shock2.exe",
       "urlParams": {

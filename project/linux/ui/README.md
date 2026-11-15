@@ -343,9 +343,9 @@ Focused checks:
     python3 ui/tests/test_shared_files.py
     GDK_BACKEND=x11 xvfb-run -a python3 ui/tests/shared_files_ui_smoke.py
 
-For a real Wine check, compile tools/wineTests/tests/shared_files_live.c with
+For a real Wine check, compile tools/testing/wine/tests/shared_files_live.c with
 i686-w64-mingw32-gcc. From the repository root, run
-tools/wineTests/run_shared_files_live.py with --engine, --wine and --probe.
+tools/testing/wine/run_shared_files_live.py with --engine, --wine and --probe.
 Use xvfb-run when testing without a display.
 
 ```sh

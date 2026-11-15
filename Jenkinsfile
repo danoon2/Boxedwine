@@ -453,9 +453,9 @@ pipeline {
                         script {
                             gitCheckout()
                         }
-                        sh 'java tools/BoxedWineRunner/Build.java tools/BoxedWineRunner automation-runner/bin/BoxedWineRunner.jar --test'
+                        sh 'java tools/automation/BoxedWineRunner/Build.java tools/automation/BoxedWineRunner automation-runner/bin/BoxedWineRunner.jar --test'
                         script {
-                            writeFile file: 'automation-runner/filesystem.properties', text: readFile('tools/BoxedWineRunner/filesystem.properties')
+                            writeFile file: 'automation-runner/filesystem.properties', text: readFile('tools/automation/BoxedWineRunner/filesystem.properties')
                         }
                         dir('automation-runner') {
                             stash includes: 'bin/BoxedWineRunner.jar,filesystem.properties', name: 'automationRunner'
@@ -766,8 +766,8 @@ pipeline {
                             # Keep the AbiWord captures paired with the Wine 11 window theme.
                             ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v3.zip'
                             ABIWORD_AUTO_SHA256='e71c79c0335da3d2b89e23b79c1f2162b954fedf68d442a210d8b28eb783eef5'
-                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/36/TinyCore15Wine11.0-web.zip'
-                            BOXEDWINE_AUTO_SHA256='0932559a416a11d7ed38954156ee3d4daac62cf27ba607310a43cefcc0f8e936'
+                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/37/TinyCore15Wine11.0-web.zip'
+                            BOXEDWINE_AUTO_SHA256='8aa1026d85a83398226693f071002249362f2db3586dc01c66eb15f983b7f88d'
 
                             file_matches_sha256() {
                                 local file="$1"

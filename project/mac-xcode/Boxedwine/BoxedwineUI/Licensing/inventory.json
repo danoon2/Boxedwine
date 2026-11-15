@@ -699,9 +699,9 @@
       "sourceRepository": "https://github.com/FunkyFr3sh/cnc-ddraw",
       "sourceRevision": "a902db06e9830a9feafda69da05c766a81722b9b",
       "repoEvidence": [
-        "tools/cnc-ddraw/README.md",
-        "tools/cnc-ddraw/build.py",
-        "tools/cnc-ddraw/patches/0001-load-glGetIntegerv-from-opengl32.patch"
+        "tools/third_party/cnc-ddraw/README.md",
+        "tools/third_party/cnc-ddraw/build.py",
+        "tools/third_party/cnc-ddraw/patches/0001-load-glGetIntegerv-from-opengl32.patch"
       ],
       "binarySHA256": "318406915f4d11b08321949026626253554d7ae780d9aa3541cbfe5dcedbddf2",
       "status": "MIT; preserve full notices and verify source/build manifest; separate webgl/ddraw.dll remains unidentified"
@@ -715,10 +715,10 @@
     {
       "component": "Boxedwine guest shims",
       "repoEvidence": [
-        "tools/opengl/gl.c",
-        "tools/opengl/buildgl.sh",
-        "tools/vulkan/vk.c",
-        "tools/vulkan/buildvk.sh"
+        "tools/fs_passthrough/opengl/gl.c",
+        "tools/fs_passthrough/opengl/buildgl.sh",
+        "tools/fs_passthrough/vulkan/vk.c",
+        "tools/fs_passthrough/vulkan/buildvk.sh"
       ],
       "status": "Associate all shipped GL/EGL/GLES/Vulkan/X11 shim hashes with exact source revisions and build inputs"
     }

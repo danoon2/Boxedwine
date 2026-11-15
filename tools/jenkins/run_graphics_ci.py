@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 REPO = Path(__file__).resolve().parents[2]
-WINE_TOOLS = REPO / "tools/wineTests"
+WINE_TOOLS = REPO / "tools/testing/wine"
 sys.path.insert(0, str(WINE_TOOLS))
 import auditGraphicsCoverage as coverage
 import auditGraphicsMatrix as artifacts

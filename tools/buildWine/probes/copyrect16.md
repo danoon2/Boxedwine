@@ -101,7 +101,7 @@ game executable changes are involved. The filesystem-builder suite passed all
 
 The initial investigation used a loose rebuilt `user.exe16.so`. Filesystem v23
 now includes that module in both full and web packages, pinned by
-[`webgl_filesystems_v23.json`](../webgl_filesystems_v23.json). The packaged module
+`webgl_filesystems_v23.json` (in Git history). The packaged module
 has SHA-256 `f3e2509641eec38f2cc9dff990ff54953c366d35250c7ae65a69776223a4c0b7`.
 
 On October 25, 2026, `valid`, `low18`, and `faults` passed against both final v23

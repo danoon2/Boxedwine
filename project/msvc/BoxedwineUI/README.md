@@ -79,7 +79,7 @@ choices stay visible and produce an actionable launch error. Driver environment
 variables are set only on the child process, including Wine preparation,
 installers and alternate programs. Per-app choices are included in backups.
 
-The native UI catalog selects Wine 11.0 V34 (staged locally; upload pending). With a single catalog
+The native UI catalog selects Wine 11.0 V37, available under `/v2/37/`. With a single catalog
 entry, Add App shows the package as text, built-in apps select it automatically,
 and version selection, ZIP import and trial-copy controls and guidance are hidden.
 Settings still offers setup of the supported package when needed. Existing apps
@@ -279,8 +279,8 @@ Focused checks:
     dotnet run --project Tests/Boxedwine.Tests.csproj -c Release -- C:\Boxedwine2\tmp\shared-files-tests --shared-files-only
     dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release -- C:\Boxedwine2\tmp\shared-files-ui-checks --shared-files
 
-The live Windows probe is tools/wineTests/tests/shared_files_live.c. Compile it
-with i686-w64-mingw32-gcc and run tools/test_shared_files_live.ps1 from the repository
+The live Windows probe is tools/testing/wine/tests/shared_files_live.c. Compile it
+with i686-w64-mingw32-gcc and run tools/testing/test_shared_files_live.ps1 from the repository
 root with -Wine and -Probe. It uses a fresh test prefix and checks host changes,
 Wine notifications and guest writes through Y:.
 
@@ -302,7 +302,7 @@ dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore 
 Native runtime icon checks (from the repository root):
 
 ```powershell
-tools/test_windows_app_identity.ps1
+tools/testing/test_windows_app_identity.ps1
 dotnet run --project project/msvc/BoxedwineUI/Tests/UI/Boxedwine.UIChecks.csproj -c Release -- C:\Boxedwine\tmp\native-ui-icon-checks --icon-engine C:\Boxedwine\tmp\windows-app-identity-checks\x64\identity.exe
 ```
 

@@ -1228,10 +1228,13 @@
     <Filter Include="tools">
       <UniqueIdentifier>{251bd2dd-082d-4014-92b4-f257ae689415}</UniqueIdentifier>
     </Filter>
-    <Filter Include="tools\opengl">
+    <Filter Include="tools\fs_passthrough">
+      <UniqueIdentifier>{b5ba464c-40a4-40ed-a5b6-fc83452ddbc0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tools\fs_passthrough\opengl">
       <UniqueIdentifier>{9469886b-4f40-4fac-b531-b75cb965600c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="tools\x11">
+    <Filter Include="tools\fs_passthrough\x11">
       <UniqueIdentifier>{9f53ce56-67c5-403b-b315-bff1b1436cec}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\vulkan\vk">
@@ -2085,13 +2088,13 @@
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glew.h">
       <Filter>lib\glew\include\GL</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\tools\opengl\gldef.h">
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\opengl\gldef.h">
       <Filter>source\opengl</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\tools\opengl\gldef_ext.h">
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\opengl\gldef_ext.h">
       <Filter>source\opengl</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\tools\opengl\glfunctions.h">
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\opengl\glfunctions.h">
       <Filter>source\opengl</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\imgui\imgui.h">
@@ -2343,11 +2346,11 @@
     <ClInclude Include="..\..\..\..\..\platform\linux\linuxOpenGL.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\tools\opengl\glxdef.h">
-      <Filter>tools\opengl</Filter>
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\opengl\glxdef.h">
+      <Filter>tools\fs_passthrough\opengl</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\tools\x11\X11_def.h">
-      <Filter>tools\x11</Filter>
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\x11\X11_def.h">
+      <Filter>tools\fs_passthrough\x11</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.h">
       <Filter>source\util</Filter>

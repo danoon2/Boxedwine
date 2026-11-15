@@ -2298,11 +2298,11 @@
     <ClInclude Include="..\..\..\..\..\source\x11\xvisual.h" />
     <ClInclude Include="..\..\..\..\..\source\x11\xvisualinfo.h" />
     <ClInclude Include="..\..\..\..\..\source\x11\xwindow.h" />
-    <ClInclude Include="..\..\..\..\..\tools\opengl\gldef.h" />
-    <ClInclude Include="..\..\..\..\..\tools\opengl\gldef_ext.h" />
-    <ClInclude Include="..\..\..\..\..\tools\opengl\glfunctions.h" />
-    <ClInclude Include="..\..\..\..\..\tools\opengl\glxdef.h" />
-    <ClInclude Include="..\..\..\..\..\tools\x11\X11_def.h" />
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\opengl\gldef.h" />
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\opengl\gldef_ext.h" />
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\opengl\glfunctions.h" />
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\opengl\glxdef.h" />
+    <ClInclude Include="..\..\..\..\..\tools\fs_passthrough\x11\X11_def.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\..\lib\sdl2\include\SDL_config.h.cmake" />

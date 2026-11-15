@@ -12,7 +12,7 @@
 #ifdef __TEST
 #include "../cpu/testCPU.h"
 #include "../../x11/x11.h"
-#include "../../../tools/x11/X11_def.h"
+#include "../../../tools/fs_passthrough/x11/X11_def.h"
 #include "knativesystem.h"
 
 static BOXEDWINE_MUTEX paletteTestMutex;

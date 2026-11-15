@@ -24,7 +24,7 @@
 #include <cstdint>
 
 #ifndef GL_FUNC_COUNT
-#include "../../tools/opengl/gldef.h"
+#include "../../tools/fs_passthrough/opengl/gldef.h"
 #endif
 
 // Raw dispatched int99 calls, plus actual host binding changes and dispatches.

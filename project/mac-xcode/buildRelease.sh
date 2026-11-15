@@ -14,7 +14,7 @@ mkdir -p bin
 # bundle phase verifies the same pin again before signing the app.
 catalog_offline=
 if [ "${BOXEDWINE_CATALOG_OFFLINE:-NO}" = YES ]; then catalog_offline=--offline; fi
-/usr/bin/python3 ../../tools/demo_catalog.py stage --required \
+/usr/bin/python3 ../shared/demo_catalog.py stage --required \
     --output "$project_dir/bin/release-demo-catalog" ${catalog_offline:+"$catalog_offline"}
 rm -rf bin/Boxedwine.app bin/native-release.xcarchive
 if [ "${1:-}" != --skip-dependencies ]; then

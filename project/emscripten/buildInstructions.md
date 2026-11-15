@@ -145,7 +145,7 @@ node --test testAudioWorklet.mjs
 ```
 
 For an end-to-end Wine check, compile
-`tools/wineTests/tests/waveout_stream_probe.c` with MinGW (`-lwinmm -lm`), ZIP
+`tools/testing/wine/tests/waveout_stream_probe.c` with MinGW (`-lwinmm -lm`), ZIP
 the executable, and launch it as a demo. It plays 8-bit mono, 16-bit stereo,
 and float stereo streams and reopens the output between them. Click the canvas
 during its startup pause to enable Boxedwine sound. Add `audioFreq=22050` so

@@ -7,7 +7,7 @@
 #define __X11_FLUSH_H__
 
 #include <atomic>
-#include "../../tools/x11/X11_def.h"
+#include "../../tools/fs_passthrough/x11/X11_def.h"
 
 // Wine flushes both X displays after polling input. That alone must not force
 // another host frame. Keep all other requests conservative, including GC work:

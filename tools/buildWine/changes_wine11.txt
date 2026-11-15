@@ -1,3 +1,5 @@
+v37 Nov 14, 2026 Add the GStreamer AVI parser to the base, full and web filesystems for AVI movie playback. With the updated Boxedwine engine and installed Indeo codec, System Shock 2 movies play. Move build records, source archives, patches and license texts to separate release bundles. Existing Wine and WebGL binaries are unchanged.
+
 v36 Nov 14, 2026 Implement DirectPlay peer capabilities and correct uninitialized lobby connection handling, allowing MechCommander 2 to start. Include the tested multisample texture upload fix for Steel Soldiers intro and exit screens.
 
 v35 Nov 13, 2026 Expose 16-bit RGB565 display modes alongside 32-bit modes in the WebGL WineD3D renderer, allowing System Shock 2 to detect its supported video modes. Keep the desktop at 32-bit. Retain the v33 base and regular Wine runtime.

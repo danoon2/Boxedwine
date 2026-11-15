@@ -1,9 +1,9 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current filesystem release source series is pinned by
-[`webgl-test-divergences-v53.json`](../wineTests/webgl-test-divergences-v53.json).
+[`webgl-test-divergences-v53.json`](../testing/wine/webgl-test-divergences-v53.json).
 It contains 77 production patches and one separate Wine graphics-test adaptation.
-The [v53 inventory](../wineTests/webgl-patch-inventory-v53.json) records the ordered
+The [v53 inventory](../testing/wine/webgl-patch-inventory-v53.json) records the ordered
 patches and hashes. Existing Wine test expectations are unchanged.
 
 Filesystem revision 35 adds 16-bit RGB565 modes to the WebGL renderer's existing
@@ -11,13 +11,14 @@ Filesystem revision 35 adds 16-bit RGB565 modes to the WebGL renderer's existing
 adds color-depth variants. The WebGL WineD3D filter accepts 16 and 32 bits while
 retaining its exclusion of paletted modes. GDI is unchanged. The desktop still
 starts at 32-bit, and a 16-bit backbuffer does not change its depth.
-See [the mode-switch probe](../wineTests/tests/webgl_display_modes_probe.md),
-[release DLL pins](../buildWine/webgl_filesystems_v36.json), and
-[release validation](../buildWine/RELEASE-v35.md).
+See [the mode-switch probe](../testing/wine/tests/webgl_display_modes_probe.md),
+[release DLL pins](../buildWine/webgl_filesystems.json), and
+[filesystem changelog](../buildWine/changes_wine11_web.txt).
 
 Revision 34 introduced enumeration of the XRandR resolution list and required a
 matching engine update. Revision 35 uses that existing engine; only the separate
-WebGL WineD3D DLL is rebuilt. Historical configurations and hashes are retained.
+WebGL WineD3D DLL is rebuilt. Historical filesystem manifests and hashes are
+retained in Git history; the current manifest is updated in place.
 
 Versions 2 through 52 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
@@ -30,8 +31,8 @@ for the full register bank; patch 75 shares the native A8 policy. The expanded
 SWVP probe covers restoring a low constant after an update spanning the old
 256-register boundary. Wine test expectations are unchanged. Both packages
 include rebuilt dependent DLLs, pinned by
-[`webgl_filesystems_v27.json`](../buildWine/webgl_filesystems_v27.json).
-See [the v27 receipt](../buildWine/RELEASE-v27.md) for validation and upload status.
+`webgl_filesystems_v27.json` (in Git history).
+See the [filesystem changelog](../buildWine/changes_wine11.txt) for the release history.
 The web engine must also advertise the core WebGL 2 uniform-buffer capability
 as `GL_ARB_uniform_buffer_object`. This branch adds that name; older deployed
 engines report desktop OpenGL 3.0 without it and cannot execute the extended
@@ -39,10 +40,9 @@ constant path. Deploy rebuilt browser modes alongside the new filesystem.
 
 Patches 71 to 73 reduce per-draw WebGL overhead in WineD3D; the other DLLs
 were unchanged in that update. Filesystem revision 26 selected them, pinned by
-[`webgl_filesystems_v26.json`](../buildWine/webgl_filesystems_v26.json). Both
-v26 archives now contain a clean rebuild of all eight WebGL DLLs plus revision
-25's DirectSound backport. The final local DLL and archive hashes are pinned;
-[the release receipt](../buildWine/RELEASE-v26.md) records validation and upload steps.
+`webgl_filesystems_v26.json` (in Git history). Both
+v26 archives contain a clean rebuild of all eight WebGL DLLs plus revision
+25's DirectSound backport. The historical manifest pins their DLL and archive hashes.
 These patches were first measured
 as binary patches of the v47 `wined3d.dll`, then retested with this branch's
 November 2 candidate (then numbered v25) and the single-threaded Jit build. Each A/B test
@@ -96,16 +96,16 @@ The change is confined to WebGL WineD3D; other formats and native Wine keep
 their existing behavior. Filesystem revision 26 retains this normal-map fix
 and the DirectSound SSE backport while adding the v50 performance patches.
 Revision 26's archive and DLL identities are retained in
-[`webgl_filesystems_v26.json`](../buildWine/webgl_filesystems_v26.json).
+`webgl_filesystems_v26.json` (in Git history).
 
-The [signed-texture probe](../wineTests/tests/d3d9_q8w8v8u8_probe.c) checks
+The [signed-texture probe](../testing/wine/tests/d3d9_q8w8v8u8_probe.c) checks
 all four channels across the signed-byte range, partial rectangle updates,
 explicit mip levels, linear filtering, pixel shader 1.1 and direct GLSL
 fixed-function sampling. A clean v49 DLL passed 20,572 checks over 5,120
 pixels. The prior DLL fails the first format support query with
 `D3DERR_NOTAVAILABLE`. Nature completed at 32.5 FPS at 640x480, 16-bit color
 and textures, with no bump-normal error or browser GL errors. See the
-[validation record](../wineTests/q8w8v8u8-validation-20261030.json) for build
+[validation record](../testing/wine/q8w8v8u8-validation-20261030.json) for build
 identities, the failing control and test scope.
 
 Patch 69, [direct GLSL FFP generation](webgl-direct-glsl-ffp-against-wine-11.0.patch),
@@ -131,7 +131,7 @@ rasterizer outputs, matching the main WineD3D tarp fix. It changes the separatel
 built `wined3d.dll`; the other seven DLLs retain their previous identities.
 WebGL geometry-shader and stream-output capability limits remain unchanged.
 Those historical DLLs and archives are pinned by
-[`webgl_filesystems_v23.json`](../buildWine/webgl_filesystems_v23.json).
+`webgl_filesystems_v23.json` (in Git history).
 Filesystem 21 changes Wine mountmgr media handling. Filesystem 22 adds Win16
 CD-ROM read-only opens and 8-bit palette/cursor fixes. Filesystem 23 adds Win16 CopyRect fault recovery. All retain the eight v20 WebGL DLL hashes.
 
@@ -139,17 +139,17 @@ Filesystems 18 and 19 select v46. Patches 66 and 67 add the shared WineD3D strea
 overflow query and DXGI fullscreen activation fixes used by 3DMark Vantage.
 Overflow queries remain conditional on host OpenGL support; WebGL does not gain
 that capability. Wine test policy is unchanged. Those historical DLLs and archives
-are pinned by [`webgl_filesystems_v19.json`](../buildWine/webgl_filesystems_v19.json).
+are pinned by `webgl_filesystems_v19.json` (in Git history).
 Revision 19 changes the shared Wine shader compiler used by the PE D3DX DLLs;
 the separate PE DLLs retain their v18 hashes.
 
 The published v11 filesystem is pinned to v41. Its September 19 download
 matches the candidate used for the focused regression checks; see
-[the validation and upload record](../wineTests/graphics-review-fixes-20260919.json).
+[the validation and upload record](../testing/wine/graphics-review-fixes-20260919.json).
 The version 15 full and web filesystems select v43, adding RGB565 SSE2 upload
 conversion, fog/projection constant caches and immediate map/unmap dispatch.
 Their separately built PE32 `C:/webgl/wined3d.dll` is pinned by
-[`webgl_filesystems_v16.json`](../buildWine/webgl_filesystems_v16.json).
+`webgl_filesystems_v16.json` (in Git history).
 Regular Wine carries the fog/projection and immediate-map counterparts through
 `wine_builds.json`; RGB565 expansion is specific to the WebGL upload path.
 
@@ -161,7 +161,7 @@ shared builtin compiler modules. The assembler
 lexer change belongs to the production series; its Wine unit-test additions
 are retained separately in `wine11_shader_disassembly_constants_tests.patch`.
 The DLL and archive identities are pinned by
-[`webgl_filesystems_v17.json`](../buildWine/webgl_filesystems_v17.json).
+`webgl_filesystems_v17.json` (in Git history).
 These compiler fixes apply independently of the rendering backend; they do not
 enable Vulkan. See [the regression notes](../../docs/3dmark06-shaders.md).
 
@@ -217,7 +217,7 @@ mapping cost or a game frame-rate gain. The user reported correct MW3 rendering
 during the Chrome gameplay check.
 
 Production patch replay and test-policy validation establish reproducibility,
-not graphics conformance. The standalone probes in `tools/wineTests/tests/`
+not graphics conformance. The standalone probes in `tools/testing/wine/tests/`
 cover context transitions, copies, packed formats, capabilities, D3DX behavior,
 mapped buffers and shader-failure recovery. The browser harness runs those
 probes and Wine's graphics tests against the selected runtime and filesystem.
@@ -386,8 +386,8 @@ Leave the diagnostic overrides unset for normal operation.
 Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
-python3 tools/wineTests/webglTestDivergences.py \
-  --manifest tools/wineTests/webgl-test-divergences-v49.json
+python3 tools/testing/wine/webglTestDivergences.py \
+  --manifest tools/testing/wine/webgl-test-divergences-v49.json
 ```
 
 The validator checks patch hashes, forbids production changes to Wine test
@@ -409,7 +409,7 @@ import sys
 
 repo = Path.cwd()
 source = Path(sys.argv[1]).resolve()
-manifest = json.loads((repo / "tools/wineTests/webgl-test-divergences-v49.json").read_text())
+manifest = json.loads((repo / "tools/testing/wine/webgl-test-divergences-v49.json").read_text())
 head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
 if head != manifest["wine_source_commit"]:
     raise SystemExit("Wine checkout is not at the pinned source commit")
@@ -424,7 +424,7 @@ PY
 
 For test builds, apply only
 `webgl-tests-p8-copy-against-wine-11.0.patch` after the production series.
-The failure-injection patches under `tools/wineTests/tests/` are separate
+The failure-injection patches under `tools/testing/wine/tests/` are separate
 diagnostic builds and must not enter production DLLs. Their control variants
 target the earlier series identified in their filenames.
 

@@ -8,7 +8,7 @@ URL. An unchanged pin makes no network request when its verified ZIP is cached.
 
 The package contains `catalog.xml` and its referenced PNGs in one flat directory.
 The XML's `release` matches the lock's `version`; `schemaVersion` describes the
-recipe format separately. The current pin, `26R2-catalog-43`, contains 55 recipes and icons,
+recipe format separately. The current pin, `26R2-catalog-44`, contains 55 recipes and icons,
 including 3DMark2001 SE, 3DMark03 (2003), 3DMark05 (2004),
 3DMark06 (2006), 3DMark Vantage (2008), SimTower Demo (1994), Max Payne Demo (2001),
 SimCity 3000 Demo (1999), System Shock 2 Demo (1999), Pharaoh Demo (1999),
@@ -78,8 +78,7 @@ No GDI preset, registry overlay, or modified game configuration is required.
 
 Catalog 16 is 122,003 bytes, SHA-256
 `1b0c4e52ad5f1f81a5ba94373fcda7bd66dd3f22f25a19641a44513556ea5742`. The same payload serves the Jenkins demos and homepage.
-The hosted and bundled legacy catalogues also include it. Browser validation
-and publication evidence are recorded in the [filesystem-35 receipt](../tools/buildWine/RELEASE-v35.md).
+The hosted and bundled legacy catalogues also include it.
 
 Catalog 18 adds Pharaoh's three-mission demo with its original installer files
 and application icon. `PharaohDemoSetup.zip` is 77,327,746 bytes, SHA-256
@@ -390,7 +389,7 @@ installations can use the same `-env` argument in their app settings.
 The native Mac, Windows, and Linux UIs consume this shared pin and recipe format.
 Each UI sorts demos alphabetically by name, independently of their XML order,
 using the same ordering as its installed-app list.
-`tools/demo_catalog.py` uses Python 3's standard library to package and validate
+`project/shared/demo_catalog.py` uses Python 3's standard library to package and validate
 the catalog. The old OpenGL UI still uses its existing XML, and the Emscripten
 demo site has a separate catalog.
 
@@ -438,8 +437,8 @@ equivalents are `--required` and `--offline`. `stage --output` **replaces that e
 directory**; use a dedicated build-resource directory, never your editing source.
 
 ```sh
-python3 tools/demo_catalog.py stage --required --output tmp/catalog-resources
-python3 tools/demo_catalog.py audit --output tmp/catalog-resources
+python3 project/shared/demo_catalog.py stage --required --output tmp/catalog-resources
+python3 project/shared/demo_catalog.py audit --output tmp/catalog-resources
 ```
 
 Staging adds `catalog-package.json` to the output, recording the pin and file
@@ -473,7 +472,7 @@ in developer documentation. `Summary` should briefly describe the game or app.
    ```sh
    swift run --package-path project/mac-xcode/Boxedwine/BoxedwineUI \
      BoxedwinePackageCheck --catalog tmp/catalog-edit/catalog.xml
-   python3 tools/demo_catalog.py pack --source tmp/catalog-edit \
+   python3 project/shared/demo_catalog.py pack --source tmp/catalog-edit \
      --version 26R2-catalog-8 \
      --url https://boxedwine.org/catalogs/26R2-catalog-8/catalog.zip \
      --output tmp/catalog-8.zip --lock resources/demo-catalog.lock.json
@@ -485,7 +484,7 @@ in developer documentation. `Summary` should briefly describe the game or app.
 5. Verify an actual download using a fresh cache, test the catalog, and build:
 
    ```sh
-   python3 tools/demo_catalog.py stage --required --cache tmp/fresh-catalog-cache \
+   python3 project/shared/demo_catalog.py stage --required --cache tmp/fresh-catalog-cache \
      --output tmp/catalog-resources
    BOXEDWINE_TEST_DEMO_CATALOG="$PWD/tmp/catalog-resources" \
      swift test --package-path project/mac-xcode/Boxedwine/BoxedwineUI
@@ -498,7 +497,7 @@ in developer documentation. `Summary` should briefly describe the game or app.
 
 ## Tests
 
-`python3 tools/test_demo_catalog.py` runs without network or release assets. The
+`python3 tools/testing/test_demo_catalog.py` runs without network or release assets. The
 Swift unit suite uses synthetic recipe fixtures and works on a fresh offline
 checkout. Setting `BOXEDWINE_TEST_DEMO_CATALOG` additionally checks the staged
 release's recipes against the Wine catalog and decodes every icon. Supplying a
@@ -542,3 +541,32 @@ checks, but resetting Wine settings exceeded the test's shared three-minute
 deadline on a fresh rerun. An initial Mesa file-access failure did not recur.
 The runtime matches the successful Links 2003 gameplay test byte for byte;
 the settings-reset timeout remains unresolved.
+
+Catalog 44 corrects System Shock 2's native recipe to run the original installer.
+`SystemShock2DemoSetup.zip` contains all 61 unchanged files extracted from the
+supplied `SHOCK2.EXE`, including `setup.exe`, its installation data and bundled
+codec installer. It is 74,644,764 bytes, SHA-256
+`dd1d456089919ead60b371533f1b4ee3bfcfbdcafbffcd36d55985c9380811eb`.
+The recipe selects Windows 98 (setup rejects NT), starts setup at 800x600, and
+selects `shock2.exe` afterward at 640x480, 32-bit. No installed Wine prefix or
+modified game file is supplied to the native UIs.
+
+The previous portable package omitted the `current/` directory created by setup.
+The game crashed writing `current/CAMPAIGN` at the training-to-Med/Sci transition.
+Restoring that empty directory fixed the user's repeatable crash. Browser demos
+now use the separate corrected `SystemShock2Demo-r2.zip`; the original download
+remains available for older catalogue pins.
+
+Catalog 44 is 139,689 bytes, SHA-256
+`f2a03c37c0dbd94c14acda8cdffb87db9ae24b8cf21305f74a1934d47ca92077`.
+The other 54 recipes and all icons are unchanged. Windows tests passed (56), and
+the Linux parser accepted all 55 recipes. The original setup completed with exit
+code 0 and its installed game rendered the menu. Its optional Indeo codec setup
+initially reported “File not found”. The subsequent Boxedwine startup change
+prefers the installed Indeo codec with Wine's builtin as fallback, allowing
+setup to complete. Filesystem 37 adds the AVI parser needed for movie playback;
+the installed codec and parser were verified with the opening logos and Intro
+movie in an isolated installation. Native
+Mac/Linux installation and a new browser playthrough were not retested here.
+Published files were downloaded and SHA-256 verified. See the
+[native demo source audit](../docs/demo-installer-audit-20261114.md).

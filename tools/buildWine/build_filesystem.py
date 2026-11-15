@@ -25,6 +25,7 @@ import zipfile
 import build_wine
 import webgl_filesystem
 import web_runtime
+import runtime_documents
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -241,7 +242,7 @@ def build_addons(profile, work, wine_repository, jobs):
     if not applied:
         run(['git', '-C', source, 'apply', patch])
     cnc_output = work / 'cnc-ddraw-build'
-    run([sys.executable, REPO / 'tools/cnc-ddraw/build.py', '--source', source,
+    run([sys.executable, REPO / 'tools/third_party/cnc-ddraw/build.py', '--source', source,
          '--toolchain', toolchain / 'bin', '--output', cnc_output])
     destination = overlay / DRIVE / 'ddraw'
     install_selected_zip(download(cnc, downloads), destination,
@@ -496,12 +497,13 @@ def stage_patch_documentation(profile, destination):
 def assemble(profile, work, boxedwine, compare_to=None):
     changes = filesystem_changes(profile)
     config = wine_config(profile)
-    exclude = None
+    exclude = runtime_documents.is_documentation
     if is_web(profile):
         stamp = work / 'wine-build-config.json'
         if not stamp.is_file() or json.loads(stamp.read_text()) != config:
             raise build_wine.BuildError('Build Wine for the web variant first; its configuration stamp must match')
-        exclude = web_runtime.exclusions(config['base_filesystem']['sha256'])
+        web_exclude = web_runtime.exclusions(config['base_filesystem']['sha256'])
+        exclude = lambda name: runtime_documents.is_documentation(name) or web_exclude(name)
         header = (work / 'wine-git/include/config.h').read_text()
         if re.search(r'^#define SONAME_LIBVULKAN\b', header, re.M):
             raise build_wine.BuildError('The web Wine build still enables Vulkan')
@@ -547,8 +549,11 @@ def assemble(profile, work, boxedwine, compare_to=None):
                          for op in build_wine.select_operations(config, (11, 0)) if op.kind == 'apply_patch'},
     })
     output = work / output_name(profile)
+    shutil.copy2(complete / 'filesystem-build.json', work / 'filesystem-build.json')
+    runtime_documents.archive_documents(wine_zip, complete, output.with_name(output.stem + '-records.zip'))
     candidate = output.with_suffix('.candidate.zip')
     combine_zip(runtime_zip, complete, candidate, exclude=exclude, compresslevel=9 if is_web(profile) else None)
+    runtime_documents.validate_runtime(candidate)
     if is_web(profile):
         web_runtime.optimize_archive(candidate)
         report = web_runtime.validate_archive(candidate)

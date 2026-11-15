@@ -340,7 +340,7 @@ def audit(app, configuration="Release", signatures=True, distribution=False, req
     report["demoCatalog"] = None
     if not store and (require_demo_catalog or distribution or (resources / "Demos").exists()):
         try:
-            tool = Path(__file__).resolve().parents[5] / "tools/demo_catalog.py"
+            tool = Path(__file__).resolve().parents[5] / "project/shared/demo_catalog.py"
             spec = importlib.util.spec_from_file_location("demo_catalog", tool)
             catalog = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(catalog)
