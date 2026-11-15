@@ -373,6 +373,14 @@
         "min": "11.0",
         "max": "11.0"
       },
+      "apply_patch": "wine11_integer_exceptions.patch",
+      "reason": "Distinguish integer division overflow from zero divisors, match INT 4/INTO exception addresses, and clear TF in contexts delivered to user exception handlers"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_user_copyrect16_fault_recovery.patch",
       "reason": "Match native Win16 USER's CopyRect fault recovery so invalid rectangle pointers do not crash legacy applications such as Robot City during shutdown"
     },

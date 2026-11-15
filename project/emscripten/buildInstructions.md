@@ -21,6 +21,11 @@ incremental builds, since the executable embeds `__DATE__` and `__TIME__`.
 
 ## Browser Requirements
 
+Filesystem v39's Wine exception patch requires the matching Boxedwine CPU
+exception fixes. Rebuild and deploy the browser engine when adopting v39 so
+integer overflow, instruction addresses, and signal context flags agree with
+Wine's exception handling.
+
 Filesystem v27's extended software vertex constants require a web engine that
 advertises `GL_ARB_uniform_buffer_object`. Uniform buffers are core WebGL 2
 features, but Wine needs that capability name because Boxedwine reports a

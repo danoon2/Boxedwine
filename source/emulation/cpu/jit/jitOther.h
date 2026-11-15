@@ -164,6 +164,9 @@ void Jit::dynamic_int9B(DecodedOp* op) {
 void Jit::dynamic_intIb(DecodedOp* op) {
     emulateSingleOp();
 }
+void Jit::dynamic_intO(DecodedOp* op) {
+    emulateSingleOp();
+}
 void Jit::dynamic_int3(DecodedOp* op) {
     emulateSingleOp();
 }

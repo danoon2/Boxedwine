@@ -226,7 +226,8 @@ void testWaitPid() {
     expectWaitResult("ptrace(PTRACE_CONT) before software breakpoint returns success", runPtrace(context, K_PTRACE_CONT, softwareBreakpointThread->id, 0, 0), 0);
     parent->sigActions[K_SIGTRAP].handlerAndSigAction = TEST_CODE_ADDRESS + 0x100;
     memset(parent->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(parent->sigActions[K_SIGTRAP].sigInfo));
-    softwareBreakpointThread->signalTrap(1);
+    softwareBreakpointThread->cpu->eip.u32++;
+    softwareBreakpointThread->signalTrap();
     context.memory->writed(STATUS_ADDRESS, 0);
     expectWaitResult("waitpid(tid) reports ptrace software breakpoint trap", KSystem::waitpid(thread, softwareBreakpointThread->id, STATUS_ADDRESS, K_WNOHANG), softwareBreakpointThread->id);
     expectWaitResult("waitpid(tid) writes software breakpoint SIGTRAP status", context.memory->readd(STATUS_ADDRESS), (K_SIGTRAP << 8) | 0x7f);

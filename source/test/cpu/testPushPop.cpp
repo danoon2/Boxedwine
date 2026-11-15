@@ -815,7 +815,7 @@ void runInt2dRaisesInterruptProtectionFault() {
         illAction.reset();
         return;
     }
-    if (action.sigInfo[1] != INTERRUPT_ERROR) {
+    if (action.sigInfo[1] != 0 || action.sigInfo[2] != K_SI_KERNEL) {
         failed("int 2d SIGSEGV error");
     }
     if (action.sigInfo[4] != 13) {
@@ -865,7 +865,7 @@ void runInt3ImmediateRaisesBreakpoint() {
         segvAction.reset();
         return;
     }
-    if (trapAction.sigInfo[2] != 1) {
+    if (trapAction.sigInfo[2] != K_SI_KERNEL || trapAction.sigInfo[3]) {
         failed("int 3 immediate SIGTRAP code");
     }
 
@@ -882,6 +882,49 @@ void runInt3ImmediateRaisesBreakpoint() {
 
     trapAction.reset();
     segvAction.reset();
+}
+
+void runOverflowInterrupt(bool conditional) {
+    // Verified against 32-bit Linux sigaction/ucontext and Windows VEH probes:
+    // INT 4 always traps; INTO traps only with OF set. Both save the next EIP.
+    for (bool useJit : {false, true}) for (bool prefix : {false, true}) for (bool overflow : {false, true}) {
+        newInstruction(DF);
+        cpu->big = true;
+        cpu->reg[2].u32 = 0;
+        auto& action = testContext().process->sigActions[K_SIGSEGV];
+        action.reset();
+        emitByte(0xb0); emitByte(overflow ? 0x7f : 0); // mov al,imm8
+        emitByte(0x04); emitByte(1); // add al,1: leave arithmetic flags lazy
+        if (prefix) emitByte(0x66);
+        if (conditional) emitByte(0xce);
+        else { emitByte(0xcd); emitByte(4); }
+        U32 nextEip = testContext().codeIp - TEST_CODE_ADDRESS;
+        emitByte(0xba); emitDword(0x12345678); // must be skipped on a trap
+        action.handlerAndSigAction = testContext().codeIp;
+        emitByte(0xcd); emitByte(0x97);
+        if (!useJit) cpu->getNextOp()->flags |= OP_FLAG_NO_JIT;
+        runTestCPU();
+
+        const bool trapped = !conditional || overflow;
+        if (trapped) {
+            if (action.sigInfo[0] != K_SIGSEGV || action.sigInfo[1] ||
+                    action.sigInfo[2] != 128 || action.sigInfo[3] || action.sigInfo[4] != 4) {
+                failed("overflow interrupt signal (into=%u prefix=%u OF=%u jit=%u)", conditional, prefix, overflow, useJit);
+            } else {
+                U32 context = memory->readd(cpu->reg[4].u32 + 12);
+                U32 expectedFlags = DF | (overflow ? (OF | SF | AF) : 0);
+                if (memory->readd(context + 0x44) != 4 || memory->readd(context + 0x48) != 0 ||
+                        memory->readd(context + 0x4c) != nextEip ||
+                        (memory->readd(context + 0x54) & (FMASK_TEST | DF | RF)) != expectedFlags) {
+                    failed("overflow interrupt context (into=%u prefix=%u OF=%u jit=%u)", conditional, prefix, overflow, useJit);
+                }
+            }
+            if (cpu->reg[2].u32) failed("overflow interrupt executed fallthrough");
+        } else if (action.sigInfo[0] || cpu->reg[2].u32 != 0x12345678) {
+            failed("INTO with clear OF did not continue normally");
+        }
+        action.reset();
+    }
 }
 
 void runProtectionFaultBytes(const char* name, const U8* bytes, U32 byteCount, U32 expectedError = 0) {
@@ -902,7 +945,7 @@ void runProtectionFaultBytes(const char* name, const U8* bytes, U32 byteCount, U
         action.reset();
         return;
     }
-    if (action.sigInfo[1] != expectedError) {
+    if (action.sigInfo[1] != 0 || action.sigInfo[2] != K_SI_KERNEL) {
         failed("%s SIGSEGV error", name);
     }
     if (action.sigInfo[4] != 13) {
@@ -921,6 +964,159 @@ void runProtectionFaultBytes(const char* name, const U8* bytes, U32 byteCount, U
     }
 
     action.reset();
+}
+
+// Expected Linux signal ABI values are also exercised by
+// tools/testing/cpu/exception_probe.c on real x86 hardware.
+void clearDebugRegisters();
+
+U32 checkFaultContext(U32 signal, U32 code, U32 trap, U32 error, U32 address, U32 eip, bool fault) {
+    auto& action = testContext().process->sigActions[signal];
+    if (action.sigInfo[0] != signal || action.sigInfo[1] || action.sigInfo[2] != code || action.sigInfo[3] != address) {
+        failed("exception signal metadata: signal=%u code=%u trap=%u", signal, code, trap);
+        return 0;
+    }
+    U32 context = memory->readd(cpu->reg[4].u32 + 12);
+    if (memory->readd(context + 0x44) != trap || memory->readd(context + 0x48) != error ||
+            memory->readd(context + 0x4c) != eip || !!(memory->readd(context + 0x54) & RF) != fault) {
+        failed("exception saved trap/error/EIP/RF: trap=%u", trap);
+    }
+    if (cpu->flags & (DF | TF | RF)) failed("exception handler flags not cleared");
+    return context;
+}
+
+void runIntegerDivideFaults() {
+    for (bool jit : {false, true}) for (int width : {8, 16, 32})
+        for (bool signedDiv : {false, true}) for (bool overflow : {false, true}) for (bool mem : {false, true}) {
+        newInstruction(CF | OF | DF);
+        cpu->big = true;
+        U32 low = 10, high = 0, divisor = 0;
+        if (overflow) {
+            divisor = signedDiv ? 0xffffffff : 1;
+            if (signedDiv) {
+                low = width == 8 ? 0xff80 : width == 16 ? 0x8000 : 0x80000000;
+                high = 0xffffffff;
+            } else { low = width == 8 ? 256 : 0; high = 1; }
+        }
+        cpu->reg[0].u32 = low; cpu->reg[2].u32 = high; cpu->reg[1].u32 = divisor;
+        memory->writed(TEST_HEAP_ADDRESS + 0x80, divisor);
+        if (width == 16) emitByte(0x66);
+        emitByte(width == 8 ? 0xf6 : 0xf7);
+        emitByte((mem ? 0x05 : 0xc1) | ((signedDiv ? 7 : 6) << 3));
+        if (mem) emitDword(0x80);
+        emitByte(0xbb); emitDword(0x12345678); // must not execute
+        cpu->reg[3].u32 = 0;
+        auto& action = testContext().process->sigActions[K_SIGFPE];
+        action.reset();action.handlerAndSigAction = testContext().codeIp;
+        if (!jit) cpu->getNextOp()->flags |= OP_FLAG_NO_JIT;
+        runTestCPU();
+        U32 context = checkFaultContext(K_SIGFPE, K_FPE_INTDIV, 0, 0, TEST_CODE_ADDRESS, 0, true);
+        if (context && (memory->readd(context + 0x40) != low || memory->readd(context + 0x38) != high ||
+                memory->readd(context + 0x3c) != divisor || cpu->reg[3].u32 ||
+                (memory->readd(context + 0x54) & (CF | OF | DF)) != (CF | OF | DF)))
+            failed("DIV fault corrupted state width=%d signed=%u overflow=%u mem=%u jit=%u", width, signedDiv, overflow, mem, jit);
+        action.reset();
+    }
+}
+
+void runBoundsExceptions() {
+    for (bool jit : {false, true}) for (int width : {16, 32}) for (S32 value : {-3, -2, 2, 3}) {
+        newInstruction(DF); cpu->big = true;cpu->reg[0].u32 = value;
+        if (width == 16) { memory->writew(TEST_HEAP_ADDRESS + 0x80, -2);memory->writew(TEST_HEAP_ADDRESS + 0x82, 2);emitByte(0x66); }
+        else { memory->writed(TEST_HEAP_ADDRESS + 0x80, -2);memory->writed(TEST_HEAP_ADDRESS + 0x84, 2); }
+        emitByte(0x62);emitByte(0x05);emitDword(0x80);
+        auto& action = testContext().process->sigActions[K_SIGSEGV];
+        action.reset();action.handlerAndSigAction = testContext().codeIp;
+        if (!jit) cpu->getNextOp()->flags |= OP_FLAG_NO_JIT;
+        runTestCPU();
+        if (value < -2 || value > 2) checkFaultContext(K_SIGSEGV, K_SI_KERNEL, 5, 0, 0, 0, true);
+        else if (action.sigInfo[0]) failed("BOUND raised a fault at an inclusive limit");
+        action.reset();
+    }
+}
+
+void runExceptionInstructionMetadata() {
+    struct Case { U8 bytes[4]; U32 length, signal, code, trap, error, savedEip; bool fault; };
+    const Case cases[] = {
+        {{0x0f,0x0b},2,K_SIGILL,2,6,0,0,true},
+        {{0x66,0x0f,0x0b},3,K_SIGILL,2,6,0,0,true},
+        {{0x0f,0xb9,0xc0},3,K_SIGILL,2,6,0,0,true},
+        {{0xcc},1,K_SIGTRAP,K_SI_KERNEL,3,0,1,false},
+        {{0x66,0xcc},2,K_SIGTRAP,K_SI_KERNEL,3,0,2,false},
+        {{0x66,0xcd,3},3,K_SIGTRAP,K_SI_KERNEL,3,0,3,false},
+        {{0xf1},1,K_SIGTRAP,1,1,0,1,false},
+        {{0xcd,1},2,K_SIGSEGV,K_SI_KERNEL,13,10,0,true},
+        {{0xcd,5},2,K_SIGSEGV,K_SI_KERNEL,13,42,0,true},
+        {{0xfa},1,K_SIGSEGV,K_SI_KERNEL,13,0,0,true},
+        {{0xfb},1,K_SIGSEGV,K_SI_KERNEL,13,0,0,true},
+        {{0xf4},1,K_SIGSEGV,K_SI_KERNEL,13,0,0,true},
+    };
+    for (bool jit : {false, true}) for (bool trace : {false, true}) for (const auto& c : cases) {
+        newInstruction(DF | (trace ? TF : 0));cpu->big = true;
+        auto& trapAction = testContext().process->sigActions[K_SIGTRAP];
+        trapAction.reset();trapAction.handlerAndSigAction = TEST_CODE_ADDRESS + c.length;
+        auto& action = testContext().process->sigActions[c.signal];
+        action.reset();action.handlerAndSigAction = TEST_CODE_ADDRESS + c.length;
+        for (U32 i = 0; i < c.length; ++i) emitByte(c.bytes[i]);
+        if (!jit) cpu->getNextOp()->flags |= OP_FLAG_NO_JIT;
+        runTestCPU();
+        U32 address = c.signal == K_SIGILL ? TEST_CODE_ADDRESS : c.trap == 1 ? TEST_CODE_ADDRESS + c.savedEip : 0;
+        U32 context = checkFaultContext(c.signal,c.code,c.trap,c.error,address,c.savedEip,c.fault);
+        if (context && !!(memory->readd(context + 0x54) & TF) != trace) failed("exception lost saved TF");
+        if (testContext().thread->inSignal != 1) failed("fault/trap incorrectly single-stepped into its signal handler");
+        action.reset();trapAction.reset();
+    }
+}
+
+void runSegmentNotPresentExceptions() {
+    for (bool jit : {false, true}) for (bool stack : {false, true}) {
+        newInstruction(DF);cpu->big = true;
+        constexpr U32 selector = (32 << 3) | 7;
+        auto* desc = testContext().process->getLDT(32);
+        auto oldDesc = *desc;
+        *desc = {};desc->base_addr = 0;desc->limit = 0xfffff;desc->seg_32bit = 1;
+        desc->limit_in_pages = 1;desc->seg_not_present = 1;
+        cpu->reg[0].u32 = selector;
+        emitByte(0x8e);emitByte(stack ? 0xd0 : 0xd8); // mov ss/ds,ax
+        auto& action = testContext().process->sigActions[K_SIGBUS];
+        action.reset();action.handlerAndSigAction = testContext().codeIp;
+        if (!jit) cpu->getNextOp()->flags |= OP_FLAG_NO_JIT;
+        runTestCPU();
+        checkFaultContext(K_SIGBUS,K_SI_KERNEL,stack ? 12 : 11,selector & ~3,0,0,true);
+        *desc = oldDesc;action.reset();
+    }
+}
+
+void runPageFaultMetadata() {
+    for (bool jit : {false, true}) for (bool mapped : {false, true}) for (bool write : {false, true}) {
+        newInstruction(DF);cpu->big = true;
+        U32 address = mapped ? TEST_HEAP_ADDRESS + K_PAGE_SIZE : 0x40000000;
+        if (mapped) memory->mprotect(testContext().thread,address,K_PAGE_SIZE,write ? K_PROT_READ : K_PROT_NONE);
+        emitByte(write ? 0xa3 : 0xa1);emitDword(address - TEST_HEAP_ADDRESS);
+        auto& action = testContext().process->sigActions[K_SIGSEGV];
+        action.reset();action.handlerAndSigAction = testContext().codeIp;
+        if (!jit) cpu->getNextOp()->flags |= OP_FLAG_NO_JIT;
+        runTestCPU();
+        U32 context = checkFaultContext(K_SIGSEGV,mapped ? 2 : 1,14,4 | (mapped && write ? 1 : 0) | (write ? 2 : 0),address,0,true);
+        if (context && memory->readd(context + 0x68) != address) failed("page fault context CR2");
+        if (mapped) memory->mprotect(testContext().thread,address,K_PAGE_SIZE,K_PROT_READ | K_PROT_WRITE);
+        action.reset();
+    }
+}
+
+void runResumeFlagSuppressesOneBreakpoint() {
+    newInstruction(0);cpu->big = true;clearDebugRegisters();
+    cpu->flags |= RF;cpu->reg[0].u32 = 0;
+    emitByte(0x40);emitByte(0xeb);emitByte(0xfd); // inc eax; jmp back
+    auto& action = testContext().process->sigActions[K_SIGTRAP];
+    action.reset();action.handlerAndSigAction = testContext().codeIp;
+    testContext().thread->debugRegs[0] = TEST_CODE_ADDRESS;
+    testContext().thread->debugRegs[7] = 3;
+    testContext().thread->updateDebugTrapActive();
+    runTestCPU();
+    U32 context = checkFaultContext(K_SIGTRAP,4,1,0,TEST_CODE_ADDRESS,0,true);
+    if (context && memory->readd(context + 0x40) != 1) failed("RF must skip only the first execution breakpoint");
+    action.reset();clearDebugRegisters();
 }
 
 void runPrefixedCliRaisesProtectionFault() {
@@ -1190,8 +1386,8 @@ void runSingleStepTrap() {
     if (memory->readd(context + 0x4c) != HANDLER_OFFSET) {
         failed("single-step context eip");
     }
-    if (memory->readd(context + 0x54) & TF) {
-        failed("single-step context kept TF");
+    if (!(memory->readd(context + 0x54) & TF) || (cpu->flags & TF)) {
+        failed("single-step TF must be saved in context and cleared in handler");
     }
 
     action.reset();
@@ -1233,8 +1429,8 @@ void runSingleStepTrapAfterRet() {
     if (memory->readd(context + 0x4c) != TARGET_OFFSET) {
         failed("single-step ret context eip");
     }
-    if (memory->readd(context + 0x54) & TF) {
-        failed("single-step ret context kept TF");
+    if (!(memory->readd(context + 0x54) & TF) || (cpu->flags & TF)) {
+        failed("single-step ret TF must be saved in context and cleared in handler");
     }
 
     action.reset();
@@ -1275,7 +1471,7 @@ void runIcebpRaisesSingleStepTrap() {
         segvAction.reset();
         return;
     }
-    if (trapAction.sigInfo[2] != 2) {
+    if (trapAction.sigInfo[2] != 1) {
         failed("icebp SIGTRAP code");
     }
 
@@ -2071,6 +2267,21 @@ void testInt2dRaisesInterruptProtectionFault() {
 void testInt3ImmediateRaisesBreakpoint() {
     runInt3ImmediateRaisesBreakpoint();
 }
+
+void testInt4RaisesOverflowTrap() {
+    runOverflowInterrupt(false);
+}
+
+void testIntoRaisesConditionalOverflowTrap() {
+    runOverflowInterrupt(true);
+}
+
+void testIntegerDivideFaults() { runIntegerDivideFaults(); }
+void testBoundsExceptions() { runBoundsExceptions(); }
+void testExceptionInstructionMetadata() { runExceptionInstructionMetadata(); }
+void testSegmentNotPresentExceptions() { runSegmentNotPresentExceptions(); }
+void testPageFaultMetadata() { runPageFaultMetadata(); }
+void testResumeFlagSuppressesOneBreakpoint() { runResumeFlagSuppressesOneBreakpoint(); }
 
 void testPortIoRaisesProtectionFault() {
     runPortIoRaisesProtectionFault();

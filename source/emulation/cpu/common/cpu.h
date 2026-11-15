@@ -99,6 +99,7 @@ extern U32 int99CallbackSize;
 
 #define IOPL	0x00003000
 #define NT		0x00004000
+#define RF      0x00010000
 #define VM		0x00020000
 #define AC		0x00040000
 #define ID		0x00200000
@@ -108,6 +109,7 @@ extern U32 int99CallbackSize;
 #define FMASK_ALL (FMASK_NORMAL | IOPL | NT)
 
 #define EXCEPTION_DIVIDE 0
+#define EXCEPTION_OF 4
 #define EXCEPTION_BOUND 5
 #define EXCEPTION_UD 6
 #define EXCEPTION_NM 7

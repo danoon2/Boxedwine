@@ -191,12 +191,12 @@ void OPCALL normal_retn32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_invalid(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->thread->signalIllegalInstruction(5);
+    cpu->thread->signalIllegalInstruction(2); // ILL_ILLOPN
     NEXT_DONE();
 }
 void OPCALL normal_ud2(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->thread->signalIllegalInstruction(5);
+    cpu->thread->signalIllegalInstruction(2); // ILL_ILLOPN
     NEXT_DONE();
 }
 void OPCALL normal_int80(CPU* cpu, DecodedOp* op) {
@@ -232,24 +232,40 @@ void OPCALL normal_int9B(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_int3(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->thread->signalTrap(1);// 1=TRAP_BRKPT
+    cpu->eip.u32 += op->len;
+    cpu->thread->signalTrap();
     NEXT_DONE();
 }
 void OPCALL normal_icebp(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->eip.u32 += op->len;
-    cpu->thread->signalDebugTrap(2, 0);
+    cpu->thread->signalDebugTrap(1, 0); // Linux reports ICEBP as TRAP_BRKPT, trap 1
     NEXT_DONE();
 }
 void OPCALL normal_intIb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->imm == 3) {
-        cpu->eip.u32 += op->len - 1;
-        cpu->thread->signalTrap(1);
+        cpu->eip.u32 += op->len;
+        cpu->thread->signalTrap();
+        NEXT_DONE();
+        return;
+    }
+    if (op->imm == 4) {
+        cpu->eip.u32 += op->len;
+        cpu->prepareException(EXCEPTION_OF, 0);
         NEXT_DONE();
         return;
     }
     cpu->prepareException(EXCEPTION_GP, (op->imm << 3) | 2);
+    NEXT_DONE();
+}
+void OPCALL normal_intO(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    bool overflow = cpu->getOF() != 0;
+    cpu->eip.u32 += op->len;
+    if (overflow) {
+        cpu->prepareException(EXCEPTION_OF, 0);
+    }
     NEXT_DONE();
 }
 void OPCALL normal_xlat(CPU* cpu, DecodedOp* op) {

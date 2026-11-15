@@ -12232,6 +12232,13 @@ bool JitWasmCodeGen::canKeepPublishedFlagType(DecodedOp* op) const {
 }
 
 void JitWasmCodeGen::storeLazyFlagType(LazyFlagType flags) {
+    if (flags == FLAGS_CFOF) {
+        // Rotates replace CF/OF but retain the previous lazy state for the
+        // other flags. Consecutive rotates must keep that original state.
+        m_publishedLazyFlagType = FLAGS_NULL;
+        JitCodeGen::storeLazyFlagType(flags);
+        return;
+    }
     const bool enabled = std::getenv("BOXEDWINE_WASM_LAZY_TYPE_DSE") != nullptr;
     const bool certified = enabled && canKeepPublishedFlagType(currentOp) &&
         flags != FLAGS_NULL && flags != FLAGS_CFOF;

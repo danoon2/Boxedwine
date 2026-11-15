@@ -93,6 +93,8 @@ size_t caseCount(const T(&)[N]) {
 void beginInstruction(U32 flags, bool big) {
     newInstruction(flags);
     cpu->big = big;
+    // A prior test must not supply the flag state a rotate forgot to save.
+    cpu->lazyFlagTypePrev = FLAGS_NONE;
 }
 
 void initRegisters(U32* expectedRegs) {
@@ -209,6 +211,37 @@ void runLoopCmpFlagCase(U8 opcode, bool big, const CmpLoopCase& data, const char
     verifyFlags(data.expectedFlags, name);
 }
 
+void runLoopRotateFlagCase(U8 opcode, bool big, const CmpLoopCase& data,
+    U8 rotate, U32 rotations, bool incoming, const char* name) {
+    U32 countAfter = decrementCount(data.ecx, big);
+    bool taken = loopTaken(opcode, countAfter, data.expectedFlags, big);
+    beginInstruction(data.expectedFlags ^ (ZF | PF), big);
+    cpu->reg[R_AX].u32 = data.eax;
+    cpu->reg[R_BX].u32 = 0;
+    cpu->reg[R_CX].u32 = data.ecx;
+    if (incoming) {
+        // A block can enter with a rotate's preserved flags from a prior
+        // block, including stale bits in cpu->flags.
+        cpu->lazyFlagType = FLAGS_CFOF;
+        cpu->lazyFlagTypePrev = big ? FLAGS_CMP32 : FLAGS_CMP16;
+        cpu->dst.u32 = data.eax;
+        cpu->src.u32 = 0;
+        cpu->result.u32 = data.eax;
+    } else {
+        emitCmpAxZero();
+    }
+    for (U32 rotation = 0; rotation < rotations; ++rotation) {
+        pushCode8(0xd1);
+        pushCode8(rotate); // rotate zero EBX/BX by 1: CF/OF stay clear
+    }
+    emitTakenMarkerInstruction(opcode);
+    runTestCPU();
+    if (cpu->reg[R_CX].u32 != countAfter || cpu->reg[R_AX].u8 != (taken ? 3 : 2)) {
+        failed("%s after rotate %02x x%u (incoming=%d) count/branch", name, rotate, rotations, incoming);
+    }
+    verifyFlags(data.expectedFlags, name);
+}
+
 void runLoopCases(U8 opcode, bool big, const char* name) {
     for (size_t i = 0; i < caseCount(LOOP_CASES); ++i) {
         runLoopDirectFlagCase(opcode, big, LOOP_CASES[i], name);
@@ -217,34 +250,15 @@ void runLoopCases(U8 opcode, bool big, const char* name) {
     if (opcode == 0xe0 || opcode == 0xe1) {
         for (size_t i = 0; i < caseCount(CMP_LOOP_CASES); ++i) {
             runLoopCmpFlagCase(opcode, big, CMP_LOOP_CASES[i], name);
-            for (bool incoming : {false, true}) {
-                const CmpLoopCase& data = CMP_LOOP_CASES[i];
-                U32 countAfter = decrementCount(data.ecx, big);
-                bool taken = loopTaken(opcode, countAfter, data.expectedFlags, big);
-                beginInstruction(data.expectedFlags ^ (ZF | PF), big);
-                cpu->reg[R_AX].u32 = data.eax;
-                cpu->reg[R_BX].u32 = 0;
-                cpu->reg[R_CX].u32 = data.ecx;
-                if (incoming) {
-                    // A block can enter with a rotate's preserved flags from
-                    // a prior block, including stale bits in cpu->flags.
-                    cpu->lazyFlagType = FLAGS_CFOF;
-                    cpu->lazyFlagTypePrev = big ? FLAGS_CMP32 : FLAGS_CMP16;
-                    cpu->dst.u32 = data.eax;
-                    cpu->src.u32 = 0;
-                    cpu->result.u32 = data.eax;
-                } else {
-                    emitCmpAxZero();
-                    pushCode8(0xd1);
-                    pushCode8(0xc3); // rol ebx/bx,1: keep CMP's ZF, clear CF/OF
+            runLoopRotateFlagCase(opcode, big, CMP_LOOP_CASES[i], 0xc3, 0, true, name);
+            // ROL/ROR/RCL/RCR must retain the comparison flags, including
+            // across consecutive rotates and when entering a new block.
+            for (U8 rotate : {0xc3, 0xcb, 0xd3, 0xdb}) {
+                for (U32 rotations : {1u, 2u}) {
+                    for (bool incoming : {false, true}) {
+                        runLoopRotateFlagCase(opcode, big, CMP_LOOP_CASES[i], rotate, rotations, incoming, name);
+                    }
                 }
-                emitTakenMarkerInstruction(opcode);
-                runTestCPU();
-                if (cpu->reg[R_CX].u32 != countAfter ||
-                    cpu->reg[R_AX].u8 != (taken ? 3 : 2)) {
-                    failed("%s after rotate (incoming=%d) count/branch", name, incoming);
-                }
-                verifyFlags(data.expectedFlags, name);
             }
         }
     }

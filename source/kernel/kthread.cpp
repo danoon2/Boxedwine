@@ -89,6 +89,7 @@ void KThread::internalCleanup() {
 }
 
 void KThread::reset() {
+    this->lastPageFaultAddress = 0;
     memory->threadCleanup(id);
     this->clearFutexes();
     this->cpu->reset();
@@ -767,11 +768,8 @@ void KThread::exitRobustList()
     }
 }
 
-void KThread::signalTrap(U32 code) {
+void KThread::signalTrap() {
     if (this->ptraceSingleStep || this->ptraceAttached) {
-        if (code == 1) {
-            cpu->eip.u32++;
-        }
         this->setPtraceStop(K_SIGTRAP);
         return;
     }
@@ -783,15 +781,11 @@ void KThread::signalTrap(U32 code) {
     }
     memset(this->process->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(this->process->sigActions[K_SIGTRAP].sigInfo));
     this->process->sigActions[K_SIGTRAP].sigInfo[0] = K_SIGTRAP;
-    this->process->sigActions[K_SIGTRAP].sigInfo[2] = code;
-    this->process->sigActions[K_SIGTRAP].sigInfo[3] = cpu->eip.u32;
-    if (code == 1) {
-        cpu->eip.u32++;
-    }
+    this->process->sigActions[K_SIGTRAP].sigInfo[2] = K_SI_KERNEL;
     this->runSignal(K_SIGTRAP, 3, 0);
 }
 
-void KThread::signalDebugTrap(U32 code, U32 dr6) {
+void KThread::signalDebugTrap(U32 code, U32 dr6, bool fault) {
     if (this->ptraceSingleStep || this->ptraceAttached) {
         this->ptraceSingleStep = false;
         this->debugRegs[6] = dr6;
@@ -810,12 +804,10 @@ void KThread::signalDebugTrap(U32 code, U32 dr6) {
     memset(this->process->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(this->process->sigActions[K_SIGTRAP].sigInfo));
     this->process->sigActions[K_SIGTRAP].sigInfo[0] = K_SIGTRAP;
     this->process->sigActions[K_SIGTRAP].sigInfo[2] = code;
-    this->process->sigActions[K_SIGTRAP].sigInfo[3] = cpu->eip.u32;
+    this->process->sigActions[K_SIGTRAP].sigInfo[3] = cpu->getEipAddress();
     this->debugRegs[6] = dr6;
-    this->cpu->fillFlags();
-    this->cpu->flags &= ~TF;
-    this->cpu->updateDebugTrapActive();
-    this->runSignal(K_SIGTRAP, 1, 0);
+    // Linux preserves TF in the saved context and clears it in the handler.
+    this->runSignal(K_SIGTRAP, 1, 0, fault);
 }
 
 namespace {
@@ -839,7 +831,7 @@ bool rangesOverlap(U32 a, U32 aLen, U32 b, U32 bLen) {
 }
 
 bool KThread::debugTrapBeforeInstruction() {
-    if (this->inSignal) {
+    if (this->inSignal || (this->cpu->flags & RF)) {
         return false;
     }
 
@@ -856,7 +848,7 @@ bool KThread::debugTrapBeforeInstruction() {
         U32 enabled = (dr7 >> (i * 2)) & 3;
         U32 type = (dr7 >> (16 + i * 4)) & 3;
         if (enabled && type == 0 && this->debugRegs[i] == eip) {
-            this->signalDebugTrap(4, 1u << i);
+            this->signalDebugTrap(4, 1u << i, true);
             return true;
         }
     }
@@ -1018,8 +1010,8 @@ void KThread::signalIllegalInstruction(int code) {
     memset(this->process->sigActions[K_SIGILL].sigInfo, 0, sizeof(this->process->sigActions[K_SIGILL].sigInfo));
     this->process->sigActions[K_SIGILL].sigInfo[0] = K_SIGILL;
     this->process->sigActions[K_SIGILL].sigInfo[2] = code;
-    this->process->sigActions[K_SIGILL].sigInfo[3] = cpu->eip.u32;
-    this->runSignal(K_SIGILL, 13, 0); // blocking signal, signalfd can't handle this
+    this->process->sigActions[K_SIGILL].sigInfo[3] = cpu->getEipAddress();
+    this->runSignal(K_SIGILL, EXCEPTION_UD, 0, true);
 }
 
 bool KThread::runSignals() {
@@ -1284,7 +1276,7 @@ void writeToContext(KThread* thread, U32 stack, U32 context, bool wasOnAlternate
     memory->writed(context+0x5C, cpu->getSegValue(SS));
     memory->writed(context+0x60, context + 0x70); // uc_mcontext.fpregs
     memory->writed(context+0x64, 0); // oldmask
-    memory->writed(context+0x68, 0); // cr2
+    memory->writed(context+0x68, thread->lastPageFaultAddress); // cr2
     // sizeof(struct _fpstate) = 624 (0x270) on 32-bit debian 11
     memory->writed(context+0x70, cpu->fpu.CW());
     memory->writed(context+0x74, cpu->fpu.SW());
@@ -1473,7 +1465,7 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
 }
 
 // interrupted and condStartWaitTime are pushed because syscall's during the signal will clobber them
-void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
+void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo, bool fault) {
     KSigAction* action = &this->process->sigActions[signal];
     if (action->handlerAndSigAction==K_SIG_DFL) {
         //klog("%x/%x default runSignal %d", this->id, this->process->id, signal);
@@ -1523,7 +1515,15 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
 	        context = stackAddress - CONTEXT_SIZE;
         }
         writeToContext(this, stack, context, wasOnAlternateStack, trapNo, errorNo);
-        this->cpu->flags &= ~(DF | TF);
+        // Faults set RF in their saved frame; traps keep the original flags.
+        if (fault) memory->writed(context + 0x54, cpu->flags | RF);
+        this->cpu->flags &= ~(DF | TF | RF);
+        // The interrupted instruction must not deliver a deferred debug trap
+        // after execution has already transferred into the signal handler.
+        this->cpu->debugTrapOnNextInstruction = false;
+        this->cpu->pendingDebugTrap = false;
+        this->cpu->pendingDebugTrapCode = 0;
+        this->cpu->pendingDebugTrapDr6 = 0;
 
         this->cpu->stackMask = 0xFFFFFFFF;
         this->cpu->stackNotMask = 0;
@@ -1600,7 +1600,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
 namespace {
 
 U32 pageFaultError(bool protectionFault, bool writeFault, bool executeFault) {
-    U32 error = protectionFault ? 1 : 0;
+    U32 error = 4 | (protectionFault ? 1 : 0); // guest user-mode access
     if (writeFault) {
         error |= 2;
     }
@@ -1613,12 +1613,14 @@ U32 pageFaultError(bool protectionFault, bool writeFault, bool executeFault) {
 }
 
 void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException, bool executeFault) {
+    this->lastPageFaultAddress = address;
     if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
+        memset(this->process->sigActions[K_SIGSEGV].sigInfo, 0, sizeof(this->process->sigActions[K_SIGSEGV].sigInfo));
         this->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;
         this->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
         this->process->sigActions[K_SIGSEGV].sigInfo[2] = 1; // SEGV_MAPERR
         this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;
-        this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, pageFaultError(false, writeFault, executeFault));
+        this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, pageFaultError(false, writeFault, executeFault), true);
         if (throwException) {
             throw 2;
         }
@@ -1629,13 +1631,18 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool thro
 
 // motorhead demo installer, tomb raider 3 demo will trigger this
 void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool throwException, bool executeFault) {
+    this->lastPageFaultAddress = address;
     if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
 
+        memset(this->process->sigActions[K_SIGSEGV].sigInfo, 0, sizeof(this->process->sigActions[K_SIGSEGV].sigInfo));
         this->process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;
         this->process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
         this->process->sigActions[K_SIGSEGV].sigInfo[2] = 2; // SEGV_ACCERR
         this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;
-        this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, pageFaultError(true, writeFault, executeFault));
+        // Linux uses a non-present PTE for PROT_NONE, even though the VMA
+        // exists and the signal code is SEGV_ACCERR.
+        bool present = (this->memory->getPageFlags(address >> K_PAGE_SHIFT) & PAGE_PERMISSION_MASK) != 0;
+        this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, pageFaultError(present, writeFault, executeFault), true);
         if (throwException) {
             throw 1;
         }
@@ -1653,6 +1660,7 @@ void KThread::seg_instructionFetch(U32 address, bool throwException) {
 }
 
 void KThread::clone(KThread* from) {
+    this->lastPageFaultAddress = from->lastPageFaultAddress;
     this->sigMask = from->sigMask;
     this->waitingForSignalToEndMaskToRestore = from->waitingForSignalToEndMaskToRestore;
     this->cpu->clone(from->cpu);

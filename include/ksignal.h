@@ -93,6 +93,7 @@
 #define K_SA_RESETHAND    0x80000000u
 
 #define K_SI_USER 0
+#define K_SI_KERNEL 128
 
 #define K_POLL_IN         1   /* data input available */
 #define K_POLL_OUT        2   /* output buffers available */

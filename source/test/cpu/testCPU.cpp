@@ -547,6 +547,10 @@ void testRunCPU() {
     cpu->nextOp = cpu->getNextOp();
     do {
         try {
+            // A fault can transfer directly to the end marker. Check it
+            // before dispatching again, including after an exception unwind.
+            if (!cpu->nextOp) cpu->nextOp = cpu->getNextOp();
+            if (cpu->nextOp && cpu->nextOp->inst == TestEnd) break;
             cpu->run();
         } catch (int) {
             // Guest memory faults install a signal handler and throw to abort
@@ -2864,7 +2868,7 @@ void testJitScalarSseRegions() {
         action.reset(); action.handlerAndSigAction = ctx.codeIp;
         testRunCPU();
         if (action.sigInfo[0] != K_SIGFPE || action.sigInfo[2] != (invalid ? K_FPE_FLTINV : K_FPE_FLTDIV) ||
-                action.sigInfo[4] != 19 || action.sigInfo[3] != faultEip)
+                action.sigInfo[4] != 19 || action.sigInfo[3] != TEST_CODE_ADDRESS + faultEip)
             testFail("JIT DIVSS region signal invalid=%u", invalid);
         U32 signalContext = ctx.memory->readd(cpu->reg[4].u32 + 12);
         if (ctx.memory->readd(signalContext + 0x4c) != faultEip ||
@@ -5733,7 +5737,7 @@ void testJitSegmentFaultLeavesCompiledBlock() {
     auto* cpu = context.cpu;
     context.thread->getLDT(BAD_SELECTOR >> 3)->seg_not_present = 1;
     cpu->reg[0].u32 = BAD_SELECTOR;
-    KSigAction& action = context.process->sigActions[K_SIGSEGV];
+    KSigAction& action = context.process->sigActions[K_SIGBUS];
     action.reset();
     action.handlerAndSigAction = TEST_CODE_ADDRESS + 7;
     testPushCode8(0x50); // push eax

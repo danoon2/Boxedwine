@@ -1,3 +1,5 @@
+v39 Nov 15, 2026 Correct Wine integer exception handling: distinguish divide overflow from division by zero, report the INT 4/INTO exception address correctly, and clear the trap flag before calling user exception handlers. Requires the corresponding Boxedwine CPU exception fixes. Retain the v37 AVI runtime base, v38 desktop shutdown fix and existing WebGL DLLs.
+
 v38 Nov 15, 2026 Fix Wine desktop shutdown during startup cancellation: explorer worker threads no longer cancel the pending close timer after the last application exits. A newly arriving application still cancels it. Retain the v37 AVI runtime base and existing WebGL DLLs.
 
 v37 Nov 14, 2026 Add the GStreamer AVI parser to the base, full and web filesystems for AVI movie playback. With the updated Boxedwine engine and installed Indeo codec, System Shock 2 movies play. Move build records, source archives, patches and license texts to separate release bundles. Existing Wine and WebGL binaries are unchanged.

@@ -1,0 +1,167 @@
+From: Boxedwine project
+Subject: [PATCH] ntdll: Match Windows integer exceptions and user-handler flags.
+
+Linux reports all DIV/IDIV failures as trap 0 / FPE_INTDIV. Decode the
+faulting divisor to distinguish quotient overflow from division by zero,
+including operand/address-size prefixes, register and memory operands.
+Keep the saved context EIP and report INT 4/INTO at the preceding byte.
+Clear TF in contexts delivered to user exception handlers, while preserving
+the original flags for the preceding debugger notification. Verified on
+native Windows with tools/testing/cpu/exception_probe.c.
+
+---
+--- a/dlls/ntdll/unix/signal_i386.c
++++ b/dlls/ntdll/unix/signal_i386.c
+@@ -1504,6 +1504,8 @@
+     stack->rec_ptr      = &stack->rec;
+     stack->context_ptr  = &stack->context;
+     stack->rec          = *rec;
++    /* Windows clears TF in the context delivered to user exception handlers. */
++    context->EFlags &= ~0x100;
+     stack->context      = *context;
+ 
+     if ((src_xs = xstate_from_context( context )))
+@@ -1606,6 +1608,8 @@
+     stack->rec_ptr      = &stack->rec;
+     stack->context_ptr  = &stack->context;
+     stack->rec          = *rec;
++    /* Windows clears TF in the context delivered to user exception handlers. */
++    context->EFlags &= ~0x100;
+     stack->context      = *context;
+ 
+     if ((src_xs = xstate_from_context( context )))
+@@ -1957,6 +1961,7 @@
+     {
+     case TRAP_x86_OFLOW:   /* Overflow exception */
+         rec.ExceptionCode = EXCEPTION_INT_OVERFLOW;
++        rec.ExceptionAddress = (char *)rec.ExceptionAddress - 1;
+         break;
+     case TRAP_x86_BOUND:   /* Bound range exception */
+         rec.ExceptionCode = EXCEPTION_ARRAY_BOUNDS_EXCEEDED;
+@@ -2076,6 +2081,117 @@
+ }
+ 
+ 
++/* #DE covers both zero divisors and quotient overflow. Windows distinguishes
++ * them by examining the divisor; Linux delivers FPE_INTDIV for both. */
++static DWORD get_integer_divide_code( CONTEXT *context )
++{
++    const DWORD regs[] = { context->Eax, context->Ecx, context->Edx, context->Ebx,
++                           context->Esp, context->Ebp, context->Esi, context->Edi };
++    THREAD_DESCRIPTOR_INFORMATION desc;
++    BYTE instr[15], opcode, modrm, mod, rm;
++    unsigned int len, i = 0, size, addr = 0, divisor = 0, seg = 0;
++    BOOL code32, operand32, address32;
++
++    desc.Selector = context->SegCs;
++    if (get_thread_ldt_entry( GetCurrentThread(), &desc, sizeof(desc) ))
++        return EXCEPTION_INT_DIVIDE_BY_ZERO;
++    code32 = desc.Entry.HighWord.Bits.Default_Big;
++    operand32 = address32 = code32;
++    len = virtual_uninterrupted_read_memory( (BYTE *)ldt_get_base(desc.Entry) + context->Eip,
++                                            instr, sizeof(instr) );
++    while (i < len)
++    {
++        switch (instr[i])
++        {
++        case 0x26: seg = context->SegEs; break;
++        case 0x2e: seg = context->SegCs; break;
++        case 0x36: seg = context->SegSs; break;
++        case 0x3e: seg = context->SegDs; break;
++        case 0x64: seg = context->SegFs; break;
++        case 0x65: seg = context->SegGs; break;
++        case 0x66: operand32 = !code32; break;
++        case 0x67: address32 = !code32; break;
++        case 0xf2: case 0xf3: break;
++        default: goto opcode;
++        }
++        i++;
++    }
++opcode:
++    if (i + 2 > len) return EXCEPTION_INT_DIVIDE_BY_ZERO;
++    opcode = instr[i++]; modrm = instr[i++]; mod = modrm >> 6; rm = modrm & 7;
++    if ((opcode != 0xf6 && opcode != 0xf7) || ((modrm >> 3) & 7) < 6)
++        return EXCEPTION_INT_DIVIDE_BY_ZERO;
++    size = opcode == 0xf6 ? 1 : operand32 ? 4 : 2;
++    if (mod == 3)
++    {
++        divisor = size == 1 && rm >= 4 ? regs[rm - 4] >> 8 : regs[rm];
++    }
++    else
++    {
++        unsigned int default_seg = context->SegDs, disp_size = 0;
++        if (address32)
++        {
++            if (rm == 4)
++            {
++                BYTE sib, base, index;
++                if (i == len) return EXCEPTION_INT_DIVIDE_BY_ZERO;
++                sib = instr[i++]; base = sib & 7; index = (sib >> 3) & 7;
++                if (index != 4) addr = regs[index] << (sib >> 6);
++                if (!mod && base == 5) disp_size = 4;
++                else
++                {
++                    addr += regs[base];
++                    if (base == 4 || base == 5) default_seg = context->SegSs;
++                }
++            }
++            else if (!mod && rm == 5) disp_size = 4;
++            else
++            {
++                addr = regs[rm];
++                if (rm == 5) default_seg = context->SegSs;
++            }
++            if (mod) disp_size = mod == 1 ? 1 : 4;
++        }
++        else
++        {
++            switch (rm)
++            {
++            case 0: addr = context->Ebx + context->Esi; break;
++            case 1: addr = context->Ebx + context->Edi; break;
++            case 2: addr = context->Ebp + context->Esi; default_seg = context->SegSs; break;
++            case 3: addr = context->Ebp + context->Edi; default_seg = context->SegSs; break;
++            case 4: addr = context->Esi; break;
++            case 5: addr = context->Edi; break;
++            case 6:
++                if (!mod) disp_size = 2;
++                else { addr = context->Ebp; default_seg = context->SegSs; }
++                break;
++            case 7: addr = context->Ebx; break;
++            }
++            if (mod) disp_size = mod == 1 ? 1 : 2;
++        }
++        if (i + disp_size > len) return EXCEPTION_INT_DIVIDE_BY_ZERO;
++        if (disp_size == 1) addr += (signed char)instr[i];
++        else if (disp_size)
++        {
++            unsigned int disp = 0;
++            memcpy( &disp, instr + i, disp_size );
++            addr += disp;
++        }
++        if (!address32) addr &= 0xffff;
++        desc.Selector = seg ? seg : default_seg;
++        if (get_thread_ldt_entry( GetCurrentThread(), &desc, sizeof(desc) ))
++            return EXCEPTION_INT_DIVIDE_BY_ZERO;
++        if (virtual_uninterrupted_read_memory( (BYTE *)ldt_get_base(desc.Entry) + addr,
++                                              &divisor, size ) != size)
++            return EXCEPTION_INT_DIVIDE_BY_ZERO;
++    }
++    if (size == 1) divisor &= 0xff;
++    else if (size == 2) divisor &= 0xffff;
++    return divisor ? EXCEPTION_INT_OVERFLOW : EXCEPTION_INT_DIVIDE_BY_ZERO;
++}
++
++
+ /**********************************************************************
+  *		fpe_handler
+  *
+@@ -2091,7 +2207,7 @@
+     switch (TRAP_sig(ucontext))
+     {
+     case TRAP_x86_DIVIDE:   /* Division by zero exception */
+-        rec.ExceptionCode = EXCEPTION_INT_DIVIDE_BY_ZERO;
++        rec.ExceptionCode = get_integer_divide_code( &xcontext.c );
+         break;
+     case TRAP_x86_FPOPFLT:   /* Coprocessor segment overrun */
+         rec.ExceptionCode = EXCEPTION_FLT_INVALID_OPERATION;

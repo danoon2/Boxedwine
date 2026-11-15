@@ -15,7 +15,7 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
-Revision 38's full and web filesystem ZIPs are published under `/v2/38/`.
+Revision 39's full and web filesystem ZIPs are published under `/v2/39/`.
 The unchanged base remains at `/v2/37/TinyCore15WineBase.zip`. Do not upload
 to boxedwine.org automatically; publication requires an explicit user request.
 The base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
@@ -36,6 +36,16 @@ its own worker threads after the last application exits. A new application still
 cancels the timer. This fixes cancellation during desktop initialization; it
 does not increase a shutdown timeout or forcibly terminate Wine services.
 Revision 38 includes this patch in both full and web ZIPs; v37 is unchanged.
+
+New Wine 11 builds also apply
+[`wine11_integer_exceptions.patch`](patches/wine11_integer_exceptions.patch).
+It distinguishes division overflow from a zero divisor, corrects the
+exception address for `INT 4`/`INTO`, and clears TF in the context delivered to
+user exception handlers. Revision 39 includes this patch in both full and web
+filesystems. Use a Boxedwine runtime with the corresponding CPU exception fixes;
+the browser engine must also be rebuilt when adopting this revision.
+The [CPU exception probes](../testing/cpu/README.md) describe native Windows,
+Linux and Boxedwine comparisons and the Wine decoder regression test.
 
 [`probes/test_desktop_close_timer.py`](probes/test_desktop_close_timer.py)
 executes the actual Wine server timer code with a deterministic timer queue.
@@ -132,7 +142,7 @@ Keep `webgl_filesystems.json` as the single current manifest and update it in
 place for each release. Older release and experimental manifests are available
 in Git history; paths recorded in old validation reports refer to those historical files.
 The current configuration pins the DLLs, source patches, and final
-archives in its `full-v38` and `web-v38` profiles. The complete filesystem is
+archives in its `full-v39` and `web-v39` profiles. The complete filesystem is
 assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
 covers validation and publication.
 The v37 prefix leaves the renderer registry values unset. The profile records
@@ -211,7 +221,7 @@ It retains revision 25's DirectSound backport. All eight WebGL DLLs were rebuilt
 from the v50 source series; only WineD3D differs from the v25 DLLs. The verified
 regular Wine binaries were retained, with fresh packaging and prefix setup.
 The ZIP writer gives Wine directories explicit executable permissions.
-UI, Jenkins, native automation, and demo-site pins now select the published v38 archives.
+UI, Jenkins, native automation, and demo-site pins now select the published v39 archives.
 The hosted legacy catalog, `/v2/latest/` aliases and demo pages were not updated
 as part of the authorized two-file upload.
 Publish and verify both archives before deploying the new UI/Jenkins pins.
