@@ -186,6 +186,23 @@ void Jit::call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value) {
     callHostFunction((void*)address, params);
 }
 
+void Jit::writeCurrentEip(U32 addAmount) {
+    const U32 linearEip = currentEip + addAmount;
+    // Blocks are cached by linear address, so one compiled under one CS base
+    // can run again under another; signal delivery, for example, loads the
+    // flat code selector. Once the process has set a CS base, subtract the
+    // live base. Without a free temporary keep the compile-time base, which
+    // is only wrong if the base changed.
+    if (cpu->thread->process->hasSetSeg[CS] && getAvailableTmpRegCount()) {
+        RegPtr eip = readCPU(JitWidth::b32, CPU::offsetofSegAddress(CS));
+        negReg2(JitWidth::b32, eip);
+        addValue(JitWidth::b32, eip, linearEip);
+        writeEip(eip);
+    } else {
+        writeEip(linearEip - cpu->seg[CS].address);
+    }
+}
+
 RegPtr Jit::callAndReturn(CallReturn address, RegPtr resultReg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));

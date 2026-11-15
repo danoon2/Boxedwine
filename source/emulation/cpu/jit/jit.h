@@ -176,9 +176,7 @@ public:
     virtual RegPtr readEip() = 0;
     virtual void writeEip(RegPtr eip) = 0;
     virtual void writeEip(U32 eip) = 0;
-    virtual void writeCurrentEip(U32 addAmount) {
-        writeEip(currentEip - cpu->seg[CS].address + addAmount);
-    }
+    virtual void writeCurrentEip(U32 addAmount);
     virtual U32 getAvailableTmpRegCount() = 0;
     virtual bool isTmpRegAvailable() = 0;
     virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0);

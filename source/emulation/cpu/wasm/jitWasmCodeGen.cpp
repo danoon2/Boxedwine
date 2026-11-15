@@ -13662,7 +13662,7 @@ void JitWasmCodeGen::emulateSingleOp() {
     // writeEip when the current op is *not* the first op in the block.
     // When it's the first op, cpu->eip was set by the dispatcher.
     if (this->currentEip != this->startingEip) {
-        writeEip(this->currentEip - cpu->seg[CS].address);
+        writeCurrentEip(0);
     }
     syncDirtyRegsToHost();
 #ifdef BOXEDWINE_WASM_JIT_PROFILE

@@ -3084,6 +3084,159 @@ void testJitScalarSseRegions() {
 #endif
 }
 
+// Guarded divides take an interpreter arm when a divide exception is unmasked
+// (SSE, x87) or an operand needs it (x87 zero/empty tag, zero memory divisor).
+// The arm must execute the instruction exactly once and resume at the next
+// one. On Wasm emulateSingleOp returns instead of tail jumping, so an arm that
+// is not followed by a block exit also runs the native divide. Every case
+// runs with the fast arm too, and the results are checked against constants.
+void testJitDivideFallbackRunsOnce() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    auto bytes = [](std::initializer_list<U8> code) { for (U8 b : code) testPushCode8(b); };
+    auto readF32 = [&](U32 address) { U32 v = ctx.memory->readd(address); float f; memcpy(&f, &v, 4); return f; };
+    auto readF64 = [&](U32 address) { U64 v = ctx.memory->readq(address); double d; memcpy(&d, &v, 8); return d; };
+    auto writeF32 = [&](U32 address, float f) { U32 v; memcpy(&v, &f, 4); ctx.memory->writed(address, v); };
+    auto writeF64 = [&](U32 address, double d) { U64 v; memcpy(&v, &d, 8); ctx.memory->writeq(address, v); };
+    constexpr U32 DATA = 0x200; // DS relative, the DS base is TEST_HEAP_ADDRESS
+    constexpr U32 HEAP = TEST_HEAP_ADDRESS + DATA;
+
+    // SSE memory forms. Two divides exercise the Wasm guard coalescing.
+    for (bool packed : {false, true}) for (bool unmasked : {false, true}) {
+        testNewInstruction(0);
+        cpu->fpu.FINIT();
+        cpu->setMxcsr(unmasked ? 0x1d80 : 0x1f80); // 0x1d80 unmasks ZE
+        for (U32 lane = 0; lane < 4; ++lane) {
+            cpu->xmm[0].ps.f32[lane] = 16.0f;
+            writeF32(HEAP + lane * 4, 2.0f);
+        }
+        for (U32 i = 0; i < 2; ++i) {
+            if (!packed) testPushCode8(0xf3);
+            bytes({0x0f, 0x5e, 0x05}); testPushCode32(DATA); // div{ps,ss} xmm0,[DATA]
+        }
+        bytes({0x41}); // inc ecx
+        testRunCPU();
+        for (U32 lane = 0; lane < 4; ++lane) {
+            float expected = (packed || !lane) ? 4.0f : 16.0f;
+            if (cpu->xmm[0].ps.f32[lane] != expected) {
+                testFail("SSE divide from memory packed=%u unmasked=%u lane %u expected %f got %f",
+                    packed, unmasked, lane, expected, cpu->xmm[0].ps.f32[lane]);
+                break;
+            }
+        }
+        if (cpu->reg[1].u32 != 1) testFail("SSE divide from memory packed=%u unmasked=%u ecx=%u", packed, unmasked, cpu->reg[1].u32);
+    }
+
+    // x87 forms. The stack starts as ST0 = a, ST1 = d and every memory divisor
+    // is d. RES0/RES1 receive the popped stack; the status word must show the
+    // stack balanced and no stack fault.
+    struct X87Case { U8 op, modrm; const char* name; int st0, st1; bool pop; U32 mem; };
+    enum { A, D, A_OVER_D, D_OVER_A };
+    static const X87Case cases[] = {
+        {0xd8, 0xf1, "fdiv st0,st1", A_OVER_D, D, false, 0},
+        {0xd8, 0xf9, "fdivr st0,st1", D_OVER_A, D, false, 0},
+        {0xdc, 0xf9, "fdiv st1,st0", A, D_OVER_A, false, 0},
+        {0xdc, 0xf1, "fdivr st1,st0", A, A_OVER_D, false, 0},
+        {0xde, 0xf9, "fdivp st1,st0", D_OVER_A, 0, true, 0},
+        {0xde, 0xf1, "fdivrp st1,st0", A_OVER_D, 0, true, 0},
+        {0xd8, 0x35, "fdiv m32", A_OVER_D, D, false, 0x10},
+        {0xd8, 0x3d, "fdivr m32", D_OVER_A, D, false, 0x10},
+        {0xdc, 0x35, "fdiv m64", A_OVER_D, D, false, 0x18},
+        {0xdc, 0x3d, "fdivr m64", D_OVER_A, D, false, 0x18},
+        {0xda, 0x35, "fidiv m32", A_OVER_D, D, false, 0x20},
+        {0xda, 0x3d, "fidivr m32", D_OVER_A, D, false, 0x20},
+        {0xde, 0x35, "fidiv m16", A_OVER_D, D, false, 0x24},
+        {0xde, 0x3d, "fidivr m16", D_OVER_A, D, false, 0x24},
+    };
+    constexpr U32 CW = 0x00, A_INT = 0x28, D_INT = 0x2c, RES0 = 0x30, RES1 = 0x38;
+    // mode 0: masked (fast arm), 1: ZE unmasked before entry, 2: ZE unmasked
+    // by FLDCW inside the block, 3: masked with a zero divisor
+    for (const X87Case& c : cases) for (U32 mode = 0; mode < 4; ++mode) {
+        const double a = 16.0, d = mode == 3 ? 0.0 : 2.0;
+        auto value = [&](int which) {
+            switch (which) {
+            case A: return a;
+            case D: return d;
+            case A_OVER_D: return a / d;
+            default: return d / a;
+            }
+        };
+        testNewInstruction(0);
+        cpu->fpu.FINIT();
+        if (mode == 1) cpu->fpu.SetCW(0x37b);
+        ctx.memory->writew(HEAP + CW, 0x37b);
+        writeF32(HEAP + 0x10, (float)d);
+        writeF64(HEAP + 0x18, d);
+        ctx.memory->writed(HEAP + 0x20, (U32)d);
+        ctx.memory->writew(HEAP + 0x24, (U16)d);
+        ctx.memory->writed(HEAP + A_INT, (U32)a);
+        ctx.memory->writed(HEAP + D_INT, (U32)d);
+        writeF64(HEAP + RES0, -1.0);
+        writeF64(HEAP + RES1, -1.0);
+        if (mode == 2) { bytes({0xd9, 0x2d}); testPushCode32(DATA + CW); } // fldcw
+        bytes({0xdb, 0x05}); testPushCode32(DATA + D_INT); // fild dword: ST0 = d
+        bytes({0xdb, 0x05}); testPushCode32(DATA + A_INT); // fild dword: ST0 = a, ST1 = d
+        bytes({c.op, c.modrm});
+        if (c.mem) testPushCode32(DATA + c.mem);
+        bytes({0xdd, 0x1d}); testPushCode32(DATA + RES0); // fstp qword
+        if (!c.pop) { bytes({0xdd, 0x1d}); testPushCode32(DATA + RES1); }
+        bytes({0xdf, 0xe0}); // fnstsw ax
+        bytes({0x41}); // inc ecx
+        testRunCPU();
+        const double res0 = readF64(HEAP + RES0), res1 = readF64(HEAP + RES1);
+        const U32 status = cpu->reg[0].u16;
+        if (res0 != value(c.st0) || (!c.pop && res1 != value(c.st1)) || (c.pop && res1 != -1.0))
+            testFail("x87 %s mode=%u: ST0 %f ST1 %f, expected %f %f", c.name, mode, res0, res1, value(c.st0), c.pop ? -1.0 : value(c.st1));
+        if ((status & 0x3800) || (status & 0x41))
+            testFail("x87 %s mode=%u: unbalanced stack, status 0x%04x", c.name, mode, status);
+        if (cpu->reg[1].u32 != 1) testFail("x87 %s mode=%u: ecx=%u", c.name, mode, cpu->reg[1].u32);
+    }
+    cpu->fpu.FINIT();
+    cpu->setMxcsr(0x1f80);
+}
+
+// Blocks are cached by linear address, so code compiled under one CS base can
+// be entered again under another (signal delivery loads the flat selector).
+// An interpreter fallback inside the block must then resume at the EIP for the
+// live base. With the compile-time base it lands on the decoy instead.
+void testJitFallbackEipUsesLiveCsBase() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    constexpr U32 COMPILE_BASE = TEST_CODE_ADDRESS + 0x1000;
+    constexpr U32 LIVE_BASE = TEST_CODE_ADDRESS;
+    constexpr U32 CODE = TEST_CODE_ADDRESS + 0x2000;
+    auto run = [&](U32 base) {
+        cpu->seg[CS].address = base;
+        cpu->eip.u32 = CODE - base;
+        cpu->reg[0].u32 = 0x0023; // aam: 35 -> AX = 0x0305
+        cpu->reg[1].u32 = cpu->reg[2].u32 = cpu->reg[3].u32 = 0;
+        cpu->nextOp = cpu->getNextOp();
+        U32 dispatches = 0;
+        do {
+            cpu->run();
+            if (++dispatches > 1024) { testFail("JIT live CS base dispatch limit"); break; }
+        } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+    };
+    testNewInstruction(0);
+    // The stale EIP for aam, taken against the live base: mov edx,0xbad.
+    ctx.codeIp = CODE - COMPILE_BASE + LIVE_BASE + 1;
+    testPushCode8(0xba); testPushCode32(0xbad);
+    testPushCode8(0xcd); testPushCode8(0x97);
+    ctx.codeIp = CODE;
+    testPushCode8(0x43); // inc ebx, so aam is not the block's first op
+    testPushCode8(0xd4); testPushCode8(0x0a); // aam, an interpreter fallback in every JIT
+    testPushCode8(0x41); // inc ecx
+    testPushCode8(0xcd); testPushCode8(0x97);
+    for (U32 base : {COMPILE_BASE, COMPILE_BASE, LIVE_BASE}) {
+        run(base);
+        const char* name = base == LIVE_BASE ? "after CS base change" : "under the compile-time base";
+        if (cpu->reg[2].u32 == 0xbad) {
+            testFail("JIT fallback %s resumed at the stale EIP", name);
+        } else if (cpu->reg[0].u16 != 0x0305 || cpu->reg[1].u32 != 1 || cpu->reg[3].u32 != 1) {
+            testFail("JIT fallback %s: eax=%x ebx=%u ecx=%u", name, cpu->reg[0].u32, cpu->reg[3].u32, cpu->reg[1].u32);
+        }
+    }
+    setupSegments(ctx);
+}
+
 #ifdef BOXEDWINE_JIT_ARMV8
 static void testArmSignedAcquireLoads() {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
