@@ -95,6 +95,31 @@ class BuildFailureTests(unittest.TestCase):
 
 
 class DemoRootSelectionTests(unittest.TestCase):
+    def test_manifest_lists_only_current_demo_while_retired_archive_remains(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            retired = source / 'SystemShock2Demo.zip'
+            retired.write_bytes(b'retired archive must not be opened')
+            current = 'SystemShock2Demo-r2.zip'
+            create_zip(source / current, {'shock2.exe': b'original game', 'current/': b''})
+            entry = {'exe': 'shock2.exe', 'title': 'System Shock 2 Demo'}
+            for manifest in ({'demos': {current: entry}}, {current: entry},
+                             {'demos': [{'zip': current, **entry}]}, [{'zip': current, **entry}]):
+                with self.subTest(manifest=manifest):
+                    (source / 'demos.json').write_text(json.dumps(manifest))
+                    demos = build_site.discover_demos(source)
+                    self.assertEqual([current], [demo['zip'] for demo in demos])
+                    self.assertEqual('shock2.exe', demos[0]['program'])
+                    self.assertEqual(b'retired archive must not be opened', retired.read_bytes())
+
+    def test_empty_manifest_selects_nothing_but_absent_manifest_discovers_archives(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            create_zip(source / 'game.zip', {'game.exe': b'original game'})
+            self.assertEqual(['game.zip'], [demo['zip'] for demo in build_site.discover_demos(source)])
+            (source / 'demos.json').write_text('{"demos": {}}')
+            self.assertEqual([], build_site.discover_demos(source))
+
     def test_web_filesystem_migrates_full_and_old_gdi_roots_and_defaults_other_demos(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             demo_source = Path(temp_dir)

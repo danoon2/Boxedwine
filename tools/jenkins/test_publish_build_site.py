@@ -234,6 +234,8 @@ class PublishWorkflowTests(unittest.TestCase):
         }}))
         with zipfile.ZipFile(apps / 'game.zip', 'w') as archive:
             archive.writestr('GAME.EXE', b'original game')
+        with zipfile.ZipFile(apps / 'game-old.zip', 'w') as archive:
+            archive.writestr('GAME.EXE', b'retired version retained for old links')
         with zipfile.ZipFile(apps / 'installed.zip', 'w') as archive:
             archive.writestr('home/username/.wine/drive_c/installed/game.exe', b'installed game')
         # Not even a valid ZIP: the publisher must not inspect this old filesystem.

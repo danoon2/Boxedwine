@@ -1107,7 +1107,9 @@ def published_demo_inputs(state_path, config_path, public_url, runners, *, root_
     demos = []
     for asset in state["archives"]:
         name = normalize_demo_root(asset["zip"], "")
-        entry = manifest.get(name, {})
+        if name not in manifest:
+            continue
+        entry = manifest[name]
         old_root = normalize_demo_root(entry.get("root", entry.get("rootZip")), filename)
         if old_root not in {filename, FULL_DEMO_ROOT_ZIP, LEGACY_DEMO_ROOT_ZIP,
                             PREVIOUS_DEMO_ROOT_ZIP, PREVIOUS_GDI_ROOT_ZIP,
@@ -1178,6 +1180,7 @@ def discover_demos(demo_source):
         raise FileNotFoundError(f"Demo source not found: {demo_source}")
 
     manifest = load_demo_manifest(demo_source)
+    has_manifest = (demo_source / "demos.json").is_file()
     available_zip_names = {path.name for path in demo_source.glob("*.zip")}
     default_root = (
         DEFAULT_DEMO_ROOT_ZIP
@@ -1200,6 +1203,8 @@ def discover_demos(demo_source):
 
     demos = []
     for zip_path in sorted(demo_source.glob("*.zip"), key=lambda path: path.name.lower()):
+        if has_manifest and zip_path.name not in manifest:
+            continue
         if (
             zip_path.name.lower() in root_zip_names
             or zip_path.name.lower().startswith("boxedwine")

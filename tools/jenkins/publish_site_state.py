@@ -57,9 +57,16 @@ def snapshot(site, demos=False):
         if not manifest.is_file():
             raise ValueError('Published demo manifest is missing: ' + str(manifest))
         state['demoManifest'] = json.loads(manifest.read_text())
+        entries = state['demoManifest']
+        if isinstance(entries, dict):
+            entries = entries.get('demos', entries)
+        if isinstance(entries, list):
+            selected = {entry.get('zip') for entry in entries if isinstance(entry, dict)}
+        else:
+            selected = {name for name, entry in entries.items() if isinstance(entry, dict)} if isinstance(entries, dict) else set()
         state['archives'] = []
         for path in sorted(apps.glob('*.zip'), key=lambda p: p.name.lower()):
-            if path.name.lower().startswith(('boxedwine', 'tinycore')):
+            if path.name not in selected or path.name.lower().startswith(('boxedwine', 'tinycore')):
                 continue
             with zipfile.ZipFile(path) as archive:
                 names = archive.namelist()

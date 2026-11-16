@@ -318,6 +318,14 @@ without opening or revalidating the released filesystem on each build. Release
 archives must be validated when published and kept unchanged at their versioned
 URLs. Locally supplied runtime files are hashed and their copies are checked.
 
+`demos/apps/demos.json` selects the demos shown by Jenkins and local builds.
+Removing an entry retires it from newly generated pages while leaving its ZIP
+available for historical links. Old ZIPs are not automatically listed or opened
+when a manifest is present; an empty manifest selects no demos. Local folders
+without a manifest retain automatic ZIP discovery. For System Shock 2, list only
+`SystemShock2Demo-r2.zip`, and remove the obsolete `SystemShock2Demo.zip` entry
+entirely, including any old `hidden` flag.
+
 `BOXEDWINE_ZIP_URL` can override the download source for local validation. For
 Jenkins it changes only the launch URL and must retain the pinned version directory
 and filename. `BUILD_SITE_DEMO_ROOT_CONFIG` selects a different manifest.

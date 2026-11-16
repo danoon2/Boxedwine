@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import zipfile
 from unittest import mock
 
 import build_site
@@ -10,6 +11,41 @@ import publish_site_state as state_tool
 
 
 class SiteStateTests(unittest.TestCase):
+    def test_snapshot_ignores_retired_archives_without_opening_or_deleting_them(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            site = Path(temporary)
+            apps = site / 'demos/apps'
+            apps.mkdir(parents=True)
+            retired = apps / 'SystemShock2Demo.zip'
+            retired.write_bytes(b'retired archive must not be opened')
+            current = 'SystemShock2Demo-r2.zip'
+            with zipfile.ZipFile(apps / current, 'w') as archive:
+                archive.writestr('shock2.exe', b'original game')
+                archive.writestr('current/', b'')
+            entry = {'exe': 'shock2.exe'}
+            for manifest in ({'demos': {current: entry}}, {current: entry},
+                             {'demos': [{'zip': current, **entry}]}, [{'zip': current, **entry}],
+                             {'demos': {}}):
+                with self.subTest(manifest=manifest):
+                    (apps / 'demos.json').write_text(json.dumps(manifest))
+                    state = state_tool.snapshot(site, demos=True)
+                    expected = [] if manifest == {'demos': {}} else [current]
+                    self.assertEqual(expected, [asset['zip'] for asset in state['archives']])
+                    self.assertEqual(manifest, state['demoManifest'])
+                    self.assertEqual(b'retired archive must not be opened', retired.read_bytes())
+
+    def test_published_inputs_filter_retired_archives_in_older_snapshots(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'state.json'
+            current = 'SystemShock2Demo-r2.zip'
+            path.write_text(json.dumps({'schemaVersion': 1,
+                'demoManifest': {'demos': {current: {'exe': 'shock2.exe'}}},
+                'archives': [{'zip': name, 'program': 'shock2.exe', 'zipParam': 'app'}
+                             for name in ('SystemShock2Demo.zip', current)]}))
+            demos, _, _ = build_site.published_demo_inputs(path,
+                build_site.DEFAULT_DEMO_ROOT_CONFIG, 'https://example.invalid/builds/', [])
+            self.assertEqual([current], [demo['zip'] for demo in demos])
+
     def test_snapshot_preserves_metadata_and_retention_handles_removed_branches(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
