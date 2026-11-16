@@ -83,7 +83,7 @@
   resize, compatibility/core contexts, single buffering and GL state restoration.
   The original engine helper fails the new front-buffer check; the fix passes.
 - Native NVIDIA, Mesa D3D12 (also with system OpenGL loaded) and Mesa LLVMpipe
-  passed. For example: `tools/test_windows_opengl_fullscreen.ps1 -OpenGLLibrary
+  passed. For example: `tools/testing/test_windows_opengl_fullscreen.ps1 -OpenGLLibrary
   <mesa-opengl32.dll> -GalliumDriver d3d12 -LoadSystemOpenGL`.
 - A separate Vulkan/Zink fullscreen probe stalled and was stopped. That path
   is not validated by these checks. LLVMpipe tests use the engine's corrected
@@ -247,7 +247,7 @@ of every demo remain unverified. No existing user library was used for testing.
 - Windows uses a WGL pbuffer and a GPU framebuffer blit, preserving guest front,
   back, depth and stencil buffers. Borderless fullscreen stays on the desktop
   during the GDI/OpenGL focus handoff.
-- `tools/test_windows_opengl_fullscreen.ps1` passed on the local NVIDIA driver:
+- `tools/testing/test_windows_opengl_fullscreen.ps1` passed on the local NVIDIA driver:
   actual fullscreen pixels, aspect/stretch modes, legacy/core contexts, larger
   guest buffers, resize without rebinding, single-buffered presentation, FBO and
   GL state restoration, offscreen rebinding, and the shared cursor/layout tests.

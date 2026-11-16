@@ -1,9 +1,9 @@
 <XML>
   <Wine>
     <Name>Wine 11.0</Name>
-    <FileVersion>33</FileVersion>
+    <FileVersion>39</FileVersion>
     <WineVersion>11.0</WineVersion>
-    <FileURL>https://boxedwine.org/v2/33/TinyCore15Wine11.0.zip</FileURL>
+    <FileURL>https://boxedwine.org/v2/39/TinyCore15Wine11.0.zip</FileURL>
     <FileSizeMB>207</FileSizeMB>
   </Wine>
   <Demo>
@@ -98,7 +98,7 @@
         <FileSizeMB>1</FileSizeMB>
         <FileURL>http://www.boxedwine.org/demos/castle.zip</FileURL>
         <ShortcutExe>CASTLE1.EXE</ShortcutExe>
-        <Help>16-bit/Windows 3.1\n\nThis has some drawing issues when moving around that are fixed in Wine 7</Help>
+        <Help>16-bit/Windows 3.1</Help>
         <InstallOptions></InstallOptions>
         <Options></Options>
     </Demo>
@@ -121,7 +121,7 @@
         <FileURL>http://www.boxedwine.org/demos/cimdemo1021.zip</FileURL>
         <InstallExe>cim-demo-1-0-21.exe</InstallExe>
         <ShortcutExe>Cities In Motion.exe</ShortcutExe>
-        <Help></Help>
+        <Help>Cities in Motion was Colossal Order's first game, released in 2011 by Paradox Interactive. You build and operate an urban transport network, linking homes, workplaces and leisure destinations with buses, trams, metro trains and water buses. The challenge is to keep passengers moving while running a profitable company.\n\nOriginal Windows requirements:\n• Windows XP, Vista or 7\n• 2 GHz dual-core processor\n• 2 GB RAM\n• NVIDIA GeForce 8800 or ATI Radeon HD 3850 or better, with 512 MB video memory and OpenGL 3.0 (integrated graphics not supported)\n• 2 GB disk space</Help>
         <InstallOptions></InstallOptions>
         <Options></Options>
     </Demo>
@@ -167,7 +167,7 @@
         <FileSizeMB>131</FileSizeMB>
         <FileURL>http://www.boxedwine.org/demos/DiabloIIDemo.EXE</FileURL>
         <ShortcutExe>Diablo II.exe</ShortcutExe>
-        <Help>DirectX 6.1 can use DirectDraw, Direct3D or 3dfx\n\nMinimum Requirements:\n * Windows 2000, 95, 98, or NT 4.0 Service Pack 5\n * Pentium® 233 or equivalent\n * 32 MB RAM</Help>
+        <Help>DirectX 6.1 can use DirectDraw or Direct3D\n\nMinimum Requirements:\n * Windows 2000, 95, 98, or NT 4.0 Service Pack 5\n * Pentium® 233 or equivalent\n * 32 MB RAM</Help>
         <InstallOptions></InstallOptions>
         <InstallOptions_Mac>wine=Wine 10.0</InstallOptions_Mac>
         <Options></Options>
@@ -238,7 +238,7 @@
         <FileSizeMB>49</FileSizeMB>
         <FileURL>http://www.boxedwine.org/demos/hluplink.exe</FileURL>
         <ShortcutExe>hldemo.exe</ShortcutExe>
-        <Help>OpenGL 1.1 + DirectX 6, can use Software, OpenGL or Direct3D\n\nMinimum Requirements:\n * Windows 95, Windows 98 or Windows NT 4.0\n * Pentium 133+\n * 24 MB RAM\n * SVGA, high color (16-bit)\n\nSoftware mode crashes, but OpenGL and Direct3D works.  Wine 9 works well.  When using Wine 10, the main menu is black.  Hitting N, for a new game can work around it.</Help>
+        <Help>Released in 1999, Uplink is a standalone Half-Life mini-campaign created after the original game was finished. It introduced many players to Half-Life through magazine and hardware-bundle CDs, and Valve later included it in the game's 25th-anniversary update.\n\nGraphics: OpenGL.</Help>
         <InstallOptions>wine=Wine 9.0</InstallOptions>
         <Options>macNativeGL</Options>
     </Demo>
@@ -262,7 +262,7 @@
         <FileSizeMB>35</FileSizeMB>
         <FileURL>http://www.boxedwine.org/demos/MW3Demo.exe</FileURL>
         <ShortcutExe>mech3demo.exe</ShortcutExe>
-        <Help>DirectX 6.0\n\nMinimum Requirements:\n * Windows 95 or Windows 98\n * 166MHz Pentium or faster\n * 32MB RAM\n * 16-bit 2MB video card\n * 2X CD-ROM\n * 240MB hard drive space\n * DirectX compatible sound card\n\nWine 9 crashes when quitting using OpenGL, this works with Vulkan.  Wine 10 works well</Help>
+        <Help>DirectX 6.0\n\nMinimum Requirements:\n * Windows 95 or Windows 98\n * 166MHz Pentium or faster\n * 32MB RAM\n * 16-bit 2MB video card\n * 2X CD-ROM\n * 240MB hard drive space\n * DirectX compatible sound card</Help>
         <InstallOptions></InstallOptions>
         <Options></Options>
     </Demo>
@@ -273,7 +273,7 @@
         <FileSizeMB>10</FileSizeMB>
         <FileURL>http://www.boxedwine.org/demos/motordemo_3dfx.exe</FileURL>
         <ShortcutExe>motor.exe</ShortcutExe>
-        <Help>DirectX 5.0 3Dfx/OpenGL\n\nMinimum Requirements:\n * Windows 95\n * Intel 133 MHz Pentium\n * 24 MB Ram\n\nSound has some issues.</Help>
+        <Help>Press Enter to start. Use the arrow keys to drive, F1/F2/F3 to change camera and Escape to exit. Skip installing DirectX if setup offers it.\n\nOriginal 3Dfx demo requirements (1998):\n• Windows 95\n• Pentium 133 MHz processor\n• 24 MB RAM\n• 3Dfx graphics accelerator\n• PCI SVGA display card with 1 MB video memory, High Color and DirectDraw 5.0 support\n• DirectX 5.0 or later\n• 20 MB disk space\n• Keyboard</Help>
         <InstallOptions>3dfx,win98</InstallOptions>
         <InstallOptions_Mac>3dfx,win98,wine=Wine 10.0</InstallOptions_Mac>
         <Options>resolution=640x480</Options>
@@ -373,7 +373,7 @@
         <FileSizeMB>10</FileSizeMB>
         <FileURL>http://www.boxedwine.org/demos/tr3india.exe</FileURL>
         <ShortcutExe>tomb3.exe</ShortcutExe>
-        <Help>DirectX 6.0\n\nMinimum Requirements:\n * Windows 95\n * Pentium 90MHz\n * 16 MB RAM\n * DirectX 6.0 video card\n\nWorks with Wine 10</Help>
+        <Help>DirectX 6.0\n\nMinimum Requirements:\n * Windows 95\n * Pentium 90MHz\n * 16 MB RAM\n * DirectX 6.0 video card</Help>
         <InstallOptions>win98</InstallOptions>
         <Options></Options>
     </Demo>
@@ -420,4 +420,225 @@
         <InstallOptions></InstallOptions>
         <Options></Options>
     </Component>
+  <Demo>
+    <Name>Max Payne Demo (2001)</Name>
+    <InstallType>Zip</InstallType>
+    <IconURL>https://boxedwine.org/demos/MaxPayneDemo.png</IconURL>
+    <FileSizeMB>130</FileSizeMB>
+    <FileURL>https://boxedwine.org/builds/demos/apps/MaxPayneDemo.zip</FileURL>
+    <ShortcutExe>MaxPayneDemo.exe</ShortcutExe>
+    <Help>Released in 2001, Remedy Entertainment's Max Payne follows an undercover detective framed for murder and pursued by both the police and organized crime. Set in a snowbound New York, this third-person shooter combines a noir crime story with slow-motion Bullet Time gunfights.\n\nGraphics: Direct3D 8.\n\nOriginal demo requirements (minimum graphical detail):\n• Windows 95 OSR2 or later, Windows 98, ME, 2000 or XP\n• 450 MHz Intel/AMD-compatible processor\n• 96 MB RAM\n• Direct3D-compatible graphics card with 16 MB video memory\n• DirectX 8.0 or later\n\nRecommended for medium graphical detail: a 700 MHz processor, 128 MB RAM and a Direct3D-compatible graphics card with 32 MB video memory.</Help>
+    <Options></Options>
+  </Demo>
+  <Demo>
+    <Name>SimCity 3000 Demo (1999)</Name>
+    <InstallType>Zip</InstallType>
+    <IconURL>https://boxedwine.org/demos/Simcity3000Demo.png</IconURL>
+    <FileSizeMB>119</FileSizeMB>
+    <FileURL>https://boxedwine.org/builds/demos/apps/Simcity3000Demo.zip</FileURL>
+    <ShortcutExe>sc3demo.exe</ShortcutExe>
+    <Help>DirectDraw.\n\nThe interactive tutorial opens automatically. Close its window to explore the demonstration city, and use the Run Simulation arrow to start or pause the simulation.\n\nOriginal full-game requirements (1999):\n• Windows 95 or 98\n• Pentium 166 MHz processor\n• 32 MB RAM\n• DirectDraw-compatible graphics card with 2 MB video memory\n• DirectX 6.0-compatible sound card\n• 230 MB disk space\n• 4x CD-ROM drive, keyboard and mouse\n\nRecommended: Pentium 233 MHz processor, 4 MB video memory and an 8x CD-ROM drive.</Help>
+    <Options>GDI</Options>
+  </Demo>
+  <Demo>
+    <Name>System Shock 2 Demo (1999)</Name>
+    <InstallType>Installer</InstallType>
+    <InstallExe>setup.exe</InstallExe>
+    <InstallOptions>win98,resolution=800x600</InstallOptions>
+    <Options>win98,resolution=640x480,32bpp</Options>
+    <IconURL>https://boxedwine.org/demos/SystemShock2Demo.png</IconURL>
+    <FileSizeMB>72</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/SystemShock2DemoSetup.zip</FileURL>
+    <ShortcutExe>shock2.exe</ShortcutExe>
+    <Help>System Shock 2 is a 1999 science-fiction horror game from Irrational Games and Looking Glass Studios. It combines first-person combat with hacking, character upgrades and psionic powers as you uncover what happened aboard the starship Von Braun.\n\nBuilt on the same Dark Engine as Thief: The Dark Project, it offers several ways to approach problems, from repairing equipment to turning security systems against your enemies.\n\nThis demo includes the training area and the Von Braun's Med/Sci deck, with a pre-generated Navy character.\n\nOriginal full-game requirements (1999):\n• Windows 95\n• Pentium 200 MHz processor\n• 32 MB RAM (64 MB recommended)\n• Direct3D-compatible 3D graphics card with 4 MB video memory\n• DirectX 6 and DirectSound-compatible audio\n• 200 MB disk space (500 MB recommended)\n• 4x CD-ROM drive (8x recommended), keyboard and mouse</Help>
+  </Demo>
+  <Demo>
+    <Name>SimTower Demo (1994)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/sim-tower.png</IconURL>
+    <FileSizeMB>2</FileSizeMB>
+    <FileURL>https://www.boxedwine.org/demos/towerdmo.zip</FileURL>
+    <InstallExe>SIMTOWER/Setup.exe</InstallExe>
+    <ShortcutExe>SIMTDEMO.EXE</ShortcutExe>
+    <Help>Developed by OpenBook and published by Maxis in 1994, SimTower puts you in charge of a skyscraper filled with offices, apartments, hotel rooms and shops. Keeping tenants happy takes more than adding floors: a well-planned elevator system is essential as your tower grows.\n\nThis demo offers a guided, time-limited interactive tour of building a tower.</Help>
+    <Options>resolution=800x600</Options>
+  </Demo>
+  <Demo>
+    <Name>Pharaoh Demo (1999)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/pharaoh.png</IconURL>
+    <FileSizeMB>74</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/PharaohDemoSetup.zip</FileURL>
+    <InstallExe>SETUP.EXE</InstallExe>
+    <ShortcutExe>PharaohDemo.exe</ShortcutExe>
+    <Help>Pharaoh is a 1999 city-building game set in ancient Egypt. This demo includes three missions, with a special final scenario created for the demo that challenges you to build a mud-brick mastaba tomb.\n\nOriginal demo requirements (1999):\n• Windows 95 or 98\n• Pentium 133 MHz processor\n• 32 MB RAM\n• 640×480 display with 16-bit color\n• DirectX 6.1\n• 120 MB installation space, plus 100 MB for the Windows swap file\n\nSound: Use Windows 98 compatibility mode for audio.</Help>
+    <Options>GDI,win98,resolution=800x600</Options>
+  </Demo>
+  <Demo>
+    <Name>Alone in the Dark: The New Nightmare Demo (2001)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/alone-in-the-dark.png</IconURL>
+    <FileSizeMB>83</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/AloneInTheDarkDemoSetup.zip</FileURL>
+    <InstallExe>SETUP.EXE</InstallExe>
+    <ShortcutExe>launch.exe</ShortcutExe>
+    <Help>In this 2001 entry in the survival horror series, Edward Carnby investigates Shadow Island. Light is part of survival: his flashlight reveals dangers and can repel creatures.\n\nOriginal PC requirements (2001):\n• Windows 95, 98, Me or 2000\n• Pentium II 300 MHz processor\n• 64 MB RAM\n• OpenGL graphics card with 8 MB video memory\n• DirectX 8-compatible sound card\n• 400 MB disk space, plus 100 MB free while playing\n• DVD or 4× CD-ROM drive, keyboard and mouse</Help>
+    <Options>macNativeGL,resolution=640x480</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+  </Demo>
+  <Demo>
+    <Name>The Incredible Machine: Even More Contraptions Demo (2001)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/even-more-contraptions.png</IconURL>
+    <FileSizeMB>19</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/EvenMoreContraptionsDemoSetup.zip</FileURL>
+    <InstallExe>Setup.exe</InstallExe>
+    <ShortcutExe>EvenMore Demo.exe</ShortcutExe>
+    <Help>This 2001 entry in The Incredible Machine series turns everyday objects into chain-reaction puzzles. The demo includes 11 single-player puzzles, 3 two-player puzzles and 33 parts for building your own machines.\n\nOriginal PC requirements (2001):\n• Windows 95, 98, Me or 2000\n• Pentium 90 MHz processor\n• 32 MB RAM\n• 50 MB disk space\n• 800×600 display with 16-bit color\n• 4× CD-ROM drive\n• DirectX 8.0a</Help>
+    <Options>GDI,16bpp,resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+  </Demo>
+  <Demo>
+    <Name>Star Wars: Force Commander Demo (2000)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/force-commander.png</IconURL>
+    <FileSizeMB>82</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/ForceCommanderDemoInstaller.zip</FileURL>
+    <InstallExe>INSTALL/SETUP32.EXE</InstallExe>
+    <ShortcutExe>focom.exe</ShortcutExe>
+    <Help>Released in 2000, Star Wars: Force Commander brings ground combat to a fully 3D battlefield. Command stormtroopers, scout walkers and other Imperial units, organize groups, and call in reinforcements.
+
+Original demo requirements: Windows 95/98; Pentium 266 MHz; 64 MB RAM; DirectX-compatible PCI or AGP 3D graphics card with 8 MB video memory; DirectX-compatible 16-bit sound card; DirectX 7.0a; 115 MB free disk space (155 MB additional space recommended for the Windows swap file); keyboard and mouse.</Help>
+    <Options>resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+  </Demo>
+  <Demo>
+    <Name>Z: Steel Soldiers Demo (2001)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/steel-soldiers.png</IconURL>
+    <FileSizeMB>59</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/SteelSoldiersDemoSetup.zip</FileURL>
+    <InstallExe>Setup.exe</InstallExe>
+    <ShortcutExe>demo.exe</ShortcutExe>
+    <Help>The Bitmap Brothers brought the robot armies of Z into 3D with Steel Soldiers in 2001. Capture territory to earn credits, build an army, and destroy the enemy command center. This demo includes the single-player mission A Surprise Party.
+
+Original demo requirements: Windows 95/98/Me/2000; Pentium II 266 MHz or AMD K6-2 550 MHz; 64 MB RAM; DirectX 8-compatible 3D graphics card with 8 MB video memory; DirectX 8-compatible sound card; 100 MB free disk space; mouse.
+
+The separate graphics setup utility does not currently open; the demo runs with its default graphics settings.</Help>
+    <Options>resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+  </Demo>
+  <Demo>
+    <Name>World of Goo Demo (2008)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/world-of-goo.png</IconURL>
+    <FileSizeMB>33</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/WorldOfGooDemoSetup.zip</FileURL>
+    <InstallExe>Demos.WorldOfGoo.exe</InstallExe>
+    <ShortcutExe>WorldOfGoo.exe</ShortcutExe>
+    <Help>Created by the two-person studio 2D Boy, World of Goo turns living goo balls into bridges, towers and other structures. This original 2008 demo includes the first chapter.
+
+Original demo requirements: Windows XP or Vista; 1 GHz processor; 512 MB RAM; 3D graphics accelerator; DirectX 9.</Help>
+    <Options>resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+  </Demo>
+  <Demo>
+    <Name>The Settlers IV Demo (2001)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/settlers4.png</IconURL>
+    <FileSizeMB>100</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/SettlersIVDemoSetup.zip</FileURL>
+    <InstallExe>thesettlers4_demo.exe</InstallExe>
+    <ShortcutExe>S4.exe</ShortcutExe>
+    <Help>The Settlers IV combines settlement building with resource management and real-time strategy. Blue Byte's settlers gather materials, produce food and tools, and supply an army. This 2001 demo includes two tutorials and a single-player map.
+
+Original demo requirements: 200 MHz Pentium MMX; 64 MB RAM; 4 MB graphics card; 800x600 display; Windows 95b, 98, Me, 2000, or NT 4.0 with Service Pack 5.</Help>
+    <Options>resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+  </Demo>
+  <Demo>
+    <Name>Tropico Demo (2001)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/tropico.png</IconURL>
+    <FileSizeMB>173</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/TropicoDemoSetup.zip</FileURL>
+    <InstallExe>Setup.exe</InstallExe>
+    <ShortcutExe>TropicoD.EXE</ShortcutExe>
+    <Help>Tropico combines city building, economics and politics as you govern a Caribbean island as El Presidente. PopTop released the original game in 2001. This demo includes a tutorial that continues as a 50-year scenario.
+
+Original demo requirements: 200 MHz processor; 32 MB RAM; 235 MB disk space; Windows 95, 98, Me, 2000, or NT 4.0 with Service Pack 4. DirectX 7 or 8 (DirectX 3 on NT 4.0). Optional hardware rendering requires a graphics card with 16 MB memory.</Help>
+    <Options>resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+  </Demo>
+  <Demo>
+    <Name>The Movies Demo (2006)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/the-movies.png</IconURL>
+    <FileSizeMB>286</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/TheMoviesDemoSetup.zip</FileURL>
+    <InstallExe>setup.exe</InstallExe>
+    <ShortcutExe>MoviesDemo.exe</ShortcutExe>
+    <Help>Build a movie studio, manage its stars, and direct films in Lionhead's Hollywood simulation. This 2006 demo begins with a guided tutorial on running your studio.
+
+Original demo requirements: 800 MHz Pentium III or Athlon; 256 MB RAM; 400 MB disk space plus 400 MB for the Windows swap file; Windows 98 SE, Me, 2000, or XP. DirectX 9.0c-compatible 32 MB graphics card with hardware transform and lighting; DirectX-compatible sound card; Windows Media Player 9 or later; 800x600 display.</Help>
+    <Options>resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+  </Demo>
+  <Demo>
+    <Name>MechCommander 2 Demo (2001)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/mechcommander2.png</IconURL>
+    <FileSizeMB>156</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/MechCommander2DemoSetup.zip</FileURL>
+    <InstallExe>MC2Trial.exe</InstallExe>
+    <ShortcutExe>MC2Demo.exe</ShortcutExe>
+    <Help>Command a mercenary company of BattleMechs in this 2001 real-time tactics game set in the BattleTech universe. Equip your units, choose their pilots, and use the terrain to gain an advantage in battle. The sequel brought MechCommander into a fully 3D battlefield.
+
+The original game used DirectX 8.0. Single-player has been tested in Boxedwine; DirectPlay multiplayer is not supported.</Help>
+    <Options>resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+    <WineDllOverrides>dbghelp,imagehlp=n,b</WineDllOverrides>
+  </Demo>
+  <Demo>
+    <Name>Escape from Monkey Island Demo (2000)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/monkey-island.png</IconURL>
+    <FileSizeMB>117</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/EscapeFromMonkeyIslandDemoSetup.zip</FileURL>
+    <InstallExe>monkeycomplete.exe</InstallExe>
+    <ShortcutExe>MnkyDemo.exe</ShortcutExe>
+    <Help>Guybrush Threepwood returns to Melee Island with Elaine in this 2000 LucasArts adventure. Explore the island, talk to its eccentric residents, and solve puzzles. The demo uses keyboard or gamepad controls; mouse control and saving/loading are not available in this original demo.
+
+Original demo requirements: Windows 95/98, a 200 MHz Pentium (233 MHz Pentium II recommended), 32 MB RAM, an 8 MB Direct3D or OpenGL graphics accelerator (16 MB recommended), a DirectX-compatible 16-bit sound card, DirectX 7.0a, and 125 MB disk space plus 75 MB free space recommended.</Help>
+    <Options>resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+  </Demo>
+  <Demo>
+    <Name>Links 2003 Demo (2002)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/links2003.png</IconURL>
+    <FileSizeMB>163</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/Links2003DemoSetup.zip</FileURL>
+    <InstallExe>2k3demo.exe</InstallExe>
+    <ShortcutExe>LinksMMIII.exe</ShortcutExe>
+    <Help>Microsoft's 2002 golf simulation introduced Real Time Swing, matching the golfer's swing to your mouse movement. This demo features Sergio Garcia and the back nine holes of the fictional Skeleton Coast course.
+
+Original full-game requirements: Windows 98, ME, 2000 or XP, a 400 MHz processor, 64 MB RAM (128 MB on XP), and a 16 MB graphics card.</Help>
+    <Options>resolution=800x600</Options>
+    <InstallOptions>resolution=800x600</InstallOptions>
+    <WineDllOverrides>wmvcore=</WineDllOverrides>
+  </Demo>
+  <Demo>
+    <Name>Star Wars: Galactic Battlegrounds Trial (2001)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/galactic-battlegrounds.png</IconURL>
+    <FileSizeMB>70</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/SWGB_Trial.exe</FileURL>
+    <ShortcutExe>battlegrounds_trial.exe</ShortcutExe>
+    <Help>Released in 2001, Star Wars: Galactic Battlegrounds turns the ground battles of Star Wars into real-time strategy. This trial includes Incursion on Yavin IV from the Darth Vader campaign, with Imperial troops pursuing the Rebel Alliance after the destruction of the Death Star.
+
+Original trial requirements: Windows 95/98/ME/2000; a 233 MHz Pentium II or Athlon; 32 MB RAM (64 MB recommended); a 2 MB graphics card; a DirectX-compatible 16-bit sound card; DirectX 8.0a; and 140 MB of free disk space, plus 75 MB recommended for the Windows swap file.</Help>
+    <Options>GDI,resolution=1024x768</Options>
+    <InstallOptions>resolution=1024x768</InstallOptions>
+  </Demo>
 </XML>

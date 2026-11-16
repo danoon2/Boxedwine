@@ -246,7 +246,7 @@ public partial class MainWindow
     private async void Stop(LibraryApp app)
     {
         if (stopping.Contains(app.Id) || !sessions.TryGetValue(app.Id, out var session)) return;
-        if (!Dialogs.Confirm(this, "Stop " + app.Name + "?", "Save your work in the app first. If it does not close within five seconds, Boxedwine will stop it.", "Stop App")) return;
+        if (!Dialogs.Confirm(this, "Stop " + app.Name + "?", $"Save your work in the app first. If it does not close within {RuntimeSession.StopTimeoutSeconds} seconds, Boxedwine will stop it.", "Stop App")) return;
         if (sessions.GetValueOrDefault(app.Id) != session || session.Completion.IsCompleted) return;
         launching.Remove(app.Id); stopping.Add(app.Id); Refresh();
         try { Status.Text = "Stopping " + app.Name + "…"; await session.Stop(); Status.Text = "Ready"; }

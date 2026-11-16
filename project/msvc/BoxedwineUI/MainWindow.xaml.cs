@@ -20,6 +20,7 @@ public sealed class LibraryRow
     public string Description { get; init; } = "";
     public string Glyph { get; init; } = "\uE8A5";
     public ImageSource? Icon { get; init; }
+    public bool IsLaunching { get; init; }
     public string Key => App?.Id.ToString() ?? Demo?.Origin.Id ?? Operation?.Id.ToString() ?? Name;
 }
 
@@ -159,7 +160,7 @@ public partial class MainWindow : Window
         }
         finally { refreshing = false; }
         var rows = new List<LibraryRow>();
-        LibraryRow Row(LibraryApp app, RemovedApp? removed = null) => new() { App = app, Removed = removed, Name = app.Name, Description = removed != null ? removed.DeletionStartedAt != null ? "Deletion needs finishing" : "Files kept · ready to restore" : AppStatus(app), Icon = Icons.ForApp(repository, app, resources, iconDemos, catalogDirectory), Glyph = app.BuiltIn == "minesweeper" ? "\uE7FC" : "\uE8A5" };
+        LibraryRow Row(LibraryApp app, RemovedApp? removed = null) => new() { App = app, Removed = removed, Name = app.Name, Description = removed != null ? removed.DeletionStartedAt != null ? "Deletion needs finishing" : "Files kept · ready to restore" : AppStatus(app), IsLaunching = removed == null && launching.ContainsKey(app.Id), Icon = Icons.ForApp(repository, app, resources, iconDemos, catalogDirectory), Glyph = app.BuiltIn == "minesweeper" ? "\uE7FC" : "\uE8A5" };
         switch (section)
         {
             case var _ when IsCollection:
@@ -182,7 +183,6 @@ public partial class MainWindow : Window
         AddButton.IsEnabled = !busy; EmptyButton.IsEnabled = !busy;
         RefreshCollectionButton.Visibility = IsCollection && refreshableCollections.Contains(section) ? Visibility.Visible : Visibility.Collapsed;
         RefreshCollectionButton.IsEnabled = !busy;
-        LaunchingApps.ItemsSource = launching.Values.ToArray();
         RenderDetails();
     }
     private Button DetailAction(string text, Action action, bool enabled = true)

@@ -20,7 +20,7 @@
 #define __GLCOMMON_H__
 
 #ifdef BOXEDWINE_OPENGL
-#include "../../tools/opengl/gldef.h"
+#include "../../tools/fs_passthrough/opengl/gldef.h"
 #include <inttypes.h>
 
 //#define GL_LOG klog

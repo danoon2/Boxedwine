@@ -547,8 +547,21 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
 class SDLGlContext {
 public:
     SDLGlContext(U32 id, SDL_GLContext context, const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags) : id(id), context(context), pixelFormat(pixelFormat), major(major), minor(minor), profile(profile), flags(flags) {}
+    void initializeDrawableState(const std::shared_ptr<XDrawable>& drawable) {
+        if (hasBeenCurrent) return;
+        // SDL makes a context current on our temporary bootstrap window during
+        // creation. GLX/EGL initial state belongs to the first guest drawable,
+        // not that host window. Later binds must preserve application state.
+        GLsizei width = drawable->isEglSurfaceless ? 0 : drawable->width();
+        GLsizei height = drawable->isEglSurfaceless ? 0 : drawable->height();
+        pglViewport(0, 0, width, height);
+        pglScissor(0, 0, width, height);
+        hasBeenCurrent = true;
+    }
     SDLGlWindowPtr currentWindow;
     SDLGlWindowPtr currentPbufferWindow;
+
+    bool hasBeenCurrent = false;
 
     const U32 id;
     SDL_GLContext context;
@@ -1439,6 +1452,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             context->currentWindow = nullptr;
             context->currentPbufferWindow = nullptr;
             loadSdlExtensions();
+            context->initializeDrawableState(d);
             return true;
         }
 #endif
@@ -1453,6 +1467,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 context->currentWindow = nullptr;
                 context->currentPbufferWindow = nullptr;
                 loadSdlExtensions();
+                context->initializeDrawableState(d);
 #ifdef _DEBUG
                 enableDebug();
 #endif
@@ -1474,6 +1489,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                     context->currentWindow = nullptr;
                     context->currentPbufferWindow = pbufferWindow;
                     loadSdlExtensions();
+                    context->initializeDrawableState(d);
 #ifdef _DEBUG
                     enableDebug();
 #endif
@@ -1612,14 +1628,14 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
         // already current on this host thread, so avoid the redundant call.
         if (SDL_GL_GetCurrentContext() == context->context &&
             SDL_GL_GetCurrentWindow() == window->window) {
-            context->currentWindow = window;
-            context->currentPbufferWindow = nullptr;
-            return true;
+            result = true;
+        } else {
+            result = BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(window->window, context->context)) == 0;
         }
-        result = BOXEDWINE_PROFILE_WEBGL_BINDING(SDL_GL_MakeCurrent(window->window, context->context)) == 0;
 #endif
         if (result) {
             loadSdlExtensions();
+            context->initializeDrawableState(d);
 #ifdef __EMSCRIPTEN__
             // Wine's masked shader variants require explicit per-context enabling.
             // A missing extension is handled by guest capability filtering.

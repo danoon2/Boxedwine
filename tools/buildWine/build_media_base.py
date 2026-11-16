@@ -69,15 +69,17 @@ def put(root, name, data):
     target.write_bytes(data)
 
 
-def package(base, root, output):
+def package(base, root, output, exclude=None):
     if base.resolve() == output.resolve():
         raise RuntimeError('Base input and output archives must be different files')
     files = {p.relative_to(root).as_posix(): p for p in root.rglob('*') if p.is_file()}
     with zipfile.ZipFile(base) as old, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as new:
         for info in old.infolist():
-            if info.filename not in files:
+            if info.filename not in files and not (exclude and exclude(info.filename)):
                 new.writestr(info, old.read(info), compresslevel=9)
         for name, path in sorted(files.items()):
+            if exclude and exclude(name):
+                continue
             info = zipfile.ZipInfo(name, (2026, 11, 8, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = (0o100755 if '.so' in name else 0o100644) << 16

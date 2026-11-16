@@ -24,6 +24,7 @@ internal static partial class Program
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(app.Dispatcher));
             app.ThemeMode = ThemeMode.System;
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri($"/{typeof(MainWindow).Assembly.GetName().Name};component/Styles.xaml", UriKind.Relative) });
+            if (args.Contains("--launch-cards")) { CheckLaunchCards(destination); return 0; }
             if (args.Contains("--wine-tools")) { CheckWineTools(destination); return 0; }
             if (args.Contains("--shared-files")) { CheckSharedFiles(destination); return 0; }
             if (args.Contains("--disc-install")) { CheckDiscInstall(destination); return 0; }
@@ -296,45 +297,57 @@ internal static partial class Program
         window.WindowStartupLocation = WindowStartupLocation.Manual;
         window.ShowActivated = false; window.ShowInTaskbar = false;
         window.Left = -16000; window.Top = -16000; window.Show();
-        var banners = (ItemsControl)window.FindName("LaunchingApps");
         var cards = (ListBox)window.FindName("Cards");
-        string Status() => cards.Items.Cast<LibraryRow>().Single(r => r.App?.Id == app.Id).Description;
+        LibraryRow Row() => cards.Items.Cast<LibraryRow>().Single(r => r.App?.Id == app.Id);
+        string Status() => Row().Description;
+        ListBoxItem Card() => (ListBoxItem)cards.ItemContainerGenerator.ContainerFromItem(Row());
+        Point[] Positions() => cards.Items.Cast<LibraryRow>().Select(row =>
+            Descendants<Image>((ListBoxItem)cards.ItemContainerGenerator.ContainerFromItem(row)).First()
+                .TransformToAncestor(window).Transform(new Point())).ToArray();
+        cards.SelectedItem = Row(); window.UpdateLayout();
         string wine = Path.Combine(destination, "launch-test-wine.bin"); File.WriteAllText(wine, "fixture");
         foreach (string mode in new[] { "window", "exit", "stop" })
         {
+            var positions = Positions();
             string trigger = Path.Combine(destination, Guid.NewGuid() + ".ready");
             using var session = new RuntimeSession(Environment.ProcessPath!, ["--runtime-fixture", trigger, mode], wine, trigger + ".log");
             typeof(MainWindow).GetMethod("TrackSession", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [app, session]);
-            if (banners.Items.Count != 1 || Status() != "Launching…") throw new Exception("Launching status was not shown immediately.");
+            window.UpdateLayout();
+            if (!Row().IsLaunching || Status() != "Launching…") throw new Exception("Launching status was not shown immediately.");
+            if (!positions.SequenceEqual(Positions())) throw new Exception("Launching moved the app icons.");
+            if (Descendants<ProgressBar>(cards).Count(p => p.IsVisible) != 1) throw new Exception("Only the launching card should show progress.");
             if (mode == "window")
             {
                 Render(window, Path.Combine(destination, theme.ToLowerInvariant() + "-launching.png"));
-                var progress = Descendants<ProgressBar>(banners).Single();
+                var progress = Descendants<ProgressBar>(Card()).Single();
                 if (!progress.IsIndeterminate || progress.ActualWidth < 100) throw new Exception("The launch progress bar is missing.");
                 byte[] firstFrame = ProgressPixels(progress);
                 var nextFrame = DateTime.UtcNow.AddMilliseconds(350); PumpUntil(() => DateTime.UtcNow >= nextFrame);
                 if (SystemParameters.ClientAreaAnimation && firstFrame.SequenceEqual(ProgressPixels(progress))) throw new Exception("The launch progress bar did not animate.");
                 if (!Descendants<TextBlock>((DependencyObject)window.FindName("Details")).Any(t => t.Text == "Launching…")) throw new Exception("Details did not show launching status.");
                 File.WriteAllText(trigger, "ready");
-                PumpUntil(() => banners.Items.Count == 0 && Status() == "Running");
+                PumpUntil(() => !Row().IsLaunching && Status() == "Running");
                 if (!session.WindowShown.Result) throw new Exception("The runtime window signal was missed.");
                 var stop = session.Stop(); PumpUntil(() => stop.IsCompleted && Status() == "Stopped"); stop.GetAwaiter().GetResult();
             }
             else if (mode == "exit")
             {
                 File.WriteAllText(trigger, "exit");
-                PumpUntil(() => banners.Items.Count == 0 && Status() == "Exited with code 7");
+                PumpUntil(() => !Row().IsLaunching && Status() == "Exited with code 7");
                 if (session.WindowShown.Result) throw new Exception("Exit without a window must not report readiness.");
             }
             else
             {
                 window.Dispatcher.BeginInvoke(() => Application.Current.Windows.Cast<Window>().Last(w => w != window).DialogResult = true, DispatcherPriority.ApplicationIdle);
-                typeof(MainWindow).GetMethod("Stop", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(window, [app]);
-                if (banners.Items.Count != 0) throw new Exception("Stopping during startup did not clear the launch banner.");
+                Descendants<Button>(Card()).Single(b => b.Content as string == "Stop").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                if (Row().IsLaunching) throw new Exception("Stopping during startup did not clear the launch progress.");
                 PumpUntil(() => Status() == "Stopped");
                 if (session.WindowShown.Result) throw new Exception("A late window signal must not undo a stop request.");
             }
-            Console.WriteLine($"PASS {theme} launch lifecycle: {mode}");
+            window.UpdateLayout();
+            if (!positions.SequenceEqual(Positions())) throw new Exception("Finishing launch moved the app icons.");
+            if (cards.SelectedItem is not LibraryRow selected || selected.Key != Row().Key) throw new Exception("Launch changed the selected app.");
+            Console.WriteLine($"PASS {theme} launch lifecycle and stable card positions: {mode}");
         }
         window.Hide();
     }

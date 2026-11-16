@@ -17,7 +17,7 @@
  */
 
 #include "boxedwine.h"
-#include "../../tools/x11/X11_def.h"
+#include "../../tools/fs_passthrough/x11/X11_def.h"
 #include "x11.h"
 #include "x11flush.h"
 #include "knativesystem.h"
@@ -1527,11 +1527,15 @@ static void x11_ListPixelFormats(CPU* cpu) {
     U32 ndepths = X11_READD(Screen, screenAddress, ndepths);
     U32 count_return = ARG2;
 
+    // Pixmaps can be monochrome even when the screen has no depth-1 visual.
+    // Wine uses this format to upload the masks for monochrome cursors.
+    const U32 count = ndepths + 1;
     if (count_return) {
-        memory->writed(count_return, ndepths);
+        memory->writed(count_return, count);
     }
-    U32 listAddress = thread->process->alloc(thread, sizeof(XPixmapFormatValues) * ndepths);
+    U32 listAddress = thread->process->alloc(thread, sizeof(XPixmapFormatValues) * count);
     EAX = listAddress;
+    listAddress += XPixmapFormatValues::write(memory, listAddress, 1, 1, 32);
 
     U32 depthsAddress = X11_READD(Screen, screenAddress, depths);
     for (U32 i = 0; i < ndepths; i++) {

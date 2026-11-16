@@ -352,7 +352,7 @@ final class LibraryStore: ObservableObject {
         }
         return Bundle.main.url(forResource: demo.icon, withExtension: nil, subdirectory: "Demos")
     }
-    var launchingApps: [LibraryApp] { apps.filter { launching.contains($0.id) } }
+    func isLaunching(_ app: LibraryApp) -> Bool { launching.contains(app.id) }
     func wineDescription(for app: LibraryApp) -> String {
         let windows = app.preferredWindowsVersion == .wineDefault ? "" : " - \(app.preferredWindowsVersion.title)"
         if let reference = app.winePackage { return "Wine \(reference.wineVersion)\(windows) · pinned for this app" }

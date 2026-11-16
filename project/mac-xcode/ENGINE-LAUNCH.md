@@ -138,13 +138,13 @@ starting the guest; normal Bash launches should leave it unset. The separate
 `lifetime` FIFO remains specific to launch requests.
 
 After a Sandbox build, run
-`python3 tools/input/test_mac_engine_cli.py --wine /path/to/wine.zip --authorize`
+`python3 tools/testing/input/test_mac_engine_cli.py --wine /path/to/wine.zip --authorize`
 from the repository root. Choose the printed test folder when prompted. The test
 then starts fresh Bash processes with prompts disabled to verify remembered
 access, relative paths, spaces/Unicode, file reads/writes, logs, piped input, and
 clean failures. Later runs can omit `--authorize`.
 
-Run `python3 tools/input/test_mac_engine_launch.py` from the repository root in
+Run `python3 tools/testing/input/test_mac_engine_launch.py` from the repository root in
 a logged-in macOS 15+ session. It builds separately sandboxed test apps using the
 production launch code, and checks arguments, transferred file access, logging,
 exit status, simultaneous launches, Stop, Force Stop, and launcher disappearance.

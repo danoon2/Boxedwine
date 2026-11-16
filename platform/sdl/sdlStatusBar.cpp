@@ -706,11 +706,12 @@ bool setFullscreen(bool value, bool announce) {
         if (viewport.valid()) { w = viewport.guestWidth; h = viewport.guestHeight; }
         if (screen) screen->windowedSize(window, w, h);
         SDL_SetWindowSize(window, w, h);
+        bool hadWindowedHost = bar.window != nullptr;
         if (wayland) {
             positionSurfaces();
         } else if (createSurface(bar, SDL_GetWindowTitle(window), w, h + barHeight, true)) {
             if (haveWindowedBounds) SDL_SetWindowPosition(bar.window, windowedBounds.x, windowedBounds.y);
-            else SDL_SetWindowPosition(bar.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            else if (!hadWindowedHost) SDL_SetWindowPosition(bar.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
             embedded = embedGuest(window, bar.window, true);
         }
     }
@@ -920,7 +921,10 @@ void sdlStatusBarShowWindow(SDL_Window* window, bool show) {
         state = cdromGetState();
         int w, h, x, y;
         SDL_GetWindowSize(window, &w, &h);
-        SDL_GetWindowPosition(window, &x, &y);
+        // GDI and GL drawables share one outer window. Embedded guests have
+        // child-relative coordinates (often 0,0), even after detaching them.
+        // Keep the host's desktop position across drawable replacement.
+        SDL_GetWindowPosition(bar.window && !wayland ? bar.window : window, &x, &y);
         if (!wayland && !fullscreen(window) && createSurface(bar, SDL_GetWindowTitle(window), w, h + barHeight, true)) {
             SDL_SetWindowPosition(bar.window, x, y);
             embedded = embedGuest(window, bar.window, true);

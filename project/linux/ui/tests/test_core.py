@@ -36,6 +36,23 @@ def wine_fixture(path):
 
 
 class CoreTests(unittest.TestCase):
+    def test_pinned_disc_catalog_and_legacy_java_fonts(self):
+        xml = ('<XML schemaVersion="10" release="test"><Demo><ID>rosetta</ID><Name>Rosetta</Name>'
+               '<FileSHA256>' + 'a' * 64 + '</FileSHA256><ShortcutExe>Rosetta Stone DEMO.exe</ShortcutExe>'
+               '<FileURL>https://boxedwine.org/demo.zip</FileURL><FileSizeBytes>5</FileSizeBytes>'
+               '<InstallType>Disc</InstallType><CDROMImages>Rosetta Stone Demo.iso</CDROMImages>'
+               '<WineVersion>11.0</WineVersion><LegacyJavaFonts>true</LegacyJavaFonts></Demo></XML>')
+        recipe = load_catalog(xml.encode())[0]
+        self.assertFalse(recipe['custom'])
+        self.assertTrue(recipe['legacyJavaFonts'])
+        self.assertEqual(recipe['discImages'], ['Rosetta Stone Demo.iso'])
+        for invalid in [xml.replace('schemaVersion="10"', 'schemaVersion="9"'),
+                        xml.replace('Rosetta Stone Demo.iso', '../disc.iso'),
+                        xml.replace('<LegacyJavaFonts>true', '<LegacyJavaFonts>yes'),
+                        xml.replace('https://boxedwine.org', 'https://example.com'),
+                        xml.replace('</Demo>', '<InstallExe>setup.exe</InstallExe></Demo>')]:
+            with self.assertRaises(ValueError): load_catalog(invalid.encode())
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='boxedwine-test-')
         self.directory = Path(self.temporary.name)
@@ -607,7 +624,7 @@ class ParsingTests(unittest.TestCase):
         for value in ['bare&#13;return', 'é' * 4097, '\n'.join(['arg'] * 257), '\n'.join(['x' * 8192] * 9)]:
             with self.assertRaises(ValueError):
                 parse(xml.replace('FIELDS', '<AppArguments>' + value + '</AppArguments>'))
-        for invalid in [xml.replace('FIELDS', fields + fields), xml.replace('FIELDS', '').replace('schemaVersion="9"', 'schemaVersion="10"')]:
+        for invalid in [xml.replace('FIELDS', fields + fields), xml.replace('FIELDS', '').replace('schemaVersion="9"', 'schemaVersion="11"')]:
             with self.assertRaises(ValueError):
                 parse(invalid)
 

@@ -44,18 +44,6 @@ void common_int9B(CPU* cpu) {
     U32 index = cpu->peek32(0);
     callX11(cpu, index);
 }
-void common_intIb(CPU* cpu){
-    cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess
-}
-void common_int3(CPU* cpu) {
-    cpu->thread->signalTrap(1);// 1=TRAP_BRKPT
-}
-void common_ud2(CPU* cpu) {
-    cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess
-}
-void common_hlt(CPU* cpu) {
-    kpanic("Hlt");
-}
 void common_cpuid(CPU* cpu){
     cpu->cpuid();
 }

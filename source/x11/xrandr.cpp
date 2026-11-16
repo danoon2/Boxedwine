@@ -98,54 +98,50 @@ U32 XrrGetSizes(KThread* thread, const DisplayDataPtr& data, U32 screen, U32 cou
         }
         return data->xrrData->sizesAddress;
     }
+    std::vector<std::pair<U32, U32>> resolutions;
+    auto addResolution = [&resolutions](U32 width, U32 height) {
+        if (!width || !height) {
+            return;
+        }
+        for (const auto& size : resolutions) {
+            if (size.first == width && size.second == height) {
+                return;
+            }
+        }
+        resolutions.emplace_back(width, height);
+    };
+#ifndef __EMSCRIPTEN__
     U32 desktopCx = 0;
     U32 desktopCy = 0;
-    U32 count = 3;
     KNativeSystem::getScreenDimensions(&desktopCx, &desktopCy);
-
     if (desktopCx > 1600) {
-        count++;
+        addResolution(desktopCx, desktopCy);
     }
     if (desktopCx && desktopCx > 1600 && desktopCy > 1200) {
-        count++;
+        addResolution(1600, 1200);
     }
     if (desktopCx && desktopCx > 1280 && desktopCy > 1024) {
-        count++;
+        addResolution(1280, 1024);
     }
+#endif
+    addResolution(1024, 768);
+    addResolution(800, 600);
+    addResolution(640, 480);
+    // Keep the initial virtual desktop selectable even when it is a custom size.
+    // The list is cached for this display, so later mode changes do not replace it.
+    KNativeScreenPtr nativeScreen = KNativeSystem::getScreen();
+    addResolution(nativeScreen->screenWidth(), nativeScreen->screenHeight());
+    U32 count = (U32)resolutions.size();
     U32 sizes = thread->process->alloc(thread, sizeof(XRRScreenSize) * count);
     
     data->xrrData->sizesAddress = sizes;
     data->xrrData->sizesCount = count;
-    if (desktopCx > 1600) {
-        memory->writed(sizes, desktopCx); sizes += 4;
-        memory->writed(sizes, desktopCy); sizes += 4;
+    for (const auto& size : resolutions) {
+        memory->writed(sizes, size.first); sizes += 4;
+        memory->writed(sizes, size.second); sizes += 4;
         memory->writed(sizes, 0); sizes += 4;
         memory->writed(sizes, 0); sizes += 4;
     }
-    if (desktopCx && desktopCx > 1600 && desktopCy > 1200) {
-        memory->writed(sizes, 1600); sizes += 4;
-        memory->writed(sizes, 1200); sizes += 4;
-        memory->writed(sizes, 0); sizes += 4;
-        memory->writed(sizes, 0); sizes += 4;
-    }
-    if (desktopCx && desktopCx > 1280 && desktopCy > 1024) {
-        memory->writed(sizes, 1280); sizes += 4;
-        memory->writed(sizes, 1024); sizes += 4;
-        memory->writed(sizes, 0); sizes += 4;
-        memory->writed(sizes, 0); sizes += 4;
-    }
-    memory->writed(sizes, 1024); sizes += 4;
-    memory->writed(sizes, 768); sizes += 4;
-    memory->writed(sizes, 0); sizes += 4;
-    memory->writed(sizes, 0); sizes += 4;
-    memory->writed(sizes, 800); sizes += 4;
-    memory->writed(sizes, 600); sizes += 4;
-    memory->writed(sizes, 0); sizes += 4;
-    memory->writed(sizes, 0); sizes += 4;
-    memory->writed(sizes, 640); sizes += 4;
-    memory->writed(sizes, 480); sizes += 4;
-    memory->writed(sizes, 0); sizes += 4;
-    memory->writed(sizes, 0);
     if (countAddress) {
         memory->writed(countAddress, data->xrrData->sizesCount);
     }

@@ -1,0 +1,296 @@
+# Wine 11 NTDLL, kernel32, ws2_32, and advapi32 tests
+
+For browser graphics tests, focused probes, game captures and CI, use
+the existing [graphics guide](GRAPHICS_README.md). The current Wine graphics patch
+series is selected by the [filesystem manifest](../../buildWine/webgl_filesystems.json).
+Release history is in the [filesystem changelog](../../buildWine/changes_wine11_web.txt).
+Frozen graphics baselines retain their historical manifests and test selections.
+
+`runWineTests.py` is the unified Wine regression entry point. On Linux it
+builds the 64-bit BoxedWine release and runs the 32-bit Wine 11
+`ntdll_test.exe`, `kernel32_test.exe`, `ws2_32_test.exe`, and
+`advapi32_test.exe` groups. On Windows it can run DirectDraw, D3D8, D3D9,
+D3DX9, and D3DXOF groups through the single-threaded non-JIT Emscripten build
+and Chrome.
+It exits successfully only when every selected group completes within its
+suite-specific failure policy.
+
+Browser graphics groups use the versioned exact result policy in
+`graphics-baseline-v1.json` by default. Use `--no-graphics-baseline` only for
+an exploratory run whose changed counts will be reviewed before updating the
+baseline.
+
+The exact browser policy also pins
+`webgl-test-divergences-v2.json`. That manifest classifies every `skip()` and
+`todo_wine_if()` added to Wine's graphics tests by the current WebGL patch as
+an intentional WebGL limit, unimplemented emulation, or defect to fix.
+`webglTestDivergences.py` verifies every ordered patch hash, enforces the
+production/test-only file boundary, and requires every added test rule to be
+classified exactly once before Chrome launches.
+
+On Linux or WSL, the same graphics selectors can run against a native
+pure-i386 Wine 11 tree with `--native-wine-root`. The stable native comparison
+subset uses `native-graphics-baseline-v1.json` by default and the same v6 PE32
+test executables as the browser. See
+[GRAPHICS_README.md](GRAPHICS_README.md) for commands, pinned runtime inputs,
+and the WSLg display-mode limitation.
+
+Every generated BoxedWine command uses `-novideo` to prevent host test windows
+from appearing during headless execution.
+
+## Linux prerequisites
+
+On Ubuntu or Debian, install the BoxedWine build dependencies and Python 3:
+
+```bash
+sudo apt update
+sudo apt install build-essential libsdl2-dev libssl-dev libminizip-dev \
+    libcurl4-openssl-dev python3 unzip
+```
+
+The runner supports Linux on an `x86_64` host. Run it from any directory in a
+BoxedWine checkout:
+
+```bash
+python3 tools/testing/wine/runWineTests.py
+```
+
+The normal command downloads the latest Wine 11 filesystem on every invocation,
+downloads the test archive when absent, runs
+`make release` in `project/linux`, and executes all 26 NTDLL groups followed
+by all 33 kernel32 groups, the ws2_32 `afd` group, and all 12 advapi32 groups.
+
+Native test groups launch Wine through `/bin/sh`, explicitly unsetting
+`WINELOADERNOEXEC` before executing Wine. Boxedwine's direct application launch
+default, introduced in `c473fc3a` for the Halo Trial installer, skips the initial
+Wine preloader while child processes still use it. This can give parent and
+child processes different DLL addresses, breaking the cross-process assumptions
+in `ntdll/exception`, `ntdll/info`, `kernel32/debugger`, and `kernel32/process`.
+Setting the variable to `0` does not help: Wine checks its presence.
+
+This launch policy applies to the entire native suite, including the `wow64`
+group's existing wineserver cleanup. It leaves normal application startup and
+the filesystem unchanged. The tests cover normal Wine preloader startup; they
+do not validate the application's preloader-bypass mode.
+
+## Inputs and cache
+
+The inputs are:
+
+- BoxedWine Wine 11 filesystem:
+  `https://boxedwine.org/v2/latest/TinyCore15Wine11.0.zip`
+- Wine 11 tests:
+  `https://boxedwine.org/v2/1/wine_tests_v4.zip`
+- Prepared local graphics-test bundle:
+  `tools/testing/wine/wine_tests_v6.zip`
+
+They are cached in
+`${XDG_CACHE_HOME:-$HOME/.cache}/boxedwine/wineTests`. The `/latest/` filesystem
+is fetched afresh with HTTP cache revalidation requested on every run. If the
+download fails, the run fails instead of falling back to an older filesystem.
+The downloaded archive is stored by SHA-256 so each run keeps using the same
+revision even if another run fetches a newer release. Its revision and SHA-256
+are printed before tests start.
+
+An explicit versioned `--filesystem-url` uses a separate cache for that URL and
+reuses nonempty cached downloads. The versioned test archive is also reused.
+Downloads use a `.part` file so an interrupted transfer does not replace a
+cached artifact.
+
+Each invocation creates a timestamped directory below `runs/`. It contains:
+
+- `logs/<suite>/<group>.log`: combined BoxedWine stdout and stderr.
+- `manifest.json`: suite name, parsed counts, ceilings, status, and failure
+  reason.
+- `inputs.json`: filesystem URL, packaged revision, Wine version, cache path,
+  and SHA-256 identifying the exact archive used.
+- `roots/<suite>/<group>/`: retained guest state for a failed or timed-out
+  group.
+- `input/ntdll_test.exe`, `input/kernel32_test.exe`,
+  `input/ws2_32_test.exe`, and `input/advapi32_test.exe`: the validated
+  PE32/i386 tests extracted for that run.
+
+Guest roots for successful groups are removed automatically.
+
+## Options
+
+Run one or more NTDLL groups by repeating `--group`:
+
+```bash
+python3 tools/testing/wine/runWineTests.py --group file --group virtual
+```
+
+Run one or more kernel32 groups by repeating `--kernel32-group`:
+
+```bash
+python3 tools/testing/wine/runWineTests.py \
+    --kernel32-group sync \
+    --kernel32-group virtual
+```
+
+Run the ws2_32 AFD group on its own:
+
+```bash
+python3 tools/testing/wine/runWineTests.py --ws2-32-group afd
+```
+
+Run one or more advapi32 groups by repeating `--advapi32-group`:
+
+```bash
+python3 tools/testing/wine/runWineTests.py \
+    --advapi32-group registry \
+    --advapi32-group service
+```
+
+When any selector is present, only explicitly selected groups run. The four
+selectors may be combined. With no selectors, all supported suites run.
+
+Use an existing Linux BoxedWine executable and skip the build:
+
+```bash
+python3 tools/testing/wine/runWineTests.py \
+    --boxedwine project/linux/Build/Release/boxedwine
+```
+
+Other useful overrides are:
+
+```text
+--cache-dir PATH       Download and run cache directory
+--filesystem-url URL   BoxedWine Wine 11 filesystem ZIP (default: /v2/latest/)
+--tests-url URL        Wine 11 test ZIP
+--timeout SECONDS      Per-group timeout (default: 180)
+```
+
+For example, compare the D3D9 state-block group with native Wine 11:
+
+```bash
+python3 tools/testing/wine/runWineTests.py \
+    --d3d9-group stateblock \
+    --native-wine-root /path/to/native-pure-i386-wine-build
+```
+
+Use `--no-native-graphics-baseline` only to explore a group or changed native
+runtime that is not in the pinned stable subset.
+
+Use `python3 tools/testing/wine/runWineTests.py --help` for the complete option
+list. A local ZIP can be supplied with a `file:///...` URL.
+
+## Expected failures
+
+The thresholds are ceilings: fewer failures still pass, but one more fails the
+run.
+
+### NTDLL
+
+| NTDLL group | Maximum failures |
+| --- | ---: |
+| `file` | 9 |
+| `threadpool` | 1 only for the timer-merging TODO success described below |
+| `virtual` | 7 |
+| `wow64` | 3 |
+| Every other group | 0 |
+
+The `threadpool` group also passes with zero failures. Its one-failure result is
+accepted only when Wine reports the timing-dependent unexpected TODO success at
+`threadpool.c:1622` (`expected that timers are merged`) and reports no ordinary
+`Test failed:` records. An unrelated single `threadpool` failure still fails the
+run.
+
+A timeout, malformed archive, missing summary, missing `Boxedwine shutdown`,
+failed guest-root cleanup, or failed release build also fails the run. The
+`wow64` command runs `/opt/wine/bin/wineserver -k` in the same guest shell and
+requires an explicit cleanup-complete marker before it passes.
+
+Because some Wine groups occasionally stall during teardown, the all-suite
+runner retries a timed-out group once with a fresh guest root. A successful
+retry is reported as `ok after timeout retry`; both the original root/log and
+the retry log remain available. A second timeout still fails the run.
+
+### kernel32
+
+| kernel32 group | Maximum failures |
+| --- | ---: |
+| `sync` | 1 |
+| `loader` | 62 |
+| `virtual` | 109 |
+| Every other group | 0 |
+
+These three nonzero results are reproduced by the same PE32 test under native
+pure-i386 Wine 11. The `console` group is also accepted as skipped when it
+exits cleanly after Wine reports exactly that `console.c:5869` cannot open
+`HKCU\Console`; other missing summaries remain failures. Kernel32 runs set
+`WINEDLLOVERRIDES=mscoree,mshtml=` so Mono and Gecko installer dialogs cannot
+block unattended tests.
+
+### ws2_32
+
+| ws2_32 group | Maximum failures |
+| --- | ---: |
+| `afd` | 19 |
+
+The 19 accepted AFD failures are the current cascade from BoxedWine not
+supporting IPv6 sockets. IPv4 AFD behavior is still checked, and a twentieth
+failure fails the run. The ws2_32 suite also disables Mono and Gecko installer
+dialogs and runs its executable from `/home/username`.
+
+### advapi32
+
+| advapi32 group | Maximum failures |
+| --- | ---: |
+| Every group | 0 |
+
+The supported groups are `cred`, `crypt`, `crypt_lmhash`, `crypt_md4`,
+`crypt_md5`, `crypt_sha`, `eventlog`, `lsa`, `perf`, `registry`, `security`,
+and `service`. All 12 complete with zero failures under the current BoxedWine
+Wine 11 filesystem. Advapi32 also disables Mono and Gecko installer dialogs
+and runs its executable from `/home/username`.
+
+## Test archive
+
+See [BUILD_TESTS.md](BUILD_TESTS.md) for the reusable Wine 11 test build
+process and the verified commands that produce all supported PE32/i386
+executables.
+
+The prepared `wine_tests_v6.zip` is a flat archive containing:
+
+- `ntdll_test.exe`: Wine 11 PE32/i386 test executable.
+- `kernel32_test.exe`: Wine 11 PE32/i386 test executable.
+- `ws2_32_test.exe`: Wine 11 PE32/i386 test executable.
+- `advapi32_test.exe`: Wine 11 PE32/i386 test executable.
+- `d3d8_test.exe`: patched Wine 11 PE32/i386 D3D8 test executable.
+- `d3d9_test.exe`: patched Wine 11 PE32/i386 D3D9 test executable.
+- `d3dx9_43_test.exe`: patched Wine 11 PE32/i386 D3DX9 test executable.
+- `d3dxof_test.exe`: patched Wine 11 PE32/i386 D3DXOF test executable.
+- `ddraw_test.exe`: patched Wine 11 PE32/i386 DirectDraw test executable.
+- `COPYING.LIB`: Wine's LGPL license.
+- `SHA256SUMS`: hashes for all ten payload files above.
+
+The prepared graphics upload artifact is `tools/testing/wine/wine_tests_v6.zip`.
+It is 11,989,560 bytes and its SHA-256 is:
+
+```text
+e73c6f9212bad82893411686ce1704b585f0c03a970a2ce87d332842cc6eb01c
+```
+
+The public native default remains `wine_tests_v4.zip`. Browser DirectDraw,
+D3D8, D3D9, D3DX9, and D3DXOF runs use the local v6 bundle by default;
+`--graphics-test-executable` can override it during Wine patch development. See
+[GRAPHICS_README.md](GRAPHICS_README.md) for the browser commands and artifact
+layout.
+
+## Development checks
+
+The unit tests use temporary files and fake subprocesses; they do not download
+artifacts or build BoxedWine:
+
+```bash
+python3 tools/testing/wine/webglTestDivergences.py
+python3 -m unittest discover -s tools/testing/wine/tests -v
+python3 -m py_compile tools/testing/wine/runWineTests.py
+unzip -t tools/testing/wine/wine_tests_v4.zip
+unzip -t tools/testing/wine/wine_tests_v6.zip
+```
+
+If a real group fails, inspect its log and retained root under the run directory
+printed at the end. Increase `--timeout` for a slow machine. Delete an invalid
+or partial cached ZIP to make the runner download it again.

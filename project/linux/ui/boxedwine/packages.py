@@ -28,7 +28,7 @@ class Resources:
         shared = self.repo / 'project/mac-xcode/Boxedwine/BoxedwineUI/Resources'
         alternatives = {'org.boxedwine.Boxedwine.png': self.repo / 'project/mac-xcode/Boxedwine/Media.xcassets/AppIcon.appiconset/icon_256x256.png',
                         'demo-catalog.lock.json': self.repo / 'resources/demo-catalog.lock.json',
-                        'demo_catalog.py': self.repo / 'tools/demo_catalog.py',
+                        'demo_catalog.py': self.repo / 'project/shared/demo_catalog.py',
                         'LICENSE': self.repo / 'license.txt'}
         path = alternatives.get(name, shared / name)
         if not path.is_file():

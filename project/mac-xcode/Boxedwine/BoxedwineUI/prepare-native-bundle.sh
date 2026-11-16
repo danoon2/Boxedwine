@@ -45,13 +45,14 @@ if [ "$variant" = BOXEDWINE_DIRECT ]; then
     set --
     if [ "${BOXEDWINE_REQUIRE_DEMO_CATALOG:-NO}" = YES ]; then set -- "$@" --required; fi
     if [ "${BOXEDWINE_CATALOG_OFFLINE:-NO}" = YES ]; then set -- "$@" --offline; fi
-    /usr/bin/python3 "$SRCROOT/../../../tools/demo_catalog.py" stage --output "$resource_dir/Demos" "$@"
+    /usr/bin/python3 "$SRCROOT/../../shared/demo_catalog.py" stage --output "$resource_dir/Demos" "$@"
     if [ -f "$resource_dir/Demos/catalog.xml" ]; then
         package_check --catalog "$resource_dir/Demos/catalog.xml"
     fi
 fi
 package_check --wine-catalog "$resource_dir/WindowsSupport"
 /usr/bin/ditto "$SRCROOT/BoxedwineUI/Resources/AppIcons" "$resource_dir/AppIcons"
+/usr/bin/ditto "$SRCROOT/BoxedwineUI/Resources/troubleshooting.json" "$resource_dir/troubleshooting.json"
 
 # Declared as a build-phase output so Xcode re-signs the containing app after
 # either the nested framework signature or the optional Wine package changes.

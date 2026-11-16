@@ -330,12 +330,12 @@ void CPU::prepareFpuException(int code, int trapNo, int error) {
 
     // blocking signals, signalfd can't handle these
     if (process->sigActions[K_SIGFPE].handlerAndSigAction != K_SIG_IGN && process->sigActions[K_SIGFPE].handlerAndSigAction != K_SIG_DFL) {
+        memset(process->sigActions[K_SIGFPE].sigInfo, 0, sizeof(process->sigActions[K_SIGFPE].sigInfo));
         process->sigActions[K_SIGFPE].sigInfo[0] = K_SIGFPE;
-        process->sigActions[K_SIGFPE].sigInfo[1] = error; // always 0?
         process->sigActions[K_SIGFPE].sigInfo[2] = code;
-        process->sigActions[K_SIGFPE].sigInfo[3] = this->eip.u32; // address
+        process->sigActions[K_SIGFPE].sigInfo[3] = this->getEipAddress();
         process->sigActions[K_SIGFPE].sigInfo[4] = trapNo;
-        this->thread->runSignal(K_SIGFPE, trapNo, error);
+        this->thread->runSignal(K_SIGFPE, trapNo, error, true);
     } else {
         CPU* cpu = this;
         this->walkStack(this->eip.u32, EBP, 2);
@@ -344,45 +344,42 @@ void CPU::prepareFpuException(int code, int trapNo, int error) {
 }
 
 void CPU::prepareException(int code, int error) {
-    const KProcessPtr& process = this->thread->process;
-
-     // blocking signals, signalfd can't handle these
-    if (code==EXCEPTION_GP && (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
-        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
-        process->sigActions[K_SIGSEGV].sigInfo[1] = error;
-        process->sigActions[K_SIGSEGV].sigInfo[2] = 0;
-        process->sigActions[K_SIGSEGV].sigInfo[3] = 0; // address
-        process->sigActions[K_SIGSEGV].sigInfo[4] = 13; // trap #, TRAP_x86_PROTFLT
-        this->thread->runSignal(K_SIGSEGV, 13, error);
-    } else if (code==EXCEPTION_DIVIDE && error == 0 && (process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_DFL)) {
-        process->sigActions[K_SIGFPE].sigInfo[0] = K_SIGFPE;		
-        process->sigActions[K_SIGFPE].sigInfo[1] = error;
-        process->sigActions[K_SIGFPE].sigInfo[2] = K_FPE_INTDIV;
-        process->sigActions[K_SIGFPE].sigInfo[3] = this->eip.u32; // address
-        process->sigActions[K_SIGFPE].sigInfo[4] = 0; // trap #, TRAP_x86_DIVIDE
-        this->thread->runSignal(K_SIGFPE, 0, error);
-    } else if (code==EXCEPTION_DIVIDE && error == 1 && (process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGFPE].handlerAndSigAction!=K_SIG_DFL)) {
-        process->sigActions[K_SIGFPE].sigInfo[0] = K_SIGFPE;
-        process->sigActions[K_SIGFPE].sigInfo[1] = 0;
-        process->sigActions[K_SIGFPE].sigInfo[2] = K_FPE_INTOVF;
-        process->sigActions[K_SIGFPE].sigInfo[3] = this->eip.u32; // address
-        process->sigActions[K_SIGFPE].sigInfo[4] = 4; // trap #, TRAP_x86_OFLOW
-        this->thread->runSignal(K_SIGFPE, 4, error);
-    } else if (code==EXCEPTION_NP &&  (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
-        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
-        process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
-        process->sigActions[K_SIGSEGV].sigInfo[2] = 0;
-        process->sigActions[K_SIGSEGV].sigInfo[3] = this->eip.u32; // address
-        process->sigActions[K_SIGSEGV].sigInfo[4] = 11; // trap #, TRAP_x86_SEGNPFLT
-        this->thread->runSignal(K_SIGSEGV, 11, error);
-    } else if (code==EXCEPTION_SS &&  (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
-        process->sigActions[K_SIGSEGV].sigInfo[0] = K_SIGSEGV;		
-        process->sigActions[K_SIGSEGV].sigInfo[1] = 0;
-        process->sigActions[K_SIGSEGV].sigInfo[2] = 0;
-        process->sigActions[K_SIGSEGV].sigInfo[3] = this->eip.u32; // address
-        process->sigActions[K_SIGSEGV].sigInfo[4] = 12; // trap #, TRAP_x86_SEGNPFLT
-        this->thread->runSignal(K_SIGSEGV, 12, error);
-    } else {        
+    U32 signal = K_SIGSEGV;
+    U32 signalCode = K_SI_KERNEL;
+    U32 address = 0;
+    switch (code) {
+    case EXCEPTION_DIVIDE:
+        // Both a zero divisor and a quotient too large for the destination
+        // raise #DE. Linux exposes neither an overflow trap nor an error code.
+        signal = K_SIGFPE;
+        signalCode = K_FPE_INTDIV;
+        address = this->getEipAddress();
+        error = 0;
+        break;
+    case EXCEPTION_OF:
+    case EXCEPTION_BOUND:
+        error = 0;
+        break;
+    case EXCEPTION_NP:
+    case EXCEPTION_SS:
+        signal = K_SIGBUS;
+        break;
+    case EXCEPTION_GP:
+        break;
+    default:
+        kpanic_fmt("unhandled exception: code=%d error=%d", code, error);
+        return;
+    }
+    auto& action = this->thread->process->sigActions[signal];
+    // Synchronous CPU exceptions cannot be delivered through signalfd.
+    if (action.handlerAndSigAction != K_SIG_IGN && action.handlerAndSigAction != K_SIG_DFL) {
+        memset(action.sigInfo, 0, sizeof(action.sigInfo));
+        action.sigInfo[0] = signal;
+        action.sigInfo[2] = signalCode;
+        action.sigInfo[3] = address;
+        action.sigInfo[4] = code;
+        this->thread->runSignal(signal, code, error, code != EXCEPTION_OF);
+    } else {
         CPU* cpu = this;
         this->walkStack(this->eip.u32, EBP, 2);
         kpanic_fmt("unhandled exception: code=%d error=%d", code, error);
@@ -1117,13 +1114,13 @@ void CPU::setFlags(U32 flags, U32 mask) {
     }
 #endif
     this->flags=(this->flags & ~mask)|(flags & mask)|2;
-    if (mask & TF) {
+    if (mask & (TF | RF)) {
         this->updateDebugTrapActive();
     }
 }
 
 void CPU::updateDebugTrapActive() {
-    this->debugTrapActive = this->debugTrapOnNextInstruction || this->pendingDebugTrap || (this->flags & TF) ||
+    this->debugTrapActive = this->debugTrapOnNextInstruction || this->pendingDebugTrap || (this->flags & (TF | RF)) ||
         (this->thread && !this->thread->inSignal &&
             (this->thread->hasMemoryWriteBreakpointEnabled() || this->thread->hasExecutableBreakpointEnabled()));
 }
@@ -1162,6 +1159,8 @@ bool CPU::startDebugInstruction() {
 }
 
 bool CPU::finishDebugInstruction() {
+    // RF suppresses execution breakpoints for one completed instruction only.
+    this->flags &= ~RF;
     if (!this->thread) {
         this->debugTrapOnNextInstruction = false;
         this->pendingDebugTrap = false;

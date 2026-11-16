@@ -80,6 +80,7 @@ void testX11ImageIncludeInferiors();
 void testX11ClearArea();
 void testX11ImageScanlinePadding();
 void testX11GetImageBounds();
+void testX11MonochromeCopy();
 void testX11ImageReadback();
 void testX11PalettedDrawing();
 void testX11PatternFills();
@@ -788,6 +789,14 @@ const TestEntry TEST_ENTRIES[] = {
     {testOverlongPrefixedCliDoesNotPoisonCodeCache, "Test overlong prefixed cli does not poison code cache", TEST_ENTRY_SERIAL},
     {testInt2dRaisesInterruptProtectionFault, "Test int 2d raises interrupt protection fault", TEST_ENTRY_SERIAL},
     {testInt3ImmediateRaisesBreakpoint, "Test int 3 immediate raises breakpoint", TEST_ENTRY_SERIAL},
+    {testInt4RaisesOverflowTrap, "Test int 4 raises overflow trap", TEST_ENTRY_SERIAL},
+    {testIntoRaisesConditionalOverflowTrap, "Test into raises conditional overflow trap", TEST_ENTRY_SERIAL},
+    {testIntegerDivideFaults, "Test integer divide fault metadata", TEST_ENTRY_SERIAL},
+    {testBoundsExceptions, "Test bound exceptions", TEST_ENTRY_SERIAL},
+    {testExceptionInstructionMetadata, "Test CPU exception instruction metadata", TEST_ENTRY_SERIAL},
+    {testSegmentNotPresentExceptions, "Test absent segment exception metadata", TEST_ENTRY_SERIAL},
+    {testPageFaultMetadata, "Test page fault metadata", TEST_ENTRY_SERIAL},
+    {testResumeFlagSuppressesOneBreakpoint, "Test resume flag suppresses one execution breakpoint", TEST_ENTRY_SERIAL},
     {testPortIoRaisesProtectionFault, "Test port I/O raises protection fault", TEST_ENTRY_SERIAL},
     {testDescriptorTableQueries, "Test descriptor table queries"},
     {testDescriptorSelectorQueries, "Test descriptor selector queries"},
@@ -820,6 +829,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testDataHardwareBreakpointRaisesTrap, "Test data hardware breakpoint raises trap", TEST_ENTRY_SERIAL},
     {testDefaultUserSegmentsUseGdtSelectors, "Test default user segments use GDT selectors", TEST_ENTRY_SERIAL},
     {testSignalHandlerSegmentsUseGdtSelectors, "Test signal handler segments use GDT selectors", TEST_ENTRY_SERIAL},
+    {testWasmWin16PointerArithmetic, "Test Win16 pointer arithmetic", TEST_ENTRY_SERIAL},
+    {testJitSegmentFaultLeavesCompiledBlock, "Test segment fault leaves compiled block", TEST_ENTRY_SERIAL},
     {testSignalReturnRefreshesCodeSegmentSize, "Test signal return refreshes code segment size", TEST_ENTRY_SERIAL},
     {testSignalAlternateStackDeliverySemantics, "Test alternate signal stack delivery semantics", TEST_ENTRY_SERIAL},
     {testSignalOnStackWithoutConfiguredAlternateStack, "Test SA_ONSTACK without an alternate stack", TEST_ENTRY_SERIAL},
@@ -934,6 +945,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testShiftE8Cl_0x2d2, "Test Shift E8,CL 2d2"},
     {testShiftE16Cl_0x0d3, "Test Shift E16,CL 0d3"},
     {testShiftE32Cl_0x2d3, "Test Shift E32,CL 2d3"},
+    {testShiftRotateCarryLoop, "Test SHR/RCL bit reversal with LOOPNZ"},
+    {testRotatePreservedConditions, "Test rotate preserves lazy ZF/SF across block entries"},
     {testAam_0x0d4, "Test AAM 0d4"},
     {testAad_0x0d5, "Test AAD 0d5"},
     {testSalc_0x0d6, "Test Salc 0d6"},
@@ -1129,6 +1142,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testX11ClearArea, "Test X11 ClearArea backgrounds, clipping and exposures"},
     {testX11ImageScanlinePadding, "Test X11 image scanline padding"},
     {testX11GetImageBounds, "Test X11 image capture bounds and padding"},
+    {testX11MonochromeCopy, "Test X11 monochrome copy bit offsets, bounds and overlap"},
     {testX11ImageReadback, "Test X11 window readback and cursor save/restore"},
     {testX11PalettedDrawing, "Test X11 paletted drawing and clipping"},
     {testX11PatternFills, "Test X11 tiled and stippled rectangle fills"},

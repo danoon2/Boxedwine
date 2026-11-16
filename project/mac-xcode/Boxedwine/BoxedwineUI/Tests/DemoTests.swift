@@ -7,6 +7,18 @@ import Testing
 @testable import BoxedwineLibrary
 
 struct DemoTests {
+    @Test func pinnedDiscCatalogAndLegacyJavaFontsRequireSchema10() throws {
+        let xml = "<XML schemaVersion=\"10\" release=\"test\"><Demo><ID>rosetta</ID><Name>Rosetta</Name><FileSHA256>" + String(repeating: "a", count: 64) + "</FileSHA256><ShortcutExe>Rosetta Stone DEMO.exe</ShortcutExe><FileURL>https://boxedwine.org/demo.zip</FileURL><FileSizeBytes>5</FileSizeBytes><InstallType>Disc</InstallType><CDROMImages>Rosetta Stone Demo.iso</CDROMImages><WineVersion>11.0</WineVersion><LegacyJavaFonts>true</LegacyJavaFonts></Demo></XML>"
+        let demo = try #require(DemoCatalog.load(Data(xml.utf8)).demos.first)
+        #expect(!demo.customSource && demo.legacyJavaFonts && demo.discImages == ["Rosetta Stone Demo.iso"])
+        for invalid in [xml.replacingOccurrences(of: "schemaVersion=\"10\"", with: "schemaVersion=\"9\""),
+                        xml.replacingOccurrences(of: "Rosetta Stone Demo.iso", with: "../disc.iso"),
+                        xml.replacingOccurrences(of: "<LegacyJavaFonts>true", with: "<LegacyJavaFonts>yes"),
+                        xml.replacingOccurrences(of: "https://boxedwine.org", with: "https://example.com"),
+                        xml.replacingOccurrences(of: "</Demo>", with: "<InstallExe>setup.exe</InstallExe></Demo>")] {
+            #expect(throws: (any Error).self) { try DemoCatalog.load(Data(invalid.utf8)) }
+        }
+    }
     @Test func discCollectionInstallAndBackupResolveOwnedImagesInTheCurrentApp() async throws {
         let f = try fixture(); defer { try? FileManager.default.removeItem(at: f.base) }
         let data = ZipFixture.archive([.init("Disc 1.iso", "first disc"), .init("Media/Disc 2.iso", "second disc")])
@@ -106,7 +118,7 @@ struct DemoTests {
 
     @Test func catalogRejectsUnpinnedOrUnsupportedRecipes() throws {
         let xml = DemoCatalogFixture.xml
-        for altered in [xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"10\""),
+        for altered in [xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"11\""),
                         xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"6\""),
                         xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"5\""),
                         xml.replacingOccurrences(of: "schemaVersion=\"7\"", with: "schemaVersion=\"4\""),

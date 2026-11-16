@@ -18,7 +18,7 @@ DOCS = 'usr/local/share/doc/boxedwine-xf86vm/'
 
 
 def build_shim(root):
-    source = REPO / 'tools/x11'
+    source = REPO / 'tools/fs_passthrough/x11'
     target = root / LIBRARY
     target.parent.mkdir(parents=True, exist_ok=True)
     command = ['gcc', '-Wall', '-Werror', '-Wno-return-type', '-fPIC', '-m32',

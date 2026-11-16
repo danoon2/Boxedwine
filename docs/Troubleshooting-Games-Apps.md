@@ -38,10 +38,10 @@ looping through failed playback. Installing `libgstwavparse.so` restored menu
 input and allowed a race to run. CPU affinity and Windows XP mode did not fix
 this case; DirectPlay was not needed for the menu fix.
 
-Filesystem v33 includes the parser in the base, full and web archives. It is
-staged locally; see the [release receipt](../tools/buildWine/RELEASE-v33.md) for
-package identities and publication status. Existing application package pins
-are preserved, so the application must select the new package to receive it.
+Filesystem v33 and later include the parser in the base, full and web archives;
+see the [filesystem changelog](../tools/buildWine/changes_wine11.txt).
+Existing application package pins are preserved, so applications using an older
+filesystem must select a newer package to receive it.
 
 ### The Sims 2 Double Deluxe
 

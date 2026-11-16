@@ -35,7 +35,7 @@ the upstream public API does not expose timestamps.
 
 The filesystem regression tests are in `source/test/fs/testCdrom.cpp`. Their
 embedded UDF fixture is generated independently by
-`tools/input/generate_udf_fixture.py` using `genisoimage -udf -J`.
+`tools/testing/fs/generate_udf_fixture.py` using `genisoimage -udf -J`.
 The same script generates a second fixture with `-C 0,450`, for a data session
 following an audio track; `--session-only` regenerates just that fixture.
 

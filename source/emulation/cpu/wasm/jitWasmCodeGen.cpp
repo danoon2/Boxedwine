@@ -4430,7 +4430,14 @@ static void wasmHelper_emulateSingleOp(CPU* cpu) {
     // Native JITs use jitRunSingleOp()'s return value for chaining. WASM
     // returns through generated code, but still must honor false: it means
     // exception/debug handling changed control flow and this block is stale.
+    const U32 signalDepth = cpu->thread->inSignal;
     bool continueBlock = cpu->runNextSingleOp();
+    if (cpu->thread->inSignal != signalDepth) {
+        // Segment faults install a signal frame without throwing. Signal
+        // return can redirect control flow too. Neither may fall through
+        // into the remainder of the old compiled block.
+        continueBlock = false;
+    }
     // Interpreter-backed instructions can write code too (notably REP
     // MOVS). Mark an invalidated active block so a structured JIT backedge
     // returns to the dispatcher instead of re-entering stale WASM.
@@ -12170,6 +12177,11 @@ void JitWasmCodeGen::movsx(JitWidth dw, RegPtr dest, JitWidth sw, RegPtr src) {
 }
 
 void JitWasmCodeGen::movValue(JitWidth w, RegPtr dst, DYN_PTR_SIZE imm) {
+    // Scratch registers are full-width WASM locals. Truncate narrow immediates
+    // before storing them, including sign-extended 16-bit displacements used
+    // while calculating an effective address.
+    if (w == JitWidth::b8) imm &= 0xff;
+    else if (w == JitWidth::b16) imm &= 0xffff;
     m_emitter.emitI32Const((S32)imm);
     popToReg(w, dst);
 }
@@ -12220,6 +12232,13 @@ bool JitWasmCodeGen::canKeepPublishedFlagType(DecodedOp* op) const {
 }
 
 void JitWasmCodeGen::storeLazyFlagType(LazyFlagType flags) {
+    if (flags == FLAGS_CFOF) {
+        // Rotates replace CF/OF but retain the previous lazy state for the
+        // other flags. Consecutive rotates must keep that original state.
+        m_publishedLazyFlagType = FLAGS_NULL;
+        JitCodeGen::storeLazyFlagType(flags);
+        return;
+    }
     const bool enabled = std::getenv("BOXEDWINE_WASM_LAZY_TYPE_DSE") != nullptr;
     const bool certified = enabled && canKeepPublishedFlagType(currentOp) &&
         flags != FLAGS_NULL && flags != FLAGS_CFOF;

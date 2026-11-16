@@ -79,7 +79,7 @@ choices stay visible and produce an actionable launch error. Driver environment
 variables are set only on the child process, including Wine preparation,
 installers and alternate programs. Per-app choices are included in backups.
 
-The native UI catalog selects Wine 11.0 V33 (staged locally; upload pending). With a single catalog
+The native UI catalog selects Wine 11.0 V39, available under `/v2/39/`. With a single catalog
 entry, Add App shows the package as text, built-in apps select it automatically,
 and version selection, ZIP import and trial-copy controls and guidance are hidden.
 Settings still offers setup of the supported package when needed. Existing apps
@@ -131,12 +131,19 @@ Wine is downloaded on demand. The Win32 frontend and console builds do not need
 
 The `windows` and `windowsARM64` workers need Visual Studio C++ tools for their
 targets and access to Microsoft's .NET downloads and NuGet.org. Before compiling
-the native UI targets, the packaging helper installs .NET SDK 10.0.302 with
-Microsoft's `dotnet-install.ps1` into `.tools/dotnet/10.0.302/<worker-architecture>`
-at the repository root. Later builds reuse that SDK. It sets `PATH` and `DOTNET_ROOT`
-only for the build process, requires no administrator rights or preinstalled .NET,
-and keeps the SDK out of the release ZIP. Win32 packaging does not need the SDK.
+the native UI targets, the packaging helper checks PATH, `DOTNET_ROOT` settings,
+and standard installation directories for .NET SDK 10.0.302 matching the worker's
+architecture. It also checks the workspace cache. If none qualifies, it uses
+Microsoft's `dotnet-install.ps1` to download that SDK into
+`.tools/dotnet/10.0.302/<worker-architecture>` at the repository root.
+The UI's `global.json` pins the SDK used by builds, including on workers with
+newer SDKs installed alongside it. The helper sets `PATH` and `DOTNET_ROOT`
+to the selected installation only for the build process, requires no administrator
+rights, and keeps the SDK out of the release ZIP. Win32 packaging does not need it.
 NuGet.org supplies architecture-specific apphost packs.
+Run the SDK discovery regression checks without downloads using
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/jenkins/test-ensure-dotnet.ps1`
+from the repository root.
 MSBuild/editbin are discovered from `PATH` or Visual Studio;
 the packaging helper also accepts explicit `-MSBuildPath` and `-EditbinPath`.
 
@@ -246,7 +253,8 @@ implemented only by the Linux UI.
   completion proof always keeps the requested settings pending.
 - Processes use argument arrays, redirected/drained output, bounded rotating logs,
   and a Windows job object. Stop sends the native quit command, then kills the
-  process tree if necessary after five seconds. Quitting waits for file cleanup.
+  process tree if necessary after 30 seconds, allowing Wine's server and services
+  time to exit normally. Quitting waits for file cleanup.
 - Launching apps show a banner with an animated Windows progress bar and a Stop
   button. Cards and details say “Launching…” until the emulator reports its first
   visible window, using the same readiness signal as the Mac UI. Exiting or
@@ -272,8 +280,8 @@ Focused checks:
     dotnet run --project Tests/Boxedwine.Tests.csproj -c Release -- C:\Boxedwine2\tmp\shared-files-tests --shared-files-only
     dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release -- C:\Boxedwine2\tmp\shared-files-ui-checks --shared-files
 
-The live Windows probe is tools/wineTests/tests/shared_files_live.c. Compile it
-with i686-w64-mingw32-gcc and run tools/test_shared_files_live.ps1 from the repository
+The live Windows probe is tools/testing/wine/tests/shared_files_live.c. Compile it
+with i686-w64-mingw32-gcc and run tools/testing/test_shared_files_live.ps1 from the repository
 root with -Wine and -Probe. It uses a fresh test prefix and checks host changes,
 Wine notifications and guest writes through Y:.
 
@@ -295,7 +303,7 @@ dotnet run --project Tests/UI/Boxedwine.UIChecks.csproj -c Release --no-restore 
 Native runtime icon checks (from the repository root):
 
 ```powershell
-tools/test_windows_app_identity.ps1
+tools/testing/test_windows_app_identity.ps1
 dotnet run --project project/msvc/BoxedwineUI/Tests/UI/Boxedwine.UIChecks.csproj -c Release -- C:\Boxedwine\tmp\native-ui-icon-checks --icon-engine C:\Boxedwine\tmp\windows-app-identity-checks\x64\identity.exe
 ```
 
@@ -316,7 +324,25 @@ dotnet run --project Tests/Boxedwine.Tests.csproj -c Release --no-restore -- C:\
 ```
 
 `--network` downloads and verifies Bang! Bang! and NetSurf into a disposable library.
-`--emulator` checks Wine configuration and defaults, runs a Wine command, and starts
-and gracefully stops hidden Notepad. The previous Wine 11/filesystem 13 pin was used
+`--emulator` checks Wine configuration and defaults and runs a Wine command. Separate
+lifecycle tests cancel a fresh launch before its first window and stop a Wine
+script after it writes a ready marker. The first desktop frame alone does not
+prove an app has finished starting. Both tests require exit code 0; forced
+termination is a failure. The offline suite also checks that a child can complete
+cleanup lasting longer than five seconds.
+
+`--window-check` additionally checks the first visible desktop frame and cancels
+at that point, instead of running the Wine configuration checks. That is still
+startup cancellation and requires exit code 0, without the force-stop fallback.
+It needs Wine's `wine11_desktop_close_timer.patch`; the published v37 filesystem
+still exhibits the desktop-manager startup race and fails this regression.
+
+To run only the shutdown regression and these two lifecycle tests:
+
+```powershell
+dotnet run --project Tests/Boxedwine.Tests.csproj -c Release --no-restore -- C:\Boxedwine\tmp\native-ui-tests --runtime-only --wine C:\path\TinyCore15Wine11.0.zip --emulator bin/Release/net10.0-windows/Runtime/BoxedwineEngine.exe
+```
+
+The previous Wine 11/filesystem 13 pin was used
 for the recorded real-runtime validation. All 34 recipes parse; this is not a gameplay/installer
 compatibility test of all 34 demos. x64 was exercised; ARM64 was not.

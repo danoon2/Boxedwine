@@ -12,7 +12,7 @@
 #ifdef __TEST
 #include "../cpu/testCPU.h"
 #include "../../x11/x11.h"
-#include "../../../tools/x11/X11_def.h"
+#include "../../../tools/fs_passthrough/x11/X11_def.h"
 #include "knativesystem.h"
 
 static BOXEDWINE_MUTEX paletteTestMutex;
@@ -426,6 +426,81 @@ void testX11GetImageBounds() {
     if (memory->readd(image.data) != 0x55555555) testFail("XGetImage lost the monochrome bit offset");
     testContext().thread->process->free(image.data);
     testContext().thread->process->free(address);
+}
+
+void testX11MonochromeCopy() {
+    // Keep a guard inside the allocation so the regression reports an error
+    // deterministically instead of corrupting the test process's heap.
+    class GuardedBitmap : public XDrawable {
+    public:
+        GuardedBitmap(U32 width, const VisualPtr& visual) : XDrawable(width, 32, 1, visual, false) {
+            delete[] data;
+            data = new U8[size + 8];
+        }
+        void setDirty() override { isDirty = true; }
+    };
+    testNewInstruction(0);
+    auto visual = std::make_shared<Visual>();
+    visual->bits_per_rgb = 1;
+    auto check = [&](U32 bitmapWidth, S32 sx, S32 sy, U32 width, U32 height, S32 dx, S32 dy, bool same) {
+        auto src = std::make_shared<GuardedBitmap>(bitmapWidth, visual);
+        auto dst = same ? src : std::make_shared<GuardedBitmap>(bitmapWidth, visual);
+        U32 size = src->getDataSize(), pitch = src->getBytesPerLine();
+        for (U32 i = 0; i < size + 8; ++i) {
+            src->getData()[i] = (U8)(i * 37 + 0x69);
+            if (!same) dst->getData()[i] = (U8)(i * 13 + 0xa5);
+        }
+        std::vector<U8> before(src->getData(), src->getData() + size + 8);
+        std::vector<U8> expected(dst->getData(), dst->getData() + size + 8);
+        bool copied = false;
+        // Build the expected result from the original pixels, including when
+        // source and destination overlap. Leave all other bits/padding intact.
+        for (S32 y = 0; y < 32; ++y) {
+            for (S32 x = 0; x < (S32)bitmapWidth; ++x) {
+                S64 rx = (S64)x - dx, ry = (S64)y - dy;
+                S64 sourceX = sx + rx, sourceY = sy + ry;
+                if (rx < 0 || ry < 0 || rx >= width || ry >= height ||
+                    sourceX < 0 || sourceX >= bitmapWidth || sourceY < 0 || sourceY >= 32) continue;
+                copied = true;
+                U8 bit = (before[sourceY * pitch + sourceX / 8] >> (sourceX & 7)) & 1;
+                U8& pixel = expected[y * pitch + x / 8];
+                pixel = (pixel & ~(1 << (x & 7))) | (bit << (x & 7));
+            }
+        }
+        if (dst->copy(testContext().thread, nullptr, src, sx, sy, width, height, dx, dy) != Success)
+            testFail("monochrome copy failed");
+        if (memcmp(dst->getData() + size, expected.data() + size, 8)) {
+            testFail("monochrome copy overran the bitmap");
+            return false;
+        }
+        if (memcmp(dst->getData(), expected.data(), size))
+            testFail("monochrome copy changed pixels/padding: src=(%d,%d) dst=(%d,%d) size=%ux%u same=%d",
+                sx, sy, dx, dy, width, height, same);
+        if (!same && memcmp(src->getData(), before.data(), size + 8))
+            testFail("monochrome copy modified its source");
+        if (dst->isDirty != copied) testFail("monochrome copy dirty state incorrect");
+        return true;
+    };
+    // Drowned God's 32x32 cursor: the old byte-rounded copy wrote one byte
+    // beyond the final row while copying 31x31 pixels to (1,1).
+    if (!check(32, 0, 0, 31, 31, 1, 1, false)) return;
+    for (S32 srcBit = 0; srcBit < 8; ++srcBit) {
+        for (S32 dstBit = 0; dstBit < 8; ++dstBit) {
+            check(33, srcBit, 0, 25, 32, dstBit, 0, false);
+        }
+    }
+    check(32, 0, 0, 31, 31, 1, 1, true);
+    check(32, 1, 1, 31, 31, 0, 0, true);
+    check(33, 2, 0, 27, 32, 5, 0, true);
+    check(33, 5, 0, 27, 32, 2, 0, true);
+    check(32, -2, -3, 40, 40, -1, -1, false);
+    check(32, 30, 30, 8, 8, 0, 0, false);
+    check(32, 0, 0, 8, 8, 30, 30, false);
+    check(32, 32, 0, 1, 1, 0, 0, false);
+    check(32, 0, 0, 1, 1, 32, 0, false);
+    check(32, 0, 0, 0, 32, 1, 1, false);
+    check(32, (-2147483647 - 1), (-2147483647 - 1), 0xffffffff, 0xffffffff,
+        (-2147483647 - 1), (-2147483647 - 1), false);
 }
 
 void testX11ImageReadback() {

@@ -21,6 +21,11 @@ incremental builds, since the executable embeds `__DATE__` and `__TIME__`.
 
 ## Browser Requirements
 
+Filesystem v39's Wine exception patch requires the matching Boxedwine CPU
+exception fixes. Rebuild and deploy the browser engine when adopting v39 so
+integer overflow, instruction addresses, and signal context flags agree with
+Wine's exception handling.
+
 Filesystem v27's extended software vertex constants require a web engine that
 advertises `GL_ARB_uniform_buffer_object`. Uniform buffers are core WebGL 2
 features, but Wine needs that capability name because Boxedwine reports a
@@ -57,6 +62,18 @@ Browser input regression checks (no build required):
 node testBrowserMouseCoordinates.mjs
 node testBrowserMouseButtons.mjs
 ```
+
+Browser mouse movement and buttons use Boxedwine's own DOM handlers in both
+absolute and pointer-lock modes. SDL's Emscripten backend unregisters its canvas
+callbacks when a temporary OpenGL window is destroyed, so captured input must
+not depend on those callbacks. Locked movement updates the same virtual cursor
+as guest warps and polling; CSS-scaled fractional movement is retained.
+
+For an end-to-end regression check, start the System Shock 2 demo, enable mouse
+capture, and use its menus. Enter training, then verify horizontal and vertical
+mouse-look, release/reacquire capture, and click through the pause menu. Test
+after the transition to 3D: working menus alone do not cover the GL window
+destruction that previously broke captured input.
 
 
 ## Running Multi-Threaded Build
@@ -133,7 +150,7 @@ node --test testAudioWorklet.mjs
 ```
 
 For an end-to-end Wine check, compile
-`tools/wineTests/tests/waveout_stream_probe.c` with MinGW (`-lwinmm -lm`), ZIP
+`tools/testing/wine/tests/waveout_stream_probe.c` with MinGW (`-lwinmm -lm`), ZIP
 the executable, and launch it as a demo. It plays 8-bit mono, 16-bit stereo,
 and float stereo streams and reopens the output between them. Click the canvas
 during its startup pause to enable Boxedwine sound. Add `audioFreq=22050` so
@@ -328,6 +345,34 @@ and unshared memory. Pass a compiled runtime path, for example
 helper instead. The test uses a stub WebGL context to verify the destination
 offset and copied bytes; it does not require a browser or GPU.
 
+
+## Extracting browser demo archives
+
+Add `extract=1` to the launcher URL to unpack every member of the `app` and
+`overlay` ZIPs before starting Wine. Empty directories are preserved, nested
+ZIPs remain files, and the compressed demo archives are not kept mounted.
+The separate `root` Wine filesystem ZIP and CD-ROM images are unaffected.
+Without this option, demos keep their existing compressed ZIP mounts.
+
+Existing files are kept so saved games and settings survive. With persistent
+storage, only changed files and deletion records are saved; unchanged extracted
+files are supplied again by the archive on each visit, as with ZIP mounts.
+Earlier overlays retain priority over later ones. Extraction uses more memory
+for application data but avoids repeated decompression during random file
+reads. Invalid archives stop startup and report an error.
+
+Run the launcher regression tests with:
+
+```bash
+node --test project/emscripten/boxedwine-shell.test.cjs
+```
+
+## Hosting CD-ROM media
+
+CD-ROM images can be hosted separately from the runtime with
+`cdrom=e:LessonDisc.iso&cdromBase=../../../../apps/`. `cdromBase` accepts the
+same base URL format as `appBase` and `overlayBase`; without it, disc files
+are resolved beside the runner page.
 
 ## Running The Multi-Threaded OpenGL Bootstrap Regression
 

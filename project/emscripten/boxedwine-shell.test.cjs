@@ -8,6 +8,15 @@ const crypto = require('node:crypto');
 
 const source = readFileSync(path.join(__dirname, 'boxedwine-shell.js'), 'utf8');
 
+test('CD-ROM media can live beside shared demo archives or under /test/', () => {
+    for (const base of ['../../../../apps/', 'https://boxedwine.org/test/assets/demo-files/']) {
+        const { context } = dialogShell({}, 'http://localhost/?cdrom=e:RosettaStoneDemo.iso&cdromBase=' + encodeURIComponent(base));
+        context.setConfiguration();
+        assert.equal(context.cdromFileUrl('Rosetta Stone Demo.iso'), base + 'Rosetta%20Stone%20Demo.iso');
+        assert.equal(vm.runInContext('Config.cdromDrive', context), 'e');
+    }
+});
+
 function launcher(url) {
     const elements = new Map();
     const mounts = [];
@@ -127,7 +136,7 @@ function dialogShell(tree, url = 'http://localhost/') {
                 if (mode(node) !== FILE) throw new Error('ENOENT ' + path);
                 return new Uint8Array(Buffer.from(node));
             },
-            stat: () => ({ mtime: fileDate }),
+            stat: (path) => ({ mtime: fileDate, size: mode(lookup(path, true)) === FILE ? Buffer.from(lookup(path, true)).length : 0 }),
             lookupPath: (path, options) => ({ node: { mode: mode(lookup(path, options.follow)) } }),
             analyzePath: (path) => ({ exists: lookup(path, true) !== undefined }),
             isDir: (value) => value === DIR,
@@ -137,6 +146,17 @@ function dialogShell(tree, url = 'http://localhost/') {
                 const parts = names(path);
                 lookup('/' + parts.slice(0, -1).join('/'), true)[parts.at(-1)] = data;
             },
+            unlink(path) {
+                const parts = names(path);
+                delete lookup('/' + parts.slice(0, -1).join('/'), true)[parts.at(-1)];
+            },
+            rmdir(path) {
+                assert.deepEqual(Object.keys(lookup(path, false)), []);
+                this.unlink(path);
+            },
+            chmod() {},
+            utime() {},
+            createDataFile(directory, name, bytes) { this.writeFile(directory + '/' + name, bytes); },
         },
     });
     vm.runInContext(source, context);
@@ -239,6 +259,233 @@ async function dropOnto(tree, entries) {
     const listed = byId.get('items').all().filter((element) => element.listeners.click).map((element) => element.textContent);
     return { message: byId.get('message').textContent, listed };
 }
+
+function archiveShell(query = 'extract=1', tree = {}) {
+    const shell = dialogShell(tree, 'http://localhost/?storage=memory&root=wine.zip&' + query);
+    shell.context.setConfiguration();
+    const root = vm.runInContext('ROOT', shell.context);
+    shell.context.FS.mkdirTree(root);
+    return { ...shell, tree, root };
+}
+
+// Model a save/reload boundary: only IDBFS's filtered local entries survive.
+async function saveExtractedFiles({ context, root }) {
+    const { FS, IDBFS } = context;
+    if (!IDBFS.getLocalSet) {
+        IDBFS.getLocalSet = (mount, callback) => {
+            const entries = {};
+            function visit(directory) {
+                for (const name of FS.readdir(directory).filter(name => name !== '.' && name !== '..')) {
+                    const file = directory + '/' + name;
+                    entries[file] = { timestamp: FS.stat(file).mtime };
+                    if (FS.isDir(FS.lookupPath(file, { follow: false }).node.mode)) visit(file);
+                }
+            }
+            visit(mount.mountpoint);
+            callback(null, { type: 'local', entries });
+        };
+        context.configureExtractedFileStorage();
+    }
+    const local = await new Promise((resolve, reject) => IDBFS.getLocalSet({ mountpoint: root },
+        (error, set) => error ? reject(error) : resolve(set)));
+    const saved = {};
+    for (const file of Object.keys(local.entries).sort()) {
+        const parts = file.split('/').filter(Boolean);
+        const parent = parts.slice(0, -1).reduce((dir, name) => (dir[name] ||= {}), saved);
+        parent[parts.at(-1)] = FS.isDir(FS.lookupPath(file, { follow: false }).node.mode) ? {} : FS.readFile(file);
+    }
+    return saved;
+}
+
+test('extract=1 expands every member, preserves empty directories and releases stored archive bytes', async () => {
+    const { context, root, tree } = archiveShell();
+    const archive = new Uint8Array(makeZip({ 'game/data.bin': 'data'.repeat(200), 'game/readme.txt': 'stored', 'game/current/': '',
+        'game/nested.zip': 'leave nested archives intact', 'game/c(_colon_).link': '../drive_c', 'game/café.txt': 'unicode' }));
+    await context.prepareDemoArchive('demo.zip', archive, root);
+    const game = tree.root.game;
+    assert.equal(Buffer.from(game['data.bin']).toString(), 'data'.repeat(200));
+    assert.equal(Buffer.from(game['readme.txt']).toString(), 'stored');
+    assert.equal(Buffer.from(game['nested.zip']).toString(), 'leave nested archives intact');
+    assert.equal(Buffer.from(game['caf(_xC3_)(_xA9_).txt']).toString(), 'unicode');
+    assert.equal(Buffer.from(game['c(_colon_).link']).toString(), '../drive_c');
+    assert.deepEqual(Object.keys(game.current), []);
+    assert.notEqual(game['readme.txt'].buffer, archive.buffer);
+    assert.equal(context.FS.analyzePath('/demo.zip').exists, false);
+    assert.equal(vm.runInContext('Config.extractedArchives.has("demo.zip")', context), true);
+});
+
+test('extraction preserves saved files, previous deletions and first-overlay precedence', async () => {
+    const { context, root, tree } = archiveShell();
+    tree.root.game = { 'save.dat': 'user save' };
+    tree.root['first.zip.deleted'] = '/game/deleted.txt\n';
+    await context.prepareDemoArchive('first.zip', makeZip({ 'game/save.dat': 'bundled save', 'game/shared.txt': 'first',
+        'game/deleted.txt': 'do not restore' }), root);
+    await context.prepareDemoArchive('second.zip', makeZip({ 'game/shared.txt': 'second', 'game/new.txt': 'new' }), root);
+    assert.equal(tree.root.game['save.dat'], 'user save');
+    assert.equal(Buffer.from(tree.root.game['shared.txt']).toString(), 'first');
+    assert.equal(Buffer.from(tree.root.game['new.txt']).toString(), 'new');
+    assert.equal(tree.root.game['deleted.txt'], undefined);
+});
+
+test('invalid and unsafe archives fail without leaving partial files or touching saved files', async () => {
+    const { context, root, tree } = archiveShell();
+    tree.root['save.dat'] = 'saved';
+    for (const name of ['../outside.txt', '/absolute.txt', 'c:/outside.txt', 'foo/(_dot_)(_dot_)/outside.txt']) {
+        await assert.rejects(context.prepareDemoArchive('bad.zip', makeZip({ [name]: 'bad' }), root), /Unsafe ZIP path/);
+    }
+    const broken = makeZip({ 'new/first.txt': 'first', 'new/bad.txt': 'corrupted' });
+    broken[broken.indexOf(Buffer.from('corrupted'))] ^= 1;
+    await assert.rejects(context.prepareDemoArchive('bad.zip', broken, root), /checksum mismatch/);
+    await assert.rejects(context.prepareDemoArchive('bad.zip', broken.subarray(0, -1), root), /missing or truncated/);
+    assert.deepEqual(Object.keys(tree.root), ['save.dat']);
+    assert.equal(tree.root['save.dat'], 'saved');
+    assert.equal(vm.runInContext('Config.extractedArchives.size', context), 0);
+});
+
+test('extraction refuses to write through native symlinks', async () => {
+    const { context, root, tree } = archiveShell();
+    tree.outside = {};
+    tree.root.alias = new Link('/outside');
+    await assert.rejects(context.prepareDemoArchive('bad.zip', makeZip({ 'alias/file.txt': 'bad' }), root), /Invalid extraction directory/);
+    assert.deepEqual(Object.keys(tree.outside), []);
+});
+
+test('browser saves exclude unchanged extracted files but retain changes and deletions', async () => {
+    const { context, root, tree } = archiveShell();
+    await context.prepareDemoArchive('demo.zip', makeZip({ 'data.bin': 'data', 'config.txt': 'default', 'removed.txt': 'remove' }), root);
+    tree.root['config.txt'] = 'user configuration';
+    delete tree.root['removed.txt'];
+    let entries = { [root + '/data.bin']: { timestamp: fileDate }, [root + '/config.txt']: { timestamp: fileDate } };
+    context.IDBFS.getLocalSet = (mount, cb) => cb(null, { type: 'local', entries: { ...entries } });
+    context.configureExtractedFileStorage();
+    const local = await new Promise((resolve, reject) => context.IDBFS.getLocalSet({ mountpoint: root }, (e, set) => e ? reject(e) : resolve(set)));
+    assert.deepEqual(Object.keys(local.entries).sort(), [root + '/config.txt', root + '/demo.zip.deleted']);
+    assert.equal(Buffer.from(tree.root['demo.zip.deleted']).toString(), '/removed.txt\n');
+    const restart = archiveShell('', { root: { ...tree.root } });
+    delete restart.tree.root['data.bin']; // only the entries above were persisted
+    await restart.context.extractDemoArchive(makeZip({ 'data.bin': 'data', 'config.txt': 'default', 'removed.txt': 'remove' }), restart.root, 'demo.zip');
+    assert.equal(Buffer.from(restart.tree.root['data.bin']).toString(), 'data');
+    assert.equal(restart.tree.root['config.txt'], 'user configuration');
+    assert.equal(restart.tree.root['removed.txt'], undefined);
+});
+
+for (const appArchive of [false, true]) {
+    for (const member of ['game/config.txt', 'game/c(_colon_).link']) {
+        test(`saved extracted ${member} stays deleted after another restart (${appArchive ? 'app' : 'overlay'})`, async () => {
+            const query = 'extract=1' + (appArchive ? '&app=demo.zip' : '');
+            const destination = shell => appArchive ? vm.runInContext('Config.extractedAppDir', shell.context) : shell.root;
+            const archive = makeZip({ [member]: 'bundled', 'game/unchanged.txt': 'original' });
+            const first = archiveShell(query);
+            await first.context.prepareDemoArchive('demo.zip', archive, destination(first));
+            first.context.FS.writeFile(destination(first) + '/' + member, Buffer.from('saved user changes'));
+
+            const second = archiveShell(query, await saveExtractedFiles(first));
+            await second.context.prepareDemoArchive('demo.zip', archive, destination(second));
+            const file = destination(second) + '/' + member;
+            assert.equal(Buffer.from(second.context.FS.readFile(file)).toString(), 'saved user changes');
+            const savedAgain = await saveExtractedFiles(second);
+            const check = archiveShell(query, savedAgain);
+            assert.equal(Buffer.from(check.context.FS.readFile(file)).toString(), 'saved user changes',
+                'an unchanged saved override must remain persisted');
+            assert.equal(check.context.FS.analyzePath(destination(check) + '/game/unchanged.txt').exists, false,
+                'unchanged archive bytes must not be persisted');
+
+            second.context.FS.unlink(file);
+            const third = archiveShell(query, await saveExtractedFiles(second));
+            await third.context.prepareDemoArchive('demo.zip', archive, destination(third));
+            assert.equal(third.context.FS.analyzePath(file).exists, false, 'deleted saved file was restored from the archive');
+            assert.equal(Buffer.from(third.context.FS.readFile(destination(third) + '/game/unchanged.txt')).toString(), 'original');
+        });
+    }
+}
+
+test('a saved portable link replacing a bundled file retains deletion tracking', async () => {
+    const shell = archiveShell('extract=1', { root: { 'config.txt.link': '../saved-config' } });
+    const archive = makeZip({ 'config.txt': 'bundled' });
+    await shell.context.prepareDemoArchive('demo.zip', archive, shell.root);
+    shell.context.FS.unlink(shell.root + '/config.txt.link');
+    const restart = archiveShell('extract=1', await saveExtractedFiles(shell));
+    await restart.context.prepareDemoArchive('demo.zip', archive, restart.root);
+    assert.equal(restart.context.FS.analyzePath(restart.root + '/config.txt').exists, false);
+});
+
+test('later archives do not replace an earlier extraction baseline or deletion owner', async () => {
+    const shell = archiveShell();
+    await shell.context.prepareDemoArchive('first.zip', makeZip({ 'shared.txt': 'first' }), shell.root);
+    await shell.context.prepareDemoArchive('second.zip', makeZip({ 'shared.txt': 'second' }), shell.root);
+    assert.equal((await saveExtractedFiles(shell)).root?.['shared.txt'], undefined);
+    shell.context.FS.unlink(shell.root + '/shared.txt');
+    const saved = await saveExtractedFiles(shell);
+    assert.equal(Buffer.from(saved.root['first.zip.deleted']).toString(), '/shared.txt\n');
+    assert.equal(saved.root['second.zip.deleted'], undefined);
+});
+
+test('failed extraction rolls back deletion tracking for preserved saved files', async () => {
+    const shell = archiveShell('extract=1', { root: { 'save.txt': 'saved changes' } });
+    const broken = makeZip({ 'save.txt': 'bundled', 'bad.txt': 'corrupted' });
+    broken[broken.indexOf(Buffer.from('corrupted'))] ^= 1;
+    await assert.rejects(shell.context.prepareDemoArchive('bad.zip', broken, shell.root), /checksum mismatch/);
+    assert.equal(shell.tree.root['save.txt'], 'saved changes');
+    shell.context.FS.unlink(shell.root + '/save.txt');
+    const saved = await saveExtractedFiles(shell);
+    assert.equal(saved.root?.['bad.zip.deleted'], undefined);
+});
+
+test('downloaded overlays extract in order and Wine still mounts its compressed root', async () => {
+    const { context, root } = archiveShell('extract=1&overlay=first.zip;second.zip');
+    const fetched = [];
+    context.fetch = async url => {
+        fetched.push(url);
+        const data = makeZip({ 'game/value.txt': url });
+        return new Response(data);
+    };
+    await new Promise(resolve => context.buildExtraFileSystems(resolve));
+    assert.deepEqual(fetched, ['first.zip', 'second.zip']);
+    assert.equal(Buffer.from(context.FS.readFile(root + '/game/value.txt')).toString(), 'first.zip');
+    const params = Array.from(context.getEmulatorParams());
+    assert.deepEqual(params.filter((v, i) => params[i - 1] === '-zip'), ['wine.zip']);
+    assert.equal(context.FS.analyzePath('/first.zip').exists, false);
+    assert.equal(context.FS.analyzePath('/second.zip').exists, false);
+});
+
+test('app archives extract to a native directory mounted at their original guest path', async () => {
+    const { context, root } = archiveShell('extract=1&app=game.zip&p=run.exe');
+    const appDir = root + '/home/username/.wine/drive_c/files';
+    context.FS.mkdirTree(appDir + '/game');
+    context.FS.writeFile(appDir + '/game/save.dat', new Uint8Array(Buffer.from('previous save')));
+    context.fetch = async () => new Response(makeZip({ 'game/run.exe': 'program', 'game/empty/': '', 'game/save.dat': 'bundled save' }));
+    await new Promise(resolve => context.buildAppFileSystem(resolve));
+    const params = Array.from(context.getEmulatorParams());
+    const mount = params.indexOf('-mount');
+    assert.deepEqual(params.slice(mount + 1, mount + 3), [appDir, '/home/username/.wine/dosdevices/c:/files']);
+    assert.equal(vm.runInContext('Config.appSubfolder', context), 'game');
+    assert.equal(Buffer.from(context.FS.readFile(appDir + '/game/run.exe')).toString(), 'program');
+    assert.equal(Buffer.from(context.FS.readFile(appDir + '/game/save.dat')).toString(), 'previous save');
+    assert.deepEqual(context.FS.readdir(appDir + '/game/empty'), ['.', '..']);
+    assert.equal(context.FS.analyzePath('/game.zip').exists, false);
+});
+
+test('extraction stays opt-in; other values retain compressed mounts', async () => {
+    for (const flag of ['', 'extract=0', 'extract=true']) {
+        const { context, root, tree } = archiveShell(flag + '&overlay=demo.zip');
+        const archive = makeZip({ 'file.txt': 'file' });
+        await context.prepareDemoArchive('demo.zip', archive, root);
+        assert.equal(tree['demo.zip'], archive);
+        assert.equal(tree.root['file.txt'], undefined);
+        const params = Array.from(context.getEmulatorParams());
+        assert.deepEqual(params.filter((v, i) => params[i - 1] === '-zip'), ['demo.zip', 'wine.zip']);
+    }
+});
+
+test('archive download failure reports the error and never signals readiness', async () => {
+    const { context, byId } = archiveShell();
+    let ready = false;
+    context.fetch = async () => new Response('', { status: 404 });
+    await context.loadFile('', 'missing.zip', () => { ready = true; });
+    assert.equal(ready, false);
+    assert.equal(vm.runInContext('Config.archiveSetupFailed', context), true);
+    assert.equal(byId.get('startbtn').disabled, true);
+});
 const droppedFolder = (fullPath, batches) => ({
     isDirectory: true,
     fullPath,
@@ -599,13 +846,14 @@ test('memory and regression launches do not mount persistent storage', () => {
 });
 
 const gdiCommands = [
+    'set', 'WINE_D3D_CONFIG=webgl=0,webgl_glsl_es=0', '&&',
     'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
     'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'renderer', '/t', 'REG_SZ', '/d', 'gdi', '/f', '&&',
 ];
 
-test('registry presets launch the same command as hand-written reg add args', () => {
+test('GDI presets disable the WebGL profile before launching the game', () => {
     const preset = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=PERF_W95.EXE&bpp=8&resolution=640x480&registry=[gdi]');
-    const manual = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=cmd&bpp=8&resolution=640x480&args=/c%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20DirectDrawRenderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20renderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20%22PERF_W95.EXE%22');
+    const manual = launcher('http://localhost/?app=PERF_W95.EXE.zip&p=cmd&bpp=8&resolution=640x480&args=/c%20set%20WINE_D3D_CONFIG=webgl=0,webgl_glsl_es=0%20%26%26%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20DirectDrawRenderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20reg%20add%20%22HKCU%5CSoftware%5CWine%5CDirect3D%22%20/v%20renderer%20/t%20REG_SZ%20/d%20gdi%20/f%20%26%26%20%22PERF_W95.EXE%22');
     assert.deepEqual(preset.params, manual.params);
 });
 
@@ -644,6 +892,7 @@ test('registry renderer and mouse warp presets match the native UI settings', ()
     };
     assert.deepEqual(wine('registry=gl'), [
         'cmd', '/c',
+        'set', 'WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1', '&&',
         'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'DirectDrawRenderer', '/t', 'REG_SZ', '/d', 'opengl', '/f', '&&',
         'reg', 'add', 'HKCU\\Software\\Wine\\Direct3D', '/v', 'renderer', '/t', 'REG_SZ', '/d', 'gl', '/f', '&&',
         'GAME.EXE',

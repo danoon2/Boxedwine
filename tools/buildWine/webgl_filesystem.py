@@ -25,7 +25,7 @@ class ValidationError(RuntimeError):
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
-DEFAULT_CONFIG = SCRIPT_DIR / "webgl_filesystems_v33.json"
+DEFAULT_CONFIG = SCRIPT_DIR / "webgl_filesystems.json"
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 PE_I386 = 0x014C
 PE32_MAGIC = 0x010B
@@ -825,7 +825,12 @@ def create_parser() -> argparse.ArgumentParser:
         "validate-set",
         help="validate and compare normal v3, GDI v3, full v10, and base v10",
     )
-    add_config_argument(validate_set, default=SCRIPT_DIR / "webgl_filesystems_v3.json")
+    validate_set.add_argument(
+        "--config",
+        type=Path,
+        required=True,
+        help="historical v3/v10 manifest restored from Git history",
+    )
     validate_set.add_argument("--normal", type=Path, required=True)
     validate_set.add_argument("--gdi", type=Path, required=True)
     validate_set.add_argument("--full", type=Path, required=True)

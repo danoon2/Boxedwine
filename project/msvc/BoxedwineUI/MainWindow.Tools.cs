@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -66,6 +67,7 @@ public partial class MainWindow
         else if (HasWineChoices) form.Body.Children.Add(FormWindow.Paragraph("Changing the default affects apps that use the library default. Apps pinned to a package keep that package."));
         form.Button("Done", () => form.DialogResult = true, true); form.ShowDialog(); Refresh();
     }
+    private sealed record TroubleshootingTip(string Id, string Title, string Advice, string[] KnownGames);
     private void Troubleshoot(LibraryApp app)
     {
         var form = new FormWindow(this, "Troubleshooting", "Help for " + app.Name, 640, 690);
@@ -82,6 +84,21 @@ public partial class MainWindow
         form.Body.Children.Add(FormWindow.Heading("Display and compatibility"));
         form.Body.Children.Add(FormWindow.Paragraph("Try another window size or Windows version in App Settings. GDI rendering can help older 2D apps. In Advanced, try another OpenGL implementation or Wine's GLX/EGL interface if graphics fail to start or draw correctly."));
         form.Body.Children.Add(FormWindow.Paragraph("For games released before 2007, try Windows XP in App Settings. Wine packages with Boxedwine’s A8 compatibility patch disable A8 shadow render targets by default in XP and earlier, helping games such as The Sims 2 avoid black square shadows."));
+        try
+        {
+            var tips = JsonSerializer.Deserialize<TroubleshootingTip[]>(File.ReadAllText(Path.Combine(resources, "troubleshooting.json")), new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+            foreach (var tip in tips)
+            {
+                form.Body.Children.Add(FormWindow.Heading(tip.Title));
+                form.Body.Children.Add(FormWindow.Paragraph(tip.Advice));
+                if (tip.KnownGames.Length > 0)
+                    form.Body.Children.Add(FormWindow.Paragraph("Known games affected: " + string.Join(", ", tip.KnownGames)));
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
+        {
+            form.Body.Children.Add(FormWindow.Paragraph("Additional compatibility tips are unavailable. Reinstall Boxedwine to restore its help files."));
+        }
         Button("App Settings…", "edit", CanChange(app));
         if (HasWineChoices)
         {

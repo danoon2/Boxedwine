@@ -16,7 +16,7 @@ def load_catalog(data, allow_external=False):
     if len(data) > 1024**2 or b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
         raise ValueError('Invalid demo catalog XML.')
     root = ET.fromstring(data)
-    if root.tag != 'XML' or not 1 <= int(root.get('schemaVersion', '0')) <= 9 or not root.get('release'):
+    if root.tag != 'XML' or not 1 <= int(root.get('schemaVersion', '0')) <= 10 or not root.get('release'):
         raise ValueError('Unsupported demo catalog.')
     recipes, ids = [], set()
     for element in root:
@@ -36,7 +36,7 @@ def load_catalog(data, allow_external=False):
         if (not re.fullmatch('[a-z0-9][a-z0-9-]{0,63}', identifier) or identifier in ids or not 0 < len(field('Name')) <= 256 or
                 not (valid_url(url) if allow_external else trusted_url(url)) or not 0 < size <= MAX_APP_PACKAGE_BYTES or not re.fullmatch('[a-f0-9]{64}', checksum) or
                 not shortcut.lower().endswith('.exe') or '/' in shortcut or
-                field('InstallType') not in (('Zip', 'Installer', 'Disc') if allow_external else ('Zip', 'Installer'))):
+                field('InstallType') not in (('Zip', 'Installer', 'Disc') if allow_external or int(root.get('schemaVersion')) >= 10 else ('Zip', 'Installer'))):
             raise ValueError('Invalid demo identity or package.')
         validate_relative(shortcut)
         if field('Icon') and not (allow_external and valid_url(field('Icon'))):
@@ -55,9 +55,12 @@ def load_catalog(data, allow_external=False):
         arguments = app_arguments(element.findtext('AppArguments'))
         disc = field('InstallType') == 'Disc'
         images = archive_paths(element.findtext('CDROMImages')) if disc else []
-        if (disc and (not allow_external or not urllib.parse.urlsplit(url).path.lower().endswith('.zip') or field('InstallExe'))
+        if (disc and (not (allow_external or int(root.get('schemaVersion')) >= 10) or not urllib.parse.urlsplit(url).path.lower().endswith('.zip') or field('InstallExe'))
                 or not disc and 'CDROMImages' in values):
-            raise ValueError('CDROMImages requires a Disc collection ZIP without InstallExe.')
+            raise ValueError('CDROMImages requires a Disc ZIP without InstallExe.')
+        if 'LegacyJavaFonts' in values and int(root.get('schemaVersion')) < 10:
+            raise ValueError('LegacyJavaFonts requires schema 10.')
+        legacy_java_fonts = boolean('LegacyJavaFonts') is True
         if dll_overrides is not None:
             if (int(root.get('schemaVersion')) < 8 or not 0 < len(dll_overrides) <= 1024 or
                     any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in dll_overrides)):
@@ -96,8 +99,24 @@ def load_catalog(data, allow_external=False):
                             wineVersion=wine_version, settings=settings, glide=values.get('Glide'),
                             cncRenderer=values.get('CNCDDrawRenderer'), cncUncapped=boolean('CNCDDrawUncapped') is True,
                             cncMode=values.get('CNCDDrawFakeMode'), wineDllOverrides=dll_overrides,
-                            appArguments=arguments, discImages=images))
+                            appArguments=arguments, discImages=images, legacyJavaFonts=legacy_java_fonts))
     return recipes
+
+
+def prepare_legacy_java_fonts(archive, root):
+    # Java 1.3 opens Windows font filenames directly instead of using Wine's
+    # substitutions. Reuse the open-source fonts already in the Wine package.
+    fonts = {stem + suffix + '.ttf': 'usr/local/share/fonts/liberation/Liberation' + family + '-' + style + '.ttf'
+             for family, stem in [('Sans', 'arial'), ('Mono', 'cour'), ('Serif', 'times')]
+             for style, suffix in [('Regular', ''), ('Bold', 'bd'), ('Italic', 'i'), ('BoldItalic', 'bi')]}
+    fonts.update({name: 'opt/wine/share/wine/fonts/' + name for name in ['symbol.ttf', 'wingding.ttf']})
+    for name, source in fonts.items():
+        if not 0 < archive.getinfo(source).file_size <= 2 * 1024 * 1024:
+            raise ValueError('Invalid Wine font: ' + source)
+        target = beneath(root, DRIVE_C + '/windows/fonts/' + name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open('xb') as output:
+            output.write(archive.read(source))
 
 
 def select_wine(recipe, releases):
@@ -195,6 +214,8 @@ def install(library, recipe, wine, work):
                 raise ValueError('The demo’s program could not be identified uniquely.')
             app['executable'] = matches[0]
         with zipfile.ZipFile(library.package_path(wine)) as archive:
+            if recipe.get('legacyJavaFonts'):
+                prepare_legacy_java_fonts(archive, library.root(app))
             if recipe.get('glide') and DRIVE_C + '/windows/system32/glide2x.dll' not in archive.namelist():
                 raise ValueError('This demo needs a Wine package with built-in Glide support.')
             if recipe['settings'].get('cncDDraw'):

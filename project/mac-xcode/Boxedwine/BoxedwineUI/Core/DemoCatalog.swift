@@ -71,6 +71,7 @@ struct Demo: Identifiable, Equatable, Sendable {
     var customSource = false
     var appArguments: [String] = []
     var discImages: [String] = []
+    var legacyJavaFonts = false
     var isZip: Bool { url.pathExtension.lowercased() == "zip" }
 
     func catalogWine(in wines: [CatalogWine]) -> CatalogWine? {
@@ -153,7 +154,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?, attributes: [String: String]) {
         switch stack.count {
         case 0:
-            guard name == "XML", !rootSeen, ["1", "2", "3", "4", "5", "6", "7", "8", "9"].contains(attributes["schemaVersion"] ?? ""),
+            guard name == "XML", !rootSeen, ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].contains(attributes["schemaVersion"] ?? ""),
                   Set(attributes.keys) == ["schemaVersion", "release"], let version = attributes["release"],
                   !version.isEmpty, version.utf8.count <= 128 else { fail(parser, "Unsupported catalog version."); return }
             rootSeen = true; release = version
@@ -162,7 +163,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
             guard name == "Demo", attributes.isEmpty, demos.count < 256 else { fail(parser, "Expected a Demo entry."); return }
             fields = [:]
         case 2:
-            guard (allowed.contains(name) || allowExternal && name == "CDROMImages" || schema >= 2 && DemoSettings.catalogFields.contains(name) || schema >= 4 && name == "Glide" || schema >= 5 && name == "CNCDDrawRenderer" || schema >= 6 && name == "CNCDDrawUncapped" || schema >= 7 && name == "CNCDDrawFakeMode" || schema >= 8 && name == "WineDllOverrides" || schema >= 9 && name == "AppArguments"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
+            guard (allowed.contains(name) || (allowExternal || schema >= 10) && name == "CDROMImages" || schema >= 10 && name == "LegacyJavaFonts" || schema >= 2 && DemoSettings.catalogFields.contains(name) || schema >= 4 && name == "Glide" || schema >= 5 && name == "CNCDDrawRenderer" || schema >= 6 && name == "CNCDDrawUncapped" || schema >= 7 && name == "CNCDDrawFakeMode" || schema >= 8 && name == "WineDllOverrides" || schema >= 9 && name == "AppArguments"), attributes.isEmpty, fields[name] == nil else { fail(parser, "Unknown or duplicate recipe field: \(name)."); return }
             fields[name] = ""
         default: fail(parser, "Nested recipe fields are unsupported."); return
         }
@@ -205,7 +206,7 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
         let installer = field("InstallExe")
         let images: [String]
         if type == .disc {
-            guard allowExternal, zip, installer.isEmpty else { throw DemoError.catalog("CDROMImages requires a Disc collection ZIP without InstallExe.") }
+            guard allowExternal || schema >= 10, zip, installer.isEmpty else { throw DemoError.catalog("CDROMImages requires a Disc ZIP without InstallExe.") }
             images = try CdromImages.archivePaths(fields["CDROMImages"])
         } else {
             guard fields["CDROMImages"] == nil else { throw DemoError.catalog("CDROMImages requires InstallType Disc.") }
@@ -258,6 +259,10 @@ private final class CatalogParser: NSObject, XMLParserDelegate {
         // Arguments are literal: preserve whitespace and do not apply Help's escape expansion.
         demo.appArguments = try CollectionSnapshot.appArguments(fields["AppArguments"])
         demo.discImages = images
+        if fields["LegacyJavaFonts"] != nil {
+            guard ["true", "false"].contains(field("LegacyJavaFonts")) else { throw DemoError.catalog("Invalid LegacyJavaFonts boolean.") }
+            demo.legacyJavaFonts = field("LegacyJavaFonts") == "true"
+        }
         return demo
     }
 }

@@ -121,6 +121,26 @@ void testStartupArgsWineDllOverrides() {
     if (blank.size() != 1 || !hasExactEnvValue(blank, "WINEDLLOVERRIDES=d3d11,d3d10core,d3d9,d3d8,dxgi=n,b;")) {
         testFail("Empty app DLL overrides must not hide DXVK defaults");
     }
+
+    std::vector<BString> codec;
+    StartUpArgs::addWineDllOverrides(codec, "ir50_32=n,b");
+    if (codec.size() != 1 || !hasExactEnvValue(codec, "WINEDLLOVERRIDES=ir50_32=n,b")) {
+        testFail("Indeo must prefer native with builtin fallback");
+    }
+    StartUpArgs::addWineDllOverrides(empty, "ir50_32=n,b");
+    if (empty.size() != 1 || !hasExactEnvValue(empty, "WINEDLLOVERRIDES=ir50_32=n,b;d3d11,d3d10core,d3d9,d3d8,dxgi=n,b")) {
+        testFail("Indeo must preserve graphics DLL defaults in the same environment entry");
+    }
+    for (const char* choice : {"b", "n", ""}) {
+        BString explicitOverride = B("WINEDLLOVERRIDES=ddraw=n,b;ir50_32=") + choice;
+        std::vector<BString> explicitCodec = {B("WINEDEBUG=+loaddll"), explicitOverride};
+        StartUpArgs::addWineDllOverrides(explicitCodec, "ir50_32=n,b");
+        BString expected = B("WINEDLLOVERRIDES=ir50_32=n,b;ddraw=n,b;ir50_32=") + choice;
+        if (explicitCodec.size() != 2 || explicitCodec[1] != expected ||
+                !hasExactEnvValue(explicitCodec, "WINEDEBUG=+loaddll")) {
+            testFail("Indeo default must preserve explicit per-app DLL choices last");
+        }
+    }
 }
 
 void testStartupArgsDefaultUtf8LocaleEnvironment() {

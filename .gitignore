@@ -39,9 +39,9 @@ project/linux/msvc-remote/Boxedwine/Boxedwine/bin/
 project/linux/msvc-remote/Boxedwine/Boxedwine/obj/
 **/xcuserdata/*
 tmp/
-tools/vulkan/gen/
+tools/fs_passthrough/vulkan/gen/
 tools/__pycache__/
-tools/BoxedwineRunner/out/
+tools/automation/BoxedWineRunner/out/
 tools/jenkins/*.log
 tools/jenkins/*.pid
 project/linux/Deploy/LocalBuildSite/

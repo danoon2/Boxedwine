@@ -35,10 +35,14 @@
             // draws through GDI, which helps a few games such as Diablo and StarCraft.
             // gl, OpenGL, is Wine's default.
             gdi: [
+                // Emscripten enables this profile by default. Its single-mode display list
+                // also affects GDI, preventing paletted games such as AoE from starting.
+                'set WINE_D3D_CONFIG=webgl=0,webgl_glsl_es=0',
                 'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d gdi /f',
                 'reg add "HKCU\\Software\\Wine\\Direct3D" /v renderer /t REG_SZ /d gdi /f'
             ],
             gl: [
+                'set WINE_D3D_CONFIG=webgl=1,webgl_glsl_es=1',
                 'reg add "HKCU\\Software\\Wine\\Direct3D" /v DirectDrawRenderer /t REG_SZ /d opengl /f',
                 'reg add "HKCU\\Software\\Wine\\Direct3D" /v renderer /t REG_SZ /d gl /f'
             ]
@@ -76,6 +80,7 @@
         Config.PlayScript = "";
         Config.loadDesktop = false;
         Config.appSubfolder = "";
+        Config.extract = false;
 				
         var isRunning = false;
         var pointerLockEventsConfigured = false;
@@ -155,6 +160,7 @@
             Config.locateRootBaseUrl = getBaseUrl("rootBase");
             Config.locateAppBaseUrl = getBaseUrl("appBase");
             Config.locateOverlayBaseUrl = getBaseUrl("overlayBase");
+            Config.locateCDRomBaseUrl = getBaseUrl("cdromBase");
             Config.storageMode = getStorageMode();
             Config.rootStorageMode = getRootStorageMode();
             Config.isAutoRunSet = getAutoRun();
@@ -162,6 +168,10 @@
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
+            Config.extract = allowParameterOverride() && getParameter("extract") === "1";
+            Config.extractedArchives = new Set();
+            Config.extractedFiles = new Map();
+            Config.archiveSetupFailed = false;
             let cdrom = getCDRom("cdrom"); //MANUAL:{files: ["disc1.iso", "disc2.iso"], drive: "e"}
             Config.cdromISOFiles = cdrom.files;
             Config.cdromDrive = cdrom.drive;
@@ -198,6 +208,9 @@
 			Config.hostFolderManifest = new Map();
 			Config.hostFolderMounted = false;
             configureBrowserStorage();
+            // c: is Wine's link to drive_c. Use the same backing directory as
+            // mounted app ZIPs so their existing saved files remain visible.
+            Config.extractedAppDir = Config.extract ? ROOT + "/" + extractedZipPath(Config.appDirPrefix.slice(1).replace('/dosdevices/c:/', '/drive_c/')).native : '';
         }
         function configureBrowserStorage() {
             // IDBFS names databases after their mount points. Keep each game's
@@ -769,24 +782,34 @@
     		return contents;
         }
         function loadFile(pathPrefix, filename, callback) {
-			fetch(pathPrefix + filename, { method: 'GET' }).then(function(response) {
-      			if (response.status === 200) {
-					response.arrayBuffer().then(function(buffer) {
-						let arr = new Uint8Array(buffer);
-						callback(arr);
-    				});
-      			} else {
-      				console.log('Unable to load:' + filename + ' error:' + response.status);
-      			}
-			});
+			return fetch(pathPrefix + filename, { method: 'GET' }).then(function(response) {
+                if (response.status !== 200) throw new Error('Unable to load ' + filename + ' (' + response.status + ')');
+                return response.arrayBuffer();
+            }).then(buffer => callback(new Uint8Array(buffer))).catch(failArchiveSetup);
 		}
+        function failArchiveSetup(error) {
+            Config.archiveSetupFailed = true;
+            Module.printErr(String(error));
+            Module.setStatus('Unable to prepare demo: ' + error.message);
+            spinnerElement.style.display = 'none';
+            document.getElementById('startbtn').disabled = true;
+        }
+        async function prepareDemoArchive(name, bytes, destination) {
+            if (Config.extract) {
+                Module.setStatus('Extracting ' + name + '...');
+                await extractDemoArchive(bytes, destination, name);
+                Config.extractedArchives.add(name);
+                console.log('Extracted ' + name);
+            } else {
+                createFile("/", name, bytes);
+            }
+        }
         function buildAppFileSystem(callback) {
             if(Config.appPayload.length > 0){
             	let uint8Array = getBase64Data(Config.appPayload);
-            	createFile("/", Config.payloadZipFile, uint8Array);
-                callback();
+                prepareDemoArchive(Config.payloadZipFile, uint8Array, Config.extractedAppDir).then(callback).catch(failArchiveSetup);
             }else if(Config.appZipFile.length > 0){
-            	loadFile(Config.locateAppBaseUrl, Config.appZipFile, (uint8Array) => {
+                loadFile(Config.locateAppBaseUrl, Config.appZipFile, async (uint8Array) => {
             		if (Config.Program.length > 0) {            	
             			let zipEntries = getZipEntries(uint8Array);
             		    let folder = Config.appZipFile.toLowerCase().endsWith('.zip') ?
@@ -797,7 +820,7 @@
             				Config.appSubfolder = folder;
             			}
             		}
-            		createFile("/", Config.appZipFile, uint8Array);
+                    await prepareDemoArchive(Config.appZipFile, uint8Array, Config.extractedAppDir);
             		callback();
             	});
             }else{
@@ -1002,26 +1025,26 @@
             }
         }
         function buildExtraFileSystems(callback) {
-	        let extraFSs = [];
-            if(Config.extraPayload.length > 0){
-            	let uint8Array = getBase64Data(Config.extraPayload);
-            	createFile("/", "overlay.zip", uint8Array);
-            	callback();
-            }else if(Config.extraZipFiles.length > 0){
-                for(let i = 0; i < Config.extraZipFiles.length; i++) {
-                    loadFile(Config.locateOverlayBaseUrl, Config.extraZipFiles[i], (uint8Array) => {
-                    	createFile("/", Config.extraZipFiles[i], uint8Array);
-                    	extraFSs.push(Config.extraZipFiles[i]);
-                    	if(extraFSs.length == Config.extraZipFiles.length) {
-            				callback();
-                        }
-            		});
+            // Match -zip precedence and retain only one downloaded archive at a time.
+            let index = 0;
+            function next() {
+                if (Config.archiveSetupFailed) return;
+                if (index < Config.extraZipFiles.length) {
+                    const name = Config.extraZipFiles[index++];
+                    loadFile(Config.locateOverlayBaseUrl, name, async bytes => {
+                        await prepareDemoArchive(name, bytes, ROOT);
+                        next();
+                    });
+                } else if (Config.extraPayload.length > 0) {
+                    prepareDemoArchive("overlay.zip", getBase64Data(Config.extraPayload), ROOT).then(callback).catch(failArchiveSetup);
+                } else {
+                    callback();
                 }
-            }else{
-                callback();
             }
+            next();
         }
         function initBrowserFilesystem(callback) {
+            configureExtractedFileStorage();
     		console.log("Use Storage mode: "+Config.storageMode);
             console.log("Use Root FS storage mode: "+Config.rootStorageMode);
             FS.mkdirTree(ROOT);
@@ -1107,6 +1130,7 @@
             startEmulator();
         }
         function startEmulator() {
+            if (Config.archiveSetupFailed) return;
             isRunning = true;
 
             document.getElementById('startbtn').style.display = 'none';
@@ -1869,11 +1893,12 @@
             // overlay's files replace the same files in the root zip
             if(Config.extraZipFiles.length > 0){
                 for(let i = 0; i < Config.extraZipFiles.length; i++) {
+	                if (Config.extractedArchives.has(Config.extraZipFiles[i])) continue;
 		            params.push("-zip");
     				params.push(Config.extraZipFiles[i]);
                 }
             }    		
-            if(Config.extraPayload.length > 0){
+            if(Config.extraPayload.length > 0 && !Config.extractedArchives.has("overlay.zip")){
 		        params.push("-zip");
     			params.push("overlay.zip");
             }
@@ -1887,11 +1912,11 @@
             
             if (Config.appZipFile.length > 0) { // -mount $appZipFile "/home/username/files/"
     			params.push("-mount");
-    			params.push(Config.appZipFile);
+                params.push(Config.extractedArchives.has(Config.appZipFile) ? Config.extractedAppDir : Config.appZipFile);
     			params.push(Config.appDirPrefix);          
 			} else if (Config.appPayload.length > 0){ // -mount "app.zip" "/home/username/files/" 			
     			params.push("-mount");
-    			params.push(Config.payloadZipFile);
+                params.push(Config.extractedArchives.has(Config.payloadZipFile) ? Config.extractedAppDir : Config.payloadZipFile);
     			params.push(Config.appDirPrefix);          			
             }
                         
@@ -3136,18 +3161,26 @@ function readFiles(currentDir, files) {
 
 /** code from https://github.com/Rob--W/zipinfo.js MIT license
  **/
-function getZipEntries(data) {
+function getZipEntries(data, strict = false) {
   var view = new DataView(data.buffer, data.byteOffset, data.length);
   var entriesLeft = 0;
   var offset = 0;
   var endoffset = data.length;
+  var foundEnd = false;
   // Find EOCD (0xFFFF is the maximum size of an optional trailing comment).
   for (var i = data.length - 22, ii = Math.max(0, i - 0xFFFF); i >= ii; --i) {
     if (data[i] === 0x50 && data[i + 1] === 0x4b &&
-      data[i + 2] === 0x05 && data[i + 3] === 0x06) {
+      data[i + 2] === 0x05 && data[i + 3] === 0x06 &&
+      i + 22 + view.getUint16(i + 20, true) === data.length) {
         endoffset = i;
         offset = view.getUint32(i + 16, true);
         entriesLeft = view.getUint16(i + 8, true);
+        foundEnd = true;
+        if (strict && (view.getUint32(i + 4, true) !== 0 || entriesLeft === 0xffff ||
+            entriesLeft !== view.getUint16(i + 10, true) ||
+            offset + view.getUint32(i + 12, true) !== i)) {
+          throw new Error('Unsupported or invalid ZIP directory');
+        }
         break;
       }
   }
@@ -3157,7 +3190,8 @@ function getZipEntries(data) {
     uncompressedSize: 0,
     centralDirectoryStart: offset,
   }];
-  if (offset >= data.length || offset <= 0) {
+  if (strict && !foundEnd) throw new Error('ZIP directory is missing or truncated');
+  if (!strict && (offset >= data.length || offset <= 0)) {
     // EOCD not found or malformed. Try to recover if possible (the result is
     // most likely going to be incomplete or bogus, but we can try...).
     offset = -1;
@@ -3178,6 +3212,9 @@ function getZipEntries(data) {
     var fileNameLength = view.getUint16(offset + 28, true);
     var extraFieldLength = view.getUint16(offset + 30, true);
     var fileCommentLength = view.getUint16(offset + 32, true);
+    if (strict && offset + 46 + fileNameLength + extraFieldLength + fileCommentLength > endoffset + 46) {
+      throw new Error('Truncated ZIP entry');
+    }
     var filename = data.subarray(offset + 46, offset + 46 + fileNameLength);
     var utfLabel = (bitFlag & 0x800) ? 'utf-8' : 'ascii';
     filename = new TextDecoder(utfLabel).decode(filename);
@@ -3190,9 +3227,13 @@ function getZipEntries(data) {
       compressionMethod: compressionMethod,
       compressedSize: compressedSize,
       localHeaderOffset: view.getUint32(offset + 42, true),
+      crc: view.getUint32(offset + 16, true),
+      dosTime: view.getUint32(offset + 12, true),
+      unixMode: view.getUint8(offset + 5) === 3 ? view.getUint32(offset + 38, true) >>> 16 : 0,
     });
     offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
   }
+  if (strict && (entriesLeft >= 0 || offset !== endoffset + 46)) throw new Error('Incomplete ZIP directory');
   return entries;
 };
 // Returns the uncompressed bytes of a getZipEntries() entry. Stored and
@@ -3210,6 +3251,144 @@ async function extractZipEntry(data, entry) {
   var start = offset + 30 + view.getUint16(offset + 26, true) + view.getUint16(offset + 28, true);
   var compressed = data.subarray(start, start + entry.compressedSize);
   return entry.compressionMethod == 0 ? compressed : inflateRaw(compressed);
+}
+// Persist changes to extracted files, rather than a second copy of all game
+// data (large byte arrays can also exceed IndexedDB's per-record size limit).
+function configureExtractedFileStorage() {
+  if (!IDBFS.getLocalSet || IDBFS.boxedwineExtractedFiles) return;
+  IDBFS.boxedwineExtractedFiles = true;
+  const getLocalSet = IDBFS.getLocalSet;
+  IDBFS.getLocalSet = function(mount, callback) {
+    getLocalSet.call(this, mount, function(error, local) {
+      if (error) return callback(error);
+      try {
+        for (const [path, original] of Config.extractedFiles) {
+          if (!path.startsWith(mount.mountpoint + '/')) continue;
+          const entry = local.entries[path];
+          if (entry && original.timestamp !== undefined && entry.timestamp.getTime() === original.timestamp && FS.stat(path).size === original.size) {
+            // Like mounted ZIP members, unchanged extracted files are supplied
+            // again by the download. Persist only the files the game changes.
+            delete local.entries[path];
+          } else if (!entry) {
+            // Native extracted files lack FsZip's deletion tracking. Record the
+            // same tombstone so the next extraction does not restore them.
+            const file = original.deletionFile;
+            const lines = FS.analyzePath(file).exists ? new TextDecoder().decode(FS.readFile(file)).split(/\r?\n/).filter(Boolean) : [];
+            if (!lines.includes(original.guestPath)) {
+              lines.push(original.guestPath);
+              FS.writeFile(file, new TextEncoder().encode(lines.join('\n') + '\n'));
+              local.entries[file] = {timestamp: FS.stat(file).mtime};
+            }
+          }
+        }
+      } catch (error) { callback(error); return; }
+      callback(null, local);
+    });
+  };
+}
+// Decode portable filename escapes, then use the native names expected by
+// Fs::localNameToRemote. Validate decoded paths before creating any directories.
+function extractedZipPath(filename) {
+  const tokens = {'(_colon_)': ':', '(_question_)': '?', '(_at_)': '@', '(_dot_)': '.', '(_space_)': ' '};
+  let decoded = filename.replace(/\(_colon_\)|\(_question_\)|\(_at_\)|\(_dot_\)|\(_space_\)/g, token => tokens[token]);
+  decoded = decodeURIComponent(encodeURIComponent(decoded).replace(/\(_x([0-9a-f]{2})_\)/gi, '%$1')).replace(/\\/g, '/');
+  const parts = decoded.split('/').filter(part => part !== '' && part !== '.');
+  if (decoded.startsWith('/') || /^[a-z]:/i.test(decoded) || decoded.includes('\0') || parts.includes('..') || !parts.length) {
+    throw new Error('Unsafe ZIP path: ' + filename);
+  }
+  function nativePart(part) {
+    const link = part.endsWith('.link') ? '.link' : '';
+    if (link) part = part.slice(0, -5);
+    const bytes = new TextEncoder().encode(part);
+    return Array.from(bytes, (byte, index) => {
+      if (byte === 58) return '(_colon_)';
+      if (byte === 63) return '(_question_)';
+      if (byte === 64) return '(_at_)';
+      if (index === bytes.length - 1 && byte === 46) return '(_dot_)';
+      if (index === bytes.length - 1 && byte === 32) return '(_space_)';
+      return byte >= 128 ? '(_x' + byte.toString(16).toUpperCase().padStart(2, '0') + '_)' : String.fromCharCode(byte);
+    }).join('') + link;
+  }
+  return {guest: parts.join('/'), native: parts.map(nativePart).join('/')};
+}
+async function extractDemoArchive(data, destination, archiveName) {
+  const zip = getZipEntries(data, true);
+  const entries = zip.slice(1).map(entry => ({entry, path: extractedZipPath(entry.filename)}));
+  const directoryEnd = zip[0].centralDirectoryStart;
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  for (const {entry} of entries) {
+    const offset = entry.localHeaderOffset;
+    if (entry.encrypted || ![0, 8].includes(entry.compressionMethod) ||
+        entry.uncompressedSize === 0xffffffff || offset + 30 > directoryEnd ||
+        view.getUint32(offset, true) !== 0x04034b50 ||
+        (view.getUint16(offset + 6, true) & 1) !== 0 ||
+        view.getUint16(offset + 8, true) !== entry.compressionMethod ||
+        offset + 30 + view.getUint16(offset + 26, true) + view.getUint16(offset + 28, true) + entry.compressedSize > directoryEnd ||
+        (entry.unixMode & 0xf000) === 0xa000) {
+      throw new Error('Unsupported or invalid ZIP entry: ' + entry.filename);
+    }
+  }
+  const deleted = new Set();
+  const deletionFile = ROOT + '/' + archiveName.split('/').pop() + '.deleted';
+  if (FS.analyzePath(deletionFile).exists) {
+    new TextDecoder().decode(FS.readFile(deletionFile)).split(/\r?\n/).forEach(path => deleted.add(path.replace(/^\//, '')));
+  }
+  const createdFiles = [], createdDirectories = [], trackedSavedFiles = [];
+  function directory(path) {
+    const parts = path.split('/').filter(Boolean);
+    let current = '';
+    for (const part of parts) {
+      current += '/' + part;
+      if (FS.analyzePath(current).exists) {
+        const node = FS.lookupPath(current, {follow: false}).node;
+        if (!FS.isDir(node.mode) || FS.isLink(node.mode)) throw new Error('Invalid extraction directory: ' + current);
+      } else {
+        FS.mkdirTree(current);
+        createdDirectories.push(current);
+      }
+    }
+  }
+  try {
+    directory(destination);
+    for (const {entry, path} of entries) {
+      const guestPath = destination === ROOT ? path.guest : Config.appDirPrefix.replace(/^\//, '') + '/' + path.guest;
+      if (deleted.has(guestPath.replace(/\.link$/, ''))) continue;
+      const target = destination + '/' + path.native;
+      directory(entry.directory ? target : target.slice(0, target.lastIndexOf('/')));
+      if (entry.directory) continue;
+      const deletion = {deletionFile, guestPath: '/' + guestPath.replace(/\.link$/, '')};
+      // Saved files and earlier, higher-priority overlays retain their contents.
+      const existing = FS.analyzePath(target).exists ? target : FS.analyzePath(target + '.link').exists ? target + '.link' : null;
+      if (existing) {
+        if (!Config.extractedFiles.has(existing)) {
+          // A saved override still needs a tombstone if deleted this session.
+          // Omit the unchanged-file baseline: these bytes must remain saved.
+          Config.extractedFiles.set(existing, deletion);
+          trackedSavedFiles.push(existing);
+        }
+        continue;
+      }
+      let bytes = await extractZipEntry(data, entry);
+      if (bytes.byteLength !== entry.uncompressedSize || crc32(bytes) !== entry.crc) throw new Error('ZIP checksum mismatch: ' + entry.filename);
+      // Stored members share the archive buffer; detach them so it can be freed.
+      if (entry.compressionMethod === 0) bytes = bytes.slice();
+      createdFiles.push(target);
+      FS.writeFile(target, bytes, {canOwn: true});
+      if (entry.unixMode & 0x1ff) FS.chmod(target, entry.unixMode & 0x1ff);
+      const date = entry.dosTime >>> 16, time = entry.dosTime & 0xffff;
+      const mtime = Date.UTC(1980 + (date >>> 9), ((date >>> 5) & 15) - 1, date & 31, time >>> 11, (time >>> 5) & 63, (time & 31) * 2);
+      if (date && Number.isFinite(mtime)) FS.utime(target, mtime, mtime);
+      Config.extractedFiles.set(target, {timestamp: FS.stat(target).mtime.getTime(), size: bytes.byteLength, ...deletion});
+    }
+  } catch (error) {
+    for (const path of trackedSavedFiles) Config.extractedFiles.delete(path);
+    for (const path of createdFiles.reverse()) {
+      Config.extractedFiles.delete(path);
+      if (FS.analyzePath(path).exists) FS.unlink(path);
+    }
+    for (const path of createdDirectories.reverse()) FS.rmdir(path);
+    throw error;
+  }
 }
 var crc32Table = null;
 function crc32(data) {

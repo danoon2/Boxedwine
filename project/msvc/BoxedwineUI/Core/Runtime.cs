@@ -9,6 +9,8 @@ namespace Boxedwine.Library;
 public sealed record RuntimeExit(int Code, bool Stopped, bool Installing);
 public sealed class RuntimeSession : IDisposable
 {
+    // Wine waits for its server and services to exit even after the app closes.
+    public const int StopTimeoutSeconds = 30;
     public static string PlainText(string text) => Regex.Replace(text, @"\x1B\[[0-?]*[ -/]*[@-~]", "");
     private readonly Process process;
     private readonly FileStream wineLease;
@@ -75,7 +77,7 @@ public sealed class RuntimeSession : IDisposable
             // be tearing down. Use a window-close request only if stdin failed.
             try { process.CloseMainWindow(); } catch (InvalidOperationException) { }
         }
-        if (await Task.WhenAny(Completion, Task.Delay(5000)) != Completion) ForceStop();
+        if (await Task.WhenAny(Completion, Task.Delay(TimeSpan.FromSeconds(StopTimeoutSeconds))) != Completion) ForceStop();
         await Completion;
     }
     public void ForceStop()

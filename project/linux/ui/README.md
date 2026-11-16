@@ -343,9 +343,9 @@ Focused checks:
     python3 ui/tests/test_shared_files.py
     GDK_BACKEND=x11 xvfb-run -a python3 ui/tests/shared_files_ui_smoke.py
 
-For a real Wine check, compile tools/wineTests/tests/shared_files_live.c with
+For a real Wine check, compile tools/testing/wine/tests/shared_files_live.c with
 i686-w64-mingw32-gcc. From the repository root, run
-tools/wineTests/run_shared_files_live.py with --engine, --wine and --probe.
+tools/testing/wine/run_shared_files_live.py with --engine, --wine and --probe.
 Use xvfb-run when testing without a display.
 
 ```sh
@@ -353,6 +353,8 @@ make test-ui
 python3 ui/tests/gui_smoke.py --output /tmp/boxedwine-ui-smoke
 python3 ui/tests/app_settings_ui_smoke.py  # General/Advanced, CD-ROMs, mouse transfer, both themes
 python3 ui/tests/launch_ui_smoke.py  # Progress lifecycle, icons, and desktop activation
+python3 ui/tests/launch_card_smoke.py  # Launch/Stop controls and fixed icon positions, light/dark, X11/Wayland
+python3 ui/tests/scroll_smoke.py  # Refresh/search/navigation and selected-card visibility
 python3 ui/tests/source_import_ui_smoke.py  # Inline URL errors, cancellation, and retry
 python3 ui/tests/pointer_smoke.py  # X11 + libXtst; uses actual pointer clicks
 python3 ui/tests/context_menu_smoke.py  # Right-click/keyboard menus, guards, and storage
@@ -369,6 +371,13 @@ use a separate test library, set up the pinned Wine package, and run Notepad or
 Minesweeper. Test Wayland and AArch64 on those environments before distributing
 architecture-specific binaries. Packaging tests also check the relocated archive layout,
 engine lookup, executable permissions, and staged prefix installation.
+
+The scroll and launch-card checks require an active display and wait for fresh
+frames before measuring layout. A Wayland session can remain unlocked and keep
+windows mapped with no connected monitor, while never rendering another frame.
+Connect the monitor (including switching a shared monitor to that machine), or
+use an isolated compositor with a virtual output. These tests report missing
+outputs or stalled frames explicitly instead of accepting stale widget bounds.
 
 The Linux-only native control helper uses descriptor reads for stdin: glibc's
 blocking `fgets` otherwise holds a stream lock that can prevent a naturally

@@ -8,17 +8,15 @@ The [builder guide](README.md) explains the build internals and prerequisites.
 Review the release plan before starting builds. Commands below are for the later
 execution steps, run from the repository root in WSL unless noted otherwise.
 
-The inventory was reviewed for filesystem 33 on November 11, 2026. Revision 33
-adds GStreamer's WAV parser to the base, full and web filesystems to fix
-RalliSport Challenge's main-menu stall. It preserves v31's Wine runtime, gamma
-bridge, media libraries and v51 WebGL DLLs. See [RELEASE-v33.md](RELEASE-v33.md)
-for artifact identities and validation.
+Record release changes in [changes_wine11.txt](changes_wine11.txt) and
+[changes_wine11_web.txt](changes_wine11_web.txt), which supply the packaged
+`changes.txt`. Do not create per-release Markdown notes or reports. Keep this
+guide focused on the release procedure and retain generated validation output
+with the local build artifacts.
 
-The release is staged locally, with repository consumers pinned to `/v2/33/`.
-Upload and verify the new base, both Wine archives and WAV source bundle, refresh
-`/v2/latest/`, and deploy the staged `/v2/26R2/filesV2.xml` before activating those
-consumers. The existing media source URL remains under `/v2/28/`. Earlier
-archives and receipts retain their identities.
+Do not upload anything to boxedwine.org automatically. An explicit user upload
+request is required. Preparing artifacts or updating pins does not authorize
+publication. Once authorized, publish versioned binaries before catalogs/pages.
 
 ## 1. Agree on the release scope
 
@@ -47,16 +45,16 @@ is a local workaround; release testing must use the candidate ZIP in a fresh roo
 | File | What to update |
 | --- | --- |
 | [`patches/`](patches/) and [`wine_builds.json`](wine_builds.json) | Add the patch and its version-bounded operation. Both variants derive their Wine build from this configuration. |
-| [`filesystem_wine11.json`](filesystem_wine11.json) | Set `filesystem_version` and select the release's `webgl_config`. Change `wine_tag`/`wine_commit` only when changing upstream Wine. |
+| [`filesystem_wine11.json`](filesystem_wine11.json) | Set `filesystem_version`; keep `webgl_config` pointing to `webgl_filesystems.json`. Change `wine_tag`/`wine_commit` only when changing upstream Wine. |
 | [`changes_wine11.txt`](changes_wine11.txt) | Add the release entry; its first line must start with the configured `vN`. Preserve previous entries. |
 | [`changes_wine11_web.txt`](changes_wine11_web.txt) | Update the web release entry to the same `vN`. It is prepended to the full history. Update size-savings claims only from new measurements. |
-| Release's `webgl_filesystems_vN.json` | Start from the config selected by `filesystem_wine11.json`, currently [`webgl_filesystems_v33.json`](webgl_filesystems_v33.json), keeping older configs as historical pins. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. |
-| [`webgl_filesystem.py`](webgl_filesystem.py), `DEFAULT_CONFIG` | Advance the build/validation default to the same manifest as the filesystem profile. Preserve the explicitly historical `validate-set` default and historical examples. |
-| [`README.md`](README.md) and this checklist | Update current revision, manifest links, publication status, and release examples; retain clearly labeled historical instructions. |
+| [`webgl_filesystems.json`](webgl_filesystems.json) | Update this single current manifest in place. Update identity/date, `full-vN` and `web-vN` profiles, filenames and revision. Fill final archive sizes/hashes after packaging. Git history preserves previous releases; do not add a numbered manifest. |
+| [`webgl_filesystem.py`](webgl_filesystem.py), `DEFAULT_CONFIG` | Keep the build/validation default on `webgl_filesystems.json`; no per-release path change is needed. Historical `validate-set` requires an explicit `--config` restored from Git history. |
+| [`README.md`](README.md) and this checklist | Keep build and validation instructions accurate. Record release changes in the existing changelogs above. |
 
 - [ ] If the patch also affects the separately built `C:/webgl` DLLs, update the
   ordered series under [`../d3dToWebGL/`](../d3dToWebGL/README.md), its versioned
-  `../wineTests/webgl-test-divergences-v*.json`, the config's `patch_manifest`
+  `../testing/wine/webgl-test-divergences-v*.json`, the config's `patch_manifest`
   path/hash, and the rebuilt DLL sizes/hashes. Updating the main Wine ELF module
   alone does not update those PE DLLs. See the
   [Daytona example](../../docs/daytona-wine11-gdi.md#separate-webgl-pe-dll).
@@ -100,10 +98,13 @@ python3 tools/buildWine/build_filesystem.py \
 - [ ] Check each `filesystem-build-result.json`, `filesystem-inventory.json`,
   `filesystem-smoke.json`, and build log. Retain the web variant's
   `web-runtime-validation.json`. The main smoke test includes Gecko; web does not.
-- [ ] Inspect each ZIP's `wineVersion.txt`, `version.txt`, `changes.txt`, and
-  `filesystem-build.json`. Confirm the new patch hash is recorded and the actual
+- [ ] Inspect each ZIP's `wineVersion.txt`, `version.txt`, and `changes.txt`, plus
+  its separate `filesystem-build.json` release record. Confirm the new patch hash is recorded and the actual
   affected binary is present. Preserve explicit empty directories, especially
   the writable Wine Temp directories, and ensure ZIP CRC validation passes.
+- [ ] Verify runtime ZIPs contain no build/source/license records using
+  `runtime_documents.validate_runtime`. Retain those records separately in
+  `*-records.zip` and the source bundle; never merge them back into runtime ZIPs.
 - [ ] Ensure the web ZIP is below **100,000,000 bytes** and passes its pruning
   policy. Check the main/web inventories for unintended additions or removals.
 - [ ] Run the reproducer and affected game against the packaged binaries in
@@ -158,7 +159,7 @@ the same location. Do not edit generated `bin/`, `Build/`, or `artifacts/` copie
 | Mac, Windows, and Linux UI distributions | Rebuild/stage their resources when shipping the updated catalog. Test package selection, clean download, verification, setup, and launch against the candidate. Existing applications retain their pinned package records. |
 | Mac App Store resources | Run `prepare-distribution-resources.py --variant BOXEDWINE_APP_STORE --wine <main ZIP> --output <staging directory>` against the final candidate. It requires matching XML/package revisions and the exact main ZIP size/hash. |
 | [`resources/demo-catalog.lock.json`](../../resources/demo-catalog.lock.json) | Conditional: update only if demo recipes/icons or their compatibility requirements change. This is a separate package from the Wine catalog; see the [catalog release procedure](../../resources/DEMO_CATALOG.md). |
-| Release documentation and provenance | Update current version/download descriptions and new validation records. Review applicable licensing/source records when components change; historical inventories and earlier test results remain evidence of their original artifacts. |
+| Consumer documentation and build records | Update download descriptions where needed and retain generated validation output with local build artifacts. Review applicable licensing/source records when components change; historical inventories and earlier test results remain evidence of their original artifacts. |
 
 - [ ] Verify the package URL and each fingerprint in `packages.json` against the
   final main ZIP. Check `bytes` and `sha256` independently, and confirm
@@ -177,13 +178,13 @@ do not rewrite old validation reports as though they tested the new ZIP.
 
 | File or input | Required review/update |
 | --- | --- |
-| [`../jenkins/local-build-site.sh`](../jenkins/local-build-site.sh) and [`../jenkins/publish-build-site.sh`](../jenkins/publish-build-site.sh) | Advance the default `BOXEDWINE_ZIP_URL` to the **web ZIP** and `DEMO_ROOT_CONFIG` to the new versioned manifest. |
-| [`../jenkins/build_site.py`](../jenkins/build_site.py) | Advance `DEFAULT_DEMO_ROOT_CONFIG`. ZIP filenames normally remain unchanged; update filename constants/migrations only if intentionally renaming them. |
+| [`../jenkins/local-build-site.sh`](../jenkins/local-build-site.sh) and [`../jenkins/publish-build-site.sh`](../jenkins/publish-build-site.sh) | Advance the default `BOXEDWINE_ZIP_URL` to the **web ZIP**. Keep `DEMO_ROOT_CONFIG` pointing to `webgl_filesystems.json`. |
+| [`../jenkins/build_site.py`](../jenkins/build_site.py) | Keep `DEFAULT_DEMO_ROOT_CONFIG` pointing to `webgl_filesystems.json`. ZIP filenames normally remain unchanged; update filename constants/migrations only if intentionally renaming them. |
 | Site `demos/apps/demos.json` and downloaded roots | Check every referenced root against the selected manifest. Ensure the downloaded web ZIP is the final candidate. Existing full/old root selections have migration logic; validate the resulting selections. |
 | [`../../Jenkinsfile`](../../Jenkinsfile), Emscripten AbiWord stage | Update `BOXEDWINE_AUTO_URL` and `BOXEDWINE_AUTO_SHA256` together to the final **web ZIP**. The downloaded local name is `boxedwine.zip`. |
 | AbiWord overlay | Review `ABIWORD_AUTO_URL`/`ABIWORD_AUTO_SHA256` only if application scripts or screenshot references need changes. Requalify all four browser modes with the new filesystem even when the overlay stays byte-identical. |
-| [`../BoxedWineRunner/filesystem.properties`](../BoxedWineRunner/filesystem.properties) | Update `url`, `sha256`, and `size` together to the final **full ZIP**. Jenkins distributes this pin with the runner to Linux x64/ARM64, Mac ARM, and Windows x64/ARM64. Each worker downloads/verifies the filesystem separately. |
-| Native automation assets | The current `automation36.zip` contains no filesystem. Keep the asset bundle unchanged for filesystem-only Jenkins releases; update the checkout's pin instead. When publishing a successor bundle, use [`package_assets.py`](../BoxedWineRunner/package_assets.py) to preserve apps, scripts, captures, and performance scripts, refresh the bundled runner/launchers/pin, and verify retained content. Update every native download/extract filename in `Jenkinsfile` together. |
+| [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties) | Update `url`, `sha256`, and `size` together to the final **full ZIP**. Jenkins distributes this pin with the runner to Linux x64/ARM64, Mac ARM, and Windows x64/ARM64. Each worker downloads/verifies the filesystem separately. |
+| Native automation assets | The current `automation36.zip` contains no filesystem. Keep the asset bundle unchanged for filesystem-only Jenkins releases; update the checkout's pin instead. When publishing a successor bundle, use [`package_assets.py`](../automation/BoxedWineRunner/package_assets.py) to preserve apps, scripts, captures, and performance scripts, refresh the bundled runner/launchers/pin, and verify retained content. Update every native download/extract filename in `Jenkinsfile` together. |
 
 **Preserve the native automation presets.** The runner's `PrepareFilesystem`
 reads `home/username/.wine/user.reg` from the pinned full ZIP and stages a separate
@@ -204,7 +205,7 @@ The full ZIP is staged byte-for-byte as `fs/fs.zip`; its published hash remains
 valid. The runner's `-user-reg fs/user.reg` option seeds each writable test root
 on every attempt. Other registry values come from the new candidate, not the old
 bundle. Record the filesystem pin and runner commit with the results. Jenkins
-supplies the emulator and rebuilds the [Java runner](../BoxedWineRunner/README.md)
+supplies the emulator and rebuilds the [Java runner](../automation/BoxedWineRunner/README.md)
 from the checkout. Cache entries are addressed by SHA-256 and reverified on use;
 failed downloads or mismatches stop the job rather than using the embedded ZIP.
 
@@ -232,7 +233,7 @@ generate new `graphics-builds.json` identities for newly generated builds.
 
 ## 7. Review separately pinned test suites
 
-- [ ] [`../wineTests/runWineTests.py`](../wineTests/runWineTests.py) has its own
+- [ ] [`../testing/wine/runWineTests.py`](../testing/wine/runWineTests.py) has its own
   native test entry point. Publish the final main ZIP at
   `https://boxedwine.org/v2/latest/TinyCore15Wine11.0.zip` alongside its versioned
   URL. The runner refreshes this alias on every invocation; verify that the
@@ -240,7 +241,7 @@ generate new `graphics-builds.json` identities for newly generated builds.
   versioned `--filesystem-url` only when reproducing an older result.
 - [ ] Graphics qualification uses explicit filesystem, runtime, test-executable,
   divergence-manifest, and baseline identities. Use the
-  [graphics test guide](../wineTests/GRAPHICS_README.md) and
+  [graphics test guide](../testing/wine/GRAPHICS_README.md) and
   [graphics CI instructions](../jenkins/instructions.md#wine-graphics-ci).
   Prepare a new reviewed input set for the candidate rather than overwriting
   historical baseline files. Preserve expected counts unless reviewed evidence
@@ -265,20 +266,21 @@ generate new `graphics-builds.json` identities for newly generated builds.
   path. Do not silently replace installed applications' hash-pinned Wine records.
 - [ ] Retain previous published ZIPs, UI package records, automation bundles, and
   test inputs for rollback. Roll back the corresponding consumer pins together.
-- [ ] Summarize shipped identities, platforms/modes actually tested, skipped checks,
-  and whether a user must install/select a new package to receive the patch.
+- [ ] In the final handoff, summarize shipped identities, platforms/modes actually
+  tested, skipped checks, and whether a user must install/select a new package.
+  Keep release changes in the filesystem changelogs instead of a separate report.
 
-Before shipping, search tracked files for the previous hashes, URLs, and manifest
-name. Classify each result as an active pin, an intentionally fixed test input,
+Before shipping, search tracked files for the previous hashes, URLs, and release
+profiles. Classify each result as an active pin, an intentionally fixed test input,
 or historical evidence; do not perform a global version/hash replacement:
 
 ```bash
 git grep -n -F -e '<old-main-sha256>' -e '<old-web-sha256>' \
-  -e 'v2/25/' -e 'webgl_filesystems_v25.json'
+  -e 'v2/25/' -e 'full-v25' -e 'web-v25'
 git grep -n -E 'automation[0-9]+\.zip|FILESYSTEM_URL|FILESYSTEM_CACHE_NAME|BOXEDWINE_AUTO_|ABIWORD_AUTO_|DEMO_ROOT_CONFIG'
 git diff --check
 ```
 
-Adjust the old revision and manifest in that search for the release being
+Adjust the old revision and profiles in that search for the release being
 replaced. Untracked staging receipts and bundles, public catalog files, and
 worker-local graphics configurations require their own review.

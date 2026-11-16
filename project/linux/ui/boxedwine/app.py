@@ -255,8 +255,6 @@ class Window(Adw.ApplicationWindow):
         self.search = Gtk.SearchEntry(placeholder_text='Search apps', margin_start=24, margin_end=24, margin_top=18, margin_bottom=16)
         self.search.connect('search-changed', dialogs.guarded(self, lambda entry: self.filter(entry.get_text())))
         main.append(self.search)
-        self.runtime_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_start=24, margin_end=24, margin_bottom=8)
-        main.append(self.runtime_box)
         self.scroll = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
         main.append(self.scroll)
         self.details_split.set_content(main)
@@ -444,7 +442,6 @@ class Window(Adw.ApplicationWindow):
         self.section_rows['Recovery'].set_visible(bool(self.recovery) or self.view == 'Recovery')
         self.section_rows['Removed Apps'].set_visible(bool(self.document['removedApps']))
         self.refresh_content()
-        self.refresh_running()
         if self.selected:
             if self.is_collection:
                 recipe = next((d for d in self.catalog if d['origin']['id'] == self.selected), None)
@@ -461,28 +458,10 @@ class Window(Adw.ApplicationWindow):
         values = self.document['apps'] + ([r['app'] for r in self.document['removedApps']] if include_removed else [])
         return next((a for a in values if a['id'] == identifier), None)
 
-    def refresh_running(self):
-        self.clear_box(self.runtime_box)
-        for identifier, session in self.sessions.items():
-            app = self.find_app(identifier)
-            if not app:
-                continue
-            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-            box.add_css_class('card')
-            row = Gtk.Box(spacing=12)
-            label = Gtk.Label(label=('Installing ' if session.installing else 'Running ' if session.window.is_set() else 'Starting ') + (getattr(session, 'tool_name', None) or app['name']),
-                              hexpand=True, xalign=0, margin_start=12, ellipsize=3)
-            row.append(label)
-            stop = dialogs.button(self, 'Stopping…' if identifier in self.stopping else 'Stop', lambda a=app: self.stop(a), 'flat')
-            stop.set_sensitive(identifier not in self.stopping); row.append(stop)
-            box.append(row)
-            if not session.window.is_set() and identifier not in self.stopping:
-                box.append(self.launch_progress())
-            self.runtime_box.append(box)
-
-    def launch_progress(self):
-        progress = Gtk.ProgressBar(pulse_step=.10, margin_start=12, margin_end=12, margin_bottom=12)
-        progress.update_property([Gtk.AccessibleProperty.LABEL], ['Waiting for the app window'])
+    def launch_progress(self, app):
+        progress = Gtk.ProgressBar(pulse_step=.10, margin_start=10, margin_end=10, margin_bottom=9,
+                                   valign=Gtk.Align.END, can_target=False)
+        progress.update_property([Gtk.AccessibleProperty.LABEL], ['Launching ' + app['name']])
         progress.pulse()
         last_pulse = 0
         def animate(bar, clock):
@@ -493,7 +472,7 @@ class Window(Adw.ApplicationWindow):
                 last_pulse = frame_time
             return GLib.SOURCE_CONTINUE
         # Widget tick callbacks pause while unmapped and disappear with the bar,
-        # including when a refresh replaces a starting banner.
+        # including when a refresh replaces a starting card.
         progress.add_tick_callback(animate)
         return progress
 
@@ -651,9 +630,27 @@ class Window(Adw.ApplicationWindow):
             box.append(self.icon(item, 48, demo))
             name = Gtk.Label(label=item['name'], wrap=True, justify=Gtk.Justification.CENTER, lines=2, ellipsize=3, max_width_chars=18)
             name.add_css_class('heading'); box.append(name)
-            state = self.demo_state(item) if demo else ('Running' if identifier in self.sessions else 'Removed' if self.view == 'Removed Apps' else 'Choose program' if not item.get('executable') and not built_in(item) else 'Ready to open')
+            session = self.sessions.get(identifier) if not demo and self.view != 'Removed Apps' else None
+            launching = session is not None and not session.window.is_set() and identifier not in self.stopping
+            state = self.demo_state(item) if demo else ('Stopping…' if identifier in self.stopping else 'Launching…' if launching else 'Installing' if session and session.installing else 'Running' if session else 'Removed' if self.view == 'Removed Apps' else 'Choose program' if not item.get('executable') and not built_in(item) else 'Ready to open')
             subtitle = Gtk.Label(label=state, ellipsize=3); subtitle.add_css_class('caption'); subtitle.add_css_class('dim-label'); box.append(subtitle)
             card.set_child(box)
+            # Overlays never contribute to the card's measured size. Keep the
+            # Stop button outside the card button's activation gestures.
+            tile = Gtk.Overlay(child=card)
+            if launching:
+                tile.add_overlay(self.launch_progress(item))
+            if session:
+                stop = dialogs.button(self, None, lambda a=item: self.stop(a), 'flat', 'media-playback-stop-symbolic')
+                stop.add_css_class('circular')
+                stop.set_halign(Gtk.Align.END); stop.set_valign(Gtk.Align.START)
+                stop.set_margin_top(6); stop.set_margin_end(6)
+                stop.set_sensitive(identifier not in self.stopping)
+                label = ('Stop launching ' if launching else 'Stop ') + item['name']
+                stop.set_tooltip_text(label)
+                stop.update_property([Gtk.AccessibleProperty.LABEL], [label])
+                tile.add_overlay(stop)
+                card.set_tooltip_text(getattr(session, 'tool_name', None) or state)
             if not demo and self.view != 'Removed Apps':
                 drop = Gtk.DropTarget.new(Gio.File, Gdk.DragAction.COPY)
                 drop.set_gtypes([Gio.File, Gdk.FileList])
@@ -687,7 +684,7 @@ class Window(Adw.ApplicationWindow):
                 gesture.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
                 gesture.connect('pressed', dialogs.guarded(self, lambda g, count, x, y, key=identifier: self.activate_card(g, count, key)))
                 card.add_controller(gesture)
-            grid.append(card)
+            grid.append(tile)
         container.append(grid); self.scroll.set_child(container)
 
     def card_menu_pressed(self, gesture, x, y, item, demo):

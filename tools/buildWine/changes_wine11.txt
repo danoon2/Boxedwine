@@ -1,3 +1,15 @@
+v39 Nov 15, 2026 Correct Wine integer exception handling: distinguish divide overflow from division by zero, report the INT 4/INTO exception address correctly, and clear the trap flag before calling user exception handlers. Requires the corresponding Boxedwine CPU exception fixes. Retain the v37 AVI runtime base, v38 desktop shutdown fix and existing WebGL DLLs.
+
+v38 Nov 15, 2026 Fix Wine desktop shutdown during startup cancellation: explorer worker threads no longer cancel the pending close timer after the last application exits. A newly arriving application still cancels it. Retain the v37 AVI runtime base and existing WebGL DLLs.
+
+v37 Nov 14, 2026 Add the GStreamer AVI parser to the base, full and web filesystems for AVI movie playback. With the updated Boxedwine engine and installed Indeo codec, System Shock 2 movies play. Move build records, source archives, patches and license texts to separate release bundles. Existing Wine and WebGL binaries are unchanged.
+
+v36 Nov 14, 2026 Implement DirectPlay peer capabilities and correct uninitialized lobby connection handling, allowing MechCommander 2 to start. Include the tested multisample texture upload fix for Steel Soldiers intro and exit screens.
+
+v35 Nov 13, 2026 Expose 16-bit RGB565 display modes alongside 32-bit modes in the WebGL WineD3D renderer, allowing System Shock 2 to detect its supported video modes. Keep the desktop at 32-bit. Retain the v33 base and regular Wine runtime.
+
+v34 Nov 12, 2026 Update the bundled WebGL WineD3D to enumerate 32-bit display modes from Boxedwine instead of advertising only the current mode. With the updated browser engine, offer 640x480, 800x600, 1024x768 and the starting resolution without duplicates. Retain the v33 base and main Wine binaries.
+
 v33 Nov 11, 2026 Add the GStreamer WAV parser to the base, full and web filesystems. Fix RalliSport Challenge freezing at the main menu when its PCM WAV music cannot load. Retain the v31 Wine binaries, gamma bridge and v51 WebGL DLLs.
 
 v31 Nov 10, 2026 Fix builtin DLL lookup through multiple WinSxS paths so the Sims 3 launcher can use Wine VC80 without native overrides. Add the Boxedwine XF86VidMode gamma-ramp library; fullscreen gamma correction requires a supporting Windows OpenGL engine. Update the base filesystem with the gamma library and loader cache; retain the existing media libraries and v51 WebGL DLLs.

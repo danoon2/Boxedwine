@@ -45,32 +45,33 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/em_asm.h>
 
-extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseMove(int x, int y) {
+extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseMove(int x, int y, U32 relative) {
     KNativeScreenPtr screen = KNativeSystem::getScreen();
     KNativeInputSDLPtr input = screen ? std::static_pointer_cast<KNativeInputSDL>(screen->getInput()) : nullptr;
     if (input) {
+        if (relative) {
+            int previousX, previousY;
+            input->getEmscriptenMousePosition(&previousX, &previousY);
+            // Guest warps update this same host-pixel cursor. Keep polling,
+            // motion and button events on that cursor even after SDL removes
+            // its browser callbacks when a temporary GL window is destroyed.
+            x = std::max(0, std::min(input->xToScreen(input->screenWidth()) - 1, previousX + x));
+            y = std::max(0, std::min(input->yToScreen(input->screenHeight()) - 1, previousY + y));
+        }
         input->setEmscriptenMousePosition(x, y);
         input->mouseMove(x, y, false);
     }
 }
 
-extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenPointerLock(U32 enabled) {
-    // SDL's virtual cursor (including warps and polling) requires its own
-    // relative mode as well as the browser's pointer lock.
-    if ((SDL_GetRelativeMouseMode() == SDL_TRUE) != (enabled != 0)) {
-        KNativeScreenPtr screen = KNativeSystem::getScreen();
-        if (screen) {
-            std::static_pointer_cast<KNativeInputSDL>(screen->getInput())->clearEmscriptenMousePosition();
-        }
-    }
-    SDL_SetRelativeMouseMode(enabled ? SDL_TRUE : SDL_FALSE);
-}
-
-extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseButton(U32 down, U32 button, int x, int y) {
+extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseButton(U32 down, U32 button, int x, int y, U32 relative) {
     KNativeScreenPtr screen = KNativeSystem::getScreen();
     KNativeInputSDLPtr input = screen ? std::static_pointer_cast<KNativeInputSDL>(screen->getInput()) : nullptr;
     if (input) {
-        input->setEmscriptenMousePosition(x, y);
+        if (relative) {
+            input->getEmscriptenMousePosition(&x, &y);
+        } else {
+            input->setEmscriptenMousePosition(x, y);
+        }
         input->mouseButton(down, button, x, y);
     }
 }
@@ -105,20 +106,23 @@ static void boxedwineInstallEmscriptenInputHandlers() {
 
     var capturingMouse = 0;
     var lastMousePoint = {x: 0, y: 0};
+    var pointerLocked = document.pointerLockElement === canvas;
+    var residualX = 0, residualY = 0;
 
     function releaseCapturedMouseButtons() {
         var buttons = capturingMouse;
         capturingMouse = 0;
         for (var button = 0; button < 5; button++) {
             if (buttons & (1 << button)) {
-                _boxedwineEmscriptenMouseButton(0, boxedwineButton(button), lastMousePoint.x, lastMousePoint.y);
+                _boxedwineEmscriptenMouseButton(0, boxedwineButton(button), lastMousePoint.x, lastMousePoint.y, pointerLocked ? 1 : 0);
             }
         }
     }
 
     document.addEventListener('pointerlockchange', function() {
         releaseCapturedMouseButtons();
-        _boxedwineEmscriptenPointerLock(document.pointerLockElement === canvas ? 1 : 0);
+        pointerLocked = document.pointerLockElement === canvas;
+        residualX = residualY = 0;
     }, false);
 
     window.addEventListener('blur', releaseCapturedMouseButtons, false);
@@ -135,14 +139,10 @@ static void boxedwineInstallEmscriptenInputHandlers() {
     }
 
     function canvasPoint(event, allowOutside) {
-        // Also retry on input if lock was acquired before SDL's window existed.
-        _boxedwineEmscriptenPointerLock(document.pointerLockElement === canvas ? 1 : 0);
-        // Pointer lock freezes clientX/Y. SDL consumes movementX/Y and keeps
-        // its virtual cursor in sync with guest warps; do not replace those
-        // events with absolute coordinates from the fixed browser pointer.
+        // Locked button events use the virtual cursor in C++, not the frozen
+        // browser clientX/Y coordinates or a stale pre-warp JS position.
         if (document.pointerLockElement === canvas) {
-            releaseCapturedMouseButtons();
-            return null;
+            return {x: 0, y: 0, relative: 1};
         }
         var rectCanvas = activeCanvasRect();
         var rect = rectCanvas.getBoundingClientRect();
@@ -232,12 +232,31 @@ static void boxedwineInstallEmscriptenInputHandlers() {
 #endif
 
     window.addEventListener('mousemove', function(event) {
+        if (document.pointerLockElement === canvas) {
+            var rectCanvas = activeCanvasRect();
+            var rect = rectCanvas.getBoundingClientRect();
+            if (rect.width && rect.height && rectCanvas.width && rectCanvas.height) {
+                // Preserve slow movement when CSS scaling makes each browser
+                // delta smaller than one pixel of the displayed game.
+                residualX += event.movementX * rectCanvas.width / rect.width;
+                residualY += event.movementY * rectCanvas.height / rect.height;
+                var dx = Math.trunc(residualX), dy = Math.trunc(residualY);
+                residualX -= dx;
+                residualY -= dy;
+                if (dx || dy) {
+                    _boxedwineEmscriptenMouseMove(dx, dy, 1);
+                }
+            }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+        }
         var point = canvasPoint(event, capturingMouse);
         if (!point) {
             return;
         }
         lastMousePoint = point;
-        _boxedwineEmscriptenMouseMove(point.x, point.y);
+        _boxedwineEmscriptenMouseMove(point.x, point.y, 0);
         event.preventDefault();
         event.stopImmediatePropagation();
     }, true);
@@ -253,7 +272,7 @@ static void boxedwineInstallEmscriptenInputHandlers() {
         capturingMouse |= 1 << event.button;
         lastMousePoint = point;
         canvas.focus();
-        _boxedwineEmscriptenMouseButton(1, boxedwineButton(event.button), point.x, point.y);
+        _boxedwineEmscriptenMouseButton(1, boxedwineButton(event.button), point.x, point.y, point.relative || 0);
         event.preventDefault();
         event.stopImmediatePropagation();
     }, true);
@@ -268,7 +287,7 @@ static void boxedwineInstallEmscriptenInputHandlers() {
         }
         capturingMouse &= ~(1 << event.button);
         lastMousePoint = point;
-        _boxedwineEmscriptenMouseButton(0, boxedwineButton(event.button), point.x, point.y);
+        _boxedwineEmscriptenMouseButton(0, boxedwineButton(event.button), point.x, point.y, point.relative || 0);
         event.preventDefault();
         event.stopImmediatePropagation();
     }, true);
@@ -590,8 +609,7 @@ bool KNativeInputSDL::mouseWheel(int amount, int x, int y) {
 bool KNativeInputSDL::mouseButton(U32 down, U32 button, int x, int y) {
     const CapturedMouse::HostPosition host = {x, y};
 #ifdef __EMSCRIPTEN__
-    // Absolute browser events bypass SDL. Keep polling consistent with those
-    // events and with SDL events delivered while the pointer is locked.
+    // Browser events bypass SDL, including while the pointer is locked.
     static const U32 masks[] = {SDL_BUTTON_LMASK, SDL_BUTTON_RMASK, SDL_BUTTON_MMASK, SDL_BUTTON_X1MASK, SDL_BUTTON_X2MASK};
     if (button < sizeof(masks) / sizeof(masks[0])) {
         if (down) {
@@ -638,8 +656,14 @@ void KNativeInputSDL::setEmscriptenMousePosition(int x, int y) {
     emscriptenMousePosition.store(((U64)(U32)x << 32) | (U32)y);
 }
 
-void KNativeInputSDL::clearEmscriptenMousePosition() {
-    emscriptenMousePosition.store(~(U64)0);
+void KNativeInputSDL::getEmscriptenMousePosition(int* x, int* y) {
+    U64 position = emscriptenMousePosition.load();
+    if (position != ~(U64)0) {
+        *x = (S32)(position >> 32);
+        *y = (S32)(U32)position;
+    } else {
+        SDL_GetMouseState(x, y);
+    }
 }
 #endif
 
@@ -662,18 +686,11 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
     }
 #endif
 #ifdef __EMSCRIPTEN__
-    // The absolute browser handlers consume motion before SDL sees it. SDL
-    // can otherwise report the old canvas-entry point even after a click in
-    // the game. Pointer-locked input still uses SDL's virtual cursor.
-    U64 position = emscriptenMousePosition.load();
-    if (position != ~(U64)0 && !SDL_GetRelativeMouseMode()) {
-        *x = (S32)(position >> 32);
-        *y = (S32)(U32)position;
-    } else
+    // Use the same virtual cursor for browser motion, clicks and guest warps.
+    getEmscriptenMousePosition(x, y);
+#else
+    SDL_GetMouseState(x, y);
 #endif
-    {
-        SDL_GetMouseState(x, y);
-    }
 
     const CapturedMouse::HostPosition host = {*x, *y};
     *x = xFromScreen(*x);

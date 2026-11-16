@@ -1,0 +1,40 @@
+diff --git a/dlls/wined3d/directx.c b/dlls/wined3d/directx.c
+--- a/dlls/wined3d/directx.c
++++ b/dlls/wined3d/directx.c
+@@ -1298,31 +1298,13 @@
+ 
+     output->mode_count = 0;
+ 
+-    if (wined3d_settings.webgl)
+-    {
+-        if (!EnumDisplaySettingsExW(output->device_name, ENUM_CURRENT_SETTINGS, &mode, 0))
+-        {
+-            output->modes_valid = true;
+-            return;
+-        }
+-
+-        if (!wined3d_array_reserve((void **)&output->modes, &output->modes_size,
+-                output->mode_count + 1, sizeof(*output->modes)))
+-            return;
+-
+-        wined3d_mode = &output->modes[output->mode_count++];
+-        wined3d_mode->width = mode.dmPelsWidth;
+-        wined3d_mode->height = mode.dmPelsHeight;
+-        wined3d_mode->format_id = pixelformat_for_depth(mode.dmBitsPerPel);
+-        wined3d_mode->refresh_rate = (mode.dmFields & DM_DISPLAYFREQUENCY)
+-                ? mode.dmDisplayFrequency : DEFAULT_REFRESH_RATE;
+-        wined3d_mode->scanline_ordering = WINED3D_SCANLINE_ORDERING_UNKNOWN;
+-        output->modes_valid = true;
+-        return;
+-    }
+-
+     for (i = 0; EnumDisplaySettingsExW(output->device_name, i, &mode, 0); ++i)
+     {
++        /* The emulated display owns the resolution list, including the starting
++         * desktop size. WebGL presents 32-bit modes without changing the host display. */
++        if (wined3d_settings.webgl && mode.dmBitsPerPel != 32)
++            continue;
++
+         if (!wined3d_array_reserve((void **)&output->modes, &output->modes_size,
+                 output->mode_count + 1, sizeof(*output->modes)))
+             return;

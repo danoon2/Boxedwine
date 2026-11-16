@@ -95,6 +95,31 @@ class BuildFailureTests(unittest.TestCase):
 
 
 class DemoRootSelectionTests(unittest.TestCase):
+    def test_manifest_lists_only_current_demo_while_retired_archive_remains(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            retired = source / 'SystemShock2Demo.zip'
+            retired.write_bytes(b'retired archive must not be opened')
+            current = 'SystemShock2Demo-r2.zip'
+            create_zip(source / current, {'shock2.exe': b'original game', 'current/': b''})
+            entry = {'exe': 'shock2.exe', 'title': 'System Shock 2 Demo'}
+            for manifest in ({'demos': {current: entry}}, {current: entry},
+                             {'demos': [{'zip': current, **entry}]}, [{'zip': current, **entry}]):
+                with self.subTest(manifest=manifest):
+                    (source / 'demos.json').write_text(json.dumps(manifest))
+                    demos = build_site.discover_demos(source)
+                    self.assertEqual([current], [demo['zip'] for demo in demos])
+                    self.assertEqual('shock2.exe', demos[0]['program'])
+                    self.assertEqual(b'retired archive must not be opened', retired.read_bytes())
+
+    def test_empty_manifest_selects_nothing_but_absent_manifest_discovers_archives(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            create_zip(source / 'game.zip', {'game.exe': b'original game'})
+            self.assertEqual(['game.zip'], [demo['zip'] for demo in build_site.discover_demos(source)])
+            (source / 'demos.json').write_text('{"demos": {}}')
+            self.assertEqual([], build_site.discover_demos(source))
+
     def test_web_filesystem_migrates_full_and_old_gdi_roots_and_defaults_other_demos(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             demo_source = Path(temp_dir)
@@ -144,6 +169,7 @@ class DemoRootSelectionTests(unittest.TestCase):
             create_zip(demo_source / "boxedwine.gdi.2.zip")
             create_zip(demo_source / "ddraw.zip", {"ddraw.exe": b""})
             create_zip(demo_source / "d3d.zip", {"d3d.exe": b""})
+            (demo_source / "Lesson Disc.iso").write_bytes(b"original disc fixture")
             (demo_source / "demos.json").write_text(
                 json.dumps(
                     {
@@ -151,6 +177,7 @@ class DemoRootSelectionTests(unittest.TestCase):
                             "ddraw.zip": {
                                 "exe": "ddraw.exe",
                                 "root": "boxedwine.gdi.3.zip",
+                                "urlParams": {"cdrom": "e:Lesson Disc.iso", "cdromBase": "../../../../apps/"},
                             },
                             "d3d.zip": {"exe": "d3d.exe"},
                         }
@@ -177,6 +204,9 @@ class DemoRootSelectionTests(unittest.TestCase):
             self.assertIn("root=boxedwine.3.zip&amp;app=d3d.zip", page)
             self.assertTrue((build_dir / "st" / "boxedwine.3.zip").exists())
             self.assertTrue((build_dir / "st" / "boxedwine.gdi.3.zip").exists())
+            self.assertEqual((site_dir / "demos/apps/Lesson Disc.iso").read_bytes(), b"original disc fixture")
+            self.assertEqual(list(build_dir.rglob("*.iso")), [])
+            self.assertIn("cdrom=e:Lesson%20Disc.iso&amp;cdromBase=../../../../apps/", page)
             self.assertNotIn("Boxedwine.2", page)
             self.assertNotIn("Boxedwine.Gdi.2", page)
 

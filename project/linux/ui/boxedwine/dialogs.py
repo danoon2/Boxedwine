@@ -4,7 +4,7 @@
 from pathlib import Path
 import re
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk
-from .files import beneath, no_links
+from .files import beneath, no_links, read_json
 from .library import DRIVE_C, WINDOWS, resolution
 from .runtime import WINE_TOOLS, lines
 from .cdrom import has_installer
@@ -400,6 +400,15 @@ def troubleshoot(owner, app):
         ('Slow gameplay', 'Lower the game’s resolution and graphics detail. Boxedwine emulates an x86 computer; some programs are too demanding.')]:
         expander = Adw.ExpanderRow(title=title, use_markup=False)
         expander.add_row(Adw.ActionRow(title=text, title_lines=0, use_markup=False)); tips.add(expander)
+    try:
+        for tip in read_json(owner.resources.path('troubleshooting.json')):
+            expander = Adw.ExpanderRow(title=tip['title'], use_markup=False)
+            expander.add_row(Adw.ActionRow(title=tip['advice'], title_lines=0, use_markup=False))
+            if tip['knownGames']:
+                expander.add_row(Adw.ActionRow(title='Known games affected: ' + ', '.join(tip['knownGames']), title_lines=0, use_markup=False))
+            tips.add(expander)
+    except (OSError, ValueError, KeyError, TypeError):
+        tips.add(Adw.ActionRow(title='Additional compatibility tips are unavailable. Reinstall Boxedwine to restore its help files.', title_lines=0, use_markup=False))
     install_group = group(main, 'Installation')
     action_row(owner, install_group, 'Selected program', 'Choose the main program after an installer finishes.', 'Choose…', lambda: (dialog.close(), owner.choose_program(app)))
     if has_installer(app):

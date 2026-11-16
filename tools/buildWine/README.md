@@ -8,7 +8,71 @@ For a patch release, start with the [filesystem release checklist](RELEASING.md)
 It covers both variants, native UI catalog hashes, web/Jenkins pins, automation
 bundles, validation, and publication order. Review it before starting builds.
 
+Release history belongs in [changes_wine11.txt](changes_wine11.txt) and
+[changes_wine11_web.txt](changes_wine11_web.txt), which are packaged as
+`changes.txt`. Update those files for each release; do not create separate
+per-release Markdown notes or reports.
+
 ## Complete Wine 11 filesystem from WSL
+
+Revision 39's full and web filesystem ZIPs are published under `/v2/39/`.
+The unchanged base remains at `/v2/37/TinyCore15WineBase.zip`. Do not upload
+to boxedwine.org automatically; publication requires an explicit user request.
+The base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
+records inherited from older packages, are kept in separate release bundles,
+not in the runtime filesystems. Historical published ZIPs remain unchanged.
+
+Build the incremental base with `build_avi_base.py --work-dir <fresh WSL directory>
+--base <v33 base ZIP>`. It verifies the parent and plugin hashes and retains every
+non-documentation parent member and its permissions. `runtime_documents.py`
+defines the shared packaging exclusions. `*-records.zip` contains excluded
+records; `TinyCore15WineBase-avi-sources.zip` contains the parser source and recipe.
+`probes/avi-playback.c` checks demuxing, duration, a decoded frame and completion.
+
+Wine 11 includes
+[`wine11_desktop_close_timer.patch`](patches/wine11_desktop_close_timer.patch)
+in new builds. It preserves the pending desktop-close timer when explorer starts
+its own worker threads after the last application exits. A new application still
+cancels the timer. This fixes cancellation during desktop initialization; it
+does not increase a shutdown timeout or forcibly terminate Wine services.
+Revision 38 includes this patch in both full and web ZIPs; v37 is unchanged.
+
+New Wine 11 builds also apply
+[`wine11_integer_exceptions.patch`](patches/wine11_integer_exceptions.patch).
+It distinguishes division overflow from a zero divisor, corrects the
+exception address for `INT 4`/`INTO`, and clears TF in the context delivered to
+user exception handlers. Revision 39 includes this patch in both full and web
+filesystems. Use a Boxedwine runtime with the corresponding CPU exception fixes;
+the browser engine must also be rebuilt when adopting this revision.
+The [CPU exception probes](../testing/cpu/README.md) describe native Windows,
+Linux and Boxedwine comparisons and the Wine decoder regression test.
+
+[`probes/test_desktop_close_timer.py`](probes/test_desktop_close_timer.py)
+executes the actual Wine server timer code with a deterministic timer queue.
+Run it under WSL/Linux with `--wine-source <configured Wine tree>` (and
+`--wine-build <build tree>` for an out-of-tree build). It checks manager threads,
+new application arrival, system threads, and the final `WM_CLOSE`. The native UI's
+`--runtime-only --window-check` tests also require first-frame cancellation to
+return exit code 0 using the candidate filesystem.
+
+Revision 38 qualification found an additional intermittent first-frame
+cancellation hang in the Windows runtime. The timer regression and direct Linux
+Wine comparison pass, as do normal shutdown and multiple Windows repeat runs,
+but some Windows runs still require forced termination. Keep the strict
+integration check; the timer patch does not establish that every startup
+cancellation path is fixed.
+
+Wine 11 includes
+[`wine11_wined3d_msaa_upload.patch`](patches/wine11_wined3d_msaa_upload.patch).
+It supports CPU image uploads to multisampled OpenGL textures through a temporary
+single-sample texture and a framebuffer blit. This fixes Z: Steel Soldiers demo's
+splash screens while retaining its requested antialiasing. The patch is shared
+WineD3D code and does not require an application setting. The Windows comparison,
+regression probe and validation results are in
+[`probes/d3d8-msaa-upload.md`](probes/d3d8-msaa-upload.md).
+Filesystem 36 includes this fix; published v35 archives remain unchanged.
+The same release includes the shared DirectPlay startup fixes described in
+[`probes/dpnet-startup.md`](probes/dpnet-startup.md).
 
 New Wine 11.0 builds apply
 [`wine11_dsound_sse_resampler.patch`](patches/wine11_dsound_sse_resampler.patch)
@@ -51,11 +115,11 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
 loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the
-v51 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+v53 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 33. Its `changes.txt` comes from
+The filesystem revision is 38. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -71,14 +135,17 @@ game: compile with an i686 Windows C compiler and `-lddraw -ldxguid -luser32`,
 then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
-[`webgl_filesystems_v33.json`](webgl_filesystems_v33.json) and the
-[v51 patch manifest](../wineTests/webgl-test-divergences-v51.json). To test that
+[`webgl_filesystems.json`](webgl_filesystems.json) and the
+[v53 patch manifest](../testing/wine/webgl-test-divergences-v53.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
-The v33 WebGL configuration pins the DLLs, source patches, and final
-archives in its `full-v33` and `web-v33` profiles. The complete filesystem is
-assembled by `filesystem_wine11.json`. See [RELEASE-v33.md](RELEASE-v33.md) for
-artifact identities, validation results, and upload instructions.
-The v33 prefix leaves the renderer registry values unset. The profile records
+Keep `webgl_filesystems.json` as the single current manifest and update it in
+place for each release. Older release and experimental manifests are available
+in Git history; paths recorded in old validation reports refer to those historical files.
+The current configuration pins the DLLs, source patches, and final
+archives in its `full-v39` and `web-v39` profiles. The complete filesystem is
+assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
+covers validation and publication.
+The v37 prefix leaves the renderer registry values unset. The profile records
 these as `null`, which requires their absence during validation.
 
 Revision 27 seeds `HKCU\Software\Wine\Direct3D\VideoMemorySize`
@@ -118,7 +185,7 @@ bounded delivery queues and allocators still limit buffering. Both variants
 include the reader fix and its blocking/nonblocking read-ahead regressions.
 Revision 31 fixes builtin DLL aliases across WinSxS paths, allowing the Sims 3
 launcher to use Wine's builtin VC80 runtime. Both variants now include
-`/usr/local/lib/libXxf86vm.so.1`, built from `tools/x11/Xxf86vm.c`.
+`/usr/local/lib/libXxf86vm.so.1`, built from `tools/fs_passthrough/x11/Xxf86vm.c`.
 The v31 base includes this library and a refreshed guest `ld.so.cache`. Fullscreen
 gamma correction requires the matching Windows OpenGL engine; older engines
 and unsupported backends safely report the extension as unavailable. The
@@ -133,11 +200,16 @@ license, provenance and upstream source bundle. Pin its resulting size/hash in
 `wine_builds.json` and `web_runtime_policy.json` before assembling both variants.
 [`probes/wav-playback.c`](probes/wav-playback.c) checks DirectShow loading,
 duration and playback completion using a generated PCM WAV.
-The new base and both Wine filesystems need uploads. The packages are staged locally for `/v2/33/`; upload and verification are pending.
-The staged legacy catalog targets `/v2/26R2/filesV2.xml`, and `/v2/latest/` should
-receive the same final ZIP bytes. The [release receipt](RELEASE-v33.md) records
-the checks actually run and the remaining platform qualification.
-Browser deployments also need this branch's engine update advertising WebGL 2
+Revision 35 adds 16-bit RGB565 modes to the separate WebGL WineD3D's existing
+32-bit list. The engine continues supplying 640x480, 800x600, 1024x768 and the
+starting resolution without duplicates. Both variants contain the v53 WineD3D;
+the seven other WebGL DLLs, v33 base and regular Wine binaries are unchanged.
+The archives use new immutable `/v2/35/` URLs. The
+[filesystem changelog](changes_wine11.txt) records the release changes.
+The legacy catalog remains at `/v2/26R2/filesV2.xml`; `/v2/latest/` mirrors the
+same final ZIP bytes. The unchanged base remains pinned to `/v2/33/`.
+Browser deployments need this branch's XRandR mode-list update as well as the
+engine update advertising WebGL 2
 uniform buffers to Wine; rebuilding the filesystem alone cannot update a
 deployed engine. Revision 28 media playback also needs the CPU FPU-reset and
 pthread floating-point inheritance fixes from this branch. See the
@@ -149,7 +221,9 @@ It retains revision 25's DirectSound backport. All eight WebGL DLLs were rebuilt
 from the v50 source series; only WineD3D differs from the v25 DLLs. The verified
 regular Wine binaries were retained, with fresh packaging and prefix setup.
 The ZIP writer gives Wine directories explicit executable permissions.
-UI, Jenkins, native automation, and demo-site pins now select the staged v33 archives.
+UI, Jenkins, native automation, and demo-site pins now select the published v39 archives.
+The hosted legacy catalog, `/v2/latest/` aliases and demo pages were not updated
+as part of the authorized two-file upload.
 Publish and verify both archives before deploying the new UI/Jenkins pins.
 Revision 26 retains the earlier WebGL fixes from revisions 24 and 25. Direct GLSL
 generation for fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8
@@ -363,7 +437,7 @@ The WebGL override contains the same optimizations and additionally expands
 RGB565 uploads eight pixels at a time with SSE2. Desktop OpenGL already accepts
 the packed RGB565 format; that WebGL-only expansion has no regular-Wine path.
 The four WebGL patches are applied automatically by the v43 source manifest.
-Build and validate with `--config tools/buildWine/webgl_filesystems_v33.json`.
+Build and validate with `--config tools/buildWine/webgl_filesystems.json`.
 
 [`probes/wined3d-performance.c`](probes/wined3d-performance.c) checks rendered
 pixels while changing fog values, shader variants and viewports, and exercises
@@ -377,18 +451,18 @@ performance measurements.
 
 ### GDI buffer lifetime (v42, filesystem version 13)
 
-[`webgl_filesystems_v13.json`](webgl_filesystems_v13.json) adds the GDI lifetime
+`webgl_filesystems_v13.json` (in Git history) adds the GDI lifetime
 fix to the v41 series and pins the rebuilt PE32 WineD3D. The other seven DLLs
 retain their v12 hashes. The full source series replays cleanly on Wine 11.0.
 The packaged DLL passes the eight-iteration, sixteen-flip regression with both
 `renderer=gdi` and `webgl=1,renderer=gdi`, loaded directly from the ZIP in fresh
 roots. This checks the affected GDI path; the browser graphics matrix has not
-been rerun for v42. Older configurations retain their historical archive pins.
+been rerun for v42. Git history retains the older configurations and their archive pins.
 
 ### September 19 review fixes (v41)
 
-[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) selects the
-[v41 patch series](../wineTests/webgl-test-divergences-v41.json). It preserves
+`webgl_filesystems_v11.json` (in Git history) selects the
+[v41 patch series](../testing/wine/webgl-test-divergences-v41.json). It preserves
 index 65535 for all indexed topologies and flat shading, handles negative base
 vertices safely, and corrects DirectDraw RGB10 channel masks on top of the v40
 performance build. The PE32 DLL build retains
@@ -400,59 +474,64 @@ The September 19 upload matches the tested candidate byte for byte. Its
 rebuilt `ddraw.dll` and `wined3d.dll` passed 7,156 focused browser checks across
 all four runtime modes with zero failures or skips, plus 14 direct format
 mapping checks. See the
-[validation and upload record](../wineTests/graphics-review-fixes-20260919.json).
+[validation and upload record](../testing/wine/graphics-review-fixes-20260919.json).
 The full Wine graphics matrix has not been rerun for v41.
 
-Build the current DLLs from a clean Wine checkout with:
+To reproduce the v41 DLLs, recover their historical manifest and build from
+a clean Wine checkout:
 
 ```bash
+config_commit=$(git log -1 --format=%H --diff-filter=AM -- tools/buildWine/webgl_filesystems_v11.json)
+git show "$config_commit:tools/buildWine/webgl_filesystems_v11.json" > /tmp/webgl-filesystems-v11.json
 python3 tools/buildWine/webgl_filesystem.py build \
-  --config tools/buildWine/webgl_filesystems_v11.json \
+  --config /tmp/webgl-filesystems-v11.json \
   --work-dir /tmp/boxedwine-webgl-v41 \
   --wine-repository /path/to/wine --jobs 8
 ```
 
 ### Previous performance build (v40)
 
-The [v40 series](../wineTests/webgl-test-divergences-v40.json) added full-surface
+The [v40 series](../testing/wine/webgl-test-divergences-v40.json) added full-surface
 clear, color readback loop, and lazy CPU depth synchronization improvements.
 Its DLLs passed 2,118 depth and 3,014 stencil checks with zero failures or skips,
 plus scheduler wake/idle checks in the
 [MechWarrior 3 investigation](../../docs/mechwarrior3-chrome-performance.md).
-The [September 15 packaging record](../wineTests/graphics-performance-package-20260915.json)
+The [September 15 packaging record](../testing/wine/graphics-performance-package-20260915.json)
 retains that earlier upload's identity and targeted qualification.
 
 ### Previous SSE qualification (v39)
 
-The [v39 qualification record](../wineTests/graphics-sse-build-20260914.json)
+The [v39 qualification record](../testing/wine/graphics-sse-build-20260914.json)
 covers all 56 ST JIT / MT JIT Wine graphics groups: 14,924,346 checks and zero
 failures. SSE resolves the previous `D3DXQuaternionBaryCentric` failure at
 `math.c:1557`; assertion, TODO and skip counts are unchanged. The comparison
-uses the original v38 test executables; see [BUILD_TESTS.md](../wineTests/BUILD_TESTS.md).
+uses the original v38 test executables; see [BUILD_TESTS.md](../testing/wine/BUILD_TESTS.md).
 
 ### Previous v38 candidate
 
-[`webgl_filesystems_p8_copy.json`](webgl_filesystems_p8_copy.json) pins the
+`webgl_filesystems_p8_copy.json` (in Git history) pins the
 previous Wine 11 candidate, `TinyCore15Wine11.0-p8-presentation.zip`. It records
 the Wine source commit, eight WebGL DLL identities, GL libraries and loader
 cache, and the exact full and base archive hashes. Its
-[v38 patch manifest](../wineTests/webgl-test-divergences-v38.json) selects
+[v38 patch manifest](../testing/wine/webgl-test-divergences-v38.json) selects
 48 production patches and one complete Wine graphics-test adaptation.
 See the [patch guide](../d3dToWebGL/README.md) for the ordered corrections and
-the [graphics testing guide](../wineTests/GRAPHICS_README.md) for the matching
+the [graphics testing guide](../testing/wine/GRAPHICS_README.md) for the matching
 baseline and ST JIT / MT JIT test commands.
 
-Select the candidate config explicitly. From the repository root in WSL:
+Recover the historical candidate config. From the repository root in WSL:
 
 ```bash
+config_commit=$(git log -1 --format=%H --diff-filter=AM -- tools/buildWine/webgl_filesystems_p8_copy.json)
+git show "$config_commit:tools/buildWine/webgl_filesystems_p8_copy.json" > /tmp/webgl-filesystems-p8-copy.json
 python3 tools/buildWine/webgl_filesystem.py verify-patches \
-  --config tools/buildWine/webgl_filesystems_p8_copy.json
+  --config /tmp/webgl-filesystems-p8-copy.json
 python3 tools/buildWine/webgl_filesystem.py build \
-  --config tools/buildWine/webgl_filesystems_p8_copy.json \
+  --config /tmp/webgl-filesystems-p8-copy.json \
   --work-dir /tmp/boxedwine-webgl-v38 \
   --wine-repository /path/to/wine --jobs 12
 python3 tools/buildWine/webgl_filesystem.py validate \
-  --config tools/buildWine/webgl_filesystems_p8_copy.json --profile full-candidate \
+  --config /tmp/webgl-filesystems-p8-copy.json --profile full-candidate \
   --filesystem /path/to/TinyCore15Wine11.0-p8-presentation.zip --write-sidecar
 ```
 
@@ -468,7 +547,7 @@ and its GL shims and loader cache are unchanged.
 
 ### v11 demo upload artifact
 
-[`webgl_filesystems_v11.json`](webgl_filesystems_v11.json) pins the September 19
+`webgl_filesystems_v11.json` (in Git history) pins the September 19
 `TinyCore15Wine11.0.zip` upload artifact. It combines the September 15 v40
 filesystem with the tested v41 `ddraw.dll` and `wined3d.dll`.
 All 8,695 other archive entries and their metadata are
@@ -476,8 +555,8 @@ preserved, including the other six SSE WebGL DLLs. Every entry's contents
 match the clean root used for the targeted checks above. The archive passes
 CRC, PE32/import, GL library, loader cache, registry, and exact profile checks.
 Its GL/EGL/GLES libraries and base archive are unchanged. Demo scripts
-use this profile by default; see the [demo site instructions](../jenkins/instructions.md)
-for selecting a candidate filesystem. GDI is a per-demo launch setting;
+used this profile for that release. Current demos use `webgl_filesystems.json`;
+see the [demo site instructions](../jenkins/instructions.md) for an explicit config override. GDI is a per-demo launch setting;
 a separate GDI filesystem is not required.
 
 The archive downloaded from
@@ -485,11 +564,13 @@ The archive downloaded from
 was verified against the tested candidate on September 19. An earlier cached
 archive will fail the profile's size or SHA-256 check.
 
-Validate the exact upload artifact from WSL with:
+Recover the v11 manifest and validate that exact upload artifact from WSL:
 
 ```bash
+config_commit=$(git log -1 --format=%H --diff-filter=AM -- tools/buildWine/webgl_filesystems_v11.json)
+git show "$config_commit:tools/buildWine/webgl_filesystems_v11.json" > /tmp/webgl-filesystems-v11.json
 python3 tools/buildWine/webgl_filesystem.py validate \
-  --config tools/buildWine/webgl_filesystems_v11.json --profile full-v11 \
+  --config /tmp/webgl-filesystems-v11.json --profile full-v11 \
   --filesystem /path/to/TinyCore15Wine11.0.zip --write-sidecar
 ```
 
@@ -498,30 +579,33 @@ and loader cache, without Wine or an initialized `.wine` prefix. Validate it wit
 
 ```bash
 python3 tools/buildWine/webgl_filesystem.py validate \
-  --config tools/buildWine/webgl_filesystems_v11.json --profile base-v11 \
+  --config /tmp/webgl-filesystems-v11.json --profile base-v11 \
   --filesystem /path/to/TinyCore15WineBase.zip --write-sidecar
 ```
 
 ### Historical v3/v10 filesystems
 
-The following v3/v10 commands and manifest remain available for historical
-filesystem reproduction and validation. Normal commands now default to
-`webgl_filesystems_v33.json`; pass the historical config explicitly below.
-The dedicated `validate-set` command retains its v3/v10 default.
+The following commands recover the v3/v10 manifest from Git history for
+historical filesystem reproduction and validation. Normal commands default to
+`webgl_filesystems.json`; the historical `validate-set` command requires an
+explicit `--config`.
 
 `webgl_filesystem.py` is the pinned build, packaging, and validation command
-for the Wine 11 PE32 DLL overrides used by Emscripten. Its checked-in
-`webgl_filesystems_v3.json` records the exact Wine commit, ordered patch
+for the Wine 11 PE32 DLL overrides used by Emscripten. Its historical
+`webgl_filesystems_v3.json` recorded the exact Wine commit, ordered patch
 manifest, reproducible DLL hashes, GL shim/cache hashes, and the historical v3
 and v10 filesystem identities.
 
-From WSL, verify the patch inputs and perform a clean build with:
+From WSL, recover the historical config, verify its patch inputs and perform
+a clean build with:
 
 ```bash
+config_commit=$(git log -1 --format=%H --diff-filter=AM -- tools/buildWine/webgl_filesystems_v3.json)
+git show "$config_commit:tools/buildWine/webgl_filesystems_v3.json" > /tmp/webgl-filesystems-v3.json
 python3 tools/buildWine/webgl_filesystem.py verify-patches \
-  --config tools/buildWine/webgl_filesystems_v3.json
+  --config /tmp/webgl-filesystems-v3.json
 python3 tools/buildWine/webgl_filesystem.py build \
-  --config tools/buildWine/webgl_filesystems_v3.json \
+  --config /tmp/webgl-filesystems-v3.json \
   --work-dir /tmp/boxedwine-webgl-wine11 \
   --wine-repository /path/to/wine \
   --jobs 12
@@ -540,7 +624,7 @@ Create a new candidate without modifying its input ZIP:
 
 ```bash
 python3 tools/buildWine/webgl_filesystem.py package \
-  --config tools/buildWine/webgl_filesystems_v3.json \
+  --config /tmp/webgl-filesystems-v3.json \
   --input /path/to/boxedwine.3.zip \
   --dll-dir /tmp/boxedwine-webgl-wine11/wine-build/boxedwine-webgl-dlls \
   --output /tmp/candidate/boxedwine.3.zip
@@ -555,7 +639,7 @@ Validate the complete installed set and write final sidecars with:
 
 ```bash
 python3 tools/buildWine/webgl_filesystem.py validate-set \
-  --config tools/buildWine/webgl_filesystems_v3.json \
+  --config /tmp/webgl-filesystems-v3.json \
   --normal /path/to/boxedwine.3.zip \
   --gdi /path/to/boxedwine.gdi.3.zip \
   --full /path/to/TinyCore15Wine11.0-v10-candidate.zip \

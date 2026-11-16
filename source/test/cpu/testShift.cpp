@@ -978,6 +978,101 @@ void runDoubleShiftWidth(DoubleShiftOp op, CountMode mode, int width, const char
 
 } // namespace
 
+void testShiftRotateCarryLoop() {
+    // Reverse a variable-length code, stopping early when SHR sets ZF.
+    // RCL must consume SHR's carry while preserving its zero flag for LOOPNZ.
+    constexpr U32 values[] = {0, 1, 2, 3, 5, 0x3f, 0x55, 0x1234, 0x7fff};
+    constexpr U8 code[] = {
+        0x31, 0xc0,       // xor eax,eax
+        0xd1, 0xeb,       // shr ebx,1
+        0xd1, 0xd0,       // rcl eax,1
+        0xe0, 0xfa,       // loopnz back to shr
+        0x41,             // inc ecx
+        0xd1, 0xeb,       // shr ebx,1
+        0xd3, 0xd0,       // rcl eax,cl
+    };
+    for (U32 bits = 2; bits <= 16; ++bits) {
+        for (U32 value : values) {
+            U32 expected = 0;
+            for (U32 bit = 0; bit < bits; ++bit) {
+                expected = (expected << 1) | ((value >> bit) & 1);
+            }
+            newInstruction(0);
+            cpu->reg[R_BX].u32 = value;
+            cpu->reg[R_CX].u32 = bits - 1;
+            for (U8 byte : code) pushCode8(byte);
+            runTestCPU();
+            if (cpu->reg[R_AX].u32 != expected) {
+                failed("SHR/RCL LOOPNZ value=%x bits=%u expected=%x actual=%x",
+                    value, bits, expected, cpu->reg[R_AX].u32);
+            }
+        }
+    }
+}
+
+void testRotatePreservedConditions() {
+    for (int width : {8, 16, 32}) {
+        for (U32 value : {0u, 1u, 0x80u, 0x8000u, 0x80000000u}) {
+            U32 result = value & widthMask(width);
+            U32 flags = resultFlags(result, width);
+            // An incoming state, then ROL/ROR/RCL/RCR with 1 or CL counts.
+            for (int variant = 0; variant <= 8; ++variant) {
+                bool incoming = variant == 0;
+                bool variableCount = variant > 4;
+                U8 rotate = incoming ? 0 : 0xc3 + ((variant - 1) % 4) * 8;
+                for (U8 condition : {4, 5, 8, 9}) { // Z, NZ, S, NS
+                    for (int consumer = 0; consumer < 3; ++consumer) {
+                        bool expected = (flags & (condition < 8 ? ZF : SF)) != 0;
+                        if (condition & 1) expected = !expected;
+                        newInstruction(flags ^ (ZF | SF));
+                        cpu->reg[R_AX].u32 = value;
+                        cpu->reg[R_CX].u32 = 1;
+                        cpu->reg[R_SI].u32 = 1;
+                        if (incoming) {
+                            cpu->lazyFlagType = FLAGS_CFOF;
+                            cpu->lazyFlagTypePrev = width == 8 ? FLAGS_OR8 : width == 16 ? FLAGS_OR16 : FLAGS_OR32;
+                            // Unused high bits must not change narrow flags.
+                            cpu->result.u32 = result | ~widthMask(width);
+                        } else {
+                            if (width == 16) pushCode8(0x66);
+                            pushCode8(width == 8 ? 0x08 : 0x09);
+                            pushCode8(0xc0); // or al/ax/eax,al/ax/eax
+                            pushCode8(variableCount ? 0xd3 : 0xd1);
+                            pushCode8(rotate);
+                        }
+                        if (consumer == 1) {
+                            pushCode8(0x70 | condition);
+                            pushCode8(4); // skip mov dl,0 and jmp
+                            pushCode8(0xb2);
+                            pushCode8(0);
+                            pushCode8(0xeb);
+                            pushCode8(2);
+                            pushCode8(0xb2);
+                            pushCode8(1);
+                        } else if (consumer == 0) {
+                            pushCode8(0x0f);
+                            pushCode8(0x90 | condition);
+                            pushCode8(0xc2); // setcc dl
+                        } else {
+                            pushCode8(0x0f);
+                            pushCode8(0x40 | condition);
+                            pushCode8(0xd6); // cmovcc edx,esi
+                        }
+                        runTestCPU();
+                        if (cpu->reg[R_DX].u8 != expected) {
+                            failed("rotate=%x cl=%d condition=%x width=%d value=%x incoming=%d consumer=%d",
+                                rotate, variableCount, condition, width, value, incoming, consumer);
+                        }
+                        if ((actualFlags(cpu) & (ZF | SF | PF)) != (flags & (ZF | SF | PF))) {
+                            failed("rotate condition changed preserved flags");
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void testShiftE8Ib_0x0c0() { runShiftWidth(COUNT_IMM, 8, "shift e8,ib c0"); }
 void testShiftE8Ib_0x2c0() { runShiftWidth(COUNT_IMM, 8, "shift e8,ib 2c0"); }
 void testShiftE16Ib_0x0c1() { runShiftWidth(COUNT_IMM, 16, "shift e16,ib c1"); }

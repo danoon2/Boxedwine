@@ -157,19 +157,6 @@ struct LibraryView: View {
                                 }.font(.callout).padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
                             }
                             if store.importing { ImportProgressView(store: store) }
-                            ForEach(store.launchingApps) { app in
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(alignment: .firstTextBaseline) {
-                                        Text("Launching \(app.name)…").fontWeight(.medium).lineLimit(2)
-                                        Spacer(minLength: 8)
-                                        Button("Stop") { store.stop(app) }.disabled(!store.canEdit)
-                                            .accessibilityLabel("Stop launching \(app.name)")
-                                    }
-                                    ProgressView().progressViewStyle(.linear)
-                                        .accessibilityLabel("Launching \(app.name)")
-                                }
-                                .padding(14).background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
-                            }
                             if store.visibleApps.isEmpty {
                                 emptyLibrary
                             } else {
@@ -369,6 +356,14 @@ private struct LibraryAppCard: View {
             .background(sharedDropTarget || store.selectedID == app.id ? Color.accentColor.opacity(0.13) : Color.clear,
                         in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(store.selectedID == app.id ? Color.accentColor.opacity(0.6) : .clear))
+            .overlay(alignment: .bottom) {
+                if store.isLaunching(app) {
+                    ProgressView().progressViewStyle(.linear)
+                        .padding(.horizontal, 14).padding(.bottom, 6)
+                        .accessibilityLabel("Launching \(app.name)")
+                        .allowsHitTesting(false)
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -409,6 +404,16 @@ private struct LibraryAppCard: View {
             Button(store.removalActionTitle) { store.requestRemoval(app) }
                 .disabled(!store.canModify(app))
                 .help(store.removalActionHelp)
+        }
+        // Keep this outside the card button and its double-click gesture.
+        // Neither overlay changes the card's layout when launch state changes.
+        .overlay(alignment: .topTrailing) {
+            if store.isLaunching(app) {
+                Button("Stop") { store.stop(app) }
+                    .controlSize(.small).disabled(!store.canEdit)
+                    .accessibilityLabel("Stop launching \(app.name)")
+                    .padding(14)
+            }
         }
     }
 }
@@ -873,6 +878,20 @@ struct AppSettingsView: View {
 }
 
 struct AppTroubleshootingView: View {
+    private struct Tip: Decodable, Identifiable {
+        let id: String
+        let title: String
+        let advice: String
+        let knownGames: [String]
+    }
+    private static let tips: [Tip] = {
+        guard let url = Bundle.main.url(forResource: "troubleshooting", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let tips = try? JSONDecoder().decode([Tip].self, from: data) else {
+            return [Tip(id: "unavailable", title: "Compatibility tips unavailable", advice: "Reinstall Boxedwine to restore its help files.", knownGames: [])]
+        }
+        return tips
+    }()
     @ObservedObject var store: LibraryStore
     let app: LibraryApp
     @State private var showLaunchLog = false
@@ -934,6 +953,15 @@ struct AppTroubleshootingView: View {
                                 Text("For games released before 2007, try Windows XP in App Settings. Wine packages with Boxedwine’s A8 compatibility patch disable A8 shadow render targets by default in XP and earlier, helping games such as The Sims 2 avoid black square shadows.")
                             }
                             Divider()
+                            ForEach(Self.tips) { tip in
+                                topic(tip.title) {
+                                    Text(tip.advice)
+                                    if !tip.knownGames.isEmpty {
+                                        Text("Known games affected: " + tip.knownGames.joined(separator: ", "))
+                                    }
+                                }
+                                Divider()
+                            }
                             topic("Slow gameplay") {
                                 Text("Lower the resolution and graphics detail in the game’s own settings. Match Boxedwine’s Window size to the game’s resolution. Close other demanding Mac apps while testing.")
                                 Text("Boxedwine emulates an x86 PC, which adds work even on a fast Mac. Some games will remain too demanding or have compatibility problems; a different display setting cannot fix every issue.")

@@ -17,7 +17,7 @@ REPO = LINUX.parent.parent
 ARCHITECTURES = {'x86_64': ('amd64', 'x64'), 'aarch64': ('arm64', 'arm64')}
 SOURCE_PATHS = (
     'include', 'source', 'platform', 'lib', 'resources', 'license.txt',
-    'tools/demo_catalog.py', 'tools/opengl', 'tools/x11', 'project/linux',
+    'project/shared/demo_catalog.py', 'tools/fs_passthrough/opengl', 'tools/fs_passthrough/x11', 'project/linux',
     'project/mac-xcode/Boxedwine/BoxedwineUI/Resources',
     'project/mac-xcode/Boxedwine/Media.xcassets/AppIcon.appiconset/icon_256x256.png',
 )

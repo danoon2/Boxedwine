@@ -1,0 +1,72 @@
+Subject: [PATCH] wined3d: Upload multisample textures through a single-sample staging texture.
+
+D3D8 CopyRects supports copying a CPU image surface into an MSAA render
+ target. OpenGL does not accept glTexSubImage uploads to multisample
+ textures, so stage the data and use a same-size framebuffer blit to copy
+ each pixel into every destination sample. Preserve the existing format
+ conversion, source pitch and partial destination update paths.
+
+Reproduced by Z: Steel Soldiers demo's exit presentation and
+ tools/buildWine/probes/d3d8-msaa-upload.c. Native Windows passes all 12
+ probe cases; unpatched Wine 11 fails the eight multisampled cases.
+
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+index 4996a24545c..88aa1396bde 100644
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -1587,8 +1587,54 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+             break;
+         case GL_TEXTURE_2D_MULTISAMPLE:
+         case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+-            FIXME("Not supported for multisample textures.\n");
++        {
++            struct wined3d_resource_desc desc;
++            struct wined3d_texture *staging_texture;
++            RECT src_rect, dst_rect;
++            HRESULT hr;
++
++            /* Multisample textures cannot be populated with glTexSubImage*().
++             * Upload to a single-sample texture, then replicate each pixel to
++             * all destination samples with a framebuffer blit. */
++            desc.resource_type = WINED3D_RTYPE_TEXTURE_2D;
++            desc.format = dst_texture->resource.format->id;
++            desc.multisample_type = WINED3D_MULTISAMPLE_NONE;
++            desc.multisample_quality = 0;
++            desc.usage = WINED3DUSAGE_CS;
++            desc.bind_flags = 0;
++            desc.access = WINED3D_RESOURCE_ACCESS_GPU;
++            desc.width = update_w;
++            desc.height = update_h;
++            desc.depth = 1;
++            desc.size = 0;
++
++            if (FAILED(hr = wined3d_texture_create(context->device, &desc, 1, 1, 0,
++                    NULL, NULL, &wined3d_null_parent_ops, &staging_texture)))
++            {
++                ERR("Failed to create upload texture, hr %#lx.\n", hr);
++                return;
++            }
++            if (!wined3d_texture_prepare_location(staging_texture, 0, context, dst_location))
++            {
++                wined3d_texture_decref(staging_texture);
++                return;
++            }
++
++            wined3d_texture_gl_upload_data(context, src_bo_addr, src_format, src_box,
++                    src_row_pitch, src_slice_pitch, staging_texture, 0, dst_location, 0, 0, 0);
++            wined3d_texture_validate_location(staging_texture, 0, dst_location);
++            wined3d_texture_invalidate_location(staging_texture, 0, ~dst_location);
++            SetRect(&src_rect, 0, 0, update_w, update_h);
++            SetRect(&dst_rect, dst_x, dst_y, dst_x + update_w, dst_y + update_h);
++            if (dst_texture->resource.format->depth_size || dst_texture->resource.format->stencil_size)
++                texture2d_depth_blt_fbo(context->device, context, staging_texture, 0,
++                        dst_location, &src_rect, dst_texture, dst_sub_resource_idx, dst_location, &dst_rect);
++            else
++                texture2d_blt_fbo(context->device, context, WINED3D_TEXF_POINT, staging_texture, 0,
++                        dst_location, &src_rect, dst_texture, dst_sub_resource_idx, dst_location, &dst_rect, NULL);
++            wined3d_texture_decref(staging_texture);
+             return;
++        }
+     }
+ 
+     bo.buffer_object = src_bo_addr->buffer_object;
