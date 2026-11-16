@@ -13,6 +13,7 @@
 #ifdef BOXEDWINE_WASM_JIT
 void testWasmJitModuleMerger();
 void testWasmJitBatchPolicy();
+void testWasmJitAbandonedBlockRunsInInterpreter();
 void testWasmJitMappedFileRange();
 void testWasmJitColdStringStub();
 #ifdef BOXEDWINE_MULTI_THREADED

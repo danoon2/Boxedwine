@@ -359,6 +359,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testExecutableFixedReplacementPreparationFailurePreservesState, "Test WASM JIT fixed replacement backend preparation is transactional", TEST_ENTRY_SERIAL},
     {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
     {testWasmJitBatchPolicy, "Test WASM JIT runtime batch policy"},
+    {testWasmJitAbandonedBlockRunsInInterpreter, "Test WASM JIT abandoned block runs in the interpreter", TEST_ENTRY_SERIAL},
     {testWasmJitMappedFileRange, "Test WASM JIT mapped file range"},
     {testWasmJitColdStringStub, "Test WASM JIT cold string fallback"},
 #endif

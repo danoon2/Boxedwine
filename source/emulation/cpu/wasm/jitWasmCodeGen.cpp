@@ -86,6 +86,12 @@ static bool g_wasmJitTestFailInvalidationPreparation = false;
 void wasmJitTestSetFailInvalidationPreparation(bool fail) {
     g_wasmJitTestFailInvalidationPreparation = fail;
 }
+
+static bool g_wasmJitTestAbandonNextBlock = false;
+
+void wasmJitTestSetAbandonNextBlock(bool abandon) {
+    g_wasmJitTestAbandonNextBlock = abandon;
+}
 #endif
 #include <vector>
 
@@ -6946,6 +6952,15 @@ void JitWasmCodeGen::popToReg(JitWidth w, RegPtr reg) {
     }
 }
 
+void JitWasmCodeGen::abandonBlock(const char* reason) {
+    // The rest of the block is still emitted, possibly with aliased locals,
+    // but commitJIT discards it. Process helpers that are never committed
+    // (createEmulateSingleOp) can also get here; they are not reported.
+    if (!m_abandonReason) {
+        m_abandonReason = reason;
+    }
+}
+
 U32 JitWasmCodeGen::allocScratch() {
     for (U32 i = 0; i < WASM_TMP_LOCAL_COUNT; i++) {
         if (!m_scratchInUse[i]) {
@@ -6953,7 +6968,7 @@ U32 JitWasmCodeGen::allocScratch() {
             return WASM_TMP_LOCAL_BASE + i;
         }
     }
-    kpanic("JitWasmCodeGen: scratch local pool exhausted");
+    abandonBlock("scratch local pool exhausted");
     return WASM_TMP_LOCAL_BASE;
 }
 
@@ -6970,7 +6985,7 @@ U32 JitWasmCodeGen::allocF64Scratch() {
             return WASM_F64_LOCAL_BASE + i;
         }
     }
-    kpanic("JitWasmCodeGen: f64 scratch local pool exhausted");
+    abandonBlock("f64 scratch local pool exhausted");
     return WASM_F64_LOCAL_BASE;
 }
 
@@ -6987,7 +7002,7 @@ U32 JitWasmCodeGen::allocV128Scratch() {
             return WASM_V128_LOCAL_BASE + i;
         }
     }
-    kpanic("JitWasmCodeGen: v128 scratch local pool exhausted");
+    abandonBlock("v128 scratch local pool exhausted");
     return WASM_V128_LOCAL_BASE;
 }
 
@@ -13539,10 +13554,11 @@ void JitWasmCodeGen::callHostFunction(void* address, const std::vector<DynParam>
     }
     // Legacy x87/MMX callers have already ended their cache region. Other
     // helpers may observe CPU state, but leave the x87 registers unchanged.
-    materializeFpuCache();
-    syncDirtyRegsToHost();
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCallIndirect(m_typeVoidI32, 0);
+    // JIT modules import their helpers as functions and no table, so a
+    // call_indirect would fail validation. Every front-end path that reaches
+    // this needs a helper import instead.
+    (void)address;
+    abandonBlock("callHostFunction has no helper import");
     m_gpLoaded.fill(false);
     m_xmmLoaded.fill(false);
 }
@@ -14695,10 +14711,57 @@ extern "C" U32 wasmJitTestEmissionCount() {
 }
 #endif
 
+// Run a block that will not be published in the interpreter. Without this,
+// op->pfn stays firstDynamicOp, which would recompile and call itself every
+// time the op runs. Only this block's ops are reset: the decoded chain can run
+// past the block, and entries of other live or pending blocks inside it keep
+// their code.
+static void runWasmJitBlockInInterpreter(DecodedOp* op, U32 blockOpCount, OpCallback startJITOp) {
+    DecodedOp* cur = op;
+    for (U32 i = 0; i < blockOpCount && cur; ++i, cur = cur->next) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        void* code = wasmJitMtLoadPublishedCode(cur);
+#else
+        void* code = cur->pfnJitCode;
+#endif
+        if (cur != op && ((cur->flags2 & OP_FLAG2_WASM_JIT_PENDING) || (code && cur->pfn == startJITOp))) {
+            continue;
+        }
+        cur->pfn = NormalCPU::getFunctionForOp(cur);
+#ifdef BOXEDWINE_MULTI_THREADED
+        wasmJitMtUnpublishCode(cur);
+#else
+        cur->pfnJitCode = nullptr;
+#endif
+    }
+}
+
+#ifdef __TEST
+bool wasmJitTestOpRunsInInterpreter(DecodedOp* op) {
+    return !op->pfnJitCode && op->pfn == NormalCPU::getFunctionForOp(op);
+}
+#endif
+
 void JitWasmCodeGen::commitJIT(DecodedOp* op) {
 #ifdef __TEST
     g_wasmJitTestEmissionCount.fetch_add(1, std::memory_order_relaxed);
+    if (g_wasmJitTestAbandonNextBlock) {
+        g_wasmJitTestAbandonNextBlock = false;
+        abandonBlock("test request");
+    }
 #endif
+    if (m_abandonReason) {
+        static std::mutex loggedMutex;
+        static std::unordered_set<std::string> logged;
+        {
+            std::lock_guard<std::mutex> lock(loggedMutex);
+            if (logged.insert(m_abandonReason).second) {
+                klog_fmt("[WASM JIT] abandoned block at %x: %s (reported once per reason)", this->startingEip, m_abandonReason);
+            }
+        }
+        runWasmJitBlockInInterpreter(op, this->blockOpCount, cpu->thread->process->startJITOp);
+        return;
+    }
     // Finalize the WASM function body and the module binary.
     if (m_directLoopOpen) {
         m_emitter.emitEnd();
@@ -15066,21 +15129,8 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
 
     if (tableIdx < 0) {
         delete[] relocArr;
-        // Instantiation failed — fall back to the normal CPU interpreter
-        // for every op in the block. Without this, op->pfn stays as
-        // firstDynamicOp, which would recompile-then-call-self every time
-        // the op runs → infinite loop.
-        DecodedOp* cur = op;
-        while (cur) {
-            cur->pfn = NormalCPU::getFunctionForOp(cur);
-#ifdef BOXEDWINE_MULTI_THREADED
-            wasmJitMtUnpublishCode(cur);
-#else
-            cur->pfnJitCode = nullptr;
-#endif
-            if (cur->next == nullptr) break;
-            cur = cur->next;
-        }
+        // Instantiation failed: fall back to the interpreter.
+        runWasmJitBlockInInterpreter(op, this->blockOpCount, cpu->thread->process->startJITOp);
         return;
     }
 

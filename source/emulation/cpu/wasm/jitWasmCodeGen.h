@@ -146,8 +146,9 @@
  * ----------------------------------------------------------------
  * Every gate below is deliberate — diagnostics and verification tools, not
  * feature toggles. Failed-experiment defines are not kept in this code; the
- * experiment history lives in docs/Wasm-JIT-*.md and on the experiment
- * branches.
+ * experiment history lives on the parked experiment branches (their
+ * docs/Wasm-JIT-*.md notes are not on master). Build and test steps are in
+ * project/emscripten/buildInstructions.md.
  *
  *   BOXEDWINE_WASM_JIT          The backend itself (jit / multiThreadedJit /
  *                               testJit targets in project/emscripten).
@@ -1077,6 +1078,10 @@ protected:
     // The helper has signature: void helper(CPU* cpu)
     void callCppHelper(void* helperFn);
 
+    // Give up on this block: commitJIT runs its ops in the interpreter instead
+    // of publishing the module. Used where emitting valid code is impossible.
+    void abandonBlock(const char* reason);
+
     // Allocate a scratch local (from WASM_TMP_LOCAL_BASE range)
     U32 allocScratch();
     void freeScratch(U32 local);
@@ -1195,6 +1200,7 @@ protected:
 
     // The current block's WASM binary (set in commitJIT)
     std::vector<U8> m_wasmBinary;
+    const char* m_abandonReason = nullptr;
 
     // Helper: emit code to sync all dirty GP and XMM registers back to CPU struct
     void syncDirtyRegsToHost();
@@ -1288,6 +1294,8 @@ bool wasmJitCompilationPaused();
 #ifdef __TEST
 extern "C" U32 wasmJitTestEmissionCount();
 void wasmJitTestSetFailInvalidationPreparation(bool fail);
+void wasmJitTestSetAbandonNextBlock(bool abandon);
+bool wasmJitTestOpRunsInInterpreter(DecodedOp* op);
 #endif
 
 #if defined(__TEST) && !defined(BOXEDWINE_MULTI_THREADED)
