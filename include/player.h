@@ -48,6 +48,8 @@ private:
     U32 timerWhileWaiting = 0;
     U32 waitMouseX = 0;
     U32 waitMouseY = 0;
+    std::vector<U32> waitMousePositions;
+    U32 waitMousePositionIndex = 0;
     U32 waitKey = 0;
     bool processWaitCommand = false;
     BString waitCommand;

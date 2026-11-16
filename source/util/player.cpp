@@ -411,9 +411,18 @@ void Player::runSlice() {
             waitCommand = items[1];
         }
         if (waitCommand == "LBUTTON") {
+            waitMousePositions.clear();
+            waitMousePositionIndex = 0;
             if (items.size() > 3) {
+                if ((items.size() - 2) % 2 != 0) {
+                    klog("script: WHILEWAITING LBUTTON requires x,y pairs");
+                    exit(99);
+                }
                 waitMouseX = atoi(items[2].c_str());
                 waitMouseY = atoi(items[3].c_str());
+                for (size_t i = 2; i < items.size(); ++i) {
+                    waitMousePositions.push_back(atoi(items[i].c_str()));
+                }
             } else {
                 waitMouseX = 1;
                 waitMouseY = 1;
@@ -460,7 +469,7 @@ void Player::runSlice() {
             processWaitCommand = false;
             this->lastCommandTime = KSystem::getMicroCounter();
             input->mouseButton(0, 0, waitMouseX, waitMouseY);
-            klog("script WHILEWAITING LBUTTON");
+            klog_fmt("script WHILEWAITING LBUTTON x=%u y=%u", waitMouseX, waitMouseY);
             return;
         } else if (waitCommand == "KEY") {
             processWaitCommand = false;
@@ -618,6 +627,15 @@ void Player::runSlice() {
     if ((this->nextCommand == "SCREENSHOT" || this->nextCommand == "DONE") && timerWhileWaiting && nextWaitTime < KSystem::getMilliesSinceStart()) {
         nextWaitTime = KSystem::getMilliesSinceStart() + timerWhileWaiting * 1000;
         if (waitCommand == "LBUTTON") {
+            // Cycle through recovery buttons, keeping each down/up pair at the
+            // same position. A late popup can otherwise steal the sole Exit click.
+            if (!waitMousePositions.empty()) {
+                waitMouseX = waitMousePositions[waitMousePositionIndex++];
+                waitMouseY = waitMousePositions[waitMousePositionIndex++];
+                if (waitMousePositionIndex == waitMousePositions.size()) {
+                    waitMousePositionIndex = 0;
+                }
+            }
             input->mouseButton(1, 0, waitMouseX, waitMouseY);
             processWaitCommand = true;
             this->lastCommandTime = KSystem::getMicroCounter();
