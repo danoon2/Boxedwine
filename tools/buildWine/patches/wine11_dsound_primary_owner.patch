@@ -1,0 +1,166 @@
+From: Boxedwine project
+Subject: [PATCH] dsound: Keep primary buffer interfaces per DirectSound object.
+
+Force Commander uses separate DirectSound objects for Miles and SMUSH.
+Sharing the first primary interface also shares its control flags, so SMUSH
+cannot query the volume of its requested DSBCAPS_CTRLVOLUME primary and
+disables movie audio. Cache primaries per DirectSound object, recreate them
+after all interfaces are released, and reject duplication of any primary.
+Keep the shared device mixer and listener state intact.
+
+Verified against native Windows with tools/testing/wine/dsoundPrimaryProbe.c.
+
+
+---
+--- a/dlls/dsound/dsound.c
++++ b/dlls/dsound/dsound.c
+@@ -47,6 +47,7 @@
+     IUnknown           *outer_unk;      /* internal */
+     LONG                ref, refds, numIfaces;
+     DirectSoundDevice  *device;
++    IDirectSoundBufferImpl *primary; /* cached for this DirectSound object */
+     BOOL                has_ds8;
+ } IDirectSoundImpl;
+ 
+@@ -353,12 +354,13 @@
+ }
+ 
+ static HRESULT DirectSoundDevice_CreateSoundBuffer(
+-    DirectSoundDevice * device,
++    IDirectSoundImpl *dsound,
+     LPCDSBUFFERDESC dsbd,
+     LPLPDIRECTSOUNDBUFFER ppdsb,
+     LPUNKNOWN lpunk,
+     BOOL from8)
+ {
++    DirectSoundDevice *device = dsound->device;
+     HRESULT hres = DS_OK;
+     TRACE("(%p,%p,%p,%p)\n",device,dsbd,ppdsb,lpunk);
+ 
+@@ -413,19 +415,26 @@
+             return DSERR_INVALIDPARAM;
+         }
+ 
+-        if (device->primary) {
++        EnterCriticalSection(&device->mixlock);
++        if (dsound->primary && !dsound->primary->numIfaces)
++        {
++            primarybuffer_destroy(dsound->primary);
++            dsound->primary = NULL;
++        }
++        if (dsound->primary) {
+             WARN("Primary Buffer already created\n");
+-            IDirectSoundBuffer8_AddRef(&device->primary->IDirectSoundBuffer8_iface);
+-            *ppdsb = (IDirectSoundBuffer *)&device->primary->IDirectSoundBuffer8_iface;
++            IDirectSoundBuffer8_AddRef(&dsound->primary->IDirectSoundBuffer8_iface);
++            *ppdsb = (IDirectSoundBuffer *)&dsound->primary->IDirectSoundBuffer8_iface;
+         } else {
+-            hres = primarybuffer_create(device, &device->primary, dsbd);
+-            if (device->primary) {
+-                *ppdsb = (IDirectSoundBuffer*)&device->primary->IDirectSoundBuffer8_iface;
+-                device->primary->dsbd.dwFlags &= ~(DSBCAPS_LOCHARDWARE | DSBCAPS_LOCSOFTWARE);
+-                device->primary->dsbd.dwFlags |= DSBCAPS_LOCSOFTWARE;
++            hres = primarybuffer_create(device, &dsound->primary, dsbd);
++            if (dsound->primary) {
++                *ppdsb = (IDirectSoundBuffer*)&dsound->primary->IDirectSoundBuffer8_iface;
++                dsound->primary->dsbd.dwFlags &= ~(DSBCAPS_LOCHARDWARE | DSBCAPS_LOCSOFTWARE);
++                dsound->primary->dsbd.dwFlags |= DSBCAPS_LOCSOFTWARE;
+             } else
+                 WARN("primarybuffer_create() failed\n");
+         }
++        LeaveCriticalSection(&device->mixlock);
+     } else {
+         if (dsbd->lpwfxFormat == NULL) {
+             WARN("invalid parameter: dsbd->lpwfxFormat can't be NULL for "
+@@ -542,7 +551,7 @@
+     }
+ 
+     /* make sure we have a secondary buffer */
+-    if (psb == (IDirectSoundBuffer *)&device->primary->IDirectSoundBuffer8_iface) {
++    if (((IDirectSoundBufferImpl *)psb)->dsbd.dwFlags & DSBCAPS_PRIMARYBUFFER) {
+         WARN("trying to duplicate primary buffer\n");
+         *ppdsb = NULL;
+         return DSERR_INVALIDCALL;
+@@ -627,6 +636,8 @@
+ 
+ static void directsound_destroy(IDirectSoundImpl *This)
+ {
++    if (This->primary)
++        primarybuffer_destroy(This->primary);
+     if (This->device)
+         DirectSoundDevice_Release(This->device);
+     TRACE("(%p) released\n", This);
+@@ -744,7 +755,7 @@
+ {
+     IDirectSoundImpl *This = impl_from_IDirectSound8(iface);
+     TRACE("(%p,%p,%p,%p)\n", This, dsbd, ppdsb, lpunk);
+-    return DirectSoundDevice_CreateSoundBuffer(This->device, dsbd, ppdsb, lpunk, This->has_ds8);
++    return DirectSoundDevice_CreateSoundBuffer(This, dsbd, ppdsb, lpunk, This->has_ds8);
+ }
+ 
+ static HRESULT WINAPI IDirectSound8Impl_GetCaps(IDirectSound8 *iface, DSCAPS *dscaps)
+--- a/dlls/dsound/dsound_private.h
++++ b/dlls/dsound/dsound_private.h
+@@ -82,7 +82,6 @@
+     IDirectSoundBufferImpl**    buffers;
+     SRWLOCK                     buffer_list_lock;
+     CRITICAL_SECTION            mixlock;
+-    IDirectSoundBufferImpl     *primary;
+     DWORD                       speaker_config;
+     float                       speaker_angles[DS_MAX_CHANNELS];
+     int                         speaker_num[DS_MAX_CHANNELS];
+--- a/dlls/dsound/primary.c
++++ b/dlls/dsound/primary.c
+@@ -370,12 +370,6 @@
+ 	/* **** */
+ 	EnterCriticalSection(&(device->mixlock));
+ 
+-	if(device->primary && (device->primary->ref || device->primary->numIfaces))
+-		WARN("Destroying primary buffer while references held (%lu %lu)\n", device->primary->ref, device->primary->numIfaces);
+-
+-	free(device->primary);
+-	device->primary = NULL;
+-
+ 	free(device->primary_pwfx);
+ 	free(device->pwfx);
+ 	device->pwfx=NULL;
+@@ -1161,25 +1155,6 @@
+         dsb->IKsPropertySet_iface.lpVtbl = &iksbvt;
+ 	dsb->dsbd = *dsbd;
+ 
+-        /* IDirectSound3DListener */
+-        device->ds3dl.dwSize = sizeof(DS3DLISTENER);
+-        device->ds3dl.vPosition.x = 0.0;
+-        device->ds3dl.vPosition.y = 0.0;
+-        device->ds3dl.vPosition.z = 0.0;
+-        device->ds3dl.vVelocity.x = 0.0;
+-        device->ds3dl.vVelocity.y = 0.0;
+-        device->ds3dl.vVelocity.z = 0.0;
+-        device->ds3dl.vOrientFront.x = 0.0;
+-        device->ds3dl.vOrientFront.y = 0.0;
+-        device->ds3dl.vOrientFront.z = 1.0;
+-        device->ds3dl.vOrientTop.x = 0.0;
+-        device->ds3dl.vOrientTop.y = 1.0;
+-        device->ds3dl.vOrientTop.z = 0.0;
+-        device->ds3dl.flDistanceFactor = DS3D_DEFAULTDISTANCEFACTOR;
+-        device->ds3dl.flRolloffFactor = DS3D_DEFAULTROLLOFFFACTOR;
+-        device->ds3dl.flDopplerFactor = DS3D_DEFAULTDOPPLERFACTOR;
+-        device->ds3dl_need_recalc = TRUE;
+-
+ 	TRACE("Created primary buffer at %p\n", dsb);
+ 	TRACE("(formattag=0x%04x,chans=%d,samplerate=%ld,"
+ 		"bytespersec=%ld,blockalign=%d,bitspersamp=%d,cbSize=%d)\n",
+@@ -1192,3 +1167,13 @@
+ 	*ppdsb = dsb;
+ 	return S_OK;
+ }
++
++/* The primary interface remains cached at zero references until its owner
++ * is released or creates a new primary buffer. */
++void primarybuffer_destroy(IDirectSoundBufferImpl *buffer)
++{
++    if (buffer->numIfaces)
++        WARN("Destroying primary buffer while references held (%lu %lu)\n",
++                buffer->ref, buffer->numIfaces);
++    free(buffer);
++}

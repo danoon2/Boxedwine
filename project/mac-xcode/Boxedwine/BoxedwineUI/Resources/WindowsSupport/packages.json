@@ -1,8 +1,8 @@
 {
-  "https://boxedwine.org/v2/39/TinyCore15Wine11.0.zip": {
-    "bytes": 216632445,
-    "fileVersion": "39",
-    "filesystemVersion": "39",
-    "sha256": "224bff42ba1e08c9c987f7689d9e4c0c1b3b322b5911d7b6b6f7761c9c85bb8c"
+  "https://boxedwine.org/v2/40/TinyCore15Wine11.0.zip": {
+    "bytes": 216632618,
+    "fileVersion": "40",
+    "filesystemVersion": "40",
+    "sha256": "1f59ae9eaaaffa4a9ba67cf1050ef07dcba0ce3f8f334b2aaabb1a50d2b74281"
   }
 }
