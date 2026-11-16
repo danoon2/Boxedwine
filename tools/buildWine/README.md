@@ -15,7 +15,7 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
-Revision 39's full and web filesystem ZIPs are published under `/v2/39/`.
+Revision 40's full and web filesystem ZIPs are published under `/v2/40/`.
 The unchanged base remains at `/v2/37/TinyCore15WineBase.zip`. Do not upload
 to boxedwine.org automatically; publication requires an explicit user request.
 The base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
@@ -90,6 +90,15 @@ Wine 11.0. Filesystem revision 25 rebuilds both Wine variants with this patch. W
 changing a Wine patch, rebuild Wine before assembling a filesystem;
 `--phase assemble` alone can reuse old Wine binaries.
 
+New Wine 11.0 builds also apply
+[`wine11_dsound_primary_owner.patch`](patches/wine11_dsound_primary_owner.patch)
+to both variants. Each DirectSound object owns its primary buffer interface and
+control flags, while the audio device remains shared. This lets Force Commander's
+SMUSH movie player request volume control independently of the game's Miles
+audio object. See the [DirectSound regression probe](../testing/wine/README.md#directsound-primary-buffer-regression)
+for the Windows comparison and local test commands. Revision 40 includes this fix
+in both the full and web filesystems.
+
 `build_filesystem.py` builds Wine, initializes a new prefix in Boxedwine, installs
 Wine Gecko, and adds the graphics components. It does not read an existing full
 Wine filesystem to construct the result. Its inputs are the pinned TinyCore
@@ -142,7 +151,7 @@ Keep `webgl_filesystems.json` as the single current manifest and update it in
 place for each release. Older release and experimental manifests are available
 in Git history; paths recorded in old validation reports refer to those historical files.
 The current configuration pins the DLLs, source patches, and final
-archives in its `full-v39` and `web-v39` profiles. The complete filesystem is
+archives in its `full-v40` and `web-v40` profiles. The complete filesystem is
 assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
 covers validation and publication.
 The v37 prefix leaves the renderer registry values unset. The profile records

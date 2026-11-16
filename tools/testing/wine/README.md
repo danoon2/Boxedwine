@@ -38,6 +38,32 @@ and the WSLg display-mode limitation.
 Every generated BoxedWine command uses `-novideo` to prevent host test windows
 from appearing during headless execution.
 
+## DirectSound primary-buffer regression
+
+`dsoundPrimaryProbe.c` compares primary-buffer ownership and control flags on
+Windows and Wine. It covers DirectSound and DirectSound8, repeated creation on
+one object, separate owners, releasing/recreating buffers, retained 3D listener
+interfaces, and primary versus secondary duplication. It opens a hidden window
+and an audio device, but does not play sound or change volume.
+
+Build with a 32-bit MinGW compiler:
+
+```sh
+i686-w64-mingw32-gcc -O2 -Wall dsoundPrimaryProbe.c -o dsoundPrimaryProbe.exe \
+    -ldsound -ldxguid -lole32
+```
+
+Run `dsoundPrimaryProbe.exe results.txt` on Windows. For Boxedwine, mount the
+probe directory at `/mnt/probe`, use a fresh `-root` with the Wine filesystem,
+and launch `/bin/wine /mnt/probe/dsoundPrimaryProbe.exe C:\primary-results.txt`.
+Use the standalone native runtime with `-novideo`, but keep sound enabled.
+Read the result from `root/home/username/.wine/drive_c/primary-results.txt`;
+the runtime's exit code alone does not report the probe's assertions.
+
+Expected result: `PASS: 211 checks, 0 failures`. Compare both the unmodified
+filesystem and the candidate Wine DLL, then verify actual movie and gameplay
+audio in Force Commander. The probe does not validate sound playback quality.
+
 ## Linux prerequisites
 
 On Ubuntu or Debian, install the BoxedWine build dependencies and Python 3:

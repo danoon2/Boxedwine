@@ -142,6 +142,14 @@
         "min": "11.0",
         "max": "11.0"
       },
+      "apply_patch": "wine11_dsound_primary_owner.patch",
+      "reason": "Keep primary sound buffer controls separate for each DirectSound object so Force Commander's SMUSH movies can initialize audio"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_wined3d_partial_stream_output.patch",
       "reason": "Capture partial stream-output fields alongside rasterizer outputs so GPU cloth simulation in 3DMark Vantage can update its vertex buffers"
     },
