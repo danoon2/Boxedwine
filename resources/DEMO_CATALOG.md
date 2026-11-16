@@ -8,7 +8,7 @@ URL. An unchanged pin makes no network request when its verified ZIP is cached.
 
 The package contains `catalog.xml` and its referenced PNGs in one flat directory.
 The XML's `release` matches the lock's `version`; `schemaVersion` describes the
-recipe format separately. The current pin, `26R2-catalog-44`, contains 55 recipes and icons,
+recipe format separately. The current pin, `26R2-catalog-45`, contains 56 recipes and icons,
 including 3DMark2001 SE, 3DMark03 (2003), 3DMark05 (2004),
 3DMark06 (2006), 3DMark Vantage (2008), SimTower Demo (1994), Max Payne Demo (2001),
 SimCity 3000 Demo (1999), System Shock 2 Demo (1999), Pharaoh Demo (1999),
@@ -16,7 +16,8 @@ The Incredible Machine: Even More Contraptions Demo (2001),
 Star Wars: Force Commander Demo (2000), Z: Steel Soldiers Demo (2001),
 World of Goo Demo (2008), The Settlers IV Demo (2001), Tropico Demo (2001),
 The Movies Demo (2006), MechCommander 2 Demo (2001),
-Escape from Monkey Island Demo (2000), and Links 2003 Demo (2002).
+Escape from Monkey Island Demo (2000), Links 2003 Demo (2002), and
+Star Wars: Galactic Battlegrounds Trial (2001).
 The 3DMark03, 3DMark05, 3DMark06, and Vantage details include their full-version
 unlock keys. The new entries use application icons and select `3DMark06.exe`,
 `3DMarkVantage.exe`, or `SIMTDEMO.EXE` after installation. SimTower uses the demo
@@ -587,3 +588,23 @@ movie in an isolated installation. Native
 Mac/Linux installation and a new browser playthrough were not retested here.
 Published files were downloaded and SHA-256 verified. See the
 [native demo source audit](../docs/demo-installer-audit-20261114.md).
+
+Catalog 45 adds Star Wars: Galactic Battlegrounds Trial (2001). The native UIs
+run the original `SWGB_Trial.exe` unchanged (73,387,227 bytes, SHA-256
+`c46e9a45f2d0c7bf75e8b3fca4fae9e54765af9cf110d7613071badc93d4d3d2`)
+and select `battlegrounds_trial.exe` after installation. Its recipe uses Wine
+11.0, GDI rendering and a 1024x768, 32-bit desktop. GDI correctly draws the
+Windows controls mixed with DirectDraw, including the New Player dialog.
+The About text and original requirements come from the trial's readme; its
+icon comes from the original launcher. No installed prefix is supplied to the UIs.
+
+The package is 141,117 bytes, SHA-256
+`7df4edc73db148738bf2b313c6fd615bf640834b3a2e83c1b7ef2f3540bb827b`.
+All 55 earlier recipes and icons are unchanged. The shared catalogue tests
+passed (15), and the Windows UI tests passed (57). The original installer
+completed in an isolated Windows-hosted Boxedwine root, and the user confirmed
+gameplay with GDI. Native macOS/Linux gameplay and multiplayer are untested.
+The browser uses a separate installed overlay described in the
+[Jenkins notes](../tools/jenkins/instructions.md#galactic-battlegrounds-trial).
+The installer, icon, immutable catalogue ZIP and legacy catalogue were published
+and verified by SHA-256; their public HTTPS URLs were checked as well.

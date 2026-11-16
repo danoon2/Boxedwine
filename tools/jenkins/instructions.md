@@ -1008,3 +1008,27 @@ instructions. Other music/commentary, online play, and all nine holes have not
 been comprehensively tested. The website thumbnail shows Sergio Garcia at the
 Skeleton Coast tee, captured from native Boxedwine on 2026-11-14. Jenkins, local
 demos and the homepage use the same gameplay image.
+
+### Galactic Battlegrounds trial
+
+`galactic-battlegrounds-trial-overlay.zip` contains all 184 pristine installed
+files from the original `SWGB_Trial.exe`, including the empty `Game/SaveGame/`
+directory. File hashes were checked against a snapshot taken before the first
+game launch. The package adds only a BAT launcher and the game's installation
+and DirectPlay registry entries. It excludes global Wine state, installer caches
+and player-created profiles or saves. The native UIs use the original installer.
+
+Overlay: 69,984,742 bytes, SHA-256
+`dad7dad7edbe70b08dcaa762404e7e01b48183c8588c6e9c4e7c3648e7266a1d`.
+The browser starts `c:/galactic-battlegrounds-trial.bat` at 1024x768, 32-bit, with
+`registry=gdi`. That preset sets both Wine renderer keys and disables WebGL;
+setting only `DirectDrawRenderer` is insufficient with Wine 11. GDI also fixes
+the New Player dialog's mixed Windows controls and DirectDraw rendering.
+
+ST JIT testing on filesystem 39 created a player, entered the Darth Vader
+campaign's Incursion on Yavin IV mission, selected troops and moved them.
+AudioWorklet output contained nonzero audio with no queue failures. The user
+also confirmed native gameplay. Multiplayer and native macOS/Linux gameplay
+are untested. The web thumbnail is the native gameplay scene selected by the
+user on November 15, 2026. Jenkins, the local demo site and the homepage demo
+catalogue use that image. No engine or filesystem change is required.

@@ -628,4 +628,17 @@ Original full-game requirements: Windows 98, ME, 2000 or XP, a 400 MHz processor
     <InstallOptions>resolution=800x600</InstallOptions>
     <WineDllOverrides>wmvcore=</WineDllOverrides>
   </Demo>
+  <Demo>
+    <Name>Star Wars: Galactic Battlegrounds Trial (2001)</Name>
+    <InstallType>Installer</InstallType>
+    <IconURL>https://boxedwine.org/demos/galactic-battlegrounds.png</IconURL>
+    <FileSizeMB>70</FileSizeMB>
+    <FileURL>https://boxedwine.org/demos/SWGB_Trial.exe</FileURL>
+    <ShortcutExe>battlegrounds_trial.exe</ShortcutExe>
+    <Help>Released in 2001, Star Wars: Galactic Battlegrounds turns the ground battles of Star Wars into real-time strategy. This trial includes Incursion on Yavin IV from the Darth Vader campaign, with Imperial troops pursuing the Rebel Alliance after the destruction of the Death Star.
+
+Original trial requirements: Windows 95/98/ME/2000; a 233 MHz Pentium II or Athlon; 32 MB RAM (64 MB recommended); a 2 MB graphics card; a DirectX-compatible 16-bit sound card; DirectX 8.0a; and 140 MB of free disk space, plus 75 MB recommended for the Windows swap file.</Help>
+    <Options>GDI,resolution=1024x768</Options>
+    <InstallOptions>resolution=1024x768</InstallOptions>
+  </Demo>
 </XML>
