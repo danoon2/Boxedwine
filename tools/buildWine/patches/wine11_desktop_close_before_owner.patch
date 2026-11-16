@@ -1,0 +1,113 @@
+From: Boxedwine project
+Subject: [PATCH] server: Recheck desktop shutdown when its owner registers.
+
+Startup cancellation can remove the last application while explorer has no
+desktop window yet. There is then no owner against which to check the remaining
+users, so no close timer is armed. Remember that departure and recheck when the
+desktop window registers its owner. A newly arriving application cancels the
+deferred close; the manager's existing startup threads and system threads do not.
+An explicitly started idle manager still remains open.
+
+Applies after wine11_desktop_close_timer.patch. Reproduced with the native UI's
+first-frame cancellation test and a trace of the actual Wine server state.
+
+--- a/server/user.h
++++ b/server/user.h
+@@ -80,6 +80,7 @@
+     struct timeout_user *close_timeout;    /* timeout before closing the desktop */
+     struct thread_input *foreground_input; /* thread input of foreground thread */
+     unsigned int         users;            /* processes and threads using this desktop */
++    int                  close_pending;    /* a user left before the desktop owner registered */
+     unsigned char        keystate[256];    /* asynchronous key state */
+     unsigned char        alt_pressed;      /* last key press was Alt (used to determine msg on release) */
+     struct key_repeat    key_repeat;       /* key auto-repeat */
+@@ -210,6 +211,7 @@
+ extern void set_process_default_desktop( struct process *process, struct desktop *desktop,
+                                          obj_handle_t handle );
+ extern void close_process_desktop( struct process *process );
++extern void check_desktop_close( struct desktop *desktop );
+ extern void set_thread_default_desktop( struct thread *thread, struct desktop *desktop, obj_handle_t handle );
+ extern void release_thread_desktop( struct thread *thread, int close );
+ 
+--- a/server/window.c
++++ b/server/window.c
+@@ -721,6 +721,7 @@
+             assert( !desktop->top_window );
+             desktop->top_window = win;
+             set_process_default_desktop( current->process, desktop, current->desktop );
++            check_desktop_close( desktop );
+         }
+         else
+         {
+--- a/server/winstation.c
++++ b/server/winstation.c
+@@ -299,6 +299,7 @@
+             desktop->close_timeout = NULL;
+             desktop->foreground_input = NULL;
+             desktop->users = 0;
++            desktop->close_pending = 0;
+             list_init( &desktop->threads );
+             desktop->clip_flags = 0;
+             desktop->cursor_win = 0;
+@@ -422,9 +423,31 @@
+     post_desktop_message( desktop, WM_CLOSE, 0, 0 );  /* and signal the owner to quit */
+ }
+ 
++/* Recheck a deferred close when the desktop window acquires its owner. */
++void check_desktop_close( struct desktop *desktop )
++{
++    struct process *process = get_top_window_owner( desktop );
++
++    if (!process) return;
++    if (desktop->close_pending && desktop->users == process->running_threads && !desktop->close_timeout)
++        desktop->close_timeout = add_timeout_user( -TICKS_PER_SEC, close_desktop_timeout, desktop );
++    desktop->close_pending = 0;
++}
++
+ /* add a user of the desktop and cancel the close timeout */
+ static void add_desktop_thread( struct desktop *desktop, struct thread *thread )
+ {
++    struct thread *other;
++    int connected = 0;
++
++    if (desktop->close_pending && !thread->process->is_system)
++    {
++        LIST_FOR_EACH_ENTRY( other, &desktop->threads, struct thread, desktop_entry )
++            if (other->process == thread->process) { connected = 1; break; }
++        /* A new application cancels the deferred close; existing startup threads do not. */
++        if (!connected) desktop->close_pending = 0;
++    }
++
+     list_add_tail( &desktop->threads, &thread->desktop_entry );
+     add_desktop_hook_count( desktop, thread, 1 );
+ 
+@@ -446,14 +469,25 @@
+ /* remove a user of the desktop and start the close timeout if necessary */
+ static void remove_desktop_user( struct desktop *desktop, struct thread *thread )
+ {
+-    struct process *process;
++    struct thread *other;
+ 
+     assert( desktop->users > 0 );
+     desktop->users--;
+ 
+-    /* if we have one remaining user, it has to be the manager of the desktop window */
+-    if ((process = get_top_window_owner( desktop )) && desktop->users == process->running_threads && !desktop->close_timeout)
+-        desktop->close_timeout = add_timeout_user( -TICKS_PER_SEC, close_desktop_timeout, desktop );
++    if (get_top_window_owner( desktop )) desktop->close_pending = 1;
++    else
++    {
++        /* The last application can exit before explorer creates the desktop window.
++         * Remember that departure while another process is still using the desktop,
++         * but do not close an explicitly started manager for its own worker exits. */
++        LIST_FOR_EACH_ENTRY( other, &desktop->threads, struct thread, desktop_entry )
++            if (other->process != thread->process && !other->process->is_system)
++            {
++                desktop->close_pending = 1;
++                break;
++            }
++    }
++    check_desktop_close( desktop );
+ }
+ 
+ /* remove a thread from the list of threads attached to a desktop */

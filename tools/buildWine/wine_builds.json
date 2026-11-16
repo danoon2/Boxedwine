@@ -538,6 +538,14 @@
       },
       "apply_patch": "wine11_desktop_close_timer.patch",
       "reason": "Preserve the unused-desktop close timer when explorer starts its own threads, allowing startup cancellation to finish without leaving Wine services running"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
+      "apply_patch": "wine11_desktop_close_before_owner.patch",
+      "reason": "Recheck deferred desktop shutdown when explorer registers its window owner after the last application has already exited"
     }
   ]
 }

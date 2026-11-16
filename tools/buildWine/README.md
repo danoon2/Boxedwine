@@ -15,7 +15,7 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
-Revision 40's full and web filesystem ZIPs are published under `/v2/40/`.
+Revision 41's full and web filesystem ZIPs are published under `/v2/41/`.
 The unchanged base remains at `/v2/37/TinyCore15WineBase.zip`. Do not upload
 to boxedwine.org automatically; publication requires an explicit user request.
 The base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
@@ -55,12 +55,16 @@ new application arrival, system threads, and the final `WM_CLOSE`. The native UI
 `--runtime-only --window-check` tests also require first-frame cancellation to
 return exit code 0 using the candidate filesystem.
 
-Revision 38 qualification found an additional intermittent first-frame
-cancellation hang in the Windows runtime. The timer regression and direct Linux
-Wine comparison pass, as do normal shutdown and multiple Windows repeat runs,
-but some Windows runs still require forced termination. Keep the strict
-integration check; the timer patch does not establish that every startup
-cancellation path is fixed.
+An additional startup race can remove the last application before explorer
+registers the desktop window's owner. No close timer is armed in that ordering.
+New Wine 11.0 builds also apply
+[`wine11_desktop_close_before_owner.patch`](patches/wine11_desktop_close_before_owner.patch)
+after the timer patch. It remembers the departure and rechecks when the owner
+registers; new applications can still keep the desktop open, and explicitly
+started idle desktops remain open. The timer regression covers both orderings,
+new application arrivals, manager workers, and system threads. Keep the strict
+first-frame integration check. Filesystem revision 41 includes both desktop
+shutdown fixes in the full and web variants.
 
 Wine 11 includes
 [`wine11_wined3d_msaa_upload.patch`](patches/wine11_wined3d_msaa_upload.patch).
@@ -151,7 +155,7 @@ Keep `webgl_filesystems.json` as the single current manifest and update it in
 place for each release. Older release and experimental manifests are available
 in Git history; paths recorded in old validation reports refer to those historical files.
 The current configuration pins the DLLs, source patches, and final
-archives in its `full-v40` and `web-v40` profiles. The complete filesystem is
+archives in its `full-v41` and `web-v41` profiles. The complete filesystem is
 assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
 covers validation and publication.
 The v37 prefix leaves the renderer registry values unset. The profile records

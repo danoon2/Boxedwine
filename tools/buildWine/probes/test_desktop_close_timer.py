@@ -25,10 +25,11 @@ static timeout_callback callback;
 static void *callback_arg;
 static unsigned int generations, closed, unlinked;
 static int timer_tokens[16];
+static int owner_present = 1;
 
 #define CHECK(c, text) do { if (!(c)) { fprintf(stderr, "FAIL: %s\n", text); exit(1); } } while (0)
 
-struct process *get_top_window_owner(struct desktop *desktop) { return &manager; }
+struct process *get_top_window_owner(struct desktop *desktop) { return owner_present ? &manager : NULL; }
 void add_desktop_hook_count(struct desktop *desktop, struct thread *thread, int count) {}
 void set_rawinput_process(struct process *process, int enable) {}
 void unlink_named_object(struct object *object) { unlinked++; }
@@ -63,6 +64,36 @@ static void detach(struct thread *thread)
 {
     remove_desktop_thread(&desk, thread);
     thread->process->running_threads--;
+}
+static void reset_desktop(int with_owner)
+{
+    CHECK(!active, "finish the previous desktop timer");
+    memset(&manager, 0, sizeof(manager));
+    memset(&application, 0, sizeof(application));
+    memset(&system_process, 0, sizeof(system_process));
+    memset(&desk, 0, sizeof(desk));
+    list_init(&desk.threads);
+    desk.winstation = &station;
+    system_process.is_system = 1;
+    owner_present = with_owner;
+    generations = closed = unlinked = 0;
+}
+static void register_owner(void)
+{
+    owner_present = 1;
+    /* window.c calls this after assigning top_window and its default desktop.
+     * The old implementation has no registration hook, for the A/B comparison. */
+#ifdef HAVE_DESKTOP_CLOSE_CHECK
+    check_desktop_close(&desk);
+#endif
+}
+static void fire_timer(void)
+{
+    CHECK(active, "expected a pending desktop-close timer");
+    active = NULL;
+    callback(callback_arg);
+    CHECK(!desk.close_timeout && closed == 1 && unlinked == 1,
+          "close the desktop exactly once");
 }
 int main(void)
 {
@@ -105,6 +136,51 @@ int main(void)
     CHECK(!desk.close_timeout && closed == 1 && unlinked == 1,
           "timer unlinks the desktop and posts exactly one WM_CLOSE");
     puts("PASS unused desktop closes when the timer fires");
+
+    reset_desktop(0);
+    attach(&owner, &manager);
+    attach(&app, &application);
+    detach(&app);
+    CHECK(!active, "cannot close before a desktop window owner exists");
+    attach(&worker, &manager);
+    attach(&service, &system_process);
+    register_owner();
+    CHECK(active && generations == 1, "owner registration must recheck the last application's departure");
+    pending = active;
+    attach(&another_worker, &manager);
+    CHECK(active == pending, "later manager startup must preserve the deferred-close deadline");
+    fire_timer();
+    puts("PASS application exits before desktop owner registration");
+
+    reset_desktop(0);
+    attach(&owner, &manager);
+    attach(&app, &application);
+    detach(&app);
+    attach(&app, &application);
+    register_owner();
+    CHECK(!active, "new application before owner registration must keep the desktop open");
+    detach(&app);
+    CHECK(active && generations == 1, "new application's eventual exit must close the desktop");
+    fire_timer();
+    puts("PASS new application arriving before owner registration keeps the desktop open");
+
+    reset_desktop(0);
+    attach(&owner, &manager);
+    attach(&worker, &manager);
+    attach(&service, &system_process);
+    detach(&worker);
+    detach(&service);
+    register_owner();
+    CHECK(!active && !closed, "an idle manager must not close because its own startup worker exited");
+    puts("PASS explicit idle desktop survives its own worker and system-thread exits");
+
+    reset_desktop(0);
+    attach(&app, &application);
+    detach(&app);
+    attach(&owner, &manager);
+    register_owner();
+    CHECK(!active && !closed, "a later explicit desktop must not inherit a departed session's close");
+    puts("PASS explicit desktop starts after all previous users have left");
     return 0;
 }
 '''
@@ -123,7 +199,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix='wine-desktop-timer-') as directory:
         folder = Path(directory)
         test = folder / 'test.c'
-        test.write_text('#include ' + json.dumps(str(implementation)) + '\n' + HARNESS)
+        hook = '#define HAVE_DESKTOP_CLOSE_CHECK\n' if 'void check_desktop_close(' in implementation.read_text() else ''
+        test.write_text('#include ' + json.dumps(str(implementation)) + '\n' + hook + HARNESS)
         executable = folder / 'test'
         command = shlex.split(args.cc) + [
             '-O1', '-ffunction-sections', '-fdata-sections', '-Wl,--gc-sections',

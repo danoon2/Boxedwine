@@ -1,3 +1,5 @@
+v41 Nov 16, 2026 Fix startup cancellation when the last application exits before explorer registers the desktop window's owner. Recheck deferred desktop shutdown when the owner appears, while preserving new application launches and explicitly opened idle desktops. Retain the v40 DirectSound movie-audio fix, earlier exception fixes, AVI runtime base and existing WebGL DLLs.
+
 v40 Nov 15, 2026 Fix DirectSound primary-buffer ownership so Force Commander's SMUSH intro movies play audio. Keep each DirectSound object's primary controls separate, honor new controls after all buffer interfaces are released, and preserve the shared mixer and 3D listener state. Retain the v39 exception fixes, v37 AVI runtime base and existing WebGL DLLs.
 
 v39 Nov 15, 2026 Correct Wine integer exception handling: distinguish divide overflow from division by zero, report the INT 4/INTO exception address correctly, and clear the trap flag before calling user exception handlers. Requires the corresponding Boxedwine CPU exception fixes. Retain the v37 AVI runtime base, v38 desktop shutdown fix and existing WebGL DLLs.

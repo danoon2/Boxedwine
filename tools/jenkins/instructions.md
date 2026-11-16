@@ -28,7 +28,7 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - The web v40 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/40/TinyCore15Wine11.0-web.zip`.
+   - The web v41 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/41/TinyCore15Wine11.0-web.zip`.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
    - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v35 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
@@ -255,7 +255,7 @@ hashes. Archive payloads remain on the server. Failed builds skip demo inventory
 New demo launch links use the existing shared `demos/apps/<name>.zip` archives
 and images. The filesystem URL defaults to the version and filename pinned in
 `tools/buildWine/webgl_filesystems.json`, currently
-`https://boxedwine.org/v2/40/TinyCore15Wine11.0-web.zip`. Each build records that
+`https://boxedwine.org/v2/41/TinyCore15Wine11.0-web.zip`. Each build records that
 specific URL; updating the release pin affects subsequent builds only. To keep
 an older demo payload available, publish a changed demo under a new filename
 and update `demos.json`; overwriting a shared filename affects builds linking to it.
@@ -304,7 +304,7 @@ The local development script still downloads and validates the filesystem for
 offline/local demo testing:
 
 ```text
-https://boxedwine.org/v2/40/TinyCore15Wine11.0-web.zip
+https://boxedwine.org/v2/41/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:
