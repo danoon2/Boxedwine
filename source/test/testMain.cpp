@@ -1205,6 +1205,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testJitScalarSseRegions, "Test JIT scalar SSE regions", TEST_ENTRY_SERIAL},
     {testLockedReadModifyWrite32, "Test lock-prefixed 32-bit read-modify-write", TEST_ENTRY_SERIAL},
     {testLockedCmpxchg8b, "Test lock-prefixed cmpxchg8b", TEST_ENTRY_SERIAL},
+    {testRuntimeLazyConditions, "Test conditions on run-time lazy flag types", TEST_ENTRY_SERIAL},
     {testNativePureFpuHelpers, "Test native x87 math helpers", TEST_ENTRY_SERIAL},
     {testNativeKnownLazyFlagType, "Test native known lazy flag type", TEST_ENTRY_SERIAL},
     {testNativeKnownLazyFlagFaults, "Test native known lazy flag fault recovery", TEST_ENTRY_SERIAL},

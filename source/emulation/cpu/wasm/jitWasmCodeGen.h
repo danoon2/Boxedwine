@@ -256,6 +256,10 @@ static inline U32 wasmLocalForGPReg(U8 emulatedReg) {
 // ---------------------------------------------------------------------------
 // JitWasmCodeGen
 // ---------------------------------------------------------------------------
+// Families of 32-bit lazy-flag producers whose flags the WASM JIT evaluates
+// inline (see wasmLazyKindOf in jitWasmCodeGen.cpp).
+enum class WasmLazyKind { Logic, Sub, Add, Dec, Inc };
+
 class JitWasmCodeGen : public JitSSE {
 public:
     explicit JitWasmCodeGen(CPU* cpu);
@@ -1057,6 +1061,11 @@ protected:
     void dynamic_idiv32(DecodedOp* op, RegPtr src);
     void dynamic_cmpxchgReg(JitWidth w, U8 dstReg, U8 srcReg);
     void dynamic_cmpxchgMem32(DecodedOp* op);
+    void pushLazyCPUField(U32 offset);
+    void pushLazyCF(WasmLazyKind kind);
+    void pushLazyOF(WasmLazyKind kind);
+    void pushLazyCondition(JitConditional cond, WasmLazyKind kind);
+    U32 emitRuntimeLazyDispatch(U32 destLocal, const std::function<void(WasmLazyKind)>& push);
     // Run the current op in the interpreter and leave the block, from inside
     // a conditional arm, keeping the compiler's state for the other arm.
     void emulateSingleOpAndExitBlock();

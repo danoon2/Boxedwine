@@ -3156,6 +3156,69 @@ void testLockedReadModifyWrite32() {
     }
 }
 
+// Conditions evaluated in a block that starts after an indirect jump see a
+// lazy-flag type that is only known at run time. Check all 16 conditions
+// after each common 32-bit flag producer against flags computed here.
+void testRuntimeLazyConditions() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    enum Kind { Add, Sub, Cmp, And, Or, Xor, Test, Inc, Dec };
+    struct Producer { const char* name; std::vector<U8> code; Kind kind; };
+    static const Producer producers[] = {
+        {"add", {0x01, 0xd8}, Add}, {"sub", {0x29, 0xd8}, Sub}, {"cmp", {0x39, 0xd8}, Cmp},
+        {"and", {0x21, 0xd8}, And}, {"or", {0x09, 0xd8}, Or}, {"xor", {0x31, 0xd8}, Xor},
+        {"test", {0x85, 0xd8}, Test}, {"inc", {0x40}, Inc}, {"dec", {0x48}, Dec},
+    };
+    static const U32 pairs[][2] = {
+        {5, 3}, {3, 5}, {0x7fffffff, 1}, {0x80000000, 1}, {0, 0}, {0xffffffff, 1},
+        {0x80000000, 0x80000000}, {0x7fffffff, 0xffffffff}, {0x12345600, 0xff},
+    };
+    constexpr U32 DATA = 0x400;
+    for (const Producer& p : producers) for (const auto& pair : pairs) for (bool carryIn : {false, true}) {
+        const U32 a = pair[0], b = pair[1];
+        U32 r = 0;
+        bool cf = false, of = false;
+        switch (p.kind) {
+        case Add: r = a + b; cf = r < a; of = ((a ^ ~b) & (a ^ r)) >> 31; break;
+        case Sub: case Cmp: r = a - b; cf = a < b; of = ((a ^ b) & (a ^ r)) >> 31; break;
+        case And: case Test: r = a & b; break;
+        case Or: r = a | b; break;
+        case Xor: r = a ^ b; break;
+        case Inc: r = a + 1; cf = carryIn; of = r == 0x80000000; break;
+        case Dec: r = a - 1; cf = carryIn; of = r == 0x7fffffff; break;
+        }
+        const bool zf = r == 0, sf = r >> 31;
+        U32 low = r & 0xff, bits = 0;
+        for (; low; low &= low - 1) ++bits;
+        const bool pf = (bits & 1) == 0;
+        const bool expected[16] = {of, !of, cf, !cf, zf, !zf, cf || zf, !(cf || zf), sf, !sf, pf, !pf,
+            sf != of, sf == of, zf || sf != of, !(zf || sf != of)};
+
+        testNewInstruction(carryIn ? CF : 0);
+        cpu->reg[0].u32 = a;
+        cpu->reg[3].u32 = b;
+        for (U8 byte : p.code) testPushCode8(byte);
+        const U32 target = (U32)p.code.size() + 7;
+        testPushCode8(0xb9); testPushCode32(target); // mov ecx, target
+        testPushCode8(0xff); testPushCode8(0xe1);    // jmp ecx: a new block, lazy type unknown
+        for (U8 cc = 0; cc < 16; ++cc) {
+            testPushCode8(0x0f); testPushCode8(0x90 + cc); testPushCode8(0x05); testPushCode32(DATA + cc); // setcc [DATA+cc]
+        }
+        cpu->reg[7].u32 = 0;
+        testPushCode8(0x83); testPushCode8(0xd7); testPushCode8(0x00); // adc edi, 0: CF of the unknown lazy type
+        testRunCPU();
+        if (cpu->reg[7].u32 != (cf ? 1u : 0u)) {
+            testFail("%s %x,%x carry=%u: adc after the block boundary added %u", p.name, a, b, carryIn, cpu->reg[7].u32);
+        }
+        for (U32 cc = 0; cc < 16; ++cc) {
+            if (ctx.memory->readb(TEST_HEAP_ADDRESS + DATA + cc) != (expected[cc] ? 1 : 0)) {
+                testFail("%s %x,%x carry=%u: setcc %u got %u", p.name, a, b, carryIn, cc,
+                    ctx.memory->readb(TEST_HEAP_ADDRESS + DATA + cc));
+                break;
+            }
+        }
+    }
+}
+
 // lock cmpxchg8b must match its unlocked form. A preceding ADD leaves lazy
 // flags pending; only ZF may change, and SETcc in the same block must see it.
 void testLockedCmpxchg8b() {
