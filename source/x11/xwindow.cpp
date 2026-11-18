@@ -762,6 +762,12 @@ int XWindow::mapWindow() {
 	if (isMapped) {
 		return Success;
 	}
+	// We do not implement backing store. Initialize the background before the
+	// window becomes visible, rather than showing pixels from its previous map
+	// while the client handles Expose (e.g. InstallShield's reused page snapshot).
+	if (c_class == InputOutput) {
+		clearArea(KThread::currentThread(), 0, 0, 0, 0, False);
+	}
 	isMapped = true;
 	setDirty();
 	setWmState(NormalState, 0);

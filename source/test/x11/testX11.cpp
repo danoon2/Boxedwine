@@ -297,6 +297,61 @@ void testX11ClearArea() {
     server->closeDisplay(context.thread, display);
 }
 
+void testX11MapBackground() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    x11_init();
+    testNewInstruction(0);
+    initPaletteTestServer();
+    auto server = XServer::getServer();
+    auto& context = testContext();
+    auto display = server->getDisplayDataByAddressOfDisplay(context.memory, server->openDisplay(context.thread));
+    auto visual = std::make_shared<Visual>();
+    visual->bits_per_rgb = 8;
+    auto window = server->createNewWindow(display->displayId, server->getRoot(), 8, 6, 8, 0, 0, InputOutput, 0, visual);
+    display->setEventMask(window->id, ExposureMask | StructureNotifyMask);
+    XSetWindowAttributes attributes;
+    attributes.background_pixel = 42;
+    window->setAttributes(nullptr, &attributes, CWBackPixel);
+    auto checkBackground = [&](U8 expected) {
+        for (U32 y = 0; y < window->height(); ++y) for (U32 x = 0; x < window->width(); ++x)
+            if (window->getData()[y * window->getBytesPerLine() + x] != expected)
+                testFail("Mapped background mismatch at %u,%u", x, y);
+    };
+    window->mapWindow();
+    checkBackground(42);
+    XEvent event;
+    if (!display->findAndRemoveEvent(window->id, MapNotify, event) ||
+        !display->findAndRemoveEvent(window->id, Expose, event) ||
+        display->findAndRemoveEvent(window->id, Expose, event))
+        testFail("Mapping should notify and expose once");
+
+    memset(window->getData(), 99, window->getDataSize());
+    window->mapWindow();
+    checkBackground(99);
+    if (display->findAndRemoveEvent(window->id, MapNotify, event) ||
+        display->findAndRemoveEvent(window->id, Expose, event))
+        testFail("Mapping an already mapped window should do nothing");
+
+    window->unmapWindow();
+    attributes.background_pixel = 17;
+    window->setAttributes(nullptr, &attributes, CWBackPixel);
+    window->mapWindow();
+    checkBackground(17);
+
+    window->unmapWindow();
+    auto tile = server->createNewPixmap(2, 1, 8, visual);
+    tile->getData()[0] = 3;
+    tile->getData()[1] = 7;
+    attributes.background_pixmap = tile->id;
+    window->setAttributes(nullptr, &attributes, CWBackPixmap);
+    server->removePixmap(tile->id);
+    window->mapWindow();
+    for (U32 y = 0; y < window->height(); ++y) for (U32 x = 0; x < window->width(); ++x)
+        if (window->getData()[y * window->getBytesPerLine() + x] != (x % 2 ? 7 : 3))
+            testFail("Mapped background tile mismatch");
+    server->closeDisplay(context.thread, display);
+}
+
 void testX11ImageScanlinePadding() {
     x11_init();
     testNewInstruction(0);

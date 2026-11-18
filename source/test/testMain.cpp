@@ -78,6 +78,7 @@ void testWaitPid();
 void testX11ConcurrentInitialization();
 void testX11ImageIncludeInferiors();
 void testX11ClearArea();
+void testX11MapBackground();
 void testX11ImageScanlinePadding();
 void testX11GetImageBounds();
 void testX11MonochromeCopy();
@@ -1140,6 +1141,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testWaitPid, "Test waitpid child selection"},
     {testX11ImageIncludeInferiors, "Test X11 image IncludeInferiors and child coordinates"},
     {testX11ClearArea, "Test X11 ClearArea backgrounds, clipping and exposures"},
+    {testX11MapBackground, "Test X11 map and remap backgrounds"},
     {testX11ImageScanlinePadding, "Test X11 image scanline padding"},
     {testX11GetImageBounds, "Test X11 image capture bounds and padding"},
     {testX11MonochromeCopy, "Test X11 monochrome copy bit offsets, bounds and overlap"},

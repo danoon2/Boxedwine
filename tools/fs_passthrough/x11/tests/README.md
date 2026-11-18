@@ -1,5 +1,38 @@
 # X11 protocol probes
 
+## Window backgrounds on map
+
+`map-background.c` covers the first map, an already mapped window, a remap,
+and a changed background. Build and compare the same 32-bit binary:
+
+```sh
+gcc -m32 -O2 -Wall -Wextra -Werror map-background.c -lX11 -o map-background
+xvfb-run -a -s '-screen 0 640x480x24' ./map-background
+```
+
+Run it inside Boxedwine with a disposable root, its directory mounted, and
+`-bpp 32 -novideo`. Expect `MAP_BACKGROUND checks=4 failures=0`.
+Boxedwine previously showed zeroes on the first map and retained the previous
+contents on a remap, despite not implementing X11 backing store. Descent 3's
+InstallShield wizard reuses a snapshot window, so Next/Back briefly displayed
+an unrelated earlier page before Wine repainted it. Initialize the configured
+background before making the window visible; normal repainting can still
+produce blank intermediate frames.
+
+The separate [Win32 comparison](../../../buildWine/probes/remap-window.c)
+checks background erasing and painting when showing a reused popup:
+
+```sh
+i686-w64-mingw32-gcc -O2 -Wall -Wextra -Werror remap-window.c -lgdi32 -luser32 -o remap-window.exe
+```
+
+Run that executable directly on Windows (an optional argument writes a log),
+then through `/bin/wine` in a disposable Boxedwine root. On November 17, 2026,
+native Windows and Wine 11 inside both original and fixed Boxedwine returned
+`before=1428f0 shown=ffffff after=46b41e paints_during_show=0 erases_during_show=1`.
+The X11 probe catches the defect before Wine's erase/paint completes; the Win32
+probe verifies that the Windows-level behavior is preserved.
+
 ## Monochrome cursors
 
 Tropico's demo creates a monochrome cursor. Wine's X11 driver first looks up
