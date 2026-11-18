@@ -20,6 +20,36 @@ matching engine update. Revision 35 uses that existing engine; only the separate
 WebGL WineD3D DLL is rebuilt. Historical filesystem manifests and hashes are
 retained in Git history; the current manifest is updated in place.
 
+Source series v54 ([`webgl-test-divergences-v54.json`](../testing/wine/webgl-test-divergences-v54.json),
+[inventory](../testing/wine/webgl-patch-inventory-v54.json)) adds production patch 78,
+[FFP vertex uniform cache](webgl-ffp-vs-uniform-cache-against-wine-11.0.patch). It has
+not yet been packaged into a published filesystem; the current filesystem's WebGL
+DLLs are still built from v53.
+WineD3D re-uploads a fixed-function uniform group whenever the context marks it
+dirty, but that mask is per context and uniform values belong to each linked GLSL
+program. A program therefore received values it already held before nearly every
+draw: in 3DMark2001 SE Game 1, about 97,000 light, 14,000 texture-matrix and 7,000
+material uniform sets per second, almost all unchanged. Patch 71 removes repeated
+data from the push-constant buffers, but not these per-program uploads. Each
+program now keeps the lights and their types, light ambient, texture matrices,
+material and projection it was last given, and skips identical uploads in the
+WebGL profile. A slot reused for a light of another type is reloaded, and the
+copies are invalidated when a program entry is created.
+
+Measured with the single-threaded Jit build and only `drive_c/webgl/wined3d.dll`
+swapped: the v53 source with and without patch 78, both rebuilt from the same tree.
+
+| Test | v53 | v54 |
+| --- | --- | --- |
+| 3DMark2001 SE Game 1 (1024x768), frames per second in four consecutive 5 s windows | 26.0, 42.6, 33.8, 36.9 | 28.6, 46.0, 37.4, 40.4 (+8 to +11%) |
+| Guest OpenGL calls per second in the same windows | 141,000 to 196,000 | 75,000 to 108,000 |
+
+D3D8 and D3D9 `visual`, `device` and `stateblock`, and DirectDraw `ddraw1`,
+`ddraw2`, `ddraw4`, `ddraw7`, `d3d` and `visual`, give identical counts and
+identical failing assertions with both DLLs in the ST Jit and MT Jit builds. This
+holds both with the November 2 test executables and with test executables built
+from v53 with `webgl-tests-p8-copy-against-wine-11.0.patch`.
+
 Versions 2 through 52 retain earlier build and test selections for reproducing historical
 results. Their test patches are alternatives, not incremental layers: apply
 only the test patch named by the selected manifest.
