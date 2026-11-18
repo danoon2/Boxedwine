@@ -1298,8 +1298,10 @@ void testNativeJitCooperativeScheduling() {
 #endif
 }
 
-#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && (defined(BOXEDWINE_MULTI_THREADED) || defined(BOXEDWINE_WASM_JIT))
+#ifndef BOXEDWINE_WASM_JIT
 extern DYN_PTR_SIZE jitRunOpenGL(CPU* cpu);
+#endif
 extern thread_local U32 jitOpenGLFastCallCount;
 namespace {
 U32 glTestCalls;
@@ -1316,7 +1318,12 @@ void glTestCallback(CPU* cpu) {
     cpu->reg[2].u32 = 0x76543210;
     cpu->tmpReg = 0xffffffff; // callbacks must not alter the saved instruction length
     if (glTestMutation && glTestCalls == JIT_RUN_COUNT + 5) {
+#ifdef BOXEDWINE_WASM_JIT
+        // WASM blocks record compiled code on their first op only: the loop head.
+        DecodedOp* op = cpu->memory->getDecodedOp(TEST_CODE_ADDRESS);
+#else
         DecodedOp* op = cpu->memory->getDecodedOp(cpu->getEipAddress());
+#endif
         glTestSawCompiled = op && op->pfnJitCode;
         cpu->memory->writeb(glTestMutation, 0x46); // replace inc edi with inc esi
     }
@@ -1595,9 +1602,13 @@ void testJitEntryCacheInvalidation() {
 }
 
 void testJitOpenGLCallStateAndInvalidation() {
-#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && (defined(BOXEDWINE_MULTI_THREADED) || defined(BOXEDWINE_WASM_JIT))
     ScopedGlTestCallbacks callbacks;
+#ifdef BOXEDWINE_WASM_JIT
+    const bool fastEnabled = !std::getenv("BOXEDWINE_WASM_INT99_SLOW");
+#else
     const bool fastEnabled = !std::getenv("BOXEDWINE_GL_INT99_SLOW");
+#endif
     for (bool mutate : { false, true }) {
         prepareGlTest();
         CPU* cpu = testContext().cpu;

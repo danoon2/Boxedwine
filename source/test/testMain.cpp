@@ -414,6 +414,10 @@ const TestEntry TEST_ENTRIES[] = {
     {testJitOpenGLCallStateAndInvalidation, "Test JIT OpenGL state and code invalidation", TEST_ENTRY_SERIAL},
     {testJitOpenGLCallBoundaries, "Test JIT OpenGL call boundaries", TEST_ENTRY_SERIAL},
 #endif
+// MT WASM test runs have no SDL main loop for the GL dispatch.
+#if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    {testJitOpenGLCallStateAndInvalidation, "Test JIT OpenGL state and code invalidation", TEST_ENTRY_SERIAL},
+#endif
 #ifdef BOXEDWINE_VULKAN
     {testVulkanDirectStackABI, "Test Vulkan direct stack ABI", TEST_ENTRY_SERIAL},
 #endif

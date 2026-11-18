@@ -483,6 +483,7 @@ public:
     void hintLikelyStringLoopContinue() override;
     void dynamic_FILD_QWORD_INTEGER(DecodedOp* op) override;
     void dynamic_fxsave(DecodedOp* op) override;
+    void dynamic_int99(DecodedOp* op) override;
     void dynamic_fxrstor(DecodedOp* op) override;
     void nakedCall(RegPtr reg) override;
     void nakedReturn() override;

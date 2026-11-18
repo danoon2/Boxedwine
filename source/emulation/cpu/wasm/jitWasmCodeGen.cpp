@@ -4401,7 +4401,12 @@ enum WasmJitHelperOp : U32 {
     WASM_JIT_HELPER_OP_NONE,
     WASM_JIT_HELPER_OP_FXSAVE,
     WASM_JIT_HELPER_OP_FXRSTOR,
+    // int 0x99 (guest OpenGL call). Bits 8-15 hold the instruction length and
+    // memHelperValue holds the GL function index.
+    WASM_JIT_HELPER_OP_INT99,
 };
+
+static void wasmHelper_int99(CPU* cpu, U32 index, U32 len);
 
 // Helper-table slot 28 used to be the per-block entry helper. Block setup now
 // happens in wasmStartJITOp, but retaining and reusing the slot keeps every
@@ -4411,7 +4416,9 @@ static void wasmHelper_specialOp(CPU* cpu) {
     // Clear before touching guest memory so a fault cannot leave a stale
     // selector for the next dedicated helper call.
     cpu->wasmJitHelperOp = WASM_JIT_HELPER_OP_NONE;
-    if (helperOp == WASM_JIT_HELPER_OP_FXSAVE) {
+    if ((helperOp & 0xff) == WASM_JIT_HELPER_OP_INT99) {
+        wasmHelper_int99(cpu, cpu->memHelperValue, (helperOp >> 8) & 0xff);
+    } else if (helperOp == WASM_JIT_HELPER_OP_FXSAVE) {
         WASM_JIT_HELPER_STAT(Sse);
         common_fxsave(cpu, cpu->memHelperAddr);
         checkActiveBlockAfterWrite(cpu);
@@ -4454,6 +4461,41 @@ static void wasmHelper_emulateSingleOp(CPU* cpu) {
         // handler). The generated bailout must preserve it.
         cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
     }
+}
+
+// int 0x99 without the interpreter: the generic path looks up and copies the
+// decoded op and runs it through runNextSingleOp. This matches normal_int99:
+// cpu->eip is at the int 0x99 on entry and after the op on return.
+#if defined(__TEST) && defined(BOXEDWINE_OPENGL)
+thread_local U32 jitOpenGLFastCallCount;
+#endif
+
+static void wasmHelper_int99(CPU* cpu, U32 index, U32 len) {
+    if (cpu->debugTrapActive) {
+        // Single-step needs CPU::startDebugInstruction/finishDebugInstruction.
+        wasmHelper_emulateSingleOp(cpu);
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
+        return;
+    }
+    WASM_JIT_HELPER_STAT(Emulate);
+#if defined(__TEST) && defined(BOXEDWINE_OPENGL)
+    jitOpenGLFastCallCount++;
+#endif
+    const U32 signalDepth = cpu->thread->inSignal;
+    try {
+        callOpenGL(cpu, index);
+        cpu->eip.u32 += len;
+    } catch (...) {
+        // As in runNextSingleOp: EIP now points at a signal handler.
+        cpu->nextOp = cpu->getNextOp();
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
+        return;
+    }
+    if (cpu->thread->inSignal != signalDepth) {
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
+    }
+    // A GL readback can write guest code.
+    checkActiveBlockAfterWrite(cpu);
 }
 
 // Compute CF using the C++ lazy-flag machinery and stash the result in
@@ -14211,6 +14253,41 @@ void JitWasmCodeGen::emulateSingleOp() {
         blockExit();
         fpuStackCache = savedFpuCache;
     }
+}
+
+// Guest OpenGL calls (int 0x99, hundreds of thousands per second in Direct3D
+// games) call their host function directly instead of going through the
+// interpreter. A GL call changes only general registers (the return value)
+// and guest memory, so lazy flags, segments, XMM and the compile-time flag
+// state survive it. BOXEDWINE_WASM_INT99_SLOW=1 keeps the generic path.
+void JitWasmCodeGen::dynamic_int99(DecodedOp* op) {
+    static const bool forceSlow = std::getenv("BOXEDWINE_WASM_INT99_SLOW") != nullptr;
+    // An active x87 cache belongs to a loop region; emulateSingleOp knows how
+    // to leave it.
+    if (forceSlow || op->len > 0xff || fpuStackCache.entryTop) {
+        emulateSingleOp();
+        return;
+    }
+    m_forwardedResultConsumer = nullptr;
+    m_forwardedResultEndEip = 0;
+    m_publishedLazyFlagType = FLAGS_NULL;
+    flushFpuCache();
+    // As in emulateSingleOp: the dispatcher set EIP for the first op only.
+    if (this->currentEip != this->startingEip) {
+        writeEip(this->currentEip - cpu->seg[CS].address);
+    }
+    syncDirtyRegsToHost();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(op->imm);
+    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(WASM_JIT_HELPER_OP_INT99 | (op->len << 8));
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitHelperOp));
+    emitArmSmcBailout();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_SPECIAL_OP);
+    emitBailoutCheck();
+    m_gpLoaded.fill(false);
 }
 
 void JitWasmCodeGen::fallbackToEmulateSingleOp(const char* family) {
