@@ -62,6 +62,18 @@ enum class WasmType : U8 {
     Void = 0x40,  // for block result types that return nothing
 };
 
+// i32 atomic read-modify-write families (0xFE prefix). The value is the
+// 32-bit opcode; the 8- and 16-bit zero-extending forms follow at +2 and +3.
+enum class WasmAtomicRmw : U8 {
+    Add     = 0x1e,
+    Sub     = 0x25,
+    And     = 0x2c,
+    Or      = 0x33,
+    Xor     = 0x3a,
+    Xchg    = 0x41,
+    Cmpxchg = 0x48,
+};
+
 enum class WasmBranchHint : U8 {
     Unlikely = 0,
     Likely   = 1,
@@ -429,6 +441,12 @@ public:
 
     void emitOp(U8 op);   // emit a standalone opcode
     void emitAtomicFence();
+    // [address, operand] -> old value, or [address, expected, replacement]
+    // -> old value for Cmpxchg. `bytes` is 1, 2 or 4; atomics require the
+    // natural alignment, so the memarg always declares it.
+    void emitI32AtomicRmw(WasmAtomicRmw op, U32 bytes, U32 offset = 0);
+    // The 64-bit form of the same families (opcode + 1, 8-byte alignment).
+    void emitI64AtomicRmw(WasmAtomicRmw op, U32 offset = 0);
     void emitI64TruncSatF64S();
     void emitSimdOp(U32 op);
     // For SIMD ops whose lane immediate directly follows the opcode.

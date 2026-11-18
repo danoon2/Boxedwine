@@ -207,4 +207,6 @@ void testNativeX64AddressPolicies();
 void testNativeX64FpuPolicies();
 
 void testJitScalarSseRegions();
+void testLockedReadModifyWrite32();
+void testLockedCmpxchg8b();
 void testNativePureFpuHelpers();

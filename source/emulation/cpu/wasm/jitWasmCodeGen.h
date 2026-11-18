@@ -175,6 +175,12 @@
  *                               Counts emulateSingleOp fallbacks by family
  *                               (the list above) to spot hot fallbacks.
  *
+ *   BOXEDWINE_WASM_JIT_LOCK_STATS
+ *                               MT only: counts lock-prefixed ops executed
+ *                               natively vs in the interpreter, per
+ *                               instruction, logged to the browser console
+ *                               every 5 s (wasmJitLockStats.h).
+ *
  *   BOXEDWINE_WASM_JIT_NO_DIRECT_INTERP
  *                               Diagnostic opt-out in normalCPU.cpp: reverts
  *                               the interpreter's non-bridge chains to
@@ -654,6 +660,24 @@ public:
     void dynamic_cmpxchge16r16(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg_mem16"); }
     void dynamic_cmpxchgr32r32(DecodedOp* op) override;
     void dynamic_cmpxchge32r32(DecodedOp* op) override;
+#ifdef BOXEDWINE_MULTI_THREADED
+    void dynamic_xchge32r32_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Xchg, 0, FLAGS_NONE, false, true); }
+    void dynamic_xaddr32e32_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Add, WASM_I32_ADD, FLAGS_ADD32, false, true); }
+    void dynamic_adde32r32_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Add, WASM_I32_ADD, FLAGS_ADD32, false, false); }
+    void dynamic_add32_mem_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Add, WASM_I32_ADD, FLAGS_ADD32, true, false); }
+    void dynamic_sube32r32_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Sub, WASM_I32_SUB, FLAGS_SUB32, false, false); }
+    void dynamic_sub32_mem_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Sub, WASM_I32_SUB, FLAGS_SUB32, true, false); }
+    void dynamic_ande32r32_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::And, WASM_I32_AND, FLAGS_AND32, false, false); }
+    void dynamic_and32_mem_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::And, WASM_I32_AND, FLAGS_AND32, true, false); }
+    void dynamic_ore32r32_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Or, WASM_I32_OR, FLAGS_OR32, false, false); }
+    void dynamic_or32_mem_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Or, WASM_I32_OR, FLAGS_OR32, true, false); }
+    void dynamic_xore32r32_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Xor, WASM_I32_XOR, FLAGS_XOR32, false, false); }
+    void dynamic_xor32_mem_lock(DecodedOp* op) override { lockedRmw32(op, WasmAtomicRmw::Xor, WASM_I32_XOR, FLAGS_XOR32, true, false); }
+    void dynamic_cmpxchge32r32_lock(DecodedOp* op) override;
+    void dynamic_cmpxchg8b_lock(DecodedOp* op) override;
+    void dynamic_inc32_mem32_lock(DecodedOp* op) override { lockedIncDec32(op, true); }
+    void dynamic_dec32_mem32_lock(DecodedOp* op) override { lockedIncDec32(op, false); }
+#endif
     void dynamic_cmpxchgg8b(DecodedOp* op) override { fallbackToEmulateSingleOp("cmpxchg8b"); }
 
     // String ops (movs/cmps/stos/lods/scas, all widths) now use the
@@ -1033,6 +1057,19 @@ protected:
     void dynamic_idiv32(DecodedOp* op, RegPtr src);
     void dynamic_cmpxchgReg(JitWidth w, U8 dstReg, U8 srcReg);
     void dynamic_cmpxchgMem32(DecodedOp* op);
+    // Run the current op in the interpreter and leave the block, from inside
+    // a conditional arm, keeping the compiler's state for the other arm.
+    void emulateSingleOpAndExitBlock();
+#ifdef BOXEDWINE_MULTI_THREADED
+    // Lock-prefixed ops on an aligned operand in a directly writable page
+    // become one WASM atomic. Everything else (unaligned, page crossing,
+    // code or unmapped pages, faults) runs in the interpreter, which uses
+    // atomic_ref for aligned operands, so the two stay mutually atomic.
+    U32 lockedOperandHostAddress(DecodedOp* op, U32 bytes);
+    void lockedRmw32(DecodedOp* op, WasmAtomicRmw atomic, U8 combine, LazyFlagType flags, bool immediate, bool oldToReg);
+    void lockedIncDec32(DecodedOp* op, bool inc);
+    void emitLockStatsCount(DecodedOp* op, U32 path);
+#endif
     void loadGPReg(U8 emulatedReg);   // emit: local.get cpu; i32.load; local.set localN
     void storeGPReg(U8 emulatedReg);  // emit: local.get cpu; local.get localN; i32.store
     bool keepsLoopRegisters() const {

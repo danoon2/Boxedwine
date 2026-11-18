@@ -3084,6 +3084,116 @@ void testJitScalarSseRegions() {
 #endif
 }
 
+// Lock-prefixed 32-bit read-modify-writes must match their unlocked forms:
+// memory, registers, flags, and flags consumed by setcc in the same block.
+// Multi-threaded JITs run aligned operands in writable pages natively and
+// the rest (unaligned, page crossing) in the interpreter, so both offsets
+// are covered. Single-threaded builds ignore the prefix.
+void testLockedReadModifyWrite32() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    enum Kind { Xchg, Xadd, Cmpxchg, Alu };
+    struct Case { const char* name; std::vector<U8> opcode; Kind kind; U32 immBytes; U32 (*combine)(U32, U32); };
+    static const Case cases[] = {
+        {"xchg", {0x87, 0x0d}, Xchg, 0, nullptr},
+        {"xadd", {0x0f, 0xc1, 0x0d}, Xadd, 0, nullptr},
+        {"cmpxchg", {0x0f, 0xb1, 0x0d}, Cmpxchg, 0, nullptr},
+        {"add", {0x01, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a + b; }},
+        {"sub", {0x29, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a - b; }},
+        {"and", {0x21, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a & b; }},
+        {"or", {0x09, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a | b; }},
+        {"xor", {0x31, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a ^ b; }},
+        {"add imm32", {0x81, 0x05}, Alu, 4, [](U32 a, U32 b) { return a + b; }},
+        {"sub imm32", {0x81, 0x2d}, Alu, 4, [](U32 a, U32 b) { return a - b; }},
+        {"and imm32", {0x81, 0x25}, Alu, 4, [](U32 a, U32 b) { return a & b; }},
+        {"or imm32", {0x81, 0x0d}, Alu, 4, [](U32 a, U32 b) { return a | b; }},
+        {"xor imm32", {0x81, 0x35}, Alu, 4, [](U32 a, U32 b) { return a ^ b; }},
+        {"add imm8", {0x83, 0x05}, Alu, 1, [](U32 a, U32 b) { return a + b; }},
+        {"sub imm8", {0x83, 0x2d}, Alu, 1, [](U32 a, U32 b) { return a - b; }},
+        {"inc", {0xff, 0x05}, Alu, 0, [](U32 a, U32) { return a + 1; }},
+        {"dec", {0xff, 0x0d}, Alu, 0, [](U32 a, U32) { return a - 1; }},
+    };
+    struct Values { U32 mem, ecx, eax, imm; };
+    static const Values values[] = {
+        {0x7ffffff0, 0x20, 0x7ffffff0, 0x20},         // signed overflow; cmpxchg equal
+        {5, 5, 6, 5},                                 // zero result; cmpxchg not equal
+        {0x80000000, 0x80000000, 0x80000000, 0xffffff80},
+    };
+    struct State { U32 mem, eax, ecx, ebx, edx, flags; };
+    for (const Case& c : cases) for (const Values& v : values) for (U32 offset : {0x300u, 0x301u, 0xffeu}) {
+        State state[2] = {};
+        for (bool lock : {false, true}) {
+            testNewInstruction(CF | ZF);
+            cpu->reg[0].u32 = v.eax;
+            cpu->reg[1].u32 = v.ecx;
+            ctx.memory->writed(TEST_HEAP_ADDRESS + offset, v.mem);
+            if (lock) testPushCode8(0xf0);
+            for (U8 b : c.opcode) testPushCode8(b);
+            testPushCode32(offset);
+            if (c.immBytes == 4) testPushCode32(v.imm);
+            else if (c.immBytes == 1) testPushCode8((U8)v.imm);
+            for (U8 b : {0x0f, 0x92, 0xc3, 0x0f, 0x94, 0xc7, 0x0f, 0x98, 0xc2, 0x0f, 0x90, 0xc6}) {
+                testPushCode8(b); // setb bl; setz bh; sets dl; seto dh
+            }
+            testRunCPU();
+            cpu->fillFlags();
+            state[lock] = {ctx.memory->readd(TEST_HEAP_ADDRESS + offset), cpu->reg[0].u32, cpu->reg[1].u32,
+                cpu->reg[3].u32 & 0xffff, cpu->reg[2].u32 & 0xffff, cpu->flags & FMASK_TEST};
+        }
+        const State& s = state[1];
+        bool valueOk = true;
+        switch (c.kind) {
+        case Xchg: valueOk = s.mem == v.ecx && s.ecx == v.mem; break;
+        case Xadd: valueOk = s.mem == v.mem + v.ecx && s.ecx == v.mem; break;
+        case Cmpxchg: valueOk = s.eax == v.mem && s.mem == (v.eax == v.mem ? v.ecx : v.mem); break;
+        case Alu: valueOk = s.mem == c.combine(v.mem, c.immBytes ? v.imm : v.ecx); break;
+        }
+        if (!valueOk) {
+            testFail("lock %s mem=%x ecx=%x offset=%x: mem=%x eax=%x ecx=%x", c.name, v.mem, v.ecx, offset, s.mem, s.eax, s.ecx);
+        } else if (memcmp(&state[0], &state[1], sizeof(State))) {
+            testFail("lock %s mem=%x ecx=%x offset=%x differs from unlocked: flags %x/%x set %x%04x/%x%04x",
+                c.name, v.mem, v.ecx, offset, state[0].flags, s.flags, state[0].edx, state[0].ebx, s.edx, s.ebx);
+        }
+    }
+}
+
+// lock cmpxchg8b must match its unlocked form. A preceding ADD leaves lazy
+// flags pending; only ZF may change, and SETcc in the same block must see it.
+void testLockedCmpxchg8b() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    constexpr U64 MEM = 0x123456789abcdef0ull;
+    struct State { U64 mem; U32 eax, edx, ecx, flags; };
+    for (bool equal : {true, false}) for (U32 offset : {0x300u, 0x304u, 0xffcu}) {
+        State state[2] = {};
+        for (bool lock : {false, true}) {
+            testNewInstruction(0);
+            ctx.memory->writeq(TEST_HEAP_ADDRESS + offset, MEM);
+            cpu->reg[0].u32 = (U32)MEM;                                   // eax
+            cpu->reg[2].u32 = (U32)(MEM >> 32) + (equal ? 0 : 1);         // edx
+            cpu->reg[3].u32 = 0x0badf00d;                                 // ebx
+            cpu->reg[1].u32 = 0xfeedface;                                 // ecx
+            cpu->reg[6].u32 = 0xffffffff;                                 // esi
+            cpu->reg[7].u32 = 2;                                          // edi
+            testPushCode8(0x01); testPushCode8(0xfe);                     // add esi, edi: CF set
+            if (lock) testPushCode8(0xf0);
+            testPushCode8(0x0f); testPushCode8(0xc7); testPushCode8(0x0d); testPushCode32(offset); // cmpxchg8b [offset]
+            for (U8 b : {0x0f, 0x94, 0xc1, 0x0f, 0x92, 0xc5}) testPushCode8(b); // setz cl; setb ch
+            testRunCPU();
+            cpu->fillFlags();
+            state[lock] = {ctx.memory->readq(TEST_HEAP_ADDRESS + offset), cpu->reg[0].u32, cpu->reg[2].u32,
+                cpu->reg[1].u32 & 0xffff, cpu->flags & FMASK_TEST};
+        }
+        const State& s = state[1];
+        const U64 expectedMem = equal ? ((U64)0xfeedface << 32 | 0x0badf00d) : MEM;
+        if (s.mem != expectedMem || s.eax != (U32)MEM || s.edx != (U32)(MEM >> 32) ||
+                s.ecx != (equal ? 0x0101u : 0x0100u) || !(s.flags & CF) || !!(s.flags & ZF) != equal) {
+            testFail("lock cmpxchg8b equal=%u offset=%x: mem=%llx edx:eax=%x:%x cx=%x flags=%x", equal, offset,
+                (unsigned long long)s.mem, s.edx, s.eax, s.ecx, s.flags);
+        } else if (memcmp(&state[0], &state[1], sizeof(State))) {
+            testFail("lock cmpxchg8b equal=%u offset=%x differs from unlocked", equal, offset);
+        }
+    }
+}
+
 #ifdef BOXEDWINE_JIT_ARMV8
 static void testArmSignedAcquireLoads() {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS

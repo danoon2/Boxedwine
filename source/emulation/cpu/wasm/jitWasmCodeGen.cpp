@@ -25,6 +25,7 @@
 #include "wasmJitBatchPolicy.h"
 #include "wasmMemoryOrdering.h"
 #include "wasmModuleMerger.h"
+#include "wasmJitLockStats.h"
 #include "../jit/jitCodeGen.h"
 #include "../jit/jitCodeLifecycle.h"
 #ifdef __TEST
@@ -12071,6 +12072,269 @@ void JitWasmCodeGen::dynamic_cmpxchgMem32(DecodedOp* op) {
     freeScratch(addrLocal);
 }
 
+#ifdef BOXEDWINE_WASM_JIT_LOCK_STATS_ACTIVE
+U32 g_wasmJitLockStats[3][NUMBER_OF_OPS];
+
+void wasmJitLockStatsStart() {
+    static std::atomic<bool> started{false};
+    if (started.load(std::memory_order_relaxed) || started.exchange(true)) {
+        return;
+    }
+    static std::string names;
+#define INIT_CPU_LOCK(e, f) names += std::to_string((U32)e##_Lock) + "=" #f ",";
+#include "../common/cpu_init_lock.h"
+#undef INIT_CPU_LOCK
+    // The browser thread keeps running timers while workers execute guest
+    // code. Columns are native/total per instruction, busiest first.
+    MAIN_THREAD_ASYNC_EM_ASM({
+        var stats = $0 >>> 2;
+        var ops = $1;
+        var names = UTF8ToString($2).split(',').filter(Boolean).map(function(entry) {
+            var parts = entry.split('=');
+            return [Number(parts[0]), parts[1]];
+        });
+        var start = performance.now();
+        setInterval(function() {
+            // HEAPU32 on this thread goes stale after a shared-memory grow.
+            var heap = new Uint32Array(wasmMemory.buffer);
+            var interpreted = 0, native = 0, slow = 0, rows = [];
+            for (var i = 0; i < names.length; ++i) {
+                var inst = names[i][0];
+                var a = heap[stats + inst], b = heap[stats + ops + inst], c = heap[stats + 2 * ops + inst];
+                interpreted += a;
+                native += b;
+                slow += c;
+                if (a || b) rows.push([a + b, names[i][1] + ' ' + b + '/' + c + '/' + (a + b)]);
+            }
+            rows.sort(function(x, y) { return y[0] - x[0]; });
+            // native / JIT slow path (included in total) / total
+            console.log('[WASM JIT lock stats] t=' + ((performance.now() - start) / 1000).toFixed(0) +
+                's native/jitSlow/total=' + native + '/' + slow + '/' + (native + interpreted) + ' ' +
+                rows.slice(0, 16).map(function(row) { return row[1]; }).join(', '));
+        }, 5000);
+    }, g_wasmJitLockStats, NUMBER_OF_OPS, names.c_str());
+}
+#endif
+
+#ifdef BOXEDWINE_MULTI_THREADED
+// Emit the guard for a lock-prefixed memory operand and return a scratch
+// local holding its host address. The fast path needs a writable-page TLB
+// entry (code pages have none, so self-modifying writes stay on the helper
+// path) and natural alignment, which WASM atomics require and which also
+// keeps the operand inside one page. Otherwise the interpreter runs the op,
+// with its usual fault and unaligned-mutex handling, and the block exits.
+U32 JitWasmCodeGen::lockedOperandHostAddress(DecodedOp* op, U32 bytes) {
+    m_needsWasmMemoryPageArrays = true;
+    U32 hostLocal = allocScratch();
+    U32 entryLocal = allocScratch();
+    RegPtr eaa = calculateEaa(op);
+    pushRegValue(eaa);
+    m_emitter.emitLocalSet(hostLocal);
+    if (eaa && eaa->emulatedReg == 0xff) {
+        freeScratch(eaa->hardwareReg());
+    }
+    eaa = nullptr;
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmWritePageBaseArray));
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitI32Const(K_PAGE_SHIFT);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitI32Const(2);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load(0);
+    m_emitter.emitLocalTee(entryLocal);
+    m_emitter.emitOp(WASM_I32_EQZ);
+    if (bytes > 1) {
+        m_emitter.emitLocalGet(hostLocal);
+        m_emitter.emitI32Const((S32)(bytes - 1));
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitOp(WASM_I32_OR);
+    }
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+    m_emitter.emitIf();
+    emitLockStatsCount(op, 2);
+    emulateSingleOpAndExitBlock();
+    m_emitter.emitEnd();
+
+    m_emitter.emitLocalGet(entryLocal);
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitI32Const(K_PAGE_MASK);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitLocalSet(hostLocal);
+    freeScratch(entryLocal);
+    emitLockStatsCount(op, 1);
+    return hostLocal;
+}
+
+void JitWasmCodeGen::emitLockStatsCount(DecodedOp* op, U32 path) {
+#ifdef BOXEDWINE_WASM_JIT_LOCK_STATS_ACTIVE
+    wasmJitLockStatsStart();
+    m_emitter.emitI32Const((S32)(uintptr_t)&g_wasmJitLockStats[path][op->inst]);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitI32AtomicRmw(WasmAtomicRmw::Add, 4);
+    m_emitter.emitOp(WASM_DROP);
+#else
+    (void)op;
+    (void)path;
+#endif
+}
+
+// lock inc/dec [mem32]. Like common_inc32_mem32_lock, the carry flag of the
+// previous lazy state is kept in oldCF, since INC and DEC preserve CF.
+void JitWasmCodeGen::lockedIncDec32(DecodedOp* op, bool inc) {
+    U32 hostLocal = lockedOperandHostAddress(op, 4);
+    RegPtr cf = getCF();
+    storeLazyFlagsOldCF(cf);
+    cf = nullptr;
+    U32 oldLocal = allocScratch();
+    U32 resultLocal = allocScratch();
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitI32AtomicRmw(inc ? WasmAtomicRmw::Add : WasmAtomicRmw::Sub, 4);
+    m_emitter.emitLocalTee(oldLocal);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitOp(inc ? WASM_I32_ADD : WASM_I32_SUB);
+    m_emitter.emitLocalSet(resultLocal);
+    LazyFlagType flags = inc ? FLAGS_INC32 : FLAGS_DEC32;
+    storeLazyFlagType(flags);
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, dst.u32), makeWasmReg((U8)oldLocal, WASM_GP_LOCAL_COUNT));
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, result.u32), makeWasmReg((U8)resultLocal, WASM_GP_LOCAL_COUNT));
+    currentLazyFlags = flags;
+    freeScratch(resultLocal);
+    freeScratch(oldLocal);
+    freeScratch(hostLocal);
+}
+
+// lock cmpxchg8b [mem64]: compare EDX:EAX with the qword and, if equal, store
+// ECX:EBX; otherwise load it into EDX:EAX. Only ZF changes, after the lazy
+// flags are materialized, as in common_cmpxchg8b_lock.
+void JitWasmCodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
+    U32 hostLocal = lockedOperandHostAddress(op, 8);
+    fillFlags();
+    auto pushPair = [this](U8 high, U8 low) {
+        pushRegValue(getReadOnlyReg(high));
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+        m_emitter.emitI64Const(32);
+        m_emitter.emitOp(WASM_I64_SHL);
+        pushRegValue(getReadOnlyReg(low));
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+        m_emitter.emitOp(WASM_I64_OR);
+    };
+    U32 equalLocal = allocScratch();
+    m_emitter.emitLocalGet(hostLocal);
+    pushPair(2, 0); // EDX:EAX
+    pushPair(1, 3); // ECX:EBX
+    m_emitter.emitI64AtomicRmw(WasmAtomicRmw::Cmpxchg);
+    m_emitter.emitLocalTee(WASM_I64_SCRATCH);
+    pushPair(2, 0);
+    m_emitter.emitOp(WASM_I64_EQ);
+    m_emitter.emitLocalSet(equalLocal);
+
+    // flags = (flags & ~ZF) | (equal ? ZF : 0)
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, flags));
+    m_emitter.emitI32Const((S32)~ZF);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalGet(equalLocal);
+    m_emitter.emitI32Const(6); // ZF is bit 6
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitI32Store((U32)offsetof(CPU, flags));
+
+    // EDX:EAX = old value. On success it already equals EDX:EAX.
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitOp(WASM_I32_WRAP_I64);
+    popToReg(JitWidth::b32, getReg(0));
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitI64Const(32);
+    m_emitter.emitOp(WASM_I64_SHR_U);
+    m_emitter.emitOp(WASM_I32_WRAP_I64);
+    popToReg(JitWidth::b32, getReg(2));
+    currentLazyFlags = FLAGS_NONE;
+    freeScratch(equalLocal);
+    freeScratch(hostLocal);
+}
+
+// lock add/sub/and/or/xor [mem], reg|imm, lock xadd and xchg on 32-bit
+// operands. The lazy-flag operands match common_*_lock: dst is the old
+// memory value, src the operand and result their combination.
+void JitWasmCodeGen::lockedRmw32(DecodedOp* op, WasmAtomicRmw atomic, U8 combine, LazyFlagType flags, bool immediate, bool oldToReg) {
+    U32 hostLocal = lockedOperandHostAddress(op, 4);
+    U32 srcLocal = allocScratch();
+    U32 oldLocal = allocScratch();
+    if (immediate) {
+        m_emitter.emitI32Const((S32)op->imm);
+    } else {
+        pushRegValue(getReadOnlyReg(op->reg));
+    }
+    m_emitter.emitLocalSet(srcLocal);
+
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitLocalGet(srcLocal);
+    m_emitter.emitI32AtomicRmw(atomic, 4);
+    m_emitter.emitLocalSet(oldLocal);
+
+    if (flags != FLAGS_NONE) {
+        U32 resultLocal = allocScratch();
+        m_emitter.emitLocalGet(oldLocal);
+        m_emitter.emitLocalGet(srcLocal);
+        m_emitter.emitOp(combine);
+        m_emitter.emitLocalSet(resultLocal);
+        storeLazyFlagType(flags);
+        writeCPU(JitWidth::b32, (U32)offsetof(CPU, dst.u32), makeWasmReg((U8)oldLocal, WASM_GP_LOCAL_COUNT));
+        writeCPU(JitWidth::b32, (U32)offsetof(CPU, src.u32), makeWasmReg((U8)srcLocal, WASM_GP_LOCAL_COUNT));
+        writeCPU(JitWidth::b32, (U32)offsetof(CPU, result.u32), makeWasmReg((U8)resultLocal, WASM_GP_LOCAL_COUNT));
+        currentLazyFlags = flags;
+        freeScratch(resultLocal);
+    }
+    if (oldToReg) {
+        m_emitter.emitLocalGet(oldLocal);
+        popToReg(JitWidth::b32, getReg(op->reg));
+    }
+    freeScratch(oldLocal);
+    freeScratch(srcLocal);
+    freeScratch(hostLocal);
+}
+
+// lock cmpxchg [mem], reg. EAX receives the old value; when the exchange
+// happened that is EAX's own value, so the write is unconditional.
+void JitWasmCodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
+    U32 hostLocal = lockedOperandHostAddress(op, 4);
+    U32 accLocal = allocScratch();
+    U32 oldLocal = allocScratch();
+    U32 resultLocal = allocScratch();
+    pushRegValue(getReadOnlyReg(0));
+    m_emitter.emitLocalSet(accLocal);
+
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitLocalGet(accLocal);
+    pushRegValue(getReadOnlyReg(op->reg));
+    m_emitter.emitI32AtomicRmw(WasmAtomicRmw::Cmpxchg, 4);
+    m_emitter.emitLocalSet(oldLocal);
+
+    m_emitter.emitLocalGet(accLocal);
+    m_emitter.emitLocalGet(oldLocal);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitLocalSet(resultLocal);
+    storeLazyFlagType(FLAGS_CMP32);
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, dst.u32), makeWasmReg((U8)accLocal, WASM_GP_LOCAL_COUNT));
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, src.u32), makeWasmReg((U8)oldLocal, WASM_GP_LOCAL_COUNT));
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, result.u32), makeWasmReg((U8)resultLocal, WASM_GP_LOCAL_COUNT));
+    currentLazyFlags = FLAGS_CMP32;
+
+    m_emitter.emitLocalGet(oldLocal);
+    popToReg(JitWidth::b32, getReg(0));
+    freeScratch(resultLocal);
+    freeScratch(oldLocal);
+    freeScratch(accLocal);
+    freeScratch(hostLocal);
+}
+#endif
+
 // ---------------------------------------------------------------------------
 // Compare / test
 // ---------------------------------------------------------------------------
@@ -14538,8 +14802,12 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
 
 void JitWasmCodeGen::emitSseDivSlowPath() {
     // The interpreter executes this DIVSS/DIVPS, including any exception.
-    // Always leave afterwards; falling through would execute it twice. Keep
-    // the compiler's hot-path cache state intact across the cold branch.
+    // Always leave afterwards; falling through would execute it twice.
+    emulateSingleOpAndExitBlock();
+}
+
+void JitWasmCodeGen::emulateSingleOpAndExitBlock() {
+    // Keep the compiler's hot-path cache state intact across the cold branch.
     auto gpLoaded = m_gpLoaded, gpDirty = m_gpDirty;
     auto xmmLoaded = m_xmmLoaded, xmmDirty = m_xmmDirty;
     auto segLoaded = m_segLoaded;
