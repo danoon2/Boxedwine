@@ -695,10 +695,10 @@ def _observer_script(token: str, group: str, result_style: str,
       runDependencies: typeof runDependencies === "number" ? runDependencies : null,
       runtimeInitialized: typeof runtimeInitialized === "boolean" ? runtimeInitialized : null,
       calledRun: typeof Module !== "undefined" ? !!Module.calledRun : false,
-      unusedWorkers: typeof PThread !== "undefined" ? PThread.unusedWorkers.length : null,
-      loadedUnusedWorkers: typeof PThread !== "undefined"
+      unusedWorkers: typeof PThread !== "undefined" && PThread.unusedWorkers ? PThread.unusedWorkers.length : null,
+      loadedUnusedWorkers: typeof PThread !== "undefined" && PThread.unusedWorkers
           ? PThread.unusedWorkers.filter(worker => worker.loaded).length : null,
-      runningWorkers: typeof PThread !== "undefined" ? PThread.runningWorkers.length : null
+      runningWorkers: typeof PThread !== "undefined" && PThread.runningWorkers ? PThread.runningWorkers.length : null
     }};
   }}
 

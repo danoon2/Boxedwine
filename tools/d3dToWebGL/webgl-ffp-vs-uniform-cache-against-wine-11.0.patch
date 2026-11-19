@@ -1,0 +1,136 @@
+diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
+--- a/dlls/wined3d/glsl_shader.c
++++ b/dlls/wined3d/glsl_shader.c
+@@ -261,6 +261,16 @@
+     DWORD constant_update_mask;
+     unsigned int constant_version;
+     struct wined3d_ffp_fog_constants fog_constants;
++    /* WebGL profile: FFP vertex uniforms last uploaded to this program. Bits
++     * of ffp_vs_cache_valid say which entries hold a value; see
++     * shader_glsl_ffp_vs_uniform_cached(). */
++    struct wined3d_light_constants ffp_lights[WINED3D_MAX_ACTIVE_LIGHTS];
++    enum wined3d_light_type ffp_light_types[WINED3D_MAX_ACTIVE_LIGHTS];
++    struct wined3d_matrix ffp_texture_matrices[WINED3D_MAX_FFP_TEXTURES];
++    struct wined3d_matrix ffp_projection;
++    struct wined3d_material ffp_material;
++    struct wined3d_color ffp_light_ambient;
++    uint32_t ffp_vs_cache_valid;
+     DWORD shader_controlled_clip_distances : 1;
+     DWORD clip_distance_mask : 8; /* WINED3D_MAX_CLIP_DISTANCES, 8 */
+     DWORD link_failed : 1;
+@@ -1730,6 +1740,30 @@
+     checkGLcall("glUniformMatrix4fv");
+ }
+ 
++#define GLSL_FFP_VS_CACHE_LIGHT(i) (1u << (i))
++#define GLSL_FFP_VS_CACHE_TEXMATRIX(i) (1u << (WINED3D_MAX_ACTIVE_LIGHTS + (i)))
++#define GLSL_FFP_VS_CACHE_PROJECTION (1u << (WINED3D_MAX_ACTIVE_LIGHTS + WINED3D_MAX_FFP_TEXTURES))
++#define GLSL_FFP_VS_CACHE_MATERIAL (GLSL_FFP_VS_CACHE_PROJECTION << 1)
++#define GLSL_FFP_VS_CACHE_LIGHT_AMBIENT (GLSL_FFP_VS_CACHE_PROJECTION << 2)
++
++/* The WebGL profile reloads every FFP vertex uniform group whenever the
++ * context marks it dirty, and the context's dirty mask is not per program:
++ * a program usually receives values it already holds. Uniform values belong
++ * to the linked program and survive program switches, so compare against
++ * what this program was last given. Returns TRUE when the upload can be
++ * skipped; otherwise records the value and returns FALSE. */
++static BOOL shader_glsl_ffp_vs_uniform_cached(struct glsl_shader_prog_link *prog,
++        uint32_t bit, void *cache, const void *value, size_t size)
++{
++    if (!wined3d_settings.webgl)
++        return FALSE;
++    if ((prog->ffp_vs_cache_valid & bit) && !memcmp(cache, value, size))
++        return TRUE;
++    memcpy(cache, value, size);
++    prog->ffp_vs_cache_valid |= bit;
++    return FALSE;
++}
++
+ static void shader_glsl_ffp_vertex_texmatrix_uniform(const struct wined3d_context_gl *context_gl,
+         const struct wined3d_ffp_vs_constants *constants, unsigned int tex, struct glsl_shader_prog_link *prog)
+ {
+@@ -1739,6 +1773,9 @@
+         return;
+     if (prog->vs.texture_matrix_location[tex] == -1)
+         return;
++    if (shader_glsl_ffp_vs_uniform_cached(prog, GLSL_FFP_VS_CACHE_TEXMATRIX(tex), &prog->ffp_texture_matrices[tex],
++            &constants->texture_matrices[tex], sizeof(constants->texture_matrices[tex])))
++        return;
+ 
+     GL_EXTCALL(glUniformMatrix4fv(prog->vs.texture_matrix_location[tex],
+             1, FALSE, &constants->texture_matrices[tex]._11));
+@@ -1753,6 +1790,9 @@
+ 
+     constants = wined3d_buffer_load_sysmem(
+             context_gl->c.device->push_constants[WINED3D_PUSH_CONSTANTS_VS_FFP], &context_gl->c);
++    if (shader_glsl_ffp_vs_uniform_cached(prog, GLSL_FFP_VS_CACHE_MATERIAL, &prog->ffp_material,
++            &constants->material, sizeof(constants->material)))
++        return;
+ 
+     GL_EXTCALL(glUniform4fv(prog->vs.material_specular_location, 1, &constants->material.specular.r));
+     GL_EXTCALL(glUniform1f(prog->vs.material_shininess_location, constants->material.power));
+@@ -1768,6 +1808,18 @@
+ {
+     const struct wined3d_gl_info *gl_info = context_gl->gl_info;
+ 
++    /* A slot can be reused for a light of another type, which uploads a
++     * different set of fields. */
++    if (!(prog->ffp_vs_cache_valid & GLSL_FFP_VS_CACHE_LIGHT(light))
++            || prog->ffp_light_types[light] != type)
++    {
++        prog->ffp_vs_cache_valid &= ~GLSL_FFP_VS_CACHE_LIGHT(light);
++        prog->ffp_light_types[light] = type;
++    }
++    if (shader_glsl_ffp_vs_uniform_cached(prog, GLSL_FFP_VS_CACHE_LIGHT(light), &prog->ffp_lights[light],
++            constants, sizeof(*constants)))
++        return;
++
+     GL_EXTCALL(glUniform4fv(prog->vs.light_location[light].diffuse, 1, &constants->diffuse.r));
+     GL_EXTCALL(glUniform4fv(prog->vs.light_location[light].specular, 1, &constants->specular.r));
+     GL_EXTCALL(glUniform4fv(prog->vs.light_location[light].ambient, 1, &constants->ambient.r));
+@@ -2021,8 +2073,12 @@
+         constants = wined3d_buffer_load_sysmem(context->device->push_constants[WINED3D_PUSH_CONSTANTS_VS_FFP], context);
+ 
+         get_projection_matrix(context, constants, state, &projection);
+-        GL_EXTCALL(glUniformMatrix4fv(prog->vs.projection_matrix_location, 1, FALSE, &projection._11));
+-        checkGLcall("glUniformMatrix4fv");
++        if (!shader_glsl_ffp_vs_uniform_cached(prog, GLSL_FFP_VS_CACHE_PROJECTION, &prog->ffp_projection,
++                &projection, sizeof(projection)))
++        {
++            GL_EXTCALL(glUniformMatrix4fv(prog->vs.projection_matrix_location, 1, FALSE, &projection._11));
++            checkGLcall("glUniformMatrix4fv");
++        }
+     }
+ 
+     if (update_mask & WINED3D_SHADER_CONST_FFP_TEXMATRIX)
+@@ -2073,8 +2129,12 @@
+             }
+         }
+ 
+-        GL_EXTCALL(glUniform3fv(prog->vs.light_ambient_location, 1, &constants->light.ambient.r));
+-        checkGLcall("glUniform3fv");
++        if (!shader_glsl_ffp_vs_uniform_cached(prog, GLSL_FFP_VS_CACHE_LIGHT_AMBIENT, &prog->ffp_light_ambient,
++                &constants->light.ambient, sizeof(constants->light.ambient)))
++        {
++            GL_EXTCALL(glUniform3fv(prog->vs.light_ambient_location, 1, &constants->light.ambient.r));
++            checkGLcall("glUniform3fv");
++        }
+ 
+         for (i = 0; i < point_count; ++i)
+             shader_glsl_ffp_vertex_light_uniform(context_gl, state, i,
+@@ -10917,6 +10977,7 @@
+     entry->shader_controlled_clip_distances = 0;
+     entry->link_failed = 0;
+     entry->fog_constants_valid = 0;
++    entry->ffp_vs_cache_valid = 0;
+     add_glsl_program_entry(priv, entry);
+ 
+     TRACE("Attaching GLSL shader object %u to program %u.\n", shader_id, program_id);
+@@ -11159,6 +11220,7 @@
+     entry->shader_controlled_clip_distances = 0;
+     entry->link_failed = 0;
+     entry->fog_constants_valid = 0;
++    entry->ffp_vs_cache_valid = 0;
+     /* Add the hash table entry */
+     add_glsl_program_entry(priv, entry);
+ 
