@@ -25,6 +25,7 @@
 #include "wasmJitBatchPolicy.h"
 #include "wasmMemoryOrdering.h"
 #include "wasmModuleMerger.h"
+#include "wasmJitLockStats.h"
 #include "../jit/jitCodeGen.h"
 #include "../jit/jitCodeLifecycle.h"
 #ifdef __TEST
@@ -85,6 +86,12 @@ static bool g_wasmJitTestFailInvalidationPreparation = false;
 
 void wasmJitTestSetFailInvalidationPreparation(bool fail) {
     g_wasmJitTestFailInvalidationPreparation = fail;
+}
+
+static bool g_wasmJitTestAbandonNextBlock = false;
+
+void wasmJitTestSetAbandonNextBlock(bool abandon) {
+    g_wasmJitTestAbandonNextBlock = abandon;
 }
 #endif
 #include <vector>
@@ -4394,7 +4401,12 @@ enum WasmJitHelperOp : U32 {
     WASM_JIT_HELPER_OP_NONE,
     WASM_JIT_HELPER_OP_FXSAVE,
     WASM_JIT_HELPER_OP_FXRSTOR,
+    // int 0x99 (guest OpenGL call). Bits 8-15 hold the instruction length and
+    // memHelperValue holds the GL function index.
+    WASM_JIT_HELPER_OP_INT99,
 };
+
+static void wasmHelper_int99(CPU* cpu, U32 index, U32 len);
 
 // Helper-table slot 28 used to be the per-block entry helper. Block setup now
 // happens in wasmStartJITOp, but retaining and reusing the slot keeps every
@@ -4404,7 +4416,9 @@ static void wasmHelper_specialOp(CPU* cpu) {
     // Clear before touching guest memory so a fault cannot leave a stale
     // selector for the next dedicated helper call.
     cpu->wasmJitHelperOp = WASM_JIT_HELPER_OP_NONE;
-    if (helperOp == WASM_JIT_HELPER_OP_FXSAVE) {
+    if ((helperOp & 0xff) == WASM_JIT_HELPER_OP_INT99) {
+        wasmHelper_int99(cpu, cpu->memHelperValue, (helperOp >> 8) & 0xff);
+    } else if (helperOp == WASM_JIT_HELPER_OP_FXSAVE) {
         WASM_JIT_HELPER_STAT(Sse);
         common_fxsave(cpu, cpu->memHelperAddr);
         checkActiveBlockAfterWrite(cpu);
@@ -4447,6 +4461,41 @@ static void wasmHelper_emulateSingleOp(CPU* cpu) {
         // handler). The generated bailout must preserve it.
         cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
     }
+}
+
+// int 0x99 without the interpreter: the generic path looks up and copies the
+// decoded op and runs it through runNextSingleOp. This matches normal_int99:
+// cpu->eip is at the int 0x99 on entry and after the op on return.
+#if defined(__TEST) && defined(BOXEDWINE_OPENGL)
+thread_local U32 jitOpenGLFastCallCount;
+#endif
+
+static void wasmHelper_int99(CPU* cpu, U32 index, U32 len) {
+    if (cpu->debugTrapActive) {
+        // Single-step needs CPU::startDebugInstruction/finishDebugInstruction.
+        wasmHelper_emulateSingleOp(cpu);
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
+        return;
+    }
+    WASM_JIT_HELPER_STAT(Emulate);
+#if defined(__TEST) && defined(BOXEDWINE_OPENGL)
+    jitOpenGLFastCallCount++;
+#endif
+    const U32 signalDepth = cpu->thread->inSignal;
+    try {
+        callOpenGL(cpu, index);
+        cpu->eip.u32 += len;
+    } catch (...) {
+        // As in runNextSingleOp: EIP now points at a signal handler.
+        cpu->nextOp = cpu->getNextOp();
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
+        return;
+    }
+    if (cpu->thread->inSignal != signalDepth) {
+        cpu->wasmJitBailout = WASM_JIT_BAILOUT_CONTROL_FLOW;
+    }
+    // A GL readback can write guest code.
+    checkActiveBlockAfterWrite(cpu);
 }
 
 // Compute CF using the C++ lazy-flag machinery and stash the result in
@@ -6946,6 +6995,15 @@ void JitWasmCodeGen::popToReg(JitWidth w, RegPtr reg) {
     }
 }
 
+void JitWasmCodeGen::abandonBlock(const char* reason) {
+    // The rest of the block is still emitted, possibly with aliased locals,
+    // but commitJIT discards it. Process helpers that are never committed
+    // (createEmulateSingleOp) can also get here; they are not reported.
+    if (!m_abandonReason) {
+        m_abandonReason = reason;
+    }
+}
+
 U32 JitWasmCodeGen::allocScratch() {
     for (U32 i = 0; i < WASM_TMP_LOCAL_COUNT; i++) {
         if (!m_scratchInUse[i]) {
@@ -6953,7 +7011,7 @@ U32 JitWasmCodeGen::allocScratch() {
             return WASM_TMP_LOCAL_BASE + i;
         }
     }
-    kpanic("JitWasmCodeGen: scratch local pool exhausted");
+    abandonBlock("scratch local pool exhausted");
     return WASM_TMP_LOCAL_BASE;
 }
 
@@ -6970,7 +7028,7 @@ U32 JitWasmCodeGen::allocF64Scratch() {
             return WASM_F64_LOCAL_BASE + i;
         }
     }
-    kpanic("JitWasmCodeGen: f64 scratch local pool exhausted");
+    abandonBlock("f64 scratch local pool exhausted");
     return WASM_F64_LOCAL_BASE;
 }
 
@@ -6987,7 +7045,7 @@ U32 JitWasmCodeGen::allocV128Scratch() {
             return WASM_V128_LOCAL_BASE + i;
         }
     }
-    kpanic("JitWasmCodeGen: v128 scratch local pool exhausted");
+    abandonBlock("v128 scratch local pool exhausted");
     return WASM_V128_LOCAL_BASE;
 }
 
@@ -12056,6 +12114,269 @@ void JitWasmCodeGen::dynamic_cmpxchgMem32(DecodedOp* op) {
     freeScratch(addrLocal);
 }
 
+#ifdef BOXEDWINE_WASM_JIT_LOCK_STATS_ACTIVE
+U32 g_wasmJitLockStats[3][NUMBER_OF_OPS];
+
+void wasmJitLockStatsStart() {
+    static std::atomic<bool> started{false};
+    if (started.load(std::memory_order_relaxed) || started.exchange(true)) {
+        return;
+    }
+    static std::string names;
+#define INIT_CPU_LOCK(e, f) names += std::to_string((U32)e##_Lock) + "=" #f ",";
+#include "../common/cpu_init_lock.h"
+#undef INIT_CPU_LOCK
+    // The browser thread keeps running timers while workers execute guest
+    // code. Columns are native/total per instruction, busiest first.
+    MAIN_THREAD_ASYNC_EM_ASM({
+        var stats = $0 >>> 2;
+        var ops = $1;
+        var names = UTF8ToString($2).split(',').filter(Boolean).map(function(entry) {
+            var parts = entry.split('=');
+            return [Number(parts[0]), parts[1]];
+        });
+        var start = performance.now();
+        setInterval(function() {
+            // HEAPU32 on this thread goes stale after a shared-memory grow.
+            var heap = new Uint32Array(wasmMemory.buffer);
+            var interpreted = 0, native = 0, slow = 0, rows = [];
+            for (var i = 0; i < names.length; ++i) {
+                var inst = names[i][0];
+                var a = heap[stats + inst], b = heap[stats + ops + inst], c = heap[stats + 2 * ops + inst];
+                interpreted += a;
+                native += b;
+                slow += c;
+                if (a || b) rows.push([a + b, names[i][1] + ' ' + b + '/' + c + '/' + (a + b)]);
+            }
+            rows.sort(function(x, y) { return y[0] - x[0]; });
+            // native / JIT slow path (included in total) / total
+            console.log('[WASM JIT lock stats] t=' + ((performance.now() - start) / 1000).toFixed(0) +
+                's native/jitSlow/total=' + native + '/' + slow + '/' + (native + interpreted) + ' ' +
+                rows.slice(0, 16).map(function(row) { return row[1]; }).join(', '));
+        }, 5000);
+    }, g_wasmJitLockStats, NUMBER_OF_OPS, names.c_str());
+}
+#endif
+
+#ifdef BOXEDWINE_MULTI_THREADED
+// Emit the guard for a lock-prefixed memory operand and return a scratch
+// local holding its host address. The fast path needs a writable-page TLB
+// entry (code pages have none, so self-modifying writes stay on the helper
+// path) and natural alignment, which WASM atomics require and which also
+// keeps the operand inside one page. Otherwise the interpreter runs the op,
+// with its usual fault and unaligned-mutex handling, and the block exits.
+U32 JitWasmCodeGen::lockedOperandHostAddress(DecodedOp* op, U32 bytes) {
+    m_needsWasmMemoryPageArrays = true;
+    U32 hostLocal = allocScratch();
+    U32 entryLocal = allocScratch();
+    RegPtr eaa = calculateEaa(op);
+    pushRegValue(eaa);
+    m_emitter.emitLocalSet(hostLocal);
+    if (eaa && eaa->emulatedReg == 0xff) {
+        freeScratch(eaa->hardwareReg());
+    }
+    eaa = nullptr;
+
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, wasmWritePageBaseArray));
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitI32Const(K_PAGE_SHIFT);
+    m_emitter.emitOp(WASM_I32_SHR_U);
+    m_emitter.emitI32Const(2);
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitI32Load(0);
+    m_emitter.emitLocalTee(entryLocal);
+    m_emitter.emitOp(WASM_I32_EQZ);
+    if (bytes > 1) {
+        m_emitter.emitLocalGet(hostLocal);
+        m_emitter.emitI32Const((S32)(bytes - 1));
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitOp(WASM_I32_OR);
+    }
+    m_emitter.setNextBranchHint(WasmBranchHint::Unlikely);
+    m_emitter.emitIf();
+    emitLockStatsCount(op, 2);
+    emulateSingleOpAndExitBlock();
+    m_emitter.emitEnd();
+
+    m_emitter.emitLocalGet(entryLocal);
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitI32Const(K_PAGE_MASK);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitOp(WASM_I32_ADD);
+    m_emitter.emitLocalSet(hostLocal);
+    freeScratch(entryLocal);
+    emitLockStatsCount(op, 1);
+    return hostLocal;
+}
+
+void JitWasmCodeGen::emitLockStatsCount(DecodedOp* op, U32 path) {
+#ifdef BOXEDWINE_WASM_JIT_LOCK_STATS_ACTIVE
+    wasmJitLockStatsStart();
+    m_emitter.emitI32Const((S32)(uintptr_t)&g_wasmJitLockStats[path][op->inst]);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitI32AtomicRmw(WasmAtomicRmw::Add, 4);
+    m_emitter.emitOp(WASM_DROP);
+#else
+    (void)op;
+    (void)path;
+#endif
+}
+
+// lock inc/dec [mem32]. Like common_inc32_mem32_lock, the carry flag of the
+// previous lazy state is kept in oldCF, since INC and DEC preserve CF.
+void JitWasmCodeGen::lockedIncDec32(DecodedOp* op, bool inc) {
+    U32 hostLocal = lockedOperandHostAddress(op, 4);
+    RegPtr cf = getCF();
+    storeLazyFlagsOldCF(cf);
+    cf = nullptr;
+    U32 oldLocal = allocScratch();
+    U32 resultLocal = allocScratch();
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitI32AtomicRmw(inc ? WasmAtomicRmw::Add : WasmAtomicRmw::Sub, 4);
+    m_emitter.emitLocalTee(oldLocal);
+    m_emitter.emitI32Const(1);
+    m_emitter.emitOp(inc ? WASM_I32_ADD : WASM_I32_SUB);
+    m_emitter.emitLocalSet(resultLocal);
+    LazyFlagType flags = inc ? FLAGS_INC32 : FLAGS_DEC32;
+    storeLazyFlagType(flags);
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, dst.u32), makeWasmReg((U8)oldLocal, WASM_GP_LOCAL_COUNT));
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, result.u32), makeWasmReg((U8)resultLocal, WASM_GP_LOCAL_COUNT));
+    currentLazyFlags = flags;
+    freeScratch(resultLocal);
+    freeScratch(oldLocal);
+    freeScratch(hostLocal);
+}
+
+// lock cmpxchg8b [mem64]: compare EDX:EAX with the qword and, if equal, store
+// ECX:EBX; otherwise load it into EDX:EAX. Only ZF changes, after the lazy
+// flags are materialized, as in common_cmpxchg8b_lock.
+void JitWasmCodeGen::dynamic_cmpxchg8b_lock(DecodedOp* op) {
+    U32 hostLocal = lockedOperandHostAddress(op, 8);
+    fillFlags();
+    auto pushPair = [this](U8 high, U8 low) {
+        pushRegValue(getReadOnlyReg(high));
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+        m_emitter.emitI64Const(32);
+        m_emitter.emitOp(WASM_I64_SHL);
+        pushRegValue(getReadOnlyReg(low));
+        m_emitter.emitOp(WASM_I64_EXTEND_I32_U);
+        m_emitter.emitOp(WASM_I64_OR);
+    };
+    U32 equalLocal = allocScratch();
+    m_emitter.emitLocalGet(hostLocal);
+    pushPair(2, 0); // EDX:EAX
+    pushPair(1, 3); // ECX:EBX
+    m_emitter.emitI64AtomicRmw(WasmAtomicRmw::Cmpxchg);
+    m_emitter.emitLocalTee(WASM_I64_SCRATCH);
+    pushPair(2, 0);
+    m_emitter.emitOp(WASM_I64_EQ);
+    m_emitter.emitLocalSet(equalLocal);
+
+    // flags = (flags & ~ZF) | (equal ? ZF : 0)
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load((U32)offsetof(CPU, flags));
+    m_emitter.emitI32Const((S32)~ZF);
+    m_emitter.emitOp(WASM_I32_AND);
+    m_emitter.emitLocalGet(equalLocal);
+    m_emitter.emitI32Const(6); // ZF is bit 6
+    m_emitter.emitOp(WASM_I32_SHL);
+    m_emitter.emitOp(WASM_I32_OR);
+    m_emitter.emitI32Store((U32)offsetof(CPU, flags));
+
+    // EDX:EAX = old value. On success it already equals EDX:EAX.
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitOp(WASM_I32_WRAP_I64);
+    popToReg(JitWidth::b32, getReg(0));
+    m_emitter.emitLocalGet(WASM_I64_SCRATCH);
+    m_emitter.emitI64Const(32);
+    m_emitter.emitOp(WASM_I64_SHR_U);
+    m_emitter.emitOp(WASM_I32_WRAP_I64);
+    popToReg(JitWidth::b32, getReg(2));
+    currentLazyFlags = FLAGS_NONE;
+    freeScratch(equalLocal);
+    freeScratch(hostLocal);
+}
+
+// lock add/sub/and/or/xor [mem], reg|imm, lock xadd and xchg on 32-bit
+// operands. The lazy-flag operands match common_*_lock: dst is the old
+// memory value, src the operand and result their combination.
+void JitWasmCodeGen::lockedRmw32(DecodedOp* op, WasmAtomicRmw atomic, U8 combine, LazyFlagType flags, bool immediate, bool oldToReg) {
+    U32 hostLocal = lockedOperandHostAddress(op, 4);
+    U32 srcLocal = allocScratch();
+    U32 oldLocal = allocScratch();
+    if (immediate) {
+        m_emitter.emitI32Const((S32)op->imm);
+    } else {
+        pushRegValue(getReadOnlyReg(op->reg));
+    }
+    m_emitter.emitLocalSet(srcLocal);
+
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitLocalGet(srcLocal);
+    m_emitter.emitI32AtomicRmw(atomic, 4);
+    m_emitter.emitLocalSet(oldLocal);
+
+    if (flags != FLAGS_NONE) {
+        U32 resultLocal = allocScratch();
+        m_emitter.emitLocalGet(oldLocal);
+        m_emitter.emitLocalGet(srcLocal);
+        m_emitter.emitOp(combine);
+        m_emitter.emitLocalSet(resultLocal);
+        storeLazyFlagType(flags);
+        writeCPU(JitWidth::b32, (U32)offsetof(CPU, dst.u32), makeWasmReg((U8)oldLocal, WASM_GP_LOCAL_COUNT));
+        writeCPU(JitWidth::b32, (U32)offsetof(CPU, src.u32), makeWasmReg((U8)srcLocal, WASM_GP_LOCAL_COUNT));
+        writeCPU(JitWidth::b32, (U32)offsetof(CPU, result.u32), makeWasmReg((U8)resultLocal, WASM_GP_LOCAL_COUNT));
+        currentLazyFlags = flags;
+        freeScratch(resultLocal);
+    }
+    if (oldToReg) {
+        m_emitter.emitLocalGet(oldLocal);
+        popToReg(JitWidth::b32, getReg(op->reg));
+    }
+    freeScratch(oldLocal);
+    freeScratch(srcLocal);
+    freeScratch(hostLocal);
+}
+
+// lock cmpxchg [mem], reg. EAX receives the old value; when the exchange
+// happened that is EAX's own value, so the write is unconditional.
+void JitWasmCodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
+    U32 hostLocal = lockedOperandHostAddress(op, 4);
+    U32 accLocal = allocScratch();
+    U32 oldLocal = allocScratch();
+    U32 resultLocal = allocScratch();
+    pushRegValue(getReadOnlyReg(0));
+    m_emitter.emitLocalSet(accLocal);
+
+    m_emitter.emitLocalGet(hostLocal);
+    m_emitter.emitLocalGet(accLocal);
+    pushRegValue(getReadOnlyReg(op->reg));
+    m_emitter.emitI32AtomicRmw(WasmAtomicRmw::Cmpxchg, 4);
+    m_emitter.emitLocalSet(oldLocal);
+
+    m_emitter.emitLocalGet(accLocal);
+    m_emitter.emitLocalGet(oldLocal);
+    m_emitter.emitOp(WASM_I32_SUB);
+    m_emitter.emitLocalSet(resultLocal);
+    storeLazyFlagType(FLAGS_CMP32);
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, dst.u32), makeWasmReg((U8)accLocal, WASM_GP_LOCAL_COUNT));
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, src.u32), makeWasmReg((U8)oldLocal, WASM_GP_LOCAL_COUNT));
+    writeCPU(JitWidth::b32, (U32)offsetof(CPU, result.u32), makeWasmReg((U8)resultLocal, WASM_GP_LOCAL_COUNT));
+    currentLazyFlags = FLAGS_CMP32;
+
+    m_emitter.emitLocalGet(oldLocal);
+    popToReg(JitWidth::b32, getReg(0));
+    freeScratch(resultLocal);
+    freeScratch(oldLocal);
+    freeScratch(accLocal);
+    freeScratch(hostLocal);
+}
+#endif
+
 // ---------------------------------------------------------------------------
 // Compare / test
 // ---------------------------------------------------------------------------
@@ -12348,7 +12669,9 @@ RegPtr JitWasmCodeGen::getCF() {
     };
 
     if (currentLazyFlags == FLAGS_NULL) {
+        emitRuntimeLazyDispatch(r->hardwareReg(), JitConditional::B);
         emitHelperFallback();
+        m_emitter.emitEnd();
         return r;
     }
 
@@ -12472,6 +12795,9 @@ void JitWasmCodeGen::emitMaterializedCondition(JitConditional cond, U32 condLoca
     m_emitter.emitLocalSet(condLocal);
     freeScratch(flagsLocal);
 }
+static bool wasmLazyKindOf(LazyFlagType type, WasmLazyKind& kind);
+static bool wasmLazyConditionSupported(JitConditional cond);
+
 RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
     if (currentLazyFlags == FLAGS_NONE) {
         // SSE comparisons and explicit flag writes already materialized
@@ -12857,18 +13183,31 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
         return tmp;
     }
 
+    // A known 32-bit producer whose condition the paths above do not cover.
+    WasmLazyKind knownKind;
+    if (wasmLazyKindOf(currentLazyFlags, knownKind) && wasmLazyConditionSupported(cond) &&
+            !std::getenv("BOXEDWINE_WASM_RUNTIME_COND_SLOW")) {
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+        emitProfileSampledCall(HELPER_PROFILE_INLINE_COND);
+#endif
+        U32 condLocal = allocScratch();
+        pushLazyCondition(cond, knownKind);
+        m_emitter.emitLocalSet(condLocal);
+        RegPtr known = makeWasmReg((U8)condLocal, 0xff);
+        if (res && res != known) {
+            mov(JitWidth::b8, res, known);
+            freeScratch(condLocal);
+            return res;
+        }
+        return known;
+    }
+
     // Both paths only read flag state and write a scratch local (or tmpReg),
     // so dirty GP locals remain valid across this runtime branch.
     auto tmp = getTmpReg();
-    bool checkMaterialized = currentLazyFlags == FLAGS_NULL;
-    if (checkMaterialized) {
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Load8U((U32)offsetof(CPU, lazyFlagType));
-        m_emitter.emitI32Const((S32)FLAGS_NONE);
-        m_emitter.emitOp(WASM_I32_EQ);
-        m_emitter.emitIf();
-        emitMaterializedCondition(cond, tmp->hardwareReg());
-        m_emitter.emitElse();
+    const bool runtimeFlags = currentLazyFlags == FLAGS_NULL;
+    if (runtimeFlags) {
+        emitRuntimeLazyDispatch(tmp->hardwareReg(), cond);
     }
     m_publishedLazyFlagType = FLAGS_NULL;
     m_forwardedResultConsumer = nullptr;
@@ -12880,7 +13219,7 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Load((U32)offsetof(CPU, tmpReg));
     m_emitter.emitLocalSet(tmp->hardwareReg());
-    if (checkMaterialized) {
+    if (runtimeFlags) {
         m_emitter.emitEnd();
     }
     // SETcc may target part of a GP register; merge through mov(b8) below.
@@ -12891,6 +13230,209 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
     }
     return tmp;
 }
+// Lazy-flag formulas for the common 32-bit producers, evaluated inline instead
+// of through the C++ condition/CF helpers. They read the same CPU fields as
+// the getters in lazyFlags.cpp (the result through pushLazyFlagResult, which
+// also covers a forwarded result local).
+static bool wasmLazyKindOf(LazyFlagType type, WasmLazyKind& kind) {
+    switch (type) {
+    case FLAGS_AND32: case FLAGS_OR32: case FLAGS_XOR32: case FLAGS_TEST32: kind = WasmLazyKind::Logic; return true;
+    case FLAGS_SUB32: case FLAGS_CMP32: kind = WasmLazyKind::Sub; return true;
+    case FLAGS_ADD32: kind = WasmLazyKind::Add; return true;
+    case FLAGS_DEC32: kind = WasmLazyKind::Dec; return true;
+    case FLAGS_INC32: kind = WasmLazyKind::Inc; return true;
+    default: return false;
+    }
+}
+
+static bool wasmLazyConditionSupported(JitConditional cond) {
+    switch (cond) {
+    case JitConditional::O: case JitConditional::NO:
+    case JitConditional::P: case JitConditional::NP:
+        return false; // rare; parity needs the lookup table
+    default:
+        return true;
+    }
+}
+
+void JitWasmCodeGen::pushLazyCPUField(U32 offset) {
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load(offset);
+}
+
+void JitWasmCodeGen::pushLazyCF(WasmLazyKind kind) {
+    switch (kind) {
+    case WasmLazyKind::Logic:
+        m_emitter.emitI32Const(0);
+        break;
+    case WasmLazyKind::Sub: // dst < src
+        pushLazyCPUField((U32)offsetof(CPU, dst.u32));
+        pushLazyCPUField((U32)offsetof(CPU, src.u32));
+        m_emitter.emitOp(WASM_I32_LT_U);
+        break;
+    case WasmLazyKind::Add: // result < dst
+        pushLazyFlagResult();
+        pushLazyCPUField((U32)offsetof(CPU, dst.u32));
+        m_emitter.emitOp(WASM_I32_LT_U);
+        break;
+    case WasmLazyKind::Dec:
+    case WasmLazyKind::Inc:
+        pushLazyCPUField((U32)offsetof(CPU, oldCF));
+        m_emitter.emitI32Const(0);
+        m_emitter.emitOp(WASM_I32_NE);
+        break;
+    }
+}
+
+void JitWasmCodeGen::pushLazyOF(WasmLazyKind kind) {
+    switch (kind) {
+    case WasmLazyKind::Logic:
+        m_emitter.emitI32Const(0);
+        break;
+    case WasmLazyKind::Sub: // ((dst ^ src) & (dst ^ result)) >> 31
+        pushLazyCPUField((U32)offsetof(CPU, dst.u32));
+        pushLazyCPUField((U32)offsetof(CPU, src.u32));
+        m_emitter.emitOp(WASM_I32_XOR);
+        pushLazyCPUField((U32)offsetof(CPU, dst.u32));
+        pushLazyFlagResult();
+        m_emitter.emitOp(WASM_I32_XOR);
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitI32Const(31);
+        m_emitter.emitOp(WASM_I32_SHR_U);
+        break;
+    case WasmLazyKind::Add: // ((dst ^ src ^ 0x80000000) & (result ^ src)) >> 31
+        pushLazyCPUField((U32)offsetof(CPU, dst.u32));
+        pushLazyCPUField((U32)offsetof(CPU, src.u32));
+        m_emitter.emitOp(WASM_I32_XOR);
+        m_emitter.emitI32Const((S32)0x80000000);
+        m_emitter.emitOp(WASM_I32_XOR);
+        pushLazyFlagResult();
+        pushLazyCPUField((U32)offsetof(CPU, src.u32));
+        m_emitter.emitOp(WASM_I32_XOR);
+        m_emitter.emitOp(WASM_I32_AND);
+        m_emitter.emitI32Const(31);
+        m_emitter.emitOp(WASM_I32_SHR_U);
+        break;
+    case WasmLazyKind::Dec:
+    case WasmLazyKind::Inc:
+        pushLazyFlagResult();
+        m_emitter.emitI32Const(kind == WasmLazyKind::Dec ? 0x7fffffff : (S32)0x80000000);
+        m_emitter.emitOp(WASM_I32_EQ);
+        break;
+    }
+}
+
+void JitWasmCodeGen::pushLazyCondition(JitConditional cond, WasmLazyKind kind) {
+    auto pushZF = [this]() {
+        pushLazyFlagResult();
+        m_emitter.emitOp(WASM_I32_EQZ);
+    };
+    auto pushSF = [this]() {
+        pushLazyFlagResult();
+        m_emitter.emitI32Const(31);
+        m_emitter.emitOp(WASM_I32_SHR_U);
+    };
+    switch (cond) {
+    case JitConditional::B:   pushLazyCF(kind); break;
+    case JitConditional::NB:  pushLazyCF(kind); m_emitter.emitOp(WASM_I32_EQZ); break;
+    case JitConditional::Z:   pushZF(); break;
+    case JitConditional::NZ:  pushZF(); m_emitter.emitOp(WASM_I32_EQZ); break;
+    case JitConditional::BE:  pushLazyCF(kind); pushZF(); m_emitter.emitOp(WASM_I32_OR); break;
+    case JitConditional::NBE: pushLazyCF(kind); pushZF(); m_emitter.emitOp(WASM_I32_OR); m_emitter.emitOp(WASM_I32_EQZ); break;
+    case JitConditional::S:   pushSF(); break;
+    case JitConditional::NS:  pushSF(); m_emitter.emitOp(WASM_I32_EQZ); break;
+    case JitConditional::L:   pushSF(); pushLazyOF(kind); m_emitter.emitOp(WASM_I32_NE); break;
+    case JitConditional::NL:  pushSF(); pushLazyOF(kind); m_emitter.emitOp(WASM_I32_EQ); break;
+    case JitConditional::LE:
+        pushZF(); pushSF(); pushLazyOF(kind); m_emitter.emitOp(WASM_I32_NE); m_emitter.emitOp(WASM_I32_OR);
+        break;
+    case JitConditional::NLE:
+        pushZF(); pushSF(); pushLazyOF(kind); m_emitter.emitOp(WASM_I32_NE); m_emitter.emitOp(WASM_I32_OR);
+        m_emitter.emitOp(WASM_I32_EQZ);
+        break;
+    default:
+        kpanic("pushLazyCondition: unsupported condition");
+        break;
+    }
+}
+
+// The lazy-flag type is only known at run time (an earlier block set it).
+// Dispatch to materialized flags or a common 32-bit formula without testing
+// every lazy type in sequence. Other types fall through to the caller's helper
+// path. Leave one control block open for the caller to close after that path.
+void JitWasmCodeGen::emitRuntimeLazyDispatch(U32 destLocal, JitConditional cond) {
+    static const bool disabled = std::getenv("BOXEDWINE_WASM_RUNTIME_COND_SLOW") != nullptr;
+    if (disabled || !wasmLazyConditionSupported(cond)) {
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load8U((U32)offsetof(CPU, lazyFlagType));
+        m_emitter.emitI32Const((S32)FLAGS_NONE);
+        m_emitter.emitOp(WASM_I32_EQ);
+        m_emitter.emitIf();
+        emitMaterializedCondition(cond, destLocal);
+        m_emitter.emitElse();
+        return;
+    }
+    struct Group { WasmLazyKind kind; std::initializer_list<LazyFlagType> types; };
+    static const Group groups[] = {
+        {WasmLazyKind::Logic, {FLAGS_AND32, FLAGS_OR32, FLAGS_XOR32, FLAGS_TEST32}},
+        {WasmLazyKind::Sub, {FLAGS_SUB32, FLAGS_CMP32}},
+        {WasmLazyKind::Add, {FLAGS_ADD32}},
+        {WasmLazyKind::Dec, {FLAGS_DEC32}},
+        {WasmLazyKind::Inc, {FLAGS_INC32}},
+    };
+    const bool resultOnly = cond == JitConditional::Z || cond == JitConditional::NZ ||
+        cond == JitConditional::S || cond == JitConditional::NS;
+    const bool carryOnly = cond == JitConditional::B || cond == JitConditional::NB ||
+        cond == JitConditional::BE || cond == JitConditional::NBE;
+    constexpr U32 groupCount = sizeof(groups) / sizeof(groups[0]);
+    const U32 formulaCount = resultOnly ? 1 : carryOnly ? groupCount - 1 : groupCount;
+    const U32 defaultDepth = formulaCount + 1; // materialized flags have their own case
+    // Construct these once, avoiding allocations for every condition compiled.
+    static const auto tables = []() {
+        std::array<std::vector<U32>, 3> result;
+        for (U32 mode = 0; mode < result.size(); ++mode) {
+            const U32 count = mode == 0 ? 1 : mode == 1 ? groupCount - 1 : groupCount;
+            auto& depths = result[mode];
+            depths.resize((U32)FLAGS_NONE + 1, count + 1);
+            depths[(U32)FLAGS_NONE] = 0;
+            for (U32 i = 0; i < groupCount; ++i) {
+                for (LazyFlagType type : groups[i].types) {
+                    if (depths.size() <= (U32)type) {
+                        depths.resize((U32)type + 1, count + 1);
+                    }
+                    // All five groups share ZF/SF; INC and DEC also share CF.
+                    depths[(U32)type] = mode == 0 ? 1 : std::min(i + 1, count);
+                }
+            }
+        }
+        return result;
+    }();
+    const auto& depths = tables[resultOnly ? 0 : carryOnly ? 1 : 2];
+
+    m_emitter.emitBlock(); // done: inline cases skip the helper fallback
+    const U32 doneDepth = m_emitter.currentCtrlDepth();
+    m_emitter.emitBlock(); // default: unsupported lazy types use the helper
+    for (U32 i = 0; i < defaultDepth; ++i) {
+        m_emitter.emitBlock(); // cases, innermost first in the table
+    }
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Load8U((U32)offsetof(CPU, lazyFlagType));
+    m_emitter.emitBrTable(depths, defaultDepth);
+    m_emitter.emitEnd();
+    emitMaterializedCondition(cond, destLocal);
+    m_emitter.emitBr(m_emitter.currentCtrlDepth() - doneDepth);
+    for (U32 i = 0; i < formulaCount; ++i) {
+        m_emitter.emitEnd();
+#ifdef BOXEDWINE_WASM_JIT_PROFILE
+        emitProfileSampledCall(HELPER_PROFILE_INLINE_COND);
+#endif
+        pushLazyCondition(cond, groups[i].kind);
+        m_emitter.emitLocalSet(destLocal);
+        m_emitter.emitBr(m_emitter.currentCtrlDepth() - doneDepth);
+    }
+    m_emitter.emitEnd(); // default falls through; caller closes done
+}
+
 RegPtr JitWasmCodeGen::getConditionCalculationReg(U32 index) {
     return readCPU(JitWidth::b32, (U32)offsetof(CPU, flags));
 }
@@ -13539,10 +14081,11 @@ void JitWasmCodeGen::callHostFunction(void* address, const std::vector<DynParam>
     }
     // Legacy x87/MMX callers have already ended their cache region. Other
     // helpers may observe CPU state, but leave the x87 registers unchanged.
-    materializeFpuCache();
-    syncDirtyRegsToHost();
-    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-    m_emitter.emitCallIndirect(m_typeVoidI32, 0);
+    // JIT modules import their helpers as functions and no table, so a
+    // call_indirect would fail validation. Every front-end path that reaches
+    // this needs a helper import instead.
+    (void)address;
+    abandonBlock("callHostFunction has no helper import");
     m_gpLoaded.fill(false);
     m_xmmLoaded.fill(false);
 }
@@ -13724,6 +14267,41 @@ void JitWasmCodeGen::emulateSingleOp() {
         blockExit();
         fpuStackCache = savedFpuCache;
     }
+}
+
+// Guest OpenGL calls (int 0x99, hundreds of thousands per second in Direct3D
+// games) call their host function directly instead of going through the
+// interpreter. A GL call changes only general registers (the return value)
+// and guest memory, so lazy flags, segments, XMM and the compile-time flag
+// state survive it. BOXEDWINE_WASM_INT99_SLOW=1 keeps the generic path.
+void JitWasmCodeGen::dynamic_int99(DecodedOp* op) {
+    static const bool forceSlow = std::getenv("BOXEDWINE_WASM_INT99_SLOW") != nullptr;
+    // An active x87 cache belongs to a loop region; emulateSingleOp knows how
+    // to leave it.
+    if (forceSlow || op->len > 0xff || fpuStackCache.entryTop) {
+        emulateSingleOp();
+        return;
+    }
+    m_forwardedResultConsumer = nullptr;
+    m_forwardedResultEndEip = 0;
+    m_publishedLazyFlagType = FLAGS_NULL;
+    flushFpuCache();
+    // As in emulateSingleOp: the dispatcher set EIP for the first op only.
+    if (this->currentEip != this->startingEip) {
+        writeEip(this->currentEip - cpu->seg[CS].address);
+    }
+    syncDirtyRegsToHost();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(op->imm);
+    m_emitter.emitI32Store((U32)offsetof(CPU, memHelperValue));
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitI32Const(WASM_JIT_HELPER_OP_INT99 | (op->len << 8));
+    m_emitter.emitI32Store((U32)offsetof(CPU, wasmJitHelperOp));
+    emitArmSmcBailout();
+    m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+    m_emitter.emitCall(HELPER_SPECIAL_OP);
+    emitBailoutCheck();
+    m_gpLoaded.fill(false);
 }
 
 void JitWasmCodeGen::fallbackToEmulateSingleOp(const char* family) {
@@ -14522,8 +15100,12 @@ void JitWasmCodeGen::preCompile(DecodedOp* op, bool skippedOp) {
 
 void JitWasmCodeGen::emitSseDivSlowPath() {
     // The interpreter executes this DIVSS/DIVPS, including any exception.
-    // Always leave afterwards; falling through would execute it twice. Keep
-    // the compiler's hot-path cache state intact across the cold branch.
+    // Always leave afterwards; falling through would execute it twice.
+    emulateSingleOpAndExitBlock();
+}
+
+void JitWasmCodeGen::emulateSingleOpAndExitBlock() {
+    // Keep the compiler's hot-path cache state intact across the cold branch.
     auto gpLoaded = m_gpLoaded, gpDirty = m_gpDirty;
     auto xmmLoaded = m_xmmLoaded, xmmDirty = m_xmmDirty;
     auto segLoaded = m_segLoaded;
@@ -14695,10 +15277,57 @@ extern "C" U32 wasmJitTestEmissionCount() {
 }
 #endif
 
+// Run a block that will not be published in the interpreter. Without this,
+// op->pfn stays firstDynamicOp, which would recompile and call itself every
+// time the op runs. Only this block's ops are reset: the decoded chain can run
+// past the block, and entries of other live or pending blocks inside it keep
+// their code.
+static void runWasmJitBlockInInterpreter(DecodedOp* op, U32 blockOpCount, OpCallback startJITOp) {
+    DecodedOp* cur = op;
+    for (U32 i = 0; i < blockOpCount && cur; ++i, cur = cur->next) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        void* code = wasmJitMtLoadPublishedCode(cur);
+#else
+        void* code = cur->pfnJitCode;
+#endif
+        if (cur != op && ((cur->flags2 & OP_FLAG2_WASM_JIT_PENDING) || (code && cur->pfn == startJITOp))) {
+            continue;
+        }
+        cur->pfn = NormalCPU::getFunctionForOp(cur);
+#ifdef BOXEDWINE_MULTI_THREADED
+        wasmJitMtUnpublishCode(cur);
+#else
+        cur->pfnJitCode = nullptr;
+#endif
+    }
+}
+
+#ifdef __TEST
+bool wasmJitTestOpRunsInInterpreter(DecodedOp* op) {
+    return !op->pfnJitCode && op->pfn == NormalCPU::getFunctionForOp(op);
+}
+#endif
+
 void JitWasmCodeGen::commitJIT(DecodedOp* op) {
 #ifdef __TEST
     g_wasmJitTestEmissionCount.fetch_add(1, std::memory_order_relaxed);
+    if (g_wasmJitTestAbandonNextBlock) {
+        g_wasmJitTestAbandonNextBlock = false;
+        abandonBlock("test request");
+    }
 #endif
+    if (m_abandonReason) {
+        static std::mutex loggedMutex;
+        static std::unordered_set<std::string> logged;
+        {
+            std::lock_guard<std::mutex> lock(loggedMutex);
+            if (logged.insert(m_abandonReason).second) {
+                klog_fmt("[WASM JIT] abandoned block at %x: %s (reported once per reason)", this->startingEip, m_abandonReason);
+            }
+        }
+        runWasmJitBlockInInterpreter(op, this->blockOpCount, cpu->thread->process->startJITOp);
+        return;
+    }
     // Finalize the WASM function body and the module binary.
     if (m_directLoopOpen) {
         m_emitter.emitEnd();
@@ -15066,21 +15695,8 @@ void JitWasmCodeGen::commitJIT(DecodedOp* op) {
 
     if (tableIdx < 0) {
         delete[] relocArr;
-        // Instantiation failed — fall back to the normal CPU interpreter
-        // for every op in the block. Without this, op->pfn stays as
-        // firstDynamicOp, which would recompile-then-call-self every time
-        // the op runs → infinite loop.
-        DecodedOp* cur = op;
-        while (cur) {
-            cur->pfn = NormalCPU::getFunctionForOp(cur);
-#ifdef BOXEDWINE_MULTI_THREADED
-            wasmJitMtUnpublishCode(cur);
-#else
-            cur->pfnJitCode = nullptr;
-#endif
-            if (cur->next == nullptr) break;
-            cur = cur->next;
-        }
+        // Instantiation failed: fall back to the interpreter.
+        runWasmJitBlockInInterpreter(op, this->blockOpCount, cpu->thread->process->startJITOp);
         return;
     }
 

@@ -19,7 +19,14 @@ struct ParsedModule {
     U32 functionType = 0;
     std::vector<U8> codeBody; // includes its ULEB byte-size prefix
     std::vector<std::pair<U32, std::string>> functionNames;
+    // Branch hints of the sole function: the hint vector after its function
+    // index. Offsets are relative to the function body, which is copied
+    // unchanged, so only the function index needs remapping.
+    std::vector<U8> branchHints;
+    U32 branchHintFunction = 0;
 };
+
+const char BRANCH_HINT_SECTION[] = "metadata.code.branch_hint";
 
 bool readUleb(const std::vector<U8>& bytes, size_t& pos, size_t end, U32& value) {
     value = 0;
@@ -104,7 +111,42 @@ bool parseModule(const std::vector<U8>& bytes, ParsedModule& parsed, BString& er
                 return fail("bad custom section name");
             }
             bool isName = length == 4 && std::equal(bytes.begin() + q, bytes.begin() + q + length, "name");
+            bool isBranchHint = length == sizeof(BRANCH_HINT_SECTION) - 1 &&
+                std::equal(bytes.begin() + q, bytes.begin() + q + length, BRANCH_HINT_SECTION);
             q += length;
+            if (isBranchHint) {
+                U32 functionCount = 0;
+                if (!readUleb(bytes, q, sectionEnd, functionCount) || functionCount > 1) {
+                    return fail("bad branch hint function count");
+                }
+                if (functionCount) {
+                    U32 functionIndex = 0;
+                    size_t hintsStart;
+                    U32 hintCount = 0;
+                    // The sole defined function follows the imports, so its
+                    // index equals the import count, which is parsed later.
+                    if (!readUleb(bytes, q, sectionEnd, functionIndex)) {
+                        return fail("bad branch hint function index");
+                    }
+                    parsed.branchHintFunction = functionIndex;
+                    hintsStart = q;
+                    if (!readUleb(bytes, q, sectionEnd, hintCount)) {
+                        return fail("bad branch hint count");
+                    }
+                    for (U32 i = 0; i < hintCount; ++i) {
+                        U32 offset = 0, size = 0;
+                        if (!readUleb(bytes, q, sectionEnd, offset) || !readUleb(bytes, q, sectionEnd, size) ||
+                                size > sectionEnd - q) {
+                            return fail("bad branch hint entry");
+                        }
+                        q += size;
+                    }
+                    if (q != sectionEnd) {
+                        return fail("trailing bytes in branch hints");
+                    }
+                    parsed.branchHints.assign(bytes.begin() + hintsStart, bytes.begin() + sectionEnd);
+                }
+            }
             // Other custom sections are optional metadata and remain ignored.
             while (isName && q < sectionEnd) {
                 U8 subsection = bytes[q++];
@@ -237,6 +279,9 @@ bool parseModule(const std::vector<U8>& bytes, ParsedModule& parsed, BString& er
     if (!hasCode) {
         return fail("missing wasm code section");
     }
+    if (!parsed.branchHints.empty() && parsed.branchHintFunction != parsed.importedFunctions) {
+        return fail("branch hints name a function the module does not define");
+    }
     return true;
 }
 }
@@ -296,6 +341,24 @@ bool wasmJitMergeModules(const std::vector<WasmJitMergeInput>& inputs, std::vect
     appendSection(output, 2, first.importPayload);
     appendSection(output, 3, functionPayload);
     appendSection(output, 7, exportPayload);
+    // Branch hints must precede the code section.
+    std::vector<U8> hints;
+    U32 hintedFunctions = 0;
+    for (size_t i = 0; i < parsed.size(); ++i) {
+        if (!parsed[i].branchHints.empty()) {
+            appendUleb(hints, (U64)first.importedFunctions + i);
+            hints.insert(hints.end(), parsed[i].branchHints.begin(), parsed[i].branchHints.end());
+            hintedFunctions++;
+        }
+    }
+    if (hintedFunctions) {
+        std::vector<U8> custom;
+        appendUleb(custom, sizeof(BRANCH_HINT_SECTION) - 1);
+        custom.insert(custom.end(), BRANCH_HINT_SECTION, BRANCH_HINT_SECTION + sizeof(BRANCH_HINT_SECTION) - 1);
+        appendUleb(custom, hintedFunctions);
+        custom.insert(custom.end(), hints.begin(), hints.end());
+        appendSection(output, 0, custom);
+    }
     appendSection(output, 10, codePayload);
     // Each input's sole defined function moves after the shared imports.
     // Preserve its profiling name while remapping the function index.

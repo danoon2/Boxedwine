@@ -360,6 +360,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testExecutableFixedReplacementPreparationFailurePreservesState, "Test WASM JIT fixed replacement backend preparation is transactional", TEST_ENTRY_SERIAL},
     {testWasmJitModuleMerger, "Test WASM JIT runtime module merger"},
     {testWasmJitBatchPolicy, "Test WASM JIT runtime batch policy"},
+    {testWasmJitAbandonedBlockRunsInInterpreter, "Test WASM JIT abandoned block runs in the interpreter", TEST_ENTRY_SERIAL},
     {testWasmJitMappedFileRange, "Test WASM JIT mapped file range"},
     {testWasmJitColdStringStub, "Test WASM JIT cold string fallback"},
 #endif
@@ -413,6 +414,10 @@ const TestEntry TEST_ENTRIES[] = {
 #if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
     {testJitOpenGLCallStateAndInvalidation, "Test JIT OpenGL state and code invalidation", TEST_ENTRY_SERIAL},
     {testJitOpenGLCallBoundaries, "Test JIT OpenGL call boundaries", TEST_ENTRY_SERIAL},
+#endif
+// MT WASM test runs have no SDL main loop for the GL dispatch.
+#if defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_WASM_JIT) && !defined(BOXEDWINE_MULTI_THREADED)
+    {testJitOpenGLCallStateAndInvalidation, "Test JIT OpenGL state and code invalidation", TEST_ENTRY_SERIAL},
 #endif
 #ifdef BOXEDWINE_VULKAN
     {testVulkanDirectStackABI, "Test Vulkan direct stack ABI", TEST_ENTRY_SERIAL},
@@ -1206,6 +1211,9 @@ const TestEntry TEST_ENTRIES[] = {
     {testJitScalarSseRegions, "Test JIT scalar SSE regions", TEST_ENTRY_SERIAL},
     {testJitDivideFallbackRunsOnce, "Test JIT divide fallback runs once", TEST_ENTRY_SERIAL},
     {testJitFallbackEipUsesLiveCsBase, "Test JIT fallback EIP uses the live CS base", TEST_ENTRY_SERIAL},
+    {testLockedReadModifyWrite32, "Test lock-prefixed 32-bit read-modify-write", TEST_ENTRY_SERIAL},
+    {testLockedCmpxchg8b, "Test lock-prefixed cmpxchg8b", TEST_ENTRY_SERIAL},
+    {testRuntimeLazyConditions, "Test conditions on run-time lazy flag types", TEST_ENTRY_SERIAL},
     {testNativePureFpuHelpers, "Test native x87 math helpers", TEST_ENTRY_SERIAL},
     {testNativeKnownLazyFlagType, "Test native known lazy flag type", TEST_ENTRY_SERIAL},
     {testNativeKnownLazyFlagFaults, "Test native known lazy flag fault recovery", TEST_ENTRY_SERIAL},

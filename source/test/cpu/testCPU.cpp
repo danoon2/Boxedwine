@@ -1298,8 +1298,10 @@ void testNativeJitCooperativeScheduling() {
 #endif
 }
 
-#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && (defined(BOXEDWINE_MULTI_THREADED) || defined(BOXEDWINE_WASM_JIT))
+#ifndef BOXEDWINE_WASM_JIT
 extern DYN_PTR_SIZE jitRunOpenGL(CPU* cpu);
+#endif
 extern thread_local U32 jitOpenGLFastCallCount;
 namespace {
 U32 glTestCalls;
@@ -1316,7 +1318,12 @@ void glTestCallback(CPU* cpu) {
     cpu->reg[2].u32 = 0x76543210;
     cpu->tmpReg = 0xffffffff; // callbacks must not alter the saved instruction length
     if (glTestMutation && glTestCalls == JIT_RUN_COUNT + 5) {
+#ifdef BOXEDWINE_WASM_JIT
+        // WASM blocks record compiled code on their first op only: the loop head.
+        DecodedOp* op = cpu->memory->getDecodedOp(TEST_CODE_ADDRESS);
+#else
         DecodedOp* op = cpu->memory->getDecodedOp(cpu->getEipAddress());
+#endif
         glTestSawCompiled = op && op->pfnJitCode;
         cpu->memory->writeb(glTestMutation, 0x46); // replace inc edi with inc esi
     }
@@ -1595,9 +1602,13 @@ void testJitEntryCacheInvalidation() {
 }
 
 void testJitOpenGLCallStateAndInvalidation() {
-#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(BOXEDWINE_WASM_JIT)
+#if defined(BOXEDWINE_JIT) && defined(BOXEDWINE_OPENGL) && (defined(BOXEDWINE_MULTI_THREADED) || defined(BOXEDWINE_WASM_JIT))
     ScopedGlTestCallbacks callbacks;
+#ifdef BOXEDWINE_WASM_JIT
+    const bool fastEnabled = !std::getenv("BOXEDWINE_WASM_INT99_SLOW");
+#else
     const bool fastEnabled = !std::getenv("BOXEDWINE_GL_INT99_SLOW");
+#endif
     for (bool mutate : { false, true }) {
         prepareGlTest();
         CPU* cpu = testContext().cpu;
@@ -3235,6 +3246,207 @@ void testJitFallbackEipUsesLiveCsBase() {
         }
     }
     setupSegments(ctx);
+}
+
+// Lock-prefixed 32-bit read-modify-writes must match their unlocked forms:
+// memory, registers, flags, and flags consumed by setcc in the same block.
+// Multi-threaded JITs run aligned operands in writable pages natively and
+// the rest (unaligned, page crossing) in the interpreter, so both offsets
+// are covered. Single-threaded builds ignore the prefix.
+void testLockedReadModifyWrite32() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    enum Kind { Xchg, Xadd, Cmpxchg, Alu };
+    struct Case { const char* name; std::vector<U8> opcode; Kind kind; U32 immBytes; U32 (*combine)(U32, U32); };
+    static const Case cases[] = {
+        {"xchg", {0x87, 0x0d}, Xchg, 0, nullptr},
+        {"xadd", {0x0f, 0xc1, 0x0d}, Xadd, 0, nullptr},
+        {"cmpxchg", {0x0f, 0xb1, 0x0d}, Cmpxchg, 0, nullptr},
+        {"add", {0x01, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a + b; }},
+        {"sub", {0x29, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a - b; }},
+        {"and", {0x21, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a & b; }},
+        {"or", {0x09, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a | b; }},
+        {"xor", {0x31, 0x0d}, Alu, 0, [](U32 a, U32 b) { return a ^ b; }},
+        {"add imm32", {0x81, 0x05}, Alu, 4, [](U32 a, U32 b) { return a + b; }},
+        {"sub imm32", {0x81, 0x2d}, Alu, 4, [](U32 a, U32 b) { return a - b; }},
+        {"and imm32", {0x81, 0x25}, Alu, 4, [](U32 a, U32 b) { return a & b; }},
+        {"or imm32", {0x81, 0x0d}, Alu, 4, [](U32 a, U32 b) { return a | b; }},
+        {"xor imm32", {0x81, 0x35}, Alu, 4, [](U32 a, U32 b) { return a ^ b; }},
+        {"add imm8", {0x83, 0x05}, Alu, 1, [](U32 a, U32 b) { return a + b; }},
+        {"sub imm8", {0x83, 0x2d}, Alu, 1, [](U32 a, U32 b) { return a - b; }},
+        {"inc", {0xff, 0x05}, Alu, 0, [](U32 a, U32) { return a + 1; }},
+        {"dec", {0xff, 0x0d}, Alu, 0, [](U32 a, U32) { return a - 1; }},
+    };
+    struct Values { U32 mem, ecx, eax, imm; };
+    static const Values values[] = {
+        {0x7ffffff0, 0x20, 0x7ffffff0, 0x20},         // signed overflow; cmpxchg equal
+        {5, 5, 6, 5},                                 // zero result; cmpxchg not equal
+        {0x80000000, 0x80000000, 0x80000000, 0xffffff80},
+    };
+    struct State { U32 mem, eax, ecx, ebx, edx, flags; };
+    for (const Case& c : cases) for (const Values& v : values) for (U32 offset : {0x300u, 0x301u, 0xffeu}) {
+        State state[2] = {};
+        for (bool lock : {false, true}) {
+            testNewInstruction(CF | ZF);
+            cpu->reg[0].u32 = v.eax;
+            cpu->reg[1].u32 = v.ecx;
+            ctx.memory->writed(TEST_HEAP_ADDRESS + offset, v.mem);
+            if (lock) testPushCode8(0xf0);
+            for (U8 b : c.opcode) testPushCode8(b);
+            testPushCode32(offset);
+            if (c.immBytes == 4) testPushCode32(v.imm);
+            else if (c.immBytes == 1) testPushCode8((U8)v.imm);
+            for (U8 b : {0x0f, 0x92, 0xc3, 0x0f, 0x94, 0xc7, 0x0f, 0x98, 0xc2, 0x0f, 0x90, 0xc6}) {
+                testPushCode8(b); // setb bl; setz bh; sets dl; seto dh
+            }
+            testRunCPU();
+            cpu->fillFlags();
+            state[lock] = {ctx.memory->readd(TEST_HEAP_ADDRESS + offset), cpu->reg[0].u32, cpu->reg[1].u32,
+                cpu->reg[3].u32 & 0xffff, cpu->reg[2].u32 & 0xffff, cpu->flags & FMASK_TEST};
+        }
+        const State& s = state[1];
+        bool valueOk = true;
+        switch (c.kind) {
+        case Xchg: valueOk = s.mem == v.ecx && s.ecx == v.mem; break;
+        case Xadd: valueOk = s.mem == v.mem + v.ecx && s.ecx == v.mem; break;
+        case Cmpxchg: valueOk = s.eax == v.mem && s.mem == (v.eax == v.mem ? v.ecx : v.mem); break;
+        case Alu: valueOk = s.mem == c.combine(v.mem, c.immBytes ? v.imm : v.ecx); break;
+        }
+        if (!valueOk) {
+            testFail("lock %s mem=%x ecx=%x offset=%x: mem=%x eax=%x ecx=%x", c.name, v.mem, v.ecx, offset, s.mem, s.eax, s.ecx);
+        } else if (memcmp(&state[0], &state[1], sizeof(State))) {
+            testFail("lock %s mem=%x ecx=%x offset=%x differs from unlocked: flags %x/%x set %x%04x/%x%04x",
+                c.name, v.mem, v.ecx, offset, state[0].flags, s.flags, state[0].edx, state[0].ebx, s.edx, s.ebx);
+        }
+    }
+}
+
+// Conditions evaluated in a block that starts after an indirect jump see a
+// lazy-flag type that is only known at run time. Check all 16 conditions
+// after inline 32-bit producers and helper-only types against flags computed
+// here. Narrow types occupy the gaps in the WASM runtime dispatch table;
+// shifts, ADC/SBB and NEG exercise its fallback, including out-of-range types.
+void testRuntimeLazyConditions() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    enum Kind { Add, Sub, Cmp, And, Or, Xor, Test, Inc, Dec, Adc, Sbb, Shl, Shr, Sar, Neg };
+    struct Producer { const char* name; std::vector<U8> code; Kind kind; };
+    static const Producer producers[] = {
+        {"add", {0x01, 0xd8}, Add}, {"sub", {0x29, 0xd8}, Sub}, {"cmp", {0x39, 0xd8}, Cmp},
+        {"and", {0x21, 0xd8}, And}, {"or", {0x09, 0xd8}, Or}, {"xor", {0x31, 0xd8}, Xor},
+        {"test", {0x85, 0xd8}, Test}, {"inc", {0x40}, Inc}, {"dec", {0x48}, Dec},
+        {"adc", {0x11, 0xd8}, Adc}, {"sbb", {0x19, 0xd8}, Sbb},
+        {"shl", {0xd1, 0xe0}, Shl}, {"shr", {0xd1, 0xe8}, Shr},
+        {"sar", {0xd1, 0xf8}, Sar}, {"neg", {0xf7, 0xd8}, Neg},
+    };
+    static const U32 pairs[][2] = {
+        {5, 3}, {3, 5}, {0x7fffffff, 1}, {0x80000000, 1}, {0, 0}, {0xffffffff, 1},
+        {0x80000000, 0x80000000}, {0x7fffffff, 0xffffffff}, {0x12345600, 0xff},
+        {0x7f, 1}, {0x80, 1}, {0x7fff, 1}, {0x8000, 1},
+    };
+    constexpr U32 DATA = 0x400;
+    for (U32 width : {8u, 16u, 32u}) for (const Producer& p : producers)
+            for (const auto& pair : pairs) for (bool carryIn : {false, true}) {
+        const U32 mask = (U32)((1ull << width) - 1), sign = 1u << (width - 1);
+        const U32 a = pair[0] & mask, b = pair[1] & mask;
+        U32 r = 0;
+        bool cf = false, of = false;
+        switch (p.kind) {
+        case Add: case Adc: {
+            const U64 sum = (U64)a + b + (p.kind == Adc && carryIn);
+            r = (U32)sum; cf = sum > mask; of = ((a ^ ~b) & (a ^ r) & sign) != 0;
+            break;
+        }
+        case Sub: case Cmp: case Sbb:
+            r = a - b - (p.kind == Sbb && carryIn);
+            cf = (U64)a < (U64)b + (p.kind == Sbb && carryIn);
+            of = ((a ^ b) & (a ^ r) & sign) != 0;
+            break;
+        case And: case Test: r = a & b; break;
+        case Or: r = a | b; break;
+        case Xor: r = a ^ b; break;
+        case Inc: r = a + 1; cf = carryIn; of = a == sign - 1; break;
+        case Dec: r = a - 1; cf = carryIn; of = a == sign; break;
+        case Shl: r = a << 1; cf = (a & sign) != 0; of = ((a ^ r) & sign) != 0; break;
+        case Shr: r = a >> 1; cf = a & 1; of = (a & sign) != 0; break;
+        case Sar: r = (a >> 1) | (a & sign); cf = a & 1; break;
+        case Neg: r = 0u - a; cf = a != 0; of = a == sign; break;
+        }
+        r &= mask;
+        const bool zf = r == 0, sf = (r & sign) != 0;
+        U32 low = r & 0xff, bits = 0;
+        for (; low; low &= low - 1) ++bits;
+        const bool pf = (bits & 1) == 0;
+        const bool expected[16] = {of, !of, cf, !cf, zf, !zf, cf || zf, !(cf || zf), sf, !sf, pf, !pf,
+            sf != of, sf == of, zf || sf != of, !(zf || sf != of)};
+
+        testNewInstruction(carryIn ? CF : 0);
+        cpu->reg[0].u32 = a;
+        cpu->reg[3].u32 = b;
+        if (width == 16) testPushCode8(0x66);
+        if (width == 8 && (p.kind == Inc || p.kind == Dec)) {
+            testPushCode8(0xfe); testPushCode8(p.kind == Inc ? 0xc0 : 0xc8);
+        } else {
+            // Each two-byte encoding's preceding opcode is its byte form.
+            testPushCode8(p.code[0] - (width == 8 ? 1 : 0));
+            for (size_t i = 1; i < p.code.size(); ++i) testPushCode8(p.code[i]);
+        }
+        const U32 target = ctx.codeIp - TEST_CODE_ADDRESS + 7;
+        testPushCode8(0xb9); testPushCode32(target); // mov ecx, target
+        testPushCode8(0xff); testPushCode8(0xe1);    // jmp ecx: a new block, lazy type unknown
+        for (U8 cc = 0; cc < 16; ++cc) {
+            testPushCode8(0x0f); testPushCode8(0x90 + cc); testPushCode8(0x05); testPushCode32(DATA + cc); // setcc [DATA+cc]
+        }
+        cpu->reg[7].u32 = 0;
+        testPushCode8(0x83); testPushCode8(0xd7); testPushCode8(0x00); // adc edi, 0: CF of the unknown lazy type
+        testRunCPU();
+        if (cpu->reg[7].u32 != (cf ? 1u : 0u)) {
+            testFail("%s%u %x,%x carry=%u: adc after the block boundary added %u", p.name, width, a, b, carryIn, cpu->reg[7].u32);
+        }
+        for (U32 cc = 0; cc < 16; ++cc) {
+            if (ctx.memory->readb(TEST_HEAP_ADDRESS + DATA + cc) != (expected[cc] ? 1 : 0)) {
+                testFail("%s%u %x,%x carry=%u: setcc %u got %u", p.name, width, a, b, carryIn, cc,
+                    ctx.memory->readb(TEST_HEAP_ADDRESS + DATA + cc));
+                break;
+            }
+        }
+    }
+}
+
+// lock cmpxchg8b must match its unlocked form. A preceding ADD leaves lazy
+// flags pending; only ZF may change, and SETcc in the same block must see it.
+void testLockedCmpxchg8b() {
+    auto& ctx = testContext(); CPU* cpu = ctx.cpu;
+    constexpr U64 MEM = 0x123456789abcdef0ull;
+    struct State { U64 mem; U32 eax, edx, ecx, flags; };
+    for (bool equal : {true, false}) for (U32 offset : {0x300u, 0x304u, 0xffcu}) {
+        State state[2] = {};
+        for (bool lock : {false, true}) {
+            testNewInstruction(0);
+            ctx.memory->writeq(TEST_HEAP_ADDRESS + offset, MEM);
+            cpu->reg[0].u32 = (U32)MEM;                                   // eax
+            cpu->reg[2].u32 = (U32)(MEM >> 32) + (equal ? 0 : 1);         // edx
+            cpu->reg[3].u32 = 0x0badf00d;                                 // ebx
+            cpu->reg[1].u32 = 0xfeedface;                                 // ecx
+            cpu->reg[6].u32 = 0xffffffff;                                 // esi
+            cpu->reg[7].u32 = 2;                                          // edi
+            testPushCode8(0x01); testPushCode8(0xfe);                     // add esi, edi: CF set
+            if (lock) testPushCode8(0xf0);
+            testPushCode8(0x0f); testPushCode8(0xc7); testPushCode8(0x0d); testPushCode32(offset); // cmpxchg8b [offset]
+            for (U8 b : {0x0f, 0x94, 0xc1, 0x0f, 0x92, 0xc5}) testPushCode8(b); // setz cl; setb ch
+            testRunCPU();
+            cpu->fillFlags();
+            state[lock] = {ctx.memory->readq(TEST_HEAP_ADDRESS + offset), cpu->reg[0].u32, cpu->reg[2].u32,
+                cpu->reg[1].u32 & 0xffff, cpu->flags & FMASK_TEST};
+        }
+        const State& s = state[1];
+        const U64 expectedMem = equal ? ((U64)0xfeedface << 32 | 0x0badf00d) : MEM;
+        if (s.mem != expectedMem || s.eax != (U32)MEM || s.edx != (U32)(MEM >> 32) ||
+                s.ecx != (equal ? 0x0101u : 0x0100u) || !(s.flags & CF) || !!(s.flags & ZF) != equal) {
+            testFail("lock cmpxchg8b equal=%u offset=%x: mem=%llx edx:eax=%x:%x cx=%x flags=%x", equal, offset,
+                (unsigned long long)s.mem, s.edx, s.eax, s.ecx, s.flags);
+        } else if (memcmp(&state[0], &state[1], sizeof(State))) {
+            testFail("lock cmpxchg8b equal=%u offset=%x differs from unlocked", equal, offset);
+        }
+    }
 }
 
 #ifdef BOXEDWINE_JIT_ARMV8

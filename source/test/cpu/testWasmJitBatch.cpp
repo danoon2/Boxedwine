@@ -220,7 +220,7 @@ void testWasmJitMtExecDetachPreservesSharedDecodedOps() {
 }
 #endif
 
-static std::vector<U8> makeMergeInput(S32 value, const char* memoryName = "memory", const char* profileName = nullptr) {
+static std::vector<U8> makeMergeInput(S32 value, const char* memoryName = "memory", const char* profileName = nullptr, U32 hintedIfs = 0) {
     WasmEmitter emitter;
     U32 type = emitter.addFuncType({WasmType::I32, WasmType::I32}, {});
     emitter.addMemoryImport("env", memoryName);
@@ -234,11 +234,50 @@ static std::vector<U8> makeMergeInput(S32 value, const char* memoryName = "memor
         emitter.setFunctionName(function, profileName);
     }
     emitter.beginFunction({});
+    for (U32 i = 0; i < hintedIfs; ++i) {
+        // The second parameter is 0, so these branches are never taken.
+        emitter.emitLocalGet(1);
+        emitter.setNextBranchHint(i & 1 ? WasmBranchHint::Likely : WasmBranchHint::Unlikely);
+        emitter.emitIf();
+        emitter.emitOp(WASM_UNREACHABLE);
+        emitter.emitEnd();
+    }
     emitter.emitLocalGet(0);
     emitter.emitI32Const(value);
     emitter.emitI32Store(0);
     emitter.endFunction();
     return emitter.finalize();
+}
+
+// Payload of the named custom section after its name, or empty. `order`
+// receives the id of every section in module order (custom sections as 0).
+static std::vector<U8> wasmCustomSection(const std::vector<U8>& bytes, const char* name, std::vector<U8>* order = nullptr) {
+    auto uleb = [&bytes](size_t& pos) {
+        U32 value = 0;
+        for (U32 shift = 0; pos < bytes.size(); shift += 7) {
+            U8 byte = bytes[pos++];
+            value |= (U32)(byte & 0x7f) << shift;
+            if (!(byte & 0x80)) break;
+        }
+        return value;
+    };
+    std::vector<U8> result;
+    size_t pos = 8;
+    while (pos < bytes.size()) {
+        U8 id = bytes[pos++];
+        U32 size = uleb(pos);
+        size_t end = pos + size;
+        if (order) order->push_back(id);
+        if (id == 0) {
+            size_t q = pos;
+            U32 length = uleb(q);
+            if (length == strlen(name) && !memcmp(bytes.data() + q, name, length)) {
+                result.assign(bytes.begin() + q + length, bytes.begin() + end);
+            }
+        }
+        pos = end;
+    }
+    return result;
 }
 
 EM_JS(int, test_run_merged_wasm, (const void* bytes, int size, int count, U32 output), {
@@ -320,6 +359,44 @@ void testWasmJitModuleMerger() {
         testFail("wasm runtime merger preserves function names with remapped indices and executable bodies");
     }
 
+    // Branch hints follow their function to its merged index, keep their
+    // body-relative offsets and stay ahead of the code section.
+    std::vector<U8> hintedFirst = makeMergeInput(0x11223344, "memory", "first", 2);
+    std::vector<U8> unhinted = makeMergeInput(0x55667788, "memory", "second");
+    std::vector<U8> hintedThird = makeMergeInput(0x0badcafe, "memory", "third", 1);
+    inputs = {{&hintedFirst}, {&unhinted}, {&hintedThird}};
+    {
+        const char* section = "metadata.code.branch_hint";
+        std::vector<U8> firstHints = wasmCustomSection(hintedFirst, section);
+        std::vector<U8> thirdHints = wasmCustomSection(hintedThird, section);
+        U32 outputs[3] = {};
+        std::vector<U8> order;
+        if (firstHints.size() < 3 || thirdHints.size() < 3 || firstHints[0] != 1 || firstHints[1] != 1 ||
+                thirdHints[0] != 1 || thirdHints[1] != 1) {
+            testFail("wasm runtime merger branch hint inputs");
+        } else if (!wasmJitMergeModules(inputs, merged, error)) {
+            testFail("wasm runtime merger with branch hints failed: %s", error.c_str());
+        } else {
+            // One shared function import, so the defined functions are 1..3.
+            std::vector<U8> expected = {2, 1};
+            expected.insert(expected.end(), firstHints.begin() + 2, firstHints.end());
+            expected.push_back(3);
+            expected.insert(expected.end(), thirdHints.begin() + 2, thirdHints.end());
+            if (wasmCustomSection(merged, section, &order) != expected) {
+                testFail("wasm runtime merger remaps branch hints");
+            }
+            auto hint = std::find(order.begin(), order.end(), 0);
+            auto code = std::find(order.begin(), order.end(), 10);
+            if (hint == order.end() || code == order.end() || hint > code) {
+                testFail("wasm runtime merger places branch hints before the code section");
+            }
+            if (!test_run_merged_wasm(merged.data(), (int)merged.size(), 3, (U32)(uintptr_t)outputs) ||
+                    outputs[0] != 0x11223344 || outputs[1] != 0x55667788 || outputs[2] != 0x0badcafe) {
+                testFail("wasm runtime merger with branch hints executes distinct bodies");
+            }
+        }
+    }
+
     std::vector<U8> incompatible = makeMergeInput(3, "otherMemory");
     inputs = {{&first}, {&incompatible}};
     if (wasmJitMergeModules(inputs, merged, error)) {
@@ -354,6 +431,58 @@ void testWasmJitModuleMerger() {
         if (wasmJitMergeModules(inputs, merged, error)) {
             testFail("wasm runtime merger rejects multi-function input");
         }
+    }
+}
+
+// A block that cannot be emitted is abandoned at commit and its ops run in
+// the interpreter. Only its own ops are reset: a block that starts inside it
+// keeps its compiled entry.
+void testWasmJitAbandonedBlockRunsInInterpreter() {
+    TestContext& context = testContext();
+    CPU* cpu = context.cpu;
+    testNewInstruction(0);
+    static const U8 code[] = {0x40, 0x43, 0x41, 0x42, 0x46, 0x47}; // inc eax, ebx, ecx, edx, esi, edi
+    for (U8 b : code) testPushCode8(b);
+    testPushCode8(0xcd); testPushCode8(0x97);
+    auto run = [&](U32 eip) {
+        for (U32 r = 0; r < 8; ++r) if (r != 4) cpu->reg[r].u32 = 0; // esp stays
+        cpu->eip.u32 = eip;
+        cpu->nextOp = cpu->getNextOp();
+        U32 dispatches = 0;
+        do {
+            cpu->run();
+            if (++dispatches > 1024) { testFail("abandoned block dispatch limit"); break; }
+        } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+        for (U32 r = 0; r < 8; ++r) {
+            if (r == 4) continue;
+            U32 expected = (r == 5 || (r == 0 && eip)) ? 0 : 1; // ebp is not incremented
+            if (cpu->reg[r].u32 != expected) testFail("abandoned block from %u: reg %u = %u", eip, r, cpu->reg[r].u32);
+        }
+    };
+    run(1); // compile the inner block first
+    DecodedOp* inner = context.memory->getDecodedOp(TEST_CODE_ADDRESS + 1);
+    if (!inner || inner->pfn != cpu->thread->process->startJITOp || !inner->pfnJitCode) {
+        testFail("abandoned block setup: inner block not compiled");
+        return;
+    }
+    void* innerCode = inner->pfnJitCode;
+    wasmJitTestSetAbandonNextBlock(true);
+    run(0);
+    wasmJitTestSetAbandonNextBlock(false);
+    DecodedOp* outer = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    if (!outer || outer->next != inner) {
+        testFail("abandoned block setup: outer block decode");
+        return;
+    }
+    if (!wasmJitTestOpRunsInInterpreter(outer)) {
+        testFail("abandoned block entry does not run in the interpreter");
+    }
+    if (inner->pfnJitCode != innerCode || inner->pfn != cpu->thread->process->startJITOp) {
+        testFail("abandoned block reset the entry of the block inside it");
+    }
+    run(0); // the interpreter keeps running it, without recompiling forever
+    if (!wasmJitTestOpRunsInInterpreter(outer)) {
+        testFail("abandoned block entry was recompiled");
     }
 }
 

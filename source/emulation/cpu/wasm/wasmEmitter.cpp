@@ -273,6 +273,27 @@ void WasmEmitter::emitAtomicFence() {
     m_currentBody.push_back(0x00); // reserved ordering byte
 }
 
+void WasmEmitter::emitI32AtomicRmw(WasmAtomicRmw op, U32 bytes, U32 offset) {
+    U32 code = (U32)op;
+    U32 align = 2;
+    if (bytes == 1) {
+        code += 2;
+        align = 0;
+    } else if (bytes == 2) {
+        code += 3;
+        align = 1;
+    }
+    m_currentBody.push_back(0xfe); // atomic instruction prefix
+    appendULEB128(m_currentBody, code);
+    emitMemArg(m_currentBody, align, offset);
+}
+
+void WasmEmitter::emitI64AtomicRmw(WasmAtomicRmw op, U32 offset) {
+    m_currentBody.push_back(0xfe); // atomic instruction prefix
+    appendULEB128(m_currentBody, (U32)op + 1);
+    emitMemArg(m_currentBody, 3, offset);
+}
+
 void WasmEmitter::emitI64TruncSatF64S() {
     m_currentBody.push_back(0xfc);
     appendULEB128(m_currentBody, 6);
@@ -427,6 +448,14 @@ void WasmEmitter::emitBrIf(U32 depth) {
     recordBranchHintIfNeeded();
     m_currentBody.push_back(WASM_BR_IF);
     appendULEB128(m_currentBody, depth);
+}
+void WasmEmitter::emitBrTable(const std::vector<U32>& depths, U32 defaultDepth) {
+    m_currentBody.push_back(WASM_BR_TABLE);
+    appendULEB128(m_currentBody, depths.size());
+    for (U32 depth : depths) {
+        appendULEB128(m_currentBody, depth);
+    }
+    appendULEB128(m_currentBody, defaultDepth);
 }
 void WasmEmitter::emitDrop()         { m_currentBody.push_back(WASM_DROP); }
 void WasmEmitter::emitReturn()       { m_currentBody.push_back(WASM_RETURN); }

@@ -26,6 +26,7 @@
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
 #include "../wasm/wasmMemoryOrdering.h"
+#include "../wasm/wasmJitLockStats.h"
 #if defined(BOXEDWINE_JIT) && !defined(BOXEDWINE_WASM_JIT)
 #include "../jit/jitCodeGen.h"
 #endif
@@ -268,7 +269,15 @@ static void OPCALL normalDispatch(CPU* cpu, DecodedOp* op);
 #include "normal_jump.h"
 #include "normal_move.h"
 
+#ifdef BOXEDWINE_WASM_JIT_LOCK_STATS_ACTIVE
+#undef START_OP
+#define START_OP(cpu, op) wasmJitLockStatsCountInterpreter((op)->inst); normalOrderMemoryInstruction(op)
+#endif
 #include "normal_lock.h"
+#ifdef BOXEDWINE_WASM_JIT_LOCK_STATS_ACTIVE
+#undef START_OP
+#define START_OP(cpu, op) normalOrderMemoryInstruction(op)
+#endif
 
 static OpCallback normalOps[NUMBER_OF_OPS];
 static U32 normalOpsInitialized;
