@@ -3169,35 +3169,56 @@ void testLockedReadModifyWrite32() {
 
 // Conditions evaluated in a block that starts after an indirect jump see a
 // lazy-flag type that is only known at run time. Check all 16 conditions
-// after each common 32-bit flag producer against flags computed here.
+// after inline 32-bit producers and helper-only types against flags computed
+// here. Narrow types occupy the gaps in the WASM runtime dispatch table;
+// shifts, ADC/SBB and NEG exercise its fallback, including out-of-range types.
 void testRuntimeLazyConditions() {
     auto& ctx = testContext(); CPU* cpu = ctx.cpu;
-    enum Kind { Add, Sub, Cmp, And, Or, Xor, Test, Inc, Dec };
+    enum Kind { Add, Sub, Cmp, And, Or, Xor, Test, Inc, Dec, Adc, Sbb, Shl, Shr, Sar, Neg };
     struct Producer { const char* name; std::vector<U8> code; Kind kind; };
     static const Producer producers[] = {
         {"add", {0x01, 0xd8}, Add}, {"sub", {0x29, 0xd8}, Sub}, {"cmp", {0x39, 0xd8}, Cmp},
         {"and", {0x21, 0xd8}, And}, {"or", {0x09, 0xd8}, Or}, {"xor", {0x31, 0xd8}, Xor},
         {"test", {0x85, 0xd8}, Test}, {"inc", {0x40}, Inc}, {"dec", {0x48}, Dec},
+        {"adc", {0x11, 0xd8}, Adc}, {"sbb", {0x19, 0xd8}, Sbb},
+        {"shl", {0xd1, 0xe0}, Shl}, {"shr", {0xd1, 0xe8}, Shr},
+        {"sar", {0xd1, 0xf8}, Sar}, {"neg", {0xf7, 0xd8}, Neg},
     };
     static const U32 pairs[][2] = {
         {5, 3}, {3, 5}, {0x7fffffff, 1}, {0x80000000, 1}, {0, 0}, {0xffffffff, 1},
         {0x80000000, 0x80000000}, {0x7fffffff, 0xffffffff}, {0x12345600, 0xff},
+        {0x7f, 1}, {0x80, 1}, {0x7fff, 1}, {0x8000, 1},
     };
     constexpr U32 DATA = 0x400;
-    for (const Producer& p : producers) for (const auto& pair : pairs) for (bool carryIn : {false, true}) {
-        const U32 a = pair[0], b = pair[1];
+    for (U32 width : {8u, 16u, 32u}) for (const Producer& p : producers)
+            for (const auto& pair : pairs) for (bool carryIn : {false, true}) {
+        const U32 mask = (U32)((1ull << width) - 1), sign = 1u << (width - 1);
+        const U32 a = pair[0] & mask, b = pair[1] & mask;
         U32 r = 0;
         bool cf = false, of = false;
         switch (p.kind) {
-        case Add: r = a + b; cf = r < a; of = ((a ^ ~b) & (a ^ r)) >> 31; break;
-        case Sub: case Cmp: r = a - b; cf = a < b; of = ((a ^ b) & (a ^ r)) >> 31; break;
+        case Add: case Adc: {
+            const U64 sum = (U64)a + b + (p.kind == Adc && carryIn);
+            r = (U32)sum; cf = sum > mask; of = ((a ^ ~b) & (a ^ r) & sign) != 0;
+            break;
+        }
+        case Sub: case Cmp: case Sbb:
+            r = a - b - (p.kind == Sbb && carryIn);
+            cf = (U64)a < (U64)b + (p.kind == Sbb && carryIn);
+            of = ((a ^ b) & (a ^ r) & sign) != 0;
+            break;
         case And: case Test: r = a & b; break;
         case Or: r = a | b; break;
         case Xor: r = a ^ b; break;
-        case Inc: r = a + 1; cf = carryIn; of = r == 0x80000000; break;
-        case Dec: r = a - 1; cf = carryIn; of = r == 0x7fffffff; break;
+        case Inc: r = a + 1; cf = carryIn; of = a == sign - 1; break;
+        case Dec: r = a - 1; cf = carryIn; of = a == sign; break;
+        case Shl: r = a << 1; cf = (a & sign) != 0; of = ((a ^ r) & sign) != 0; break;
+        case Shr: r = a >> 1; cf = a & 1; of = (a & sign) != 0; break;
+        case Sar: r = (a >> 1) | (a & sign); cf = a & 1; break;
+        case Neg: r = 0u - a; cf = a != 0; of = a == sign; break;
         }
-        const bool zf = r == 0, sf = r >> 31;
+        r &= mask;
+        const bool zf = r == 0, sf = (r & sign) != 0;
         U32 low = r & 0xff, bits = 0;
         for (; low; low &= low - 1) ++bits;
         const bool pf = (bits & 1) == 0;
@@ -3207,8 +3228,15 @@ void testRuntimeLazyConditions() {
         testNewInstruction(carryIn ? CF : 0);
         cpu->reg[0].u32 = a;
         cpu->reg[3].u32 = b;
-        for (U8 byte : p.code) testPushCode8(byte);
-        const U32 target = (U32)p.code.size() + 7;
+        if (width == 16) testPushCode8(0x66);
+        if (width == 8 && (p.kind == Inc || p.kind == Dec)) {
+            testPushCode8(0xfe); testPushCode8(p.kind == Inc ? 0xc0 : 0xc8);
+        } else {
+            // Each two-byte encoding's preceding opcode is its byte form.
+            testPushCode8(p.code[0] - (width == 8 ? 1 : 0));
+            for (size_t i = 1; i < p.code.size(); ++i) testPushCode8(p.code[i]);
+        }
+        const U32 target = ctx.codeIp - TEST_CODE_ADDRESS + 7;
         testPushCode8(0xb9); testPushCode32(target); // mov ecx, target
         testPushCode8(0xff); testPushCode8(0xe1);    // jmp ecx: a new block, lazy type unknown
         for (U8 cc = 0; cc < 16; ++cc) {
@@ -3218,11 +3246,11 @@ void testRuntimeLazyConditions() {
         testPushCode8(0x83); testPushCode8(0xd7); testPushCode8(0x00); // adc edi, 0: CF of the unknown lazy type
         testRunCPU();
         if (cpu->reg[7].u32 != (cf ? 1u : 0u)) {
-            testFail("%s %x,%x carry=%u: adc after the block boundary added %u", p.name, a, b, carryIn, cpu->reg[7].u32);
+            testFail("%s%u %x,%x carry=%u: adc after the block boundary added %u", p.name, width, a, b, carryIn, cpu->reg[7].u32);
         }
         for (U32 cc = 0; cc < 16; ++cc) {
             if (ctx.memory->readb(TEST_HEAP_ADDRESS + DATA + cc) != (expected[cc] ? 1 : 0)) {
-                testFail("%s %x,%x carry=%u: setcc %u got %u", p.name, a, b, carryIn, cc,
+                testFail("%s%u %x,%x carry=%u: setcc %u got %u", p.name, width, a, b, carryIn, cc,
                     ctx.memory->readb(TEST_HEAP_ADDRESS + DATA + cc));
                 break;
             }

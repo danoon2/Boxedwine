@@ -12669,11 +12669,9 @@ RegPtr JitWasmCodeGen::getCF() {
     };
 
     if (currentLazyFlags == FLAGS_NULL) {
-        U32 opened = emitRuntimeLazyDispatch(r->hardwareReg(), [this](WasmLazyKind kind) { pushLazyCF(kind); });
+        emitRuntimeLazyDispatch(r->hardwareReg(), JitConditional::B);
         emitHelperFallback();
-        for (U32 i = 0; i < opened; ++i) {
-            m_emitter.emitEnd();
-        }
+        m_emitter.emitEnd();
         return r;
     }
 
@@ -13207,21 +13205,9 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
     // Both paths only read flag state and write a scratch local (or tmpReg),
     // so dirty GP locals remain valid across this runtime branch.
     auto tmp = getTmpReg();
-    bool checkMaterialized = currentLazyFlags == FLAGS_NULL;
-    U32 runtimeBranches = 0;
-    if (checkMaterialized && wasmLazyConditionSupported(cond)) {
-        runtimeBranches = emitRuntimeLazyDispatch(tmp->hardwareReg(), [this, cond](WasmLazyKind kind) {
-            pushLazyCondition(cond, kind);
-        });
-    }
-    if (checkMaterialized) {
-        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
-        m_emitter.emitI32Load8U((U32)offsetof(CPU, lazyFlagType));
-        m_emitter.emitI32Const((S32)FLAGS_NONE);
-        m_emitter.emitOp(WASM_I32_EQ);
-        m_emitter.emitIf();
-        emitMaterializedCondition(cond, tmp->hardwareReg());
-        m_emitter.emitElse();
+    const bool runtimeFlags = currentLazyFlags == FLAGS_NULL;
+    if (runtimeFlags) {
+        emitRuntimeLazyDispatch(tmp->hardwareReg(), cond);
     }
     m_publishedLazyFlagType = FLAGS_NULL;
     m_forwardedResultConsumer = nullptr;
@@ -13233,10 +13219,7 @@ RegPtr JitWasmCodeGen::getCondition(JitConditional cond, RegPtr res) {
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Load((U32)offsetof(CPU, tmpReg));
     m_emitter.emitLocalSet(tmp->hardwareReg());
-    if (checkMaterialized) {
-        m_emitter.emitEnd();
-    }
-    for (U32 i = 0; i < runtimeBranches; ++i) {
+    if (runtimeFlags) {
         m_emitter.emitEnd();
     }
     // SETcc may target part of a GP register; merge through mov(b8) below.
@@ -13374,13 +13357,20 @@ void JitWasmCodeGen::pushLazyCondition(JitConditional cond, WasmLazyKind kind) {
 }
 
 // The lazy-flag type is only known at run time (an earlier block set it).
-// Test it against the common 32-bit types and evaluate `push` inline for a
-// match. Each group opens an `if ... else`; the caller emits its helper path
-// into the last else and closes the returned number of blocks.
-U32 JitWasmCodeGen::emitRuntimeLazyDispatch(U32 destLocal, const std::function<void(WasmLazyKind)>& push) {
+// Dispatch to materialized flags or a common 32-bit formula without testing
+// every lazy type in sequence. Other types fall through to the caller's helper
+// path. Leave one control block open for the caller to close after that path.
+void JitWasmCodeGen::emitRuntimeLazyDispatch(U32 destLocal, JitConditional cond) {
     static const bool disabled = std::getenv("BOXEDWINE_WASM_RUNTIME_COND_SLOW") != nullptr;
-    if (disabled) {
-        return 0;
+    if (disabled || !wasmLazyConditionSupported(cond)) {
+        m_emitter.emitLocalGet(WASM_CPU_LOCAL);
+        m_emitter.emitI32Load8U((U32)offsetof(CPU, lazyFlagType));
+        m_emitter.emitI32Const((S32)FLAGS_NONE);
+        m_emitter.emitOp(WASM_I32_EQ);
+        m_emitter.emitIf();
+        emitMaterializedCondition(cond, destLocal);
+        m_emitter.emitElse();
+        return;
     }
     struct Group { WasmLazyKind kind; std::initializer_list<LazyFlagType> types; };
     static const Group groups[] = {
@@ -13390,33 +13380,57 @@ U32 JitWasmCodeGen::emitRuntimeLazyDispatch(U32 destLocal, const std::function<v
         {WasmLazyKind::Dec, {FLAGS_DEC32}},
         {WasmLazyKind::Inc, {FLAGS_INC32}},
     };
-    U32 typeLocal = allocScratch();
+    const bool resultOnly = cond == JitConditional::Z || cond == JitConditional::NZ ||
+        cond == JitConditional::S || cond == JitConditional::NS;
+    const bool carryOnly = cond == JitConditional::B || cond == JitConditional::NB ||
+        cond == JitConditional::BE || cond == JitConditional::NBE;
+    constexpr U32 groupCount = sizeof(groups) / sizeof(groups[0]);
+    const U32 formulaCount = resultOnly ? 1 : carryOnly ? groupCount - 1 : groupCount;
+    const U32 defaultDepth = formulaCount + 1; // materialized flags have their own case
+    // Construct these once, avoiding allocations for every condition compiled.
+    static const auto tables = []() {
+        std::array<std::vector<U32>, 3> result;
+        for (U32 mode = 0; mode < result.size(); ++mode) {
+            const U32 count = mode == 0 ? 1 : mode == 1 ? groupCount - 1 : groupCount;
+            auto& depths = result[mode];
+            depths.resize((U32)FLAGS_NONE + 1, count + 1);
+            depths[(U32)FLAGS_NONE] = 0;
+            for (U32 i = 0; i < groupCount; ++i) {
+                for (LazyFlagType type : groups[i].types) {
+                    if (depths.size() <= (U32)type) {
+                        depths.resize((U32)type + 1, count + 1);
+                    }
+                    // All five groups share ZF/SF; INC and DEC also share CF.
+                    depths[(U32)type] = mode == 0 ? 1 : std::min(i + 1, count);
+                }
+            }
+        }
+        return result;
+    }();
+    const auto& depths = tables[resultOnly ? 0 : carryOnly ? 1 : 2];
+
+    m_emitter.emitBlock(); // done: inline cases skip the helper fallback
+    const U32 doneDepth = m_emitter.currentCtrlDepth();
+    m_emitter.emitBlock(); // default: unsupported lazy types use the helper
+    for (U32 i = 0; i < defaultDepth; ++i) {
+        m_emitter.emitBlock(); // cases, innermost first in the table
+    }
     m_emitter.emitLocalGet(WASM_CPU_LOCAL);
     m_emitter.emitI32Load8U((U32)offsetof(CPU, lazyFlagType));
-    m_emitter.emitLocalSet(typeLocal);
-    U32 opened = 0;
-    for (const Group& group : groups) {
-        bool first = true;
-        for (LazyFlagType type : group.types) {
-            m_emitter.emitLocalGet(typeLocal);
-            m_emitter.emitI32Const((S32)type);
-            m_emitter.emitOp(WASM_I32_EQ);
-            if (!first) {
-                m_emitter.emitOp(WASM_I32_OR);
-            }
-            first = false;
-        }
-        m_emitter.emitIf();
+    m_emitter.emitBrTable(depths, defaultDepth);
+    m_emitter.emitEnd();
+    emitMaterializedCondition(cond, destLocal);
+    m_emitter.emitBr(m_emitter.currentCtrlDepth() - doneDepth);
+    for (U32 i = 0; i < formulaCount; ++i) {
+        m_emitter.emitEnd();
 #ifdef BOXEDWINE_WASM_JIT_PROFILE
         emitProfileSampledCall(HELPER_PROFILE_INLINE_COND);
 #endif
-        push(group.kind);
+        pushLazyCondition(cond, groups[i].kind);
         m_emitter.emitLocalSet(destLocal);
-        m_emitter.emitElse();
-        ++opened;
+        m_emitter.emitBr(m_emitter.currentCtrlDepth() - doneDepth);
     }
-    freeScratch(typeLocal);
-    return opened;
+    m_emitter.emitEnd(); // default falls through; caller closes done
 }
 
 RegPtr JitWasmCodeGen::getConditionCalculationReg(U32 index) {

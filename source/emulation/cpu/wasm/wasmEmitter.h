@@ -92,6 +92,7 @@ enum WasmOp : U8 {
     WASM_END            = 0x0b,
     WASM_BR             = 0x0c,
     WASM_BR_IF          = 0x0d,
+    WASM_BR_TABLE       = 0x0e,
     WASM_RETURN         = 0x0f,
     WASM_CALL           = 0x10,
     WASM_CALL_INDIRECT  = 0x11,
@@ -466,6 +467,7 @@ public:
     void emitEnd();
     void emitBr(U32 depth);
     void emitBrIf(U32 depth);
+    void emitBrTable(const std::vector<U32>& depths, U32 defaultDepth);
 
     // Applies to the next emitted if/br_if only. Hint is consumed and cleared.
     void setNextBranchHint(WasmBranchHint hint);

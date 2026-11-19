@@ -1066,7 +1066,7 @@ protected:
     void pushLazyCF(WasmLazyKind kind);
     void pushLazyOF(WasmLazyKind kind);
     void pushLazyCondition(JitConditional cond, WasmLazyKind kind);
-    U32 emitRuntimeLazyDispatch(U32 destLocal, const std::function<void(WasmLazyKind)>& push);
+    void emitRuntimeLazyDispatch(U32 destLocal, JitConditional cond);
     // Run the current op in the interpreter and leave the block, from inside
     // a conditional arm, keeping the compiler's state for the other arm.
     void emulateSingleOpAndExitBlock();

@@ -1221,3 +1221,117 @@ new performance measurements were run for this option revision.
 The final default-on browser binary also passed the 14 concurrency entries in
 five fresh processes (70/70), with no safe-memory argument; every process
 reported safe memory on.
+
+## Wasm runtime flag dispatch (2026-11-18)
+
+The runtime lazy-flag optimization at `b368f6a0c` tested five groups of
+32-bit producers before checking materialized flags or calling a helper.
+Repeated conditions paid that comparison chain repeatedly. Simply checking
+materialized flags first reduced their cost but made several arithmetic cases
+6-10% slower in the initial experiment, so that version was not retained.
+
+The retained implementation uses `br_table` to select materialized flags, a
+common 32-bit formula, or the existing helper fallback. Zero/sign conditions
+share one formula across all supported 32-bit producers; carry conditions
+share the INC/DEC formula. The same dispatch handles unknown incoming carry.
+Dispatch metadata is initialized once, avoiding per-condition allocations
+while compiling. Known-type formulas and architectural flag state are unchanged.
+
+Measurements compare the change against the branch at `b368f6a0c`, with both
+versions' runtime lazy optimization enabled. Hardware: Intel Core i7-14700,
+WSL Linux; Emscripten 5.0.7, existing `-O2` test-target settings; Node 22.16.0,
+V8 12.4.254.21-node.26, pinned to CPU 2 with `--experimental-wasm-exnref`,
+`--no-liftoff` and `--experimental-wasm-branch-hinting`. MT timing uses the
+production default with safe memory disabled.
+
+Each suite ran five alternating baseline/candidate process pairs, with five
+calibrated samples per case. Timings include CPU dispatch and block entry/exit,
+exclude compilation and 10,000 warmup invocations, and verify that the JIT
+emission counter does not change during timing. The percentages below are
+medians of paired changes; the times are medians of per-process medians.
+All rows use sixteen conditions per block.
+
+| Incoming flags / consumers | ST before / after (ns) | ST time reduction | MT before / after (ns) | MT time reduction |
+|---|---:|---:|---:|---:|
+| Materialized, mixed SETcc | 46.93 / 22.32 | 52.1% | 48.14 / 23.62 | 50.9% |
+| AND32, mixed SETcc | 30.38 / 22.10 | 27.0% | 31.04 / 23.08 | 25.4% |
+| ADD32, repeated SETBE | 39.90 / 26.65 | 33.2% | 40.20 / 27.47 | 31.3% |
+| SHR32 fallback, mixed SETcc | 92.22 / 86.88 | 5.8% | 93.50 / 88.50 | 5.5% |
+| Changing common 32-bit types, mixed SETcc | 42.78 / 32.82 | 23.4% | 44.42 / 34.95 | 21.8% |
+| Changing common/materialized/fallback types, mixed SETcc | 64.31 / 53.96 | 16.0% | 68.24 / 58.14 | 15.7% |
+
+Mixed consumers cycle through B/NB, Z/NZ, BE/NBE, S/NS, L/NL and LE/NLE.
+Changing-type cases choose a type pseudo-randomly before each invocation and
+include valid operands/results and a correctness preflight. Their extra input
+setup is included in both timings. Single-condition cases and the known-ADD32
+control were approximately unchanged; small differences were within a few
+percent, and individual samples included outliers.
+
+The sixteen-condition ST modules shrank from 4,865 to 4,465 bytes for repeated
+SETBE and 4,722 to 4,297 bytes for mixed conditions (8.2% and 9.0%). These are
+raw Wasm module sizes, not native code size or resident memory. A single SETB
+module instead grows by 12 bytes, so the size improvement is not universal.
+
+The dispatch still has a cost. Three additional alternating ST process pairs
+compared the final mixed suite with `BOXEDWINE_WASM_RUNTIME_COND_SLOW=1` set
+before compilation. Against that helper-path reference, sixteen materialized
+conditions took 22.82 versus 21.70 ns (5.2% more time), and sixteen SHR32
+conditions took 88.69 versus 82.79 ns (7.5% more). Common AND32 conditions
+remained substantially faster: 22.82 versus 87.03 ns. This change reduces the
+branch's regressions without eliminating every cost of runtime inlining.
+These microbenchmarks do not measure application FPS, startup or compilation
+latency. Firefox, Safari and ARM performance were not measured.
+
+Both `testJit` and `testMultiThreadedJit` builds passed. Windows Node 24.22.1
+passed 106 selected entries across the two builds, covering materialized and
+runtime flags, control flow, direct flag formulas, SETcc/CMOV/Jcc, module
+merging and 15 MT concurrency/fault entries. The expanded runtime test checks
+15 producers at three widths, 13 operand pairs and two carry inputs: 1,170
+states, each checking all sixteen conditions and an ADC consumer across an
+indirect block boundary. The suite runner forces one worker under Emscripten;
+the concurrency entries create threads internally.
+
+Scripts, frozen baselines, logs, raw measurements, paired ranges and
+`methodology.json` are under `tmp/flags-opt-20261118/`; final results are in
+`final/{st,mt}-summary.json` and `final/st-helper-summary.json`. The repeated
+and mixed harnesses originated in `tmp/perf-review-20261118/`.
+
+### Application follow-up (2026-11-18)
+
+The application comparison isolates this flags patch against `b368f6a0c`,
+keeping the other branch changes enabled. Both builds use the same production
+`multiThreadedJit` objects and assets; the baseline substitutes the original
+flag code generator and emitter. Settings: Emscripten 5.0.7, `-O2`, safe memory
+off, Intel Core i7-14700, Windows, headless Chrome 157.0.8103.79, Wine 11 web
+filesystem v39, GDI, sound/debug logging off. Runs were sequential, with fresh
+browser profiles, in-memory filesystems and no persistent JIT cache.
+
+| Benchmark (higher score is better) | Before | After | Score change |
+|---|---:|---:|---:|
+| Cinebench R11.5, 32-bit CPU, 28 threads | 1.814487 | 1.834702 | +1.1% |
+| MDK Performance Test v1.4, fourth bar near 15 seconds, median of 3 | 558 | 557 | -0.2% |
+
+Cinebench completed one render per build. Scores come from the saved native
+`CBCPUX` result, checked against the completed image and GUI score. Time from
+clicking CPU Run to the score appearing, including scene preparation, was
+246.153 versus 243.600 seconds. One pair cannot establish whether the small
+score improvement is reproducible.
+
+MDK used 640x480x8. The measurement is the number to the right of the fourth
+bar ("This Machine"), selected by the lower-left elapsed display nearest 15
+seconds. Selected screenshots show 15.3-15.5 seconds. Three process pairs ran
+in before/after, after/before, before/after order. Baseline scores were 558,
+562, 557; patched scores were 555, 560, 557. Paired changes were -0.54%, -0.36%
+and 0.00%. The one-point median difference is smaller than the five-point
+spread within each build; this does not establish a meaningful regression or
+improvement. These are running benchmark scores, not FPS or completion scores.
+
+These applications did not demonstrate a material speedup from the synthetic
+flags gains. The measurements also cannot rule out small regressions or
+different results on other hosts, browsers or workloads. CPU frequency and
+background host activity were not fully controlled.
+
+Reproduction scripts, frozen builds, source diff, compiler/asset hashes,
+screenshots and native result files are under `tmp/flags-realworld-20261118/`.
+See `summary.json`, `methodology.json` and `mdk-15s-scores.json`. Setup attempts
+and the superseded 90-second MDK samples are excluded from these results.

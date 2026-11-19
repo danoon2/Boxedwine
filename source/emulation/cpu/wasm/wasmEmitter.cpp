@@ -449,6 +449,14 @@ void WasmEmitter::emitBrIf(U32 depth) {
     m_currentBody.push_back(WASM_BR_IF);
     appendULEB128(m_currentBody, depth);
 }
+void WasmEmitter::emitBrTable(const std::vector<U32>& depths, U32 defaultDepth) {
+    m_currentBody.push_back(WASM_BR_TABLE);
+    appendULEB128(m_currentBody, depths.size());
+    for (U32 depth : depths) {
+        appendULEB128(m_currentBody, depth);
+    }
+    appendULEB128(m_currentBody, defaultDepth);
+}
 void WasmEmitter::emitDrop()         { m_currentBody.push_back(WASM_DROP); }
 void WasmEmitter::emitReturn()       { m_currentBody.push_back(WASM_RETURN); }
 void WasmEmitter::emitUnreachable()  { m_currentBody.push_back(WASM_UNREACHABLE); }
