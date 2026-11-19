@@ -12,7 +12,7 @@
 
 void testWasmJitMtModuleBrokerTransport();
 void testWasmJitMtStandaloneModuleBroker();
-void testWasmJitMtStandaloneCompileRetry();
+void testWasmJitMtModuleCompileRetry();
 void testWasmJitMtModuleBrokerLifecycle();
 void testWasmJitMtModuleBrokerThreadStartOwner();
 void testWasmJitMtGroupedModuleBroker();

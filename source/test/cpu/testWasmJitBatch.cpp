@@ -1419,7 +1419,11 @@ void testWasmJitMtPendingLifecycle() {
     if (wasmJitTestMtPendingCount() != 0 || wasmJitTestMtRuntimeModuleCount() != 1 ||
             stats.countFlushes != 1 || stats.groupedFunctions != 64 ||
             !countOps.front()->pfnJitCode || !countOps.back()->pfnJitCode) {
-        testFail("MT WASM pending lifecycle flushes the 64th same-mapping block");
+        testFail("MT WASM pending lifecycle flushes the 64th same-mapping block: pending=%u modules=%u count=%llu bytes=%llu functions=%llu rawBytes=%llu firstJit=%d lastJit=%d attempts=%llu oom=%llu skipped=%llu failures=%llu",
+            wasmJitTestMtPendingCount(), wasmJitTestMtRuntimeModuleCount(),
+            stats.countFlushes, stats.byteFlushes, stats.groupedFunctions, stats.rawInputBytes,
+            countOps.front()->pfnJitCode != nullptr, countOps.back()->pfnJitCode != nullptr,
+            stats.constructionAttempts, stats.groupedOomBlocks, stats.skippedConstructionAttempts, stats.permanentFailures);
     }
 
     beginPhase(productionLimits, 102);

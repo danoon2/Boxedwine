@@ -545,12 +545,15 @@
             try {
                 module = new WebAssembly.Module(bytes);
             } catch (error) {
-                if (moduleClass !== MODULE_CLASS_STANDALONE || !isWasmOom(error)) {
+                if (!isWasmOom(error)) {
                     throw error;
                 }
                 // Firefox can report a transient OOM after many short-lived JIT
-                // modules. Retry once; persistent OOM still uses the fallback
-                // below, and grouped modules keep their existing backoff policy.
+                // modules. Retry once for both standalone and grouped modules;
+                // persistent OOM still uses the fallback and grouped backoff.
+                if (moduleClass === MODULE_CLASS_GROUPED) {
+                    runtimeGroupConstructorStats().moduleAttempts += 1;
+                }
                 module = new WebAssembly.Module(bytes);
             }
         } catch (error) {

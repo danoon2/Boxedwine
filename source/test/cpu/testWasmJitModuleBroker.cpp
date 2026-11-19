@@ -1204,7 +1204,7 @@ void testWasmJitMtModuleBrokerTransport() {
     wasmJitTestSetMtModuleBrokerEnabled(oldEnabled);
 }
 
-void testWasmJitMtStandaloneCompileRetry() {
+void testWasmJitMtModuleCompileRetry() {
     struct TestCase {
         const char* name;
         U32 moduleClass;
@@ -1221,19 +1221,32 @@ void testWasmJitMtStandaloneCompileRetry() {
         {"persistent OOM", BROKER_MODULE_CLASS_STANDALONE, 3, 0, -1, 2, 1},
         {"non-OOM error", BROKER_MODULE_CLASS_STANDALONE, 3, 1, -1, 1, 0},
         {"CompileError mentioning OOM", BROKER_MODULE_CLASS_STANDALONE, 3, 2, -1, 1, 0},
-        {"grouped OOM keeps backoff", BROKER_MODULE_CLASS_GROUPED, 3, 0, -1, 1, 1},
+        {"grouped normal compile", BROKER_MODULE_CLASS_GROUPED, 0, 0, 42, 1, 0},
+        {"grouped transient InternalError OOM", BROKER_MODULE_CLASS_GROUPED, 1, 0, 42, 2, 0},
+        {"grouped transient RangeError OOM", BROKER_MODULE_CLASS_GROUPED, 1, 3, 42, 2, 0},
+        {"grouped persistent OOM keeps backoff", BROKER_MODULE_CLASS_GROUPED, 3, 0, -1, 2, 1},
+        {"grouped non-OOM error", BROKER_MODULE_CLASS_GROUPED, 3, 1, -1, 1, 0},
+        {"grouped CompileError mentioning OOM", BROKER_MODULE_CLASS_GROUPED, 3, 2, -1, 1, 0},
     };
     std::vector<U8> bytes = makeBrokerTestModule();
     for (const auto& c : cases) {
+        wasmJitTestResetMtRuntimeGroupConstructorStats();
         S32 attempts = 0;
         S32 oom = 0;
         S32 value = testWasmJitBrokerCompileRetry(bytes.data(), (U32)bytes.size(),
             c.moduleClass, c.failures, c.errorKind, &attempts, &oom);
         if (value != c.expectedValue || attempts != c.expectedAttempts || oom != c.expectedOom) {
-            testFail("MT WASM standalone compile retry %s: value=%d attempts=%d oom=%d",
+            testFail("MT WASM module compile retry %s: value=%d attempts=%d oom=%d",
                 c.name, value, attempts, oom);
         }
+        auto constructors = wasmJitTestGetMtRuntimeGroupConstructorStats();
+        U32 expectedGroupedAttempts = c.moduleClass == BROKER_MODULE_CLASS_GROUPED ? c.expectedAttempts : 0;
+        if (constructors.moduleAttempts != expectedGroupedAttempts) {
+            testFail("MT WASM module compile retry %s: grouped attempts=%u expected=%u",
+                c.name, constructors.moduleAttempts, expectedGroupedAttempts);
+        }
     }
+    wasmJitTestResetMtRuntimeGroupConstructorStats();
 }
 
 void testWasmJitMtStandaloneModuleBroker() {
