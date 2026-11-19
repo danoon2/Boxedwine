@@ -1204,6 +1204,8 @@ const TestEntry TEST_ENTRIES[] = {
     {testArmScalarZeroLanePropagation, "Test ARM scalar zero lane propagation", TEST_ENTRY_SERIAL},
     {testArmScalarZeroDirectOps, "Test ARM direct scalar zero-lane operations", TEST_ENTRY_SERIAL},
     {testJitScalarSseRegions, "Test JIT scalar SSE regions", TEST_ENTRY_SERIAL},
+    {testJitDivideFallbackRunsOnce, "Test JIT divide fallback runs once", TEST_ENTRY_SERIAL},
+    {testJitFallbackEipUsesLiveCsBase, "Test JIT fallback EIP uses the live CS base", TEST_ENTRY_SERIAL},
     {testNativePureFpuHelpers, "Test native x87 math helpers", TEST_ENTRY_SERIAL},
     {testNativeKnownLazyFlagType, "Test native known lazy flag type", TEST_ENTRY_SERIAL},
     {testNativeKnownLazyFlagFaults, "Test native known lazy flag fault recovery", TEST_ENTRY_SERIAL},

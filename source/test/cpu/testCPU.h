@@ -207,4 +207,6 @@ void testNativeX64AddressPolicies();
 void testNativeX64FpuPolicies();
 
 void testJitScalarSseRegions();
+void testJitDivideFallbackRunsOnce();
+void testJitFallbackEipUsesLiveCsBase();
 void testNativePureFpuHelpers();
