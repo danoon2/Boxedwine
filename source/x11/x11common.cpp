@@ -685,12 +685,7 @@ static void x11_PutBackEvent(CPU* cpu) {
         return;
     }
     XEvent event = {};
-#ifdef UNALIGNED_MEMORY
-    // :TODO: properly marshal
-    oops
-#else
     memory->memcpy(&event, ARG5, sizeof(XEvent));
-#endif
     display->putEvent(event, true);
     EAX = Success;
 }
@@ -720,12 +715,7 @@ static void x11_SendEvent(CPU* cpu) {
     }
 
     XEvent event = {};
-#ifdef UNALIGNED_MEMORY
-    // :TODO: properly marshal
-    oops
-#else
     memory->memcpy(&event, ARG5, sizeof(XEvent));
-#endif
     if (event.type == ClientMessage && event.xclient.message_type == _NET_WM_STATE) {
         EAX = window->handleNetWmStatePropertyEvent(event);
         return;

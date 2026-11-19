@@ -55,11 +55,7 @@ U16 RWPage::readw(MMU* mmu, U32 address) {
     }
 
     U32 offset = address & K_PAGE_MASK;
-#ifdef UNALIGNED_MEMORY
-    return ram[offset] | ((U16)ram[offset + 1] << 8);
-#else
-    return *(U16*)(&ram[offset]);
-#endif
+    return hostLoadUnaligned<U16>(&ram[offset]);
 }
 
 void RWPage::writew(MMU* mmu, U32 address, U16 value) {
@@ -71,12 +67,7 @@ void RWPage::writew(MMU* mmu, U32 address, U16 value) {
     }
 
     U32 offset = address & K_PAGE_MASK;
-#ifdef UNALIGNED_MEMORY
-    this->ram[offset] = (U8)value;
-    this->ram[offset + 1] = (U8)(value >> 8);
-#else
-    *(U16*)(&ram[offset]) = value;
-#endif
+    hostStoreUnaligned<U16>(&ram[offset], value);
 }
 
 U32 RWPage::readd(MMU* mmu, U32 address) {
@@ -88,11 +79,7 @@ U32 RWPage::readd(MMU* mmu, U32 address) {
     }
 
     U32 offset = address & K_PAGE_MASK;
-#ifdef UNALIGNED_MEMORY
-    return ram[offset] | ((U32)ram[offset + 1] << 8) | ((U32)ram[offset + 2] << 16) | ((U32)ram[offset + 3] << 24);
-#else
-    return *(U32*)(&ram[offset]);
-#endif
+    return hostLoadUnaligned<U32>(&ram[offset]);
 }
 
 void RWPage::writed(MMU* mmu, U32 address, U32 value) {
@@ -104,14 +91,7 @@ void RWPage::writed(MMU* mmu, U32 address, U32 value) {
     }
 
     U32 offset = address & K_PAGE_MASK;
-#ifdef UNALIGNED_MEMORY
-    ram[offset] = (U8)value;
-    ram[offset] = (U8)(value >> 8);
-    ram[offset] = (U8)(value >> 16);
-    ram[offset] = (U8)(value >> 24);
-#else
-    * (U32*)(&ram[offset]) = value;
-#endif
+    hostStoreUnaligned<U32>(&ram[offset], value);
 }
 
 bool RWPage::canReadRam(MMU* mmu) {

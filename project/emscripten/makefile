@@ -314,7 +314,7 @@ all: $(BUILD_DIR)/$(TARGET_EXEC) copy-assets
 ifneq ($(ASAN_PTHREAD_OBJ),)
 $(ASAN_PTHREAD_OBJ): boxedwine-asan-pthread.cpp $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
-	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEP_FLAGS) -c $< -o $@
 endif
 
 copy-assets: $(ASSET_OUTPUTS)
@@ -334,6 +334,11 @@ LINK_INPUTS += $(if $(findstring boxedwine-multithreaded-helper.js,$(EXTRA_LD_FL
 $(BUILD_DIR)/$(TARGET_EXEC): $(ALL) $(LINK_CONFIG) $(LINK_INPUTS)
 	@$(CXX) $(ALL) -o $@ $(LDFLAGS)
 
+# Dependency files name their object as a literal $(BUILD_DIR)/... so a build
+# directory copied to a new BUILD_DIR still tracks header changes (otherwise the
+# .d targets keep the old directory and header edits recompile nothing).
+DEP_FLAGS = -MMD -MP -MT '$$(BUILD_DIR)$(patsubst $(BUILD_DIR)%,%,$@)'
+
 # assembly
 $(BUILD_DIR)/%.s.o: %.s $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
@@ -342,12 +347,12 @@ $(BUILD_DIR)/%.s.o: %.s $(COMPILE_CONFIG)
 # c source
 $(BUILD_DIR)/%.c.o: %.c $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
-	@$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
+	@$(CC) $(CPPFLAGS) $(CFLAGS) $(DEP_FLAGS) -c $< -o $@
 
 # c++ source
 $(BUILD_DIR)/%.cpp.o: %.cpp $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
-	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEP_FLAGS) -c $< -o $@
 
 # Files that need -fwasm-exceptions so their catch(...) blocks compile to WASM
 # catch_all instructions and can intercept WASM exceptions from JIT blocks.
@@ -378,12 +383,12 @@ $(BUILD_DIR)/$(PROJDIR)/source/emulation/cpu/wasm/jitWasmCodeGen.cpp.o \
 $(BUILD_DIR)/$(PROJDIR)/source/emulation/cpu/wasm/jitWasmFpu.cpp.o: \
         $(BUILD_DIR)/%.cpp.o: %.cpp $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
-	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) $(DEP_FLAGS) -c $< -o $@
 
 $(BUILD_DIR)/$(PROJDIR)/source/kernel/kscheduler.cpp.o: \
         $(PROJDIR)/source/kernel/kscheduler.cpp $(COMPILE_CONFIG)
 	@$(MKDIR_P) $(dir $@)
-	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
+	@$(CXX) $(WASM_EXCEPTION_CPPFLAGS) $(CXXFLAGS) $(DEP_FLAGS) -c $< -o $@
 
 .PHONY: clean
 
