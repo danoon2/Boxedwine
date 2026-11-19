@@ -69,13 +69,14 @@ diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
  
      GL_EXTCALL(glUniform4fv(prog->vs.material_specular_location, 1, &constants->material.specular.r));
      GL_EXTCALL(glUniform1f(prog->vs.material_shininess_location, constants->material.power));
-@@ -1768,6 +1808,17 @@
+@@ -1768,6 +1808,18 @@
  {
      const struct wined3d_gl_info *gl_info = context_gl->gl_info;
  
 +    /* A slot can be reused for a light of another type, which uploads a
 +     * different set of fields. */
-+    if (prog->ffp_light_types[light] != type)
++    if (!(prog->ffp_vs_cache_valid & GLSL_FFP_VS_CACHE_LIGHT(light))
++            || prog->ffp_light_types[light] != type)
 +    {
 +        prog->ffp_vs_cache_valid &= ~GLSL_FFP_VS_CACHE_LIGHT(light);
 +        prog->ffp_light_types[light] = type;
@@ -87,7 +88,7 @@ diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
      GL_EXTCALL(glUniform4fv(prog->vs.light_location[light].diffuse, 1, &constants->diffuse.r));
      GL_EXTCALL(glUniform4fv(prog->vs.light_location[light].specular, 1, &constants->specular.r));
      GL_EXTCALL(glUniform4fv(prog->vs.light_location[light].ambient, 1, &constants->ambient.r));
-@@ -2021,8 +2072,12 @@
+@@ -2021,8 +2073,12 @@
          constants = wined3d_buffer_load_sysmem(context->device->push_constants[WINED3D_PUSH_CONSTANTS_VS_FFP], context);
  
          get_projection_matrix(context, constants, state, &projection);
@@ -102,7 +103,7 @@ diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
      }
  
      if (update_mask & WINED3D_SHADER_CONST_FFP_TEXMATRIX)
-@@ -2073,8 +2128,12 @@
+@@ -2073,8 +2129,12 @@
              }
          }
  
@@ -117,7 +118,7 @@ diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
  
          for (i = 0; i < point_count; ++i)
              shader_glsl_ffp_vertex_light_uniform(context_gl, state, i,
-@@ -10917,6 +10976,7 @@
+@@ -10917,6 +10977,7 @@
      entry->shader_controlled_clip_distances = 0;
      entry->link_failed = 0;
      entry->fog_constants_valid = 0;
@@ -125,7 +126,7 @@ diff --git a/dlls/wined3d/glsl_shader.c b/dlls/wined3d/glsl_shader.c
      add_glsl_program_entry(priv, entry);
  
      TRACE("Attaching GLSL shader object %u to program %u.\n", shader_id, program_id);
-@@ -11159,6 +11219,7 @@
+@@ -11159,6 +11220,7 @@
      entry->shader_controlled_clip_distances = 0;
      entry->link_failed = 0;
      entry->fog_constants_valid = 0;

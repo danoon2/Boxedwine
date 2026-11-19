@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "manifest_id": "wine11-webgl-test-divergences-v54",
-  "manifest_sha256": "8895bcb16a29540efc623a406a8a3b8532f1a6176c6b4db89d65174bb7da759f",
+  "manifest_sha256": "9d445ddea0ae28af974ed5663d18b85ab7660021bda1c723f4f57b5dd345c3b9",
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "production_patches": [
     {
@@ -838,7 +838,7 @@
       "patch_id": "ffp-vs-uniform-cache",
       "category": "fixed_function_vertex_uniforms",
       "filename": "webgl-ffp-vs-uniform-cache-against-wine-11.0.patch",
-      "sha256": "0226f5dc241466c161c8eb96657a6f5931e3c19ce2b01e868296b515b5389b81",
+      "sha256": "d8d83bc95f7e6923aadda9da2c886715a347d98119eb5bf2270558b96f4dc490",
       "files": [
         "dlls/wined3d/glsl_shader.c"
       ]

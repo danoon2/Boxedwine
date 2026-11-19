@@ -470,7 +470,7 @@
       "patch_id": "ffp-vs-uniform-cache",
       "category": "fixed_function_vertex_uniforms",
       "path": "tools/d3dToWebGL/webgl-ffp-vs-uniform-cache-against-wine-11.0.patch",
-      "sha256": "0226f5dc241466c161c8eb96657a6f5931e3c19ce2b01e868296b515b5389b81"
+      "sha256": "d8d83bc95f7e6923aadda9da2c886715a347d98119eb5bf2270558b96f4dc490"
     }
   ],
   "test_patch": {
