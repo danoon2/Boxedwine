@@ -693,12 +693,15 @@ void runFSQRTBits(bool big, U32 input, U32 expected, const char* name) {
     assertFloatCloseExpected(readF32(OUT), 0, name);
 }
 
-void runFRNDINTBits(bool big, U32 input, U32 expected, const char* name) {
+void runFRNDINTBits(bool big, U32 input, U32 expected, const char* name, U16 control = 0x037f) {
     constexpr U32 OUT = MEM_BASE + 0x284;
 
     begin(big);
     writeExpected32(0, expected);
     fninit();
+    writeI16(MEM_BASE + 0x10, control);
+    pushCode8(0xd9);
+    emitMemModRM(5, MEM_BASE + 0x10, big); // FLDCW
     writeF32Bits(MEM_BASE, input);
     fldF32(MEM_BASE, big);
     pushCode8(0xd9);
@@ -1709,6 +1712,11 @@ void runD9(bool big) {
     runFRNDINTBits(big, F32_POS_ZERO, F32_POS_ZERO, "frndint d9");
     runFRNDINTBits(big, F32_NEG_ZERO, F32_NEG_ZERO, "frndint d9");
     runFRNDINTBits(big, 0x7f7fffff, 0x7f7fffff, "frndint d9 large integral");
+    runFRNDINTBits(big, 0x40266666, 0x40000000, "frndint d9 truncate positive", 0x0f7f);
+    runFRNDINTBits(big, 0xc0266666, 0xc0000000, "frndint d9 truncate negative", 0x0f7f);
+    runFRNDINTBits(big, 0x3f000000, F32_POS_ZERO, "frndint d9 truncate positive fraction", 0x0f7f);
+    runFRNDINTBits(big, 0xbf000000, F32_NEG_ZERO, "frndint d9 truncate negative fraction", 0x0f7f);
+    runFRNDINTBits(big, 0x7f7fffff, 0x7f7fffff, "frndint d9 truncate large integral", 0x0f7f);
     runFPATANBits(big, F32_POS_ZERO, F32_POS_ZERO, F32_POS_ZERO, "fpatan d9 +0 +0");
     runFPATANBits(big, F32_NEG_ZERO, F32_POS_ZERO, F32_NEG_ZERO, "fpatan d9 -0 +0");
     runFPATANBits(big, F32_POS_ZERO, F32_NEG_ZERO, 0x40490fdb, "fpatan d9 +0 -0");

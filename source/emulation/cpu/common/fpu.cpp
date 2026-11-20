@@ -408,7 +408,9 @@ double FPU::FROUND(double in) {
     case ROUND_Up:
         return (ceil(in));
     case ROUND_Chop:
-        return in; // the caller will cast, which will chop
+        // FRNDINT keeps a floating-point result, so it cannot rely on a
+        // subsequent integer cast to discard the fractional part.
+        return trunc(in);
     default:
         return in;
     }
