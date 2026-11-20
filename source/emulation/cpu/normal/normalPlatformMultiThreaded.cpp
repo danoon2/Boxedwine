@@ -18,6 +18,9 @@
 
 #include "boxedwine.h"
 #include "knativesystem.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
 #if defined(BOXEDWINE_JIT_ARMV8)
 #include "../armv8/jitArmV8CodeGen.h"
 #endif
@@ -29,6 +32,14 @@
 
 std::atomic<int> platformThreadCount = 0;
 void platformInitExceptionHandling();
+
+#ifdef __EMSCRIPTEN__
+static thread_local bool frameYieldRequested = false;
+
+void platformRequestFrameYield() {
+    frameYieldRequested = true;
+}
+#endif
 
 // inline (not noinline): runs after every cpu->run() in the hot loop, so an
 // out-of-line call here would cost a call per dispatch (measurably slower on the
@@ -51,8 +62,87 @@ static NO_INLINE void platformThreadRun(CPU* cpu) {
     do {
         cpu->run();
         cpu->thread->waitForPtraceResume();
-    } while (!platformThreadShouldStop(cpu));
+    } while (!platformThreadShouldStop(cpu)
+#ifdef __EMSCRIPTEN__
+        && !frameYieldRequested
+#endif
+    );
 }
+
+static void platformThreadCleanup(CPU* cpu, const KProcessPtr& process) {
+    cpu->thread->cleanup();
+    process->deleteThread(cpu->thread);
+    // Last-thread process cleanup may synchronously need the UI thread.
+    if (--platformThreadCount == 0) {
+        KSystem::shutingDown = true;
+        KNativeSystem::postQuit();
+    }
+}
+
+#ifdef __EMSCRIPTEN__
+EM_JS_DEPS(boxedwine_thread_event_loop_deps, "$MainLoop");
+EM_JS(void, boxedwineInitThreadEventLoop, (), {
+    if (MainLoop.setImmediate || typeof MessageChannel === 'undefined') {
+        return;
+    }
+    // Emscripten's worker setImmediate relay goes through the browser thread
+    // and, in 6.0, appends callbacks to Module.setImmediates without removing
+    // them. A worker-local channel yields without that relay or timer clamping.
+    var callbacks = [];
+    var channel = new MessageChannel();
+    channel.port1.onmessage = function() {
+        callbacks.shift()();
+    };
+    MainLoop.setImmediate = function(callback) {
+        callbacks.push(callback);
+        channel.port2.postMessage(0);
+    };
+});
+
+struct BrowserThreadState {
+    CPU* cpu;
+    KProcessPtr process;
+};
+
+static void platformThreadBrowserTick(void* arg) {
+    BrowserThreadState* state = static_cast<BrowserThreadState*>(arg);
+    CPU* cpu = state->cpu;
+    while (true) {
+        try {
+            platformThreadRun(cpu);
+            break;
+        } catch (...) {
+            if (!cpu->thread->terminating) {
+                cpu->nextOp = cpu->getNextOp();
+            }
+            cpu->thread->waitForPtraceResume();
+            if (platformThreadShouldStop(cpu)) {
+                break;
+            }
+        }
+    }
+#ifdef __TEST
+    if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+        delete state;
+        emscripten_cancel_main_loop();
+        return;
+    }
+#endif
+    if (!cpu->thread->terminating) {
+        // SwapBuffers has returned through the CPU dispatcher, so no guest
+        // syscall, host lock or JIT activation is suspended across this yield.
+        // Keep the existing CPU/JIT yield behavior separate from browser
+        // scheduling; only consume the explicit presentation request here.
+        frameYieldRequested = false;
+        return;
+    }
+    platformThreadCleanup(cpu, state->process);
+    delete state;
+    // The loop's runtime keepalive is released by its runner on return, which
+    // lets Emscripten finish this pthread and recycle the worker normally.
+    emscripten_cancel_main_loop();
+}
+#endif
 
 static void platformThread(CPU* cpu) {
 #ifdef BOXEDWINE_HOST_EXCEPTIONS
@@ -72,6 +162,16 @@ static void platformThread(CPU* cpu) {
 			kpanic_fmt("Failed to get first op for thread %d of process %d at address %x", cpu->thread->id, process->id, cpu->getEipAddress());
 		}
     }
+#ifdef __EMSCRIPTEN__
+    // A frame's GPU release callbacks run on this worker's browser event loop.
+    // Honor presentation requests at frame boundaries instead of staying in Wasm
+    // until process exit and retaining every transferred ImageBitmap.
+    BrowserThreadState* state = new BrowserThreadState{cpu, std::move(process)};
+    emscripten_set_main_loop_arg(platformThreadBrowserTick, state, 0, false);
+    boxedwineInitThreadEventLoop();
+    emscripten_set_main_loop_timing(EM_TIMING_SETIMMEDIATE, 0);
+    return;
+#else
     while (true) {
         try {
             platformThreadRun(cpu);
@@ -92,15 +192,8 @@ static void platformThread(CPU* cpu) {
         }
     }
 
-    cpu->thread->cleanup();
-
-    process->deleteThread(cpu->thread);
-    // Last-thread process cleanup can synchronously destroy Vulkan windows on
-    // the UI thread. Keep its event loop alive until that cleanup has finished.
-    if (--platformThreadCount == 0) {
-        KSystem::shutingDown = true;
-        KNativeSystem::postQuit();
-    }
+    platformThreadCleanup(cpu, process);
+#endif
 }
 
 static void* platformThreadStart(void* arg) {

@@ -335,8 +335,8 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
     U32 eip = this->startingEip;
     DecodedOp* nextOp = op;
     U32 furthestJump = 0;
-    bool hasTerminalRet = false;
-    U32 terminalRetEip = 0;
+    bool hasTerminalBranch = false;
+    U32 terminalBranchEip = 0;
 
     // find the longest block we can compile
     // branches that jump out of the block will be the end of the block
@@ -355,10 +355,18 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         }
         // could be ret, call, int.  Basically this is an instruction where we are not guaranteed to see a next instruction
         if (nextOp->isBranch() && !nextOp->isDirectJumpBranch()) {
-            // Stop on a ret unless a known direct branch reaches code after it.
-            if (nextOp->isRet() && furthestJump < eip + nextOp->len) {
-                hasTerminalRet = true;
-                terminalRetEip = eip;
+            // Wasm calls and indirect jumps leave this module. Continuing
+            // through their cached fallthrough creates overlapping copies of
+            // function tails as each return address becomes a new JIT entry.
+            // Retain code after an exit only when a jump in this block can
+            // actually reach it.
+            bool endsLinearExecution = nextOp->isRet();
+#ifdef BOXEDWINE_WASM_JIT
+            endsLinearExecution |= nextOp->isCall() || nextOp->isIndirectJump();
+#endif
+            if (endsLinearExecution && furthestJump < eip + nextOp->len) {
+                hasTerminalBranch = true;
+                terminalBranchEip = eip;
                 eip += nextOp->len;
                 break;
             }
@@ -418,7 +426,11 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
                 break;
             }
         }
-        if (nextOp->isDirectBranch()) {
+        // Only jumps extend this function's control-flow range. A forward
+        // call returns to the following instruction; treating its callee as
+        // an in-block target can carry discovery past RETs through many
+        // unrelated, already decoded functions.
+        if (nextOp->isDirectJumpBranch()) {
             U32 address = eip + nextOp->len + nextOp->imm;
             jumpTo.set(address, nextOp);
             furthestJump = std::max(address, furthestJump);
@@ -462,7 +474,7 @@ bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
         nextOp = op;
         this->lastOpEip = this->startingEip;
         while (nextOp && this->lastOpEip < lastFurthestEip) {
-            if (hasTerminalRet && this->lastOpEip == terminalRetEip && nextOp->isRet()) {
+            if (hasTerminalBranch && this->lastOpEip == terminalBranchEip) {
                 nextOp = nullptr;
                 break;
             }

@@ -1163,6 +1163,9 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
 #ifdef __EMSCRIPTEN__
         if (thread && thread->cpu) {
             thread->cpu->yield = true;
+#ifdef BOXEDWINE_MULTI_THREADED
+            platformRequestFrameYield();
+#endif
         }
 #endif
     }

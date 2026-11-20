@@ -778,7 +778,8 @@ bool StartUpArgs::apply() {
     // Add this after ddraw detection so it does not suppress that default.
     // Explicit -env DLL choices remain last and take precedence.
     addWineDllOverrides(envValues, "ir50_32=n,b");
-    //envValues.push_back(B("WINEDEBUG=+wgl"));
+    // Suppress noisy FIXME diagnostics unless the caller explicitly sets WINEDEBUG.
+    addDefaultEnvValue(envValues, "WINEDEBUG=fixme-all");
      
     if (userId==0) {
         envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin"));

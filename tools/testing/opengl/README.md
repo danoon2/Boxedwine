@@ -459,3 +459,33 @@ and image hashes, checks 81 compositor pixels against the fixture colors and
 audits the complete Chrome log. It needs Pillow from
 `tools/testing/wine/requirements-frames.txt`. The browser driver alone establishes
 DOM/input behavior; the pixel audit is required to establish visible layering.
+
+
+## Threaded WebGL frame lifetime
+
+Run the production presentation and worker scheduling helpers in isolated
+Chrome workers with real WebGL1/WebGL2 contexts:
+
+```sh
+node tools/testing/opengl/runThreadWebGLPresentationTest.mjs CHROME PLAYWRIGHT_MODULE OUTPUT
+```
+
+This checks frame orientation, requested/viewport cropping, GL and pixel-pack
+state, and the one-frame-in-flight limit. A 300-frame stress run yields through
+the production worker message channel between frames, then captures Chrome's
+GPU memory dump. At most 16 frame-sized shared images may remain. The overall
+dump can report failure because the worker is deliberately blocked during the
+capture; a valid GPU-process dump is still required.
+
+Set `BW_PRESENT_BLOCKED=1` for the failing control: frames are presented without
+returning to the worker event loop, reproducing the old MT dispatch loop's
+retained images. Results and the trace are saved as `report.json` and
+`memory-trace.json` in OUTPUT. This isolates presentation lifetime; also run a
+full game and normal guest shutdown to exercise the C++ dispatcher and pthread
+cleanup.
+
+The MT dispatcher consumes a separate frame-yield request from `glSwapBuffers`;
+it does not clear the CPU's existing `yield` flag. That flag also controls Wasm
+JIT dispatch, so resetting it changes more than GPU frame lifetime. Keep score
+comparisons free of worker debugger attachment, memory tracing and concurrent
+graphics workloads; collect memory evidence after the scored game tests.

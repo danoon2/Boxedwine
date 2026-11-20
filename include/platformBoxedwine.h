@@ -250,6 +250,10 @@ using PlatformThreadFunction = void* (*)(void*);
 // Entry receives CPU* after native handle/affinity setup. On success it may
 // already have exited and deleted the KThread/CPU before this call returns.
 S32 platformStartThread(KThread* thread, PlatformThreadFunction entry);
+#ifdef __EMSCRIPTEN__
+// Return to the worker event loop after the current guest dispatch unwinds.
+void platformRequestFrameYield();
+#endif
 #ifdef __TEST
 void platformJoinThread(KThread* thread);
 void platformSetTestBeforeThreadHandlePublishedHook(const std::function<void()>& hook);

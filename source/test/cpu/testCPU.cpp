@@ -712,6 +712,66 @@ void testWasmJitOnlyBlockEntryIsCallable() {
         testFail("wasm jit ret boundary does not absorb following decoded op");
     }
 
+    // A forward CALL enters another function; its target must not keep the
+    // caller's RET open and absorb all already decoded code between them.
+    // This grew overlapping megabyte-sized modules in 3DMark2001 SE.
+    testNewInstruction(0);
+    testPushCode8(0xe8); // call the function at +12
+    testPushCode32(7);
+    testPushCode8(0x40); // +5: inc eax after the callee returns
+    testPushCode8(0xc3); // +6: caller returns to the end marker
+    for (U32 i = 0; i < 5; ++i) testPushCode8(0x43); // unrelated decoded function
+    testPushCode8(0x41); // +12: inc ecx
+    testPushCode8(0xc3);
+    testPushCode8(0xcd); // +14: end marker
+    testPushCode8(0x97);
+    context.memory->writed(cpu->seg[SS].address + cpu->reg[4].u32, 14);
+    cpu->getOp(TEST_CODE_ADDRESS + 5, 0);
+    DecodedOp* unrelated = cpu->getOp(TEST_CODE_ADDRESS + 7, 0);
+    cpu->nextOp = cpu->getNextOp();
+    do {
+        cpu->run();
+    } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+    DecodedOp* caller = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+    if (!caller || !caller->pfnJitCode || caller->blockLen != 5 || caller->blockOpCount != 1 ||
+            unrelated->blockStart == caller) {
+        testFail("wasm jit forward call must end the block before cached fallthrough");
+    }
+    if (cpu->reg[0].u32 != 1 || cpu->reg[1].u32 != 1 || cpu->reg[3].u32 != 0 || cpu->reg[4].u32 != 4100) {
+        testFail("wasm jit forward call/return execution");
+    }
+
+    // A real jump across a call/return still needs its target in the block.
+    // Exercise both paths with the same compiled entry.
+    testNewInstruction(ZF);
+    testPushCode8(0x74); testPushCode8(7); // +0: jz +9
+    testPushCode8(0xe8); testPushCode32(4); // +2: call +11
+    testPushCode8(0xc3); // +7: return after the call
+    testPushCode8(0x90);
+    testPushCode8(0x43); // +9: inc ebx
+    testPushCode8(0xc3);
+    testPushCode8(0x41); // +11: callee increments ecx
+    testPushCode8(0xc3);
+    testPushCode8(0xcd); testPushCode8(0x97); // +13: end marker
+    cpu->getOp(TEST_CODE_ADDRESS + 7, 0);
+    cpu->getOp(TEST_CODE_ADDRESS + 8, 0);
+    cpu->getOp(TEST_CODE_ADDRESS + 11, 0);
+    for (bool taken : {true, false}) {
+        cpu->reg[1].u32 = cpu->reg[3].u32 = 0;
+        cpu->reg[4].u32 = 4096;
+        cpu->setFlags(taken ? ZF : 0, FMASK_ALL);
+        context.memory->writed(cpu->seg[SS].address + 4096, 13);
+        cpu->eip.u32 = 0;
+        cpu->nextOp = cpu->getNextOp();
+        do { cpu->run(); } while (!cpu->nextOp || cpu->nextOp->inst != TestEnd);
+        DecodedOp* entry = context.memory->getDecodedOp(TEST_CODE_ADDRESS);
+        if (!entry || !entry->pfnJitCode || entry->blockLen != 11 || entry->blockOpCount != 6 ||
+                cpu->reg[1].u32 != (taken ? 0u : 1u) || cpu->reg[3].u32 != (taken ? 1u : 0u) ||
+                cpu->reg[4].u32 != 4100) {
+            testFail("wasm jit jump across call/return keeps reachable code");
+        }
+    }
+
     testNewInstruction(0);
     cpu->reg[3].u32 = 0; // ebx: stale fallthrough marker
     U32 iretStack = cpu->reg[4].u32;
