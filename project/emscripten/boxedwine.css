@@ -75,8 +75,7 @@ canvas.emscripten {
     height: 100%;
     width: 100%;
 }
-/* SDL's premultiplied WebGL canvas can contain guest framebuffer alpha.
-   Composite over black to display its RGB without adding the page background. */
+/* Keep the guest area black before its opaque WebGL canvas is initialized. */
 #canvas {
     background-color: black;
 }

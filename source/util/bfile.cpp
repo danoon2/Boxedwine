@@ -66,6 +66,9 @@ void BReadFile::close() {
 }
 
 BString BReadFile::readAll() {
+	if (!isOpen()) {
+		return BString::empty;
+	}
 	char c = 0;
 	BString line;
 

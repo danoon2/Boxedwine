@@ -30,6 +30,11 @@
 #include UNISTD
 #include <utime.h>
 #include <thread>
+#ifdef __MACH__
+#include <mach/mach.h>
+#include <mach/processor_info.h>
+#include <sys/sysctl.h>
+#endif
 #ifdef __EMSCRIPTEN__
 #include <emscripten/threading.h>
 #endif
@@ -289,7 +294,63 @@ U32 Platform::allocateNativeMemory(U64 address) {
 }
 
 BString Platform::procStat() {
+#ifdef __MACH__
+    // macOS has no /proc/stat. Media libraries in the guest still query it,
+    // so expose a Linux-style snapshot of Mach's per-processor CPU ticks.
+    natural_t cpuCount = 0;
+    processor_info_array_t info = nullptr;
+    mach_msg_type_number_t infoCount = 0;
+    mach_port_t host = mach_host_self();
+    kern_return_t status = host_processor_info(host, PROCESSOR_CPU_LOAD_INFO,
+            &cpuCount, &info, &infoCount);
+    mach_port_deallocate(mach_task_self(), host);
+    if (status != KERN_SUCCESS) {
+        return BString::empty;
+    }
+
+    U64 totals[CPU_STATE_MAX] = {};
+    for (natural_t cpu = 0; cpu < cpuCount; ++cpu) {
+        for (unsigned int state = 0; state < CPU_STATE_MAX; ++state) {
+            totals[state] += (U32)info[cpu * CPU_STATE_MAX + state];
+        }
+    }
+    BString result;
+    auto appendTimes = [&](const U64* ticks) {
+        result += ticks[CPU_STATE_USER];
+        result += " ";
+        result += ticks[CPU_STATE_NICE];
+        result += " ";
+        result += ticks[CPU_STATE_SYSTEM];
+        result += " ";
+        result += ticks[CPU_STATE_IDLE];
+        result += " 0 0 0 0 0 0\n";
+    };
+    result += "cpu ";
+    appendTimes(totals);
+    for (natural_t cpu = 0; cpu < cpuCount; ++cpu) {
+        U64 ticks[CPU_STATE_MAX];
+        for (unsigned int state = 0; state < CPU_STATE_MAX; ++state) {
+            ticks[state] = (U32)info[cpu * CPU_STATE_MAX + state];
+        }
+        result += "cpu";
+        result += (U32)cpu;
+        result += " ";
+        appendTimes(ticks);
+    }
+    vm_deallocate(mach_task_self(), (vm_address_t)info, infoCount * sizeof(integer_t));
+
+    int mib[] = {CTL_KERN, KERN_BOOTTIME};
+    struct timeval bootTime = {};
+    size_t size = sizeof(bootTime);
+    if (sysctl(mib, 2, &bootTime, &size, nullptr, 0) == 0) {
+        result += "btime ";
+        result += (U64)bootTime.tv_sec;
+        result += "\n";
+    }
+    return result;
+#else
     return BReadFile(B("/proc/stat")).readAll();
+#endif
 }
 
 U8* Platform::reserveNativeMemory64k(U32 count) {

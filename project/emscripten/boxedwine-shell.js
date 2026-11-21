@@ -2289,7 +2289,11 @@
           var originalGetContext = canvas.getContext.bind(canvas);
           canvas.getContext = function(type, attributes) {
             if (type === "webgl" || type === "webgl2" || type === "experimental-webgl") {
-              attributes = Object.assign({}, attributes || {}, { preserveDrawingBuffer: true });
+              // Guest window pixels are opaque. Passing their alpha to the page
+              // compositor can hide RGB when alpha is zero (macOS monitor vs.
+              // VNC), even with a black CSS background. Match the direct WebGL
+              // path, which also creates an opaque presentation canvas.
+              attributes = Object.assign({}, attributes || {}, { alpha: false, preserveDrawingBuffer: true });
             }
             return originalGetContext(type, attributes);
           };

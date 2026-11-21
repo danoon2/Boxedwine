@@ -50,10 +50,18 @@ single-threaded guest GL takes over on its first buffer swap.
 Continue into the jungle in the single-threaded Tomb Raider III demo and check
 Lara's shadow and the edges of the foliage. The shadow should darken the ground
 while preserving its texture, and leaves should not have pale outlines. The
-SDL WebGL canvas retains framebuffer alpha and uses premultiplied composition;
-its black CSS background prevents the white page from showing through partially
-transparent pixels. Apply that background only to the main `#canvas`, since the
-separate GDI presentation canvas must remain transparent when GL is visible.
+SDL WebGL canvas uses `alpha: false`, matching the direct WebGL path, so the
+browser displays guest RGB without interpreting guest framebuffer alpha as page
+transparency. The black CSS background covers the area before initialization;
+it cannot make premultiplied pixels with RGB greater than alpha composite
+reliably. Keep the separate GDI presentation canvas transparent when GL is visible.
+
+In the single-threaded 3DMark2001 SE demo, start the benchmark and verify that
+**Game 1 - Car Chase - Low Detail** shows its loading background image as well as
+the white text and sponsor logo, then check that the 3D scene renders. On macOS,
+check on a physical monitor as well as VNC without restarting Chrome. The former
+alpha-enabled canvas could display RGB with zero alpha over VNC but turn those
+same pixels black on the monitor.
 
 ## Build
 
