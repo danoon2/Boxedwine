@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urljoin, urlsplit
 from unittest import mock
 
 import build_site
@@ -444,6 +444,56 @@ class DemoWindowsVersionTests(unittest.TestCase):
                     "urlParams": [],
                 },
             )
+
+
+class PublishedAssetUrlTests(unittest.TestCase):
+    def test_published_links_resolve_assets_in_all_modes_and_page_locations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory) / 'state.json'
+            state.write_text(json.dumps({'schemaVersion': 1,
+                'demoManifest': {'game.zip': {'exe': 'game.exe', 'urlParams': {'extract': '1'}}},
+                'archives': [{'zip': 'game.zip', 'program': 'game.exe', 'zipParam': 'app'}]}))
+            for public_url in ('https://boxedwine.org/builds/',
+                               'https://BOXEDWINE.org:443/preview/builds/',
+                               'https://fixture.invalid/builds/'):
+                demos, _, root_url = build_site.published_demo_inputs(
+                    state, build_site.DEFAULT_DEMO_ROOT_CONFIG, public_url, [])
+                root_base = root_url.rsplit('/', 1)[0] + '/'
+                for archive in ('app', 'overlay'):
+                    demo = {**demos[0], 'zipParam': archive,
+                            'buildIdentities': {mode: 'bwgl-' + mode for mode, *_ in build_site.DEMO_RUNNER_SPECS}}
+                    for mode, *_ in build_site.DEMO_RUNNER_SPECS:
+                        urls = [(public_url + 'demos/index.html',
+                                 build_site.demo_launch_url('master', '143', mode, demo)),
+                                (public_url + 'demos/build/master/143/index.html',
+                                 build_site.build_demo_launch_url(mode, demo))]
+                        for page, link in urls:
+                            with self.subTest(public_url=public_url, archive=archive, mode=mode, page=page):
+                                launcher = urljoin(page, link)
+                                query = parse_qs(urlsplit(launcher).query)
+                                expected_root_base = root_base if 'fixture.invalid' in public_url else urlsplit(root_base).path
+                                self.assertEqual([expected_root_base], query['rootBase'])
+                                self.assertEqual([urlsplit(public_url).path + 'demos/apps/'], query[archive + 'Base'])
+                                unused = 'overlayBase' if archive == 'app' else 'appBase'
+                                self.assertNotIn(unused, query)
+                                self.assertEqual(urlsplit(root_url).path,
+                                                 urlsplit(urljoin(launcher, query['rootBase'][0] + query['root'][0])).path)
+                                self.assertEqual(public_url + 'demos/apps/game.zip',
+                                                 urljoin(launcher, query[archive + 'Base'][0] + query[archive][0]))
+                                self.assertEqual(['1'], query['extract'])
+                                self.assertEqual(['bwgl-' + mode], query['buildid'])
+
+    def test_mixed_app_and_overlay_keep_both_bases_and_replace_stale_values(self):
+        params = [('root', 'root.zip'), ('app', 'game.zip'), ('overlay', 'patch.zip'),
+                  ('appBase', 'old-app/'), ('overlayBase', 'old-overlay/'), ('rootBase', 'old-root/')]
+        result = build_site.published_asset_params(params, {
+            'rootBase': '/v2/41/', 'archiveBase': '/builds/demos/apps/'})
+        self.assertEqual(params[:3] + [('rootBase', '/v2/41/'),
+            ('appBase', '/builds/demos/apps/'), ('overlayBase', '/builds/demos/apps/')], result)
+
+    def test_different_scheme_or_port_keeps_absolute_asset_url(self):
+        for url in ('http://boxedwine.org/v2/41/', 'https://boxedwine.org:8443/v2/41/'):
+            self.assertEqual(url, build_site.site_relative_asset_url(url, 'https://boxedwine.org/builds/'))
 
 
 class DemoBuildIdentityTests(unittest.TestCase):

@@ -260,6 +260,13 @@ specific URL; updating the release pin affects subsequent builds only. To keep
 an older demo payload available, publish a changed demo under a new filename
 and update `demos.json`; overwriting a shared filename affects builds linking to it.
 
+Published launch links use site-relative paths for assets on the same origin,
+such as `rootBase=/v2/41/` and `overlayBase=/builds/demos/apps/`. External asset
+hosts retain absolute URLs. Links include `appBase` only when an `app` archive
+is selected and `overlayBase` only when an `overlay` archive is selected;
+launches using both keep both bases. Build identities remain in the links and
+the per-build manifest.
+
 Publication uploads a partial site and never uses `rsync --delete`. Under the
 existing publication lock, it records which branch/build directories were
 retired by pruning, uploads successfully, then removes only those directories.
