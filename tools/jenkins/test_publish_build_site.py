@@ -290,14 +290,16 @@ class PublishWorkflowTests(unittest.TestCase):
             for query in queries:
                 self.assertEqual(['https://boxedwine.org/v2/' + profile['filesystem_version'] + '/'], query['rootBase'])
                 self.assertEqual(['TinyCore15Wine11.0-web.zip'], query['root'])
-                self.assertEqual(['https://fixture.invalid/builds/demos/apps/'], query['appBase'])
-                self.assertEqual(query['appBase'], query['overlayBase'])
                 self.assertTrue(query['buildid'][0].startswith('bwgl-'))
                 if 'overlay' in query:
                     self.assertEqual(['installed.zip'], query['overlay'])
+                    self.assertEqual(['/builds/demos/apps/'], query['overlayBase'])
+                    self.assertNotIn('appBase', query)
                     self.assertIn('win98', query['args'][0])
                 else:
                     self.assertEqual(['game.zip'], query['app'])
+                    self.assertEqual(['/builds/demos/apps/'], query['appBase'])
+                    self.assertNotIn('overlayBase', query)
         identity = json.loads((build / 'graphics-builds.json').read_text())
         self.assertEqual('release-manifest', identity['filesystemSource']['verification'])
         for roots in identity['builds'].values():

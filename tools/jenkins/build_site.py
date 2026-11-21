@@ -1076,9 +1076,25 @@ def published_asset_params(params, demo):
         return params
     params = [(key, value) for key, value in params
               if key not in {"rootBase", "appBase", "overlayBase"}]
-    return params + [("rootBase", demo["rootBase"]),
-                     ("appBase", demo["archiveBase"]),
-                     ("overlayBase", demo["archiveBase"])]
+    assets = {key for key, value in params if value}
+    params.append(("rootBase", demo["rootBase"]))
+    for archive in ("app", "overlay"):
+        if archive in assets:
+            params.append((archive + "Base", demo["archiveBase"]))
+    return params
+
+
+def site_relative_asset_url(url, public_url):
+    """Shorten same-origin assets while retaining explicit external locations."""
+    asset, site = urlsplit(url), urlsplit(public_url)
+
+    def origin(parts):
+        return (parts.scheme, parts.hostname, parts.port or
+                {"http": 80, "https": 443}.get(parts.scheme))
+
+    if origin(asset) == origin(site) and not asset.path.startswith("//"):
+        return asset._replace(scheme="", netloc="", path=asset.path or "/").geturl()
+    return url
 
 
 def published_demo_inputs(state_path, config_path, public_url, runners, *, root_url=None, commit=None):
@@ -1101,8 +1117,9 @@ def published_demo_inputs(state_path, config_path, public_url, runners, *, root_
             raise ValueError("Published asset locations must be absolute HTTP(S) URLs without queries/fragments")
     if unquote(root_parts.path).split('/')[-2:] != [version, filename]:
         raise ValueError("Filesystem URL must name the pinned version directory and ZIP")
-    root_base = root_url.rsplit('/', 1)[0] + '/'
+    root_base = site_relative_asset_url(root_url.rsplit('/', 1)[0] + '/', public_url)
     public_url = public_url.rstrip('/')
+    archive_base = site_relative_asset_url(public_url + '/demos/apps/', public_url)
     manifest = demo_manifest_entries(state["demoManifest"])
     demos = []
     for asset in state["archives"]:
@@ -1126,7 +1143,7 @@ def published_demo_inputs(state_path, config_path, public_url, runners, *, root_
             "description": entry.get("description", ""),
             "program": normalize_demo_program(entry.get("exe") or entry.get("program") or asset["program"]),
             "root": filename, "rootBase": root_base,
-            "archiveBase": public_url + '/demos/apps/', "zipParam": zip_param,
+            "archiveBase": archive_base, "zipParam": zip_param,
             "directDrawRenderer": renderer,
             "windowsVersion": entry.get("windowsVersion", entry.get("winVersion")),
             "urlParams": normalize_demo_url_params(entry.get("urlParams", entry.get("extraParams"))),
