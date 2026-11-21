@@ -580,14 +580,15 @@ a rendered scene and complete benchmark run have not been validated.
 
 ### 3DMark03
 
-`3dmark03.zip` contains the 284 original application files and eight original
-SystemInfo files extracted from the UI sample's `3DMark03_v360_1901.exe`.
+`3dmark03.zip` is based on the 284 application files and eight SystemInfo
+files extracted from the UI sample's `3DMark03_v360_1901.exe`.
 The installer SHA-256 is
 `86d7f73747944c553e47e6ab5a74138e8bbca07fab8216ae70a61ac7f9a1c468`.
-The browser package is 179,131,181 bytes, SHA-256
-`bf683016cded343b3dc18243f326a35ffab9e1468348e705ca1f52f29be08c71`.
-It contains no global Wine registry, saves, installer cache, or modified
-application binaries. The native UI sample still uses the original installer.
+The browser package is 180,022,286 bytes, SHA-256
+`dbf2e6f2ce7c328896e88189c3172cb2c942657e40edaba83dd32720647301a3`.
+The November 21, 2026 refresh replaces `fmod.dll`; the other 292 archive entries
+are unchanged. It contains no global Wine registry, saves, or installer cache.
+The native UI sample still uses the original installer.
 
 The launcher `c:/3dmark03.bat` registers the bundled 32-bit `FMSI.dll` and
 `FMSIX.dll` before starting `3DMark03.exe` from its application directory.
@@ -610,7 +611,13 @@ The local demo index exposes all four runtime choices. The homepage catalogue
 adds a Benchmarks entry using ST JIT and the same archive; its four featured
 homepage games are unchanged.
 
-Browser ST JIT testing verified startup, mouse input, animated Wings of Fury
+This demo archive has no enforced SHA-256 pin; the checksum above records its
+current identity. Normal local site sync refreshes changed archives, while
+`--skip-sync` retains the local copies. The server allows browser caching for
+two days; after replacing the shared ZIP, disable the browser cache and reload
+to test the new bytes immediately.
+
+Browser ST JIT testing of the original package verified startup, mouse input, animated Wings of Fury
 rendering, returning to the menu after stopping the benchmark, and application
 exit with Wine cleanup. The thumbnail is captured from the browser test.
 With `extract=1`, a fresh local Chrome test verified all 293 extracted members,
