@@ -535,6 +535,18 @@ index 3eae222..a9e1511 100644
      {
          if (shader->u.ps.depth_output == WINED3DSPR_DEPTHOUTGE)
              shader_addline(buffer, "layout (depth_greater) out float gl_FragDepth;\n");
+@@ -7855,9 +8081,9 @@
+     {
+-        shader_addline(buffer, "uniform struct\n{\n");
++        shader_addline(buffer, "struct wined3d_ffp_fog\n{\n");
+         shader_addline(buffer, "    vec4 color;\n");
+         shader_addline(buffer, "    float density;\n");
+         shader_addline(buffer, "    float end;\n");
+         shader_addline(buffer, "    float scale;\n");
+-        shader_addline(buffer, "} ffp_fog;\n");
++        shader_addline(buffer, "};\nuniform wined3d_ffp_fog ffp_fog;\n");
+
+         if (legacy_syntax)
 @@ -7918,7 +8144,7 @@ static GLuint shader_glsl_generate_fragment_shader(const struct wined3d_context_
      }
      if (reg_maps->vpos)
@@ -642,12 +654,12 @@ index 3eae222..a9e1511 100644
 +    if (args->fog_src == VS_FOG_FFP_FACTOR_LINEAR || args->fog_src == VS_FOG_FFP_FACTOR_EXP
 +            || args->fog_src == VS_FOG_FFP_FACTOR_EXP2)
 +    {
-+        shader_addline(buffer, "uniform struct\n{\n");
++        shader_addline(buffer, "struct wined3d_ffp_fog\n{\n");
 +        shader_addline(buffer, "    vec4 color;\n");
 +        shader_addline(buffer, "    float density;\n");
 +        shader_addline(buffer, "    float end;\n");
 +        shader_addline(buffer, "    float scale;\n");
-+        shader_addline(buffer, "} ffp_fog;\n");
++        shader_addline(buffer, "};\nuniform wined3d_ffp_fog ffp_fog;\n");
 +    }
  
      if (!needs_legacy_glsl_syntax(gl_info))
@@ -799,12 +811,12 @@ index 3eae222..a9e1511 100644
  
 +    if (settings->fog_is_vertex && !settings->transformed)
 +    {
-+        shader_addline(buffer, "uniform struct\n{\n");
++        shader_addline(buffer, "struct wined3d_ffp_fog\n{\n");
 +        shader_addline(buffer, "    vec4 color;\n");
 +        shader_addline(buffer, "    float density;\n");
 +        shader_addline(buffer, "    float end;\n");
 +        shader_addline(buffer, "    float scale;\n");
-+        shader_addline(buffer, "} ffp_fog;\n");
++        shader_addline(buffer, "};\nuniform wined3d_ffp_fog ffp_fog;\n");
 +    }
 +
      if (legacy_syntax)
@@ -857,6 +869,17 @@ index 3eae222..a9e1511 100644
              shader_addline(buffer, "layout(location = 0) ");
          shader_addline(buffer, "out vec4 color_out0;\n");
      }
+@@ -9814,8 +10193,8 @@
+-    shader_addline(buffer, "uniform struct\n{\n");
++    shader_addline(buffer, "struct wined3d_ffp_fog\n{\n");
+     shader_addline(buffer, "    vec4 color;\n");
+     shader_addline(buffer, "    float density;\n");
+     shader_addline(buffer, "    float end;\n");
+     shader_addline(buffer, "    float scale;\n");
+-    shader_addline(buffer, "} ffp_fog;\n");
++    shader_addline(buffer, "};\nuniform wined3d_ffp_fog ffp_fog;\n");
+
+     if (alpha_test_func != WINED3D_CMP_ALWAYS)
 @@ -10219,6 +10598,12 @@ static HRESULT shader_glsl_compile_compute_shader(struct shader_glsl_priv *priv,
      struct glsl_shader_prog_link *entry;
      GLuint shader_id, program_id;
