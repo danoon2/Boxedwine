@@ -28,10 +28,10 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - The web v41 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/41/TinyCore15Wine11.0-web.zip`.
+   - The web v42 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/42/TinyCore15Wine11.0-web.zip`.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
-   - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v35 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
+   - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v42 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
    - A demo can set an app-specific Wine compatibility version with `"windowsVersion": "win98"`. The generated launcher sets that version before starting the executable, without changing other demos.
 3. Validates every filesystem root referenced by `demos.json` against
    `tools/buildWine/webgl_filesystems.json`.
@@ -225,6 +225,12 @@ This command requires each referenced root filename to have an exact profile in
 `tools/buildWine/webgl_filesystems.json`. If the public downloads are older than the pinned
 profiles, upload the current roots first; do not bypass the validation.
 
+Revision 42 is published at `/v2/42/`; the default download URL is ready for use.
+To test the staged archives locally, serve `tmp/filesystem-v42-release` with a local HTTP server and set
+`BOXEDWINE_ZIP_URL=http://127.0.0.1:<port>/TinyCore15Wine11.0-web.zip` when running
+`local-build-site.sh`. The default manifest still verifies the exact release
+hash. Published build pages derive `/v2/42/` from that same manifest.
+
 ## Stopping The Local Server
 
 If the script was started by the helper workflow and wrote a pid file:
@@ -255,13 +261,13 @@ hashes. Archive payloads remain on the server. Failed builds skip demo inventory
 New demo launch links use the existing shared `demos/apps/<name>.zip` archives
 and images. The filesystem URL defaults to the version and filename pinned in
 `tools/buildWine/webgl_filesystems.json`, currently
-`https://boxedwine.org/v2/41/TinyCore15Wine11.0-web.zip`. Each build records that
+`https://boxedwine.org/v2/42/TinyCore15Wine11.0-web.zip`. Each build records that
 specific URL; updating the release pin affects subsequent builds only. To keep
 an older demo payload available, publish a changed demo under a new filename
 and update `demos.json`; overwriting a shared filename affects builds linking to it.
 
 Published launch links use site-relative paths for assets on the same origin,
-such as `rootBase=/v2/41/` and `overlayBase=/builds/demos/apps/`. External asset
+such as `rootBase=/v2/42/` and `overlayBase=/builds/demos/apps/`. External asset
 hosts retain absolute URLs. Links include `appBase` only when an `app` archive
 is selected and `overlayBase` only when an `overlay` archive is selected;
 launches using both keep both bases. Build identities remain in the links and
@@ -311,7 +317,7 @@ The local development script still downloads and validates the filesystem for
 offline/local demo testing:
 
 ```text
-https://boxedwine.org/v2/41/TinyCore15Wine11.0-web.zip
+https://boxedwine.org/v2/42/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:

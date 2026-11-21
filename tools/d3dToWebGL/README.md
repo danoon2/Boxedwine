@@ -1,10 +1,18 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current filesystem release source series is pinned by
-[`webgl-test-divergences-v53.json`](../testing/wine/webgl-test-divergences-v53.json).
-It contains 77 production patches and one separate Wine graphics-test adaptation.
-The [v53 inventory](../testing/wine/webgl-patch-inventory-v53.json) records the ordered
+[`webgl-test-divergences-v55.json`](../testing/wine/webgl-test-divergences-v55.json).
+It contains 78 production patches and one separate Wine graphics-test adaptation.
+The [v55 inventory](../testing/wine/webgl-patch-inventory-v55.json) records the ordered
 patches and hashes. Existing Wine test expectations are unchanged.
+
+Filesystem revision 42 packages v55, including the v54 vertex uniform cache and
+the shared fog uniform linking fix. Vertex and fragment shaders now declare
+`ffp_fog` using the same named `wined3d_ffp_fog` structure. Anonymous structures
+could fail to link when both stages used fog. All eight WebGL DLLs are rebuilt;
+only `C:/webgl/wined3d.dll` differs from filesystem 41. Every other runtime file
+and prefix setting is retained. The full and web archives are published at
+`/v2/42/`, with `/v2/latest` symlinked to `42`.
 
 Filesystem revision 35 adds 16-bit RGB565 modes to the WebGL renderer's existing
 32-bit list. Boxedwine's XRandR emulation owns the resolutions; Wine's X11 driver
@@ -22,9 +30,9 @@ retained in Git history; the current manifest is updated in place.
 
 Source series v54 ([`webgl-test-divergences-v54.json`](../testing/wine/webgl-test-divergences-v54.json),
 [inventory](../testing/wine/webgl-patch-inventory-v54.json)) adds production patch 78,
-[FFP vertex uniform cache](webgl-ffp-vs-uniform-cache-against-wine-11.0.patch). It has
-not yet been packaged into a published filesystem; the current filesystem's WebGL
-DLLs are still built from v53.
+[FFP vertex uniform cache](webgl-ffp-vs-uniform-cache-against-wine-11.0.patch).
+It is included in filesystem 42's v55 source series; published filesystem 41
+retains the v53 DLLs.
 WineD3D re-uploads a fixed-function uniform group whenever the context marks it
 dirty, but that mask is per context and uniform values belong to each linked GLSL
 program. A program therefore received values it already held before nearly every

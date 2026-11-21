@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "manifest_id": "wine11-webgl-filesystems-v41-desktop-close-before-owner-20261116",
+  "manifest_id": "wine11-webgl-filesystems-v42-fog-uniform-link-20261121",
   "wine_version": "11.0",
-  "build_date": "2026-11-16",
+  "build_date": "2026-11-21",
   "source_date_epoch": 1768319767,
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
-    "path": "tools/testing/wine/webgl-test-divergences-v53.json",
-    "sha256": "4f5a25b21c5c3ebfecca495134acbf2b4c705b8311bf3e2ce113e5933956f124"
+    "path": "tools/testing/wine/webgl-test-divergences-v55.json",
+    "sha256": "e9cc3d2f4283d5357a08ff4bc2b354b9fdc35143454345118faa2ddd5b34f152"
   },
   "webgl_directory": "home/username/.wine/drive_c/webgl",
   "dlls": {
@@ -62,8 +62,8 @@
       ]
     },
     "wined3d.dll": {
-      "size": 3995520,
-      "sha256": "34f2ebb53e580446be2f8123fedd8aa4defef5bb98086b5d3172a1a5f3c3488e",
+      "size": 3995571,
+      "sha256": "f698d16899693f6dc091e4d3557c2655f17bb2b8d141715fdc465edae3ca1fee",
       "required_imports": [
         "opengl32.dll"
       ]
@@ -118,21 +118,21 @@
     "libXxf86vm.so.1": "/usr/local/lib/libXxf86vm.so.1"
   },
   "profiles": {
-    "full-v41": {
+    "full-v42": {
       "filename": "TinyCore15Wine11.0.zip",
-      "filesystem_version": "41",
+      "filesystem_version": "42",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 216632839,
-      "sha256": "3f9139e12492783ef27eaeda4ef1d356d5ef5d3d54ea6e396fe23c68fe5e99f5"
+      "size": 216613135,
+      "sha256": "b4b47bd48bb3ab44ba9288f708a337e5d9321d7bd4986ba54816dfed6430032c"
     },
-    "web-v41": {
+    "web-v42": {
       "filename": "TinyCore15Wine11.0-web.zip",
-      "filesystem_version": "41",
+      "filesystem_version": "42",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 96509852,
-      "sha256": "d950fe71d6c078e7218a143f675fde80f80e5c451a8c07a43d6425302be900c0"
+      "size": 96611193,
+      "sha256": "7c9abf8f54a697f9862893e4c2a5bc915e546d55bb477acacc438c340f45102f"
     }
   }
 }

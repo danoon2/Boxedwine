@@ -1,3 +1,5 @@
+v42 Nov 21, 2026 Update the separate WebGL graphics DLLs to source series v55. Give shared fog uniforms the same named GLSL structure in vertex and fragment shaders to fix program linking. Include v54 fixed-function vertex uniform caching to avoid redundant uploads. Only C:/webgl/wined3d.dll changes from v41; the other seven rebuilt DirectX DLLs are byte-identical. Preserve all other runtime files, prefix settings and the v37 AVI base.
+
 v41 Nov 16, 2026 Fix startup cancellation when the last application exits before explorer registers the desktop window's owner. Recheck deferred desktop shutdown when the owner appears, while preserving new application launches and explicitly opened idle desktops. Retain the v40 DirectSound movie-audio fix, earlier exception fixes, AVI runtime base and existing WebGL DLLs.
 
 v40 Nov 15, 2026 Fix DirectSound primary-buffer ownership so Force Commander's SMUSH intro movies play audio. Keep each DirectSound object's primary controls separate, honor new controls after all buffer interfaces are released, and preserve the shared mixer and 3D listener state. Retain the v39 exception fixes, v37 AVI runtime base and existing WebGL DLLs.

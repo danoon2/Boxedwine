@@ -122,6 +122,18 @@ Copy the exact tested ZIPs and their evidence into a release staging directory.
 Once staged, treat those bytes as final: any repack changes the archive hash and
 requires regenerating the pins and repeating the checks affected by the change.
 
+For a WebGL-only update that must preserve the previous filesystem, use the
+hash-verified full and web release ZIPs as parents instead of rebuilding Wine or
+initializing prefixes. Prepare and rebuild the eight PE DLLs with
+`webgl_filesystem.py build`, then use its `package` command on each parent.
+Update only `version.txt` and `changes.txt` in addition to those DLLs. Compare
+every member's bytes and metadata with its parent, including entry order,
+permissions and empty directories; reject unexpected additions or removals.
+Retain the parent manifest, source/build records and delta reports outside the
+runtime ZIPs. Revision 42 follows this procedure: only `wined3d.dll` and those
+two metadata files have changed contents. Its staging directory is
+`tmp/filesystem-v42-release`, including the packaging recipe and verification.
+
 ## 4. Set final archive identities
 
 - [ ] Read size and SHA-256 from each build result, independently hash the staged
@@ -234,9 +246,11 @@ generate new `graphics-builds.json` identities for newly generated builds.
 ## 7. Review separately pinned test suites
 
 - [ ] [`../testing/wine/runWineTests.py`](../testing/wine/runWineTests.py) has its own
-  native test entry point. Publish the final main ZIP at
-  `https://boxedwine.org/v2/latest/TinyCore15Wine11.0.zip` alongside its versioned
-  URL. The runner refreshes this alias on every invocation; verify that the
+  native test entry point. After verifying the versioned archives, atomically
+  update the `/v2/latest` directory symlink to the new revision (for example,
+  `latest -> 42`). Do not upload separate copies under `/v2/latest`.
+  The runner downloads `https://boxedwine.org/v2/latest/TinyCore15Wine11.0.zip`
+  and refreshes this alias on every invocation; verify that the
   printed revision and `inputs.json` match the new release. Use an explicit
   versioned `--filesystem-url` only when reproducing an older result.
 - [ ] Graphics qualification uses explicit filesystem, runtime, test-executable,
@@ -260,6 +274,9 @@ generate new `graphics-builds.json` identities for newly generated builds.
   them**. Publishing a build site is a separate step from uploading a filesystem.
 - [ ] Download each newly hosted artifact into a fresh location and verify its
   exact byte count and SHA-256 against the staged artifact. Revalidate the roots.
+- [ ] Switch the `/v2/latest` symlink to the verified revision directory and
+  verify both ZIPs through their `/v2/latest/` URLs. Retain the previous symlink
+  target for rollback; update hosted catalogs after the versioned ZIPs are verified.
 - [ ] Activate the reviewed repository/UI/Jenkins pins and any separately hosted
   catalog or worker configuration. Rebuild the UI packages that embed new pins.
 - [ ] Test a clean UI download and browser load, plus the supported existing-app

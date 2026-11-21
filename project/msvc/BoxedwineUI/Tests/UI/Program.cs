@@ -35,7 +35,7 @@ internal static partial class Program
             if (args.Contains("--storage")) { CheckStorage(destination); return 0; }
             CheckRuntimeIcons(destination, args);
             var catalog = Packages.Catalog(Path.Combine(AppContext.BaseDirectory, "Resources"));
-            if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "22") throw new Exception("This release must offer only Wine 11 V22.");
+            if (catalog.Count != 1 || catalog[0].WineVersion != "11.0" || catalog[0].FilesystemVersion != "42") throw new Exception("This release must offer only Wine 11 V42.");
             foreach (string theme in new[] { "Light", "Dark" })
             {
                 string library = Path.Combine(destination, "library-" + theme);
@@ -247,7 +247,7 @@ internal static partial class Program
             {
                 if (HasButton(dialog, "Choose Wine Version…") != multiple || HasButton(dialog, "Import Wine ZIP…") != multiple) throw new Exception("Wine selection settings do not match catalog availability.");
                 if (!multiple && !HasButton(dialog, "Set Up Windows Support")) throw new Exception("The sole supported package must still be available for setup.");
-                if (!multiple && !Descendants<TextBlock>(dialog).Any(t => t.Text.Contains("Wine 11.0 V22"))) throw new Exception("Settings should retain the filesystem revision.");
+                if (!multiple && !Descendants<TextBlock>(dialog).Any(t => t.Text.Contains($"Wine 11.0 V{wines[0].FilesystemVersion}"))) throw new Exception("Settings should retain the filesystem revision.");
             });
             // Wine selection now lives in source review, after Add to Library.
             string source = Path.Combine(destination, $"{theme}-{suffix}-source");
