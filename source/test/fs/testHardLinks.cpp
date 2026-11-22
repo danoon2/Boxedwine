@@ -810,6 +810,57 @@ void testFileCacheIdentitySurvivesRenameAndHardLink() {
     cleanupRoot(root);
 }
 
+void testHostMountPermissions() {
+    KProcessPtr process = testContext().process;
+    const BString root = B("tmp/test-host-mount-permissions-root");
+    cleanupRoot(root);
+    initTestFileSystem(root);
+    expectZero("create host installer source", Fs::makeLocalDirs(B("/tmp/source/INSTALL")));
+    expectZero("create mount parent", Fs::makeLocalDirs(B("/mnt")));
+    expectZero("create custom mount parent", Fs::makeLocalDirs(B("/opt")));
+    expectZero("create unmounted control", Fs::makeLocalDirs(B("/mnt/installer2/INSTALL")));
+    auto source = Fs::getNodeFromLocalPath(B(""), B("/tmp/source"), true);
+    auto mountParent = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
+    auto customParent = Fs::getNodeFromLocalPath(B(""), B("/opt"), true);
+    if (!source || !mountParent || !customParent) {
+        testFail("host mount fixture directories were not created");
+        cleanupRoot(root);
+        return;
+    }
+    Fs::addRootDirectoryNode(B("/mnt/installer"), source->nativePath, mountParent);
+    Fs::addRootDirectoryNode(B("/opt/media"), source->nativePath, customParent);
+
+    U32 originalUserId = process->userId;
+    U32 originalEffectiveUserId = process->effectiveUserId;
+    process->userId = 1000;
+    process->effectiveUserId = 1000;
+    expectZero("mounted root is writable", process->access(B("/mnt/installer"), 2));
+    expectZero("mounted subdirectory is writable", process->access(B("/mnt/installer/INSTALL"), 2));
+    expectZero("mkdir in mounted root", process->mkdir(B("/mnt/installer/root-temp"), 0755));
+    expectZero("mkdir beside mounted installer", process->mkdir(B("/mnt/installer/INSTALL/_ISTMP0.DIR"), 0755));
+    expectZero("mkdir in custom mount", process->mkdir(B("/opt/media/custom-temp"), 0755));
+    expectU32("unmounted sibling stays read-only",
+        process->mkdir(B("/mnt/installer2/INSTALL/temp"), 0755), (U32)-K_EACCES);
+    expectU32("guest root stays read-only", process->access(B("/"), 2), (U32)-K_EACCES);
+
+    const BString tempFile = B("/mnt/installer/INSTALL/_ISTMP0.DIR/setup.tmp");
+    U32 fd = process->open(tempFile, K_O_CREAT | K_O_RDWR, 0666);
+    if ((S32)fd < 0) {
+        testFail("create mounted installer temporary file failed: %d", (S32)fd);
+    } else {
+        process->close(fd);
+        expectZero("chmod mounted file", process->chmod(tempFile, 0444));
+        expectU32("mounted file respects explicit read-only mode",
+            process->access(tempFile, 2), (U32)-K_EACCES);
+    }
+    expectZero("chmod mounted directory", process->chmod(B("/mnt/installer/INSTALL"), 0555));
+    expectU32("mounted directory respects explicit read-only mode",
+        process->mkdir(B("/mnt/installer/INSTALL/denied"), 0755), (U32)-K_EACCES);
+    process->userId = originalUserId;
+    process->effectiveUserId = originalEffectiveUserId;
+    cleanupRoot(root);
+}
+
 void testHostFolderSyncUpdatesLoadedChildren() {
     const BString root = B("tmp/test-host-folder-sync-root");
     cleanupRoot(root);

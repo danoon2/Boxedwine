@@ -436,6 +436,16 @@ U32 FsFileNode::getType(bool checkForLink) {
     return 8; // DT_REG
 }
 
+bool FsFileNode::isInHostMount() {
+    for (auto node = std::static_pointer_cast<FsFileNode>(shared_from_this()); node;
+        node = std::dynamic_pointer_cast<FsFileNode>(node->getParent().lock())) {
+        if (node->isRootPath) {
+            return node->path != "/";
+        }
+    }
+    return false;
+}
+
 U32 FsFileNode::getMode() {
     if (this->hardLinkState && this->hardLinkState->modeOverride) {
         return this->hardLinkState->modeOverride;
@@ -459,7 +469,11 @@ U32 FsFileNode::getMode() {
         this->path.startsWith("/tmp") ||
         this->path.startsWith("/var") ||
         this->path.startsWith("/home") ||
-        isAutomationFilesPath) {
+        isAutomationFilesPath ||
+        // Host directory mounts are writable regardless of their guest path.
+        // InstallShield, for example, creates temporary files beside SETUP.EXE.
+        // Explicit guest modes above and host filesystem permissions still apply.
+        isInHostMount()) {
         result |= K__S_IWRITE;
         // wine server needs to be private, but winetricks check "-w" in the script on /tmp which needs these 2
         if (!this->path.startsWith("/tmp/.wine")) {

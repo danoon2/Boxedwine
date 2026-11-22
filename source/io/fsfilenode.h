@@ -93,6 +93,7 @@ private:
     friend class Platform;
 
     void ensurePathIsLocal(bool prepareForWrite);
+    bool isInHostMount();
 #ifdef BOXEDWINE_ZLIB
     friend class FsZip;
     friend class FsZipNode;    
