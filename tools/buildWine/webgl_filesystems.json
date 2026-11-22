@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "manifest_id": "wine11-webgl-filesystems-v42-fog-uniform-link-20261121",
+  "manifest_id": "wine11-webgl-filesystems-v43-ddraw-vertex-buffer-lifetime-20261122",
   "wine_version": "11.0",
-  "build_date": "2026-11-21",
+  "build_date": "2026-11-22",
   "source_date_epoch": 1768319767,
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
-    "path": "tools/testing/wine/webgl-test-divergences-v55.json",
-    "sha256": "e9cc3d2f4283d5357a08ff4bc2b354b9fdc35143454345118faa2ddd5b34f152"
+    "path": "tools/testing/wine/webgl-test-divergences-v56.json",
+    "sha256": "bbaa6f58c9cef4183902c1eb74b3e2b6eccf2e8abc8d4a17298ec6ae495e1361"
   },
   "webgl_directory": "home/username/.wine/drive_c/webgl",
   "dlls": {
@@ -49,7 +49,7 @@
     },
     "ddraw.dll": {
       "size": 855284,
-      "sha256": "858cc6195ba812d94cd89f5ff2ccc111f4894d823fbe3ec0d9bcbaeb3fc6ce5d",
+      "sha256": "0a2ad84282862f882161d2afa98cc94b8b9eba19aadf7197695074cdcf94e6bc",
       "required_imports": [
         "wined3d.dll"
       ]
@@ -118,21 +118,21 @@
     "libXxf86vm.so.1": "/usr/local/lib/libXxf86vm.so.1"
   },
   "profiles": {
-    "full-v42": {
+    "full-v43": {
       "filename": "TinyCore15Wine11.0.zip",
-      "filesystem_version": "42",
+      "filesystem_version": "43",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 216613135,
-      "sha256": "b4b47bd48bb3ab44ba9288f708a337e5d9321d7bd4986ba54816dfed6430032c"
+      "size": 216613287,
+      "sha256": "c40812d73078a3d0dbdf09c767b8a9e0e645dd9dea0b93d9f9d126f3f3620acc"
     },
-    "web-v42": {
+    "web-v43": {
       "filename": "TinyCore15Wine11.0-web.zip",
-      "filesystem_version": "42",
+      "filesystem_version": "43",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 96611193,
-      "sha256": "7c9abf8f54a697f9862893e4c2a5bc915e546d55bb477acacc438c340f45102f"
+      "size": 96611349,
+      "sha256": "f2c60ee5c547799bbcd945a39b54a9f3740ca5798d03ef0b62b2bccc13e748b6"
     }
   }
 }

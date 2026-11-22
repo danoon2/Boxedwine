@@ -58,10 +58,10 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - The web v42 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is downloaded from `https://boxedwine.org/v2/42/TinyCore15Wine11.0-web.zip`.
+   - The web v43 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is published at `https://boxedwine.org/v2/43/TinyCore15Wine11.0-web.zip` and verified against the tested archive.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
-   - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v42 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
+   - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the web v43 root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
    - A demo can set an app-specific Wine compatibility version with `"windowsVersion": "win98"`. The generated launcher sets that version before starting the executable, without changing other demos.
 3. Validates every filesystem root referenced by `demos.json` against
    `tools/buildWine/webgl_filesystems.json`.
@@ -255,11 +255,12 @@ This command requires each referenced root filename to have an exact profile in
 `tools/buildWine/webgl_filesystems.json`. If the public downloads are older than the pinned
 profiles, upload the current roots first; do not bypass the validation.
 
-Revision 42 is published at `/v2/42/`; the default download URL is ready for use.
-To test the staged archives locally, serve `tmp/filesystem-v42-release` with a local HTTP server and set
+Revision 43 is published at `/v2/43/`; the default download URL is ready for use.
+To test locally, serve `tmp/filesystem-v43-release` with a local HTTP server and set
 `BOXEDWINE_ZIP_URL=http://127.0.0.1:<port>/TinyCore15Wine11.0-web.zip` when running
 `local-build-site.sh`. The default manifest still verifies the exact release
-hash. Published build pages derive `/v2/42/` from that same manifest.
+hash. Newly generated build pages derive `/v2/43/` from that same manifest.
+Existing published build pages retain their original filesystem pins.
 
 ## Stopping The Local Server
 
@@ -291,13 +292,13 @@ hashes. Archive payloads remain on the server. Failed builds skip demo inventory
 New demo launch links use the existing shared `demos/apps/<name>.zip` archives
 and images. The filesystem URL defaults to the version and filename pinned in
 `tools/buildWine/webgl_filesystems.json`, currently
-`https://boxedwine.org/v2/42/TinyCore15Wine11.0-web.zip`. Each build records that
+`https://boxedwine.org/v2/43/TinyCore15Wine11.0-web.zip`. Each build records that
 specific URL; updating the release pin affects subsequent builds only. To keep
 an older demo payload available, publish a changed demo under a new filename
 and update `demos.json`; overwriting a shared filename affects builds linking to it.
 
 Published launch links use site-relative paths for assets on the same origin,
-such as `rootBase=/v2/42/` and `overlayBase=/builds/demos/apps/`. External asset
+such as `rootBase=/v2/43/` and `overlayBase=/builds/demos/apps/`. External asset
 hosts retain absolute URLs. Links include `appBase` only when an `app` archive
 is selected and `overlayBase` only when an `overlay` archive is selected;
 launches using both keep both bases. Build identities remain in the links and
@@ -347,7 +348,7 @@ The local development script still downloads and validates the filesystem for
 offline/local demo testing:
 
 ```text
-https://boxedwine.org/v2/42/TinyCore15Wine11.0-web.zip
+https://boxedwine.org/v2/43/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:
@@ -1067,32 +1068,37 @@ been comprehensively tested. The website thumbnail shows Sergio Garcia at the
 Skeleton Coast tee, captured from native Boxedwine on 2026-11-14. Jenkins, local
 demos and the homepage use the same gameplay image.
 
-#### Quick Start vertex-buffer crash (local candidate, 2026-11-22)
+#### Quick Start vertex-buffer crash (revision 43 published, 2026-11-22)
 
 With web filesystem 42, Quick Start loads Skeleton Coast to 100%, then faults
 at `0x466c4c` (`LinksMMIII.exe + 0x66c4c`). The game writes vertex colors through
 a retained Lock pointer after Unlock and DrawIndexedPrimitiveVB. WineD3D's
 WebGL static-buffer upload frees that unlocked buffer's CPU shadow.
 
-The [v56 candidate patch series](../testing/wine/webgl-test-divergences-v56.json)
+The [v56 patch series](../testing/wine/webgl-test-divergences-v56.json)
 keeps WebGL DirectDraw vertex buffers on the existing CPU path, so the pointer
 stays valid and subsequent draws upload the changed colors. The game files,
 reported vertex-buffer caps and non-WebGL routing are unchanged. The focused
 probe and before/after results are documented in the
 [graphics testing guide](../testing/wine/GRAPHICS_README.md#directdraw-vertex-buffer-lifetime-regression).
 
-The local candidate is
+The initial debugging candidate was
 `tmp/links2003-quickstart/TinyCore15Wine11.0-web-links-test.zip`, SHA-256
 `41b7836868898b28e22326d11e8da900cd7fdaa5add4dcda2867eaa0dc3de39b`.
 It differs from web filesystem 42 only in `C:/webgl/ddraw.dll` (SHA-256
 `70af5190f03b0c403d67f5b4d68500e744673f93f97199c34c4bc1fa7ff298d6`).
-It is not a published release and does not change the release pins.
+It is retained as diagnostic evidence. The release pins now select the clean
+v56 rebuild in `tmp/filesystem-v43-release/TinyCore15Wine11.0-web.zip`, SHA-256
+`f2c60ee5c547799bbcd945a39b54a9f3740ca5798d03ef0b62b2bccc13e748b6`.
+Revision 43 is published and verified; its only changed runtime member is
+`C:/webgl/ddraw.dll` (SHA-256
+`0a2ad84282862f882161d2afa98cc94b8b9eba19aadf7197695074cdcf94e6bc`).
 
 Serve the repository root with `node project/emscripten/server.mjs --root . --port 8036`
 and open the existing ST JIT runner:
 
 ```text
-http://127.0.0.1:8036/project/emscripten/Deploy/Web/SingleThreadedJit/boxedwine.html?root=TinyCore15Wine11.0-web-links-test.zip&rootBase=/tmp/links2003-quickstart/&overlay=links2003-demo-overlay.zip&overlayBase=/project/linux/Deploy/LocalBuildSite/demos/apps/&p=c%3A%2Flinks2003-demo.bat&resolution=800x600&bpp=32&auto=true
+http://127.0.0.1:8036/project/emscripten/Deploy/Web/SingleThreadedJit/boxedwine.html?root=TinyCore15Wine11.0-web.zip&rootBase=/tmp/filesystem-v43-release/&overlay=links2003-demo-overlay.zip&overlayBase=/project/linux/Deploy/LocalBuildSite/demos/apps/&p=c%3A%2Flinks2003-demo.bat&resolution=800x600&bpp=32&auto=true
 ```
 
 For a fresh setup without changing saved data, append `&storage=memory`. Accept
@@ -1100,11 +1106,17 @@ the display and Create Golfer dialogs, enter `James`, click Next three times,
 Finish, then No for the lesson, and choose Quick Start. With an existing saved
 profile, decline resuming the previous game and choose Quick Start.
 
-Both paths reached the Skeleton Coast hole 10 tee in ST JIT with the exact
-candidate above. Screenshots and browser console logs are saved as
+Both paths reached the Skeleton Coast hole 10 tee in ST JIT with the initial
+debugging candidate. Screenshots and browser console logs are saved as
 `tmp/links2003-quickstart/final-fresh-james-quickstart.{png,log}` and
 `final-saved-profile-quickstart.{png,log}`. These checks cover the reported
 startup crash; they do not qualify a full round or gameplay in every runtime.
+
+Both paths also reached the tee with the final revision 43 ZIP. The fresh
+`James` setup used `storage=memory`; the saved profile declined resume before
+Quick Start. Screenshots and console logs are in
+`tmp/filesystem-v43-release/links-fresh-james.{png,log}` and
+`links-saved-profile.{png,log}`.
 
 ### Galactic Battlegrounds trial
 

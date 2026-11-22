@@ -1,18 +1,28 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current filesystem release source series is pinned by
-[`webgl-test-divergences-v55.json`](../testing/wine/webgl-test-divergences-v55.json).
-It contains 78 production patches and one separate Wine graphics-test adaptation.
-The [v55 inventory](../testing/wine/webgl-patch-inventory-v55.json) records the ordered
+[`webgl-test-divergences-v56.json`](../testing/wine/webgl-test-divergences-v56.json).
+It contains 79 production patches and one separate Wine graphics-test adaptation.
+The [v56 inventory](../testing/wine/webgl-patch-inventory-v56.json) records the ordered
 patches and hashes. Existing Wine test expectations are unchanged.
+
+Filesystem revision 43 is published at `/v2/43/`, with `/v2/latest` symlinked
+to `43`. Fresh downloads matched the tested archives. It adds
+[WebGL DirectDraw CPU vertex buffers](webgl-ddraw-vertex-buffer-sysmem-against-wine-11.0.patch)
+to fix Links 2003 Quick Start. The existing CPU path preserves retained Lock
+pointers and uploads subsequent writes on each draw. Normal buffer and device
+cleanup still owns the allocations. All eight DLLs were rebuilt; only
+`C:/webgl/ddraw.dll` differs from revision 42. Both ZIPs also update `version.txt`
+and `changes.txt`; all other contents and metadata are preserved. See the
+[regression checks](../testing/wine/GRAPHICS_README.md#directdraw-vertex-buffer-lifetime-regression).
 
 Filesystem revision 42 packages v55, including the v54 vertex uniform cache and
 the shared fog uniform linking fix. Vertex and fragment shaders now declare
 `ffp_fog` using the same named `wined3d_ffp_fog` structure. Anonymous structures
 could fail to link when both stages used fog. All eight WebGL DLLs are rebuilt;
 only `C:/webgl/wined3d.dll` differs from filesystem 41. Every other runtime file
-and prefix setting is retained. The full and web archives are published at
-`/v2/42/`, with `/v2/latest` symlinked to `42`.
+and prefix setting is retained. The historical full and web archives remain
+available at `/v2/42/`.
 
 Filesystem revision 35 adds 16-bit RGB565 modes to the WebGL renderer's existing
 32-bit list. Boxedwine's XRandR emulation owns the resolutions; Wine's X11 driver

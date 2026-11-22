@@ -41,12 +41,13 @@ vertex-buffer Lock pointer after Unlock and DrawIndexedPrimitiveVB. WebGL's
 static-buffer upload evicts the unlocked CPU shadow, invalidating that pointer.
 Keeping the shadow alone would also leave the GPU copy stale after these writes.
 
-The local [v56 source series](webgl-test-divergences-v56.json) selects
+The [v56 source series](webgl-test-divergences-v56.json) selects
 [`webgl-ddraw-vertex-buffer-sysmem-against-wine-11.0.patch`](../../d3dToWebGL/webgl-ddraw-vertex-buffer-sysmem-against-wine-11.0.patch).
 It uses DirectDraw's existing CPU vertex-buffer path when WebGL is enabled;
 each draw uploads current data. Reported application caps and non-WebGL buffer
-selection are unchanged. This series is a candidate, not the published filesystem
-selected by `webgl_filesystems.json`.
+selection are unchanged. `webgl_filesystems.json` selects this series for the
+published revision 43 full and web archives. Fresh versioned and latest-alias
+downloads matched the tested archives and passed profile validation.
 
 The CPU allocation remains owned by the WineD3D buffer and is freed through the
 normal resource cleanup after the final Release. Draws reuse the device's
@@ -68,7 +69,7 @@ Run with a Windows Python installation and an existing candidate filesystem:
 python tools/testing/wine/runGraphicsProbe.py `
   --probe vertex-buffer-lifetime `
   --executable tmp/links2003-quickstart/DDrawVertexBufferLifetimeProbe.exe `
-  --filesystem tmp/links2003-quickstart/TinyCore15Wine11.0-web-links-test.zip `
+  --filesystem tmp/filesystem-v43-release/TinyCore15Wine11.0-web.zip `
   --build-dir project/emscripten/Deploy/Web/SingleThreadedJit `
   --mode single-threaded-jit --headless `
   --output tmp/links2003-quickstart/lifetime-rerun
@@ -83,6 +84,13 @@ The candidate passed in ST JIT and MT JIT; Wine's `ddraw` groups `d3d` (2,499
 checks, 11 TODOs) and `visual` (279 checks, one TODO) also passed in ST JIT with
 unchanged counts and no skips. Local artifacts and exact input hashes are in
 `tmp/links2003-quickstart/final-*` and `validation-*.json`.
+
+The final revision 43 web ZIP passed the 71-check probe in all four browser
+modes. Its ST JIT and MT JIT runs also passed `ddraw` `d3d`, `visual` and
+`refcount` (96 checks, 10 TODOs); the full ZIP passed all four groups in ST JIT.
+There were no failures or skips, with the same expected TODO counts. Exact
+archive, runtime and test identities are in
+`tmp/filesystem-v43-release/browser-results.json`.
 
 ## Run a Wine graphics group
 
