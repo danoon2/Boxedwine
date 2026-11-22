@@ -1067,6 +1067,45 @@ been comprehensively tested. The website thumbnail shows Sergio Garcia at the
 Skeleton Coast tee, captured from native Boxedwine on 2026-11-14. Jenkins, local
 demos and the homepage use the same gameplay image.
 
+#### Quick Start vertex-buffer crash (local candidate, 2026-11-22)
+
+With web filesystem 42, Quick Start loads Skeleton Coast to 100%, then faults
+at `0x466c4c` (`LinksMMIII.exe + 0x66c4c`). The game writes vertex colors through
+a retained Lock pointer after Unlock and DrawIndexedPrimitiveVB. WineD3D's
+WebGL static-buffer upload frees that unlocked buffer's CPU shadow.
+
+The [v56 candidate patch series](../testing/wine/webgl-test-divergences-v56.json)
+keeps WebGL DirectDraw vertex buffers on the existing CPU path, so the pointer
+stays valid and subsequent draws upload the changed colors. The game files,
+reported vertex-buffer caps and non-WebGL routing are unchanged. The focused
+probe and before/after results are documented in the
+[graphics testing guide](../testing/wine/GRAPHICS_README.md#directdraw-vertex-buffer-lifetime-regression).
+
+The local candidate is
+`tmp/links2003-quickstart/TinyCore15Wine11.0-web-links-test.zip`, SHA-256
+`41b7836868898b28e22326d11e8da900cd7fdaa5add4dcda2867eaa0dc3de39b`.
+It differs from web filesystem 42 only in `C:/webgl/ddraw.dll` (SHA-256
+`70af5190f03b0c403d67f5b4d68500e744673f93f97199c34c4bc1fa7ff298d6`).
+It is not a published release and does not change the release pins.
+
+Serve the repository root with `node project/emscripten/server.mjs --root . --port 8036`
+and open the existing ST JIT runner:
+
+```text
+http://127.0.0.1:8036/project/emscripten/Deploy/Web/SingleThreadedJit/boxedwine.html?root=TinyCore15Wine11.0-web-links-test.zip&rootBase=/tmp/links2003-quickstart/&overlay=links2003-demo-overlay.zip&overlayBase=/project/linux/Deploy/LocalBuildSite/demos/apps/&p=c%3A%2Flinks2003-demo.bat&resolution=800x600&bpp=32&auto=true
+```
+
+For a fresh setup without changing saved data, append `&storage=memory`. Accept
+the display and Create Golfer dialogs, enter `James`, click Next three times,
+Finish, then No for the lesson, and choose Quick Start. With an existing saved
+profile, decline resuming the previous game and choose Quick Start.
+
+Both paths reached the Skeleton Coast hole 10 tee in ST JIT with the exact
+candidate above. Screenshots and browser console logs are saved as
+`tmp/links2003-quickstart/final-fresh-james-quickstart.{png,log}` and
+`final-saved-profile-quickstart.{png,log}`. These checks cover the reported
+startup crash; they do not qualify a full round or gameplay in every runtime.
+
 ### Galactic Battlegrounds trial
 
 `galactic-battlegrounds-trial-overlay.zip` contains all 184 pristine installed

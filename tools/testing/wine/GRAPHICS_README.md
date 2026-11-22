@@ -33,6 +33,57 @@ indexed-draw and DirectDraw RGB10 corrections from the branch review. The
 controls, and verification that the hosted ZIP matches the tested candidate.
 The full v39 graphics matrix has not been rerun against v41.
 
+## DirectDraw vertex-buffer lifetime regression
+
+Links 2003 Quick Start faults at `LinksMMIII.exe + 0x66c4c` after loading
+Skeleton Coast to 100%. The game writes diffuse colors through a retained
+vertex-buffer Lock pointer after Unlock and DrawIndexedPrimitiveVB. WebGL's
+static-buffer upload evicts the unlocked CPU shadow, invalidating that pointer.
+Keeping the shadow alone would also leave the GPU copy stale after these writes.
+
+The local [v56 source series](webgl-test-divergences-v56.json) selects
+[`webgl-ddraw-vertex-buffer-sysmem-against-wine-11.0.patch`](../../d3dToWebGL/webgl-ddraw-vertex-buffer-sysmem-against-wine-11.0.patch).
+It uses DirectDraw's existing CPU vertex-buffer path when WebGL is enabled;
+each draw uploads current data. Reported application caps and non-WebGL buffer
+selection are unchanged. This series is a candidate, not the published filesystem
+selected by `webgl_filesystems.json`.
+
+The CPU allocation remains owned by the WineD3D buffer and is freed through the
+normal resource cleanup after the final Release. Draws reuse the device's
+streaming buffers, which are freed with the device. The change adds no reference
+or permanent cache; it retains CPU storage while the application owns the buffer.
+The checks below cover rendering and the crash, not sustained memory usage.
+
+Build the focused probe in WSL:
+
+```sh
+i686-w64-mingw32-gcc -O2 -Wall -Wextra \
+  tools/testing/wine/tests/ddraw_vertex_buffer_lifetime_probe.c \
+  -o tmp/links2003-quickstart/DDrawVertexBufferLifetimeProbe.exe -lddraw -ldxguid
+```
+
+Run with a Windows Python installation and an existing candidate filesystem:
+
+```powershell
+python tools/testing/wine/runGraphicsProbe.py `
+  --probe vertex-buffer-lifetime `
+  --executable tmp/links2003-quickstart/DDrawVertexBufferLifetimeProbe.exe `
+  --filesystem tmp/links2003-quickstart/TinyCore15Wine11.0-web-links-test.zip `
+  --build-dir project/emscripten/Deploy/Web/SingleThreadedJit `
+  --mode single-threaded-jit --headless `
+  --output tmp/links2003-quickstart/lifetime-rerun
+```
+
+Use a new output directory for each run. The probe checks reported caps and
+size, then red, green and blue pixels across initial upload, retained-pointer
+writes and a normal relock, for both requested video-memory and system-memory
+buffers. It must report six draws, 71 checks, zero failures and exit status 0.
+The v42 control faults on the first retained-pointer write after 26 checks.
+The candidate passed in ST JIT and MT JIT; Wine's `ddraw` groups `d3d` (2,499
+checks, 11 TODOs) and `visual` (279 checks, one TODO) also passed in ST JIT with
+unchanged counts and no skips. Local artifacts and exact input hashes are in
+`tmp/links2003-quickstart/final-*` and `validation-*.json`.
+
 ## Run a Wine graphics group
 
 For example, with a frozen ST JIT runtime and matching Wine inputs:

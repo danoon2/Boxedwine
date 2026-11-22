@@ -14,7 +14,7 @@ import wineGraphicsBrowser as graphics
 
 def main(default_probe=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--probe", choices=("clip-planes", "colorkey", "clip-state", "viewport-depth", "gl-depth-range", "depth-bias", "depth-copy", "depth-readback", "stencil-clear", "point-caps8", "point-caps9", "wine-points8", "wine-points9", "context-isolation", "context-concurrency", "late-context", "thread-binding", "present-lifecycle", "self-blit", "alpha-test", "multisample-copy", "framebuffer-yield", "drawable-yield", "readback-yield", "copy-read-buffer", "read-buffer-ownership", "readback-pack", "format-samples", "d3d9-format-samples", "rgb10-transfer", "depth-samples", "float-caps", "xfile-object-limit", "float-fog", "float-texture-transform", "normal-texgen", "strict-fog", "d3dx-tangent", "d3dx-states", "d3dx-sphere", "texgen", "ffp-failure", "mapped-buffers", "glsl-failure", "blitter-failure", "index-boundaries", "ddraw-rgb10-masks"), default=default_probe, required=default_probe is None)
+    parser.add_argument("--probe", choices=("clip-planes", "colorkey", "clip-state", "viewport-depth", "gl-depth-range", "depth-bias", "depth-copy", "depth-readback", "stencil-clear", "point-caps8", "point-caps9", "wine-points8", "wine-points9", "context-isolation", "context-concurrency", "late-context", "thread-binding", "present-lifecycle", "self-blit", "alpha-test", "multisample-copy", "framebuffer-yield", "drawable-yield", "readback-yield", "copy-read-buffer", "read-buffer-ownership", "readback-pack", "format-samples", "d3d9-format-samples", "rgb10-transfer", "depth-samples", "float-caps", "xfile-object-limit", "float-fog", "float-texture-transform", "normal-texgen", "strict-fog", "d3dx-tangent", "d3dx-states", "d3dx-sphere", "texgen", "ffp-failure", "mapped-buffers", "glsl-failure", "blitter-failure", "index-boundaries", "ddraw-rgb10-masks", "vertex-buffer-lifetime"), default=default_probe, required=default_probe is None)
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--filesystem", type=Path, required=True)
     parser.add_argument("--build-dir", type=Path, required=True)
@@ -103,6 +103,7 @@ def main(default_probe=None):
         "colorkey": graphics.GraphicsSuite("ddraw-colorkey", "DDrawColorKeyProbe.exe", ("colorkey",), redirect_output=True),
         "viewport-depth": graphics.GraphicsSuite("ddraw-depth", "DDrawDepthFollowup.exe", ("depth",), redirect_output=True),
         "clip-state": graphics.GraphicsSuite("ddraw-clip-state", "DDrawClipStateProbe.exe", ("clipstate",), redirect_output=True),
+        "vertex-buffer-lifetime": graphics.GraphicsSuite("ddraw-vertex-buffer-lifetime", "DDrawVertexBufferLifetimeProbe.exe", ("vblifetime",), redirect_output=True),
     }[args.probe]
     suite = replace(suite, exit_status_policy="zero")
     if not 1 <= args.repeat <= 100:

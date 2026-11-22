@@ -1,0 +1,26 @@
+Keep DirectDraw vertex buffers in CPU memory for WebGL.
+
+Links 2003 unlocks a vertex buffer, draws it, and then updates diffuse colors
+through the retained lock pointer before a second draw. The WebGL upload path
+evicts the unlocked CPU shadow after the first draw, leaving that pointer
+unmapped (LinksMMIII.exe + 0x66c4c).
+
+Use DirectDraw's existing system-memory vertex-buffer path for WebGL, as is
+already done for pre-D3D7 buffers. Each draw then reads the current CPU data
+through the existing upload path. Preserve the application's reported caps and
+leave desktop Wine's buffer selection unchanged.
+
+diff --git a/dlls/ddraw/vertexbuffer.c b/dlls/ddraw/vertexbuffer.c
+--- a/dlls/ddraw/vertexbuffer.c
++++ b/dlls/ddraw/vertexbuffer.c
+@@ -477,5 +477,9 @@ HRESULT d3d_vertex_buffer_create(struct d3d_vertex_buffer **vertex_buf,
+      *
+      * This improves performance in Prince of Persia 3D. */
+-    buffer->sysmem = ((buffer->Caps & D3DVBCAPS_SYSTEMMEMORY) || buffer->version < 7);
++    /* WebGL uploads evict unlocked GPU buffers' CPU shadows. Legacy D3D7
++     * applications also update retained lock pointers between draws; use the
++     * CPU path so those pointers remain valid and each draw sees their writes. */
++    buffer->sysmem = ((buffer->Caps & D3DVBCAPS_SYSTEMMEMORY) || buffer->version < 7
++            || ddraw_webgl_enabled());
+
+     wined3d_mutex_lock();
