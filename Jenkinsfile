@@ -105,6 +105,10 @@ void buildEmscriptenUnitTest(String target) {
             set -euo pipefail
             source tools/jenkins/emscripten-unit-test-env.sh
             cd project/emscripten
+            node --test testBrowserTestRunner.mjs
+            if [ "$BOXEDWINE_UNIT_TEST_TARGET" = test ]; then
+                python3 test_test_runner.py -v
+            fi
             make clean
             make "$BOXEDWINE_UNIT_TEST_TARGET"
             # Legacy Linux worker cleanup. The Mac also hosts desktop apps;

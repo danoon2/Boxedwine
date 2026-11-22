@@ -118,7 +118,7 @@ class MakeDependencyTests(unittest.TestCase):
         for name in ("makefile", "update-build-config.py", "boxedwine-asan-pthread.cpp", "webgl-counters.mjs"):
             shutil.copyfile(HERE / name, self.project / name)
         for name in ("shell.html", "boxedwine.css", "fsfs.js", "boxedwine-shell.js",
-                "boxedwine-wasm-jit-module-broker.js", "boxedwine-multithreaded-helper.js",
+                "boxedwine-wasm-jit-module-broker.js", "boxedwine-multithreaded-helper.js", "boxedwine-test-runner.js",
                 "boxedwine-audio-worklet.js"):
             (self.project / name).write_text("fixture\n")
         self.cpp = self.root / "source/probe.cpp"
@@ -211,9 +211,9 @@ class MakeDependencyTests(unittest.TestCase):
 
     def test_shell_and_javascript_changes_relink(self):
         flags = ("EXTRA_LD_FLAGS=--js-library=boxedwine-multithreaded-helper.js "
-            "--pre-js=boxedwine-wasm-jit-module-broker.js")
+            "--pre-js=boxedwine-wasm-jit-module-broker.js --pre-js=boxedwine-test-runner.js")
         self.initial_build(flags)
-        for name in ("shell.html", "boxedwine-multithreaded-helper.js", "boxedwine-wasm-jit-module-broker.js",
+        for name in ("shell.html", "boxedwine-multithreaded-helper.js", "boxedwine-wasm-jit-module-broker.js", "boxedwine-test-runner.js",
                 "boxedwine-audio-worklet.js"):
             self.change_source(self.project / name)
             self.assertEqual(["link"], self.run_make(flags)[0])

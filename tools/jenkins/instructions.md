@@ -15,6 +15,36 @@ Recordings and screenshot references are packaged in the downloaded automation
 assets. Update those archives when recordings change; Jenkins does not patch
 individual recordings or generate additional recording overlays.
 
+# Browser unit-test shutdown
+
+The Emscripten unit-test targets use `project/emscripten/boxedwine-test-runner.js`
+with `-sEXIT_RUNTIME=1` instead of the SDK's `--emrun` JavaScript hooks. They
+still run through the pinned SDK's `emrun` server. In Emscripten 5.0.7 the SDK's
+`addOnExit` hook precedes `FS.quit()` and its final stdout flush. The test client
+uses the later `Module.onExit`, acknowledges queued output in order, then sends
+one exit notification. Browser cleanup belongs to `emrun --kill-exit`.
+
+Jenkins still requires both a zero exit status and the `0 tests FAILED in ...`
+summary. Failed log delivery produces a nonzero exit; crashes and missing exit
+notifications remain bounded by the existing timeouts. Automation targets keep
+their existing SDK hooks.
+
+Regression checks, with the pinned emsdk activated:
+
+```sh
+node --test project/emscripten/testBrowserTestRunner.mjs
+python3 project/emscripten/test_test_runner.py -v
+python3 project/emscripten/test_build_config.py -v
+```
+
+The Firefox checks use isolated profiles and fixtures whose final summary is
+buffered or emitted during filesystem teardown, in both ST and MT modes. Set
+`BOXEDWINE_FIREFOX` to the Firefox executable if it is not on PATH. `WORKSPACE`
+controls the temporary fixture/profile parent, as in Jenkins (use a location
+visible to the browser when its package isolates `/tmp`). Jenkins runs the
+JavaScript checks before each unit-test build and the Firefox checks once in
+the ST build.
+
 # Local Build Site
 
 `local-build-site.sh` builds a local copy of the Boxedwine web demo site so Emscripten builds can be tested in a browser before publishing anything.

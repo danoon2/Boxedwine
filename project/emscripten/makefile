@@ -4,6 +4,8 @@ ifndef BUILD_DIR
 
 ZIP_ASSET_FILES := $(wildcard *.zip)
 RUNTIME_MEMORY_FLAGS := -sALLOW_MEMORY_GROWTH -sMAXIMUM_MEMORY=3221225472
+# Wait for final stdout delivery using Module.onExit, after the runtime flush.
+TEST_RUNNER_FLAGS := -sEXIT_RUNTIME=1 --pre-js=boxedwine-test-runner.js
 
 # JIT modes replace the common runtime exports; ccall is needed by the shell
 # (host folder cache invalidation) and by WebGL counters for names.
@@ -21,15 +23,15 @@ release: export ASSET_FILES := boxedwine.css fsfs.js boxedwine-shell.js $(ZIP_AS
 test: export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC
 test: export SHELL_FILE := shelltest.html
-test: export EXTRA_LD_FLAGS := --emrun
+test: export EXTRA_LD_FLAGS := $(TEST_RUNNER_FLAGS)
 testMultiThreaded: export BUILD_DIR := Build/TestMultiThreaded
 testMultiThreaded: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC -DBOXEDWINE_MULTI_THREADED -pthread
 testMultiThreaded: export SHELL_FILE := shelltest.html
-testMultiThreaded: export EXTRA_LD_FLAGS := --emrun -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-helper.js
+testMultiThreaded: export EXTRA_LD_FLAGS := $(TEST_RUNNER_FLAGS) -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --js-library=boxedwine-multithreaded-helper.js
 testMultiThreadedOpenGL: export BUILD_DIR := Build/TestMultiThreadedOpenGL
 testMultiThreadedOpenGL: export EXTRA_CPP_FLAGS := -D__TEST -DASMJIT_STATIC -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_OPENGL_BOOTSTRAP_TEST_ONLY -pthread
 testMultiThreadedOpenGL: export SHELL_FILE := shelltest.html
-testMultiThreadedOpenGL: export EXTRA_LD_FLAGS := --emrun -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --js-library=boxedwine-multithreaded-helper.js
+testMultiThreadedOpenGL: export EXTRA_LD_FLAGS := $(TEST_RUNNER_FLAGS) -pthread -sPTHREAD_POOL_SIZE=32 -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sOFFSCREENCANVASES_TO_PTHREAD=\#canvas --js-library=boxedwine-multithreaded-helper.js
 multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
@@ -75,11 +77,11 @@ automationJit: export ASSET_FILES := boxedwine.css fsfs.js boxedwine-shell.js $(
 testJit: export BUILD_DIR := Build/TestJit
 testJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_WASM_JIT $(WASM_JIT_SIMD_FLAG)
 testJit: export SHELL_FILE := shelltest.html
-testJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction$(JIT_CCALL_EXPORTS)
+testJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) $(TEST_RUNNER_FLAGS) -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction$(JIT_CCALL_EXPORTS)
 testMultiThreadedJit: export BUILD_DIR := Build/TestMultiThreadedJit
 testMultiThreadedJit: export EXTRA_CPP_FLAGS := -D__TEST -DBOXEDWINE_MULTI_THREADED -DBOXEDWINE_WASM_JIT $(WASM_JIT_SIMD_FLAG) -pthread
 testMultiThreadedJit: export SHELL_FILE := shelltest.html
-testMultiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) --emrun -pthread -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --pre-js=boxedwine-wasm-jit-module-broker.js --js-library=boxedwine-multithreaded-helper.js -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8$(JIT_CCALL_EXPORTS) -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_mt_set_module_broker_enabled,_wasm_jit_mt_broker_validate_module,_wasm_jit_mt_take_thread_start_owner,_wasm_jit_mt_copy_runtime_batch_stats,_wasm_jit_mt_record_group_worker_event,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
+testMultiThreadedJit: export EXTRA_LD_FLAGS := $(WASM_JIT_SIMD_FLAG) $(TEST_RUNNER_FLAGS) -pthread -sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=0 --pre-js=boxedwine-wasm-jit-module-broker.js --js-library=boxedwine-multithreaded-helper.js -sPTHREAD_POOL_SIZE=$(or $(PTHREAD_POOL_SIZE),32) -sALLOW_TABLE_GROWTH $(RUNTIME_MEMORY_FLAGS) -sEXPORTED_RUNTIME_METHODS=addFunction,removeFunction,wasmTable,HEAPU8$(JIT_CCALL_EXPORTS) -sEXPORTED_FUNCTIONS=_main,_wasm_jit_mt_register,_wasm_jit_mt_register_group,_wasm_jit_mt_register_group_entry,_wasm_jit_mt_register_group_patch,_wasm_jit_mt_prepare_export,_wasm_jit_mt_set_module_broker_enabled,_wasm_jit_mt_broker_validate_module,_wasm_jit_mt_take_thread_start_owner,_wasm_jit_mt_copy_runtime_batch_stats,_wasm_jit_mt_record_group_worker_event,_wasm_jit_set_persistence_active,_wasm_jit_set_record_active,_malloc,_free
 # Multi-threaded WASM JIT: combines the multiThreaded and jit flag sets.
 # Within a single emulated process, JIT compilation is serialized via
 # memory->mutex, and the inline-TLB arrays are mutated under the same
@@ -328,6 +330,7 @@ $(ASSET_OUTPUTS): $(BUILD_DIR)/%: %
 
 LINK_INPUTS := $(if $(filter %.html,$(TARGET_EXEC)),$(SHELL_FILE),)
 LINK_INPUTS += boxedwine-audio-worklet.js
+LINK_INPUTS += $(if $(findstring boxedwine-test-runner.js,$(EXTRA_LD_FLAGS)),boxedwine-test-runner.js,)
 LINK_INPUTS += $(if $(findstring boxedwine-wasm-jit-module-broker.js,$(EXTRA_LD_FLAGS)),boxedwine-wasm-jit-module-broker.js,)
 LINK_INPUTS += $(if $(findstring boxedwine-multithreaded-helper.js,$(EXTRA_LD_FLAGS)),boxedwine-multithreaded-helper.js,)
 
