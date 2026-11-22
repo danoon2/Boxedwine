@@ -189,6 +189,10 @@ export async function run(configPath, gdiCycles = 0, pointerLock = false) {
                 return checked;
             }
             result.pointerLock = [];
+            // SDL can enter fullscreen during startup. The lock checkbox is
+            // outside that surface, so leave fullscreen before clicking it.
+            await page.evaluate(() => document.fullscreenElement ? document.exitFullscreen() : undefined);
+            await page.waitForFunction(() => !document.fullscreenElement);
             await action('pointer-lock', {enabled: true});
             // Acquire the real lock by clicking inside the GL image. Acquiring
             // it at the checkbox leaves fixed clientY outside the canvas and

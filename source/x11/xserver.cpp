@@ -1360,16 +1360,19 @@ void XServer::clampPointerToGrab(S32& x, S32& y) {
 	confined->windowToScreen(x, y);
 }
 
+bool XServer::sendRelativeMouseMotion(S32 x, S32 y) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+	if (!isGrabbed || !root) return false;
+	XWindowPtr grabbed = getWindow(grabbedId);
+	DisplayDataPtr display = getDisplayDataById(grabbedDisplayId);
+	if (!grabbed || !display || !(display->getInput2Mask(root->id) & XI_RawMotionMask)) return false;
+	if (x || y) grabbed->input2Notify(display, x, y, XI_RawMotion);
+	return true;
+}
+
 void XServer::mouseMove(S32 x, S32 y, bool relative, const CapturedMouse::HostPosition* host) {
 	if (relative) {
-		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
-		if (isGrabbed && KSystem::forceRelativeMouse && root) {
-			XWindowPtr grabbed = getWindow(grabbedId);
-			DisplayDataPtr display = getDisplayDataById(grabbedDisplayId);
-			if (grabbed && display && (display->getInput2Mask(root->id) & XI_RawMotionMask) && (x || y)) {
-				grabbed->input2Notify(display, x, y, XI_RawMotion);
-			}
-		}
+		if (KSystem::forceRelativeMouse) sendRelativeMouseMotion(x, y);
 		// A grab can end after SDL queues a relative event. Never interpret
 		// that stale delta as an absolute position after returning to a menu.
 		return;

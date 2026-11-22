@@ -182,6 +182,54 @@ static void testMouseLookScaling(KNativeInputSDL& input) {
     puts("Mouse look is independent of software/GL scale; recentering, polling, buttons, sensitivity and absolute menus passed");
 }
 
+static void testBrowserRelativeMotion() {
+    auto server = XServer::getServer();
+    auto root = server->getRoot();
+    auto game = server->createNewWindow(47, root, 640, 480, 32, 0, 0, InputOutput, 0, server->visual);
+    U32 serial = 0;
+    auto display = std::make_shared<DisplayData>();
+    display->displayId = 47;
+    display->displayAddress = 123;
+    display->pCurrentRequest = &serial;
+    server->displays.set(47, display);
+    display->setInput2Mask(root->id, XI_RawMotionMask);
+    server->grabbedId = game->id;
+    server->grabbedDisplayId = 47;
+    server->grabbedConfinedId = game->id;
+    server->grabbedMask = 0; // Raw selection does not require core MotionNotify.
+    server->isGrabbed = true;
+    const bool forceRelative = KSystem::forceRelativeMouse;
+    KSystem::forceRelativeMouse = false;
+
+    // Pointer lock supplies real deltas without the desktop's force-relative
+    // option. Motion must continue beyond both the guest and desktop edges.
+    for (int delta : {400, 400, 400, -400, -400, -400, 1, -1}) {
+        display->eventQueue.clear();
+        assert(server->sendRelativeMouseMotion(delta, -delta));
+        assert(display->eventQueue.size() == 1);
+        const auto& event = display->eventQueue.back();
+        assert(event.type == GenericEvent && event.xcookie.evtype == XI_RawMotion);
+        assert((S32)event.pad[8 + 12] == delta && (S32)event.pad[8 + 13] == -delta);
+    }
+    display->eventQueue.clear();
+    assert(server->sendRelativeMouseMotion(0, 0));
+    assert(display->eventQueue.empty());
+    display->setInput2Mask(root->id, 0);
+    assert(!server->sendRelativeMouseMotion(10, 20));
+    assert(display->eventQueue.empty());
+    display->setInput2Mask(root->id, XI_RawMotionMask);
+    server->isGrabbed = false;
+    assert(!server->sendRelativeMouseMotion(10, 20));
+    assert(display->eventQueue.empty());
+    server->isGrabbed = true;
+    server->displays.remove(47);
+    assert(!server->sendRelativeMouseMotion(10, 20));
+    server->isGrabbed = false;
+    server->grabbedConfinedId = 0;
+    KSystem::forceRelativeMouse = forceRelative;
+    puts("Browser raw motion remains unbounded; missing raw selection and released grabs retain absolute fallback");
+}
+
 static void testUngrabbedMouseLook(KNativeInputSDL& input) {
     auto server = XServer::getServer();
     auto root = server->getRoot();
@@ -768,6 +816,7 @@ int main() {
     physicalX = 400; physicalY = 300;
     testMappedWindowFocus();
     testMouseLookScaling(input);
+    testBrowserRelativeMotion();
     testUngrabbedMouseLook(input);
     testInheritedCursorVisibility(input);
     testPixmapCursors(screen);

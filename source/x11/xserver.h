@@ -35,6 +35,7 @@ public:
 	XServer();
 	
 	void mouseMove(S32 x, S32 y, bool relative, const CapturedMouse::HostPosition* host = nullptr);
+	bool sendRelativeMouseMotion(S32 x, S32 y); // False when the guest needs absolute motion instead.
 	bool wantsRelativeMouse();
     bool wantsMouseConfinement();
     void noteMouseWarp(U32 displayId, S32 x, S32 y);

@@ -49,6 +49,7 @@ extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseMove(int x, int y, 
     KNativeScreenPtr screen = KNativeSystem::getScreen();
     KNativeInputSDLPtr input = screen ? std::static_pointer_cast<KNativeInputSDL>(screen->getInput()) : nullptr;
     if (input) {
+        const int deltaX = x, deltaY = y;
         if (relative) {
             int previousX, previousY;
             input->getEmscriptenMousePosition(&previousX, &previousY);
@@ -59,6 +60,15 @@ extern "C" EMSCRIPTEN_KEEPALIVE void boxedwineEmscriptenMouseMove(int x, int y, 
             y = std::max(0, std::min(input->yToScreen(input->screenHeight()) - 1, previousY + y));
         }
         input->setEmscriptenMousePosition(x, y);
+        if (relative) {
+            // DirectInput games maintain their own cursor from raw deltas.
+            // Keep delivering motion at the virtual cursor's edges; sending
+            // bounded absolute positions instead stops their relative input.
+            XServer* server = XServer::getServer(true);
+            if (server && server->sendRelativeMouseMotion(deltaX, deltaY)) {
+                return;
+            }
+        }
         input->mouseMove(x, y, false);
     }
 }
