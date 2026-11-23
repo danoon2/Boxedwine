@@ -160,6 +160,7 @@ public:
 	void onDestroy();
 
 	int setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
+	void writeAttributes(KThread* thread, const DisplayDataPtr& data, U32 address);
 	int clearArea(KThread* thread, S32 x, S32 y, U32 width, U32 height, Bool exposures);
 	void setTransient(U32 w);
 	void iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients = false);

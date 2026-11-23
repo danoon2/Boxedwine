@@ -89,6 +89,7 @@ void testX11PaletteInvalidation();
 void testX11HiddenWindowInvalidation();
 void testX11DialogFocusRevert();
 void testX11DisplayWindowCleanup();
+void testX11WindowAttributes();
 void testXInputValuatorLayout();
 void testCapturedMouseSensitivity();
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
@@ -1158,6 +1159,7 @@ const TestEntry TEST_ENTRIES[] = {
     {testX11HiddenWindowInvalidation, "Test X11 hidden window redraw invalidation"},
     {testX11DialogFocusRevert, "Test X11 focus returns to a closing dialog's owner"},
     {testX11DisplayWindowCleanup, "Test X11 display close and process exit destroy owned windows"},
+    {testX11WindowAttributes, "Test X11 window attributes across clients and remapping"},
 #if defined(BOXEDWINE_OPENGL_SDL) && defined(BOXEDWINE_MULTI_THREADED) && !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
     {testSDLGlWindowRemovalLockOrder, "Test SDL GL window removal lock order", TEST_ENTRY_SERIAL},
 #endif

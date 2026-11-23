@@ -1,5 +1,30 @@
 # X11 protocol probes
 
+## Window attributes and capture remapping
+
+`window-attributes.c` checks `XGetWindowAttributes` across two display
+connections, including parent-relative geometry, client-local visual/screen
+pointers, event masks, InputOnly windows, all three map states, remapping with
+old UnmapNotify events still queued, and querying a destroyed window.
+
+```sh
+gcc -m32 -O2 -Wall -Wextra -Werror window-attributes.c -lX11 -o window-attributes
+xvfb-run -a ./window-attributes
+```
+
+Run the same binary inside Boxedwine with a disposable root and its directory
+mounted at `/mnt/probes`, using `/mnt/probes/window-attributes` as the program.
+`-novideo` is sufficient. Expect `WINDOW_ATTRIBUTES checks=58 failures=0` at
+both 8-bit and 32-bit color. The regular X11 unit tests also exercise the guest
+call, its 92-byte ABI, per-client values, and map/unmap transitions.
+
+The Wine captured-input helper queries the current map state when processing
+UnmapNotify. Without this handler, v45 can abort with `x11_GetWindowAttributes`
+during Deadlock and Fire Fight installer playback. Their unchanged recordings
+passed with the handler implemented. The separate Real Deal installer timeout
+requires the event-based handoff in the Wine input-thread patch; see
+[`clipcursor-reentrancy.md`](../../../buildWine/probes/clipcursor-reentrancy.md).
+
 ## Window backgrounds on map
 
 `map-background.c` covers the first map, an already mapped window, a remap,

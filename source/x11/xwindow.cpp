@@ -291,7 +291,40 @@ void XWindow::setTransient(U32 w) {
 	}
 }
 
-int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask) {	
+void XWindow::writeAttributes(KThread* thread, const DisplayDataPtr& data, U32 address) {
+	KMemory* memory = thread->memory;
+	XServer* server = XServer::getServer();
+	U32 screenAddress = X11_READD(Display, data->displayAddress, screens);
+	U32 visualAddress = 0;
+	Display::iterateVisuals(thread, data->displayAddress, [&](S32 screenIndex, U32 address, Depth*, Visual* candidate) {
+		if (visual && candidate->visualid == visual->visualid) {
+			visualAddress = address;
+			screenAddress += screenIndex * sizeof(Screen);
+			return false;
+		}
+		return true;
+	});
+	U32 allEventMasks = 0;
+	server->iterateEventMask(id, ~0u, [&](const DisplayDataPtr& client) {
+		allEventMasks |= client->getEventMask(id);
+	});
+	// XWindowAttributes uses 32-bit pointers and longs in the guest, including
+	// Visual and Screen pointers from the querying client's Display.
+	const U32 values[] = {
+		(U32)left, (U32)top, width(), height(), border_width, getDepth(),
+		visualAddress, server->getRoot()->id, c_class,
+		(U32)attributes.bit_gravity, (U32)attributes.win_gravity,
+		(U32)attributes.backing_store, attributes.backing_planes, attributes.backing_pixel,
+		(U32)attributes.save_under, colorMap ? colorMap->id : 0, colorMap ? 1u : 0u,
+		!isMapped ? 0u : isThisAndAncestorsMapped() ? 2u : 1u, // IsUnmapped / IsViewable / IsUnviewable
+		allEventMasks, data->getEventMask(id), (U32)attributes.do_not_propagate_mask,
+		(U32)attributes.override_redirect, screenAddress
+	};
+	static_assert(sizeof(values) == 92, "guest XWindowAttributes layout");
+	for (U32 i = 0; i < sizeof(values) / sizeof(values[0]); ++i) memory->writed(address + i * 4, values[i]);
+}
+
+int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask) {
 	XDrawablePtr newBackground;
 	if (valueMask & (CWBackPixmap | CWBackPixel)) {
 		if (c_class == InputOnly) return BadMatch;

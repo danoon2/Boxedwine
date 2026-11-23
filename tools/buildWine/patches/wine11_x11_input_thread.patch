@@ -9,7 +9,9 @@ Keep the clipping grab and its event pump on a lazy per-process input thread.
 Retain core button events and existing XI2 motion handling, validate focus
 before transferring the grab, drain pending caller input, and release any
 implicit caller grab created during helper startup. Preserve desktop unmapping
-and stop the helper's raw-motion subscription when capture is lost.
+and stop the helper's raw-motion subscription when capture is lost. Use an
+event for the synchronous handoff so internal clipping cannot alter the
+caller's message-queue wake masks or dispatch application messages.
 
 The standalone dinput-capture-thread probe uses XTest input; SendInput tests
 alone bypass the X connection responsible for this dependency.
@@ -26,10 +28,9 @@ index 53ea4c794d7..2fc2253b136 100644
  UNIX_LIBS    = -lwin32u $(X_LIBS) $(PTHREAD_LIBS) -lm
  
 diff --git a/dlls/winex11.drv/dllmain.c b/dlls/winex11.drv/dllmain.c
-index ae7084dd6c3..b09b37dc47b 100644
 --- a/dlls/winex11.drv/dllmain.c
 +++ b/dlls/winex11.drv/dllmain.c
-@@ -22,12 +22,96 @@
+@@ -22,12 +22,129 @@
  #include "windef.h"
  #include "winbase.h"
  #include "wine/unixlib.h"
@@ -42,6 +43,13 @@ index ae7084dd6c3..b09b37dc47b 100644
 +
 +#define WM_X11_CLIP_CURSOR (WM_USER + 1)
 +
++struct clip_request
++{
++    void *args;
++    HANDLE done;
++    BOOL result;
++};
++
 +static HWND input_window;
 +static HINSTANCE driver_instance;
 +static INIT_ONCE input_once = INIT_ONCE_STATIC_INIT;
@@ -49,7 +57,12 @@ index ae7084dd6c3..b09b37dc47b 100644
 +static LRESULT CALLBACK input_window_proc( HWND hwnd, UINT msg, WPARAM wp, LPARAM lp )
 +{
 +    if (msg == WM_X11_CLIP_CURSOR)
-+        return !WINE_UNIX_CALL( x11drv_input_clip_cursor_call, (void *)lp );
++    {
++        struct clip_request *request = (void *)lp;
++        request->result = !WINE_UNIX_CALL( x11drv_input_clip_cursor_call, request->args );
++        SetEvent( request->done );
++        return 0;
++    }
 +    return DefWindowProcW( hwnd, msg, wp, lp );
 +}
 +
@@ -92,6 +105,27 @@ index ae7084dd6c3..b09b37dc47b 100644
 +    return ret;
 +}
 +
++/* The driver can be called while win32u is preparing a message-queue wait.
++ * SendMessage changes that queue's wake masks (even with SMTO_BLOCK) and can
++ * dispatch application messages. Use an event so internal clipping leaves
++ * the caller's message queue and window procedures alone. */
++static BOOL request_clip_cursor( void *args )
++{
++    struct clip_request request = { .args = args };
++    BOOL ret = FALSE;
++
++    if (GetWindowThreadProcessId( input_window, NULL ) == GetCurrentThreadId())
++        return !WINE_UNIX_CALL( x11drv_input_clip_cursor_call, args );
++    if (!(request.done = CreateEventW( NULL, FALSE, FALSE, NULL ))) return FALSE;
++    if (PostMessageW( input_window, WM_X11_CLIP_CURSOR, 0, (LPARAM)&request ))
++    {
++        WaitForSingleObject( request.done, INFINITE );
++        ret = request.result;
++    }
++    CloseHandle( request.done );
++    return ret;
++}
++
 +static NTSTATUS WINAPI clip_cursor( void *args, ULONG size )
 +{
 +    struct clip_cursor_params *params = args;
@@ -107,7 +141,7 @@ index ae7084dd6c3..b09b37dc47b 100644
 +        for (attempt = 0; attempt < 4; ++attempt)
 +        {
 +            if (params->clip) WINE_UNIX_CALL( x11drv_prepare_clip_cursor_call, args );
-+            ret = SendMessageW( input_window, WM_X11_CLIP_CURSOR, 0, (LPARAM)args );
++            ret = request_clip_cursor( args );
 +            if (ret) break;
 +        }
 +    }

@@ -51,6 +51,14 @@ Force Commander with the prototype driver reached a mission in native
 Boxedwine and accepted selection and movement orders. Browser hang verification
 was not completed; these results do not establish that every game hang is fixed.
 
+The subsequent event-based handoff fixes the installer regression described in
+[`clipcursor-reentrancy.md`](clipcursor-reentrancy.md). Its first 48-case Xvfb
+run passed every button-release check, but one DirectInput 7 pumping/lifecycle
+case reported `(0, 0)` motion instead of `(17, -11)` and failed the motion
+assertion. Twenty focused reruns passed with the new handoff; twenty control
+cases with the previous handoff also passed. That intermittent motion failure
+remains unexplained and should not be treated as a clean 48-case result.
+
 Further regression coverage should include:
 
 - A button held across initial capture, with presses racing the grab handoff.

@@ -2575,8 +2575,15 @@ static void x11_GetDefault(CPU* cpu) {
     kpanic("x11_GetDefault");
 }
 
+// Status XGetWindowAttributes(Display* display, Window w, XWindowAttributes* attributes)
 static void x11_GetWindowAttributes(CPU* cpu) {
-    kpanic("x11_GetWindowAttributes");
+    XServer* server = XServer::getServer();
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(cpu->memory, ARG1);
+    XWindowPtr window = server->getWindow(ARG2);
+    EAX = 0;
+    if (!data || !window) return;
+    window->writeAttributes(cpu->thread, data, ARG3);
+    EAX = 1;
 }
 
 static void x11_IconifyWindow(CPU* cpu) {

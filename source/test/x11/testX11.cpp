@@ -922,6 +922,66 @@ void testX11DisplayWindowCleanup() {
     server->destroyWindow(child->id); server->destroyWindow(owner->id); server->destroyWindow(survivor->id);
 }
 
+void testX11WindowAttributes() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    x11_init();
+    testNewInstruction(0);
+    initPaletteTestServer();
+    auto server = XServer::getServer();
+    auto& context = testContext();
+    CPU* cpu = context.cpu;
+    auto memory = context.memory;
+    auto first = server->getDisplayDataByAddressOfDisplay(memory, server->openDisplay(context.thread));
+    auto second = server->getDisplayDataByAddressOfDisplay(memory, server->openDisplay(context.thread));
+    auto root = server->getRoot();
+    auto parent = server->createNewWindow(first->displayId, root, 80, 60, root->getDepth(), 10, 20, InputOutput, 0, root->getVisual());
+    auto child = server->createNewWindow(first->displayId, parent, 20, 30, root->getDepth(), -7, 11, InputOutput, 2, root->getVisual());
+    first->setEventMask(child->id, StructureNotifyMask);
+    second->setEventMask(child->id, ExposureMask);
+    U32 output = TEST_HEAP_ADDRESS;
+    auto query = [&](const DisplayDataPtr& client, U32 window, U32 state) {
+        memory->writed(output + 92, 0xdeadbeef);
+        U32 args[] = {client->displayAddress, window, output};
+        for (U32 i = 0; i < 3; ++i) memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + (i + 1) * 4, args[i]);
+        callX11(cpu, X11_GET_WINDOW_ATTRIBUTES);
+        if (!EAX || memory->readd(output + 68) != state || memory->readd(output + 92) != 0xdeadbeef)
+            testFail("XGetWindowAttributes returned the wrong status, map state or ABI size");
+    };
+    query(first, child->id, 0); // IsUnmapped
+    if ((S32)memory->readd(output) != -7 || memory->readd(output + 4) != 11 ||
+        memory->readd(output + 8) != 20 || memory->readd(output + 12) != 30 ||
+        memory->readd(output + 16) != 2 || memory->readd(output + 20) != root->getDepth())
+        testFail("XGetWindowAttributes returned incorrect parent-relative geometry");
+    U32 firstVisual = memory->readd(output + 24), firstScreen = memory->readd(output + 88);
+    if (memory->readd(output + 28) != root->id || memory->readd(output + 32) != InputOutput ||
+        memory->readd(output + 60) != root->colorMap->id ||
+        memory->readd(output + 72) != (StructureNotifyMask | ExposureMask) ||
+        memory->readd(output + 76) != StructureNotifyMask)
+        testFail("XGetWindowAttributes returned incorrect window or event attributes");
+    query(second, child->id, 0);
+    U32 secondVisual = memory->readd(output + 24), secondScreen = memory->readd(output + 88);
+    if (!firstVisual || !secondVisual || firstVisual == secondVisual || firstScreen == secondScreen ||
+        X11_READD(Visual, firstVisual, visualid) != child->getVisual()->visualid ||
+        X11_READD(Visual, secondVisual, visualid) != child->getVisual()->visualid ||
+        X11_READD(Screen, firstScreen, display) != first->displayAddress ||
+        X11_READD(Screen, secondScreen, display) != second->displayAddress ||
+        memory->readd(output + 76) != ExposureMask)
+        testFail("XGetWindowAttributes did not use the querying client's display");
+    child->mapWindow(); query(first, child->id, 1); // IsUnviewable: parent is hidden.
+    parent->mapWindow(); query(second, child->id, 2); // IsViewable
+    parent->unmapWindow(); query(second, child->id, 1);
+    parent->mapWindow();
+    child->unmapWindow(); query(second, child->id, 0);
+    // Pending UnmapNotify events must not obscure the current map state.
+    child->mapWindow(); query(second, child->id, 2);
+    server->destroyWindow(child->id);
+    callX11(cpu, X11_GET_WINDOW_ATTRIBUTES);
+    if (EAX) testFail("XGetWindowAttributes reported success for a destroyed window");
+    server->destroyWindow(parent->id);
+    server->closeDisplay(context.thread, second);
+    server->closeDisplay(context.thread, first);
+}
+
 void testX11PaletteInvalidation() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
     x11_init();
