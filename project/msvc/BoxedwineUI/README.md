@@ -79,8 +79,9 @@ choices stay visible and produce an actionable launch error. Driver environment
 variables are set only on the child process, including Wine preparation,
 installers and alternate programs. Per-app choices are included in backups.
 
-The native UI catalog selects Wine 11.0 V43, published and hash-verified under
-`/v2/43/`. With a single catalog
+The native UI catalog is prepared for Wine 11.0 V44, whose local candidate is in
+`tmp/filesystem-v44-release`. Publish and verify `/v2/44/` before distributing
+the updated catalog; the current public release remains V43. With a single catalog
 entry, Add App shows the package as text, built-in apps select it automatically,
 and version selection, ZIP import and trial-copy controls and guidance are hidden.
 Settings still offers setup of the supported package when needed. Existing apps

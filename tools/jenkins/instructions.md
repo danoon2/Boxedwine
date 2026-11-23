@@ -255,11 +255,12 @@ This command requires each referenced root filename to have an exact profile in
 `tools/buildWine/webgl_filesystems.json`. If the public downloads are older than the pinned
 profiles, upload the current roots first; do not bypass the validation.
 
-Revision 43 is published at `/v2/43/`; the default download URL is ready for use.
-To test locally, serve `tmp/filesystem-v43-release` with a local HTTP server and set
+Revision 44 is prepared locally; revision 43 remains published at `/v2/43/`.
+Publish and verify revision 44 before activating the updated default URL.
+To test locally, serve `tmp/filesystem-v44-release` with a local HTTP server and set
 `BOXEDWINE_ZIP_URL=http://127.0.0.1:<port>/TinyCore15Wine11.0-web.zip` when running
 `local-build-site.sh`. The default manifest still verifies the exact release
-hash. Newly generated build pages derive `/v2/43/` from that same manifest.
+hash. Newly generated build pages derive `/v2/44/` from that same manifest.
 Existing published build pages retain their original filesystem pins.
 
 ## Stopping The Local Server
@@ -292,13 +293,14 @@ hashes. Archive payloads remain on the server. Failed builds skip demo inventory
 New demo launch links use the existing shared `demos/apps/<name>.zip` archives
 and images. The filesystem URL defaults to the version and filename pinned in
 `tools/buildWine/webgl_filesystems.json`, currently
-`https://boxedwine.org/v2/43/TinyCore15Wine11.0-web.zip`. Each build records that
+`https://boxedwine.org/v2/44/TinyCore15Wine11.0-web.zip` (prepared locally;
+publish before activating). Each build records that
 specific URL; updating the release pin affects subsequent builds only. To keep
 an older demo payload available, publish a changed demo under a new filename
 and update `demos.json`; overwriting a shared filename affects builds linking to it.
 
 Published launch links use site-relative paths for assets on the same origin,
-such as `rootBase=/v2/43/` and `overlayBase=/builds/demos/apps/`. External asset
+such as `rootBase=/v2/44/` and `overlayBase=/builds/demos/apps/`. External asset
 hosts retain absolute URLs. Links include `appBase` only when an `app` archive
 is selected and `overlayBase` only when an `overlay` archive is selected;
 launches using both keep both bases. Build identities remain in the links and
@@ -348,7 +350,7 @@ The local development script still downloads and validates the filesystem for
 offline/local demo testing:
 
 ```text
-https://boxedwine.org/v2/43/TinyCore15Wine11.0-web.zip
+https://boxedwine.org/v2/44/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:
@@ -1087,8 +1089,8 @@ The initial debugging candidate was
 `41b7836868898b28e22326d11e8da900cd7fdaa5add4dcda2867eaa0dc3de39b`.
 It differs from web filesystem 42 only in `C:/webgl/ddraw.dll` (SHA-256
 `70af5190f03b0c403d67f5b4d68500e744673f93f97199c34c4bc1fa7ff298d6`).
-It is retained as diagnostic evidence. The release pins now select the clean
-v56 rebuild in `tmp/filesystem-v43-release/TinyCore15Wine11.0-web.zip`, SHA-256
+It is retained as diagnostic evidence. Revision 43 used the clean v56 rebuild
+in `tmp/filesystem-v43-release/TinyCore15Wine11.0-web.zip`, SHA-256
 `f2c60ee5c547799bbcd945a39b54a9f3740ca5798d03ef0b62b2bccc13e748b6`.
 Revision 43 is published and verified; its only changed runtime member is
 `C:/webgl/ddraw.dll` (SHA-256

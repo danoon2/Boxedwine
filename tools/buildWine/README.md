@@ -15,6 +15,13 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
+Revision 44 is a local candidate in `tmp/filesystem-v44-release`. It rebuilds
+regular Wine's DirectDraw module separately for the full and web variants and
+all eight WebGL DLLs from source series v57. Only the regular `ddraw.dll.so`,
+`C:/webgl/ddraw.dll`, `version.txt`, and `changes.txt` differ from revision 43.
+The update fixes Force Commander unit picking and move orders above selected
+troops. Publication has not been requested; revision 43 remains published.
+
 Revision 43's full and web filesystem ZIPs are published at `/v2/43/`.
 The tested artifacts and publication receipts are in `tmp/filesystem-v43-release`.
 They are incremental updates of the exact published revision 42 archives:
@@ -24,7 +31,7 @@ The update fixes Links 2003 Quick Start by using DirectDraw's existing CPU
 vertex-buffer path in WebGL. Retained Lock pointers stay valid, each draw
 uploads current data, and normal reference-counted cleanup frees the buffer.
 Regular Wine, addons, registry hives, permissions and empty directories are
-preserved. Repository UI, demo and automation pins select these archives.
+preserved. Published UI, demo and automation inputs select these archives.
 The public `/v2/latest` symlink and legacy catalog select revision 43. Fresh
 HTTPS downloads through both versioned and latest URLs passed size, SHA-256
 and profile validation. Published demo build pages retain their original pins;
@@ -99,9 +106,16 @@ the native runtime's successful shutdown alone does not establish probe success.
 Force Commander demo upward movement was also confirmed in an isolated native
 runtime with the original game executable. This is a stock Wine issue, still
 present in upstream master `97027f879ba9a36dbe594720d4710818536e5433` (Wine 11.22)
-when checked on 2026-11-22. No filesystem release is included in this change;
-the separate `C:/webgl` PE DLL series also needs this patch and a rebuild before
-browser adoption.
+when checked on 2026-11-22. Local filesystem revision 44 includes rebuilt regular
+Wine modules for both variants and the same fix in the separate `C:/webgl` PE DLL
+through source series v57.
+The packaged v44 full and web archives pass all 189 extents checks in fresh
+native roots. The WebGL copy passes the same checks in Chrome's ST, MT, ST JIT,
+and MT JIT modes; the full archive also passes in ST JIT. No loose DLL override
+is used for these package checks.
+Native UI startup cancellation and clean shutdown also pass. Its complete
+settings round-trip passed once but hit configuration time limits in repeat
+runs; that qualification limitation is retained in the local validation logs.
 
 Wine 11 includes
 [`wine11_wined3d_msaa_upload.patch`](patches/wine11_wined3d_msaa_upload.patch).
@@ -165,11 +179,11 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
 loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the
-v56 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+v57 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 43. Its `changes.txt` comes from
+The filesystem revision is 44. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -186,13 +200,13 @@ then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
 [`webgl_filesystems.json`](webgl_filesystems.json) and the
-[v56 patch manifest](../testing/wine/webgl-test-divergences-v56.json). To test that
+[v57 patch manifest](../testing/wine/webgl-test-divergences-v57.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
 Keep `webgl_filesystems.json` as the single current manifest and update it in
 place for each release. Older release and experimental manifests are available
 in Git history; paths recorded in old validation reports refer to those historical files.
 The current configuration pins the DLLs, source patches, and final
-archives in its `full-v43` and `web-v43` profiles. The complete filesystem is
+archives in its `full-v44` and `web-v44` profiles. The complete filesystem is
 assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
 covers validation and publication.
 The v37 prefix leaves the renderer registry values unset. The profile records
@@ -271,9 +285,10 @@ It retains revision 25's DirectSound backport. All eight WebGL DLLs were rebuilt
 from the v50 source series; only WineD3D differs from the v25 DLLs. The verified
 regular Wine binaries were retained, with fresh packaging and prefix setup.
 The ZIP writer gives Wine directories explicit executable permissions.
-UI, Jenkins, native automation, and demo-site repository pins now select the
-published v43 archives. The hosted legacy catalog and `/v2/latest` directory
-symlink also select v43.
+UI, Jenkins, native automation, and demo-site repository pins are prepared for
+the local v44 candidates. Publish and verify the archives before activating
+those pins. The hosted legacy catalog and `/v2/latest` directory symlink still
+select v43.
 Demo pages are published separately after verifying their filesystem inputs.
 Revision 26 retains the earlier WebGL fixes from revisions 24 and 25. Direct GLSL
 generation for fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8

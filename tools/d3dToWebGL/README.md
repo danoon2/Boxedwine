@@ -1,10 +1,19 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current filesystem release source series is pinned by
-[`webgl-test-divergences-v56.json`](../testing/wine/webgl-test-divergences-v56.json).
-It contains 79 production patches and one separate Wine graphics-test adaptation.
-The [v56 inventory](../testing/wine/webgl-patch-inventory-v56.json) records the ordered
+[`webgl-test-divergences-v57.json`](../testing/wine/webgl-test-divergences-v57.json).
+It contains 80 production patches and one separate Wine graphics-test adaptation.
+The [v57 inventory](../testing/wine/webgl-patch-inventory-v57.json) records the ordered
 patches and hashes. Existing Wine test expectations are unchanged.
+
+Local filesystem revision 44 adds
+[legacy Direct3D screen extents](webgl-ddraw-extents-against-wine-11.0.patch),
+fixing Force Commander unit picking and move orders above selected troops.
+It carries the same fix as regular Wine's `wine11_ddraw_extents.patch`, rebased
+around the existing WebGL vertex-upload helper. The v56 CPU vertex-buffer
+lifetime fix is retained. All eight DLLs were rebuilt; only `C:/webgl/ddraw.dll`
+changes from v43. The candidate archives and validation outputs are in
+`tmp/filesystem-v44-release`; they have not been published.
 
 Filesystem revision 43 is published at `/v2/43/`, with `/v2/latest` symlinked
 to `43`. Fresh downloads matched the tested archives. It adds
@@ -435,7 +444,7 @@ Run the policy validator from the Boxedwine checkout before applying patches:
 
 ```bash
 python3 tools/testing/wine/webglTestDivergences.py \
-  --manifest tools/testing/wine/webgl-test-divergences-v49.json
+  --manifest tools/testing/wine/webgl-test-divergences-v57.json
 ```
 
 The validator checks patch hashes, forbids production changes to Wine test
@@ -457,7 +466,7 @@ import sys
 
 repo = Path.cwd()
 source = Path(sys.argv[1]).resolve()
-manifest = json.loads((repo / "tools/testing/wine/webgl-test-divergences-v49.json").read_text())
+manifest = json.loads((repo / "tools/testing/wine/webgl-test-divergences-v57.json").read_text())
 head = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
 if head != manifest["wine_source_commit"]:
     raise SystemExit("Wine checkout is not at the pinned source commit")

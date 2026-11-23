@@ -1,0 +1,336 @@
+From: Boxedwine project
+Subject: [PATCH] ddraw: Measure legacy screen extents for unit picking.
+
+Apply the shared wine11_ddraw_extents.patch over the WebGL series.
+Only surrounding context differs; retain the WebGL RHW upload helper
+and CPU vertex-buffer lifetime fix. See tools/buildWine/probes/d3d7-extents.c.
+
+---
+--- a/dlls/ddraw/ddraw_private.h
++++ b/dlls/ddraw/ddraw_private.h
+@@ -383,6 +383,9 @@
+ 
+     /* For temporary saving state during reset. */
+     struct wined3d_stateblock *saved_state;
++
++    /* Legacy screen-space extents accumulated while D3DRENDERSTATE_EXTENTS is enabled. */
++    D3DCLIPSTATUS clip_status;
+ };
+ 
+ HRESULT d3d_device_create(struct ddraw *ddraw, const GUID *guid, struct ddraw_surface *target, IUnknown *rt_iface,
+--- a/dlls/ddraw/device.c
++++ b/dlls/ddraw/device.c
+@@ -3474,9 +3474,76 @@
+ static HRESULT ddraw_streaming_buffer_upload_vertices(struct d3d_device *device,
+         const void *vertices, UINT size, UINT stride, DWORD fvf, UINT *vb_pos);
+ 
++/* Unlike rasterization, legacy extents include every supplied vertex, even
++ * unreferenced vertices in indexed draws. Call with the wined3d mutex held. */
++static void d3d_device_update_extents(struct d3d_device *device, DWORD fvf,
++        const void *vertices, unsigned int stride, unsigned int vertex_count)
++{
++    const struct wined3d_stateblock_state *state = device->stateblock_state;
++    const struct wined3d_viewport *vp = &state->viewport;
++    D3DCLIPSTATUS *cs = &device->clip_status;
++    DWORD position = fvf & D3DFVF_POSITION_MASK;
++    struct wined3d_matrix m;
++    unsigned int i;
++
++    if (!state->rs[WINED3D_RS_EXTENTS])
++        return;
++
++    if (position != D3DFVF_XYZ && position != D3DFVF_XYZRHW)
++    {
++        FIXME("Unhandled position format %#lx for extents.\n", position);
++        /* Retain the old conservative bounds for unsupported vertex blending. */
++        cs->minx = min(cs->minx, vp->x);
++        cs->maxx = max(cs->maxx, vp->x + vp->width);
++        cs->miny = min(cs->miny, vp->y);
++        cs->maxy = max(cs->maxy, vp->y + vp->height);
++        return;
++    }
++
++    if (position == D3DFVF_XYZ)
++    {
++        multiply_matrix(&m, &state->transforms[WINED3D_TS_VIEW], &state->transforms[WINED3D_TS_WORLD]);
++        multiply_matrix(&m, &state->transforms[WINED3D_TS_PROJECTION], &m);
++    }
++
++    for (i = 0; i < vertex_count; ++i)
++    {
++        const float *v = (const float *)((const char *)vertices + i * stride);
++        float x = v[0], y = v[1];
++
++        if (position == D3DFVF_XYZ)
++        {
++            float w = v[0] * m._14 + v[1] * m._24 + v[2] * m._34 + m._44;
++            float z = v[0] * m._13 + v[1] * m._23 + v[2] * m._33 + m._43;
++
++            if (!w || (state->rs[WINED3D_RS_CLIPPING] && (z < 0.0f || z > w)))
++                continue;
++            x = v[0] * m._11 + v[1] * m._21 + v[2] * m._31 + m._41;
++            y = v[0] * m._12 + v[1] * m._22 + v[2] * m._32 + m._42;
++            x = vp->x + (1.0f + x / w) * vp->width * 0.5f;
++            y = vp->y + (1.0f - y / w) * vp->height * 0.5f;
++        }
++        cs->minx = min(cs->minx, x);
++        cs->maxx = max(cs->maxx, x);
++        cs->miny = min(cs->miny, y);
++        cs->maxy = max(cs->maxy, y);
++    }
++
++    if (position == D3DFVF_XYZ)
++    {
++        /* Native expands the accumulated bounds once per untransformed draw,
++         * including empty depth-clipped draws, then clamps to the viewport.
++         * XYZRHW draws neither expand nor clamp the supplied screen positions. */
++        cs->minx = max((float)vp->x, cs->minx - 1.0f);
++        cs->maxx = min((float)(vp->x + vp->width), cs->maxx + 1.0f);
++        cs->miny = max((float)vp->y, cs->miny - 1.0f);
++        cs->maxy = min((float)(vp->y + vp->height), cs->maxy + 1.0f);
++    }
++}
++
+ static HRESULT d3d_device7_DrawPrimitive(IDirect3DDevice7 *iface,
+         D3DPRIMITIVETYPE primitive_type, DWORD fvf, void *vertices,
+-        DWORD vertex_count, DWORD flags)
++        DWORD vertex_count, DWORD flags, BOOL update_extents)
+ {
+     struct d3d_device *device = impl_from_IDirect3DDevice7(iface);
+     UINT stride, vb_pos, size;
+@@ -3507,6 +3574,8 @@
+     wined3d_stateblock_set_vertex_declaration(device->state, ddraw_find_decl(device->ddraw, fvf));
+     wined3d_device_context_set_primitive_type(device->immediate_context,
+             wined3d_primitive_type_from_ddraw(primitive_type), 0);
++    if (update_extents)
++        d3d_device_update_extents(device, fvf, vertices, stride, vertex_count);
+     d3d_device_apply_state(device, FALSE);
+     wined3d_device_context_draw(device->immediate_context, vb_pos / stride, vertex_count, 0, 0);
+ 
+@@ -3549,7 +3618,7 @@
+         D3DPRIMITIVETYPE primitive_type, DWORD fvf, void *vertices,
+         DWORD vertex_count, DWORD flags)
+ {
+-    return d3d_device7_DrawPrimitive(iface, primitive_type, fvf, vertices, vertex_count, flags);
++    return d3d_device7_DrawPrimitive(iface, primitive_type, fvf, vertices, vertex_count, flags, TRUE);
+ }
+ 
+ static HRESULT WINAPI d3d_device7_DrawPrimitive_FPUPreserve(IDirect3DDevice7 *iface,
+@@ -3560,7 +3629,7 @@
+     WORD old_fpucw;
+ 
+     old_fpucw = d3d_fpu_setup();
+-    hr = d3d_device7_DrawPrimitive(iface, primitive_type, fvf, vertices, vertex_count, flags);
++    hr = d3d_device7_DrawPrimitive(iface, primitive_type, fvf, vertices, vertex_count, flags, TRUE);
+     set_fpu_control_word(old_fpucw);
+ 
+     return hr;
+@@ -3641,7 +3710,7 @@
+  *****************************************************************************/
+ static HRESULT d3d_device7_DrawIndexedPrimitive(IDirect3DDevice7 *iface,
+         D3DPRIMITIVETYPE primitive_type, DWORD fvf, void *vertices, DWORD vertex_count,
+-        WORD *indices, DWORD index_count, DWORD flags)
++        WORD *indices, DWORD index_count, DWORD flags, BOOL update_extents)
+ {
+     struct d3d_device *device = impl_from_IDirect3DDevice7(iface);
+     unsigned int idx_size = index_count * sizeof(*indices);
+@@ -3688,6 +3757,8 @@
+     wined3d_stateblock_set_vertex_declaration(device->state, ddraw_find_decl(device->ddraw, fvf));
+     wined3d_device_context_set_primitive_type(device->immediate_context,
+             wined3d_primitive_type_from_ddraw(primitive_type), 0);
++    if (update_extents)
++        d3d_device_update_extents(device, fvf, vertices, stride, vertex_count);
+     d3d_device_apply_state(device, FALSE);
+     wined3d_device_context_draw_indexed(device->immediate_context, (int)(vb_pos / stride) - min_index,
+             ib_pos / sizeof(*indices), index_count, 0, 0);
+@@ -3702,7 +3773,7 @@
+         WORD *indices, DWORD index_count, DWORD flags)
+ {
+     return d3d_device7_DrawIndexedPrimitive(iface, primitive_type, fvf,
+-            vertices, vertex_count, indices, index_count, flags);
++            vertices, vertex_count, indices, index_count, flags, TRUE);
+ }
+ 
+ static HRESULT WINAPI d3d_device7_DrawIndexedPrimitive_FPUPreserve(IDirect3DDevice7 *iface,
+@@ -3714,7 +3785,7 @@
+ 
+     old_fpucw = d3d_fpu_setup();
+     hr = d3d_device7_DrawIndexedPrimitive(iface, primitive_type, fvf,
+-            vertices, vertex_count, indices, index_count, flags);
++            vertices, vertex_count, indices, index_count, flags, TRUE);
+     set_fpu_control_word(old_fpucw);
+ 
+     return hr;
+@@ -3810,14 +3881,30 @@
+  *  ClipStatus:
+  *
+  * Returns:
+- *  D3D_OK because it's a stub
++ *  D3D_OK on success
+  *  (DDERR_INVALIDPARAMS if ClipStatus == NULL)
+  *
+  *****************************************************************************/
+ static HRESULT WINAPI d3d_device7_SetClipStatus(IDirect3DDevice7 *iface, D3DCLIPSTATUS *clip_status)
+ {
+-    FIXME("iface %p, clip_status %p stub!\n", iface, clip_status);
+-
++    struct d3d_device *device = impl_from_IDirect3DDevice7(iface);
++
++    TRACE("iface %p, clip_status %p.\n", iface, clip_status);
++
++    if (!clip_status || (clip_status->dwFlags & D3DCLIPSTATUS_EXTENTS3))
++        return DDERR_INVALIDPARAMS;
++
++    wined3d_mutex_lock();
++    if (clip_status->dwFlags & D3DCLIPSTATUS_EXTENTS2)
++    {
++        device->clip_status.minx = clip_status->minx;
++        device->clip_status.maxx = clip_status->maxx;
++        device->clip_status.miny = clip_status->miny;
++        device->clip_status.maxy = clip_status->maxy;
++    }
++    if (clip_status->dwFlags & D3DCLIPSTATUS_STATUS)
++        FIXME("Setting clipping status bits is not implemented.\n");
++    wined3d_mutex_unlock();
+     return D3D_OK;
+ }
+ 
+@@ -3848,26 +3935,27 @@
+  *  ClipStatus: Address to write the clip status to
+  *
+  * Returns:
+- *  D3D_OK because it's a stub
++ *  D3D_OK on success
+  *
+  *****************************************************************************/
+ static HRESULT WINAPI d3d_device7_GetClipStatus(IDirect3DDevice7 *iface, D3DCLIPSTATUS *clip_status)
+ {
+     struct d3d_device *device = impl_from_IDirect3DDevice7(iface);
+-    struct wined3d_viewport vp;
+-
+-    FIXME("iface %p, clip_status %p stub.\n", iface, clip_status);
+-
+-    vp = device->stateblock_state->viewport;
+-    clip_status->minx = vp.x;
+-    clip_status->maxx = vp.x + vp.width;
+-    clip_status->miny = vp.y;
+-    clip_status->maxy = vp.y + vp.height;
+-    clip_status->minz = 0.0f;
+-    clip_status->maxz = 0.0f;
++
++    TRACE("iface %p, clip_status %p.\n", iface, clip_status);
++
++    if (!clip_status)
++        return DDERR_INVALIDPARAMS;
++
++    wined3d_mutex_lock();
++    clip_status->minx = device->clip_status.minx;
++    clip_status->maxx = device->clip_status.maxx;
++    clip_status->miny = device->clip_status.miny;
++    clip_status->maxy = device->clip_status.maxy;
+     clip_status->dwFlags = D3DCLIPSTATUS_EXTENTS2;
++    /* Clipping union / intersection bits remain unimplemented. */
+     clip_status->dwStatus = 0;
+-
++    wined3d_mutex_unlock();
+     return D3D_OK;
+ }
+ 
+@@ -4003,6 +4091,9 @@
+ 
+     wined3d_device_context_set_primitive_type(device->immediate_context,
+             wined3d_primitive_type_from_ddraw(primitive_type), 0);
++    if ((fvf & D3DFVF_POSITION_MASK) != D3DFVF_XYZRHW)
++        d3d_device_update_extents(device, fvf, strided_data->position.lpvData,
++                strided_data->position.dwStride, vertex_count);
+     d3d_device_apply_state(device, FALSE);
+     wined3d_device_context_draw(device->immediate_context, vb_pos / dst_stride, vertex_count, 0, 0);
+ 
+@@ -4109,6 +4200,9 @@
+     wined3d_stateblock_set_vertex_declaration(device->state, ddraw_find_decl(device->ddraw, fvf));
+     wined3d_device_context_set_primitive_type(device->immediate_context,
+             wined3d_primitive_type_from_ddraw(primitive_type), 0);
++    if ((fvf & D3DFVF_POSITION_MASK) != D3DFVF_XYZRHW)
++        d3d_device_update_extents(device, fvf, strided_data->position.lpvData,
++                strided_data->position.dwStride, vertex_count);
+     d3d_device_apply_state(device, FALSE);
+     wined3d_device_context_draw_indexed(device->immediate_context,
+             vb_pos / vtx_dst_stride, ib_pos / sizeof(WORD), index_count, 0, 0);
+@@ -4202,10 +4296,13 @@
+ 
+     stride = get_flexible_vertex_size(vb_impl->fvf);
+ 
+-    if (vb_impl->sysmem)
+-    {
+-        TRACE("Drawing from D3DVBCAPS_SYSTEMMEMORY vertex buffer, forwarding to DrawPrimitive().\n");
+-        wined3d_mutex_lock();
++    wined3d_mutex_lock();
++
++    /* Untransformed extent queries need CPU access to the submitted positions. */
++    if (vb_impl->sysmem || (device->stateblock_state->rs[WINED3D_RS_EXTENTS]
++            && (vb_impl->fvf & D3DFVF_POSITION_MASK) != D3DFVF_XYZRHW))
++    {
++        TRACE("Drawing through the CPU vertex buffer path, forwarding to DrawPrimitive().\n");
+         wined3d_resource = wined3d_buffer_get_resource(vb_impl->wined3d_buffer);
+         wined3d_box.left = start_vertex * stride;
+         wined3d_box.right = wined3d_box.left + vertex_count * stride;
+@@ -4216,13 +4313,13 @@
+             return D3DERR_VERTEXBUFFERLOCKED;
+         }
+         hr = d3d_device7_DrawPrimitive(iface, primitive_type, vb_impl->fvf, wined3d_map_desc.data,
+-                vertex_count, flags);
++                vertex_count, flags,
++                (vb_impl->fvf & D3DFVF_POSITION_MASK) != D3DFVF_XYZRHW);
+         wined3d_resource_unmap(wined3d_resource, 0);
+         wined3d_mutex_unlock();
+         return hr;
+     }
+ 
+-    wined3d_mutex_lock();
+     wined3d_stateblock_set_vertex_declaration(device->state, vb_impl->wined3d_declaration);
+     if (FAILED(hr = wined3d_stateblock_set_stream_source(device->state,
+             0, vb_impl->wined3d_buffer, 0, stride)))
+@@ -4319,10 +4416,13 @@
+ 
+     vb_impl->discarded = false;
+ 
+-    if (vb_impl->sysmem)
+-    {
+-        TRACE("Drawing from D3DVBCAPS_SYSTEMMEMORY vertex buffer, forwarding to DrawIndexedPrimitive().\n");
+-        wined3d_mutex_lock();
++    wined3d_mutex_lock();
++
++    /* Untransformed extent queries need CPU access to the submitted positions. */
++    if (vb_impl->sysmem || (device->stateblock_state->rs[WINED3D_RS_EXTENTS]
++            && (vb_impl->fvf & D3DFVF_POSITION_MASK) != D3DFVF_XYZRHW))
++    {
++        TRACE("Drawing through the CPU vertex buffer path, forwarding to DrawIndexedPrimitive().\n");
+         wined3d_box.left = start_vertex * stride;
+         wined3d_box.right = wined3d_box.left + vertex_count * stride;
+         wined3d_resource = wined3d_buffer_get_resource(vb_impl->wined3d_buffer);
+@@ -4333,7 +4433,8 @@
+             return D3DERR_VERTEXBUFFERLOCKED;
+         }
+         hr = d3d_device7_DrawIndexedPrimitive(iface, primitive_type, vb_impl->fvf,
+-                wined3d_map_desc.data, vertex_count, indices, index_count, flags);
++                wined3d_map_desc.data, vertex_count, indices, index_count, flags,
++                (vb_impl->fvf & D3DFVF_POSITION_MASK) != D3DFVF_XYZRHW);
+         wined3d_resource_unmap(wined3d_resource, 0);
+         wined3d_mutex_unlock();
+         return hr;
+@@ -4346,7 +4447,6 @@
+      * 4) Call wined3d_device_context_draw_indexed()
+      */
+ 
+-    wined3d_mutex_lock();
+ 
+     wined3d_stateblock_set_vertex_declaration(device->state, vb_impl->wined3d_declaration);
+ 
+@@ -6929,6 +7029,7 @@
+     device->IUnknown_inner.lpVtbl = &d3d_device_inner_vtbl;
+     device->ref = 1;
+     device->version = version;
++    device->clip_status.minx = device->clip_status.miny = 2048.0f;
+     device->hardware_device = IsEqualGUID(&IID_IDirect3DTnLHalDevice, guid)
+             || IsEqualGUID(&IID_IDirect3DHALDevice, guid);
+ 

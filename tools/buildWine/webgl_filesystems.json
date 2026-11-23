@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "manifest_id": "wine11-webgl-filesystems-v43-ddraw-vertex-buffer-lifetime-20261122",
+  "manifest_id": "wine11-webgl-filesystems-v44-ddraw-extents-20261122",
   "wine_version": "11.0",
   "build_date": "2026-11-22",
   "source_date_epoch": 1768319767,
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
-    "path": "tools/testing/wine/webgl-test-divergences-v56.json",
-    "sha256": "bbaa6f58c9cef4183902c1eb74b3e2b6eccf2e8abc8d4a17298ec6ae495e1361"
+    "path": "tools/testing/wine/webgl-test-divergences-v57.json",
+    "sha256": "c52b06e172946b796eef06c4e7da70d777bf77e539c8e4a403067d42c5f7f64c"
   },
   "webgl_directory": "home/username/.wine/drive_c/webgl",
   "dlls": {
@@ -48,8 +48,8 @@
       ]
     },
     "ddraw.dll": {
-      "size": 855284,
-      "sha256": "0a2ad84282862f882161d2afa98cc94b8b9eba19aadf7197695074cdcf94e6bc",
+      "size": 855365,
+      "sha256": "3f1523db8e05efa16457b208b3109b7881ca069d62e937d0785c897a96cdeac5",
       "required_imports": [
         "wined3d.dll"
       ]
@@ -118,21 +118,21 @@
     "libXxf86vm.so.1": "/usr/local/lib/libXxf86vm.so.1"
   },
   "profiles": {
-    "full-v43": {
+    "full-v44": {
       "filename": "TinyCore15Wine11.0.zip",
-      "filesystem_version": "43",
+      "filesystem_version": "44",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 216613287,
-      "sha256": "c40812d73078a3d0dbdf09c767b8a9e0e645dd9dea0b93d9f9d126f3f3620acc"
+      "size": 216616707,
+      "sha256": "fee63b2a7938c6887e286b48f43ccc3caf23b6671d780d52d07b2084183ffd80"
     },
-    "web-v43": {
+    "web-v44": {
       "filename": "TinyCore15Wine11.0-web.zip",
-      "filesystem_version": "43",
+      "filesystem_version": "44",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 96611349,
-      "sha256": "f2c60ee5c547799bbcd945a39b54a9f3740ca5798d03ef0b62b2bccc13e748b6"
+      "size": 96620492,
+      "sha256": "1b1b6fe95dc5dbb3efddddf5ac6b7200cb45184e6bc74a62a312481f28ad92b3"
     }
   }
 }
