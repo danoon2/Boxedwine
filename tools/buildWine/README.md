@@ -15,6 +15,33 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
+Revision 46 is published at `/v2/46/` with the captured-input helper's installer
+regression fix. The public `/v2/latest` symlink and legacy catalog select this
+revision. Build records, validation outputs, and publication receipts are in
+`tmp/filesystem-v46-release`. The helper uses a
+posted request and completion event, preserving the caller's message-queue
+wake masks and avoiding application message reentrancy. Only
+`winex11.drv.so`, `version.txt`, and `changes.txt` differ from revision 45.
+All other runtime contents and ZIP metadata are preserved, including the
+separate WebGL DLLs from source series v57.
+
+Use an engine containing `38e3b207e` or later: the captured-input helper also
+requires Boxedwine's `XGetWindowAttributes` implementation. Replacing a
+filesystem does not update an already published browser engine. See the
+[queue regression probe](probes/clipcursor-reentrancy.md) and
+[DirectInput capture coverage](probes/dinput-capture-thread.md), including its
+remaining intermittent motion-test limitation.
+
+Both packaged variants pass the unchanged Deadlock, Fire Fight, and Real Deal
+installation/gameplay recordings, the queue-wakeup probe, and all 189 Direct3D
+extents checks. The rebuilt browser engines pass queue and captured-input checks
+in ST, MT, ST JIT, and MT JIT, plus the unchanged AbiWord recording in all four
+modes. Native UI lifecycle and package checks pass. The expanded UI settings
+test timed out once during concurrent builds; the v45 control and subsequent
+v46 run passed. All attempts are retained with the release artifacts. A new
+Force Commander gameplay session and the cross-platform Cinebench suite were
+not run for this release.
+
 Revision 45 is published at `/v2/45/`; the tested archives and publication
 receipts are in `tmp/filesystem-v45-release`. It rebuilds regular Wine's X11
 driver separately for the full and web variants to fix Force Commander's
@@ -31,8 +58,8 @@ including blocked-window-thread releases. The same ST control fails on v44.
 The full archive also passes both interfaces in ST. Native graphics probes,
 UI startup/stop checks, and the unchanged AbiWord recording in all four browser
 modes pass. These are targeted regressions; a new Force Commander gameplay
-session with the final archives was not run. The public `/v2/latest` symlink
-and legacy catalog select revision 45.
+session with the final archives was not run. Its publication advanced the
+public `/v2/latest` symlink and legacy catalog to revision 45.
 
 Revision 44 remains published at `/v2/44/`; its tested artifacts and publication
 receipts are in `tmp/filesystem-v44-release`. It rebuilds
@@ -54,7 +81,7 @@ vertex-buffer path in WebGL. Retained Lock pointers stay valid, each draw
 uploads current data, and normal reference-counted cleanup frees the buffer.
 Regular Wine, addons, registry hives, permissions and empty directories are
 preserved. Published demo build pages retain their original pins;
-new site publications use revision 45.
+new site publications use revision 46.
 The unchanged base remains at `/v2/37/TinyCore15WineBase.zip`. Do not upload
 to boxedwine.org automatically; publication requires an explicit user request.
 The base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
@@ -225,7 +252,7 @@ Keep `webgl_filesystems.json` as the single current manifest and update it in
 place for each release. Older release and experimental manifests are available
 in Git history; paths recorded in old validation reports refer to those historical files.
 The current configuration pins the DLLs, source patches, and final
-archives in its `full-v45` and `web-v45` profiles. The complete filesystem is
+archives in its `full-v46` and `web-v46` profiles. The complete filesystem is
 assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
 covers validation and publication.
 The v37 prefix leaves the renderer registry values unset. The profile records

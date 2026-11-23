@@ -14,9 +14,10 @@ around the existing WebGL vertex-upload helper. The v56 CPU vertex-buffer
 lifetime fix is retained. All eight DLLs were rebuilt; only `C:/webgl/ddraw.dll`
 changes from v43. The tested archives, validation outputs and publication
 receipts are in `tmp/filesystem-v44-release`. Both ZIPs are published at `/v2/44/`,
-and their versioned URLs remain available. Filesystem revision 45 retains all
-eight DLLs byte-for-byte and updates only the regular Wine X11 driver for
-captured mouse input; `/v2/latest` now selects `45`.
+and their versioned URLs remain available. Filesystem revisions 45 and 46 retain
+all eight DLLs byte-for-byte. They update the regular Wine X11 driver for
+captured mouse input and the helper's message-queue handoff, respectively.
+The current filesystem manifest selects revision 46.
 
 Filesystem revision 43 remains available at `/v2/43/`. It adds
 [WebGL DirectDraw CPU vertex buffers](webgl-ddraw-vertex-buffer-sysmem-against-wine-11.0.patch)
