@@ -15,13 +15,32 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
-Revision 44 is published at `/v2/44/`; the tested artifacts and publication
+Revision 45 is published at `/v2/45/`; the tested archives and publication
+receipts are in `tmp/filesystem-v45-release`. It rebuilds regular Wine's X11
+driver separately for the full and web variants to fix Force Commander's
+captured-mouse polling hang. The pointer grab and event pump run independently
+of the application's window thread, allowing DirectInput to receive releases
+while that thread waits on an application lock. Only `winex11.so`,
+`winex11.drv.so`, `version.txt`, and `changes.txt` differ from revision 44.
+All WebGL DLLs, other runtime files, prefix settings, permissions, and empty
+directories are preserved. The web ZIP remains below 100,000,000 bytes.
+
+The [DirectInput capture probe](probes/dinput-capture-thread.md) passes with the
+packaged driver in Chrome ST, MT, ST JIT, and MT JIT modes for DirectInput 7/8,
+including blocked-window-thread releases. The same ST control fails on v44.
+The full archive also passes both interfaces in ST. Native graphics probes,
+UI startup/stop checks, and the unchanged AbiWord recording in all four browser
+modes pass. These are targeted regressions; a new Force Commander gameplay
+session with the final archives was not run. The public `/v2/latest` symlink
+and legacy catalog select revision 45.
+
+Revision 44 remains published at `/v2/44/`; its tested artifacts and publication
 receipts are in `tmp/filesystem-v44-release`. It rebuilds
 regular Wine's DirectDraw module separately for the full and web variants and
 all eight WebGL DLLs from source series v57. Only the regular `ddraw.dll.so`,
 `C:/webgl/ddraw.dll`, `version.txt`, and `changes.txt` differ from revision 43.
 The update fixes Force Commander unit picking and move orders above selected
-troops. The public `/v2/latest` symlink and legacy catalog select revision 44.
+troops. Its versioned archives remain available for existing pinned installations.
 Fresh HTTPS downloads through both versioned and latest URLs passed size,
 SHA-256 and profile validation; the hosted catalog also matches the staged copy.
 
@@ -35,7 +54,7 @@ vertex-buffer path in WebGL. Retained Lock pointers stay valid, each draw
 uploads current data, and normal reference-counted cleanup frees the buffer.
 Regular Wine, addons, registry hives, permissions and empty directories are
 preserved. Published demo build pages retain their original pins;
-new site publications use revision 44.
+new site publications use revision 45.
 The unchanged base remains at `/v2/37/TinyCore15WineBase.zip`. Do not upload
 to boxedwine.org automatically; publication requires an explicit user request.
 The base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
@@ -183,7 +202,7 @@ v57 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapsh
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 44. Its `changes.txt` comes from
+The filesystem revision is 45. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -206,7 +225,7 @@ Keep `webgl_filesystems.json` as the single current manifest and update it in
 place for each release. Older release and experimental manifests are available
 in Git history; paths recorded in old validation reports refer to those historical files.
 The current configuration pins the DLLs, source patches, and final
-archives in its `full-v44` and `web-v44` profiles. The complete filesystem is
+archives in its `full-v45` and `web-v45` profiles. The complete filesystem is
 assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
 covers validation and publication.
 The v37 prefix leaves the renderer registry values unset. The profile records
@@ -286,8 +305,8 @@ from the v50 source series; only WineD3D differs from the v25 DLLs. The verified
 regular Wine binaries were retained, with fresh packaging and prefix setup.
 The ZIP writer gives Wine directories explicit executable permissions.
 UI, Jenkins, native automation, and demo-site repository pins select the
-published v44 archives. The hosted legacy catalog and `/v2/latest` directory
-symlink also select v44.
+published v45 archives. The hosted legacy catalog and `/v2/latest` directory
+symlink also select v45.
 Demo pages are published separately after verifying their filesystem inputs.
 Revision 26 retains the earlier WebGL fixes from revisions 24 and 25. Direct GLSL
 generation for fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8

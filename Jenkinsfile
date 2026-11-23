@@ -770,8 +770,8 @@ pipeline {
                             # Keep the AbiWord captures paired with the Wine 11 window theme.
                             ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v3.zip'
                             ABIWORD_AUTO_SHA256='e71c79c0335da3d2b89e23b79c1f2162b954fedf68d442a210d8b28eb783eef5'
-                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/44/TinyCore15Wine11.0-web.zip'
-                            BOXEDWINE_AUTO_SHA256='1b1b6fe95dc5dbb3efddddf5ac6b7200cb45184e6bc74a62a312481f28ad92b3'
+                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/45/TinyCore15Wine11.0-web.zip'
+                            BOXEDWINE_AUTO_SHA256='040a8788e50fe7b6b8046e655bc3d83561c7b3d607870f2b2169a59186c39502'
 
                             file_matches_sha256() {
                                 local file="$1"
