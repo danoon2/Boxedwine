@@ -213,6 +213,14 @@
         "min": "11.0",
         "max": "11.0"
       },
+      "apply_patch": "wine11_x11_input_thread.patch",
+      "reason": "Pump captured X11 mouse input independently of the application window thread so Force Commander can observe button releases while holding a game lock"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_urlmon_localhost_file_uri.patch",
       "reason": "Normalize localhost file URLs as local paths so embedded browser pages such as the Cinebench EULA load correctly"
     },
