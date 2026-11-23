@@ -15,14 +15,17 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
-Revision 44 is a local candidate in `tmp/filesystem-v44-release`. It rebuilds
+Revision 44 is published at `/v2/44/`; the tested artifacts and publication
+receipts are in `tmp/filesystem-v44-release`. It rebuilds
 regular Wine's DirectDraw module separately for the full and web variants and
 all eight WebGL DLLs from source series v57. Only the regular `ddraw.dll.so`,
 `C:/webgl/ddraw.dll`, `version.txt`, and `changes.txt` differ from revision 43.
 The update fixes Force Commander unit picking and move orders above selected
-troops. Publication has not been requested; revision 43 remains published.
+troops. The public `/v2/latest` symlink and legacy catalog select revision 44.
+Fresh HTTPS downloads through both versioned and latest URLs passed size,
+SHA-256 and profile validation; the hosted catalog also matches the staged copy.
 
-Revision 43's full and web filesystem ZIPs are published at `/v2/43/`.
+Revision 43's full and web filesystem ZIPs remain available at `/v2/43/`.
 The tested artifacts and publication receipts are in `tmp/filesystem-v43-release`.
 They are incremental updates of the exact published revision 42 archives:
 only `C:/webgl/ddraw.dll`, `version.txt`, and `changes.txt` differ. All eight
@@ -31,11 +34,8 @@ The update fixes Links 2003 Quick Start by using DirectDraw's existing CPU
 vertex-buffer path in WebGL. Retained Lock pointers stay valid, each draw
 uploads current data, and normal reference-counted cleanup frees the buffer.
 Regular Wine, addons, registry hives, permissions and empty directories are
-preserved. Published UI, demo and automation inputs select these archives.
-The public `/v2/latest` symlink and legacy catalog select revision 43. Fresh
-HTTPS downloads through both versioned and latest URLs passed size, SHA-256
-and profile validation. Published demo build pages retain their original pins;
-new site publications use revision 43.
+preserved. Published demo build pages retain their original pins;
+new site publications use revision 44.
 The unchanged base remains at `/v2/37/TinyCore15WineBase.zip`. Do not upload
 to boxedwine.org automatically; publication requires an explicit user request.
 The base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
@@ -106,7 +106,7 @@ the native runtime's successful shutdown alone does not establish probe success.
 Force Commander demo upward movement was also confirmed in an isolated native
 runtime with the original game executable. This is a stock Wine issue, still
 present in upstream master `97027f879ba9a36dbe594720d4710818536e5433` (Wine 11.22)
-when checked on 2026-11-22. Local filesystem revision 44 includes rebuilt regular
+when checked on 2026-11-22. Filesystem revision 44 includes rebuilt regular
 Wine modules for both variants and the same fix in the separate `C:/webgl` PE DLL
 through source series v57.
 The packaged v44 full and web archives pass all 189 extents checks in fresh
@@ -285,10 +285,9 @@ It retains revision 25's DirectSound backport. All eight WebGL DLLs were rebuilt
 from the v50 source series; only WineD3D differs from the v25 DLLs. The verified
 regular Wine binaries were retained, with fresh packaging and prefix setup.
 The ZIP writer gives Wine directories explicit executable permissions.
-UI, Jenkins, native automation, and demo-site repository pins are prepared for
-the local v44 candidates. Publish and verify the archives before activating
-those pins. The hosted legacy catalog and `/v2/latest` directory symlink still
-select v43.
+UI, Jenkins, native automation, and demo-site repository pins select the
+published v44 archives. The hosted legacy catalog and `/v2/latest` directory
+symlink also select v44.
 Demo pages are published separately after verifying their filesystem inputs.
 Revision 26 retains the earlier WebGL fixes from revisions 24 and 25. Direct GLSL
 generation for fixed-function shaders reduces compilation stalls, and signed Q8W8V8U8

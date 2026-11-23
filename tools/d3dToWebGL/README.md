@@ -6,17 +6,17 @@ It contains 80 production patches and one separate Wine graphics-test adaptation
 The [v57 inventory](../testing/wine/webgl-patch-inventory-v57.json) records the ordered
 patches and hashes. Existing Wine test expectations are unchanged.
 
-Local filesystem revision 44 adds
+Filesystem revision 44 adds
 [legacy Direct3D screen extents](webgl-ddraw-extents-against-wine-11.0.patch),
 fixing Force Commander unit picking and move orders above selected troops.
 It carries the same fix as regular Wine's `wine11_ddraw_extents.patch`, rebased
 around the existing WebGL vertex-upload helper. The v56 CPU vertex-buffer
 lifetime fix is retained. All eight DLLs were rebuilt; only `C:/webgl/ddraw.dll`
-changes from v43. The candidate archives and validation outputs are in
-`tmp/filesystem-v44-release`; they have not been published.
+changes from v43. The tested archives, validation outputs and publication
+receipts are in `tmp/filesystem-v44-release`. Both ZIPs are published at `/v2/44/`,
+with `/v2/latest` symlinked to `44`; fresh downloads match the tested hashes.
 
-Filesystem revision 43 is published at `/v2/43/`, with `/v2/latest` symlinked
-to `43`. Fresh downloads matched the tested archives. It adds
+Filesystem revision 43 remains available at `/v2/43/`. It adds
 [WebGL DirectDraw CPU vertex buffers](webgl-ddraw-vertex-buffer-sysmem-against-wine-11.0.patch)
 to fix Links 2003 Quick Start. The existing CPU path preserves retained Lock
 pointers and uploads subsequent writes on each draw. Normal buffer and device
