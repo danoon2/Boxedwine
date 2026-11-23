@@ -79,6 +79,30 @@ new application arrivals, manager workers, and system threads. Keep the strict
 first-frame integration check. Filesystem revision 41 includes both desktop
 shutdown fixes in the full and web variants.
 
+New Wine 11.0 builds apply
+[`wine11_ddraw_extents.patch`](patches/wine11_ddraw_extents.patch) to regular Wine
+in both variants. Force Commander uses legacy Direct3D screen extents for unit
+picking. Wine's stub returned the whole viewport, so empty terrain above troops
+could select a unit and reject move orders. The patch measures submitted vertices,
+including camera transforms, viewport clipping, resets and accumulation. It uses
+the existing CPU vertex-buffer path only when an untransformed draw requests
+extents. Vertex blending retains conservative bounds; clipping-status bits and
+ProcessVertices / execute-buffer extents remain unimplemented.
+
+The [D3D7 extents probe](probes/d3d7-extents.c) passed 189 checks on native Windows
+and on Boxedwine with the rebuilt DLL; the original filesystem failed 28 checks.
+It covers immediate, indexed, strided, system-memory and device vertex-buffer
+draws, including native's special treatment of XYZRHW buffers. Compile using the
+command in the source header and optionally pass a Windows output filename to
+avoid console escape sequences. Require `D3D7_EXTENTS_PASS` in that output:
+the native runtime's successful shutdown alone does not establish probe success.
+Force Commander demo upward movement was also confirmed in an isolated native
+runtime with the original game executable. This is a stock Wine issue, still
+present in upstream master `97027f879ba9a36dbe594720d4710818536e5433` (Wine 11.22)
+when checked on 2026-11-22. No filesystem release is included in this change;
+the separate `C:/webgl` PE DLL series also needs this patch and a rebuild before
+browser adoption.
+
 Wine 11 includes
 [`wine11_wined3d_msaa_upload.patch`](patches/wine11_wined3d_msaa_upload.patch).
 It supports CPU image uploads to multisampled OpenGL textures through a temporary
