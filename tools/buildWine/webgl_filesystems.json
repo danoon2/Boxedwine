@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "manifest_id": "wine11-webgl-filesystems-v46-x11-input-queue-fix-20261123",
+  "manifest_id": "wine11-webgl-filesystems-v47-x11-initial-focus-fix-20261123",
   "wine_version": "11.0",
   "build_date": "2026-11-23",
   "source_date_epoch": 1768319767,
@@ -118,21 +118,21 @@
     "libXxf86vm.so.1": "/usr/local/lib/libXxf86vm.so.1"
   },
   "profiles": {
-    "full-v46": {
+    "full-v47": {
       "filename": "TinyCore15Wine11.0.zip",
-      "filesystem_version": "46",
+      "filesystem_version": "47",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 216616536,
-      "sha256": "40670838a8ed2c86d63ae2ff5393cd03497b7403e1753f57d6ee4d9bec7bd590"
+      "size": 216616700,
+      "sha256": "ad81a948bf1217f1db5cdf055aed5899815249dd20d3ce8f69a49776a95b5b03"
     },
-    "web-v46": {
+    "web-v47": {
       "filename": "TinyCore15Wine11.0-web.zip",
-      "filesystem_version": "46",
+      "filesystem_version": "47",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 96628921,
-      "sha256": "dac86c07102f95513dd84bf7390480c976db26e60be3351cc33a962ab2fb4033"
+      "size": 96629213,
+      "sha256": "7515f1edcc5ce440318d492a06c158816af6c657c21d18a48a9072c56e92fbcd"
     }
   }
 }

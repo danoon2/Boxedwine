@@ -15,9 +15,34 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
-Revision 46 is published at `/v2/46/` with the captured-input helper's installer
-regression fix. The public `/v2/latest` symlink and legacy catalog select this
-revision. Build records, validation outputs, and publication receipts are in
+Revision 47 is published at `/v2/47/`; `/v2/latest` and the legacy catalog
+select this revision. It fixes initial X11 focus when a new GUI thread has not
+retrieved a message: Wine now uses `CurrentTime` instead of translating a zero
+message timestamp into a stale X timestamp. This restores captured input when
+Force Commander switches from its splash screen to the main menu. Use an engine
+containing `51672e67e` or later for the matching X11 pointer-grab ownership fix.
+Updating the filesystem does not replace an already published browser engine.
+
+Both regular Wine variants were rebuilt. Only `winex11.so`, `version.txt`, and
+`changes.txt` differ from revision 46; all other payloads and ZIP metadata,
+including the eight WebGL DLLs from source series v57, are preserved. Build and
+validation records and publication receipts are in `tmp/filesystem-v47-release`.
+See the [initial-focus reproducer](probes/x11-initial-focus.md),
+[queue regression probe](probes/clipcursor-reentrancy.md), and
+[DirectInput capture coverage](probes/dinput-capture-thread.md).
+
+Both v47 packages pass the unchanged Deadlock, Fire Fight, and Real Deal
+installation/gameplay recordings and the queue and picking probes. Browser
+capture and queue checks and AbiWord pass in all four modes; native UI settings,
+shutdown, package validation, and builder checks also pass. The native Xvfb focus
+reproducer passes three runs. Full graphics/Cinebench and cross-platform worker
+suites were not run, nor was a new Force Commander gameplay session with the
+final ZIPs. The web driver is byte-identical to the diagnostic driver that
+reached the mission briefing after selecting Single Player.
+
+Revision 46 remains available at `/v2/46/` with the captured-input helper's
+installer regression fix. Its build records, validation outputs, and publication
+receipts are in
 `tmp/filesystem-v46-release`. The helper uses a
 posted request and completion event, preserving the caller's message-queue
 wake masks and avoiding application message reentrancy. Only
@@ -262,7 +287,7 @@ Keep `webgl_filesystems.json` as the single current manifest and update it in
 place for each release. Older release and experimental manifests are available
 in Git history; paths recorded in old validation reports refer to those historical files.
 The current configuration pins the DLLs, source patches, and final
-archives in its `full-v46` and `web-v46` profiles. The complete filesystem is
+archives in its `full-v47` and `web-v47` profiles. The complete filesystem is
 assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
 covers validation and publication.
 The v37 prefix leaves the renderer registry values unset. The profile records

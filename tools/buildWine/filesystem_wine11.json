@@ -2,7 +2,7 @@
   "schema_version": 1,
   "wine_tag": "wine-11.0",
   "wine_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
-  "filesystem_version": "46",
+  "filesystem_version": "47",
   "video_memory_size_mb": 512,
   "changes_file": "changes_wine11.txt",
   "wine_config": "wine_builds.json",
