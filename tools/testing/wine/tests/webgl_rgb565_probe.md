@@ -36,3 +36,9 @@ only WineD3D; it is not a published filesystem revision.
 The packed transfer paths live in the existing RGB565 upload-scaling and
 color-readback-loop patches. The v58 manifest updates their hashes without
 adding production patches; the series still contains 80.
+
+Filesystem revision 48 packages the tested WineD3D DLL in both full and web
+archives. Final-archive checks and screenshots are retained in
+`tmp/filesystem-v48-release/`. The EXE-only probe overlay leaves the packaged
+DLLs in use. MechCommander 2 also requires engine commit `39a6f6599` or later
+and `BOXEDWINE_WEBGL_THREAD_CANVAS=0`.

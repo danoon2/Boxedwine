@@ -15,9 +15,19 @@ per-release Markdown notes or reports.
 
 ## Complete Wine 11 filesystem from WSL
 
-Revision 47 is published at `/v2/47/`; `/v2/latest` and the legacy catalog
-select this revision. It fixes initial X11 focus when a new GUI thread has not
-retrieved a message: Wine now uses `CurrentTime` instead of translating a zero
+Revision 48 is published at `/v2/48/`; `/v2/latest` and the legacy catalog
+select this revision. It rebuilds all eight WebGL DLLs from source series v58
+with packed RGB565 uploads and supported packed readbacks. Only
+`C:/webgl/wined3d.dll`, `version.txt`, and `changes.txt` differ from revision 47;
+regular Wine, prefix settings and all other archive contents are preserved.
+MechCommander 2 requires an engine containing `39a6f6599` or later and
+`BOXEDWINE_WEBGL_THREAD_CANVAS=0` for its shared-context presentation fix.
+Updating the filesystem does not replace an already published browser engine.
+Build, test and publication records are in `tmp/filesystem-v48-release`.
+See the [RGB565 transfer probe](../testing/wine/tests/webgl_rgb565_probe.md).
+
+Revision 47 remains available at `/v2/47/`. It fixes initial X11 focus when a
+new GUI thread has not retrieved a message: Wine now uses `CurrentTime` instead of translating a zero
 message timestamp into a stale X timestamp. This restores captured input when
 Force Commander switches from its splash screen to the main menu. Use an engine
 containing `51672e67e` or later for the matching X11 pointer-grab ownership fix.
@@ -106,7 +116,7 @@ vertex-buffer path in WebGL. Retained Lock pointers stay valid, each draw
 uploads current data, and normal reference-counted cleanup frees the buffer.
 Regular Wine, addons, registry hives, permissions and empty directories are
 preserved. Published demo build pages retain their original pins;
-new site publications use revision 46.
+new site publications use revision 48.
 The unchanged base remains at `/v2/37/TinyCore15WineBase.zip`. Do not upload
 to boxedwine.org automatically; publication requires an explicit user request.
 The base, full and web ZIPs include GStreamer AVI parsing. Build/source/license records, including
@@ -260,11 +270,11 @@ python3 /mnt/c/Boxedwine2/tools/buildWine/build_filesystem.py \
 The profile is [`filesystem_wine11.json`](filesystem_wine11.json). It pins
 Wine 11.0, Gecko 2.47.4 x86, DXVK 3.1.1 x32, CNC DDraw 6.9 with the OpenGL
 loader fix, psVoodoo `67fcb0a` with the saturated W-depth cockpit fix, the
-v57 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
+v58 WebGL series, and LLVM-MinGW. psVoodoo is built from a private source snapshot
 with the profile's local patches applied. Its build cache checks the base revision,
 patch hashes, and toolchain pin. The filesystem includes the patched source archive,
 patches, and build manifest; the manifest's revision identifies the local snapshot.
-The filesystem revision is 45. Its `changes.txt` comes from
+The filesystem revision is 48. Its `changes.txt` comes from
 [`changes_wine11.txt`](changes_wine11.txt), including the earlier release history.
 Web builds prepend [`changes_wine11_web.txt`](changes_wine11_web.txt), which describes
 the web variant and lists the measured compressed-size savings from its removals.
@@ -281,13 +291,13 @@ then run under Wine with `WINE_D3D_CONFIG=renderer=gdi`. It must print
 `DDRAW_FLIP_PASS`; the unpatched Wine 11 build faults during the first iteration.
 The separate PE32 WineD3D in `C:/webgl` includes the same lifetime fix, pinned by
 [`webgl_filesystems.json`](webgl_filesystems.json) and the
-[v57 patch manifest](../testing/wine/webgl-test-divergences-v57.json). To test that
+[v58 patch manifest](../testing/wine/webgl-test-divergences-v58.json). To test that
 copy, place the probe in `C:/webgl` and set `WINEDLLOVERRIDES=ddraw,wined3d=n`.
 Keep `webgl_filesystems.json` as the single current manifest and update it in
 place for each release. Older release and experimental manifests are available
 in Git history; paths recorded in old validation reports refer to those historical files.
 The current configuration pins the DLLs, source patches, and final
-archives in its `full-v47` and `web-v47` profiles. The complete filesystem is
+archives in its `full-v48` and `web-v48` profiles. The complete filesystem is
 assembled by `filesystem_wine11.json`. The [release checklist](RELEASING.md)
 covers validation and publication.
 The v37 prefix leaves the renderer registry values unset. The profile records

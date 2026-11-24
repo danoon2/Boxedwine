@@ -58,7 +58,7 @@ The script mirrors the existing public build site, builds single-threaded, multi
    - Otherwise it falls back to `wget` from `https://boxedwine.org/builds/`.
 2. Hydrates demo assets for local use.
    - Demo app ZIPs and `demos.json` are refreshed when the public files are newer; unchanged local files are retained.
-   - The web v47 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is published at `https://boxedwine.org/v2/47/TinyCore15Wine11.0-web.zip` and verified against the tested archive.
+   - The web v48 filesystem, `TinyCore15Wine11.0-web.zip` (size and SHA-256 pinned in the release manifest), is published at `https://boxedwine.org/v2/48/TinyCore15Wine11.0-web.zip` and verified against the tested archive.
    - A demo selects GDI with `"directDrawRenderer": "gdi"` in `demos.json`. The generated launcher sets the registry before running the executable or existing batch file. Other demos retain Wine's default renderer without a registry command.
    - Each app ZIP, or overlay ZIP list when no app ZIP is present, gets its own persistent Wine root and D: drive in IndexedDB. Games on the same origin keep separate registries, settings, and saves; the same game shares its storage across all four runtime modes and subsequent builds.
    - Existing full `TinyCore15Wine11.0.zip`, `boxedwine.3.zip`, and `boxedwine.gdi.3.zip` selections are migrated to the current web root when it is available; GDI selections become a launch setting. Old published ZIPs and build pages remain available.
@@ -255,15 +255,15 @@ This command requires each referenced root filename to have an exact profile in
 `tools/buildWine/webgl_filesystems.json`. If the public downloads are older than the pinned
 profiles, upload the current roots first; do not bypass the validation.
 
-Revision 47 is published and verified at `/v2/47/`; the default URL is ready for use.
-The public `/v2/latest` symlink and hosted legacy catalog also select revision 47.
-To test locally, serve `tmp/filesystem-v47-release` with a local HTTP server and set
+Revision 48 is published and verified at `/v2/48/`; the default URL is ready for use.
+The public `/v2/latest` symlink and hosted legacy catalog also select revision 48.
+To test locally, serve `tmp/filesystem-v48-release` with a local HTTP server and set
 `BOXEDWINE_ZIP_URL=http://127.0.0.1:<port>/TinyCore15Wine11.0-web.zip` when running
 `local-build-site.sh`. The default manifest still verifies the exact release
-hash. Newly generated build pages derive `/v2/47/` from that same manifest.
-Existing published build pages retain their original filesystem pins. Revision 47
-requires the engine pointer-grab ownership fix in `51672e67e` or later; changing
-the filesystem alone does not update an older browser engine.
+hash. Newly generated build pages derive `/v2/48/` from that same manifest.
+Existing published build pages retain their original filesystem pins.
+MechCommander 2 also requires the engine presentation fix in `39a6f6599` or later;
+changing the filesystem alone does not update an older browser engine.
 
 ## Stopping The Local Server
 
@@ -295,13 +295,13 @@ hashes. Archive payloads remain on the server. Failed builds skip demo inventory
 New demo launch links use the existing shared `demos/apps/<name>.zip` archives
 and images. The filesystem URL defaults to the version and filename pinned in
 `tools/buildWine/webgl_filesystems.json`, currently
-`https://boxedwine.org/v2/47/TinyCore15Wine11.0-web.zip`. Each build records that
+`https://boxedwine.org/v2/48/TinyCore15Wine11.0-web.zip`. Each build records that
 specific URL; updating the release pin affects subsequent builds only. To keep
 an older demo payload available, publish a changed demo under a new filename
 and update `demos.json`; overwriting a shared filename affects builds linking to it.
 
 Published launch links use site-relative paths for assets on the same origin,
-such as `rootBase=/v2/47/` and `overlayBase=/builds/demos/apps/`. External asset
+such as `rootBase=/v2/48/` and `overlayBase=/builds/demos/apps/`. External asset
 hosts retain absolute URLs. Links include `appBase` only when an `app` archive
 is selected and `overlayBase` only when an `overlay` archive is selected;
 launches using both keep both bases. Build identities remain in the links and
@@ -351,7 +351,7 @@ The local development script still downloads and validates the filesystem for
 offline/local demo testing:
 
 ```text
-https://boxedwine.org/v2/47/TinyCore15Wine11.0-web.zip
+https://boxedwine.org/v2/48/TinyCore15Wine11.0-web.zip
 ```
 
 and save it as:
@@ -1033,8 +1033,8 @@ partial workaround because mission loading reenables the timer. Shorter turns
 and futex-wakeup handoff alone did not fix the failure. Diagnostic scheduler
 changes were removed.
 
-The local v58 Wine WebGL candidate retains packed RGB565 for matching texture
-uploads and, when the framebuffer advertises the native pair, readback. This
+Filesystem revision 48 uses Wine WebGL source series v58, which retains packed
+RGB565 for matching texture uploads and, when the framebuffer advertises the native pair, readback. This
 avoids interpreted per-pixel conversion on both sides of the mouse renderer.
 With the original overlay, AsyncMouse=true and normal scheduler, plain ST now
 reaches the campaign HUD, selects Flash, accepts a ground move order, and pauses.
@@ -1043,8 +1043,8 @@ for upload and 22.7 -> 6.3 ms for readback; these are not game FPS measurements.
 See the [source series](../d3dToWebGL/README.md),
 [transfer probe](../testing/wine/tests/webgl_rgb565_probe.md), and local report at
 `test-results/mechcommander2-st-conversion-2026-11-24/README.md`.
-This WineD3D candidate has not been uploaded or selected in a released filesystem.
-The existing engine shared-context presentation fix is still required.
+Both full and web revision 48 archives include this WineD3D DLL.
+The engine shared-context presentation fix in `39a6f6599` or later is still required.
 Use `storage=memory` for comparisons to avoid retained preferences, and preserve
 the literal colon in `em-env=%22BOXEDWINE_WEBGL_THREAD_CANVAS:0%22`; verify the
 runtime environment value is `0`.

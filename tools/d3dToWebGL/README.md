@@ -1,12 +1,12 @@
 # Wine 11 DirectX-to-WebGL patch series
 
 The current filesystem release source series is pinned by
-[`webgl-test-divergences-v57.json`](../testing/wine/webgl-test-divergences-v57.json).
+[`webgl-test-divergences-v58.json`](../testing/wine/webgl-test-divergences-v58.json).
 It contains 80 production patches and one separate Wine graphics-test adaptation.
-The [v57 inventory](../testing/wine/webgl-patch-inventory-v57.json) records the ordered
+The [v58 inventory](../testing/wine/webgl-patch-inventory-v58.json) records the ordered
 patches and hashes. Existing Wine test expectations are unchanged.
 
-Local candidate source series v58 updates the existing
+Filesystem revision 48 uses source series v58, which updates the existing
 [RGB565 upload](webgl-rgb565-upload-scaling-against-wine-11.0.patch) and
 [color readback](webgl-color-readback-loops-against-wine-11.0.patch) patches
 in place to retain packed RGB565 transfers.
@@ -20,8 +20,10 @@ The [v58 manifest](../testing/wine/webgl-test-divergences-v58.json) and
 [inventory](../testing/wine/webgl-patch-inventory-v58.json) pin the same 80
 production patches with updated hashes and the same Wine test adaptation.
 Recover previous patch contents and their matching manifests from Git when
-reproducing a published source series. This candidate has not been
-published or selected in the filesystem release manifest.
+reproducing an older source series. Both full and web revision 48 archives
+are published at `/v2/48/`; the current filesystem release manifest selects them.
+MechCommander 2 also needs the engine presentation fix in `39a6f6599` or later
+and `BOXEDWINE_WEBGL_THREAD_CANVAS=0`.
 
 Filesystem revision 44 adds
 [legacy Direct3D screen extents](webgl-ddraw-extents-against-wine-11.0.patch),

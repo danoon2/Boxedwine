@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "manifest_id": "wine11-webgl-filesystems-v47-x11-initial-focus-fix-20261123",
+  "manifest_id": "wine11-webgl-filesystems-v48-rgb565-transfers-20261124",
   "wine_version": "11.0",
-  "build_date": "2026-11-23",
+  "build_date": "2026-11-24",
   "source_date_epoch": 1768319767,
   "wine_source_commit": "db11d0fe6a169c457e23d007e20404643d067aa8",
   "patch_manifest": {
-    "path": "tools/testing/wine/webgl-test-divergences-v57.json",
-    "sha256": "c52b06e172946b796eef06c4e7da70d777bf77e539c8e4a403067d42c5f7f64c"
+    "path": "tools/testing/wine/webgl-test-divergences-v58.json",
+    "sha256": "91f346b1f1b456e0feebb8a4b8631c32120ac4e646d0ad2044fc8f021a584f50"
   },
   "webgl_directory": "home/username/.wine/drive_c/webgl",
   "dlls": {
@@ -63,7 +63,7 @@
     },
     "wined3d.dll": {
       "size": 3995571,
-      "sha256": "f698d16899693f6dc091e4d3557c2655f17bb2b8d141715fdc465edae3ca1fee",
+      "sha256": "5fd3aa5c89ea7216f4242d8959fa854c0c83d0706e57ca479eb05772964c6bda",
       "required_imports": [
         "opengl32.dll"
       ]
@@ -118,21 +118,21 @@
     "libXxf86vm.so.1": "/usr/local/lib/libXxf86vm.so.1"
   },
   "profiles": {
-    "full-v47": {
+    "full-v48": {
       "filename": "TinyCore15Wine11.0.zip",
-      "filesystem_version": "47",
+      "filesystem_version": "48",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 216616700,
-      "sha256": "ad81a948bf1217f1db5cdf055aed5899815249dd20d3ce8f69a49776a95b5b03"
+      "size": 216616614,
+      "sha256": "4acfe1963e45dca996329ac67c733ac31922a26a7a3a39d4352b0d908e49ca49"
     },
-    "web-v47": {
+    "web-v48": {
       "filename": "TinyCore15Wine11.0-web.zip",
-      "filesystem_version": "47",
+      "filesystem_version": "48",
       "direct_draw_renderer": null,
       "wine_renderer": null,
-      "size": 96629213,
-      "sha256": "7515f1edcc5ce440318d492a06c158816af6c657c21d18a48a9072c56e92fbcd"
+      "size": 96629131,
+      "sha256": "be55b078d6937d4ad5d0fb45d152307121b193a6e51c43d7cab3ae26e001d64e"
     }
   }
 }

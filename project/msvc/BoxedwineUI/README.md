@@ -79,8 +79,9 @@ choices stay visible and produce an actionable launch error. Driver environment
 variables are set only on the child process, including Wine preparation,
 installers and alternate programs. Per-app choices are included in backups.
 
-The native UI catalog selects Wine 11.0 V47 at `/v2/47/`. The tested artifacts
-and publication receipts are in `tmp/filesystem-v47-release`. This package
+The native UI catalog selects Wine 11.0 V48 at `/v2/48/`. The tested artifacts
+and publication receipts are in `tmp/filesystem-v48-release`. This WebGL-only update preserves the regular Wine
+payload from V47. The package
 requires the X11 pointer-grab ownership fix in `51672e67e` or later. With a single catalog
 entry, Add App shows the package as text, built-in apps select it automatically,
 and version selection, ZIP import and trial-copy controls and guidance are hidden.
