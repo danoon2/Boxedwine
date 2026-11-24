@@ -6,6 +6,23 @@ It contains 80 production patches and one separate Wine graphics-test adaptation
 The [v57 inventory](../testing/wine/webgl-patch-inventory-v57.json) records the ordered
 patches and hashes. Existing Wine test expectations are unchanged.
 
+Local candidate source series v58 updates the existing
+[RGB565 upload](webgl-rgb565-upload-scaling-against-wine-11.0.patch) and
+[color readback](webgl-color-readback-loops-against-wine-11.0.patch) patches
+in place to retain packed RGB565 transfers.
+Matching RGB565 uploads retain their 16-bit layout. Readback uses that layout
+only when the bound framebuffer advertises RGB/UNSIGNED_SHORT_5_6_5 as its
+implementation read pair; otherwise the existing conversion remains active.
+Other destination formats retain the upload conversion path. Row padding,
+partial updates and nonzero mip levels are covered by the
+[transfer probe](../testing/wine/tests/webgl_rgb565_probe.md).
+The [v58 manifest](../testing/wine/webgl-test-divergences-v58.json) and
+[inventory](../testing/wine/webgl-patch-inventory-v58.json) pin the same 80
+production patches with updated hashes and the same Wine test adaptation.
+Recover previous patch contents and their matching manifests from Git when
+reproducing a published source series. This candidate has not been
+published or selected in the filesystem release manifest.
+
 Filesystem revision 44 adds
 [legacy Direct3D screen extents](webgl-ddraw-extents-against-wine-11.0.patch),
 fixing Force Commander unit picking and move orders above selected troops.

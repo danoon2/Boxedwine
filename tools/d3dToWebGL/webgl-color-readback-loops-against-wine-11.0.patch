@@ -1,6 +1,40 @@
+diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+index d0749c23bd1..fec5aa8e6ff 100644
 --- a/dlls/wined3d/texture_gl.c
 +++ b/dlls/wined3d/texture_gl.c
-@@ -2390,6 +2390,47 @@
+@@ -2378,6 +2378,31 @@ static bool wined3d_texture_gl_read_pixels_webgl_color(const struct wined3d_gl_i
+             return false;
+     }
+ 
++    /* WebGL permits the implementation's native read pair in addition to
++     * RGBA/UNSIGNED_BYTE. Query the bound framebuffer, since its storage may
++     * differ from the requested D3D format, and keep the portable fallback. */
++    if (format->id == WINED3DFMT_B5G6R5_UNORM && !(row_pitch % 2))
++    {
++        GLint read_format, read_type, alignment, row_length;
++
++        gl_info->gl_ops.gl.p_glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &read_format);
++        gl_info->gl_ops.gl.p_glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE, &read_type);
++        if (read_format == GL_RGB && read_type == GL_UNSIGNED_SHORT_5_6_5)
++        {
++            gl_info->gl_ops.gl.p_glGetIntegerv(GL_PACK_ALIGNMENT, &alignment);
++            gl_info->gl_ops.gl.p_glGetIntegerv(GL_PACK_ROW_LENGTH, &row_length);
++            gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ALIGNMENT, 1);
++            gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ROW_LENGTH, row_pitch / 2);
++            profile_start = wined3d_profile_enabled() ? wined3d_profile_now_us() : 0;
++            gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, dst);
++            wined3d_texture_gl_profile_readpixels("texture_gl_webgl_rgb565_readpixels", profile_start,
++                    width, height, format->id);
++            gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ROW_LENGTH, row_length);
++            gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ALIGNMENT, alignment);
++            return true;
++        }
++    }
++
+     if (!(rgba = malloc(pixel_count * 4)))
+     {
+         ERR("Failed to allocate readback memory.\n");
+@@ -2390,6 +2415,47 @@ static bool wined3d_texture_gl_read_pixels_webgl_color(const struct wined3d_gl_i
              packed_rgb10 ? GL_UNSIGNED_INT_2_10_10_10_REV : GL_UNSIGNED_BYTE, rgba);
      wined3d_texture_gl_profile_readpixels("texture_gl_webgl_rgba8_readpixels", profile_start,
              width, height, format->id);
@@ -48,7 +82,7 @@
      for (y = 0; y < height; ++y)
      {
          uint8_t *dst_row = dst + y * row_pitch;
-@@ -2478,6 +2519,7 @@
+@@ -2478,6 +2544,7 @@ static bool wined3d_texture_gl_read_pixels_webgl_color(const struct wined3d_gl_i
          }
      }
  

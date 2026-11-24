@@ -1,4 +1,5 @@
 diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
+index fec5aa8e6ff..7dd583543d7 100644
 --- a/dlls/wined3d/texture_gl.c
 +++ b/dlls/wined3d/texture_gl.c
 @@ -32,6 +32,10 @@
@@ -12,7 +13,7 @@ diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
  WINE_DEFAULT_DEBUG_CHANNEL(d3d);
  WINE_DECLARE_DEBUG_CHANNEL(d3d_perf);
  
-@@ -1682,6 +1686,23 @@
+@@ -1682,6 +1686,23 @@ static void wined3d_fixup_alpha(const struct wined3d_format *format, const uint8
      }
  }
  
@@ -36,7 +37,7 @@ diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
  /* Dispatch once per row. Keeping the format switch inside the nested pixel
   * loops makes GCC 13's -O3 loop unswitching drop some low-valued format cases,
   * leaving the upload buffer uninitialized (including A4R4G4B4). */
-@@ -1745,12 +1766,36 @@
+@@ -1745,12 +1766,36 @@ static bool wined3d_texture_gl_convert_webgl_row(enum wined3d_format_id format_i
              break;
  
          case WINED3DFMT_B5G6R5_UNORM:
@@ -77,3 +78,35 @@ diff --git a/dlls/wined3d/texture_gl.c b/dlls/wined3d/texture_gl.c
              }
              break;
  
+@@ -2082,6 +2127,31 @@ static void wined3d_texture_gl_upload_data(struct wined3d_context *context,
+     {
+         const uint8_t *offset = bo.addr;
+ 
++        /* RGB565 has the same packed layout in D3D and WebGL 2. Keep matching
++         * uploads packed instead of expanding every pixel to RGB bytes on the
++         * CPU. Other destination formats still require the converted path;
++         * WebGL does not accept UNSIGNED_SHORT_5_6_5 uploads into RGB8 storage. */
++        if (wined3d_settings.webgl && src_format->id == WINED3DFMT_B5G6R5_UNORM
++                && dst_texture->resource.format->id == WINED3DFMT_B5G6R5_UNORM
++                && (update_d == 1 || src_slice_pitch))
++        {
++            struct wined3d_format_gl packed_format = *wined3d_format_gl(src_format);
++            BYTE *src_mem = bo.buffer_object
++                    ? wined3d_context_gl_map_bo_address(context_gl, &bo, src_slice_pitch * update_d, WINED3D_MAP_READ)
++                    : bo.addr;
++
++            packed_format.type = GL_UNSIGNED_SHORT_5_6_5;
++            GL_EXTCALL(glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0));
++            gl_info->gl_ops.gl.p_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
++            wined3d_texture_gl_upload_bo(&packed_format.f, target, level, src_row_pitch, src_slice_pitch,
++                    dst_x, dst_y, dst_z, update_w, update_h, update_d, src_mem, srgb, dst_texture, gl_info);
++            gl_info->gl_ops.gl.p_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
++
++            if (bo.buffer_object)
++                wined3d_context_gl_unmap_bo_address(context_gl, &bo, 0, NULL);
++            return;
++        }
++
+         if (wined3d_settings.webgl && (update_d == 1 || src_slice_pitch))
+         {
+             BYTE *src_mem = bo.buffer_object

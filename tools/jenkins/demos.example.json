@@ -185,7 +185,8 @@
       "exe": "c:/mechcommander2-demo.bat",
       "urlParams": {
         "resolution": "800x600",
-        "bpp": "32"
+        "bpp": "32",
+        "em-env": "\"BOXEDWINE_WEBGL_THREAD_CANVAS:0\""
       },
       "description": "Command a mercenary company of BattleMechs in real-time tactical combat."
     },

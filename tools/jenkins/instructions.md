@@ -993,13 +993,16 @@ Catalogue 41 selects Wine 11.0, an 800x600 32-bit desktop and the demo's bundled
 The browser overlay requires filesystem 36's shared DirectPlay startup fixes.
 The preparation tool used for this release checks the pinned installer and pristine 261-file game tree, preserves
 the original fonts, and adds installation registry entries and a launcher. It
-uses the demo's unmodified `minprefs1.cfg` for both graphics preference files,
-matching the preset selected by the browser hardware detector. This avoids
-rerunning that first-launch benchmark in the preinstalled browser demo. It does
-not include the detector's machine measurements, user saves, global Wine
-registries, accepted-license state or experimental Wine DLLs.
-The reproducible overlay is 168,076,096 bytes, SHA-256
+uses the demo's unmodified `minprefs1.cfg` for both `options.cfg` and `orgprefs.cfg`,
+including `b AsyncMouse = true`. The graphics settings match the minimum preset
+selected by the browser hardware detector, avoiding its first-launch benchmark.
+It does not include measured machine data, user saves, global Wine registries,
+accepted-license state or experimental Wine DLLs. The original published overlay
+is 168,076,096 bytes, SHA-256
 `b952c7994c92e23c2df5766ac5acab894f510169607cabcfc1b08d3f5ecc69b6`.
+The earlier local AsyncMouse=false overlay was a partial diagnostic workaround;
+it is not needed by the RGB565 transfer fix below and should not replace the
+published original overlay.
 
 The entry runs `c:/mechcommander2-demo.bat`. Native single-player gameplay was
 tested, and the user confirmed the ST JIT browser campaign works in external
@@ -1007,6 +1010,51 @@ Chrome. Its HUD, unit controls and completed first objective were captured.
 The automated in-app browser stalled during the introduction; that result was
 not treated as proof of a game bug. Multiplayer and native macOS/Linux gameplay
 have not been verified. See the DirectPlay probe notes for the fix's scope.
+
+The browser manifest selects `em-env="BOXEDWINE_WEBGL_THREAD_CANVAS:0"` for
+this demo. Its movie and game rendering threads share texture names; independent
+worker WebGL contexts cannot share those objects and render black despite
+working audio. The shared rendering-thread path needs the engine fix that
+preserves the default framebuffer between dispatched GL calls and presents it
+into the same canvas layer as GDI. The launch parameter alone does not fix older
+MT/MT JIT builds. This change does not modify the game or Wine filesystem.
+Local Chrome validation reached gameplay and moved a mech on MT, MT JIT and
+ST JIT. MT input was slower and needed longer button presses in that test.
+
+Plain ST had an additional black-screen failure with `AsyncMouse = true`.
+The game's periodic mouse renderer repeatedly locks and uploads the full front
+buffer. The main thread still receives CPU time, but waits on a futex or spins
+while the callback is active. Under overload, the callback clears its active flag
+for only about 10 microseconds before running again; ordinary scheduler turns
+can repeatedly miss that gap. A native Windows timer-overrun probe pinned to one
+CPU reproduced the same pattern. The GL uploads contain black pixels before
+presentation. Disabling AsyncMouse restored the intro and menu but was only a
+partial workaround because mission loading reenables the timer. Shorter turns
+and futex-wakeup handoff alone did not fix the failure. Diagnostic scheduler
+changes were removed.
+
+The local v58 Wine WebGL candidate retains packed RGB565 for matching texture
+uploads and, when the framebuffer advertises the native pair, readback. This
+avoids interpreted per-pixel conversion on both sides of the mouse renderer.
+With the original overlay, AsyncMouse=true and normal scheduler, plain ST now
+reaches the campaign HUD, selects Flash, accepts a ground move order, and pauses.
+The focused 800x600 ST probe measured median transfer costs of 34.9 -> 3.2 ms
+for upload and 22.7 -> 6.3 ms for readback; these are not game FPS measurements.
+See the [source series](../d3dToWebGL/README.md),
+[transfer probe](../testing/wine/tests/webgl_rgb565_probe.md), and local report at
+`test-results/mechcommander2-st-conversion-2026-11-24/README.md`.
+This WineD3D candidate has not been uploaded or selected in a released filesystem.
+The existing engine shared-context presentation fix is still required.
+Use `storage=memory` for comparisons to avoid retained preferences, and preserve
+the literal colon in `em-env=%22BOXEDWINE_WEBGL_THREAD_CANVAS:0%22`; verify the
+runtime environment value is `0`.
+
+For a browser smoke test, accept the EULA and verify the intro movie, then press
+Escape once and choose **New Campaign**, followed by **Load** for Carver V.
+After the mission loads, select Flash in the first HUD portrait and left-click
+open ground. Verify the selected mech walks away from the other two. The menu
+uses 800x600; the supplied graphics preset switches gameplay to 640x480, so
+scale recorded input coordinates using the current canvas dimensions.
 
 The `filesystem__36/20261114` local and published snapshots retain all four
 existing SimTower-tested engines with new filesystem/build identities. Jenkins

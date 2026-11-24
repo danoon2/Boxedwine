@@ -321,6 +321,9 @@ static EMSCRIPTEN_WEBGL_CONTEXT_HANDLE createWebGLContextForTarget(const char* t
     attributes.antialias = false;
     attributes.alpha = false;
     attributes.premultipliedAlpha = false;
+    // The shared render thread services individual GL calls between browser
+    // turns. Keep the default framebuffer until the guest presents it.
+    attributes.preserveDrawingBuffer = !useThreadWebGLCanvas();
     attributes.enableExtensionsByDefault = true;
 #ifdef BOXEDWINE_MULTI_THREADED
     attributes.proxyContextToMainThread = EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW;
@@ -1110,7 +1113,9 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
             if (pglFlush) {
                 pglFlush();
             }
-            if (usePrivateThreadCanvas) {
+            // Both worker-local and shared-thread contexts present into the
+            // same layer as GDI; the transferred SDL canvas sits underneath it.
+            if (usePrivateThreadCanvas || !useThreadWebGLCanvas()) {
                 boxedwinePresentCurrentWebGLFrame(d->width(), d->height());
             }
         } else {
