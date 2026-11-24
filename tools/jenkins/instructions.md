@@ -956,12 +956,23 @@ launcher. It does not import Wine's registry or add system DLLs. Changed setting
 or user saves fail its pristine-tree check. The reproducible overlay is
 177,740,335 bytes, SHA-256
 `7ce0cae800790efa15fa7fdcb11a5e42168734740fa932dbd7f9d9d484332e6a`.
-The browser runs `c:/tropico-demo.bat` from an 800x600, 32-bit starting desktop.
+The browser runs `c:/tropico-demo.bat` from a 1024x768, 32-bit starting desktop.
+The tutorial can open a 1024x768 window without changing the 800x600 desktop used
+by older demo links. With those links, lower clicks are clamped to row 599 and
+can activate the radar instead of Rotate. Keep the starting desktop at 1024x768
+so the drawing, Wine cursor bounds and input hit testing agree.
 Choose Tutorial after the introduction. The tutorial continues as a 50-year game.
 
-Native gameplay and audio were checked; ST JIT reaches the tutorial with animated
-citizens and working mouse input. Other browser modes and native Mac/Linux
-gameplay have not been tested. The local/published `tropico__demo/20261113`
+The November 24, 2026 Chrome check of `james__mouse_fix_force_commander/3` with
+filesystem 47 verified tutorial zoom, lower Rotate and lower-right speed controls
+on ST, MT, ST JIT and MT JIT with the 1024x768 starting desktop. ST, ST JIT and
+MT JIT presented the full 1024x768 scene; MT selected an 800x600 game canvas.
+Record the actual canvas dimensions when comparing screenshots. For a repeat
+run, zoom in and out four times, rotate four times, then select the second speed
+bar and verify the tutorial advances. Starting the tutorial alone misses this bug.
+
+Earlier native gameplay and audio were checked; native Mac/Linux gameplay has
+not been tested. The local/published `tropico__demo/20261113`
 snapshots retain the existing runtimes, filesystem 35 and graphics provenance.
 The browser shell uses its existing visible host pointer; it does not yet carry
 the native cursor fix. The homepage adds the ST JIT demo and a gameplay image.

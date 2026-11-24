@@ -193,7 +193,7 @@
       "title": "Tropico Demo (2001)",
       "exe": "c:/tropico-demo.bat",
       "urlParams": {
-        "resolution": "800x600",
+        "resolution": "1024x768",
         "bpp": "32"
       },
       "description": "Build and govern a Caribbean island. Choose Tutorial to learn the basics, then continue ruling for up to 50 years."
