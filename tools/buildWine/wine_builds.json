@@ -221,6 +221,14 @@
         "min": "11.0",
         "max": "11.0"
       },
+      "apply_patch": "wine11_x11_initial_focus_time.patch",
+      "reason": "Use CurrentTime when a new GUI thread has no message timestamp, allowing unmanaged game windows to acquire X11 focus and mouse capture after a splash screen"
+    },
+    {
+      "when": {
+        "min": "11.0",
+        "max": "11.0"
+      },
       "apply_patch": "wine11_urlmon_localhost_file_uri.patch",
       "reason": "Normalize localhost file URLs as local paths so embedded browser pages such as the Cinebench EULA load correctly"
     },

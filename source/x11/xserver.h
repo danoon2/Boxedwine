@@ -115,7 +115,8 @@ public:
 	U32 getEventTime();
 	U32 getInputModifiers();
 	U32 grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbed, XWindowPtr confined, U32 mask, U32 time);
-	U32 ungrabPointer(U32 time);
+	// A zero displayId is an internal release (window unmap/destroy or client exit).
+	U32 ungrabPointer(U32 time, U32 displayId = 0);
 	U32 setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo, U32 time, bool trace = false);
 	U32 getInputFocus(U32& revertTo);
 	XWindowPtr getInputFocusWindow();

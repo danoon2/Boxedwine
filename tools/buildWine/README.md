@@ -163,6 +163,16 @@ Native UI startup cancellation and clean shutdown also pass. Its complete
 settings round-trip passed once but hit configuration time limits in repeat
 runs; that qualification limitation is retained in the local validation logs.
 
+New Wine 11.0 builds also apply
+[`wine11_x11_initial_focus_time.patch`](patches/wine11_x11_initial_focus_time.patch).
+A fresh GUI thread has no message timestamp to translate. Use the existing
+`CurrentTime` fallback so an unmanaged game window can receive X11 focus after
+a splash screen. Without focus, Force Commander's independent input-thread
+capture cannot start and its button-release wait can still hang. The
+[initial-focus regression](probes/x11-initial-focus.md) checks actual X focus
+under native Wine/Xvfb without forcing it from the runner. This patch is selected
+for future full and web builds; it is not included in published filesystem v46.
+
 Wine 11 includes
 [`wine11_wined3d_msaa_upload.patch`](patches/wine11_wined3d_msaa_upload.patch).
 It supports CPU image uploads to multisampled OpenGL textures through a temporary

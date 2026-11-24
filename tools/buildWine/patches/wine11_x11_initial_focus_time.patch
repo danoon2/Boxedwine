@@ -1,0 +1,27 @@
+winex11: Do not translate an unset message time when activating a window.
+
+A new GUI thread can activate an unmanaged window before retrieving any
+messages. Its message_time is zero. If another thread has already initialized
+the process-wide X/Win32 clock adjustment, translating that zero yields a
+stale timestamp. XSetInputFocus then silently leaves focus on the previous
+window. In Force Commander, closing the splash reverts focus to the desktop,
+preventing cursor clipping and the independent mouse-input grab from starting.
+
+Use the existing CurrentTime fallback when no message time is available.
+Keep timestamp conversion for real message times and leave X11's rejection
+of stale focus requests intact.
+
+The x11-initial-focus probe reproduces this on native Wine with Xvfb and
+unmanaged windows, without forcing focus from the test harness.
+
+diff --git a/dlls/winex11.drv/event.c b/dlls/winex11.drv/event.c
+--- a/dlls/winex11.drv/event.c
++++ b/dlls/winex11.drv/event.c
+@@ -614,4 +614,6 @@ static void set_input_focus( struct x11drv_win_data *data )
+-    if (EVENT_x11_time_to_win32_time(0))
++    /* A new GUI thread may not have retrieved a message yet. Zero is not
++     * an event timestamp; translating it can produce a stale X timestamp. */
++    if (NtUserGetThreadInfo()->message_time && EVENT_x11_time_to_win32_time(0))
+         /* ICCCM says don't use CurrentTime, so try to use last message time if possible */
+         /* FIXME: this is not entirely correct */
+         timestamp = NtUserGetThreadInfo()->message_time - EVENT_x11_time_to_win32_time(0);

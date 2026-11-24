@@ -1489,6 +1489,8 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 
+        if (isGrabbed && grabbedDisplayId != display->displayId) return AlreadyGrabbed;
+
         if (!isGrabbed || grabbedId != grabbed->id || grabbedDisplayId != display->displayId ||
                 grabbedConfinedId != (confined ? confined->id : 0)) {
             capturedMouse.reset();
@@ -1522,13 +1524,14 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 }
 
 // https://www.x.org/releases/X11R7.6/doc/xproto/x11protocol.html#requests:UngrabPointer
-U32 XServer::ungrabPointer(U32 time) {
-	if (!grabbedId) {
-		return GrabSuccess; // :TODO: couldn't find this use case in the x11 spec
-	}
-	XWindowPtr prev = getWindow(grabbedId);
+U32 XServer::ungrabPointer(U32 time, U32 displayId) {
+	XWindowPtr prev;
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->grabbedMutex);
+		// XUngrabPointer only releases this client's grab. Wine uses separate
+		// connections for the application window and its input helper.
+		if (!grabbedId || (displayId && displayId != grabbedDisplayId)) return GrabSuccess;
+		prev = getWindow(grabbedId);
 		this->grabbedId = 0;
 		this->grabbedDisplayId = 0;
 		this->grabbedConfinedId = 0;

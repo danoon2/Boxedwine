@@ -982,6 +982,66 @@ void testX11WindowAttributes() {
     server->closeDisplay(context.thread, first);
 }
 
+void testX11PointerGrabOwnership() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
+    x11_init();
+    testNewInstruction(0);
+    initPaletteTestServer();
+    auto server = XServer::getServer();
+    auto& context = testContext();
+    CPU* cpu = context.cpu;
+    auto memory = context.memory;
+    auto first = server->getDisplayDataByAddressOfDisplay(memory, server->openDisplay(context.thread));
+    auto second = server->getDisplayDataByAddressOfDisplay(memory, server->openDisplay(context.thread));
+    auto root = server->getRoot();
+    auto firstWindow = server->createNewWindow(first->displayId, root, 80, 60, root->getDepth(), 10, 20, InputOutput, 0, root->getVisual());
+    auto secondWindow = server->createNewWindow(second->displayId, root, 80, 60, root->getDepth(), 200, 100, InputOutput, 0, root->getVisual());
+    firstWindow->mapWindow();
+    secondWindow->mapWindow();
+    first->setInput2Mask(root->id, XI_RawMotionMask);
+    auto call = [&](U32 function, std::initializer_list<U32> args) {
+        U32 offset = 4;
+        for (U32 arg : args) {
+            memory->writed(cpu->seg[SS].address + cpu->reg[4].u32 + offset, arg);
+            offset += 4;
+        }
+        callX11(cpu, function);
+        return EAX;
+    };
+    auto grab = [&](const DisplayDataPtr& client, const XWindowPtr& window) {
+        return call(X11_GRAB_POINTER, {client->displayAddress, window->id, False,
+            PointerMotionMask | ButtonPressMask | ButtonReleaseMask,
+            GrabModeAsync, GrabModeAsync, window->id, None, 0}); // CurrentTime
+    };
+    auto ungrab = [&](const DisplayDataPtr& client) {
+        call(X11_UNGRAB_POINTER, {client->displayAddress, 0});
+    };
+    auto checkFirstGrab = [&]() {
+        S32 x = 500, y = 400;
+        server->clampPointerToGrab(x, y);
+        if (x != 89 || y != 79 || !server->sendRelativeMouseMotion(0, -5))
+            testFail("Another client changed pointer confinement or raw motion ownership");
+    };
+    if (grab(first, firstWindow) != GrabSuccess) testFail("Initial pointer grab failed");
+    ungrab(second);
+    checkFirstGrab();
+    if (grab(second, secondWindow) != AlreadyGrabbed) testFail("Another client stole the pointer grab");
+    checkFirstGrab();
+    if (grab(first, secondWindow) != GrabSuccess) testFail("Grab owner could not replace its own grab");
+    S32 x = 500, y = 400;
+    server->clampPointerToGrab(x, y);
+    if (x != 279 || y != 159) testFail("Same-client regrab did not change confinement");
+    ungrab(first);
+    if (grab(second, secondWindow) != GrabSuccess) testFail("Owner's ungrab did not release capture");
+    server->closeDisplay(context.thread, second);
+    if (grab(first, firstWindow) != GrabSuccess) testFail("Closing the grab owner did not release capture");
+    server->unmapWindow(first, firstWindow);
+    if (server->sendRelativeMouseMotion(0, -5)) testFail("Unmapping the grabbed window retained capture");
+    if (grab(first, root) != GrabSuccess) testFail("Could not grab after the old window was unmapped");
+    server->closeDisplay(context.thread, first);
+    if (server->sendRelativeMouseMotion(0, -5)) testFail("Closing the grab owner retained raw input capture");
+}
+
 void testX11PaletteInvalidation() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(paletteTestMutex);
     x11_init();

@@ -535,10 +535,10 @@ static void x11_GrabPointer(CPU* cpu) {
 static void x11_UngrabPointer(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
 
-    EAX = server->ungrabPointer(ARG2);
+    EAX = server->ungrabPointer(ARG2, data->displayId);
     if (server->trace) {
-        DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
         BString log;
 
         log.append(data->displayId, 16);
