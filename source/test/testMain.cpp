@@ -98,6 +98,7 @@ void testSDLGlWindowRemovalLockOrder();
 #endif
 void testWaitPidPublicationLockOrder();
 void testProcessSignalWakesSigwaitMask();
+void testSigsuspendRestoresMaskAndReturnsEintr();
 void testBlockedThreadSignalStartsHandler();
 void testBlockedThreadSigquitStartsHandlerImmediately();
 void testMemoryThreadCleanupUsesMemoryMutex();
@@ -1170,6 +1171,7 @@ const TestEntry TEST_ENTRIES[] = {
 #endif
     {testWaitPidPublicationLockOrder, "Test waitpid process publication lock order", TEST_ENTRY_SERIAL},
     {testProcessSignalWakesSigwaitMask, "Test process signal wakes sigwait mask"},
+    {testSigsuspendRestoresMaskAndReturnsEintr, "Test sigsuspend restores full masks and returns EINTR"},
 #ifdef BOXEDWINE_MULTI_THREADED
     {testBlockedThreadSignalStartsHandler, "Test blocked thread signal starts handler"},
     {testBlockedThreadSigquitStartsHandlerImmediately, "Test blocked thread SIGQUIT starts handler immediately"},

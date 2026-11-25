@@ -89,6 +89,7 @@ void KThread::internalCleanup() {
 }
 
 void KThread::reset() {
+    this->sigsuspendActive = false;
     this->lastPageFaultAddress = 0;
     memory->threadCleanup(id);
     this->clearFutexes();
@@ -1428,6 +1429,10 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
     U32 context = cpu->pop32();
     cpu->thread->condStartWaitTime = cpu->pop32();
     cpu->thread->interrupted = cpu->pop32()!=0;
+    U64 savedInSigMask = cpu->pop32();
+    savedInSigMask |= (U64)cpu->pop32() << 32;
+    U64 savedSigMask = cpu->pop32();
+    savedSigMask |= (U64)cpu->pop32() << 32;
 
 #ifdef LOG_OPS
     //klog("onExitSignal signal=%d info=%X context=%X stack=%X interrupted=%d", signal, address, context, cpu->reg[4].u32, cpu->thread->interrupted);
@@ -1441,10 +1446,8 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
     cpu->thread->inSignal--;
     cpu->thread->updateDebugTrapActive();
     
-    if (cpu->thread->waitingForSignalToEndMaskToRestore & RESTORE_SIGNAL_MASK) {
-        cpu->thread->sigMask = cpu->thread->waitingForSignalToEndMaskToRestore & RESTORE_SIGNAL_MASK;
-        cpu->thread->waitingForSignalToEndMaskToRestore = SIGSUSPEND_RETURN;
-    }
+    cpu->thread->sigMask = savedSigMask;
+    cpu->thread->inSigMask = savedInSigMask;
 
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(cpu->thread->waitingForSignalToEndCond);
@@ -1480,6 +1483,8 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo, bool fault) {
         U32 stack = this->cpu->reg[4].u32;
         U32 stackAddress = this->cpu->seg[SS].address + (stack & this->cpu->stackMask);
         U32 interrupted = 0;
+        U64 savedSigMask = this->sigMask;
+        U64 savedInSigMask = this->inSigMask;
         bool wasOnAlternateStack = this->isOnAlternateSignalStack(stackAddress);
         bool useAlternateStack = (action->flags & K_SA_ONSTACK) && this->alternateStack &&
             this->alternateStackSize && !wasOnAlternateStack;
@@ -1491,7 +1496,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo, bool fault) {
         klog("runSignal %d", signal);
         klog("    before signal %.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X fs=%d(%X) fs18=%X", cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, cpu->seg[4].value, cpu->seg[4].address, cpu->seg[4].address?readd(cpu->seg[4].address+0x18):0);
 #endif
-        this->inSigMask=action->mask | this->sigMask;
+        this->inSigMask = action->mask | (this->inSignal ? this->inSigMask : this->sigMask);
         if (action->flags & K_SA_RESETHAND) {
             action->handlerAndSigAction=K_SIG_DFL;
         } else if (!(action->flags & K_SA_NODEFER)) {
@@ -1514,6 +1519,21 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo, bool fault) {
         } else {
 	        context = stackAddress - CONTEXT_SIZE;
         }
+        if (this->sigsuspendActive) {
+            // sigsuspend is never restarted, even for SA_RESTART handlers.
+            // Save its EINTR return in this signal frame rather than relying
+            // on the CPU dispatcher to reenter the syscall after the handler.
+            this->cpu->reg[0].u32 = -K_EINTR;
+            this->cpu->eip.u32 = this->sigsuspendReturnEip;
+            if (this->inSignal) {
+                savedInSigMask = this->sigsuspendSavedMask;
+            } else {
+                savedSigMask = this->sigsuspendSavedMask;
+            }
+            // Keep restoration in this frame so a nested handler can itself
+            // call sigsuspend without overwriting its caller's saved mask.
+            this->sigsuspendActive = false;
+        }
         writeToContext(this, stack, context, wasOnAlternateStack, trapNo, errorNo);
         // Faults set RF in their saved frame; traps keep the original flags.
         if (fault) memory->writed(context + 0x54, cpu->flags | RF);
@@ -1532,11 +1552,17 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo, bool fault) {
 
         this->cpu->reg[4].u32 &= ~15;
         if (action->flags & K_SA_SIGINFO) {
-            this->cpu->reg[4].u32-=INFO_SIZE;
+            this->cpu->reg[4].u32 -= INFO_SIZE;
             address = this->cpu->reg[4].u32;
-            for (U32 i=0;i<K_SIG_INFO_SIZE;i++) {
-                memory->writed(address+i*4, this->process->sigActions[signal].sigInfo[i]);
+            for (U32 i = 0; i < K_SIG_INFO_SIZE; i++) {
+                memory->writed(address + i * 4, this->process->sigActions[signal].sigInfo[i]);
             }
+        }
+        this->cpu->push32((U32)(savedSigMask >> 32));
+        this->cpu->push32((U32)savedSigMask);
+        this->cpu->push32((U32)(savedInSigMask >> 32));
+        this->cpu->push32((U32)savedInSigMask);
+        if (action->flags & K_SA_SIGINFO) {
                         
             this->cpu->push32(interrupted);
             this->cpu->push32(this->condStartWaitTime);
@@ -1662,7 +1688,9 @@ void KThread::seg_instructionFetch(U32 address, bool throwException) {
 void KThread::clone(KThread* from) {
     this->lastPageFaultAddress = from->lastPageFaultAddress;
     this->sigMask = from->sigMask;
-    this->waitingForSignalToEndMaskToRestore = from->waitingForSignalToEndMaskToRestore;
+    this->sigsuspendSavedMask = from->sigsuspendSavedMask;
+    this->sigsuspendReturnEip = from->sigsuspendReturnEip;
+    this->sigsuspendActive = from->sigsuspendActive;
     this->cpu->clone(from->cpu);
     this->cpu->thread = this;
 }
@@ -1752,11 +1780,12 @@ U32 KThread::sleep(U32 ms) {
 }
 
 U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
+    U64& currentMask = this->inSignal ? this->inSigMask : this->sigMask;
     if (oset!=0) {
         if (sigsetSize==4) {
-            memory->writed(oset, (U32)this->sigMask);
+            memory->writed(oset, (U32)currentMask);
         } else if (sigsetSize==8) {
-            memory->writeq(oset, this->sigMask);
+            memory->writeq(oset, currentMask);
         } else {
             klog_fmt("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
         }
@@ -1773,13 +1802,13 @@ U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
             klog_fmt("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
         }
         if (how == K_SIG_BLOCK) {
-            this->sigMask|=mask;
+            currentMask |= mask;
             //klog("syscall_sigprocmask block %X(%X)", set, thread->sigMask);
         } else if (how == K_SIG_UNBLOCK) {
-            this->sigMask&=~mask;
+            currentMask &= ~mask;
             //klog("syscall_sigprocmask unblock %X(%X)", set, thread->sigMask);
         } else if (how == K_SIG_SETMASK) {
-            this->sigMask = mask;
+            currentMask = mask;
             //klog("syscall_sigprocmask set %X(%X)", set, thread->sigMask);
         } else {
             kpanic_fmt("sigprocmask how %d unsupported", how);
@@ -1864,20 +1893,35 @@ U32 KThread::sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool ti
     return -K_EINTR;
 }
 
-U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {
-    if (this->waitingForSignalToEndMaskToRestore==SIGSUSPEND_RETURN) {
-        this->waitingForSignalToEndMaskToRestore = 0;
-        return -K_EINTR;
+U32 KThread::sigsuspend(U32 mask, U32 sigsetSize, U32 eipCount) {
+    if (sigsetSize != 4 && sigsetSize != 8) {
+        return -K_EINVAL;
     }
-    this->waitingForSignalToEndMaskToRestore = this->sigMask | RESTORE_SIGNAL_MASK;
-    if (sigsetSize==4) {
-        this->sigMask = memory->readd(mask);
-    } else if (sigsetSize==8) {
-        this->sigMask = memory->readq(mask);
-    } else {
-        klog_fmt("sigsuspend: can't handle sigsetSize=%d", sigsetSize);
-    }
+#ifdef BOXEDWINE_MULTI_THREADED
+    // signal() holds sigWaitCond while checking the mask and publishing a
+    // thread signal. Do not let it miss the transition into this wait.
+    std::unique_lock<std::mutex> signalLock(this->sigWaitCond->m);
+#endif
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
+    if (!this->sigsuspendActive) {
+        U64& currentMask = this->inSignal ? this->inSigMask : this->sigMask;
+        U64 temporaryMask = sigsetSize == 4 ? memory->readd(mask) : memory->readq(mask);
+        temporaryMask &= ~((1ULL << (K_SIGKILL - 1)) | (1ULL << (K_SIGSTOP - 1)));
+        this->sigsuspendSavedMask = currentMask;
+        this->sigsuspendReturnEip = this->cpu->eip.u32 + eipCount;
+        this->sigsuspendActive = true;
+        currentMask = temporaryMask;
+    }
+    if (this->runSignals()) {
+        return -K_CONTINUE;
+    }
+#ifdef BOXEDWINE_MULTI_THREADED
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->waitingCondSync);
+        this->waitingCond = this->waitingForSignalToEndCond;
+    }
+    signalLock.unlock();
+#endif
     BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
 #ifdef BOXEDWINE_MULTI_THREADED
     this->startSignal = false;

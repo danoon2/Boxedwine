@@ -7,6 +7,7 @@ const source = readFileSync(new URL('./emscripten-automation-client.js', import.
 
 function harness() {
     const requests = [];
+    const events = {};
     let sync;
     const context = vm.createContext({
         AUTOMATION_CONFIG: {token: 'test', cwd: '/files', script: '/automation/install/script.txt',
@@ -16,11 +17,11 @@ function harness() {
         FS: {syncfs(populate, callback) { assert.equal(populate, false); sync = callback; }},
         IDBFS: {quit() { throw new Error('database connection closed before sync'); }},
         fetch: async (path, options) => { requests.push({path, ...options}); return {ok: true, json: async () => ({})}; },
-        setInterval() { return 1; }, clearInterval() {}, addEventListener() {},
+        setInterval() { return 1; }, clearInterval() {}, addEventListener(name, callback) { events[name] = callback; },
         getEmulatorParams: null, emrun_file_dump: null,
     });
     vm.runInContext(source, context);
-    return {context, requests, finishSync: error => sync(error)};
+    return {context, requests, events, finishSync: error => sync(error)};
 }
 
 test('completion waits for durable filesystem and screenshot delivery', async () => {
@@ -45,6 +46,22 @@ test('filesystem flush failure cannot be reported as success', async () => {
     h.context.Module.onExit(111);
     await h.finishSync(new Error('disk full'));
     assert.match(JSON.parse(h.requests.at(-1).body).syncError, /disk full/);
+});
+
+test('errors retain their stacks and still fail a successful guest exit', async () => {
+    const h = harness();
+    h.events.error({message: 'short message', error: {stack: 'Error: full stack\n    at guest (boxedwine.js:1:42)'}});
+    h.events.unhandledrejection({reason: {stack: 'Error: rejected\n    at cleanup (boxedwine.js:1:84)'}});
+    h.events.error({message: 'worker without an Error object'});
+    h.context.Module.onExit(111);
+    await h.finishSync(null);
+    const result = JSON.parse(h.requests.at(-1).body);
+    assert.equal(result.code, 111);
+    assert.deepEqual(result.browserErrors, [
+        'Error: full stack\n    at guest (boxedwine.js:1:42)',
+        'Error: rejected\n    at cleanup (boxedwine.js:1:84)',
+        'worker without an Error object',
+    ]);
 });
 
 test('native options and argv retain boundaries', () => {

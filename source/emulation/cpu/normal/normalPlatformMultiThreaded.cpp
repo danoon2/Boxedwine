@@ -72,6 +72,10 @@ static NO_INLINE void platformThreadRun(CPU* cpu) {
 static void platformThreadCleanup(CPU* cpu, const KProcessPtr& process) {
     cpu->thread->cleanup();
     process->deleteThread(cpu->thread);
+    KThread::setCurrentThread(nullptr);
+}
+
+static void platformThreadFinished() {
     // Last-thread process cleanup may synchronously need the UI thread.
     if (--platformThreadCount == 0) {
         KSystem::shutingDown = true;
@@ -125,6 +129,7 @@ static void platformThreadBrowserTick(void* arg) {
     if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
         delete state;
         emscripten_cancel_main_loop();
+        --platformThreadCount;
         return;
     }
 #endif
@@ -141,6 +146,7 @@ static void platformThreadBrowserTick(void* arg) {
     // The loop's runtime keepalive is released by its runner on return, which
     // lets Emscripten finish this pthread and recycle the worker normally.
     emscripten_cancel_main_loop();
+    platformThreadFinished();
 }
 #endif
 
@@ -177,6 +183,7 @@ static void platformThread(CPU* cpu) {
             platformThreadRun(cpu);
 #ifdef __TEST
             if (cpu->nextOp && cpu->nextOp->inst == TestEnd) {
+                --platformThreadCount;
                 return;
             }
 #endif
@@ -193,6 +200,8 @@ static void platformThread(CPU* cpu) {
     }
 
     platformThreadCleanup(cpu, process);
+    process.reset();
+    platformThreadFinished();
 #endif
 }
 

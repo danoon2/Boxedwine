@@ -2317,7 +2317,7 @@ static void runDescriptorTableQueries(bool useJit) {
                     if (address32) emitDword(offset); else emitWord(offset);
                     runDescriptorQuery(useJit);
                     if (memory->readw(address) != (table ? 1023 : LDT_ENTRIES * 8 - 1) ||
-                            memory->readd(address + 2) != 0) failed("descriptor table contents");
+                            memory->readd(address + 2) != (table ? 0xffff0000u : 0)) failed("descriptor table contents");
                     if (memory->readb(address - 1) != 0xa5 || memory->readb(address + 6) != 0xa5)
                         failed("descriptor table write exceeded six bytes");
                     verifyRegisters(expectedRegs, "descriptor table query");

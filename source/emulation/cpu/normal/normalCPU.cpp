@@ -296,7 +296,10 @@ void OPCALL normal_sidt(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);    
     U32 eaa = eaa(cpu, op);
     cpu->memory->writew(eaa, 1023); // limit
-    cpu->memory->writed(eaa + 2, 0); // base
+    // Keep the synthetic IDT in kernel address space. Wine's Win9x handler
+    // emulates reads inside this range; a zero base makes it silently swallow
+    // unrelated NULL pointer faults in applications.
+    cpu->memory->writed(eaa + 2, 0xffff0000); // base
     NEXT();
 }
 

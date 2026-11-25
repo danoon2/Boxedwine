@@ -1285,7 +1285,7 @@ static U32 syscall_rt_sigprocmask(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_rt_sigsuspend(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_SIGNAL, cpu, "rt_sigsuspend: mask=%X", ARG1);
-    U32 result = cpu->thread->sigsuspend(ARG1, ARG2);
+    U32 result = cpu->thread->sigsuspend(ARG1, ARG2, eipCount);
     SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }

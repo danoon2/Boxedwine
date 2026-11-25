@@ -770,9 +770,9 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation38.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation39.zip
                                 rm -rf automation
-                                unzip automation38.zip
+                                unzip automation39.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -794,6 +794,11 @@ pipeline {
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-Linux-x64.csv', name: 'linux64Perf'
                         }                        
                     }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'project/linux/automation/automation-results/**/*', allowEmptyArchive: true
+                        }
+                    }
                 }
                 stage ('Mac Automation (ARMv8)') {
                     agent {
@@ -802,9 +807,9 @@ pipeline {
                     steps {
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation38.zip https://boxedwine.org/v2/1/automation38.zip --output automation38.zip
+                                curl -z automation39.zip https://boxedwine.org/v2/1/automation39.zip --output automation39.zip
                                 rm -rf automation
-                                unzip automation38.zip
+                                unzip automation39.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -831,6 +836,11 @@ pipeline {
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-MacOSX.csv', name: 'macArmv8Perf'
                         }                        
                     }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'project/mac-xcode/automation/automation-results/**/*', allowEmptyArchive: true
+                        }
+                    }
                 }
                 stage ('Linux (arm64) Automation') {
                     agent {
@@ -839,9 +849,9 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation38.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation39.zip
                                 rm -rf automation
-                                unzip automation38.zip
+                                unzip automation39.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -863,6 +873,11 @@ pipeline {
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-Linux-Arm64.csv', name: 'linuxArm64Perf'
                         }                        
                     }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'project/linux/automation/automation-results/**/*', allowEmptyArchive: true
+                        }
+                    }
                 }
                 stage ('Windows Automation') {
                     agent {
@@ -870,9 +885,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation38.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation39.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            unzip automation38.zip
+                            unzip automation39.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }
@@ -900,6 +915,11 @@ pipeline {
                             stash includes: 'perfScripts/cinebench/cinebench/perf*.csv', name: 'windowsPerf'
                         }                        
                     }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'automation/automation-results/**/*', allowEmptyArchive: true
+                        }
+                    }
                 } 
                 stage ('Windows ARM64 Automation') {
                     agent {
@@ -907,9 +927,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation38.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation39.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            tar -xf automation38.zip
+                            tar -xf automation39.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }
@@ -927,6 +947,11 @@ pipeline {
                             stash includes: 'perfScripts/cinebench/cinebench/perf-Cinebench-WinArm64.csv', name: 'windowsARM64Perf'
                         }                        
                     }                   
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'automation/automation-results/**/*', allowEmptyArchive: true
+                        }
+                    }
                 }
             }
         }

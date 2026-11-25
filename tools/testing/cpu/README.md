@@ -52,3 +52,27 @@ high byte registers, segment overrides, displacements and unreadable operands:
 ```sh
 python3 ../../buildWine/probes/test_integer_exceptions.py --wine-source /path/to/wine
 ```
+
+## Signal suspension
+
+The Linux ELF probes exercise the kernel without involving Wine or a demo:
+
+```sh
+gcc -m32 -O0 sigsuspend_probe.c -o sigsuspend_probe
+gcc -m32 -O2 -pthread sigsuspend_race_probe.c -o sigsuspend_race_probe
+./sigsuspend_probe
+./sigsuspend_race_probe
+./sigsuspend_race_probe process
+```
+
+Run the same binaries from `/files/` in a fresh Boxedwine root with the full
+Wine filesystem providing glibc. Check their printed PASS records as well as
+normal completion; the legacy command-line recorder build returns 1 after a
+normal launch without a playback script.
+
+`sigsuspend_probe` checks EINTR with and without SA_RESTART, full 64-bit mask
+restoration, already-pending signals, invalid mask size, and a nested suspension
+inside a signal handler. `sigsuspend_race_probe` requires 10,000 successful
+handshakes with a sender thread. Its optional `process` argument uses process
+signals instead of thread signals. A 30-second watchdog reports TIMEOUT if a
+signal is lost between changing the mask and registering the wait.

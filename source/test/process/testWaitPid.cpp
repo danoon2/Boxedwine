@@ -322,6 +322,61 @@ void testProcessSignalWakesSigwaitMask() {
     process->pendingSignals = oldProcessPendingSignals;
 }
 
+void testSigsuspendRestoresMaskAndReturnsEintr() {
+    constexpr U32 stackTop = 0x70000000;
+    constexpr U32 maskAddress = TEST_HEAP_ADDRESS;
+    constexpr U64 usr1 = 1ULL << (K_SIGUSR1 - 1);
+    constexpr U64 usr2 = 1ULL << (K_SIGUSR2 - 1);
+    const U64 originalMasks[] = {0, usr1, usr1 | (1ULL << 63)};
+    KProcessPtr process = KProcess::create();
+    std::unique_ptr<KMemory> memory(KMemory::create(process.get()));
+    process->memory = memory.get();
+    KThread* thread = process->createThread();
+    ChangeThread current(thread);
+    CPU* cpu = thread->cpu;
+    memory->mmap(thread, stackTop - K_PAGE_SIZE, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    memory->mmap(thread, maskAddress, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    memory->mmap(thread, TEST_CODE_ADDRESS, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
+    memory->memset(TEST_CODE_ADDRESS, 0x90, K_PAGE_SIZE);
+    process->sigActions[K_SIGUSR1].handlerAndSigAction = TEST_CODE_ADDRESS + 0x100;
+    process->sigActions[K_SIGUSR1].flags = K_SA_RESTART;
+    process->sigActions[K_SIGUSR1].mask = usr2;
+    process->sigActions[K_SIGUSR2].handlerAndSigAction = TEST_CODE_ADDRESS + 0x200;
+    process->sigActions[K_SIGUSR2].flags = K_SA_RESTART;
+    auto returnFromHandler = [&]() {
+        expectWaitResult("sigsuspend signal return address", cpu->pop32(), SIG_RETURN_ADDRESS);
+        onExitSignal(cpu, nullptr);
+        cpu->nextOp = nullptr;
+    };
+    for (U64 original : originalMasks) {
+        cpu->reg[4].u32 = stackTop;
+        cpu->eip.u32 = TEST_CODE_ADDRESS;
+        thread->sigMask = original;
+        memory->writeq(maskAddress, 0);
+        thread->queuePendingSignal(K_SIGUSR1);
+        expectWaitResult("sigsuspend pending signal", thread->sigsuspend(maskAddress, 8, 2), -K_CONTINUE);
+        expectWaitResult("sigsuspend handler", cpu->eip.u32, TEST_CODE_ADDRESS + 0x100);
+        thread->sigprocmask(K_SIG_SETMASK, 0, maskAddress + 8, 8);
+        if (memory->readq(maskAddress + 8) != (usr1 | usr2)) testFail("handler mask did not include the temporary mask and blocked signals");
+
+        // A second suspension inside the first handler must not overwrite its
+        // saved mask or return address. Both syscalls ignore SA_RESTART.
+        thread->queuePendingSignal(K_SIGUSR2);
+        expectWaitResult("nested sigsuspend", thread->sigsuspend(maskAddress, 8, 2), -K_CONTINUE);
+        expectWaitResult("nested sigsuspend handler", cpu->eip.u32, TEST_CODE_ADDRESS + 0x200);
+        returnFromHandler();
+        expectWaitResult("nested sigsuspend return", cpu->reg[0].u32, -K_EINTR);
+        expectWaitResult("nested sigsuspend eip", cpu->eip.u32, TEST_CODE_ADDRESS + 0x102);
+        if (thread->inSigMask != (usr1 | usr2)) testFail("nested sigsuspend lost handler mask");
+        returnFromHandler();
+        expectWaitResult("sigsuspend return", cpu->reg[0].u32, -K_EINTR);
+        expectWaitResult("sigsuspend eip", cpu->eip.u32, TEST_CODE_ADDRESS + 2);
+        if (thread->sigMask != original || thread->sigsuspendActive) testFail("sigsuspend did not restore the full original mask");
+        expectWaitResult("sigsuspend invalid size", thread->sigsuspend(maskAddress, 6, 2), -K_EINVAL);
+        if (thread->sigMask != original || thread->sigsuspendActive) testFail("invalid sigsuspend changed signal state");
+    }
+}
+
 void testBlockedThreadSignalStartsHandler() {
 #ifdef BOXEDWINE_MULTI_THREADED
     TestContext& context = testContext();

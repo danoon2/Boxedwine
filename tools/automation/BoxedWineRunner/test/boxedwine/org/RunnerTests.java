@@ -96,7 +96,7 @@ public class RunnerTests {
         String java = Paths.get(System.getProperty("java.home"), "bin", "java").toString();
         Process process = new ProcessBuilder(java, "-Xmx32m", "-Dboxedwine.runner.timeout.seconds=1", "-jar", jar.toString(),
                 fixture.resolve("unused.zip").toString(), fixture.resolve("scripts").toString(), executable.toString())
-                .redirectErrorStream(true).redirectOutput(log.toFile()).start();
+                .directory(fixture.toFile()).redirectErrorStream(true).redirectOutput(log.toFile()).start();
         try {
             check(process.waitFor(20, TimeUnit.SECONDS), "runner hung: " + fixture);
             String output = new String(Files.readAllBytes(log), StandardCharsets.UTF_8);
@@ -132,6 +132,29 @@ public class RunnerTests {
         Files.write(executable, Arrays.asList("#!/bin/sh", "echo attempt >> '" + count + "'", "exit 1"), StandardCharsets.UTF_8);
         output = run(retry, jar, executable, 1);
         check(Files.readAllLines(count).size() == 3, "child was not run three times");
+
+        Path recovered = fixture(root, "retry-success");
+        Files.write(executable, Arrays.asList("#!/bin/sh", "if [ ! -e tried ]; then",
+                "touch tried", "echo 'first attempt fault'", "echo crop > failed.bmp",
+                "echo desktop > failed-screen.bmp", "exit 2", "fi", "echo 'script: success'", "exit 111"),
+                StandardCharsets.UTF_8);
+        output = run(recovered, jar, executable, 0);
+        Path diagnostics;
+        try (Stream<Path> runs = Files.list(recovered.resolve("automation-results"))) {
+            diagnostics = runs.findFirst().get().resolve("app");
+        }
+        Path first = diagnostics.resolve("attempt-1/play");
+        Path second = diagnostics.resolve("attempt-2/play");
+        check(Files.readAllLines(first.resolve("console.log")).contains("first attempt fault"), "retry lost failure log");
+        check(Files.readAllLines(first.resolve("result.properties")).contains("exitCode=2"), "retry lost failure result");
+        check(Files.isRegularFile(first.resolve("failed.bmp")), "retry lost failed crop");
+        check(Files.isRegularFile(first.resolve("failed-screen.bmp")), "retry lost desktop screenshot");
+        check(Files.readAllLines(second.resolve("console.log")).contains("script: success"), "missing successful retry log");
+        check(!Files.exists(second.resolve("failed.bmp")), "successful retry inherited stale screenshot");
+        run(recovered, jar, executable, 0);
+        try (Stream<Path> runs = Files.list(recovered.resolve("automation-results"))) {
+            check(runs.count() == 2, "later runner invocation overwrote earlier diagnostics");
+        }
 
         Path timeout = fixture(root, "timeout");
         Path childPids = timeout.resolve("children");

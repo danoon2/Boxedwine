@@ -1548,7 +1548,24 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
     return -K_CONTINUE;
 }
 
-void KProcess::signalProcess(U32 signal) {	
+#ifdef BOXEDWINE_MULTI_THREADED
+static void wakeSigsuspendWaiters(KProcess* process) {
+    std::vector<BOXEDWINE_CONDITION> conditions;
+    process->iterateThreads([&](KThread* thread) {
+        conditions.push_back(thread->waitingForSignalToEndCond);
+        return true;
+    });
+    // The process signal may have been queued just as a thread unmasked it.
+    // Lock the suspension condition even if waitingCond was not published yet.
+    // Retain conditions, not raw thread pointers, outside the thread-list lock.
+    for (const auto& condition : conditions) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(condition);
+        BOXEDWINE_CONDITION_SIGNAL_ALL(condition);
+    }
+}
+#endif
+
+void KProcess::signalProcess(U32 signal) {
     U64 signalMask = ((U64)1 << (signal-1));
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
@@ -1562,13 +1579,14 @@ void KProcess::signalProcess(U32 signal) {
         bool waiting = false;
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->waitingCondSync);
-            waiting = thread->waitingCond != nullptr;
+            waiting = thread->waitingCond != nullptr && thread->waitingCond != thread->waitingForSignalToEndCond;
         }
         if (waiting) {
             thread->runSignals();
         }
         return true;
     });
+    wakeSigsuspendWaiters(this);
 #else
     for (auto& t : this->threads) {
         KThread* thread = t.value;
@@ -3853,9 +3871,14 @@ U32 KProcess::signal(U32 signal) {
         }
     }
     // didn't find a thread that could handle it
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
-    this->pendingSignals |= ((U64)1 << (signal-1));
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
+        this->pendingSignals |= ((U64)1 << (signal-1));
+    }
     this->signalFd(nullptr, signal);
+#ifdef BOXEDWINE_MULTI_THREADED
+    wakeSigsuspendWaiters(this);
+#endif
     return 0;
 }
 

@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation38.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation39.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -27,11 +27,15 @@ exact crop of its original reference. This excludes the buttons' unstable
 keyboard-focus outlines and the unrelated desktop background. It then retries
 its recorded No button along with Read Me close, so a missed final click cannot
 leave the completed installer open. Its gameplay references remain unchanged.
+RCT2's installer can also be hidden behind Explorer. `automation39.zip` adds
+`WHILEWAITING=5,LBUTTON,624,11` before its fifth installer screenshot, closing
+that obstruction while retaining the original screenshot and subsequent steps.
+The archive also includes the runner that preserves every native attempt.
 
 # Browser app automation
 
 `run_emscripten_automation.py` runs all 16 app tests in
-`automation38.zip` across the four recorder-enabled browser targets: ST, MT,
+`automation39.zip` across the four recorder-enabled browser targets: ST, MT,
 ST JIT and MT JIT. This includes
 each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
 original working directories, program arguments, resolution, bit depth, CPU
@@ -71,6 +75,111 @@ Use repeatable `--target st|mt|jit|mtjit` and `--app NAME` to select a subset.
 The app names are listed in `emscripten-automation.json`; names such as `opentdd`
 and `rtc2` retain the native bundle's spelling. `--retries` defaults to three
 and `--timeout` to 900 seconds per phase.
+
+## Investigating retries
+
+A green build can contain failed attempts. Inspect every `attempt-N` directory,
+not only the final result. Browser artifacts retain console output, phase status,
+the failed screenshot crop, pixel diff and full desktop. Native runs retain the
+same diagnostics plus the actual command arguments under
+`automation-results/run-*/APP/attempt-N/PHASE/`; a new runner invocation gets a
+separate directory. Jenkins archives these even if a later attempt succeeds.
+The input manifest records archive/runtime hashes. Keep failures from distinct
+phases and causes separate when comparing repeats.
+
+The November 2026 investigation of app-automation builds 1 and 2 identified:
+
+* **RCT2 installer obstruction:** Explorer can cover the next installer dialog.
+  The archive recording change above closes it. Twelve fresh Linux x64 browser
+  cases (three per target), plus two Win32 and two Win64 native cases, passed
+  without retries before publication. Eight further Mac browser cases (two per
+  target) also passed on their first attempts.
+* **Signal suspension:** `sigsuspend` corrupted the restored mask, could return
+  success instead of EINTR, and could lose a signal between checking pending
+  delivery and registering its wait. This matches wineserver shutdown stalls
+  reproduced in BassTour and Caesar III. Restoration now belongs to each signal
+  frame, including nested handlers, and both thread and process signals wake
+  the suspended receiver. See the independent Linux probes in
+  [`../testing/cpu/README.md`](../testing/cpu/README.md#signal-suspension).
+* **Forced shutdown:** a guest thread leaves the process list before its final
+  memory cleanup. Freeing shared decoder pools at that point raced with
+  `KProcess::cleanupProcess` / `DecodedOpCache::removeAll`, producing the secondary
+  Wasm out-of-bounds error after an automation timeout. Shutdown now waits for
+  complete thread cleanup before destroying shared pools. The original timeout
+  remains a failure; the fix does not convert it into a passing attempt.
+  Twenty-four deliberately shortened MT/MTJIT timeouts and four production
+  five-minute browser timeouts exited cleanly. Native timeout exit also stops
+  guest threads before running static destructors.
+* **Recovery clicks:** `WHILEWAITING` delivered button coordinates without moving
+  the recorder's cursor after a guest warp. Wine could briefly report the click
+  position, then revert to the stale position during polling. Recovery now moves
+  the cursor and updates the held-button state. This was investigated after an
+  ARM Caesar III replay remained on its start menu despite repeated clicks.
+* **Input duration:** a slow game frame can drain a 100 ms press and release
+  together, leaving no pressed state for its frame update. Releases now use the
+  same one-second spacing as other recorded input. Modifier metadata is applied
+  with its corresponding event, rather than advertising the release early.
+  This also addresses a native Daytona replay that remained on the title screen
+  after Enter. The independent slow-frame keyboard check failed on all four old
+  browser targets and passed on all four updated targets. Twelve fresh native
+  Win32 Daytona installation/playback runs then passed without retries.
+
+`../testing/wine/automationInputProbe.c` provides a small independent recovery
+input check. Build with `i686-w64-mingw32-gcc -O2 automationInputProbe.c -o
+automationInputProbe.exe -luser32 -lgdi32`, place it in the guest's `/files/`, and run it
+with a recording containing `VERSION=2`, `WHILEWAITING=1,LBUTTON,100,100`, and
+`DONE` on separate lines. Check `/files/input-result.txt`, not just the recorder
+exit code. The probe warps to another position, then verifies that recovery
+clicks are visible to polling and that the cursor does not revert afterward.
+The old recorder failed this check on all four browser targets; the correction
+passed all four with the same probe and Wine filesystem.
+For slow-frame checks, pass `--slow-frames`; add `--keyboard` to check Enter
+instead of the left mouse button. Synchronize input with the probe's painted
+window first: `SCREENSHOT=10,10,1,1,ready.bmp`, where `ready.bmp` is one pixel of
+RGB `(13,61,107)`. This prevents startup time from consuming the input before
+the window exists. Test recorded `KEYDOWN=40`/`KEYUP=40`, recorded mouse input,
+and recovery clicks separately. All three checks passed on native Win32/Win64
+and all four browser targets.
+
+### F16 audio mixer race
+
+The original F16 demo executable has SHA-256
+`a64e184baa19ad1b1bffb9076c665ad52f6c76c2351bdcd787d6387f84beaad5`.
+The reproduced fault is a NULL read at guest EIP `0x00567e06`
+(`mov bl,[eax+ecx]`, with both registers zero) in its audio mixer. The mixer reads
+the sample pointer at `0x00566762`; the reset routine at `0x005671ed` clears the
+region containing that pointer, position and step, then rebuilds it. Its wrapper
+at `0x00567d70` sets a disable flag around the reset, but the timer callback checks
+that flag only on entry. A callback already inside the mixer can therefore read
+the temporarily cleared state. The timer is periodic with flags 1, without
+`TIME_KILL_SYNCHRONOUS`.
+
+The same fault was reproduced with the unmodified executable on native Win64
+and ARM browser MT, including a native run pinned to one CPU. This is distinct
+from the secondary Wasm shutdown error. The demo README specifies Windows 95;
+do not infer failure on that original OS from these Wine/Boxedwine results.
+The Windows 95 profile initially appeared to help, but tracing showed that it
+hid the fault: Boxedwine's old `SIDT` returned base zero, and Wine's Win9x
+instruction handler interpreted the NULL reads as reads of its emulated IDT.
+It returned `EXCEPTION_CONTINUE_EXECUTION` at both `0x00567e06` and `0x00567e09`.
+The synthetic IDT now lives at `0xffff0000`, outside user address space, so this
+compatibility handler cannot swallow unrelated NULL faults. This follows the
+[Wine handler's intended kernel-address behavior](https://www.winehq.org/pipermail/wine-devel/2001-October/002221.html).
+
+`../testing/wine/win9xNullReadProbe.c` reproduces this independently of F16.
+Build it with `i686-w64-mingw32-gcc -O2 win9xNullReadProbe.c -o probe.exe`, run
+`probe.exe` with an application-specific Wine `Version=win95` setting and a
+`VERSION=2` / `DONE` recording, and read `/files/idt-result.txt`. It loads Wine's
+Win16 kernel, then checks that an application handler receives a NULL-read
+exception. The old engine incorrectly reports zero faults; the corrected
+Win32 and Win64 engines report one. The same before/after check failed/passed
+respectively on all four browser targets with the same Wine filesystem.
+
+Neither a demo binary patch nor a generic change that serializes application
+timer callbacks has been applied. Keep the original executable and record any
+recurrence with `WINEDEBUG=+seh`, the phase log and failed desktop. The original
+Windows 95 scheduler has not been reproduced here; a version-profile setting
+is not equivalent to testing that OS.
 
 Jenkins builds the four recorder runtimes once on `emscripten && linux64`, then
 releases that executor and queues the 16 demos on the `emscripten` label. The

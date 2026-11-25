@@ -73,11 +73,13 @@
         });
     };
     addEventListener('error', event => {
-        browserErrors.push(String(event.message));
-        console.error('Browser error: ' + event.message);
+        const detail = String(event.error && event.error.stack || event.message);
+        browserErrors.push(detail);
+        console.error('Browser error: ' + detail);
     });
     addEventListener('unhandledrejection', event => {
-        browserErrors.push(String(event.reason));
-        console.error('Browser rejection: ' + event.reason);
+        const detail = String(event.reason && event.reason.stack || event.reason);
+        browserErrors.push(detail);
+        console.error('Browser rejection: ' + detail);
     });
 })();

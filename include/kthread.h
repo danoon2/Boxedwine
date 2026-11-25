@@ -110,14 +110,14 @@ public:
     U32 set_robust_list(U32 head, U32 len);
     U32 get_robust_list(U32 pid, U32 head_ptr, U32 len_ptr);
     U32 rseq(U32 rseq, U32 rseq_len, U32 flags, U32 sig);
-    U32 sigsuspend(U32 mask, U32 sigsetSize);
+    U32 sigsuspend(U32 mask, U32 sigsetSize, U32 eipCount);
     U32 sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool time64);
     U32 sleep(U32 ms);
     U32 nanoSleep(U64 nano);
     U32 clockNanoSleep(U32 clock, U32 flags, U64 nano, U32 addressRemain);
 
     U32 id = 0;
-    U64 sigMask = 0; // :TODO: what happens when this is changed while in a signal
+    U64 sigMask = 0;
     U64 inSigMask = 0;
     U32 alternateStack = 0;
     U32 alternateStackSize = 0;
@@ -153,7 +153,9 @@ public:
     U64 sigWaitMask = 0;
     U64 foundWaitSignal = 0;
 
-    U64 waitingForSignalToEndMaskToRestore = 0;
+    U64 sigsuspendSavedMask = 0;
+    U32 sigsuspendReturnEip = 0;
+    bool sigsuspendActive = false;
     U64 pendingSignals = 0;
     BOXEDWINE_MUTEX pendingSignalsMutex;
     KThreadGlContextPtr getGlContextById(U32 id);
@@ -246,9 +248,6 @@ public:
     ~ChangeThread();
     KThread* savedThread;
 };
-
-#define SIGSUSPEND_RETURN 0xF000000000000000l
-#define RESTORE_SIGNAL_MASK 0x0FFFFFFFFFFFFFFFl
 
 void OPCALL onExitSignal(CPU* cpu, DecodedOp* op);
 

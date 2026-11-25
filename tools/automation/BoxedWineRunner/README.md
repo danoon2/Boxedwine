@@ -11,7 +11,7 @@ Run this command from the repository root. The Java installation must include
 Omit `--test` to only build the JAR. The runner uses Java 8 APIs and bytecode.
 
 Jenkins builds and tests this JAR from the current checkout, then distributes it
-to the native automation workers over the JAR bundled in `automation38.zip`.
+to the native automation workers over the JAR bundled in `automation39.zip`.
 Recordings and screenshot references come directly from the asset bundle.
 
 ## Native filesystem
@@ -22,7 +22,7 @@ automation shares this full filesystem pin to preserve recorded installer flows,
 including Gecko and file associations; see
 [`../../jenkins/instructions.md`](../../jenkins/instructions.md#browser-app-automation).
 
-`automation38.zip` contains no filesystem. Jenkins runs this command inside
+`automation39.zip` contains no filesystem. Jenkins runs this command inside
 `automation/` after extracting the bundle and unstashing the runner and pin:
 
 ```text
@@ -72,7 +72,7 @@ and pass `-user-reg` automatically. For manual runs, update the extracted
 Use Python 3.11+ and the tested runner to create a new bundle:
 
 ```text
-python3 tools/automation/BoxedWineRunner/package_assets.py automation38.zip automation39.zip --runner automation-runner/bin/BoxedWineRunner.jar
+python3 tools/automation/BoxedWineRunner/package_assets.py automation39.zip automation40.zip --runner automation-runner/bin/BoxedWineRunner.jar
 ```
 
 The output must not already exist. The packager removes `automation/fs/`, embeds
@@ -102,6 +102,12 @@ with individual lines limited to 8,192 characters. A notice reports discarded
 or truncated output. `-v` still streams output to the console. This prevents a
 repeated native error from exhausting the Java heap while retaining the end of
 the failure log.
+
+Every invocation creates a separate `automation-results/run-*/` directory in
+the runner's working directory. Each app/attempt/phase retains its command,
+bounded console log, exit status, elapsed time, and failed screenshots. A later
+successful retry does not remove those diagnostics. Jenkins archives them even
+when the stage succeeds or fails, including separate Win32 and Win64 invocations.
 
 The regression tests run with a 32 MiB heap and cover verified filesystem cache
 reuse, corrupt downloads, registry presets, unchanged ZIP bytes, fresh test

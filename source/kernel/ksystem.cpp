@@ -119,6 +119,14 @@ void KSystem::destroy() {
         }
         p->killAllThreads();
     }
+#ifdef BOXEDWINE_MULTI_THREADED
+    // A thread leaves its process's list before its final memory/decoder
+    // cleanup. Wait for that cleanup too before freeing shared engine pools.
+    extern std::atomic<int> platformThreadCount;
+    while (platformThreadCount.load()) {
+        Platform::nanoSleep(1000000);
+    }
+#endif
     KSystem::setProcNode(nullptr);
 	KSystem::processes.clear();
     KProcess::shutdownPendingMappedFileRetirements();

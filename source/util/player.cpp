@@ -284,11 +284,27 @@ static std::mutex comparingCondMutex;
 static std::condition_variable comparingCond;
 
 #ifdef __EMSCRIPTEN__
+#ifdef BOXEDWINE_MULTI_THREADED
+EM_JS_DEPS(automation_exit_deps, "emscripten_force_exit");
+#endif
 static void finishEmscriptenAutomation(U32 code) {
+    emscripten_cancel_main_loop();
     if (Player::instance) {
         Player::instance->quit();
     }
+    // force_exit runs C++ static destructors before Emscripten terminates its
+    // workers. Stop guest threads first: a timed-out guest can still be using
+    // the process, memory and decoder tables those destructors release.
+    KSystem::destroy();
+#ifdef BOXEDWINE_MULTI_THREADED
+    // A synchronous proxy can wake this worker after the browser thread has
+    // destroyed the runtime. Queue exit and unwind the worker before that
+    // happens; no C++ frames may resume against the destroyed engine.
+    MAIN_THREAD_ASYNC_EM_ASM({ _emscripten_force_exit($0); }, code);
+    emscripten_exit_with_live_runtime();
+#else
     emscripten_force_exit(code);
+#endif
 }
 #endif
 
@@ -345,6 +361,7 @@ static void failAutomationTimeout(Player* player, KNativeScreenPtr screen, const
         screen->screenShot(B("failed.bmp"), nullptr, 0);
     }
     screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
+    screen->screenShot(B("failed-screen.bmp"), nullptr, 0);
 #ifdef __EMSCRIPTEN__
 #ifndef BOXEDWINE_MULTI_THREADED
     // Guest threads are paused between slices here, so their stacks are stable.
@@ -353,7 +370,6 @@ static void failAutomationTimeout(Player* player, KNativeScreenPtr screen, const
     // These files live in the browser's memory filesystem and would otherwise
     // disappear when emrun closes the failed test. Retain the whole desktop as
     // well as the crop and diff so startup failures can be diagnosed in CI.
-    screen->screenShot(B("failed-screen.bmp"), nullptr, 0);
     MAIN_THREAD_EM_ASM({
         if (typeof emrun_file_dump !== 'function') return;
         for (const name of ['failed.bmp', 'failed_diff.bmp', 'failed-screen.bmp']) {
@@ -367,6 +383,9 @@ static void failAutomationTimeout(Player* player, KNativeScreenPtr screen, const
     finishEmscriptenAutomation(2);
 #else
     player->quit();
+    // Native exit also runs static destructors while guest threads may still
+    // be using their process and memory. Finish their cleanup before exit.
+    KSystem::destroy();
     exit(2);
 #endif
 }
@@ -401,7 +420,9 @@ void bitmapCompareThread(Player* player) {
 void Player::runSlice() {  
     // at least 10 ms between mouse moves
     if (this->nextCommand == "MODIFIERS") {
-        currentInputModifiers = atoi(nextValue.c_str());
+        // This describes the following input event. Publishing it now would
+        // report a release while playback is still holding the button/key.
+        nextInputModifiers = atoi(nextValue.c_str());
         instance->readCommand();
     } else if (this->nextCommand == "WHILEWAITING") {
         std::vector<BString> items;
@@ -452,6 +473,7 @@ void Player::runSlice() {
             klog_fmt("script: %s MOVETO should have 2 values: %s", this->directory.c_str(), this->nextValue.c_str());
             exit(99);
         }
+        currentInputModifiers = nextInputModifiers;
         input->mouseMove(atoi(items[0].c_str()), atoi(items[1].c_str()), false);
         instance->readCommand();
         return;
@@ -459,8 +481,11 @@ void Player::runSlice() {
     // 1000 ms between all other commands
     if (KSystem::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand != "SCREENSHOT" && !processWaitCommand)
         return;
-    // at least 100 ms between mouse or key down/up
-    if (KSystem::getMicroCounter()<this->lastCommandTime+100000)
+    // Slow guests can consume a short press and release in the same frame,
+    // then poll only the released state. Give button/key releases and recovery
+    // input the same one-second spacing as other recorded input commands.
+    U64 minimumInputDelay = processWaitCommand || this->nextCommand == "MOUSEUP" || this->nextCommand == "KEYUP" ? 1000000 : 100000;
+    if (KSystem::getMicroCounter() < this->lastCommandTime + minimumInputDelay)
         return;
 
     // process before any other command so that button up/down and key up/down stays balanced
@@ -468,6 +493,7 @@ void Player::runSlice() {
         if (waitCommand == "LBUTTON") {
             processWaitCommand = false;
             this->lastCommandTime = KSystem::getMicroCounter();
+            this->currentInputModifiers &= ~NATIVE_LEFT_BUTTON_MASK;
             input->mouseButton(0, 0, waitMouseX, waitMouseY);
             klog_fmt("script WHILEWAITING LBUTTON x=%u y=%u", waitMouseX, waitMouseY);
             return;
@@ -487,9 +513,11 @@ void Player::runSlice() {
             klog_fmt("script: %s %s should have 3 values: %s", this->directory.c_str(), this->nextCommand.c_str(), this->nextValue.c_str());
             exit(99);
         }
+        currentInputModifiers = nextInputModifiers;
         input->mouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
         instance->readCommand();
     } else if (this->nextCommand=="KEYDOWN" || this->nextCommand=="KEYUP") {
+        currentInputModifiers = nextInputModifiers;
         input->key(atoi(this->nextValue.c_str()), 0, (this->nextCommand=="KEYDOWN")?1:0);
         instance->readCommand();
     } else if (this->nextCommand=="WAIT") {
@@ -642,6 +670,11 @@ void Player::runSlice() {
                     waitMousePositionIndex = 0;
                 }
             }
+            // A guest warp can move the cursor after the recorded MOVETO.
+            // Reposition it for recovery clicks as well as delivering button
+            // coordinates, so GetCursorPos/XQueryPointer see the same input.
+            input->mouseMove(waitMouseX, waitMouseY, false);
+            this->currentInputModifiers |= NATIVE_LEFT_BUTTON_MASK;
             input->mouseButton(1, 0, waitMouseX, waitMouseY);
             processWaitCommand = true;
             this->lastCommandTime = KSystem::getMicroCounter();

@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,6 +46,7 @@ public class Main {
     static boolean verbose = false;
     static String perfName = "Performance";
     static volatile boolean atleastOneFailed = false;
+    static Path resultsDirectory;
     static final long DEFAULT_BOXEDWINE_TIMEOUT_SECONDS = TimeUnit.MINUTES.toSeconds(30);
     static final long boxedWineTimeoutSeconds = Math.max(1, Long.getLong("boxedwine.runner.timeout.seconds", DEFAULT_BOXEDWINE_TIMEOUT_SECONDS));
     static final long PROCESS_FORCED_SHUTDOWN_SECONDS = 30;
@@ -55,6 +57,7 @@ public class Main {
         String commandLine;
         int timeToComplete;
         Vector<String> output = new Vector<>();
+        Path diagnosticsDirectory;
     }
     static public void copyFolder(Path src, Path dest) throws IOException {
         try (Stream<Path> files = Files.walk(src)) {
@@ -113,6 +116,11 @@ public class Main {
     }
 
     public static void runBoxedWine(String name, String directory, String scriptDir, String[] parts, Results results) throws IOException {
+        results.exitCode = 1;
+        results.scriptFinished = false;
+        results.output.clear();
+        String[] screenshots = {"failed.bmp", "failed_diff.bmp", "failed-screen.bmp"};
+        for (String screenshot : screenshots) Files.deleteIfExists(Paths.get(directory, screenshot));
         ProcessBuilder builder = new ProcessBuilder();
         List<String> commands = new ArrayList<>();
         commands.add(boxedWineExe);
@@ -157,14 +165,20 @@ public class Main {
         }
         builder.directory(new File(directory));
         builder.redirectErrorStream(true);
-        Process process = builder.start();
+        Path diagnostics = results.diagnosticsDirectory == null ? null :
+                Files.createDirectories(results.diagnosticsDirectory.resolve(scriptDir));
+        if (diagnostics != null) Files.write(diagnostics.resolve("command.txt"), commands, StandardCharsets.UTF_8);
+        Process process = null;
+        StreamGobbler streamGobbler = null;
+        Thread streamGobblerThread = null;
+        long start = System.nanoTime();
+        boolean timedOut = false;
         try {
-            StreamGobbler streamGobbler = new StreamGobbler(process.getInputStream(), name);
-            Thread streamGobblerThread = new Thread(streamGobbler, "BoxedWineRunner output " + name);
+            process = builder.start();
+            streamGobbler = new StreamGobbler(process.getInputStream(), name);
+            streamGobblerThread = new Thread(streamGobbler, "BoxedWineRunner output " + name);
             streamGobblerThread.setDaemon(true);
             streamGobblerThread.start();
-            long start = System.nanoTime();
-            boolean timedOut = false;
             while (!process.waitFor(250, TimeUnit.MILLISECONDS)) {
                 if (streamGobbler.failure != null) {
                     throw new IOException("Output reader failed for " + name, streamGobbler.failure);
@@ -188,9 +202,27 @@ public class Main {
             throw new IOException("Failed to run "+parts[1], e);
         } finally {
             // Worker exceptions must not leave a child running into the next attempt.
-            terminateProcess(process, parts[1]);
-            try { process.getOutputStream().close(); } catch (IOException ignored) {}
-            try { process.getInputStream().close(); } catch (IOException ignored) {}
+            if (process != null) {
+                terminateProcess(process, parts[1]);
+                try { process.getOutputStream().close(); } catch (IOException ignored) {}
+                try { process.getInputStream().close(); } catch (IOException ignored) {}
+            }
+            if (streamGobblerThread != null) waitForStreamGobbler(streamGobblerThread);
+            if (streamGobbler != null) {
+                results.output = streamGobbler.getLines();
+                results.scriptFinished = streamGobbler.scriptFinished;
+            }
+            if (diagnostics != null) {
+                Files.write(diagnostics.resolve("console.log"), results.output, StandardCharsets.UTF_8);
+                Files.write(diagnostics.resolve("result.properties"), Arrays.asList(
+                        "exitCode=" + results.exitCode, "scriptFinished=" + results.scriptFinished,
+                        "timedOut=" + timedOut, "seconds=" + (System.nanoTime() - start) / 1_000_000_000.0),
+                        StandardCharsets.UTF_8);
+                for (String screenshot : screenshots) {
+                    Path source = Paths.get(directory, screenshot);
+                    if (Files.isRegularFile(source)) Files.move(source, diagnostics.resolve(screenshot), REPLACE_EXISTING);
+                }
+            }
         }
     }
 
@@ -363,10 +395,17 @@ public class Main {
         for (int i=0;i<3;i++) {
             results = new Results();
             try {
+                results.diagnosticsDirectory = Files.createDirectories(resultsDirectory.resolve(name).resolve("attempt-" + (i + 1)));
                 runTest(name, scriptDir + File.separator + name + File.separator + "files", scriptDir + name, results);
             } catch (IOException e) {
                 results.exitCode = 1;
                 e.printStackTrace();
+                if (results.diagnosticsDirectory != null) {
+                    try {
+                        Files.write(results.diagnosticsDirectory.resolve("error.txt"),
+                                Arrays.asList(e.toString()), StandardCharsets.UTF_8);
+                    } catch (IOException diagnosticError) { diagnosticError.printStackTrace(); }
+                }
                 if (Thread.currentThread().isInterrupted()) {
                     atleastOneFailed = true;
                     return;
@@ -443,6 +482,16 @@ public class Main {
             return;
         }
         Arrays.sort(scripts);
+        try {
+            Path parent = Paths.get("automation-results").toAbsolutePath();
+            Files.createDirectories(parent);
+            // Separate runner invocations, including Jenkins suite retries and
+            // Win32/Win64 runs that reuse the same scripts directory.
+            resultsDirectory = Files.createTempDirectory(parent, "run-");
+            System.out.println("Automation diagnostics: " + resultsDirectory);
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot create automation diagnostics directory", e);
+        }
         long startTime = System.currentTimeMillis();
         int cores = Runtime.getRuntime().availableProcessors();
         if (cores > 4) {
