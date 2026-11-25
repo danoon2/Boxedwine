@@ -843,25 +843,36 @@ U32 Platform::nanoSleep(U64 nano) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
-    if (KSystem::cpuAffinityCountForApp) {
-        U32 cores = Platform::getCpuCount();
-        if (cores <= 1) {
-            return;
-        }
-        if (cores > 63) {
-            cores = 63;
-        }
-        U64 mask = 0;
-        if (count == 0) {
-            mask = (1l << cores) - 1;
-        } else if (count == 1) {
-            mask = 1 << 1; // rumor has it that core 0 isn't the best one to use
-        } else {
-            mask = (1l << count) - 1;
-        }
-        klog_fmt("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, mask);
-        SetThreadAffinityMask((HANDLE)thread->cpu->nativeHandle, (DWORD_PTR)mask);
+    if (!KSystem::cpuAffinityCountForApp) return;
+    DWORD_PTR available = 0, systemMask = 0;
+    if (!GetProcessAffinityMask(GetCurrentProcess(), &available, &systemMask) || !available) {
+        kwarn_fmt("Could not read host CPU affinity: %u", GetLastError());
+        return;
     }
+    // Respect the host's allowed CPUs, clamp oversized requests, and restore
+    // the complete process mask for system processes when count is zero.
+    DWORD_PTR mask = count ? 0 : available;
+    U32 selected = 0;
+    for (U32 i = 0; count && i < sizeof(DWORD_PTR) * 8 && selected < count; ++i) {
+        DWORD_PTR bit = (DWORD_PTR)1 << i;
+        if (available & bit) { mask |= bit; ++selected; }
+    }
+    HANDLE handle;
+    if (thread == KThread::currentThread()) {
+        handle = GetCurrentThread();
+    } else {
+#ifdef __TEST
+        handle = ((std::thread*)thread->cpu->nativeHandle)->native_handle();
+#else
+        // The creator only uses this borrowed handle before detaching.
+        handle = (HANDLE)thread->cpu->nativeHandle;
+#endif
+    }
+    if (!SetThreadAffinityMask(handle, mask)) {
+        kwarn_fmt("Could not set thread %u CPU affinity: %u", thread->id, GetLastError());
+        return;
+    }
+    klog_fmt("Process %s (PID=%d) set thread %d cpu affinity to %llX", thread->process->name.c_str(), thread->process->id, thread->id, (U64)mask);
 }
 
 void platformSetThreadDescription(KThread* thread) {

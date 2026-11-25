@@ -24,6 +24,13 @@
 #include <sched.h>
 #include <unistd.h>
 #endif
+#ifdef BOXEDWINE_MSVC
+#undef BOOL
+#include <windows.h>
+#define BOOL unsigned int
+#undef min
+#undef max
+#endif
 
 namespace {
 
@@ -777,6 +784,61 @@ void testNativeThreadAffinity() {
     if (!passed) {
         testFail("native thread affinity did not match the requested allowed CPUs");
     }
+#elif defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_MSVC)
+    DWORD_PTR available = 0, systemMask = 0;
+    if (!GetProcessAffinityMask(GetCurrentProcess(), &available, &systemMask) || !available) {
+        testFail("could not read the test process CPU mask");
+        return;
+    }
+    auto expectedMask = [&](U32 count) {
+        DWORD_PTR mask = count ? 0 : available;
+        U32 selected = 0;
+        for (U32 i = 0; count && i < sizeof(DWORD_PTR) * 8 && selected < count; ++i) {
+            DWORD_PTR bit = (DWORD_PTR)1 << i;
+            if (available & bit) { mask |= bit; ++selected; }
+        }
+        return mask;
+    };
+    auto checkMask = [&](HANDLE handle, U32 count) {
+        GROUP_AFFINITY actual = {};
+        return GetThreadGroupAffinity(handle, &actual) && actual.Mask == expectedMask(count);
+    };
+    U32 previousCount = KSystem::cpuAffinityCountForApp;
+    KSystem::cpuAffinityCountForApp = 1;
+    KProcessPtr process = KProcess::create();
+    process->memory = KMemory::create(process.get());
+    KThread* child = process->createThread();
+    std::promise<void> release;
+    auto ready = release.get_future().share();
+    bool selfPassed = false;
+    threadStartTestEntry = [&](CPU*) {
+        ready.wait();
+        KThread::setCurrentThread(child);
+        Platform::setCpuAffinityForThread(child, 1);
+        selfPassed = checkMask(GetCurrentThread(), 1);
+        KThread::setCurrentThread(nullptr);
+    };
+    S32 result = platformStartThread(child, [](void* arg) -> void* {
+        threadStartTestEntry(static_cast<CPU*>(arg));
+        return nullptr;
+    });
+    bool passed = result == 0;
+    if (!result) {
+        HANDLE handle = ((std::thread*)child->cpu->nativeHandle)->native_handle();
+        passed &= checkMask(handle, 1);
+        for (U32 count : {0u, 2u, 64u}) {
+            Platform::setCpuAffinityForThread(child, count);
+            passed &= checkMask(handle, count);
+        }
+        release.set_value();
+        platformJoinThread(child);
+        passed &= selfPassed;
+    }
+    threadStartTestEntry = {};
+    KSystem::cpuAffinityCountForApp = previousCount;
+    process->deleteThread(child);
+    KSystem::eraseProcess(process->id);
+    if (!passed) testFail("Windows thread affinity did not match the requested allowed CPUs");
 #endif
 }
 

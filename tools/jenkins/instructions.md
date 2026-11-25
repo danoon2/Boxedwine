@@ -250,6 +250,33 @@ Pinning guest threads to one host CPU does not reproduce Windows 95's priority
 scheduler. The mixer race is reproduced in this environment; whether faithful
 original-OS scheduling prevents it remains unverified.
 
+The independent `../testing/wine/timerPriorityProbe.c` measures normal-priority
+work during twelve busy 20 ms multimedia callbacks. Windows reported callback
+priority 15 with zero overlapping samples; Boxedwine/Wine reported the same
+priority but overlapped in all twelve samples on both Win32 and Win64. A direct
+host process affinity restriction and the corrected recorder runtime below
+produced the same result. This establishes a scheduling difference without
+modifying or running a demo directly on Windows. It does not by itself prove
+that scheduling accounts for every F16 failure. Microsoft's archived
+[KB148404](https://ftp.zx.net.nz/pub/archive/ftp.microsoft.com/MISC/KB/en-us/148/404.HTM)
+describes priority-based timer scheduling on Windows 95/NT, distinct from the
+interrupt-context callbacks in Windows 3.1.
+
+### Windows CPU affinity
+
+The Windows `-cpuAffinity` implementation used the borrowed native thread handle
+after `std::thread::detach` had closed it. Its unchecked API call failed with
+`ERROR_INVALID_HANDLE`, invalidating earlier Windows single-CPU comparisons.
+Initial affinity is now applied before detaching; later changes by the running
+guest thread use `GetCurrentThread`. Masks select only CPUs allowed by the host
+process, clamp oversized counts, and restore the full allowed mask for system
+processes. API failures are reported instead of logged as successful settings.
+The regression failed before the correction and passes on Win32/Win64 with both
+the normal host mask and a restricted mask that excludes CPU 0. The startup-gate
+test also passes. Caesar III is the only packaged app using this option; two
+fresh install/play runs on each of Win32 and Win64 passed with the corrected
+runtime and the unchanged automation41 recordings.
+
 ### Other native observations
 
 One old Win64 F16 installer process exited with host status `0xc0000409`, before
@@ -274,6 +301,10 @@ browser installation/playback cases (two per target) passed with the original
 reference images. Nine fresh Real Deal installs across three runtime revisions
 passed with COM tracing enabled; the intermittent registration failure has not
 been reproduced under that tracing and remains unresolved.
+
+The final automation41 suites with the input/capture/shutdown corrections passed
+all 16 apps on Win32 and all 16 on Win64 without retries. These runs preceded the
+additional Windows affinity correction above.
 
 The archived Mac F16 attempt also reported its recorder timeout but did not
 exit until the runner killed it at 30 minutes. Its menu failure matches the

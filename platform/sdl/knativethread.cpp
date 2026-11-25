@@ -103,11 +103,18 @@ S32 platformStartThread(KThread* thread, PlatformThreadFunction entry) {
 #if defined(_DEBUG) && defined(BOXEDWINE_MSVC)
     platformSetThreadDescription(thread);
 #endif
-    cppThread.detach();
 #endif
     if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
         Platform::setCpuAffinityForThread(thread, KSystem::cpuAffinityCountForApp);
     }
+#if !defined(__EMSCRIPTEN__) && !defined(__TEST)
+    // On Windows detach closes std::thread's native handle. Finish all setup
+    // while that handle is valid and the child is still behind the start gate.
+    cppThread.detach();
+#ifdef BOXEDWINE_MSVC
+    cpu->nativeHandle = 0; // Later self-affinity changes use GetCurrentThread().
+#endif
+#endif
     return 0;
 }
 
