@@ -264,6 +264,9 @@ const TestEntry TEST_ENTRIES[] = {
 #ifndef BOXEDWINE_MULTI_THREADED
     {testSingleThreadSchedulerTimeSlice, "Test single-thread scheduler timed turns", TEST_ENTRY_SERIAL},
     {testSingleThreadSchedulerTimers, "Test single-thread scheduler timer deadlines", TEST_ENTRY_SERIAL},
+#ifdef __EMSCRIPTEN__
+    {testBrowserSchedulerFaultRecovery, "Test browser scheduler fault recovery", TEST_ENTRY_SERIAL},
+#endif
 #endif
 #if defined(BOXEDWINE_JIT_X86) || defined(BOXEDWINE_JIT_X64) || defined(BOXEDWINE_JIT_ARMV8)
     {testWasmJitFpuCache, "Test native JIT x87 stack cache"},

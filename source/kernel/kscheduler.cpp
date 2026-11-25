@@ -177,6 +177,20 @@ static S32 increaseContextTime(S32 value) {
     return value + CONTEXT_TIME_STEP;
 }
 
+static void finishThreadTurn(KThread* thread) {
+    // Deletion is deferred until the guest has unwound out of its syscall.
+    if (thread->terminating) {
+        KProcessPtr process = thread->process;
+        process->deleteThread(thread);
+    } else if (thread->ptraceStopped) {
+        thread->scheduledThreadNode.remove();
+    } else if (!thread->waitingCond) {
+        // Include threads scheduled while this one was running.
+        thread->scheduledThreadNode.remove();
+        scheduledThreads.addToBack(&thread->scheduledThreadNode);
+    }
+}
+
 #ifdef __EMSCRIPTEN__
 static KThread* runSliceExceptionThread;
 
@@ -184,8 +198,13 @@ bool recoverRunSliceException() {
     if (!runSliceExceptionThread) {
         return false;
     }
-    runSliceExceptionThread->cpu->nextOp = nullptr;
+    KThread* thread = runSliceExceptionThread;
     runSliceExceptionThread = nullptr;
+    thread->cpu->nextOp = nullptr;
+    // runSlice unwound before its normal scheduling tail. In particular, a
+    // terminating/faulting thread must not keep the first runnable slot.
+    ChangeThread current(thread);
+    finishThreadTurn(thread);
     return true;
 }
 #endif
@@ -318,17 +337,7 @@ bool runSlice() {
         currentThread->userTime+=diff-sysCallTime;
         currentThread->kernelTime+=sysCallTime;
 
-        // this is how we signal to delete the current thread, since we can't delete it in the syscall, maybe we should use smart_ptr for threads
-        if (currentThread->terminating) {
-            KProcessPtr process = currentThread->process;
-            process->deleteThread(currentThread);
-        } else if (currentThread->ptraceStopped) {
-            node->remove();
-        } else if (!currentThread->waitingCond) {
-            // make sure we are behind any threads that were recently scheduled
-            node->remove();
-            scheduledThreads.addToBack(node);
-        }
+        finishThreadTurn(currentThread);
     }
     if (!scheduledThreads.isEmpty()) {
         if (elapsedTime>11000) {

@@ -31,10 +31,15 @@ Linux/macOS (Java in PATH):
 
 Jenkins supplies its own Boxedwine build, rebuilt Java runner, and current
 filesystem.properties from the checkout. It downloads the full filesystem
-separately before running functional or Cinebench automation. Browser automation
-has its own web filesystem pin and does not use this bundle's filesystem pin.
+separately before running functional or Cinebench automation. Browser app
+automation uses this same asset bundle and the checkout's full filesystem pin.
 
-Application assets, input scripts, and screenshot references are unchanged from
-the source bundle. validation.json records packaging checks, not a new runtime
-qualification. Earlier documentation and qualification records are retained under
-provenance/ and apply only to the older inputs recorded there.
+Native and browser automation read the packaged recordings and screenshot
+references directly. This archive includes the tested Daytona and Firefight
+installer recovery changes and Firefight's cropped completion-message reference;
+no runtime recording patches or image crops are applied. App executables and
+gameplay references are unchanged.
+
+validation.json records packaging checks. Recording changes and their input
+hashes are recorded under provenance/, alongside earlier documentation and
+qualification records that apply only to the inputs recorded there.

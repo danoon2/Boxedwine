@@ -1218,6 +1218,10 @@ def find_chrome(explicit_path: Path | None = None) -> Path:
         found = shutil.which(command)
         if found:
             candidates.append(Path(found))
+    if sys.platform == "darwin":
+        for applications in (Path('/Applications'), Path.home() / 'Applications'):
+            candidates.append(applications / 'Google Chrome.app/Contents/MacOS/Google Chrome')
+            candidates.append(applications / 'Chromium.app/Contents/MacOS/Chromium')
     if os.name == "nt":
         for base in (
             os.environ.get("PROGRAMFILES"),

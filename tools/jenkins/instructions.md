@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation34.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation38.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -9,11 +9,100 @@ writable test root. The downloaded ZIP is unchanged. See the
 [runner instructions](../automation/BoxedWineRunner/README.md#native-filesystem) for local use
 and the [release checklist](../buildWine/RELEASING.md) for advancing the pin.
 
-Browser AbiWord automation keeps its separate web filesystem URL and SHA-256 in
-`Jenkinsfile`; changing the native pin does not change browser automation.
-Recordings and screenshot references are packaged in the downloaded automation
-assets. Update those archives when recordings change; Jenkins does not patch
-individual recordings or generate additional recording overlays.
+Browser app automation pins the native app bundle in `emscripten-automation.json`
+and uses the same full Wine filesystem pin as native automation. The full root
+includes Gecko and file associations needed by recorded installer flows (for
+example Caesar III's browser bookmarks page). The browser preparer repackages
+each app's files, recordings and captures into an overlay and applies the native
+runner's GDI registry settings. App executables, recordings, and screenshot
+references are copied byte-for-byte from the archive, including the installer
+fixes described below. Native and browser automation use the same packaged files.
+
+Daytona's final installer recovery cycles both the Read Me close button and the
+installer Exit button. The original single Exit click can be consumed by a late
+window; its recording otherwise retries only Read Me. This change uses the
+existing `WHILEWAITING` command and preserves every screenshot assertion.
+Firefight checks the final dialog's caption and completion message using an
+exact crop of its original reference. This excludes the buttons' unstable
+keyboard-focus outlines and the unrelated desktop background. It then retries
+its recorded No button along with Read Me close, so a missed final click cannot
+leave the completed installer open. Its gameplay references remain unchanged.
+
+# Browser app automation
+
+`run_emscripten_automation.py` runs all 16 app tests in
+`automation38.zip` across the four recorder-enabled browser targets: ST, MT,
+ST JIT and MT JIT. This includes
+each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
+original working directories, program arguments, resolution, bit depth, CPU
+affinity and environment overrides. Like the browser launcher's GDI preset, it
+sets `WINE_D3D_CONFIG=webgl=0,webgl_glsl_es=0` so Wine allows the
+native suite's paletted display modes. It downloads and verifies the bundle and
+full Wine ZIP using the pinned size and SHA-256 before preparing local overlays.
+
+Each app attempt gets a fresh headless Chrome profile and one tab. Its phases
+navigate that same tab and share one local origin and IndexedDB filesystem,
+flushed before the next phase. Playback
+waits for guest processes to finish after `DONE`, allowing Wine and installers
+to finish writing files and registry data. Success requires exit code 111, a
+successful filesystem flush and no uncaught browser errors. A premature browser
+exit or timeout fails. Failed apps retry from installation with a new profile;
+other apps and targets still run. No existing desktop Chrome process is killed.
+
+Build and run locally from WSL with the pinned emsdk activated:
+
+```sh
+cd project/emscripten
+make automation
+make automationMultiThreaded
+make automationJit
+make automationMultiThreadedJit
+cd ../..
+python3 tools/jenkins/run_emscripten_automation.py --prepare-only
+python3 tools/jenkins/run_emscripten_automation.py --prepared \
+  --output tmp/browser-automation-run --chrome /path/to/chrome
+```
+
+The output directory must be new. Omit `--prepared` to download/prepare and run
+in one command. `--prepared` verifies the prepared files before reusing them.
+`--reuse-prepared` verifies and reuses a worker's cache, preparing it when missing,
+out of date, or corrupt. Both modes verify the pins and prepared file hashes.
+Use repeatable `--target st|mt|jit|mtjit` and `--app NAME` to select a subset.
+The app names are listed in `emscripten-automation.json`; names such as `opentdd`
+and `rtc2` retain the native bundle's spelling. `--retries` defaults to three
+and `--timeout` to 900 seconds per phase.
+
+Jenkins builds the four recorder runtimes once on `emscripten && linux64`, then
+releases that executor and queues all 64 app/target combinations independently
+on the `emscripten` label. The next free agent takes the next queued case. The
+Linux x64, Linux ARM64 and Mac agents each have **one executor**; keep this setting
+to avoid running competing browser tests on one machine. Installation, playback
+and any clean retries stay together within one case. Ordinary app failures mark
+the build failed while the other cases continue; a user abort stops the run.
+
+Small stashes distribute the runner and the selected runtime. Each worker keeps
+the downloaded ZIPs and prepared overlays in its dedicated `@EmscriptenApps`
+workspace, using `--reuse-prepared` between cases. Installed files and browser
+profiles are still fresh for every attempt. Each case selects an available local
+HTTP port and archives its own results under its build number, target and app.
+Workers need Python 3.9+ and Chrome or Chromium; Linux discovers the browser in
+`PATH`, while macOS also checks the usual application bundles. Fedora ARM64 uses
+the `chromium` package. Only the compile worker needs the Emscripten SDK.
+
+`results.json` and `junit.xml` report every completed app/target combination.
+Each phase retains `console.log` and `result.json`; each attempt has `chrome.log`.
+Recorder timeouts also retain `failed.bmp`, `failed_diff.bmp` and
+`failed-screen.bmp`. `inputs.json` records the pins and runtime hashes.
+Jenkins archives these artifacts and publishes the JUnit results. Preparation
+and execution are local operations and do not upload assets or results.
+
+Harness regression checks:
+
+```sh
+python3 -m unittest discover -s tools/jenkins -p test_emscripten_automation.py -v
+node --test tools/jenkins/test_emscripten_automation_client.mjs
+groovy tools/jenkins/test_emscripten_automation_pipeline.groovy
+```
 
 # Browser unit-test shutdown
 

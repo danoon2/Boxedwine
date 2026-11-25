@@ -179,7 +179,8 @@ void mainloop() {
             if (!recoverRunSliceException()) {
                 throw;
             }
-            break;
+            // Keep UI, timers and recorder progress alive after a guest fault.
+            ran = true;
         }
 
         KNativeSystem::tick();

@@ -48,6 +48,9 @@ void testRunCPU();
 void testCloneVmCompiledEntryHelpers();
 void testSingleThreadSchedulerTimeSlice();
 void testSingleThreadSchedulerTimers();
+#ifdef __EMSCRIPTEN__
+void testBrowserSchedulerFaultRecovery();
+#endif
 void testFail(const char* msg, ...);
 void testRunParallel(const TestEntry* entries, size_t entryCount, U32 workerCount = 0);
 void testJitSignalPendingReset();

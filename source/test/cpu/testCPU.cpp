@@ -273,6 +273,89 @@ void testPushCode32(int value) {
 }
 
 #ifndef BOXEDWINE_MULTI_THREADED
+#ifdef __EMSCRIPTEN__
+void testBrowserSchedulerFaultRecovery() {
+    extern S32 contextTime;
+    extern S32 contextTimeRemaining;
+    static U64 hostTime;
+    TestContext& context = testContext();
+    std::unique_ptr<KThread> peer(context.process->createThread());
+    class FaultCPU : public NormalCPU {
+    public:
+        FaultCPU(KMemory* memory) : NormalCPU(memory) { op.inst = Nop; }
+        DecodedOp* getOp(U32, U32) override { return &op; }
+        void run() override {
+            ++dispatches;
+            ++blockInstructionCount;
+            hostTime += 9000;
+            if (fault) throw 1;
+            yield = true;
+        }
+        DecodedOp op;
+        bool fault = true;
+        U32 dispatches = 0;
+    } faulting(context.memory), healthy(context.memory);
+    struct RestoreScheduler {
+        KThread* thread;
+        KThread* peer;
+        CPU* cpu;
+        CPU* peerCpu;
+        S32 budget = contextTime;
+        S32 remaining = contextTimeRemaining;
+        ~RestoreScheduler() {
+            unscheduleThread(thread);
+            unscheduleThread(peer);
+            thread->ptraceStopped = false;
+            thread->cpu = cpu;
+            peer->cpu = peerCpu;
+            contextTime = budget;
+            contextTimeRemaining = remaining;
+            setSchedulerTestClock(nullptr);
+        }
+    } restore{context.thread, peer.get(), context.thread->cpu, peer->cpu};
+    faulting.thread = context.thread;
+    healthy.thread = peer.get();
+    healthy.fault = false;
+    context.thread->cpu = &faulting;
+    peer->cpu = &healthy;
+    hostTime = 0;
+    setSchedulerTestClock([]() -> U64 { return hostTime; });
+    scheduleThread(peer.get());
+    scheduleThread(context.thread);
+    bool caught = false;
+    try { runSlice(); } catch (...) { caught = true; }
+    if (!caught || !recoverRunSliceException() || faulting.nextOp || recoverRunSliceException()) {
+        testFail("browser guest fault must be recovered exactly once and discard the decoded op");
+    }
+    caught = false;
+    try { runSlice(); } catch (...) { caught = true; recoverRunSliceException(); }
+    if (caught || healthy.dispatches != 1 || faulting.dispatches != 1) {
+        testFail("a faulting guest must not starve the next runnable thread");
+    }
+    try { runSlice(); } catch (...) {
+        context.thread->ptraceStopped = true;
+        recoverRunSliceException();
+    }
+    if (context.thread->scheduledThreadNode.isInList()) {
+        testFail("fault recovery must remove a ptrace-stopped thread from the runnable queue");
+    }
+    unscheduleThread(peer.get());
+    KThread* terminating = context.process->createThread();
+    const U32 terminatingId = terminating->id;
+    delete terminating->cpu;
+    terminating->cpu = new FaultCPU(context.memory);
+    terminating->cpu->thread = terminating;
+    terminating->terminating = true;
+    scheduleThread(terminating);
+    try { runSlice(); } catch (...) { recoverRunSliceException(); }
+    if (context.process->getThreadById(terminatingId)) {
+        testFail("fault recovery must finish deleting a terminating guest thread");
+        unscheduleThread(terminating);
+        context.process->deleteThread(terminating);
+    }
+}
+#endif
+
 void testSingleThreadSchedulerTimers() {
     extern S32 contextTime;
     extern S32 contextTimeRemaining;

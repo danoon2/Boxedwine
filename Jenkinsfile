@@ -187,106 +187,91 @@ void retryCinebench(String name, Closure run) {
     }
 }
 
-void runEmscriptenAbiWordAutomation(String automationName, String buildDir, String port) {
-    withEnv([
-        "BOXEDWINE_AUTOMATION_NAME=${automationName}",
-        "BOXEDWINE_AUTOMATION_BUILD_DIR=${buildDir}",
-        "BOXEDWINE_AUTOMATION_PORT=${port}"
-    ]) {
-        sh '''#!/bin/bash
-            source ~/emsdk/emsdk_env.sh
-            export DISPLAY=:0
-            export XAUTHORITY="$HOME/.Xauthority"
-            cd project/emscripten
-            set -euo pipefail
-
-            chrome_profile=''
-            cleanup_chrome_profile() {
-                local cleanup_attempt
-
-                if [ -z "$chrome_profile" ]; then
-                    return 0
-                fi
-
-                case "$chrome_profile" in
-                    "$WORKSPACE"/.chrome-*)
-                        # emrun terminates Chrome, but its child processes can briefly
-                        # recreate profile files while they are shutting down.
-                        for cleanup_attempt in 1 2 3 4 5
-                        do
-                            if rm -rf -- "$chrome_profile"; then
-                                chrome_profile=''
-                                return 0
-                            fi
-
-                            if [ "$cleanup_attempt" != "5" ]; then
-                                echo "Chrome profile is still busy; retrying cleanup (${cleanup_attempt}/5)"
-                                sleep 1
-                            fi
-                        done
-
-                        echo "WARNING: Chrome profile is still busy; leaving it for workspace cleanup: $chrome_profile" >&2
-                        chrome_profile=''
-                        return 0
-                        ;;
-                    *)
-                        echo "Refusing to remove unexpected Chrome profile path: $chrome_profile" >&2
-                        return 1
-                        ;;
-                esac
+void runDistributedEmscriptenAutomation() {
+    def targets = [st: 'Automation', mt: 'AutomationMultiThreaded',
+                   jit: 'AutomationJit', mtjit: 'AutomationMultiThreadedJit']
+    def apps = []
+    // Compile once, then release this executor so it can also take queued tests.
+    node('emscripten && linux64') {
+        ws("${env.WORKSPACE}@EmscriptenAppBuild") {
+            stage('Prepare Emscripten app tests') {
+                gitCheckout()
+                sh '''#!/bin/bash
+                    set -euo pipefail
+                    source ~/emsdk/emsdk_env.sh
+                    python3 -m unittest discover -s tools/jenkins -p test_emscripten_automation.py -v
+                    node --test tools/jenkins/test_emscripten_automation_client.mjs
+                    cd project/emscripten
+                    make automation
+                    make automationMultiThreaded
+                    make automationJit
+                    make automationMultiThreadedJit
+                '''
+                apps = readJSON(file: 'tools/jenkins/emscripten-automation.json', returnPojo: true).apps
+                stash name: 'emscripten-app-harness', includes: [
+                    'tools/jenkins/run_emscripten_automation.py',
+                    'tools/jenkins/emscripten-automation-client.js',
+                    'tools/jenkins/emscripten-automation.json',
+                    'tools/automation/BoxedWineRunner/filesystem.properties',
+                    'tools/testing/wine/wineGraphicsBrowser.py',
+                    'tools/buildWine/webgl_build_identity.py'
+                ].join(',')
+                targets.each { target, buildDir ->
+                    def runtime = "project/emscripten/Build/${buildDir}"
+                    stash name: "emscripten-app-${target}",
+                          includes: "${runtime}/boxedwine*.js,${runtime}/boxedwine.wasm,${runtime}/boxedwine.html,${runtime}/boxedwine.css,${runtime}/fsfs.js"
+                }
             }
-            trap cleanup_chrome_profile EXIT
-
-            /usr/bin/google-chrome --version
-            last_rc=1
-            for attempt in 1 2 3
-            do
-                echo "${BOXEDWINE_AUTOMATION_NAME} attempt ${attempt}/3"
-                chrome_profile="$(mktemp -d "$WORKSPACE/.chrome-${BOXEDWINE_AUTOMATION_BUILD_DIR}-${attempt}.XXXXXX")"
-                # Avoid dependence on the worker's desktop: headed Chrome can
-                # stall guest callbacks despite the throttling flags below.
-                # Headless Chrome still renders the guest screenshots used here.
-                chrome_args="--headless=new --user-data-dir=${chrome_profile}"
-                chrome_args+=" --disable-background-timer-throttling"
-                chrome_args+=" --disable-backgrounding-occluded-windows"
-                chrome_args+=" --disable-renderer-backgrounding"
-
-                attempt_dir="$WORKSPACE/project/emscripten/automation-results/$BUILD_NUMBER/$BOXEDWINE_AUTOMATION_BUILD_DIR/attempt-$attempt"
-                mkdir -p "$attempt_dir"
-                cd "Build/${BOXEDWINE_AUTOMATION_BUILD_DIR}"
-                set +e
-                emrun --kill-exit \
-                    --port "$BOXEDWINE_AUTOMATION_PORT" \
-                    --timeout 600 \
-                    --timeout-returncode 124 \
-                    --dump-out-directory "$attempt_dir" \
-                    --browser="/usr/bin/google-chrome" \
-                    --browser-args="$chrome_args" \
-                    'boxedwine.html?root=boxedwine&overlay=abiword_auto&w=%2Ffiles&play=%2Ffiles%2Fscript.txt&p=ABIWORD.EXE&resolution=1024x768&storage=memory' 2>&1 | tee "$attempt_dir/console.log"
-                rc=${PIPESTATUS[0]}
-                set -e
-                printf '%s\\n' "$rc" > "$attempt_dir/exit-code.txt"
-                cd ../..
-
-                cleanup_chrome_profile
-                chrome_profile=''
-
-                if [ "$rc" = "111" ]; then
-                    echo "${BOXEDWINE_AUTOMATION_NAME} passed"
-                    exit 0
-                fi
-
-                last_rc="$rc"
-                echo "${BOXEDWINE_AUTOMATION_NAME} attempt ${attempt}/3 failed with exit code ${rc}"
-            done
-
-            echo "${BOXEDWINE_AUTOMATION_NAME} failed after 3 attempts"
-            if [ "$last_rc" = "0" ]; then
-                exit 1
-            fi
-            exit "$last_rc"
-        '''
+        }
     }
+    def cases = [:]
+    targets.each { target, buildDir ->
+        apps.each { app ->
+            def caseTarget = target.toString()
+            def caseApp = app.toString()
+            def caseName = "Emscripten ${caseTarget} / ${caseApp}".toString()
+            cases[caseName] = {
+                stage(caseName) {
+                    // A failed app must not cancel the other queued tests.
+                    // User aborts still interrupt the complete parallel stage.
+                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
+                        // All three emscripten agents have one executor. Each
+                        // node block queues one app/target on the next free agent.
+                        node('emscripten') {
+                            ws("${env.WORKSPACE}@EmscriptenApps") {
+                                def results = "project/emscripten/automation-results/${env.BUILD_NUMBER}/${caseTarget}/${caseApp}".toString()
+                                dir(results) { deleteDir() }
+                                try {
+                                    unstash 'emscripten-app-harness'
+                                    unstash "emscripten-app-${caseTarget}"
+                                    withEnv([
+                                        "BOXEDWINE_AUTOMATION_TARGET=${caseTarget}",
+                                        "BOXEDWINE_AUTOMATION_APP=${caseApp}",
+                                        "BOXEDWINE_AUTOMATION_OUTPUT=${results}"
+                                    ]) {
+                                        timeout(time: 150, unit: 'MINUTES') {
+                                            sh '''#!/bin/bash
+                                                set -euo pipefail
+                                                python3 tools/jenkins/run_emscripten_automation.py \
+                                                    --reuse-prepared \
+                                                    --target "$BOXEDWINE_AUTOMATION_TARGET" \
+                                                    --app "$BOXEDWINE_AUTOMATION_APP" \
+                                                    --output "$BOXEDWINE_AUTOMATION_OUTPUT"
+                                            '''
+                                        }
+                                    }
+                                } finally {
+                                    archiveArtifacts artifacts: "${results}/**/*", allowEmptyArchive: true
+                                    junit testResults: "${results}/junit.xml", allowEmptyResults: true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    parallel cases
 }
 
 void publishGithubBuildStatus(String state, String description) {
@@ -751,85 +736,11 @@ pipeline {
         }
         stage ('Automation') {
             parallel {
-                stage ('Emscripten AbiWord Automation') {
-                    agent {
-                        // This stage uses the controller's x64 Chrome/display setup.
-                        label "emscripten && linux64"
-                    }
+                stage ('Emscripten App Automation') {
+                    agent none
                     steps {
                         script {
-                            gitCheckout()
-                        }
-                        sh '''#!/bin/bash
-                            source ~/emsdk/emsdk_env.sh
-                            export DISPLAY=:0
-                            export XAUTHORITY="$HOME/.Xauthority"
-                            cd project/emscripten
-                            set -euo pipefail
-
-                            # Keep the AbiWord captures paired with the Wine 11 window theme.
-                            ABIWORD_AUTO_URL='https://boxedwine.org/v2/1/abiword_auto_v3.zip'
-                            ABIWORD_AUTO_SHA256='e71c79c0335da3d2b89e23b79c1f2162b954fedf68d442a210d8b28eb783eef5'
-                            BOXEDWINE_AUTO_URL='https://boxedwine.org/v2/48/TinyCore15Wine11.0-web.zip'
-                            BOXEDWINE_AUTO_SHA256='be55b078d6937d4ad5d0fb45d152307121b193a6e51c43d7cab3ae26e001d64e'
-
-                            file_matches_sha256() {
-                                local file="$1"
-                                local expected_sha="$2"
-                                [ -f "$file" ] && printf '%s  %s\\n' "$expected_sha" "$file" | sha256sum -c - >/dev/null 2>&1
-                            }
-
-                            download_checked() {
-                                local url="$1"
-                                local output="$2"
-                                local expected_sha="$3"
-                                local tmp="${output}.tmp"
-
-                                if file_matches_sha256 "$output" "$expected_sha"; then
-                                    echo "$output already exists and matches expected SHA-256"
-                                    return 0
-                                fi
-
-                                echo "Downloading $output from $url"
-                                rm -f "$tmp"
-                                curl -fL --retry 3 --retry-delay 5 --connect-timeout 30 "$url" -o "$tmp"
-                                printf '%s  %s\\n' "$expected_sha" "$tmp" | sha256sum -c -
-                                mv "$tmp" "$output"
-                            }
-
-                            download_checked "$ABIWORD_AUTO_URL" abiword_auto.zip "$ABIWORD_AUTO_SHA256"
-                            download_checked "$BOXEDWINE_AUTO_URL" boxedwine.zip "$BOXEDWINE_AUTO_SHA256"
-
-                            make clean
-                            make automation
-                            make automationMultiThreaded
-                            make automationJit
-                            make automationMultiThreadedJit
-
-                            killall -9 python3 2>/dev/null || true
-                            killall -9 chrome 2>/dev/null || true
-                        '''
-                        script {
-                            // These browsers share one worker. Run them serially:
-                            // Chrome's unthrottling flags alone do not prevent the
-                            // interpreter from missing Wine's desktop startup deadline.
-                            stage('Emscripten ST') {
-                                runEmscriptenAbiWordAutomation('AbiWord Emscripten ST automation', 'Automation', '6931')
-                            }
-                            stage('Emscripten MT') {
-                                runEmscriptenAbiWordAutomation('AbiWord Emscripten MT automation', 'AutomationMultiThreaded', '6932')
-                            }
-                            stage('Emscripten ST JIT') {
-                                runEmscriptenAbiWordAutomation('AbiWord Emscripten ST JIT automation', 'AutomationJit', '6933')
-                            }
-                            stage('Emscripten MT JIT') {
-                                runEmscriptenAbiWordAutomation('AbiWord Emscripten MT JIT automation', 'AutomationMultiThreadedJit', '6934')
-                            }
-                        }
-                    }
-                    post {
-                        always {
-                            archiveArtifacts artifacts: "project/emscripten/automation-results/${env.BUILD_NUMBER}/**/*", allowEmptyArchive: true
+                            runDistributedEmscriptenAutomation()
                         }
                     }
                 }
@@ -840,9 +751,9 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation38.zip
                                 rm -rf automation
-                                unzip automation36.zip
+                                unzip automation38.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -872,9 +783,9 @@ pipeline {
                     steps {
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation36.zip https://boxedwine.org/v2/1/automation36.zip --output automation36.zip
+                                curl -z automation38.zip https://boxedwine.org/v2/1/automation38.zip --output automation38.zip
                                 rm -rf automation
-                                unzip automation36.zip
+                                unzip automation38.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -909,9 +820,9 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation38.zip
                                 rm -rf automation
-                                unzip automation36.zip
+                                unzip automation38.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -940,9 +851,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation38.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            unzip automation36.zip
+                            unzip automation38.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }
@@ -977,9 +888,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation36.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation38.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            tar -xf automation36.zip
+                            tar -xf automation38.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }

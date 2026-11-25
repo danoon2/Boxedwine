@@ -499,7 +499,13 @@ void Player::runSlice() {
         }
     } else if (this->nextCommand=="DONE") {
 #ifdef __EMSCRIPTEN__
-        finishEmscriptenAutomation(111);
+        // Like native playback, let the guest finish before reporting success.
+        // Installers still write files/registry after their final click, and a
+        // command-only recording (winecfg -v winxp) starts with DONE. Exiting
+        // immediately can silently skip that command or truncate installation.
+        if (KSystem::getRunningProcessCount() == 0) {
+            finishEmscriptenAutomation(111);
+        }
 #endif
     } else if (this->nextCommand=="SCREENSHOT") {
         if (KSystem::getMicroCounter()<this->lastScreenRead+1000000) {

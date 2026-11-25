@@ -32,6 +32,8 @@ project/linux/__pycache__/
 project/linux/linux_build/
 project/mac-xcode/bin/
 project/emscripten/Build/
+project/emscripten/automation-assets/
+project/emscripten/automation-results/
 **/imgui.ini
 **/*.vcxproj.user
 project/linux/msvc-remote/Boxedwine/.vs/

@@ -1,0 +1,83 @@
+// Injected only by the local/CI automation server, after the normal browser shell.
+(() => {
+    const config = AUTOMATION_CONFIG;
+    const output = [];
+    const browserErrors = [];
+    let finished = false;
+    for (const name of ['log', 'warn', 'error']) {
+        const original = console[name].bind(console);
+        console[name] = (...args) => {
+            const line = args.map(String).join(' ');
+            output.push(line);
+            original(...args);
+        };
+    }
+    const post = async (suffix, body) => {
+        const response = await fetch('/automation/' + config.token + '/' + suffix, {method: 'POST', body});
+        if (!response.ok) throw new Error('Automation HTTP ' + response.status + ': ' + suffix);
+        return response;
+    };
+    // Stream progress as well as the final result: a hung/crashed browser must
+    // leave useful output even when Module.onExit is never reached.
+    let sent = 0;
+    let pending = Promise.resolve();
+    const flush = () => {
+        const end = output.length;
+        if (end > sent) {
+            const body = JSON.stringify(output.slice(sent, end));
+            pending = pending.then(() => post('log', body));
+            sent = end;
+        }
+        return pending;
+    };
+    const progress = setInterval(() => flush().catch(console.error), 5000);
+    const uploads = [];
+    const originalInitialized = Module.onRuntimeInitialized;
+    Module.onRuntimeInitialized = function () {
+        if (originalInitialized) originalInitialized();
+        // FS.quit runs immediately after onExit and closes IDBFS connections.
+        // Keep them open until our asynchronous final flush is acknowledged;
+        // this isolated browser is then terminated by the runner.
+        IDBFS.quit = () => {};
+        // Retain the recorder's actual framebuffer/crop/diff, including MT runs.
+        emrun_file_dump = (name, bytes) => {
+            uploads.push(post('file/' + encodeURIComponent(name), bytes));
+        };
+    };
+    getEmulatorParams = () => [
+        '-root', ROOT, '-zip', Config.extraZipFiles[0], '-zip', Config.rootZipFile,
+        '-play', config.script, '-w', config.cwd, ...config.options,
+        // Match the browser shell's GDI preset. Its default WebGL profile
+        // restricts display modes and otherwise prevents paletted apps (AoE)
+        // from starting, even when the registry already selects GDI.
+        '-env', 'WINE_D3D_CONFIG=webgl=0,webgl_glsl_es=0',
+        '-nosound', '-novideo', '/bin/wine', config.program, ...config.args
+    ];
+    Module.onExit = code => {
+        if (finished) return;
+        finished = true;
+        clearInterval(progress);
+        console.log('Automation guest exited: ' + code + '; flushing filesystem');
+        // Preserve the installed files and registry before starting the next
+        // phase with the same profile. A fresh profile is used for every retry.
+        FS.syncfs(false, async error => {
+            try {
+                await Promise.all(uploads);
+                await flush();
+                const response = await post('result', JSON.stringify({code, syncError: error ? String(error) : null, browserErrors}));
+                const next = await response.json();
+                if (next.url) location.replace(next.url);
+            } catch (failure) {
+                console.error('Automation result delivery failed: ' + failure);
+            }
+        });
+    };
+    addEventListener('error', event => {
+        browserErrors.push(String(event.message));
+        console.error('Browser error: ' + event.message);
+    });
+    addEventListener('unhandledrejection', event => {
+        browserErrors.push(String(event.reason));
+        console.error('Browser rejection: ' + event.reason);
+    });
+})();

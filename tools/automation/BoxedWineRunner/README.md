@@ -11,16 +11,18 @@ Run this command from the repository root. The Java installation must include
 Omit `--test` to only build the JAR. The runner uses Java 8 APIs and bytecode.
 
 Jenkins builds and tests this JAR from the current checkout, then distributes it
-to the native automation workers over the JAR bundled in `automation34.zip`.
+to the native automation workers over the JAR bundled in `automation38.zip`.
 Recordings and screenshot references come directly from the asset bundle.
 
 ## Native filesystem
 
 Native automation downloads the **full** filesystem pinned by URL, byte count,
-and SHA-256 in [filesystem.properties](filesystem.properties). Browser automation
-has its own web filesystem pin in the root Jenkinsfile.
+and SHA-256 in [filesystem.properties](filesystem.properties). Browser app
+automation shares this full filesystem pin to preserve recorded installer flows,
+including Gecko and file associations; see
+[`../../jenkins/instructions.md`](../../jenkins/instructions.md#browser-app-automation).
 
-`automation34.zip` contains no filesystem. Jenkins runs this command inside
+`automation38.zip` contains no filesystem. Jenkins runs this command inside
 `automation/` after extracting the bundle and unstashing the runner and pin:
 
 ```text
@@ -70,7 +72,7 @@ and pass `-user-reg` automatically. For manual runs, update the extracted
 Use Python 3.11+ and the tested runner to create a new bundle:
 
 ```text
-python3 tools/automation/BoxedWineRunner/package_assets.py automation34.zip automation35.zip --runner automation-runner/bin/BoxedWineRunner.jar
+python3 tools/automation/BoxedWineRunner/package_assets.py automation38.zip automation39.zip --runner automation-runner/bin/BoxedWineRunner.jar
 ```
 
 The output must not already exist. The packager removes `automation/fs/`, embeds
