@@ -43,6 +43,7 @@ public:
     bool useVirtualFiles = false;
 private:    
     U32 nextInputModifiers = 0;
+    U32 pressDurationMs = 1000;
     BString nextValue;
     std::thread comparingThread;
     U32 nextWaitTime = 0;

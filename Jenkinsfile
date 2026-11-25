@@ -770,9 +770,9 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation39.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation41.zip
                                 rm -rf automation
-                                unzip automation39.zip
+                                unzip automation41.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -807,9 +807,9 @@ pipeline {
                     steps {
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation39.zip https://boxedwine.org/v2/1/automation39.zip --output automation39.zip
+                                curl -z automation41.zip https://boxedwine.org/v2/1/automation41.zip --output automation41.zip
                                 rm -rf automation
-                                unzip automation39.zip
+                                unzip automation41.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -849,9 +849,9 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation39.zip
+                                wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation41.zip
                                 rm -rf automation
-                                unzip automation39.zip
+                                unzip automation41.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -885,9 +885,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation39.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation41.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            unzip automation39.zip
+                            unzip automation41.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }
@@ -927,9 +927,9 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation39.zip
+                            wget -N --no-if-modified-since -np https://boxedwine.org/v2/1/automation41.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            tar -xf automation39.zip
+                            tar -xf automation41.zip
                         '''
                         dir("automation") {
                             script { prepareNativeAutomationFilesystem() }

@@ -124,6 +124,8 @@ void KSystem::destroy() {
     // cleanup. Wait for that cleanup too before freeing shared engine pools.
     extern std::atomic<int> platformThreadCount;
     while (platformThreadCount.load()) {
+        // Final cursor/window cleanup may be waiting synchronously on us.
+        if (isMainthread()) KNativeSystem::processMainThreadCallbacks();
         Platform::nanoSleep(1000000);
     }
 #endif

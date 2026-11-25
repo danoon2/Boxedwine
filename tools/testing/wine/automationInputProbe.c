@@ -38,9 +38,13 @@ int main(void)
     SetCursorPos(600, 300);
     UpdateWindow(window);
     DWORD start = GetTickCount();
+    // Keep a mapped window alive through the recorder's five-minute timeout.
+    // This exercises cursor/window cleanup while the UI waits for guest exit.
+    DWORD duration = strstr(GetCommandLineA(), "--wait-for-timeout") ? 600000 : 20000;
     int positioned = 0, pressed = 0, together = 0, stale = 0, observedFrame = 0;
+    DWORD firstDown = 0, firstUp = 0;
     POINT point = {0};
-    while (GetTickCount() - start < 20000)
+    while (GetTickCount() - start < duration)
     {
         MSG message;
         while (PeekMessageA(&message, NULL, 0, 0, PM_REMOVE))
@@ -50,6 +54,8 @@ int main(void)
         }
         GetCursorPos(&point);
         int down = (GetAsyncKeyState(keyboard ? VK_RETURN : VK_LBUTTON) & 0x8000) != 0;
+        if (down && !firstDown) firstDown = GetTickCount();
+        if (!down && firstDown && !firstUp) firstUp = GetTickCount();
         int expected = keyboard || (point.x == 100 && point.y == 100);
         stale |= positioned && !expected;
         positioned |= expected;
@@ -60,8 +66,9 @@ int main(void)
     }
     int passed = together && !stale && (!slowFrames || observedFrame);
     char result[256];
-    snprintf(result, sizeof(result), "automation input position=%d button=%d together=%d stale=%d frame=%d last=%ld,%ld %s\n",
-        positioned, pressed, together, stale, observedFrame, point.x, point.y, passed ? "PASS" : "FAIL");
+    snprintf(result, sizeof(result), "automation input position=%d button=%d together=%d stale=%d frame=%d last=%ld,%ld hold=%lu %s\n",
+        positioned, pressed, together, stale, observedFrame, point.x, point.y,
+        firstUp ? firstUp - firstDown : 0, passed ? "PASS" : "FAIL");
     FILE *file = fopen("Z:\\files\\input-result.txt", "w");
     if (!file) return 2;
     fputs(result, file);

@@ -751,19 +751,26 @@ bool KNativeScreenSDL::internalScreenShot(const BString& filepath, SDL_Rect* rec
 #ifdef BOXEDWINE_RECORDER
     if (!recordBuffer) {
         if (renderer && bpp == 32) {
+            int rendererWidth = 0, rendererHeight = 0;
+            // Before the first guest draw, SDL may still have the launcher's
+            // dimensions or a scaled host window. ReadPixels(NULL) copies that
+            // entire surface, which can overrun a guest-sized capture buffer.
+            // Wait for the guest frame unless the readback dimensions agree.
+            if (SDL_GetRendererOutputSize(renderer, &rendererWidth, &rendererHeight) != 0 ||
+                    rendererWidth != (int)screenWidth() || rendererHeight != (int)screenHeight()) {
+                return false;
+            }
             U32 pitch = screenWidth() * 4;
             U32 size = pitch * screenHeight();
-            if (recordBufferSize < size) {
-                delete[] recordBuffer;
-                recordBuffer = new U8[size];
-                recordBufferSize = size;
-            }
-            if (SDL_RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_ARGB8888, recordBuffer, pitch)) {
+            std::unique_ptr<U8[]> captured(new U8[size]);
+            if (SDL_RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_ARGB8888, captured.get(), pitch)) {
                 if (filepath.length()) {
                     klog_fmt("failed to save screenshot, %s, SDL_RenderReadPixels failed: %s", filepath.c_str(), SDL_GetError());
                 }
                 return false;
             }
+            recordBuffer = captured.release();
+            recordBufferSize = size;
         } else {
             if (filepath.length()) {
                 klog_fmt("failed to save screenshot, %s, because recorderBuffer was NULL", filepath.c_str());
@@ -773,6 +780,13 @@ bool KNativeScreenSDL::internalScreenShot(const BString& filepath, SDL_Rect* rec
     }
     if (bpp == 8) {
         klog("KNativeScreenSDL::internalScreenShot 8 bit screen shots not supported");
+        return false;
+    }
+    U64 requiredBytes = (U64)((screenWidth() * ((bpp + 7) / 8) + 3) & ~3) * screenHeight();
+    if (requiredBytes > recordBufferSize || (rect &&
+            (rect->x < 0 || rect->y < 0 || rect->w <= 0 || rect->h <= 0 ||
+             (U32)rect->x > screenWidth() || (U32)rect->y > screenHeight() ||
+             (U32)rect->w > screenWidth() - rect->x || (U32)rect->h > screenHeight() - rect->y))) {
         return false;
     }
     U8* pixels = nullptr;

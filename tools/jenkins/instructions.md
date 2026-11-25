@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation39.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation41.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -31,11 +31,17 @@ RCT2's installer can also be hidden behind Explorer. `automation39.zip` adds
 `WHILEWAITING=5,LBUTTON,624,11` before its fifth installer screenshot, closing
 that obstruction while retaining the original screenshot and subsequent steps.
 The archive also includes the runner that preserves every native attempt.
+`automation40.zip` retains these changes and retries AbiWord's final No click
+if its Save changes dialog appears late; no application or reference image changes.
+`automation41.zip` also restores Firefight's final dialog focus and shortens
+F16's two back-menu presses. It requires the recorder's `PRESSDURATION` command.
+The bundled runner recognizes native success markers in its diagnostic metadata.
+Application files and reference images remain unchanged.
 
 # Browser app automation
 
 `run_emscripten_automation.py` runs all 16 app tests in
-`automation39.zip` across the four recorder-enabled browser targets: ST, MT,
+`automation41.zip` across the four recorder-enabled browser targets: ST, MT,
 ST JIT and MT JIT. This includes
 each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
 original working directories, program arguments, resolution, bit depth, CPU
@@ -94,6 +100,13 @@ The November 2026 investigation of app-automation builds 1 and 2 identified:
   cases (three per target), plus two Win32 and two Win64 native cases, passed
   without retries before publication. Eight further Mac browser cases (two per
   target) also passed on their first attempts.
+* **AbiWord exit dialog:** the final No click could precede the Save changes
+  dialog, leaving the application open after all screenshot checks passed.
+  `automation40.zip` adds a recovery click at `(515,417)` while waiting for exit.
+  All existing screenshot checks and original application files are preserved.
+  The exact recording passed four Win32 and six Win64 fresh runs, including
+  Win64 runs that exercised recovery, and 24 browser runs (all four targets
+  twice on each of Linux x64, Linux ARM64 and Mac).
 * **Signal suspension:** `sigsuspend` corrupted the restored mask, could return
   success instead of EINTR, and could lose a signal between checking pending
   delivery and registering its wait. This matches wineserver shutdown stalls
@@ -110,11 +123,30 @@ The November 2026 investigation of app-automation builds 1 and 2 identified:
   Twenty-four deliberately shortened MT/MTJIT timeouts and four production
   five-minute browser timeouts exited cleanly. Native timeout exit also stops
   guest threads before running static destructors.
+  A subsequent windowed probe exposed a shutdown deadlock: the UI waited for
+  the final guest thread while that thread waited for cursor cleanup on the UI.
+  Thread-termination waits now service queued host callbacks on the UI thread,
+  without consuming input or quit events. The Win32 and Win64 reproductions
+  both changed from a seven-minute outer timeout to the intended recorder
+  exit code 2 after five minutes.
+* **Early screenshot overflow:** before the first guest frame, SDL's host
+  renderer can still have different dimensions from the requested guest mode.
+  A captured Win64 stack showed `SDL_RenderReadPixels` copying 928x1080 pixels
+  into a 1024x768 guest buffer. Readback now waits for matching dimensions;
+  failed readbacks cannot publish an uninitialized capture, and crops outside
+  the current guest frame are rejected. This is separate from F16's guest fault.
 * **Recovery clicks:** `WHILEWAITING` delivered button coordinates without moving
   the recorder's cursor after a guest warp. Wine could briefly report the click
   position, then revert to the stale position during polling. Recovery now moves
   the cursor and updates the held-button state. This was investigated after an
   ARM Caesar III replay remained on its start menu despite repeated clicks.
+* **Recorded click coordinates:** Cinebench's recording moves directly from its
+  license button to the CPU Run button without a `MOVETO`. Button messages used
+  the new coordinates while cursor polling still returned the license button's
+  position, cancelling the click. Recorded button events now move the cursor
+  too. A probe without `MOVETO` failed on Win32, Win64 and all four old browser
+  targets, then passed on all six corrected targets. The unchanged Cinebench
+  recording passed on Win32 and Win64, including its numeric score output.
 * **Input duration:** a slow game frame can drain a 100 ms press and release
   together, leaving no pressed state for its frame update. Releases now use the
   same one-second spacing as other recorded input. Modifier metadata is applied
@@ -123,6 +155,23 @@ The November 2026 investigation of app-automation builds 1 and 2 identified:
   after Enter. The independent slow-frame keyboard check failed on all four old
   browser targets and passed on all four updated targets. Twelve fresh native
   Win32 Daytona installation/playback runs then passed without retries.
+
+`PRESSDURATION=milliseconds` changes how long recorded keys, recorded mouse
+buttons and recovery input remain pressed. The default is 1000 ms; accepted
+values are 1 through 10000. Use a shorter duration for menus that repeat a held
+button, and restore the default afterward if later frames need a longer press.
+The command changes input timing only; screenshot checks and timeouts remain
+unchanged. Native Win32/Win64 probes measured both 100 ms and 1000 ms presses
+and rejected zero, out-of-range and nonnumeric values with exit code 99.
+Recorded mouse, recovery mouse and keyboard checks at 100 ms also passed on
+all four browser targets.
+
+The F16 recording uses 100 ms presses only for the two back-menu transitions
+after flight, then restores 1000 ms. Jenkins build 3's Linux x64 and Mac
+screenshots showed the held button skipping the expected Quick Mission menu
+and reaching the main menu. The shorter recording passed four fresh Win32 and
+four Win64 cases. All four browser targets passed; one of eight browser cases
+hit the separate mixer fault below, and the next MT JIT case passed.
 
 `../testing/wine/automationInputProbe.c` provides a small independent recovery
 input check. Build with `i686-w64-mingw32-gcc -O2 automationInputProbe.c -o
@@ -140,6 +189,17 @@ RGB `(13,61,107)`. This prevents startup time from consuming the input before
 the window exists. Test recorded `KEYDOWN=40`/`KEYUP=40`, recorded mouse input,
 and recovery clicks separately. All three checks passed on native Win32/Win64
 and all four browser targets.
+Omit `MOVETO` before the recorded mouse button pair to check cursor synchronization
+as well. Without `--slow-frames`, the probe's `hold=` result measures its first
+observed press duration; test shorter presses separately from the slow-frame
+case, whose 300 ms frame intentionally cannot observe a 100 ms press.
+
+For the shutdown regression, pass `--wait-for-timeout`, use the ready screenshot
+above followed by `DONE`, and keep video enabled. A hidden test can use host
+environment `SDL_VIDEODRIVER=dummy` and `SDL_RENDER_DRIVER=software` instead of
+`-novideo`. The probe keeps its window alive for ten minutes; the recorder must
+capture its failure artifacts and exit with code 2 at its five-minute timeout,
+without requiring an outer process kill.
 
 ### F16 audio mixer race
 
@@ -152,7 +212,9 @@ region containing that pointer, position and step, then rebuilds it. Its wrapper
 at `0x00567d70` sets a disable flag around the reset, but the timer callback checks
 that flag only on entry. A callback already inside the mixer can therefore read
 the temporarily cleared state. The timer is periodic with flags 1, without
-`TIME_KILL_SYNCHRONOUS`.
+`TIME_KILL_SYNCHRONOUS`. That flag was introduced in Windows XP, as documented
+in [Microsoft's DirectShow helper](https://github.com/microsoft/Windows-classic-samples/blob/main/Samples/Win7Samples/multimedia/directshow/baseclasses/wxutil.cpp#L669-L720);
+its absence alone is not evidence that a Windows 95 application is incorrect.
 
 The same fault was reproduced with the unmodified executable on native Win64
 and ARM browser MT, including a native run pinned to one CPU. This is distinct
@@ -180,6 +242,46 @@ timer callbacks has been applied. Keep the original executable and record any
 recurrence with `WINEDEBUG=+seh`, the phase log and failed desktop. The original
 Windows 95 scheduler has not been reproduced here; a version-profile setting
 is not equivalent to testing that OS.
+
+Scheduling is a remaining compatibility limitation: Wine 11 requests
+`THREAD_PRIORITY_TIME_CRITICAL` for its multimedia timer thread and maps Windows
+priorities to Linux niceness, but Boxedwine currently ignores `setpriority`.
+Pinning guest threads to one host CPU does not reproduce Windows 95's priority
+scheduler. The mixer race is reproduced in this environment; whether faithful
+original-OS scheduling prevents it remains unverified.
+
+### Other native observations
+
+One old Win64 F16 installer process exited with host status `0xc0000409`, before
+the game started. Twelve further installer runs under a host debugger did not
+reproduce that crash: eleven passed and one reached an ordinary recorder
+timeout. No host exception stack was captured for the original crash, so it
+must not be attributed to the demo's mixer or claimed fixed by the separate
+shutdown correction. Retain a host dump if it recurs. The local suites using
+automation39 both completed all 16 demos; Win32 needed no retry, while Win64's
+only retry was the AbiWord dialog described above.
+
+The subsequent automation40 suites also completed all 16 demos. Win32 retried
+Firefight because its completed-installation dialog had an inactive title bar
+instead of the recorded active title bar. The screenshot body matched; recovery
+clicks on Explorer did not consistently restore dialog focus. Win64 retried
+Real Deal twice before passing: its installer reported `0x80040154`, with Wine
+logging that InstallShield class `{91814ec0-b5f0-11d2-80b9-00104b1f6cea}` was not
+registered. Firefight's revised recovery alternates the Explorer close click
+with a harmless click inside the final dialog to restore focus. Ten fresh native
+installs (five per architecture, including deliberate focus loss) and eight
+browser installation/playback cases (two per target) passed with the original
+reference images. Nine fresh Real Deal installs across three runtime revisions
+passed with COM tracing enabled; the intermittent registration failure has not
+been reproduced under that tracing and remains unresolved.
+
+The archived Mac F16 attempt also reported its recorder timeout but did not
+exit until the runner killed it at 30 minutes. Its menu failure matches the
+Linux screenshot, but the subsequent shutdown hang has no captured host stack.
+The corrected runtime builds on Mac; testing from the separate SSH account
+stops before Wine starts because that account has no display. Validate the
+shutdown correction in Jenkins's desktop account rather than treating that
+SSH launch failure as an application result.
 
 Jenkins builds the four recorder runtimes once on `emscripten && linux64`, then
 releases that executor and queues the 16 demos on the `emscripten` label. The

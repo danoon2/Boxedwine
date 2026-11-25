@@ -424,6 +424,22 @@ void Player::runSlice() {
         // report a release while playback is still holding the button/key.
         nextInputModifiers = atoi(nextValue.c_str());
         instance->readCommand();
+    } else if (this->nextCommand == "PRESSDURATION") {
+        char* end = nullptr;
+        long duration = strtol(nextValue.c_str(), &end, 10);
+        if (end == nextValue.c_str() || *end || duration < 1 || duration > 10000) {
+            klog("script: PRESSDURATION requires 1..10000 milliseconds");
+#ifdef __EMSCRIPTEN__
+            finishEmscriptenAutomation(99);
+#else
+            quit();
+            KSystem::destroy();
+            exit(99);
+#endif
+            return;
+        }
+        pressDurationMs = (U32)duration;
+        instance->readCommand();
     } else if (this->nextCommand == "WHILEWAITING") {
         std::vector<BString> items;
         this->nextValue.split(',', items);
@@ -481,10 +497,9 @@ void Player::runSlice() {
     // 1000 ms between all other commands
     if (KSystem::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand != "SCREENSHOT" && !processWaitCommand)
         return;
-    // Slow guests can consume a short press and release in the same frame,
-    // then poll only the released state. Give button/key releases and recovery
-    // input the same one-second spacing as other recorded input commands.
-    U64 minimumInputDelay = processWaitCommand || this->nextCommand == "MOUSEUP" || this->nextCommand == "KEYUP" ? 1000000 : 100000;
+    // Slow guests need a held press to observe it during a frame. Recordings
+    // can request a shorter press for menus that repeat while a button is held.
+    U64 minimumInputDelay = processWaitCommand || this->nextCommand == "MOUSEUP" || this->nextCommand == "KEYUP" ? (U64)pressDurationMs * 1000 : 100000;
     if (KSystem::getMicroCounter() < this->lastCommandTime + minimumInputDelay)
         return;
 
@@ -513,6 +528,10 @@ void Player::runSlice() {
             klog_fmt("script: %s %s should have 3 values: %s", this->directory.c_str(), this->nextCommand.c_str(), this->nextValue.c_str());
             exit(99);
         }
+        // Some recordings move directly between button events. Keep polling
+        // (GetCursorPos/XQueryPointer) at the event's coordinates as well; a
+        // control tracking a held button can otherwise cancel the click.
+        input->mouseMove(atoi(items[1].c_str()), atoi(items[2].c_str()), false);
         currentInputModifiers = nextInputModifiers;
         input->mouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
         instance->readCommand();

@@ -20,6 +20,7 @@
 #include "knativesystem.h"
 #include <SDL.h>
 #include "knativescreenSDL.h"
+#include "sdlcallback.h"
 #include "sdlStatusBar.h"
 #ifdef __EMSCRIPTEN__
 #include "knativeinputSDL.h"
@@ -282,6 +283,17 @@ void KNativeSystem::postQuit() {
     SDL_Event sdlevent;
     sdlevent.type = SDL_QUIT;
     SDL_PushEvent(&sdlevent);
+}
+
+void KNativeSystem::processMainThreadCallbacks() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    extern U32 sdlCustomEvent;
+    if (!sdlCustomEvent) return;
+    SDL_Event event = {};
+    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, sdlCustomEvent, sdlCustomEvent) == 1) {
+        static_cast<SdlCallback*>(event.user.data1)->run();
+    }
+#endif
 }
 
 U32 KNativeSystem::getTicks() {

@@ -239,12 +239,18 @@ void scheduleThread(KThread* thread) {
 void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
     process->requestThreadTermination(threadId);
 
+    bool mainThread = isMainthread();
     while (true) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadRemovedCondition);
-        if (!process->getThreadById(threadId)) {
-            break;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadRemovedCondition);
+            if (!process->getThreadById(threadId)) {
+                break;
+            }
+            BOXEDWINE_CONDITION_WAIT_TIMEOUT(process->threadRemovedCondition, mainThread ? 10 : 1000);
         }
-        BOXEDWINE_CONDITION_WAIT_TIMEOUT(process->threadRemovedCondition, 1000);
+        // A terminating thread can be inside a synchronous host call. Process
+        // that call without holding the condition needed to finish cleanup.
+        if (mainThread) KNativeSystem::processMainThreadCallbacks();
     }
 }
 

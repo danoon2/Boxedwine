@@ -66,6 +66,11 @@ public class RunnerTests {
         StreamGobbler prefix = new StreamGobbler(new ByteArrayInputStream("script: success extra".getBytes(StandardCharsets.UTF_8)), "prefix");
         prefix.run();
         check(!prefix.scriptFinished, "accepted a partial success marker");
+        for (String marker : Arrays.asList("script: success.  Setting exit code to 111", "script finished: success")) {
+            StreamGobbler nativeOutput = new StreamGobbler(new ByteArrayInputStream(marker.getBytes(StandardCharsets.UTF_8)), "native");
+            nativeOutput.run();
+            check(nativeOutput.scriptFinished, "missed native recorder success marker: " + marker);
+        }
     }
 
     private static void checkReaderFailures() {

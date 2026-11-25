@@ -45,7 +45,9 @@ public class StreamGobbler implements Runnable
     }
 
     private synchronized void addLine(String line, boolean truncated) {
-        if (!truncated && line.equals("script: success")) {
+        if (!truncated && (line.equals("script: success") ||
+                line.equals("script: success.  Setting exit code to 111") ||
+                line.equals("script finished: success"))) {
             scriptFinished = true;
         }
         if (truncated) {

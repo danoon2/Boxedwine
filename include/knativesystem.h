@@ -38,6 +38,8 @@ public:
 	static void preReturnToUI();
 
 	static void postQuit();
+    // UI thread only; run queued host calls without consuming input or quit.
+    static void processMainThreadCallbacks();
 	static U32 getTicks();
 	static bool getScreenDimensions(U32* width, U32* height);
 	static BString getAppDirectory();
