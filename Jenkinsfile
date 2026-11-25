@@ -224,54 +224,73 @@ void runDistributedEmscriptenAutomation() {
             }
         }
     }
-    def cases = [:]
-    targets.each { target, buildDir ->
-        apps.each { app ->
-            def caseTarget = target.toString()
-            def caseApp = app.toString()
-            def caseName = "Emscripten ${caseTarget} / ${caseApp}".toString()
-            cases[caseName] = {
-                stage(caseName) {
-                    // A failed app must not cancel the other queued tests.
-                    // User aborts still interrupt the complete parallel stage.
-                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
-                        // All three emscripten agents have one executor. Each
-                        // node block queues one app/target on the next free agent.
-                        node('emscripten') {
-                            ws("${env.WORKSPACE}@EmscriptenApps") {
+    def demos = [:]
+    apps.each { app ->
+        def caseApp = app.toString()
+        def demoName = "Emscripten / ${caseApp}".toString()
+        demos[demoName] = {
+            stage(demoName) {
+                // Preparation failures must not cancel other queued demos.
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
+                    // One executor reserves this machine for the entire demo.
+                    // Its four target branches share this node, with no further
+                    // executor requests that could deadlock a one-executor agent.
+                    node('emscripten') {
+                        ws("${env.WORKSPACE}@EmscriptenApps") {
+                            unstash 'emscripten-app-harness'
+                            targets.each { target, buildDir ->
+                                unstash "emscripten-app-${target}"
+                            }
+                            // Complete all shared writes before starting browsers.
+                            // Each target then verifies and reads the same cache.
+                            sh '''#!/bin/bash
+                                set -euo pipefail
+                                python3 tools/jenkins/run_emscripten_automation.py --reuse-prepared --prepare-only
+                            '''
+                            def cases = [:]
+                            targets.each { target, buildDir ->
+                                def caseTarget = target.toString()
+                                def caseName = "Emscripten ${caseTarget} / ${caseApp}".toString()
                                 def results = "project/emscripten/automation-results/${env.BUILD_NUMBER}/${caseTarget}/${caseApp}".toString()
-                                dir(results) { deleteDir() }
-                                try {
-                                    unstash 'emscripten-app-harness'
-                                    unstash "emscripten-app-${caseTarget}"
-                                    withEnv([
-                                        "BOXEDWINE_AUTOMATION_TARGET=${caseTarget}",
-                                        "BOXEDWINE_AUTOMATION_APP=${caseApp}",
-                                        "BOXEDWINE_AUTOMATION_OUTPUT=${results}"
-                                    ]) {
-                                        timeout(time: 150, unit: 'MINUTES') {
-                                            sh '''#!/bin/bash
-                                                set -euo pipefail
-                                                python3 tools/jenkins/run_emscripten_automation.py \
-                                                    --reuse-prepared \
-                                                    --target "$BOXEDWINE_AUTOMATION_TARGET" \
-                                                    --app "$BOXEDWINE_AUTOMATION_APP" \
-                                                    --output "$BOXEDWINE_AUTOMATION_OUTPUT"
-                                            '''
+                                cases[caseName] = {
+                                    stage(caseName) {
+                                        // Keep the other targets running after an
+                                        // app failure, but propagate user aborts.
+                                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', catchInterruptions: false) {
+                                            dir(results) { deleteDir() }
+                                            try {
+                                                withEnv([
+                                                    "BOXEDWINE_AUTOMATION_TARGET=${caseTarget}",
+                                                    "BOXEDWINE_AUTOMATION_APP=${caseApp}",
+                                                    "BOXEDWINE_AUTOMATION_OUTPUT=${results}"
+                                                ]) {
+                                                    timeout(time: 150, unit: 'MINUTES') {
+                                                        sh '''#!/bin/bash
+                                                            set -euo pipefail
+                                                            python3 tools/jenkins/run_emscripten_automation.py \
+                                                                --prepared \
+                                                                --target "$BOXEDWINE_AUTOMATION_TARGET" \
+                                                                --app "$BOXEDWINE_AUTOMATION_APP" \
+                                                                --output "$BOXEDWINE_AUTOMATION_OUTPUT"
+                                                        '''
+                                                    }
+                                                }
+                                            } finally {
+                                                archiveArtifacts artifacts: "${results}/**/*", allowEmptyArchive: true
+                                                junit testResults: "${results}/junit.xml", allowEmptyResults: true
+                                            }
                                         }
                                     }
-                                } finally {
-                                    archiveArtifacts artifacts: "${results}/**/*", allowEmptyArchive: true
-                                    junit testResults: "${results}/junit.xml", allowEmptyResults: true
                                 }
                             }
+                            parallel cases
                         }
                     }
                 }
             }
         }
     }
-    parallel cases
+    parallel demos
 }
 
 void publishGithubBuildStatus(String state, String description) {

@@ -73,16 +73,22 @@ and `rtc2` retain the native bundle's spelling. `--retries` defaults to three
 and `--timeout` to 900 seconds per phase.
 
 Jenkins builds the four recorder runtimes once on `emscripten && linux64`, then
-releases that executor and queues all 64 app/target combinations independently
-on the `emscripten` label. The next free agent takes the next queued case. The
-Linux x64, Linux ARM64 and Mac agents each have **one executor**; keep this setting
-to avoid running competing browser tests on one machine. Installation, playback
-and any clean retries stay together within one case. Ordinary app failures mark
-the build failed while the other cases continue; a user abort stops the run.
+releases that executor and queues the 16 demos on the `emscripten` label. The
+next free agent takes one demo and runs its four targets concurrently on that
+same machine. The Linux x64, Linux ARM64 and Mac agents each have **one executor**;
+keep this setting so each machine runs at most one demo group (four browsers).
+The target branches reuse the demo's executor rather than requesting more.
+Once all four targets finish, the machine takes the next queued demo.
+Installation, playback and any clean retries stay together within each target.
+Ordinary target or preparation failures mark the build failed while the other
+targets and demos continue; a user abort stops the run.
 
-Small stashes distribute the runner and the selected runtime. Each worker keeps
+Small stashes distribute the runner and all four runtimes. Each worker keeps
 the downloaded ZIPs and prepared overlays in its dedicated `@EmscriptenApps`
-workspace, using `--reuse-prepared` between cases. Installed files and browser
+workspace. Before launching a demo's targets, Jenkins restores the stashes and
+runs `--reuse-prepared --prepare-only` once. The four concurrent runners use
+`--prepared`, which only verifies and reads the cache; downloads and repackaging
+never race the other targets. Installed files and browser
 profiles are still fresh for every attempt. Each case selects an available local
 HTTP port and archives its own results under its build number, target and app.
 Workers need Python 3.9+ and Chrome or Chromium; Linux discovers the browser in
