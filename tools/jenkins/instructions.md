@@ -379,6 +379,26 @@ passed without retries. Each forced case logged the OK recovery before matching
 Finish. The test-only fault injection is excluded from the archive;
 all demo files, reference images and the bundled runner remain unchanged.
 
+The locally qualified automation44 candidate adds two playback recoveries.
+F22 repeats its final Exit click every ten seconds while waiting for actual
+shutdown, after all eight existing screenshot checks. Build 9's Windows ARM64
+failure remained at that menu after the single recorded click. Daytona repeats
+Enter every ten seconds only while waiting for the existing Mode Select image;
+the recovery clears when that image matches. Build 9's Linux MT failure matched
+the title image but later showed the SEGA introduction while waiting for Mode
+Select. Neither failure has an input trace establishing why the initial input
+did not complete the transition.
+Each candidate recording passed three full install/play runs on Win32 and three
+on Win64, plus two rounds across all four browser targets on Windows: 28 cases
+total, without app retries. One native run per architecture and one browser
+round per demo deliberately omitted or redirected the initial input; every
+forced case logged recovery and then passed the unchanged checks and real-exit
+requirement. An earlier normal Daytona browser round also passed its app phases
+but exposed the Windows profile-cleanup race below; the complete eight-case
+round was rerun after that correction. The archive excludes fault injection,
+preserves all demo files, reference images and the bundled runner byte-for-byte,
+and retains the previous validation manifest as provenance.
+
 The final automation41 suites with the input/capture/shutdown corrections passed
 all 16 apps on Win32 and all 16 on Win64 without retries. These runs preceded the
 additional Windows affinity correction above.
