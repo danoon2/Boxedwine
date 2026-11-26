@@ -342,6 +342,23 @@ are retained. The automation42 recording passed two fresh install/play runs on
 each of Win32 and Win64 and two on each of the four Mac browser targets, with
 no retries.
 
+Build 7's ARM MT JIT installer reached both message assertions, but the later
+Finish assertion timed out after 468.44 seconds. Its failed desktop still shows
+the Information dialog's OK button at `(513,440)`: the single recorded click
+had not dismissed it, and recovery only tried to close Explorer. The reason
+that initial click was missed has not been traced. The revised recording
+alternates Explorer-close and Information-OK recovery while waiting for the
+existing Finish assertion; it retains every assertion, reference image and
+original click. Deliberately directing the initial OK click to an empty area
+in test-only recordings verifies that recovery is exercised rather than just
+relying on another successful initial click.
+The automation43 candidate passed three fresh install/play runs on each of
+Win32 and Win64, including one missed-click case per architecture, plus two
+four-target rounds on Mac (normal and deliberately missed click): all 14 cases
+passed without retries. Each forced case logged the OK recovery before matching
+Finish. The test-only fault injection is excluded from the release candidate;
+all demo files, reference images and the bundled runner remain unchanged.
+
 The final automation41 suites with the input/capture/shutdown corrections passed
 all 16 apps on Win32 and all 16 on Win64 without retries. These runs preceded the
 additional Windows affinity correction above.
@@ -380,6 +397,24 @@ dialog before the host killed the renderer. The browser parent remained alive,
 so the old runner waited its full 900-second phase timeout before retrying.
 This is a host resource failure, not evidence of a Firefight demo defect.
 
+Build 7 completed all 64 browser cases across Linux x64 (28), Mac ARM64 (24)
+and Linux ARM64 (12), with four targets overlapping in every demo group and
+one group at a time per worker. The browser stage took 28.42 minutes. The two
+browser retries were Bang's filesystem transfer and Deadlock's Information
+dialog; both are described here. All 102 native app/benchmark runs completed,
+with only Win64 F16 requiring a retry for the known mixer fault. All browser
+inputs were verified against automation42 and filesystem48. These are observed
+results for that build, not proof that the remaining intermittent faults are
+fixed.
+
+Emscripten unit-test compilation no longer runs the legacy Linux
+`killall -9 python3` / `killall -9 firefox firefox-bin` cleanup. Build 8 started
+from the harness push while a separate ARM qualification was running; that
+cleanup terminated the qualification process. The interrupted run is not an
+application result. Each unit test already uses an isolated Firefox profile,
+an emrun-owned browser PID and bounded runtime. Cleanup must stay scoped to
+the launched process rather than every process with the same executable name.
+
 Jenkins builds the four recorder runtimes once on `emscripten && linux64`, then
 releases that executor and queues the 16 demos on the `emscripten` label. The
 next free eligible agent takes one demo and runs its four targets concurrently on that
@@ -392,10 +427,10 @@ Ordinary target or preparation failures mark the build failed while the other
 targets and demos continue; a user abort stops the run.
 
 The manifest's optional `agent_labels` map constrains individual demo groups.
-Firefight selects `emscripten && (linux64 || macArmv8)`: the current Linux x64
+Firefight and Deadlock select `emscripten && (linux64 || macArmv8)`: the current Linux x64
 worker has 64 GB RAM and the Mac has 24 GB, while the ARM Linux worker has 16 GB
-and exhausted both RAM and its 8 GB swap during this group. All four targets
-still run in parallel on the selected worker. Other demos remain eligible for
+and exhausted both RAM and its 8 GB swap during these groups. All four targets
+still run in parallel on the selected worker. The other 14 demos remain eligible for
 all three workers. Review this expression when adding or resizing workers;
 it describes the current machines' memory capacity, not a CPU architecture
 requirement of the demo.
@@ -403,6 +438,13 @@ Two fresh Firefight install/play rounds on the 24 GB Mac, each running all four
 targets concurrently with the build 5 runtimes and automation42, passed all
 eight cases without retries. Build 4 had also passed the four-target Firefight
 group on Linux x64.
+
+Deadlock's four-target local ARM qualification also exhausted memory, after
+the overlapping Jenkins build had been stopped and its orphaned qualification
+browsers had been removed. At 2026-11-25 22:55:52 PST, the kernel killed its JIT
+playback renderer with `anon-rss:4075552kB` and only 672 kB of free swap remaining.
+The runner reported `renderer_terminated` promptly. The installer had passed;
+this is a separate resource failure, not evidence against the recording or demo.
 
 Small stashes distribute the runner and all four runtimes. Each worker keeps
 the downloaded ZIPs and prepared overlays in its dedicated `@EmscriptenApps`

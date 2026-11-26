@@ -6,6 +6,7 @@
   },
   "filesystem_properties": "../automation/BoxedWineRunner/filesystem.properties",
   "agent_labels": {
+    "deadlock": "emscripten && (linux64 || macArmv8)",
     "firefight": "emscripten && (linux64 || macArmv8)"
   },
   "apps": [

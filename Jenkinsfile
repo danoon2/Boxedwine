@@ -111,12 +111,8 @@ void buildEmscriptenUnitTest(String target) {
             fi
             make clean
             make "$BOXEDWINE_UNIT_TEST_TARGET"
-            # Legacy Linux worker cleanup. The Mac also hosts desktop apps;
-            # there, emrun owns cleanup of its isolated browser process.
-            if [ "$(uname -s)" != Darwin ]; then
-                killall -9 python3 2>/dev/null || true
-                killall -9 firefox firefox-bin 2>/dev/null || true
-            fi
+            # emrun owns its isolated browser process. Killing by executable
+            # name also terminates unrelated tests and services on the worker.
         '''
     }
 }
