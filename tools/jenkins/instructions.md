@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation41.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation42.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -37,11 +37,15 @@ if its Save changes dialog appears late; no application or reference image chang
 F16's two back-menu presses. It requires the recorder's `PRESSDURATION` command.
 The bundled runner recognizes native success markers in its diagnostic metadata.
 Application files and reference images remain unchanged.
+`automation42.zip` adds RealDeal's completion-text check with Explorer recovery
+and brings Deadlock's completed-installation message forward before its first
+assertion. RealDeal has one new screenshot crop; existing reference images and
+all demo files are preserved.
 
 # Browser app automation
 
 `run_emscripten_automation.py` runs all 16 app tests in
-`automation41.zip` across the four recorder-enabled browser targets: ST, MT,
+`automation42.zip` across the four recorder-enabled browser targets: ST, MT,
 ST JIT and MT JIT. This includes
 each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
 original working directories, program arguments, resolution, bit depth, CPU
@@ -250,6 +254,12 @@ Pinning guest threads to one host CPU does not reproduce Windows 95's priority
 scheduler. The mixer race is reproduced in this environment; whether faithful
 original-OS scheduling prevents it remains unverified.
 
+Jenkins build 4 reproduced the same `0x567e06` NULL read on the ARM64 MT browser
+target after the menu/input corrections. The recorder timed out and returned
+exit 2 with the filesystem flushed, allowing a clean retry. It remains a
+separate compatibility issue, not an assertion that the original demo was
+defective on Windows 95.
+
 The independent `../testing/wine/timerPriorityProbe.c` measures normal-priority
 work during twelve busy 20 ms multimedia callbacks. Windows reported callback
 priority 15 with zero overlapping samples; Boxedwine/Wine reported the same
@@ -302,6 +312,30 @@ reference images. Nine fresh Real Deal installs across three runtime revisions
 passed with COM tracing enabled; the intermittent registration failure has not
 been reproduced under that tracing and remains unresolved.
 
+Twelve further untraced Real Deal Win64 installs did not reproduce the COM
+registration error, but three timed out at the completed installer's Finish
+dialog. The old final screenshot checks a mostly blank strip, allowing a Finish
+click before completion. A completion-text assertion also exposed the shortcut
+Explorer window covering that text on Win32 and single-threaded browser targets.
+The revised recording retains the original checks and clicks, closes Explorer
+while waiting for the new completion-text crop, and only then clicks Finish.
+Automation42 contains this correction. Four fresh install/play runs per native
+architecture and two per browser target passed without retries. An additional
+deliberately delayed run on each native architecture also passed, exercising
+Explorer recovery before matching the completion assertion. Demos and existing
+reference images are unchanged; the completion-text crop is a new reference.
+This recording correction does not establish a fix for the separate COM error.
+
+Deadlock's installer also opens a program-group Explorer window over its
+completion message. Jenkins build 4's Mac ST target timed out twice at the first
+`screenshot3.bmp` check, which preceded its existing Explorer-close recovery.
+The revised recording brings the message forward with a click on its visible
+right edge while waiting for that first check. Its existing Explorer-close
+steps run after the message is visible; all assertions and reference images
+are retained. The automation42 recording passed two fresh install/play runs on
+each of Win32 and Win64 and two on each of the four Mac browser targets, with
+no retries.
+
 The final automation41 suites with the input/capture/shutdown corrections passed
 all 16 apps on Win32 and all 16 on Win64 without retries. These runs preceded the
 additional Windows affinity correction above.
@@ -313,6 +347,19 @@ The corrected runtime builds on Mac; testing from the separate SSH account
 stops before Wine starts because that account has no display. Validate the
 shutdown correction in Jenkins's desktop account rather than treating that
 SSH launch failure as an application result.
+
+Jenkins build 4 subsequently completed all native application phases and
+Cinebench on Win32, Win64, Windows ARM64, Linux x64, Linux ARM64 and Mac ARM64
+without retries, including F16. A passing Mac run does not directly exercise
+its earlier timeout path.
+
+Build 4 also passed all 64 browser cases: 32 on Linux x64, 12 on Linux ARM64,
+and 20 on Mac ARM64. All four targets overlapped within each of the 16 demo
+groups, with one demo group per worker at a time. Deadlock/Mac ST needed three
+attempts for the obstruction fixed in automation42; F16/ARM64 MT needed two
+after the mixer fault above. The other 62 cases passed on their first attempt.
+This build used automation41 and preceded the additional Windows affinity fix;
+automation42's local qualification is described above.
 
 Jenkins builds the four recorder runtimes once on `emscripten && linux64`, then
 releases that executor and queues the 16 demos on the `emscripten` label. The
