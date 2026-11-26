@@ -1,8 +1,8 @@
 {
   "assets": {
-    "url": "https://boxedwine.org/v2/1/automation42.zip",
-    "sha256": "aeaa0e1fad7adb83a6dba5beb2d85876875faab23ad820536fe3737fd8218cfc",
-    "size": 353835611
+    "url": "https://boxedwine.org/v2/1/automation43.zip",
+    "sha256": "bb562361bff756bb869e2de2316e7207d9040033a02f7c604a8abbc5b9c2c25d",
+    "size": 353838124
   },
   "filesystem_properties": "../automation/BoxedWineRunner/filesystem.properties",
   "agent_labels": {

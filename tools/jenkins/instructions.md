@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation42.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation43.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -41,11 +41,13 @@ Application files and reference images remain unchanged.
 and brings Deadlock's completed-installation message forward before its first
 assertion. RealDeal has one new screenshot crop; existing reference images and
 all demo files are preserved.
+`automation43.zip` adds Deadlock's Information-dialog OK recovery while waiting
+for Finish. It preserves the demos, reference images and runner byte-for-byte.
 
 # Browser app automation
 
 `run_emscripten_automation.py` runs all 16 app tests in
-`automation42.zip` across the four recorder-enabled browser targets: ST, MT,
+`automation43.zip` across the four recorder-enabled browser targets: ST, MT,
 ST JIT and MT JIT. This includes
 each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
 original working directories, program arguments, resolution, bit depth, CPU
@@ -352,11 +354,11 @@ existing Finish assertion; it retains every assertion, reference image and
 original click. Deliberately directing the initial OK click to an empty area
 in test-only recordings verifies that recovery is exercised rather than just
 relying on another successful initial click.
-The automation43 candidate passed three fresh install/play runs on each of
+Automation43 passed three fresh install/play runs on each of
 Win32 and Win64, including one missed-click case per architecture, plus two
 four-target rounds on Mac (normal and deliberately missed click): all 14 cases
 passed without retries. Each forced case logged the OK recovery before matching
-Finish. The test-only fault injection is excluded from the release candidate;
+Finish. The test-only fault injection is excluded from the archive;
 all demo files, reference images and the bundled runner remain unchanged.
 
 The final automation41 suites with the input/capture/shutdown corrections passed
