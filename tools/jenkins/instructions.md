@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation43.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation44.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -47,7 +47,7 @@ for Finish. It preserves the demos, reference images and runner byte-for-byte.
 # Browser app automation
 
 `run_emscripten_automation.py` runs all 16 app tests in
-`automation43.zip` across the four recorder-enabled browser targets: ST, MT,
+`automation44.zip` across the four recorder-enabled browser targets: ST, MT,
 ST JIT and MT JIT. This includes
 each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
 original working directories, program arguments, resolution, bit depth, CPU
@@ -379,7 +379,7 @@ passed without retries. Each forced case logged the OK recovery before matching
 Finish. The test-only fault injection is excluded from the archive;
 all demo files, reference images and the bundled runner remain unchanged.
 
-The locally qualified automation44 candidate adds two playback recoveries.
+Automation44 adds two playback recoveries.
 F22 repeats its final Exit click every ten seconds while waiting for actual
 shutdown, after all eight existing screenshot checks. Build 9's Windows ARM64
 failure remained at that menu after the single recorded click. Daytona repeats
@@ -388,7 +388,7 @@ the recovery clears when that image matches. Build 9's Linux MT failure matched
 the title image but later showed the SEGA introduction while waiting for Mode
 Select. Neither failure has an input trace establishing why the initial input
 did not complete the transition.
-Each candidate recording passed three full install/play runs on Win32 and three
+Each recording passed three full install/play runs on Win32 and three
 on Win64, plus two rounds across all four browser targets on Windows: 28 cases
 total, without app retries. One native run per architecture and one browser
 round per demo deliberately omitted or redirected the initial input; every
