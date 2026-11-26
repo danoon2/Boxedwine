@@ -45,6 +45,33 @@
             reason: 'archive_setup_failed', browserErrors
         }))).catch(failure => console.error('Automation result delivery failed: ' + failure));
     };
+    const originalLoadFile = loadFile;
+    loadFile = (pathPrefix, filename, callback) => {
+        const pin = config.archives[filename];
+        if (!pin) return originalLoadFile(pathPrefix, filename, callback);
+        const download = async () => {
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const response = await fetch(pathPrefix + filename, {method: 'GET', cache: 'no-store'});
+                    if (response.status !== 200) throw new Error('HTTP ' + response.status);
+                    const bytes = await response.arrayBuffer();
+                    if (bytes.byteLength !== pin.size) throw new Error('size mismatch');
+                    const hash = await crypto.subtle.digest('SHA-256', bytes);
+                    const actual = Array.from(new Uint8Array(hash), value => value.toString(16).padStart(2, '0')).join('');
+                    if (actual !== pin.sha256) throw new Error('SHA-256 mismatch');
+                    console.log('Automation archive verified: ' + filename + ' SHA-256 ' + actual);
+                    return bytes;
+                } catch (error) {
+                    console.error('Automation archive transfer ' + filename + ' attempt ' + attempt + '/3: ' + error);
+                    if (attempt === 3) throw new Error('Unable to load ' + filename + ' after 3 transfers: ' + error);
+                    // A failed socket write can have consumed an unknown prefix,
+                    // even with send(). Restart the response, never its suffix.
+                    await new Promise(resolve => setTimeout(resolve, 250 * attempt));
+                }
+            }
+        };
+        return download().then(bytes => callback(new Uint8Array(bytes))).catch(failArchiveSetup);
+    };
     const uploads = [];
     const originalInitialized = Module.onRuntimeInitialized;
     Module.onRuntimeInitialized = function () {

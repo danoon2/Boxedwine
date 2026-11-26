@@ -260,6 +260,12 @@ exit 2 with the filesystem flushed, allowing a clean retry. It remains a
 separate compatibility issue, not an assertion that the original demo was
 defective on Windows 95.
 
+Build 7 reproduced the same NULL read at `0x00567e06` in Win64 playback after
+matching the first six screenshots. The archived phase log and failed desktop
+show Wine's debugger; the recorder returned exit 2 after 461.72 seconds, and a
+fresh install/play retry passed. Passing browser and other native F16 cases
+in the same build do not establish a fix for this intermittent mixer fault.
+
 The independent `../testing/wine/timerPriorityProbe.c` measures normal-priority
 work during twelve busy 20 ms multimedia callbacks. Windows reported callback
 priority 15 with zero overlapping samples; Boxedwine/Wine reported the same
@@ -423,20 +429,36 @@ Build 6 exposed a separate Mac HTTP transport failure before Bang started:
 all four filesystem responses ended with `OSError: [Errno 55] No buffer space
 available`, and the browsers reported `TypeError: Failed to fetch`. A later
 download from the same live server returned the complete 216,616,614-byte file.
-The server now retries transient `ENOBUFS` for up to five seconds per write,
-using `send` byte counts to resume without duplicating a partially sent prefix.
-Retrying `sendall` itself is unsafe because it does not expose the byte count
-after an error; see the [Python socket documentation](https://docs.python.org/3/library/socket.html#socket.socket.sendall).
-Apple documents `ENOBUFS` as an allocation or queue failure that may recover
-when buffers become available in [send(2)](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/send.2.html).
-Persistent archive setup failures report `archive_setup_failed` immediately,
-without waiting for a guest exit or attempting to flush an uninitialized root.
-The four-client HTTP regression truncates responses with the old writer and
-passes byte-for-byte with the correction. All four Bang browser targets on Mac
-also passed together, first attempt, with partial sends and two `ENOBUFS`
-errors deliberately injected into each filesystem transfer. A persistent
-injected failure was reported in 5.56 seconds rather than the 900-second phase
-timeout. No demo, recording, filesystem or system networking setting changed.
+Build 7's first socket-level recovery attempt still needed one Bang MT JIT
+retry: the engine could not open the downloaded filesystem ZIP. The original
+browser bytes were not retained, so the exact corruption in that run is not
+known. A stronger regression reproduces a flaw in that recovery: an `ENOBUFS`
+error can hide a consumed prefix even when using `send` instead of `sendall`.
+Apple's [sendit implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/uipc_syscalls.c)
+only converts partial sends into successful byte counts for `ERESTART`, `EINTR`
+and `EWOULDBLOCK`, not `ENOBUFS`. Replaying an unknown prefix can corrupt an
+otherwise complete HTTP response. The socket-level retry has been removed.
+
+The automation client now checks the size and SHA-256 of both `app.zip` and
+`filesystem.zip` before mounting their bytes. The server supplies pins computed
+from the verified prepared files. Failed transfers restart the entire response,
+at most three times with short backoff; each failure and successful hash check
+is retained in the phase console log. These transfer retries happen before the
+guest starts and are distinct from a fresh installation/playback attempt.
+Persistent archive setup failures report `archive_setup_failed` without waiting
+for a guest exit or attempting to flush an uninitialized root. Callback/mount
+failures are not retried as downloads. The HTTP regression exercises four
+concurrent partial-send failures; client tests reject interrupted, truncated
+and wrong-hash responses and verify the retry limit. No demo, recording,
+filesystem or system networking setting changed.
+All four Bang targets on Mac passed concurrently, on their first application
+attempt, after each filesystem download was deliberately interrupted once and
+then replaced with a same-size wrong-hash response. Only the third, verified
+response reached the guest. Persistent interruption stopped after three
+transfers and reported `archive_setup_failed` in 1.90 seconds including runner
+cleanup, rather than waiting for the 900-second phase timeout. The earlier
+socket-level recovery fails the stronger partial-send regression; the corrected
+server and client pass it.
 Recorder timeouts also retain `failed.bmp`, `failed_diff.bmp` and
 `failed-screen.bmp`. `inputs.json` records the pins and runtime hashes.
 Jenkins archives these artifacts and publishes the JUnit results. Preparation

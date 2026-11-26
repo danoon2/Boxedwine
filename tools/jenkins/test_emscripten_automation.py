@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 import errno
+from http.client import IncompleteRead
 import json
 from pathlib import Path
 import tempfile
@@ -15,7 +16,7 @@ import run_emscripten_automation as runner
 
 
 class AutomationTests(unittest.TestCase):
-    def test_parallel_http_downloads_resume_after_partial_send_and_enobufs(self):
+    def test_failed_http_transfers_close_instead_of_replaying_an_unknown_prefix(self):
         class ConstrainedSocket:
             def __init__(self, connection):
                 self.connection = connection
@@ -25,11 +26,11 @@ class AutomationTests(unittest.TestCase):
                 return getattr(self.connection, name)
 
             def send(self, data):
+                # Darwin may consume bytes and still return ENOBUFS, hiding
+                # that count from callers. Retrying this send corrupts the ZIP.
                 if self.step == 0 and len(data) >= 65536:
+                    self.connection.sendall(data[:1234])
                     self.step = 1
-                    return self.connection.send(data[:1234])
-                if self.step in (1, 2):
-                    self.step += 1
                     raise OSError(errno.ENOBUFS, 'injected kernel buffer exhaustion')
                 return self.connection.send(data)
 
@@ -46,9 +47,14 @@ class AutomationTests(unittest.TestCase):
             base = Path(directory)
             payload = bytes(range(256)) * 8192
             (base / 'filesystem.zip').write_bytes(payload)
+            (base / 'app.zip').write_bytes(b'overlay')
             server = runner.AutomationServer(base, base, 'app', 0)
+            self.assertEqual(server.archives['filesystem.zip'],
+                             dict(size=len(payload), sha256=runner.digest(base / 'filesystem.zip')))
             get_request = server.get_request
             sockets = []
+            errors = []
+            server.handle_error = lambda *args: errors.append(sys.exc_info()[1])
             def accept():
                 connection, address = get_request()
                 wrapped = ConstrainedSocket(connection)
@@ -62,28 +68,19 @@ class AutomationTests(unittest.TestCase):
                 def download(_):
                     with urlopen(url, timeout=10) as response:
                         return response.read()
+                def interrupted(_):
+                    with self.assertRaises(IncompleteRead):
+                        download(None)
                 with ThreadPoolExecutor(max_workers=4) as pool:
+                    list(pool.map(interrupted, range(4)))
+                    server.get_request = get_request
                     self.assertEqual(list(pool.map(download, range(4))), [payload] * 4)
-                self.assertEqual([s.step for s in sockets], [3] * 4)
+                self.assertEqual([s.step for s in sockets], [1] * 4)
+                self.assertEqual([e.errno for e in errors], [errno.ENOBUFS] * 4)
             finally:
                 server.shutdown()
                 server.server_close()
                 worker.join()
-
-    def test_http_writer_bounds_buffer_recovery_and_preserves_other_errors(self):
-        from unittest.mock import Mock
-        connection = Mock()
-        connection.send.side_effect = OSError(errno.ENOBUFS, 'persistent exhaustion')
-        with patch.object(runner.time, 'monotonic', side_effect=[0, 1, 6]), \
-                patch.object(runner.time, 'sleep') as sleep, self.assertRaises(OSError):
-            runner.SocketWriter(connection).write(b'payload')
-        self.assertEqual(connection.send.call_count, 2)
-        sleep.assert_called_once_with(0.05)
-        connection.reset_mock()
-        connection.send.side_effect = BrokenPipeError(errno.EPIPE, 'peer closed')
-        with self.assertRaises(BrokenPipeError):
-            runner.SocketWriter(connection).write(b'payload')
-        self.assertEqual(connection.send.call_count, 1)
 
     def test_worker_reuses_verified_assets_and_rebuilds_changed_inputs(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -141,6 +138,8 @@ class AutomationTests(unittest.TestCase):
             build, cache, output = base / 'build', base / 'cache', base / 'results'
             build.mkdir()
             cache.mkdir()
+            (cache / 'app.zip').write_bytes(b'overlay')
+            (cache / 'filesystem.zip').write_bytes(b'filesystem')
             (build / 'boxedwine-shell.js').write_text('')
             client = base / 'browser.py'
             # A real HTTP client exercises the handoff, including the second
@@ -184,6 +183,8 @@ while url:
             build, cache = base / 'build', base / 'cache'
             build.mkdir()
             cache.mkdir()
+            (cache / 'app.zip').write_bytes(b'overlay')
+            (cache / 'filesystem.zip').write_bytes(b'filesystem')
             (build / 'boxedwine-shell.js').write_text('')
             client = base / 'browser.py'
             client.write_text('''import json, re, sys, time
