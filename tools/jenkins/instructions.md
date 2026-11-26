@@ -361,9 +361,22 @@ after the mixer fault above. The other 62 cases passed on their first attempt.
 This build used automation41 and preceded the additional Windows affinity fix;
 automation42's local qualification is described above.
 
+Build 5, using automation42 and the Windows affinity correction, passed all
+102 native app/benchmark runs (180 phases) without retries. All 64 browser cases
+also passed, with 63 passing on their first attempt; Firefight MT JIT passed on
+its second attempt after the other targets had finished. The ARM Linux
+worker's Firefight MT JIT browser renderer was killed by the kernel OOM killer
+while its four targets were running together. The kernel journal at
+2026-11-25 20:13:34 PST records exhausted RAM and swap and the renderer's
+`anon-rss:3849840kB`; Chromium logs `Tab Killed` at the same time. Earlier Wine
+Win16Mutex waits do not establish a deadlock: the recorder reached its final
+dialog before the host killed the renderer. The browser parent remained alive,
+so the old runner waited its full 900-second phase timeout before retrying.
+This is a host resource failure, not evidence of a Firefight demo defect.
+
 Jenkins builds the four recorder runtimes once on `emscripten && linux64`, then
 releases that executor and queues the 16 demos on the `emscripten` label. The
-next free agent takes one demo and runs its four targets concurrently on that
+next free eligible agent takes one demo and runs its four targets concurrently on that
 same machine. The Linux x64, Linux ARM64 and Mac agents each have **one executor**;
 keep this setting so each machine runs at most one demo group (four browsers).
 The target branches reuse the demo's executor rather than requesting more.
@@ -371,6 +384,19 @@ Once all four targets finish, the machine takes the next queued demo.
 Installation, playback and any clean retries stay together within each target.
 Ordinary target or preparation failures mark the build failed while the other
 targets and demos continue; a user abort stops the run.
+
+The manifest's optional `agent_labels` map constrains individual demo groups.
+Firefight selects `emscripten && (linux64 || macArmv8)`: the current Linux x64
+worker has 64 GB RAM and the Mac has 24 GB, while the ARM Linux worker has 16 GB
+and exhausted both RAM and its 8 GB swap during this group. All four targets
+still run in parallel on the selected worker. Other demos remain eligible for
+all three workers. Review this expression when adding or resizing workers;
+it describes the current machines' memory capacity, not a CPU architecture
+requirement of the demo.
+Two fresh Firefight install/play rounds on the 24 GB Mac, each running all four
+targets concurrently with the build 5 runtimes and automation42, passed all
+eight cases without retries. Build 4 had also passed the four-target Firefight
+group on Linux x64.
 
 Small stashes distribute the runner and all four runtimes. Each worker keeps
 the downloaded ZIPs and prepared overlays in its dedicated `@EmscriptenApps`
@@ -386,6 +412,12 @@ the `chromium` package. Only the compile worker needs the Emscripten SDK.
 
 `results.json` and `junit.xml` report every completed app/target combination.
 Each phase retains `console.log` and `result.json`; each attempt has `chrome.log`.
+The runner monitors Chromium's own `Tab Killed`/`Tab Crashed` diagnostics for the
+automation origin, records `renderer_terminated` and the browser error, and
+starts a fresh retry promptly even when the browser parent survives. Browser
+exit and phase timeout failures also receive explicit reasons. GPU-process
+restart warnings and application console messages are not treated as tab
+failures.
 Recorder timeouts also retain `failed.bmp`, `failed_diff.bmp` and
 `failed-screen.bmp`. `inputs.json` records the pins and runtime hashes.
 Jenkins archives these artifacts and publishes the JUnit results. Preparation

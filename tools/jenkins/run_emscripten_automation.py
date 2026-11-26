@@ -278,6 +278,25 @@ class Handler(SimpleHTTPRequestHandler):
                 raise
 
 
+class BrowserLogMonitor:
+    """A crashed renderer can leave the browser parent alive indefinitely."""
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.tail = ''
+
+    def failure(self, launch_url):
+        data = self.tail + self.stream.read()
+        self.tail = data[-4096:]
+        origin = urlparse(launch_url).netloc
+        # Match Chromium's own sad-tab diagnostic, not application console text
+        # or a GPU subprocess restarting. This browser has one automation tab.
+        for match in re.finditer(r'^\[[^\]\r\n]+:(?:WARNING|ERROR):[^\]\r\n]*sad_tab\.cc:\d+\] Tab (Killed|Crashed): (https?://[^\s"\']+)', data, re.MULTILINE):
+            if urlparse(match[2]).netloc == origin:
+                return f'Chromium automation tab {match[1].lower()}: {match[2]}'
+        return None
+
+
 def run_app(chrome, build, cache, app, phases, output, port, timeout, retries):
     server = AutomationServer(build, cache, app, port)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
@@ -292,7 +311,9 @@ def run_app(chrome, build, cache, app, phases, output, port, timeout, retries):
                 attempt_dir = output / f'attempt-{attempt}'
                 attempt_dir.mkdir(parents=True)
                 process = None
-                with (attempt_dir / 'chrome.log').open('w') as log:
+                with (attempt_dir / 'chrome.log').open('w') as log, \
+                        (attempt_dir / 'chrome.log').open(errors='replace') as log_reader:
+                    monitor = BrowserLogMonitor(log_reader)
                     try:
                         for launch in phases:
                             folder = attempt_dir / launch['phase']
@@ -305,10 +326,19 @@ def run_app(chrome, build, cache, app, phases, output, port, timeout, retries):
                                 process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
                             else:
                                 server.next_page.set()
+                            failure = {}
                             while not server.completed.wait(0.25):
-                                if process.poll() is not None or time.monotonic() - start > timeout:
+                                browser_error = monitor.failure(server.launch_url)
+                                if browser_error:
+                                    failure = dict(reason='renderer_terminated', browserErrors=[browser_error])
                                     break
-                            result = dict(server.result or {}, phase=launch['phase'], seconds=round(time.monotonic() - start, 2))
+                                if process.poll() is not None:
+                                    failure = dict(reason='browser_exited', browserExitCode=process.returncode)
+                                    break
+                                if time.monotonic() - start > timeout:
+                                    failure = dict(reason='phase_timeout')
+                                    break
+                            result = dict(server.result or failure, phase=launch['phase'], seconds=round(time.monotonic() - start, 2))
                             result['passed'] = (result.get('code') == 111 and 'syncError' in result
                                                 and result['syncError'] is None and not result.get('browserErrors'))
                             records.append(result)

@@ -29,12 +29,16 @@ assert declaration.contains('agent none')
         env: environment, scm: [:],
         node: { label, body ->
             assert nodeDepth == 0: 'The builder must release its executor; targets must reuse the demo executor'
-            assert label in ['emscripten && linux64', 'emscripten']
-            if (label == 'emscripten') {
-                assert dispatched
-                environment.NODE_NAME = workers[allocations++ % workers.size()]
+            if (dispatched) {
+                def app = stageName.split(' / ')[1]
+                assert label == (manifest.agent_labels?.get(app) ?: 'emscripten')
+                assert label in ['emscripten', 'emscripten && (linux64 || macArmv8)']
+                def eligible = label == 'emscripten' ? workers : ['Linux x64', 'Mac M4']
+                environment.NODE_NAME = eligible[allocations++ % eligible.size()]
                 prepared = false
                 restored.clear()
+            } else {
+                assert label == 'emscripten && linux64'
             }
             nodeDepth++
             try { body() } finally { nodeDepth-- }
@@ -153,6 +157,7 @@ assert declaration.contains('agent none')
         assert (archives as Set).size() == expectedRuns.size() && (junitReports as Set).size() == expectedRuns.size()
         manifest.apps.findAll { !setupFailed || it != 'daytona' }.each { app ->
             assert targets.collect { caseWorkers["${it}/${app}".toString()] }.toSet().size() == 1
+            if (app == 'firefight') assert caseWorkers['st/firefight'] != 'Linux Arm64 M1'
         }
         assert failures == (scenario == 'success' ? 0 : 1)
     }

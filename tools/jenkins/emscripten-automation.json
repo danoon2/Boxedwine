@@ -5,6 +5,9 @@
     "size": 353835611
   },
   "filesystem_properties": "../automation/BoxedWineRunner/filesystem.properties",
+  "agent_labels": {
+    "firefight": "emscripten && (linux64 || macArmv8)"
+  },
   "apps": [
     "abiword",
     "aoe",

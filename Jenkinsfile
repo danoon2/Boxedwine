@@ -191,6 +191,7 @@ void runDistributedEmscriptenAutomation() {
     def targets = [st: 'Automation', mt: 'AutomationMultiThreaded',
                    jit: 'AutomationJit', mtjit: 'AutomationMultiThreadedJit']
     def apps = []
+    def agentLabels = [:]
     // Compile once, then release this executor so it can also take queued tests.
     node('emscripten && linux64') {
         ws("${env.WORKSPACE}@EmscriptenAppBuild") {
@@ -207,7 +208,9 @@ void runDistributedEmscriptenAutomation() {
                     make automationJit
                     make automationMultiThreadedJit
                 '''
-                apps = readJSON(file: 'tools/jenkins/emscripten-automation.json', returnPojo: true).apps
+                def manifest = readJSON(file: 'tools/jenkins/emscripten-automation.json', returnPojo: true)
+                apps = manifest.apps
+                agentLabels = manifest.agent_labels ?: [:]
                 stash name: 'emscripten-app-harness', includes: [
                     'tools/jenkins/run_emscripten_automation.py',
                     'tools/jenkins/emscripten-automation-client.js',
@@ -235,7 +238,9 @@ void runDistributedEmscriptenAutomation() {
                     // One executor reserves this machine for the entire demo.
                     // Its four target branches share this node, with no further
                     // executor requests that could deadlock a one-executor agent.
-                    node('emscripten') {
+                    // Some four-browser groups exceed the 16 GB ARM worker's
+                    // memory. Keep their targets parallel on an eligible host.
+                    node(agentLabels[caseApp] ?: 'emscripten') {
                         ws("${env.WORKSPACE}@EmscriptenApps") {
                             unstash 'emscripten-app-harness'
                             targets.each { target, buildDir ->

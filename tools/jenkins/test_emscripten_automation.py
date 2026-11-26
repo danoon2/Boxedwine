@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import tempfile
 import sys
+import time
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -102,6 +103,57 @@ while url:
         self.assertEqual(launch['options'], ['-resolution', '800x600', '-env', 'WINEDLLOVERRIDES=glide2x,glide3x=', '-cpuAffinity', '1'])
         with self.assertRaises(ValueError):
             runner.parse_launch('/files/\napp.exe\n-new-option\n1', 'app', 'Play')
+
+    def test_killed_tab_fails_promptly_and_retries_with_fresh_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            build, cache = base / 'build', base / 'cache'
+            build.mkdir()
+            cache.mkdir()
+            (build / 'boxedwine-shell.js').write_text('')
+            client = base / 'browser.py'
+            client.write_text('''import json, re, sys, time
+from urllib.request import urlopen, Request
+from urllib.parse import urlsplit
+url, attempt = sys.argv[1:]
+origin = 'http://' + urlsplit(url).netloc
+while url:
+    script = urlopen(origin + '/boxedwine-shell.js').read().decode()
+    config = json.loads(re.search(r'const config = (.*);', script).group(1))
+    print('[1:1:1125/201334:WARNING:chrome/browser/ui/sad_tab.cc:257] Tab Killed: http://example.invalid/', flush=True)
+    print('[1:1:1125/201334:INFO:CONSOLE:1] "example :WARNING:chrome/browser/ui/sad_tab.cc:257] Tab Killed: ' + url + '"', flush=True)
+    time.sleep(0.4)
+    if attempt == '1' and config['phase'] == 'install2':
+        # The parent stays alive after its renderer dies. Split the diagnostic
+        # across reads, as a concurrent Chromium log writer can do.
+        print('[1:1:1125/201334:WARNING:chrome/browser/ui/sad_tab.cc:257] Tab Kil', end='', flush=True)
+        time.sleep(0.4)
+        print('led: ' + url, flush=True)
+        time.sleep(30)
+        raise SystemExit(9)
+    payload = json.dumps(dict(code=111, syncError=None, browserErrors=[])).encode()
+    response = urlopen(Request(origin + '/automation/' + config['token'] + '/result', data=payload), timeout=10)
+    url = json.load(response)['url']
+''')
+            profiles = []
+            def command(chrome, profile, url, **kwargs):
+                profiles.append(profile)
+                return [sys.executable, str(client), url, str(len(profiles))]
+            start = time.monotonic()
+            with patch.object(runner, 'build_chrome_command', side_effect=command):
+                result = runner.run_app(Path('unused'), build, cache, 'app',
+                                        [dict(phase=p) for p in ('install', 'install2', 'play')],
+                                        base / 'results', 0, 20, 2)
+            self.assertLess(time.monotonic() - start, 10)
+            self.assertTrue(result['passed'])
+            self.assertEqual(len(profiles), 2)
+            self.assertNotEqual(profiles[0], profiles[1])
+            self.assertEqual([[p['phase'] for p in attempt] for attempt in result['attempts']],
+                             [['install', 'install2'], ['install', 'install2', 'play']])
+            failure = result['attempts'][0][-1]
+            self.assertEqual(failure['reason'], 'renderer_terminated')
+            self.assertIn('Chromium automation tab killed:', failure['browserErrors'][0])
+            self.assertFalse(failure['passed'])
 
     def test_preparation_preserves_recordings_and_binary_bytes(self):
         with tempfile.TemporaryDirectory() as directory:
