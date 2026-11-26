@@ -135,6 +135,17 @@ The November 2026 investigation of app-automation builds 1 and 2 identified:
   without consuming input or quit events. The Win32 and Win64 reproductions
   both changed from a seven-minute outer timeout to the intended recorder
   exit code 2 after five minutes.
+  Build 9 exposed a separate Mac timeout crash after guest cleanup: the global
+  OpenGL backend was destroyed after its static mutexes. Both archived crashes
+  symbolize to `KOpenGLSdl::~KOpenGLSdl` during `exit` (binary UUID
+  `3F3A8067-7520-30E7-A51B-8A0C8ED8AB51`). The timeout path now calls
+  `KNativeSystem::shutdown()` before exiting, matching normal shutdown order.
+  In Jenkins's Mac desktop account, the independent windowed timeout probe
+  reproduced SIGABRT with the old runtime after 307 seconds. Two corrected
+  runtime runs returned the intended code 2 after 312 seconds, without an
+  outer kill. Win32 and Win64 also returned code 2 after 309 and 332 seconds
+  with video enabled through SDL's dummy driver. This fixes the host cleanup
+  failure, not F16's guest mixer fault.
 * **Early screenshot overflow:** before the first guest frame, SDL's host
   renderer can still have different dimensions from the requested guest mode.
   A captured Win64 stack showed `SDL_RenderReadPixels` copying 928x1080 pixels
@@ -268,6 +279,13 @@ show Wine's debugger; the recorder returned exit 2 after 461.72 seconds, and a
 fresh install/play retry passed. Passing browser and other native F16 cases
 in the same build do not establish a fix for this intermittent mixer fault.
 
+Build 9 reproduced it twice on native Mac and once on ARM64 browser MT. All
+three attempts reached the recorder timeout; clean retries eventually passed.
+The Mac attempts additionally exposed the OpenGL destruction-order crash
+described above. The browser attempt returned code 2 with its filesystem
+flushed. Neither the recording recovery nor the host cleanup fix addresses
+this audio scheduling issue.
+
 The independent `../testing/wine/timerPriorityProbe.c` measures normal-priority
 work during twelve busy 20 ms multimedia callbacks. Windows reported callback
 priority 15 with zero overlapping samples; Boxedwine/Wine reported the same
@@ -370,8 +388,11 @@ exit until the runner killed it at 30 minutes. Its menu failure matches the
 Linux screenshot, but the subsequent shutdown hang has no captured host stack.
 The corrected runtime builds on Mac; testing from the separate SSH account
 stops before Wine starts because that account has no display. Validate the
-shutdown correction in Jenkins's desktop account rather than treating that
-SSH launch failure as an application result.
+shutdown in the actual desktop account rather than treating an SSH launch
+failure as an application result. The build 9 investigation above subsequently
+ran the independent timeout probe in Jenkins's Mac account and validated the
+OpenGL cleanup fix there. The original 30-minute hang still has no captured
+stack establishing that it had the same cause.
 
 Jenkins build 4 subsequently completed all native application phases and
 Cinebench on Win32, Win64, Windows ARM64, Linux x64, Linux ARM64 and Mac ARM64
@@ -408,6 +429,20 @@ with only Win64 F16 requiring a retry for the known mixer fault. All browser
 inputs were verified against automation42 and filesystem48. These are observed
 results for that build, not proof that the remaining intermittent faults are
 fixed.
+
+Build 9, using automation43 and filesystem48, passed all 64 browser cases:
+28 on Linux x64, 20 on Linux ARM64 and 16 on Mac. All four targets overlapped
+within each demo, with one demo group per worker. The app stage took 36.96
+minutes; 62 cases passed first attempt. Daytona/Linux MT retried after waiting
+for Mode Select, and F16/ARM MT retried after its mixer fault. All 102 native
+app/benchmark runs passed (180 final phases); Mac F16 needed three attempts
+and Windows ARM64 F22 needed two. The latter had matched every screenshot but
+remained at the final Exit menu. All four Deadlock and Firefight Mac cases
+passed first attempt. Four Deadlock filesystem transfers failed and were
+retried from the beginning; all recovered with verified SHA-256 before the
+first app attempt. All 64 archived manifests and harness hashes matched the
+build inputs. Console lines can interleave: count archived native phase results
+as well as `OK` lines, since one OpenTTD success appeared inside a unit-test line.
 
 Emscripten unit-test compilation no longer runs the legacy Linux
 `killall -9 python3` / `killall -9 firefox firefox-bin` cleanup. Build 8 started
@@ -459,6 +494,13 @@ HTTP port and archives its own results under its build number, target and app.
 Workers need Python 3.9+ and Chrome or Chromium; Linux discovers the browser in
 `PATH`, while macOS also checks the usual application bundles. Fedora ARM64 uses
 the `chromium` package. Only the compile worker needs the Emscripten SDK.
+
+On Windows, a Chrome child can briefly retain a profile-cache file handle after
+`taskkill` returns. Profile cleanup retries sharing violations for at most five
+seconds, confined to that attempt's temporary profile. Persistent cleanup errors
+still fail the runner; application exceptions are preserved. A real open-file
+Windows regression covers this delay. The three Jenkins browser workers use
+Linux or macOS, so this correction primarily affects local Windows testing.
 
 `results.json` and `junit.xml` report every completed app/target combination.
 Each phase retains `console.log` and `result.json`; each attempt has `chrome.log`.

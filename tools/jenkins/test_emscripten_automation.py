@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.request import urlopen
 import zipfile
 
@@ -16,6 +16,43 @@ import run_emscripten_automation as runner
 
 
 class AutomationTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'win32', 'Windows file sharing semantics')
+    def test_profile_cleanup_waits_for_open_windows_handle(self):
+        release = None
+        try:
+            with runner.browser_profile() as profile:
+                path = Path(profile)
+                handle = (path / 'chrome-cache-journal').open('wb')
+                # An open Windows file denies deletion, just like a Chrome child
+                # still closing its cache after taskkill returned.
+                with self.assertRaises(PermissionError):
+                    (path / 'chrome-cache-journal').unlink()
+                release = threading.Timer(0.5, handle.close)
+                release.start()
+            self.assertFalse(path.exists())
+        finally:
+            if release is not None:
+                release.join()
+
+    def test_profile_cleanup_does_not_hide_persistent_lock(self):
+        profile = Mock()
+        profile.cleanup.side_effect = PermissionError('profile still locked')
+        with patch.object(runner.tempfile, 'TemporaryDirectory', return_value=profile), \
+                patch.object(runner.sys, 'platform', 'win32'), \
+                patch.object(runner.time, 'monotonic', side_effect=[0, 6]):
+            with self.assertRaisesRegex(PermissionError, 'profile still locked'):
+                with runner.browser_profile():
+                    pass
+        profile.cleanup.assert_called_once()
+
+    def test_profile_cleanup_preserves_application_exception(self):
+        with self.assertRaisesRegex(ValueError, 'application failure'):
+            with runner.browser_profile() as profile:
+                path = Path(profile)
+                (path / 'cache').write_text('temporary data')
+                raise ValueError('application failure')
+        self.assertFalse(path.exists())
+
     def test_failed_http_transfers_close_instead_of_replaying_an_unknown_prefix(self):
         class ConstrainedSocket:
             def __init__(self, connection):

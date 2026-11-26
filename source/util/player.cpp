@@ -386,6 +386,10 @@ static void failAutomationTimeout(Player* player, KNativeScreenPtr screen, const
     // Native exit also runs static destructors while guest threads may still
     // be using their process and memory. Finish their cleanup before exit.
     KSystem::destroy();
+    // Release native backends before exit destroys their static mutexes and
+    // context tables. The OpenGL shared_ptr otherwise outlives those globals
+    // on macOS and its destructor tries to lock an already-destroyed mutex.
+    KNativeSystem::shutdown();
     exit(2);
 #endif
 }

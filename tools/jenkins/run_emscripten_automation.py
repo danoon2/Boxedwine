@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -300,6 +301,26 @@ class BrowserLogMonitor:
         return None
 
 
+@contextmanager
+def browser_profile():
+    profile = tempfile.TemporaryDirectory(prefix='boxedwine-automation-')
+    try:
+        yield profile.name
+    finally:
+        # taskkill can return before Chrome's children release their profile
+        # handles on Windows. Retry only this owned profile, with a fixed bound;
+        # a persistent cleanup failure must still fail the runner.
+        deadline = time.monotonic() + 5
+        while True:
+            try:
+                profile.cleanup()
+                break
+            except PermissionError:
+                if sys.platform != 'win32' or time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.25)
+
+
 def run_app(chrome, build, cache, app, phases, output, port, timeout, retries):
     server = AutomationServer(build, cache, app, port)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
@@ -310,7 +331,7 @@ def run_app(chrome, build, cache, app, phases, output, port, timeout, retries):
             server.finishing = False
             records = []
             attempts.append(records)
-            with tempfile.TemporaryDirectory(prefix='boxedwine-automation-') as profile:
+            with browser_profile() as profile:
                 attempt_dir = output / f'attempt-{attempt}'
                 attempt_dir.mkdir(parents=True)
                 process = None
