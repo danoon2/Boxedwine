@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import io
 import json
 from pathlib import Path
 import re
@@ -196,7 +198,43 @@ class AutomationServer(ThreadingHTTPServer):
             client_sha256=hashlib.sha256(self.client.encode()).hexdigest()), indent=2) + '\n')
 
 
+class SocketWriter(io.BufferedIOBase):
+    """Resume transient send failures without replaying an already-sent prefix."""
+
+    def __init__(self, connection):
+        self.connection = connection
+
+    def writable(self):
+        return True
+
+    def fileno(self):
+        return self.connection.fileno()
+
+    def write(self, data):
+        remaining = memoryview(data).cast('B')
+        size = len(remaining)
+        deadline = time.monotonic() + 5
+        while remaining:
+            try:
+                sent = self.connection.send(remaining)
+            except OSError as error:
+                # macOS can exhaust kernel buffers during concurrent loopback
+                # downloads. sendall cannot tell us how much it already sent.
+                if error.errno != errno.ENOBUFS or time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.05)
+                continue
+            if sent == 0:
+                raise ConnectionError('HTTP socket closed during write')
+            remaining = remaining[sent:]
+        return size
+
+
 class Handler(SimpleHTTPRequestHandler):
+    def setup(self):
+        super().setup()
+        self.wfile = SocketWriter(self.connection)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(args[2].build), **kwargs)
 

@@ -20,6 +20,7 @@ function harness() {
         setInterval() { return 1; }, clearInterval() {}, addEventListener(name, callback) { events[name] = callback; },
         getEmulatorParams: null, emrun_file_dump: null,
     });
+    context.failArchiveSetup = () => { context.Config.archiveSetupFailed = true; };
     vm.runInContext(source, context);
     return {context, requests, events, finishSync: error => sync(error)};
 }
@@ -38,6 +39,26 @@ test('completion waits for durable filesystem and screenshot delivery', async ()
     assert.equal(h.requests[0].path, '/automation/test/file/failed.bmp');
     assert.deepEqual(JSON.parse(h.requests[1].body), ['final output', 'Automation guest exited: 111; flushing filesystem']);
     h.context.Module.onExit(111);
+    assert.equal(h.requests.filter(r => r.path.endsWith('/result')).length, 1);
+});
+
+test('archive setup failure reports promptly without starting or syncing the guest', async () => {
+    const h = harness();
+    h.context.FS.syncfs = () => assert.fail('guest filesystem does not exist yet');
+    h.context.console.error('TypeError: Failed to fetch');
+    h.context.failArchiveSetup(new Error('filesystem transfer failed'));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.context.Config.archiveSetupFailed, true);
+    const results = h.requests.filter(r => r.path.endsWith('/result'));
+    assert.equal(results.length, 1);
+    const failure = JSON.parse(results[0].body);
+    assert.equal(failure.reason, 'archive_setup_failed');
+    assert.match(failure.browserErrors[0], /filesystem transfer failed/);
+    assert.equal(failure.code, undefined);
+    assert.deepEqual(JSON.parse(h.requests[0].body), ['TypeError: Failed to fetch']);
+    h.context.failArchiveSetup(new Error('second failure'));
+    h.context.Module.onExit(111);
+    await new Promise(resolve => setImmediate(resolve));
     assert.equal(h.requests.filter(r => r.path.endsWith('/result')).length, 1);
 });
 

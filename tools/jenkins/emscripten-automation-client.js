@@ -31,6 +31,20 @@
         return pending;
     };
     const progress = setInterval(() => flush().catch(console.error), 5000);
+    const originalArchiveFailure = failArchiveSetup;
+    failArchiveSetup = error => {
+        originalArchiveFailure(error);
+        if (finished) return;
+        finished = true;
+        clearInterval(progress);
+        const detail = String(error && error.stack || error);
+        browserErrors.push(detail);
+        // Setup failed before the guest started: there is no installed state
+        // to flush and onExit will never run. Keep the error and retry fresh.
+        flush().then(() => post('result', JSON.stringify({
+            reason: 'archive_setup_failed', browserErrors
+        }))).catch(failure => console.error('Automation result delivery failed: ' + failure));
+    };
     const uploads = [];
     const originalInitialized = Module.onRuntimeInitialized;
     Module.onRuntimeInitialized = function () {

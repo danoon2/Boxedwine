@@ -418,6 +418,25 @@ starts a fresh retry promptly even when the browser parent survives. Browser
 exit and phase timeout failures also receive explicit reasons. GPU-process
 restart warnings and application console messages are not treated as tab
 failures.
+
+Build 6 exposed a separate Mac HTTP transport failure before Bang started:
+all four filesystem responses ended with `OSError: [Errno 55] No buffer space
+available`, and the browsers reported `TypeError: Failed to fetch`. A later
+download from the same live server returned the complete 216,616,614-byte file.
+The server now retries transient `ENOBUFS` for up to five seconds per write,
+using `send` byte counts to resume without duplicating a partially sent prefix.
+Retrying `sendall` itself is unsafe because it does not expose the byte count
+after an error; see the [Python socket documentation](https://docs.python.org/3/library/socket.html#socket.socket.sendall).
+Apple documents `ENOBUFS` as an allocation or queue failure that may recover
+when buffers become available in [send(2)](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/send.2.html).
+Persistent archive setup failures report `archive_setup_failed` immediately,
+without waiting for a guest exit or attempting to flush an uninitialized root.
+The four-client HTTP regression truncates responses with the old writer and
+passes byte-for-byte with the correction. All four Bang browser targets on Mac
+also passed together, first attempt, with partial sends and two `ENOBUFS`
+errors deliberately injected into each filesystem transfer. A persistent
+injected failure was reported in 5.56 seconds rather than the 900-second phase
+timeout. No demo, recording, filesystem or system networking setting changed.
 Recorder timeouts also retain `failed.bmp`, `failed_diff.bmp` and
 `failed-screen.bmp`. `inputs.json` records the pins and runtime hashes.
 Jenkins archives these artifacts and publishes the JUnit results. Preparation
