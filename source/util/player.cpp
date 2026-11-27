@@ -248,8 +248,8 @@ bool Player::start(BString directory) {
     }
     instance->readCommand();
     instance->version = instance->nextValue;
-    if (instance->version!="2") {
-        klog_fmt("script is wrong version, was expecting 2 and instead got %s", instance->version.c_str());
+    if (instance->version!="2" && instance->version!="3") {
+        klog_fmt("script is wrong version, was expecting 2 or 3 and instead got %s", instance->version.c_str());
         exit(99);
     }
     instance->readCommand();

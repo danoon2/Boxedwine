@@ -1,8 +1,8 @@
 {
   "assets": {
-    "url": "https://boxedwine.org/v2/1/automation46.zip",
-    "sha256": "5fc3e27eb597cd7daf524baf30f76664b9baf0a0ca381857c061e976fd2ac461",
-    "size": 450858008
+    "url": "https://boxedwine.org/v2/1/automation48.zip",
+    "sha256": "fe9115728b94d56e4da056b50c25f45497cfbbf04c509cc5b5fde774d3b0d716",
+    "size": 649724428
   },
   "filesystem_properties": "../automation/BoxedWineRunner/filesystem.properties",
   "agent_labels": {
@@ -27,6 +27,9 @@
     "opentdd",
     "pharaoh",
     "realdeal",
-    "rtc2"
+    "rtc2",
+    "simcity",
+    "simtower",
+    "swgb"
   ]
 }

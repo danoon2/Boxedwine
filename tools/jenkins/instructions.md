@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation46.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation48.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -17,6 +17,12 @@ each app's files, recordings and captures into an overlay and applies the native
 runner's GDI registry settings. App executables, recordings, and screenshot
 references are copied byte-for-byte from the archive, including the installer
 fixes described below. Native and browser automation use the same packaged files.
+
+New recordings use `VERSION=3`, which corrects screenshot source-row clipping
+for windows extending above the desktop. Version 2 playback preserves its
+historical pixels for existing references. `automation48.zip` requires a runtime
+with version 3 support; keep older recordings at version 2 unless their images
+are recorded again with the new recorder.
 
 Daytona's final installer recovery cycles both the Read Me close button and the
 installer Exit button. The original single Exit click can be consumed by a late
@@ -46,8 +52,8 @@ for Finish. It preserves the demos, reference images and runner byte-for-byte.
 
 # Browser app automation
 
-`run_emscripten_automation.py` runs all 18 app tests in
-`automation46.zip` across the four recorder-enabled browser targets: ST, MT,
+`run_emscripten_automation.py` runs all 21 app tests in
+`automation48.zip` across the four recorder-enabled browser targets: ST, MT,
 ST JIT and MT JIT. This includes
 each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
 original working directories, program arguments, resolution, bit depth, CPU
@@ -1127,6 +1133,25 @@ Native UI catalogue 15 uses the same archive with `InstallType=Zip`,
 executable inside `SC3/`. The hosted legacy catalogue and homepage demo catalogue
 also reference this archive.
 
+`automation48.zip` adds the `simcity` recording from the same unchanged portable
+demo. The single Play phase checks the tutorial, selects the road tool, drags
+a new road through the commercial zone, and checks both the road and the $50
+construction cost. It then runs and pauses the simulation, confirms Exit and
+waits for normal process shutdown. Animated traffic, buildings and simulation
+dates are excluded from the reference crops.
+
+The expanding transport and options menus can still be animating when the next
+click arrives. Earlier Win64 and MT JIT runs respectively missed road selection
+and Exit. The final recording checks the expanded menus and the road preview
+before continuing, retaining the original road, cost and exit assertions.
+
+The final recording passed twice with fresh roots/profiles on Win32, Win64,
+ST, MT, ST JIT and MT JIT, with all six targets concurrent in each round:
+12 cases, no retries, and exit code 111 throughout.
+The archive contains the original source-file hashes, recording/runtime hashes
+and phase results in `automation/provenance/simcity48.json`. The full Wine 11
+revision 48 filesystem and shared GDI registry preset remain unchanged.
+
 ### 3DMark2001 SE
 
 Install the cached `3DMark2001SE.exe` (SE build 330) through native Boxedwine into
@@ -1299,6 +1324,35 @@ delivery from interpreter-backed segment instructions. The November 13, 2026
 placing and expanding a lobby, building offices, advancing the tutorial, and
 exiting through File > Exit with Wine cleanup observed. The installer also
 completed and the interactive tour ran with the native Linux engine.
+
+`automation48.zip` adds the `simtower` automation test using the original
+installer files, with separate Install and Play phases. Setup installs the
+demo and its WinG/sound support into a fresh prefix at `C:\SIMTDEMO`. The
+recording closes the Maxis shortcut folder while waiting for setup completion
+and shutdown; Explorer can reopen it after the completion checkpoint.
+Gameplay places and expands a lobby, builds two offices, verifies the tutorial
+has advanced to stairs and the offices are rendered, and exits through File >
+Exit. No installed prefix, saved tower or modified demo files are packaged.
+
+The installer exposed a Boxedwine recorder bug: a window beginning one pixel
+above the desktop was clipped without advancing the source image row. The
+displayed guest image was correct, but the recorder buffer was shifted down by
+one row. New recordings use `VERSION=3`; their recorder buffer advances the
+source row when clipping negative Y. Version 2 playback retains its historical
+pixels so existing recordings remain compatible. Both new demos use version 3.
+The same unmodified SimTower reference image failed before the fix and matched
+afterward on all six rebuilt targets.
+The unchanged BassTour installer/gameplay and Castle of the Winds recordings
+also passed on Win32 and ST JIT after the fix.
+
+The final recording passed two fresh install/play runs on each of Win32,
+Win64, ST, MT, ST JIT and MT JIT: 12 complete cases and 24 phases, with retries
+disabled and exit code 111 throughout. Source-file, recording and runtime
+hashes, the engine patch and per-phase results are embedded in
+`automation/provenance/simtower48.json`. No Wine or filesystem update is needed.
+Together with SimCity, the suite now has 21 demo groups and 84 browser tests.
+Both new demos are eligible for all three browser workers; each demo's four
+targets run in parallel on its assigned worker.
 
 ## Even More Contraptions demo
 
@@ -1699,8 +1753,8 @@ no whole-test retries. ST gameplay completed in 383 and 386 seconds after the
 startup refinement; the initial unskipped-movie recording reached the local
 600-second phase limit. The archive preserves the other 17 apps, their
 recordings, the runner and all original demo files. It needs no engine, Wine
-or filesystem changes. Jenkins schedules 18 demo groups and 72 browser tests,
-with Pharaoh eligible for all three browser workers.
+or filesystem changes. That addition brought the suite to 18 demo groups and
+72 browser tests, with Pharaoh eligible for all three browser workers.
 
 For local interactive recording, `SDL_RENDER_DRIVER=software` was needed to
 show the native window correctly on this desktop. The accelerated host window
@@ -1797,6 +1851,44 @@ Quick Start. Screenshots and console logs are in
 `links-saved-profile.{png,log}`.
 
 ### Galactic Battlegrounds trial
+
+`automation48.zip` includes the `swgb` automation recording using the original
+73,387,227-byte `SWGB_Trial.exe` from the native demo catalogue. Its SHA-256 is
+`c46e9a45f2d0c7bf75e8b3fca4fae9e54765af9cf110d7613071badc93d4d3d2`.
+The installer and demo files are unchanged.
+
+The two phases install the trial with its default components and then launch
+`Game/battlegrounds_trial.exe`. Gameplay creates player `b`, selects Darth
+Vader's Incursion on Yavin IV campaign on Easy, skips the briefing, checks the
+mission objective, selects Vader and moves him south. The same destination is
+checked first as empty and then occupied by Vader. The recording quits through
+the confirmation, achievements, campaign and main menus, dismisses the trial's
+closing screen, and waits for normal process exit.
+
+Installer completion checks the launcher's static logo because its button text
+changes color with focus and hover. The movement crop excludes a neighboring
+unit's animation; a terrain-reveal check was insufficient because the arriving
+transports reveal nearby ground too. The campaign-button recovery stops as soon
+as the campaign screen matches. No pre-created player or save is packaged.
+
+The final recording passed two fresh install/play runs on each of Win32,
+Win64, ST, MT, ST JIT and MT JIT: 12 complete cases and 24 successful phases,
+with retries disabled and exit code 111 throughout. The archive embeds the
+source, recording and runtime hashes and per-phase results in
+`automation/provenance/swgb47.json`. The full Wine 11 revision 48 filesystem
+remains pinned. No Boxedwine, Wine, filesystem or other demo recording changes
+were needed. Together with SimCity and SimTower, Jenkins schedules 21 demo
+groups and 84 browser tests.
+
+During local qualification, low disk space caused Chrome to forcibly close the
+IndexedDB databases. The game still reached exit 111, but the runner correctly
+failed the final filesystem flush with "The database connection is closing."
+Temporary diagnostics recorded forced-close events without application close
+calls. Chromium's
+[quota defaults](https://chromium.googlesource.com/chromium/src/+/main/storage/browser/quota/quota_features.cc)
+include a 2 GiB free-space reserve. Lossless NTFS compression restored space;
+the final runs retained a free-space trace and passed without changing the
+runner, disabling persistence checks or retrying failed cases.
 
 `galactic-battlegrounds-trial-overlay.zip` contains all 184 pristine installed
 files from the original `SWGB_Trial.exe`, including the empty `Game/SaveGame/`

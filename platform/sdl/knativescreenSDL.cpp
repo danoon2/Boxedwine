@@ -515,6 +515,11 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         }
 
         if (top < 0) {
+            // Version 2 reference images include the old unclipped source rows.
+            // New recordings and version 3 playback use the visible source rows.
+            if (Recorder::instance || (Player::instance && Player::instance->version != "2")) {
+                srcTopAdjust = -top;
+            }
             wndHeight += top;
             top = 0;
         }
