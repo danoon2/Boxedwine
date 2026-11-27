@@ -1263,7 +1263,9 @@ U32 KNativeSocketObject::accept(KThread* thread, const KFileDescriptorPtr& fd, U
     struct sockaddr_in addr = {};
     socklen_t addrlen = sizeof(struct sockaddr);
     KMemory* memory = thread->memory;
-    readSockAddrIn(&addr, memory, address);
+    if (address) {
+        readSockAddrIn(&addr, memory, address);
+    }
     S32 result = (S32)::accept(this->nativeSocket, (struct sockaddr*)&addr, &addrlen);
     LOG_SOCK("native socket: %x listen result=%x", nativeSocket, result);
 
@@ -1278,6 +1280,9 @@ U32 KNativeSocketObject::accept(KThread* thread, const KFileDescriptorPtr& fd, U
             resultFD->kobject->setBlocking(false);
         }
 
+        if (s->nativeSocket >= 0) {
+            closesocket(s->nativeSocket); // the constructor opened a native socket that the accepted connection replaces
+        }
         s->nativeSocket = result;
         s->connected = true;
         s->error = 0;
