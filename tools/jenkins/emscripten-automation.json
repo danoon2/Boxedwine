@@ -1,8 +1,8 @@
 {
   "assets": {
-    "url": "https://boxedwine.org/v2/1/automation45.zip",
-    "sha256": "bea64e2108d51dca4bf6c46822bdbcd60a8ddc61d507dbc197e0f3eae655be59",
-    "size": 373304842
+    "url": "https://boxedwine.org/v2/1/automation46.zip",
+    "sha256": "5fc3e27eb597cd7daf524baf30f76664b9baf0a0ca381857c061e976fd2ac461",
+    "size": 450858008
   },
   "filesystem_properties": "../automation/BoxedWineRunner/filesystem.properties",
   "agent_labels": {
@@ -25,6 +25,7 @@
     "firefight",
     "fulltilt",
     "opentdd",
+    "pharaoh",
     "realdeal",
     "rtc2"
   ]

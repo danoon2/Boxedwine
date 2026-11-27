@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation45.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation46.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -46,8 +46,8 @@ for Finish. It preserves the demos, reference images and runner byte-for-byte.
 
 # Browser app automation
 
-`run_emscripten_automation.py` runs all 17 app tests in
-`automation45.zip` across the four recorder-enabled browser targets: ST, MT,
+`run_emscripten_automation.py` runs all 18 app tests in
+`automation46.zip` across the four recorder-enabled browser targets: ST, MT,
 ST JIT and MT JIT. This includes
 each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
 original working directories, program arguments, resolution, bit depth, CPU
@@ -1347,8 +1347,8 @@ browser targets with no whole-test retries (12 complete cases, exit code 111).
 A separate Win32 run deliberately omitted the initial Play click and still
 solved the puzzle and exited through recovery. The archive preserves the other
 16 apps, their recordings, the runner and every original demo file. It requires
-no engine, Wine or filesystem changes. Jenkins now schedules 17 demo groups,
-68 browser tests, with this demo eligible for all three browser workers.
+no engine, Wine or filesystem changes. That addition brought the suite to 17
+demo groups and 68 browser tests, with this demo eligible for all three workers.
 
 ## Force Commander demo
 
@@ -1673,6 +1673,41 @@ entering the first mission, moving around the map, placing houses and observing
 settlers move in. Exit and Wine cleanup completed after clicking through the
 demo's two closing promotional screens. The homepage uses this ST JIT runtime;
 Jenkins exposes the usual four runtime choices.
+
+`automation46.zip` adds the `pharaoh` automation recording using the original
+installer ZIP, with all 331 media files preserved. Its three phases configure
+Windows 98 using
+`winecfg.exe -v win98`, run `SETUP.EXE`, then launch the installed
+`PharaohDemo.exe`. Setup keeps the default destination, skips browser bookmarks
+and the Read Me, and selects restart later.
+
+Gameplay starts the Predynastic tutorial in Nubt with the default player name,
+uses the minimap to reach the road, and places three house plots. Screenshot
+checks verify occupied housing, five occupants in the house details dialog and
+a total population of 15. The recording returns to the main menu, confirms Quit
+and dismisses both closing promotional screens before requiring normal guest
+shutdown. Its coverage ends after establishing the opening settlement.
+
+Startup uses `WHILEWAITING` to click below the main-menu buttons until the menu
+is visible. This skips the opening movie and advances the title screen even
+when the initial Wine startup takes longer than the first recorded input. The
+retry stops before selecting Play, and the menu screenshot remains required.
+
+Two fresh configure/install/play rounds passed locally on Win32, Win64, ST,
+MT, ST JIT and MT JIT: 12 complete cases, all three phases returning 111, with
+no whole-test retries. ST gameplay completed in 383 and 386 seconds after the
+startup refinement; the initial unskipped-movie recording reached the local
+600-second phase limit. The archive preserves the other 17 apps, their
+recordings, the runner and all original demo files. It needs no engine, Wine
+or filesystem changes. Jenkins schedules 18 demo groups and 72 browser tests,
+with Pharaoh eligible for all three browser workers.
+
+For local interactive recording, `SDL_RENDER_DRIVER=software` was needed to
+show the native window correctly on this desktop. The accelerated host window
+appeared white even though the guest screenshot showed a working installer.
+This host-only recording setting is not part of the launch files. A Wine
+Win16Mutex wait warning during startup also occurred in successful clean
+installations; the original 16-bit setup stub was retained.
 
 
 ### Escape from Monkey Island demo
