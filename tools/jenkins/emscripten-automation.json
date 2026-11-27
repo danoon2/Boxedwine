@@ -1,8 +1,8 @@
 {
   "assets": {
-    "url": "https://boxedwine.org/v2/1/automation44.zip",
-    "sha256": "88c80bd3724b709e6a40c469623ca36272b7182c8ef71e27dff9d8694ad72655",
-    "size": 353841230
+    "url": "https://boxedwine.org/v2/1/automation45.zip",
+    "sha256": "bea64e2108d51dca4bf6c46822bdbcd60a8ddc61d507dbc197e0f3eae655be59",
+    "size": 373304842
   },
   "filesystem_properties": "../automation/BoxedWineRunner/filesystem.properties",
   "agent_labels": {
@@ -16,6 +16,7 @@
     "basstour",
     "caesar3",
     "castle",
+    "contraptions",
     "daytona",
     "deadlock",
     "drowned",

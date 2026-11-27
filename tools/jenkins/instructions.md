@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation44.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation45.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -46,8 +46,8 @@ for Finish. It preserves the demos, reference images and runner byte-for-byte.
 
 # Browser app automation
 
-`run_emscripten_automation.py` runs all 16 app tests in
-`automation44.zip` across the four recorder-enabled browser targets: ST, MT,
+`run_emscripten_automation.py` runs all 17 app tests in
+`automation45.zip` across the four recorder-enabled browser targets: ST, MT,
 ST JIT and MT JIT. This includes
 each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
 original working directories, program arguments, resolution, bit depth, CPU
@@ -487,7 +487,7 @@ The manifest's optional `agent_labels` map constrains individual demo groups.
 Firefight and Deadlock select `emscripten && (linux64 || macArmv8)`: the current Linux x64
 worker has 64 GB RAM and the Mac has 24 GB, while the ARM Linux worker has 16 GB
 and exhausted both RAM and its 8 GB swap during these groups. All four targets
-still run in parallel on the selected worker. The other 14 demos remain eligible for
+still run in parallel on the selected worker. The other 15 demos remain eligible for
 all three workers. Review this expression when adding or resizing workers;
 it describes the current machines' memory capacity, not a CPU architecture
 requirement of the demo.
@@ -1331,6 +1331,24 @@ existing SimTower-tested runtime bytes, filesystem 35 and graphics provenance.
 Other engine modes retain their links but were not retested for this demo.
 The homepage uses the same package with ST JIT and an actual gameplay thumbnail.
 All 48 new or changed published files were downloaded and SHA-256 verified.
+
+`automation45.zip` adds `contraptions` to both the native and browser automation
+suites. It installs the original demo in its default directory, enters the
+Mice & Cheese tutorial, places the cheese and cat, verifies the solved-puzzle
+message, returns to the menu and exits through both closing demo screens.
+The launch files use the same 800x600, 16-bit GDI setup. The recorder waits for
+a menu crop covered by the loading panel and explicitly dismisses the first-run
+goal dialog. Gameplay uses `PRESSDURATION=100`: the default one-second presses
+did not reliably place the pieces. Play and Exit clicks have `WHILEWAITING`
+recovery while retaining the next screenshot assertion.
+
+Two fresh install/play rounds passed locally on Win32, Win64 and all four
+browser targets with no whole-test retries (12 complete cases, exit code 111).
+A separate Win32 run deliberately omitted the initial Play click and still
+solved the puzzle and exited through recovery. The archive preserves the other
+16 apps, their recordings, the runner and every original demo file. It requires
+no engine, Wine or filesystem changes. Jenkins now schedules 17 demo groups,
+68 browser tests, with this demo eligible for all three browser workers.
 
 ## Force Commander demo
 

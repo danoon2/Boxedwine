@@ -6,8 +6,9 @@ def jenkinsfile = new File(args ? args[0] : 'Jenkinsfile')
 def manifest = new JsonSlurper().parse(new File(jenkinsfile.parentFile ?: new File('.'),
                                               'tools/jenkins/emscripten-automation.json'))
 def targets = ['st', 'mt', 'jit', 'mtjit']
+def appCount = manifest.apps.size()
 def expected = targets.collectMany { target -> manifest.apps.collect { app -> "${target}/${app}".toString() } } as Set
-assert expected.size() == 64
+assert appCount > 0 && expected.size() == targets.size() * appCount
 def declaration = jenkinsfile.text.split("stage \\('Emscripten App Automation'\\)")[1].split("stage \\('Linux ")[0]
 assert declaration.contains('agent none')
 
@@ -144,13 +145,13 @@ assert declaration.contains('agent none')
     assert stashes['emscripten-app-harness'].contains('webgl_build_identity.py')
     assert stashes.values().every { !it.contains('automation-assets') && !it.contains('filesystem.zip') }
     if (scenario == 'user abort') {
-        assert aborted && allocations < 16 && failures == 0
+        assert aborted && allocations < appCount && failures == 0
     } else {
         def setupFailed = scenario in ['restore failure', 'prepare failure']
         def expectedRuns = setupFailed ? expected.findAll { !it.endsWith('/daytona') } as Set : expected
-        assert !aborted && allocations == 16
-        assert groups == (setupFailed ? 15 : 16)
-        assert preparations == (scenario == 'restore failure' ? 15 : 16)
+        assert !aborted && allocations == appCount
+        assert groups == (setupFailed ? appCount - 1 : appCount)
+        assert preparations == (scenario == 'restore failure' ? appCount - 1 : appCount)
         assert runs.size() == expectedRuns.size() && (runs as Set) == expectedRuns
         assert (cleared as Set).size() == expectedRuns.size()
         assert archives.size() == expectedRuns.size() && junitReports.size() == expectedRuns.size()
