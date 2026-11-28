@@ -1,7 +1,7 @@
 # Native automation filesystem
 
 The root `Jenkinsfile` downloads the full native automation filesystem separately
-from the apps and scripts in `automation48.zip`. Its URL, size, and SHA-256 are
+from the apps and scripts in `automation49.zip`. Its URL, size, and SHA-256 are
 pinned in [`../automation/BoxedWineRunner/filesystem.properties`](../automation/BoxedWineRunner/filesystem.properties).
 The bundle contains no filesystem. Every native worker verifies the direct
 download and applies the existing GDI renderer settings to each
@@ -53,7 +53,7 @@ for Finish. It preserves the demos, reference images and runner byte-for-byte.
 # Browser app automation
 
 `run_emscripten_automation.py` runs all 21 app tests in
-`automation48.zip` across the four recorder-enabled browser targets: ST, MT,
+`automation49.zip` across the four recorder-enabled browser targets: ST, MT,
 ST JIT and MT JIT. This includes
 each app's `Install.txt`, `Install2.txt` and `Play.txt` phases in order, with the
 original working directories, program arguments, resolution, bit depth, CPU
@@ -292,6 +292,12 @@ described above. The browser attempt returned code 2 with its filesystem
 flushed. Neither the recording recovery nor the host cleanup fix addresses
 this audio scheduling issue.
 
+Build 13 again reproduced the same `0x00567e06` NULL read on native Win64
+after the first six screenshot matches. The recorder returned exit 2 after
+466 seconds, and a fresh install/play retry passed. All four ARM Linux browser
+F16 cases passed on their first attempt in that build. The mixer issue remains
+unresolved; the SWGB recording correction in automation49 does not affect it.
+
 The independent `../testing/wine/timerPriorityProbe.c` measures normal-priority
 work during twelve busy 20 ms multimedia callbacks. Windows reported callback
 priority 15 with zero overlapping samples; Boxedwine/Wine reported the same
@@ -470,6 +476,16 @@ first app attempt. All 64 archived manifests and harness hashes matched the
 build inputs. Console lines can interleave: count archived native phase results
 as well as `OK` lines, since one OpenTTD success appeared inside a unit-test line.
 
+Build 13, using automation48 and filesystem48, passed all 132 native
+app/benchmark runs and all 84 browser cases. Every browser case passed on its
+first attempt: 32 on Mac, 28 on Linux ARM64 and 24 on Linux x64. All four targets
+overlapped within each of the 21 demo groups, with one group per worker at a
+time. SimCity and SimTower passed on all six native platforms and all four
+browser targets without retries. Native Linux x64 SWGB retried its transient
+mission checkpoint, corrected in automation49; native Win64 F16 retried
+the known mixer fault. Both clean retries passed. The complete build took
+70.5 minutes.
+
 Emscripten unit-test compilation no longer runs the legacy Linux
 `killall -9 python3` / `killall -9 firefox firefox-bin` cleanup. Build 8 started
 from the harness push while a separate ARM qualification was running; that
@@ -479,7 +495,7 @@ an emrun-owned browser PID and bounded runtime. Cleanup must stay scoped to
 the launched process rather than every process with the same executable name.
 
 Jenkins builds the four recorder runtimes once on `emscripten && linux64`, then
-releases that executor and queues the 16 demos on the `emscripten` label. The
+releases that executor and queues the 21 demos on the `emscripten` label. The
 next free eligible agent takes one demo and runs its four targets concurrently on that
 same machine. The Linux x64, Linux ARM64 and Mac agents each have **one executor**;
 keep this setting so each machine runs at most one demo group (four browsers).
@@ -493,7 +509,7 @@ The manifest's optional `agent_labels` map constrains individual demo groups.
 Firefight and Deadlock select `emscripten && (linux64 || macArmv8)`: the current Linux x64
 worker has 64 GB RAM and the Mac has 24 GB, while the ARM Linux worker has 16 GB
 and exhausted both RAM and its 8 GB swap during these groups. All four targets
-still run in parallel on the selected worker. The other 15 demos remain eligible for
+still run in parallel on the selected worker. The other 19 demos remain eligible for
 all three workers. Review this expression when adding or resizing workers;
 it describes the current machines' memory capacity, not a CPU architecture
 requirement of the demo.
@@ -1851,6 +1867,21 @@ Quick Start. Screenshots and console logs are in
 `links-saved-profile.{png,log}`.
 
 ### Galactic Battlegrounds trial
+
+`automation49.zip` corrects the mission-entry checkpoint in this recording.
+Jenkins build 13 on native Linux x64 entered gameplay successfully, but its
+reference crop still showed the disappearing objectives dialog's Intelligence
+and Reconnaissance tabs. A faster transition could miss that transient image
+and time out despite a correctly loaded mission. The same crop now checks the
+stable Tech Level 1 gameplay display. All input commands, later selection and
+movement checks, exit checks, demo files and other reference images are unchanged.
+
+The corrected recording passed twice with fresh roots/profiles on Win32, Win64
+and all four browser targets, plus twice on native Linux x64: 14 complete cases,
+28 phases and no retries. Browser runs also completed their filesystem flushes
+without errors. The archive records the inputs and results in
+`automation/provenance/swgb49.json` and preserves the automation48 validation as
+provenance. No engine, Wine, filesystem or demo patch is involved.
 
 `automation48.zip` includes the `swgb` automation recording using the original
 73,387,227-byte `SWGB_Trial.exe` from the native demo catalogue. Its SHA-256 is
